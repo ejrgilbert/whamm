@@ -24,7 +24,7 @@ fn main() -> io::Result<()> {
                     }
                 },
                 Err(e) => {
-                    eprintln!("Parse failed: {:?}", e);
+                    eprintln!("Parse failed: {e}");
                 }
             }
         },
