@@ -10,7 +10,7 @@ probe_def = { spec ~ predicate? ~ "{" ~ statement* ~ "}" }
 
 predicate = { "/" ~ expr ~ "/" }
 
-spec = { PROBE_SPEC | PROBE_ID | ID }
+spec = { PROBE_SPEC | PROBE_ID }
 
 statement = { expr ~ ";" }
 
@@ -34,9 +34,9 @@ PROBE_ID = @{
 }
 
 PROBE_SPEC = ${
-    (PROBE_ID | ID)? ~ ":" ~ (PROBE_ID | ID)? ~ ":" ~ (PROBE_ID | ID)? ~ ":" ~ (PROBE_ID | ID)?
-    | (PROBE_ID | ID)? ~ ":" ~ (PROBE_ID | ID)? ~ ":" ~ (PROBE_ID | ID)?
-    | (PROBE_ID | ID)? ~ ":" ~ (PROBE_ID | ID)?
+    PROBE_ID? ~ ":" ~ PROBE_ID? ~ ":" ~ PROBE_ID? ~ ":" ~ PROBE_ID?
+    | PROBE_ID? ~ ":" ~ PROBE_ID? ~ ":" ~ PROBE_ID?
+    | PROBE_ID? ~ ":" ~ PROBE_ID?
 }
 
 // =====================
@@ -88,7 +88,7 @@ INT = @{
     | ASCII_DIGIT // Single digit, base 10 (account for having just '0')
 }
 
-STRING = ${ "\"" ~ ANY ~ "\"" }
+STRING = @{ "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
 
 // ===================
 // ---- Skip-able ----

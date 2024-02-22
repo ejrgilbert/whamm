@@ -5,5 +5,5 @@
  *       call site/target canister info.
  */
 fault_injection:ic0:call_perform:alt {
-    inject_synchronous_fault
+    inject_synchronous_fault;
 }

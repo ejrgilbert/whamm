@@ -5,8 +5,7 @@ use pest::iterators::{Pair, Pairs};
 use pest::pratt_parser::PrattParser;
 
 use std::cmp;
-use std::os::unix::raw::gid_t;
-use std::string::ToString;
+use crate::parser::dtrace::AstNode::ProbeId;
 
 #[derive(Parser)]
 #[grammar = "./parser/dtrace.pest"] // Path relative to base `src` dir
@@ -34,7 +33,6 @@ lazy_static::lazy_static! {
 #[derive(Debug)]
 pub enum AstNode {
     // IDs
-    // TODO -- verify these with regex
     VarId{
         name: String,
     },
@@ -60,10 +58,10 @@ pub enum AstNode {
 
     // Probes
     Spec {
-        provider: String,
-        module: String,
-        function: String,
-        name: String
+        provider: Box<AstNode>, // Should be ProbeIds
+        module: Box<AstNode>,
+        function: Box<AstNode>,
+        name: Box<AstNode>
     },
     Probe {
         spec: Box<AstNode>,
@@ -76,9 +74,7 @@ pub enum AstNode {
         probes: Vec<Box<AstNode>>
     },
 
-    // TODO -- add '_' to 'dscript' rule to not need this EOI variant
-    // EOI because I don't know what to do
-    // Don't add this to the AST
+    // EOI because it's an easier workaround than hiding the dscript rule
     EOI,
 }
 
@@ -168,15 +164,6 @@ fn get_ast_from_expr(pairs: Pairs<Rule>) -> AstNode {
                 op,
                 rhs: Box::new(rhs),
             }
-            // AstNode::BinOp {
-            //     lhs: Box::new(AstNode::Integer {
-            //         val: 0
-            //     }),
-            //     op,
-            //     rhs: Box::new(AstNode::Integer {
-            //         val: 0
-            //     }),
-            // }
         })
         .parse(pairs)
 }
@@ -228,6 +215,31 @@ fn get_ast_from_pair(pair: Pair<Rule>) -> AstNode {
                 body
             }
         },
+        Rule::spec => {
+            println!("Entering spec");
+            let res = get_ast_from_pair(pair.into_inner().next().unwrap());
+            match res {
+                AstNode::Spec { provider, module, function, name } => {
+                    println!("Exiting spec");
+                    AstNode::Spec {
+                        provider,
+                        module,
+                        function,
+                        name
+                    }
+                },
+                AstNode::ProbeId { name } => {
+                    println!("Exiting spec");
+                    AstNode::Spec {
+                        provider: Box::new(ProbeId { name: "*".to_string() }),
+                        module: Box::new(ProbeId { name: "*".to_string() }),
+                        function: Box::new(ProbeId { name: "*".to_string() }),
+                        name: Box::new(ProbeId { name }),
+                    }
+                }
+                _ => unreachable!("Expecting Spec or ProbeId, received: {:?}", res)
+            }
+        }
         Rule::predicate => {
             println!("Entering predicate");
             let mut pair = pair.into_inner();
@@ -235,15 +247,6 @@ fn get_ast_from_pair(pair: Pair<Rule>) -> AstNode {
 
             println!("Exiting predicate");
             get_ast_from_pair(expr)
-        },
-        Rule::spec => {
-            // TODO
-            println!("Entering spec");
-
-            println!("Exiting spec");
-            AstNode::Integer {
-                val: 0
-            }
         },
         Rule::statement => {
             println!("Entering statement");
@@ -272,23 +275,39 @@ fn get_ast_from_pair(pair: Pair<Rule>) -> AstNode {
             println!("Exiting ID");
             AstNode::VarId {
                 name: pair.as_str().parse().unwrap()
-            } // TODO -- this could need to be a ProbeId since `ID` occurs inside `spec`
+            }
         },
         Rule::PROBE_ID => {
             println!("Entering PROBE_ID");
+            // Special BEGIN/END case
+            let name = pair.as_str().parse().unwrap();
+            if name == "BEGIN" || name == "END" {
+                return AstNode::Spec {
+                    name: Box::new(ProbeId { name }),
+                    function: Box::new(ProbeId { name: "*".to_string() }),
+                    module: Box::new(ProbeId { name: "*".to_string() }),
+                    provider: Box::new(ProbeId { name: "core".to_string() })
+                }
+            }
 
             println!("Exiting PROBE_ID");
             AstNode::ProbeId {
-                name: pair.as_str().parse().unwrap()
+                name
             }
         },
         Rule::PROBE_SPEC => {
-            // TODO
             println!("Entering PROBE_SPEC");
+            let mut contents: Vec<AstNode> = pair.into_inner().map(get_ast_from_pair).collect();
+            while contents.len() < 4 {
+                contents.insert(0, AstNode::ProbeId {name: "*".to_string() });
+            }
 
             println!("Exiting PROBE_SPEC");
-            AstNode::Integer {
-                val: 0
+            AstNode::Spec {
+                name: Box::new(contents.pop().unwrap()),
+                function: Box::new(contents.pop().unwrap()),
+                module: Box::new(contents.pop().unwrap()),
+                provider: Box::new(contents.pop().unwrap())
             }
         },
         Rule::INT => {
@@ -330,10 +349,6 @@ pub fn to_ast(pair: Pair<Rule>) -> Result<Vec<AstNode>, Error<Rule>> {
         }
         rule => unreachable!("Expected dscript, found {:?}", rule)
     }
-
-    // for pair in pairs {
-    //
-    // }
 
     Ok(ast)
 }
@@ -401,25 +416,25 @@ fn dump(node: AstNode, mut indent: i32) -> (String, i32) {
             // provider
             s += &*(get_indent(indent) + "provider:" + &*nl);
             indent = increase_indent(indent);
-            s += &*provider;
+            s += &*dump(*provider, indent).0;
             indent = decrease_indent(indent);
 
             // module
             s += &*(get_indent(indent) + "module:" + &*nl);
             indent = increase_indent(indent);
-            s += &*module;
+            s += &*dump(*module, indent).0;
             indent = decrease_indent(indent);
 
             // function
             s += &*(get_indent(indent) + "function:" + &*nl);
             indent = increase_indent(indent);
-            s += &*function;
+            s += &*dump(*function, indent).0;
             indent = decrease_indent(indent);
 
             // name
             s += &*(get_indent(indent) + "name:" + &*nl);
             indent = increase_indent(indent);
-            s += &*name;
+            s += &*dump(*name, indent).0;
             indent = decrease_indent(indent);
 
             indent = decrease_indent(indent);
@@ -489,10 +504,10 @@ pub fn dump_ast(ast: Vec<AstNode>) {
 // = Parser =
 // ==========
 
-pub fn parse_script(script: &str) -> Result<Vec<AstNode>, String> {
+pub fn parse_script(script: String) -> Result<Vec<AstNode>, String> {
     println!("Entered parse_script");
 
-    match DtraceParser::parse(Rule::dscript, script) {
+    match DtraceParser::parse(Rule::dscript, &*script) {
         Ok(mut pairs) => {
             let res = to_ast(
                 // inner of script

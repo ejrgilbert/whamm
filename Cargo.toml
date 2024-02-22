@@ -1,9 +1,10 @@
 [package]
-name = "parser"
+name = "instr_dsl"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+glob = "0.3.1"
 lazy_static = "1.4.0"
 pest = "2.7.7"
 pest_derive = "2.7.7"

@@ -16,7 +16,7 @@ fn main() -> io::Result<()> {
     let unparsed_file = std::fs::read_to_string(&args[1]);
     match unparsed_file {
         Ok(unparsed_str) => {
-            match parse_script(&unparsed_str) {
+            match parse_script(unparsed_str) {
                 Ok(ast) => {
                     println!("successfully parsed");
                     for node in ast {

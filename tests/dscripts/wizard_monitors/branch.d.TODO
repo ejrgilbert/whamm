@@ -1,13 +1,14 @@
-// Facts:
-// Bytecode names are probe types
-// Bound variables
-// - probe_func  : (dtrace standard) is the Wasm function
-// - tos         : Wasm top-of-stack
-// - pc          : Wasm program counter
-// - local0...N  : Wasm locals
-// -
-// need to access top-of-stack, locals, program counter
-// need a handle to the function ("func")
+/* Facts:
+ * Bytecode names are probe types
+ * Bound variables
+ * - probe_func  : (dtrace standard) is the Wasm function
+ * - tos         : Wasm top-of-stack
+ * - pc          : Wasm program counter
+ * - local0...N  : Wasm locals
+ * -
+ * need to access top-of-stack, locals, program counter
+ * need a handle to the function ("func")
+*/
 
 // matches "if" and "br_if" bytecodes
 wasm:::[br_]if {
