@@ -1,0 +1,47 @@
+// Facts:
+// Bytecode names are probe types
+// Bound variables
+// - probe_func  : (dtrace standard) is the Wasm function
+// - tos         : Wasm top-of-stack
+// - pc          : Wasm program counter
+// - local0...N  : Wasm locals
+// -
+// need to access top-of-stack, locals, program counter
+// need a handle to the function ("func")
+
+// matches "if" and "br_if" bytecodes
+wasm:::[br_]if {
+  // "tos" is defined as the top-of-stack
+  int index = tos != 0 ? 1 : 0;
+  // count stores an array of counters
+  count[probe_func, pc, index]++;
+}
+
+wasm:::br_table {
+  // "num_targets" is the number of targets of a br_table
+  // "tos" is defined as the top-of-stack
+  int index = tos >= num_targets ? num_targets : tos;
+  // count stores an array of counters
+  count[probe_func, pc, index]++;
+}
+
+// matches br_on_null
+wasm:::br_on_null {
+  // tos is defined as the top-of-stack
+  int index = tos == null ? 1 : 0;
+  // count stores an array of counters
+  count[probe_func, pc, index]++;
+}
+
+// matches br_on_null
+wasm:::br_on_non_null {
+  // tos is defined as the top-of-stack
+  int index = tos != null ? 1 : 0;
+  // count stores an array of counters
+  count[probe_func, pc, index]++;
+}
+
+// happens when program exits
+END {
+  dump(count);
+}

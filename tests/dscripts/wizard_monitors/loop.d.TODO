@@ -1,0 +1,4 @@
+// matches "loop" bytecode
+wasm:::loop {
+  count[probe_func, pc]++;
+}

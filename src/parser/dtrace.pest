@@ -1,0 +1,101 @@
+// ==============================
+// ---- High-Level Structure ----
+// ==============================
+
+dscript = { SOI ~ probe_def+ ~ EOI }
+
+// TODO -- support comma separated list of specs: https://docs.oracle.com/cd/E23824_01/html/E22973/glghi.html#scrolltoc
+probe_def = { spec ~ predicate? ~ "{" ~ statement* ~ "}" }
+// probe_def = { spec ~ ( "{" ~ statement* ~ "}" ) }
+
+predicate = { "/" ~ expr ~ "/" }
+
+spec = { PROBE_SPEC | PROBE_ID | ID }
+
+statement = { expr ~ ";" }
+
+// =====================
+// ---- Identifiers ----
+// =====================
+
+ID = @{ (ASCII_ALPHA | "_")+ ~ ( ASCII_DIGIT | (ASCII_ALPHA | "_")+ )* }
+
+PROBE_ID = @{
+    (ASCII_ALPHA
+    | "_"
+    | ASCII_DIGIT
+    | "*"
+    | "+"
+    | "\\"
+    | "?"
+    | "!"
+    | "["
+    | "]")+
+}
+
+PROBE_SPEC = ${
+    (PROBE_ID | ID)? ~ ":" ~ (PROBE_ID | ID)? ~ ":" ~ (PROBE_ID | ID)? ~ ":" ~ (PROBE_ID | ID)?
+    | (PROBE_ID | ID)? ~ ":" ~ (PROBE_ID | ID)? ~ ":" ~ (PROBE_ID | ID)?
+    | (PROBE_ID | ID)? ~ ":" ~ (PROBE_ID | ID)?
+}
+
+// =====================
+// ---- Expressions ----
+// =====================
+
+expr = { operand ~ (BINOP ~ operand)* }
+
+operand = { ID | INT | STRING | "(" ~ expr ~ ")" }
+
+// TODO -- add support for NOT (e.g. !(a == b)
+BINOP = _{ LOGOP | RELOP | SUMOP | MULOP }
+    // Logical operators
+    and = { "&&" }
+    or = { "||" }
+    LOGOP = _{ and | or }
+
+    // Relational operators
+    eq = { "==" }
+    ne = { "!=" }
+    ge = { ">=" }
+    gt = { ">" }
+    le = { "<=" }
+    lt = { "<" }
+    RELOP = _{ eq | ne | ge | gt | le | lt }
+
+    // Highest precedence arithmetic operators
+    add = { "+" }
+    subtract = { "-" }
+    SUMOP = _{ add | subtract }
+
+    // Next highest precedence arithmetic operators
+    multiply = { "*" }
+    divide = { "/" }
+    modulo = { "%" }
+    MULOP = _{ multiply | divide | modulo }
+
+// ===================
+// ---- Terminals ----
+// ===================
+
+// TODO -- make sure that the binary/octal/hexadecimal formats are parsed correctly
+// TODO -- add support for negative numbers (see calc-pest tutorial)
+INT = @{
+    "0x" ~ ASCII_HEX_DIGIT+ // Hexadecimal digit
+    | "0b" ~ ASCII_BIN_DIGIT+ // Binary digit
+    | "0" ~ ASCII_OCT_DIGIT+ // Octal digit
+    | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT+ // Multiple digit, base 10
+    | ASCII_DIGIT // Single digit, base 10 (account for having just '0')
+}
+
+STRING = ${ "\"" ~ ANY ~ "\"" }
+
+// ===================
+// ---- Skip-able ----
+// ===================
+
+newline = _{ "\n" | "\r\n" }
+WHITESPACE = _{ " " | "\t" | newline }
+
+block_comment = _{ "/*" ~ (block_comment | !"*/" ~ ANY)* ~ "*/" }
+COMMENT    = _{ block_comment | ("//" ~ (!newline ~ ANY)*) }

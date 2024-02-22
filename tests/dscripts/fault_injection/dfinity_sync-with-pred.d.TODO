@@ -1,0 +1,22 @@
+/*
+ * This will perform a synchronous fault in Dfinity (return non-zero on call_perform).
+ */
+
+char canister_name
+char endpoint
+
+/*
+ * Collect information about what the target canister/endpoint is!
+ * call_new args: (callee_src, callee_size, name_src, name_size, reply_fun, reply_env, reject_fun, reject_env)
+ */
+fault_injection:ic0:call_new:before {
+    canister_name = copy(arg0, arg1) /* calling library: copy(src, len) */
+    endpoint = copy(arg2, arg3)      /* calling library: copy(src, len) */
+}
+
+/*
+ * Use collected information (above) to conditionally inject a synchronous fault.
+ */
+fault_injection:ic0:call_perform:alt / (canister_name == "bookings") && (endpoint == "record") / {
+    inject_synchronous_fault
+}

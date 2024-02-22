@@ -1,0 +1,11 @@
+/*
+ * TODO -- this script should interface with Chris' DEI server to determine if a fault should be injected at some point.
+ *         Instrument all calls to call_new and call_perform, get metadata to ID the RPC, pass this to the DEI server.
+ *         Eventually will collect enough information to generate fault scenarios.
+ *         SEE: https://github.com/filibuster-testing
+ *         Docker Image: https://hub.docker.com/layers/filibustertesting/filibuster/0.34/images/sha256-4732074f7abf9b6a07a30e33b83d7196f4976e27deccbad05555e0038f594d12?context=explore
+ *         Use of image: https://github.com/filibuster-testing/filibuster-java-instrumentation/blob/e3d8d247825b7192ff6d939c76d96b134747dcc1/src/main/java/cloud/filibuster/junit/server/backends/FilibusterDockerServerBackend.java#L24
+ *         API:
+ *         - https://github.com/filibuster-testing/filibuster-java-instrumentation/blob/main/src/main/java/cloud/filibuster/junit/server/local/FilibusterServer.java
+ *         - https://github.com/filibuster-testing/filibuster-java-instrumentation/blob/main/src/main/java/cloud/filibuster/junit/server/FilibusterServerAPI.java
+ */
