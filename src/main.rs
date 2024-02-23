@@ -1,6 +1,10 @@
-use crate::parser::dtrace::*;
-pub mod parser;
+use crate::parser::dtrace_parser::*;
+use crate::compiler::dtrace_compiler::*;
 
+pub mod parser;
+pub mod compiler;
+
+use log::*;
 use std::env;
 use std::io;
 use std::process::exit;
@@ -9,7 +13,7 @@ use std::process::exit;
 fn main() -> io::Result<()> {
     let args: Vec<_> = env::args().collect();
     if args.len() <= 1 {
-        eprintln!("Please provide path to a Dtrace script.");
+        error!("Please provide path to a Dtrace script.");
         exit(1);
     }
     // Use first arg as filename to read
@@ -18,18 +22,18 @@ fn main() -> io::Result<()> {
         Ok(unparsed_str) => {
             match parse_script(unparsed_str) {
                 Ok(ast) => {
-                    println!("successfully parsed");
+                    info!("successfully parsed");
                     for node in ast {
-                        println!("{:?}", node);
+                        debug!("{:?}", node);
                     }
                 },
                 Err(e) => {
-                    eprintln!("Parse failed: {e}");
+                    error!("Parse failed: {e}");
                 }
             }
         },
         Err(e) => {
-            eprintln!("Cannot read specified file {}: {e}", &args[1]);
+            error!("Cannot read specified file {}: {e}", &args[1]);
             exit(1);
         }
     }

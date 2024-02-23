@@ -4,6 +4,6 @@
  *       to add granularity, another probe on call_new will need to be added to collect
  *       call site/target canister info.
  */
-fault_injection:ic0:call_perform:alt {
+dfinity:ic0:call_perform:alt {
     inject_synchronous_fault;
 }

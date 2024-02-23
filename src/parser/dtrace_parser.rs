@@ -4,8 +4,9 @@ use pest::Parser;
 use pest::iterators::{Pair, Pairs};
 use pest::pratt_parser::PrattParser;
 
+use log::*;
 use std::cmp;
-use crate::parser::dtrace::AstNode::ProbeId;
+use std::str::FromStr;
 
 #[derive(Parser)]
 #[grammar = "./parser/dtrace.pest"] // Path relative to base `src` dir
@@ -25,18 +26,18 @@ lazy_static::lazy_static! {
                 | Op::infix(gt, Left)
                 | Op::infix(le, Left)
                 | Op::infix(lt, Left)
-            ).op(Op::infix(add, Left) | Op::infix(subtract, Left)) //SUMOP
+            ).op(Op::infix(add, Left) | Op::infix(subtract, Left)) // SUMOP
             .op(Op::infix(multiply, Left) | Op::infix(divide, Left) | Op::infix(modulo, Left)) // MULOP
     };
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum AstNode {
     // IDs
-    VarId{
+    VarId {
         name: String,
     },
-    ProbeId{
+    ProbeId {
         name: String,
     },
 
@@ -57,16 +58,23 @@ pub enum AstNode {
     },
 
     // Probes
+    DfinityProbe {
+        module: Box<AstNode>, // TODO -- can I make these Strings instead?
+        function: Box<AstNode>, // TODO -- can I make these Strings instead?
+        name: DfinityProbeName,
+        predicate: Option<Box<AstNode>>,
+        body: Option<Vec<Box<AstNode>>>
+    },
+    CoreProbe {
+        name: CoreProbeName,
+        body: Option<Vec<Box<AstNode>>>
+    },
+
     Spec {
         provider: Box<AstNode>, // Should be ProbeIds
         module: Box<AstNode>,
         function: Box<AstNode>,
         name: Box<AstNode>
-    },
-    Probe {
-        spec: Box<AstNode>,
-        predicate: Option<Box<AstNode>>,
-        body: Option<Vec<Box<AstNode>>>
     },
 
     // Dscript
@@ -78,11 +86,144 @@ pub enum AstNode {
     EOI,
 }
 
+// =============
+// = Providers =
+// =============
+
+// ** Dfinity Provider **
+
+#[derive(Clone, Debug, Eq, Hash)]
+pub enum DfinityProbeName {
+    Before,
+    After,
+    Alt
+}
+
+impl PartialEq for DfinityProbeName {
+    #[inline]
+    fn eq(&self, other: &DfinityProbeName) -> bool {
+        match *self {
+            DfinityProbeName::Before => match other {
+                DfinityProbeName::Before => true,
+                _ => false,
+            },
+            DfinityProbeName::After => match other {
+                DfinityProbeName::After => true,
+                _ => false,
+            },
+            DfinityProbeName::Alt => match other {
+                DfinityProbeName::Alt => true,
+                _ => false,
+            },
+        }
+    }
+
+    #[inline]
+    fn ne(&self, other: &DfinityProbeName) -> bool {
+        match *self {
+            DfinityProbeName::Before => match other {
+                DfinityProbeName::Before => false,
+                _ => true,
+            },
+            DfinityProbeName::After => match other {
+                DfinityProbeName::After => false,
+                _ => true,
+            },
+            DfinityProbeName::Alt => match other {
+                DfinityProbeName::Alt => false,
+                _ => true,
+            },
+        }
+    }
+}
+
+impl FromStr for DfinityProbeName {
+    type Err = ();
+
+    fn from_str(input: &str) -> Result<DfinityProbeName, ()> {
+        match input.to_uppercase().as_str() {
+            "BEFORE" => Ok(DfinityProbeName::Before),
+            "AFTER" => Ok(DfinityProbeName::After),
+            "ALT" => Ok(DfinityProbeName::Alt),
+            _ => Err(()),
+        }
+    }
+}
+
+impl ToString for DfinityProbeName {
+    fn to_string(&self) -> String {
+        match *self {
+            DfinityProbeName::Before => "Before".to_string(),
+            DfinityProbeName::After => "After".to_string(),
+            DfinityProbeName::Alt => "Alt".to_string(),
+        }
+    }
+}
+
+// ** Core Provider **
+
+#[derive(Clone, Debug, Eq, Hash)]
+pub enum CoreProbeName {
+    Begin,
+    End
+}
+
+impl PartialEq for CoreProbeName {
+    #[inline]
+    fn eq(&self, other: &CoreProbeName) -> bool {
+        match *self {
+            CoreProbeName::Begin => match other {
+                CoreProbeName::Begin => true,
+                _ => false,
+            },
+            CoreProbeName::End => match other {
+                CoreProbeName::End => true,
+                _ => false,
+            }
+        }
+    }
+
+    #[inline]
+    fn ne(&self, other: &CoreProbeName) -> bool {
+        match *self {
+            CoreProbeName::Begin => match other {
+                CoreProbeName::Begin => false,
+                _ => true,
+            },
+            CoreProbeName::End => match other {
+                CoreProbeName::End => false,
+                _ => true,
+            }
+        }
+    }
+}
+
+impl FromStr for CoreProbeName {
+    type Err = ();
+
+    fn from_str(input: &str) -> Result<CoreProbeName, ()> {
+        match input.to_uppercase().as_str() {
+            "BEGIN" => Ok(CoreProbeName::Begin),
+            "END" => Ok(CoreProbeName::End),
+            _ => Err(()),
+        }
+    }
+}
+
+impl ToString for CoreProbeName {
+    fn to_string(&self) -> String {
+        match *self {
+            CoreProbeName::Begin => "Begin".to_string(),
+            CoreProbeName::End => "End".to_string(),
+        }
+    }
+}
+
 // =====================
 // ---- Expressions ----
 // =====================
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Op {
     // Logical operators
     And,
@@ -169,37 +310,37 @@ fn get_ast_from_expr(pairs: Pairs<Rule>) -> AstNode {
 }
 
 fn get_ast_from_pair(pair: Pair<Rule>) -> AstNode {
-    println!("Entered get_ast_from_pair");
+    // TODO -- implement some type of logging config (these println's should be debugs)
+    debug!("Entered get_ast_from_pair");
     match pair.as_rule() {
         Rule::dscript => {
-            println!("Entering dscript");
+            debug!("Entering dscript");
             let probes = pair.into_inner().map(get_ast_from_pair).filter(|res| match res {
                 AstNode::EOI => false,
                 _ => true,
             }).map(|res| {
-
                 Box::new(res)
             }).collect();
 
-            println!("Exiting dscript");
+            debug!("Exiting dscript");
             AstNode::Dscript {
                 probes
             }
         }
         Rule::probe_def => {
-            println!("Entering probe_def");
+            debug!("Entering probe_def");
             let mut pair = pair.into_inner();
             let spec = pair.next().unwrap();
-            let spec = Box::new(get_ast_from_pair(spec));
+            let mut base_probe = get_ast_from_pair(spec);
 
-            let predicate = match pair.next() {
+            let this_predicate = match pair.next() {
                 Some(pred) => {
                     Some(Box::new(get_ast_from_expr(pred.into_inner())))
                 },
                 None => None,
             };
 
-            let body = match pair.next() {
+            let this_body = match pair.next() {
                 Some(b) => {
                     Some(b.into_inner().map(get_ast_from_pair).map(|res| {
                         Box::new(res)
@@ -208,120 +349,151 @@ fn get_ast_from_pair(pair: Pair<Rule>) -> AstNode {
                 None => None
             };
 
-            println!("Exiting probe_def");
-            AstNode::Probe {
-                spec,
-                predicate,
-                body
+            if let AstNode::CoreProbe{name: _, ref mut body} = base_probe {
+                if !this_predicate.is_none() {
+                    error!("Core probe should not have a predicate, ignoring.");
+                }
+                *body = this_body;
+            } else if let AstNode::DfinityProbe{module: _, function: _, name: _, ref mut predicate, ref mut body} = base_probe {
+                *predicate = this_predicate;
+                *body = this_body;
+            } else {
+                error!("Expected Core or Dfinity probe, received: {:?}", base_probe)
             }
+
+            debug!("Exiting probe_def");
+            base_probe
         },
         Rule::spec => {
-            println!("Entering spec");
+            debug!("Entering spec");
             let res = get_ast_from_pair(pair.into_inner().next().unwrap());
-            match res {
-                AstNode::Spec { provider, module, function, name } => {
-                    println!("Exiting spec");
-                    AstNode::Spec {
-                        provider,
-                        module,
-                        function,
-                        name
-                    }
-                },
-                AstNode::ProbeId { name } => {
-                    println!("Exiting spec");
-                    AstNode::Spec {
-                        provider: Box::new(ProbeId { name: "*".to_string() }),
-                        module: Box::new(ProbeId { name: "*".to_string() }),
-                        function: Box::new(ProbeId { name: "*".to_string() }),
-                        name: Box::new(ProbeId { name }),
-                    }
-                }
-                _ => unreachable!("Expecting Spec or ProbeId, received: {:?}", res)
-            }
+            debug!("Entering spec");
+            res
         }
         Rule::predicate => {
-            println!("Entering predicate");
+            debug!("Entering predicate");
             let mut pair = pair.into_inner();
             let expr = pair.next().unwrap();
 
-            println!("Exiting predicate");
+            debug!("Exiting predicate");
             get_ast_from_pair(expr)
         },
         Rule::statement => {
-            println!("Entering statement");
+            debug!("Entering statement");
             let res = get_ast_from_expr(pair.into_inner());
 
-            println!("Exiting statement");
+            debug!("Exiting statement");
             res
         },
         Rule::expr => {
-            println!("Entering expr");
+            debug!("Entering expr");
             let res = get_ast_from_expr(pair.into_inner());
 
-            println!("Exiting expr");
+            debug!("Exiting expr");
             res
         },
         Rule::operand => {
-            println!("Entering operand");
+            debug!("Entering operand");
             let res = get_ast_from_expr(pair.into_inner());
 
-            println!("Exiting operand");
+            debug!("Exiting operand");
             res
         },
         Rule::ID => {
-            println!("Entering ID");
+            debug!("Entering ID");
 
-            println!("Exiting ID");
+            debug!("Exiting ID");
             AstNode::VarId {
                 name: pair.as_str().parse().unwrap()
             }
         },
         Rule::PROBE_ID => {
-            println!("Entering PROBE_ID");
+            debug!("Entering PROBE_ID");
+            let name: String = pair.as_str().parse().unwrap();
+
             // Special BEGIN/END case
-            let name = pair.as_str().parse().unwrap();
-            if name == "BEGIN" || name == "END" {
-                return AstNode::Spec {
-                    name: Box::new(ProbeId { name }),
-                    function: Box::new(ProbeId { name: "*".to_string() }),
-                    module: Box::new(ProbeId { name: "*".to_string() }),
-                    provider: Box::new(ProbeId { name: "core".to_string() })
+            if name.to_uppercase().as_str() == "BEGIN" || name.to_uppercase().as_str() == "END" {
+                return AstNode::CoreProbe {
+                    name: CoreProbeName::from_str(&*name).unwrap(),
+                    body: None,
                 }
             }
 
-            println!("Exiting PROBE_ID");
+            debug!("Exiting PROBE_ID");
             AstNode::ProbeId {
                 name
             }
         },
         Rule::PROBE_SPEC => {
-            println!("Entering PROBE_SPEC");
-            let mut contents: Vec<AstNode> = pair.into_inner().map(get_ast_from_pair).collect();
-            while contents.len() < 4 {
-                contents.insert(0, AstNode::ProbeId {name: "*".to_string() });
+            debug!("Entering PROBE_SPEC");
+            let mut parts = pair.into_inner();
+            let mut spec_as_str = parts.as_str();
+
+            let mut contents: Vec<String> = vec![];
+
+            for _ in 0..4 {
+                let res = match parts.next() {
+                    Some(part) => {
+                        if let AstNode::ProbeId {ref name} = get_ast_from_pair(part) {
+                            spec_as_str = spec_as_str.strip_prefix(name).unwrap();
+                            name.to_string()
+                        } else {
+                            "*".to_string()
+                        }
+                    }
+                    None => {
+                        break;
+                    }
+                };
+                contents.push(res);
+                while spec_as_str.starts_with("::") {
+                    contents.push("*".to_string());
+                    spec_as_str = spec_as_str.strip_prefix(":").unwrap();
+                }
+                if spec_as_str.starts_with(":") {
+                    spec_as_str = spec_as_str.strip_prefix(":").unwrap();
+                }
             }
 
-            println!("Exiting PROBE_SPEC");
-            AstNode::Spec {
-                name: Box::new(contents.pop().unwrap()),
-                function: Box::new(contents.pop().unwrap()),
-                module: Box::new(contents.pop().unwrap()),
-                provider: Box::new(contents.pop().unwrap())
+            while contents.len() < 4 {
+                contents.insert(0, "*".to_string());
             }
+
+            let this_name = contents.pop().unwrap();
+            let this_function = contents.pop().unwrap();
+            let this_module = contents.pop().unwrap();
+            let this_provider = contents.pop().unwrap();
+
+            let base_probe = match this_provider.to_uppercase().as_str() {
+                "DFINITY" => AstNode::DfinityProbe {
+                    module: Box::new(AstNode::ProbeId {name: this_module}),
+                    function: Box::new(AstNode::ProbeId {name: this_function}),
+                    name: DfinityProbeName::from_str(&this_name).unwrap(),
+                    predicate: None,
+                    body: None,
+                },
+                "CORE" => AstNode::CoreProbe {
+                    name: CoreProbeName::from_str(&this_name).unwrap(),
+                    body: None,
+                } ,
+                n => unreachable!("Only dfinity and core providers are supported, received: {:?}", n)
+            };
+
+            debug!("Exiting PROBE_SPEC");
+            base_probe
         },
         Rule::INT => {
-            println!("Entering INT");
+            debug!("Entering INT");
 
-            println!("Exiting INT");
+            debug!("Exiting INT");
             AstNode::Integer {
                 val: pair.as_str().parse::<i32>().unwrap()
             }
         },
         Rule::STRING => {
-            println!("Entering STRING");
+            debug!("Entering STRING");
 
-            println!("Exiting STRING");
+            debug!("Exiting STRING");
             AstNode::Str {
                 val: pair.as_str().parse().unwrap()
             }
@@ -334,18 +506,18 @@ fn get_ast_from_pair(pair: Pair<Rule>) -> AstNode {
 }
 
 pub fn to_ast(pair: Pair<Rule>) -> Result<Vec<AstNode>, Error<Rule>> {
-    println!("Entered to_ast");
+    debug!("Entered to_ast");
     let mut ast = vec![];
     match pair.as_rule() {
         Rule::dscript => {
-            println!("Starting Rule::dscript");
+            debug!("Starting Rule::dscript");
             match get_ast_from_pair(pair) {
                 AstNode::EOI => {}
                 res => {
                     ast.push(res);
                 }
             }
-            println!("Ending Rule::dscript");
+            debug!("Ending Rule::dscript");
         }
         rule => unreachable!("Expected dscript, found {:?}", rule)
     }
@@ -440,15 +612,18 @@ fn dump(node: AstNode, mut indent: i32) -> (String, i32) {
             indent = decrease_indent(indent);
             (s, indent)
         }
-        AstNode::Probe { spec, predicate, body } => {
-            let mut s = get_indent(indent) + "Probe:" + &*nl;
+        AstNode::DfinityProbe {module, function, name, predicate, body} => {
+            let mut s = get_indent(indent) + "DfinityProbe:" + &*nl;
             indent = increase_indent(indent);
 
             // spec
-            s += &*(get_indent(indent) + "spec:" + &*nl);
-            indent = increase_indent(indent);
-            s += &*dump(*spec, indent).0;
-            indent = decrease_indent(indent);
+            if let AstNode::ProbeId {name: n} = *module {
+                s += &*(get_indent(indent) + "module: " + n.as_str() + &*nl);
+            }
+            if let AstNode::ProbeId {name: n} = *function {
+                s += &*(get_indent(indent) + "function: " + n.as_str() + &*nl);
+            }
+            s += &*(get_indent(indent) + "name: " + &*name.to_string() + &*nl);
 
             // predicate
             match predicate {
@@ -460,6 +635,30 @@ fn dump(node: AstNode, mut indent: i32) -> (String, i32) {
                 }
                 None => {}
             };
+
+            // body
+            match body {
+                Some(b) => {
+                    s += &*(get_indent(indent) + "body:" + &*nl);
+                    indent = increase_indent(indent);
+                    for stmt in b {
+                        s += &*dump(*stmt, indent).0;
+                    }
+                    indent = decrease_indent(indent);
+                }
+                None => {}
+            }
+
+            indent = decrease_indent(indent);
+            (s, indent)
+        },
+        AstNode::CoreProbe {name, body} => {
+
+            let mut s = get_indent(indent) + "CoreProbe:" + &*nl;
+            indent = increase_indent(indent);
+
+            // spec
+            s += &*(get_indent(indent) + "name: " + &*name.to_string() + &*nl);
 
             // body
             match body {
@@ -505,7 +704,7 @@ pub fn dump_ast(ast: Vec<AstNode>) {
 // ==========
 
 pub fn parse_script(script: String) -> Result<Vec<AstNode>, String> {
-    println!("Entered parse_script");
+    debug!("Entered parse_script");
 
     match DtraceParser::parse(Rule::dscript, &*script) {
         Ok(mut pairs) => {
@@ -513,7 +712,7 @@ pub fn parse_script(script: String) -> Result<Vec<AstNode>, String> {
                 // inner of script
                 pairs.next().unwrap()
             );
-            println!("Parsed: {:#?}", res);
+            debug!("Parsed: {:#?}", res);
 
             match res {
                 Ok(ast) => Ok(ast),
