@@ -15,3 +15,6 @@ Cargo.lock
 
 # MSVC Windows builds of rustc generate these, which store debugging information
 *.pdb
+
+# Ignore the huge test files
+tests/apps/*
