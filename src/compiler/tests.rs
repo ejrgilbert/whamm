@@ -1,39 +1,16 @@
 use crate::compiler::dtrace_compiler::*;
 use crate::parser::tests;
 
-use log::*;
-use log::{SetLoggerError, LevelFilter};
+use log::{error, debug};
 use std::env;
 use std::path::PathBuf;
 
 // =================
 // = Setup Logging =
 // =================
-// TODO -- figure this out
 
-use log::{Record, Level, Metadata};
-
-struct SimpleLogger;
-
-impl Log for SimpleLogger {
-    fn enabled(&self, metadata: &Metadata) -> bool {
-        metadata.level() <= Level::Info
-    }
-
-    fn log(&self, record: &Record) {
-        if self.enabled(record.metadata()) {
-            println!("{} - {}", record.level(), record.args());
-        }
-    }
-
-    fn flush(&self) {}
-}
-
-static LOGGER: SimpleLogger = SimpleLogger;
-
-pub fn init() -> Result<(), SetLoggerError> {
-    set_logger(&LOGGER)
-        .map(|()| log::set_max_level(LevelFilter::Debug))
+pub fn setup_logger() {
+    let _ = env_logger::builder().is_test(true).try_init();
 }
 
 // ====================
@@ -101,8 +78,7 @@ pub fn test_emit_wasm() {
     for script in VALID_SCRIPTS {
         match tests::get_ast(script) {
             Some(ast) => {
-                let instr_app = emit_wasm(&ast, &USERS_WASM);
-                debug!("{:?}", instr_app);
+                assert!(emit_wasm(&ast, &USERS_WASM));
             },
             None => {
                 error!("Could not get ast from script: {script}");

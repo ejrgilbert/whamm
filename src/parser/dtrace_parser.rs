@@ -4,7 +4,7 @@ use pest::Parser;
 use pest::iterators::{Pair, Pairs};
 use pest::pratt_parser::PrattParser;
 
-use log::*;
+use log::{debug, error, trace};
 use std::cmp;
 use std::str::FromStr;
 
@@ -311,10 +311,10 @@ fn get_ast_from_expr(pairs: Pairs<Rule>) -> AstNode {
 
 fn get_ast_from_pair(pair: Pair<Rule>) -> AstNode {
     // TODO -- implement some type of logging config (these println's should be debugs)
-    debug!("Entered get_ast_from_pair");
+    trace!("Entered get_ast_from_pair");
     match pair.as_rule() {
         Rule::dscript => {
-            debug!("Entering dscript");
+            trace!("Entering dscript");
             let probes = pair.into_inner().map(get_ast_from_pair).filter(|res| match res {
                 AstNode::EOI => false,
                 _ => true,
@@ -322,13 +322,13 @@ fn get_ast_from_pair(pair: Pair<Rule>) -> AstNode {
                 Box::new(res)
             }).collect();
 
-            debug!("Exiting dscript");
+            trace!("Exiting dscript");
             AstNode::Dscript {
                 probes
             }
         }
         Rule::probe_def => {
-            debug!("Entering probe_def");
+            trace!("Entering probe_def");
             let mut pair = pair.into_inner();
             let spec = pair.next().unwrap();
             let mut base_probe = get_ast_from_pair(spec);
@@ -361,54 +361,54 @@ fn get_ast_from_pair(pair: Pair<Rule>) -> AstNode {
                 error!("Expected Core or Dfinity probe, received: {:?}", base_probe)
             }
 
-            debug!("Exiting probe_def");
+            trace!("Exiting probe_def");
             base_probe
         },
         Rule::spec => {
-            debug!("Entering spec");
+            trace!("Entering spec");
             let res = get_ast_from_pair(pair.into_inner().next().unwrap());
-            debug!("Entering spec");
+            trace!("Entering spec");
             res
         }
         Rule::predicate => {
-            debug!("Entering predicate");
+            trace!("Entering predicate");
             let mut pair = pair.into_inner();
             let expr = pair.next().unwrap();
 
-            debug!("Exiting predicate");
+            trace!("Exiting predicate");
             get_ast_from_pair(expr)
         },
         Rule::statement => {
-            debug!("Entering statement");
+            trace!("Entering statement");
             let res = get_ast_from_expr(pair.into_inner());
 
-            debug!("Exiting statement");
+            trace!("Exiting statement");
             res
         },
         Rule::expr => {
-            debug!("Entering expr");
+            trace!("Entering expr");
             let res = get_ast_from_expr(pair.into_inner());
 
-            debug!("Exiting expr");
+            trace!("Exiting expr");
             res
         },
         Rule::operand => {
-            debug!("Entering operand");
+            trace!("Entering operand");
             let res = get_ast_from_expr(pair.into_inner());
 
-            debug!("Exiting operand");
+            trace!("Exiting operand");
             res
         },
         Rule::ID => {
-            debug!("Entering ID");
+            trace!("Entering ID");
 
-            debug!("Exiting ID");
+            trace!("Exiting ID");
             AstNode::VarId {
                 name: pair.as_str().parse().unwrap()
             }
         },
         Rule::PROBE_ID => {
-            debug!("Entering PROBE_ID");
+            trace!("Entering PROBE_ID");
             let name: String = pair.as_str().parse().unwrap();
 
             // Special BEGIN/END case
@@ -419,13 +419,13 @@ fn get_ast_from_pair(pair: Pair<Rule>) -> AstNode {
                 }
             }
 
-            debug!("Exiting PROBE_ID");
+            trace!("Exiting PROBE_ID");
             AstNode::ProbeId {
                 name
             }
         },
         Rule::PROBE_SPEC => {
-            debug!("Entering PROBE_SPEC");
+            trace!("Entering PROBE_SPEC");
             let mut parts = pair.into_inner();
             let mut spec_as_str = parts.as_str();
 
@@ -479,23 +479,30 @@ fn get_ast_from_pair(pair: Pair<Rule>) -> AstNode {
                 n => unreachable!("Only dfinity and core providers are supported, received: {:?}", n)
             };
 
-            debug!("Exiting PROBE_SPEC");
+            trace!("Exiting PROBE_SPEC");
             base_probe
         },
         Rule::INT => {
-            debug!("Entering INT");
+            trace!("Entering INT");
 
-            debug!("Exiting INT");
+            trace!("Exiting INT");
             AstNode::Integer {
                 val: pair.as_str().parse::<i32>().unwrap()
             }
         },
         Rule::STRING => {
-            debug!("Entering STRING");
+            trace!("Entering STRING");
+            let mut val: String = pair.as_str().parse().unwrap();
+            if val.starts_with("\"") {
+                val = val.strip_prefix("\"").expect("Should never get here...").to_string();
+            }
+            if val.ends_with("\"") {
+                val = val.strip_suffix("\"").expect("Should never get here...").to_string();
+            }
 
-            debug!("Exiting STRING");
+            trace!("Exiting STRING");
             AstNode::Str {
-                val: pair.as_str().parse().unwrap()
+                val
             }
         },
         Rule::EOI => {
@@ -506,18 +513,18 @@ fn get_ast_from_pair(pair: Pair<Rule>) -> AstNode {
 }
 
 pub fn to_ast(pair: Pair<Rule>) -> Result<Vec<AstNode>, Error<Rule>> {
-    debug!("Entered to_ast");
+    trace!("Entered to_ast");
     let mut ast = vec![];
     match pair.as_rule() {
         Rule::dscript => {
-            debug!("Starting Rule::dscript");
+            trace!("Starting Rule::dscript");
             match get_ast_from_pair(pair) {
                 AstNode::EOI => {}
                 res => {
                     ast.push(res);
                 }
             }
-            debug!("Ending Rule::dscript");
+            trace!("Ending Rule::dscript");
         }
         rule => unreachable!("Expected dscript, found {:?}", rule)
     }
@@ -704,7 +711,7 @@ pub fn dump_ast(ast: Vec<AstNode>) {
 // ==========
 
 pub fn parse_script(script: String) -> Result<Vec<AstNode>, String> {
-    debug!("Entered parse_script");
+    trace!("Entered parse_script");
 
     match DtraceParser::parse(Rule::dscript, &*script) {
         Ok(mut pairs) => {

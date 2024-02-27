@@ -4,8 +4,15 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+# Logging
+env_logger = "0.10.2"
+log = "0.4.20"
+#log = { version = "0.4.8", features = ["std"] }
+#env_logger = { version = "0.11.2", features = ["default", "color"] }
+
 glob = "0.3.1"
 lazy_static = "1.4.0"
-log = "0.4.20"
+
+# Pest
 pest = "2.7.7"
 pest_derive = "2.7.7"

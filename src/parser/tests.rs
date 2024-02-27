@@ -1,7 +1,15 @@
 use crate::parser::dtrace_parser::*;
 use glob::{glob, glob_with};
 
-use log::*;
+use log::{info, error, warn};
+
+// =================
+// = Setup Logging =
+// =================
+
+pub fn setup_logger() {
+    let _ = env_logger::builder().is_test(true).try_init();
+}
 
 const VALID_SCRIPTS: &'static [&'static str] = &[
     // Variations of PROBE_SPEC
@@ -119,6 +127,7 @@ pub fn get_test_scripts(subdir: &str) -> Vec<String> {
 }
 
 pub fn get_ast(script: &str) -> Option<Vec<AstNode>> {
+    info!("Getting the AST");
     match parse_script(script.to_string()) {
         Ok(ast) => {
             Some(ast)
@@ -158,11 +167,13 @@ pub fn run_test_on_valid_list(scripts: Vec<String>) {
 
 #[test]
 pub fn test_parse_valid_scripts() {
+    setup_logger();
     run_test_on_valid_list(VALID_SCRIPTS.iter().map(|s| s.to_string()).collect());
 }
 
 #[test]
 pub fn test_parse_invalid_scripts() {
+    setup_logger();
     for script in INVALID_SCRIPTS {
         info!("Parsing: {script}");
         assert!(
@@ -175,11 +186,13 @@ pub fn test_parse_invalid_scripts() {
 
 #[test]
 pub fn test_ast_special_cases() {
+    setup_logger();
     run_test_on_valid_list(SPECIAL.iter().map(|s| s.to_string()).collect());
 }
 
 #[test]
 pub fn test_ast_dumper() {
+    setup_logger();
     let script = "dfinity:module:function:alt / (i == \"1\") && (b == \"2\") / { i; }";
 
     match get_ast(script) {
@@ -195,6 +208,7 @@ pub fn test_ast_dumper() {
 
 #[test]
 pub fn test_implicit_probe_defs_dumper() {
+    setup_logger();
     let script = "dfinity:::alt / (i == \"1\") && (b == \"2\") / { i; }";
 
     match get_ast(script) {
@@ -214,6 +228,7 @@ pub fn test_implicit_probe_defs_dumper() {
 
 #[test]
 pub fn fault_injection() {
+    setup_logger();
     let scripts = get_test_scripts("fault_injection");
     if scripts.len() == 0 {
         warn!("No test scripts found for `fault_injection` test.");
@@ -223,6 +238,7 @@ pub fn fault_injection() {
 
 #[test]
 pub fn wizard_monitors() {
+    setup_logger();
     let scripts = get_test_scripts("wizard_monitors");
     if scripts.len() == 0 {
         warn!("No test scripts found for `wizard_monitors` test.");
@@ -232,6 +248,7 @@ pub fn wizard_monitors() {
 
 #[test]
 pub fn replay() {
+    setup_logger();
     let scripts = get_test_scripts("replay");
     if scripts.len() == 0 {
         warn!("No test scripts found for `replay` test.");

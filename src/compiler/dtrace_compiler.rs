@@ -1,52 +1,51 @@
 use crate::parser::dtrace_parser::AstNode;
 
-use log::*;
-// trait Emit {
-//     // Returns instrumented variation of app Wasm code, needs to be flushed to file
-//     fn emit_wasm(&self, app_wasm: &[u8]) -> &[u8];
-//     // Returns instrumented variation of app Wasm code, needs to be flushed to file
-//     fn emit_wasi(&self, app_wasm: &[u8]) -> &[u8];
-//     // Returns String representation of Virgil code, needs to be flushed to file
-//     fn emit_virgil(&self) -> String;
-// }
+use log::error;
+use std::process::exit;
 
 // ================
 // = Target: Wasm =
 // ================
 
-fn core_emit_wasm(_ast: &Vec<AstNode>, _probe: &AstNode, _app_wasm: &Vec<u8>) {
-    todo!()
+fn core_emit_wasm(_ast: &Vec<AstNode>, _probe: &AstNode, _app_wasm: &Vec<u8>) -> bool {
+    error!("Not yet implemented");
+    false
 }
 
-fn dfinity_emit_wasm(_ast: &Vec<AstNode>, _probe: &AstNode, _app_wasm: &Vec<u8>) {
-    todo!()
+fn dfinity_emit_wasm(_ast: &Vec<AstNode>, _probe: &AstNode, _app_wasm: &Vec<u8>) -> bool {
+    error!("Not yet implemented");
+    false
 }
 
-pub fn emit_wasm(ast: &Vec<AstNode>, app_wasm: &Vec<u8>) {
+pub fn emit_wasm(ast: &Vec<AstNode>, app_wasm: &Vec<u8>) -> bool {
+    let mut success = true;
     for node in ast {
-        if let AstNode::Dscript { probes } = node {
+        success &= if let AstNode::Dscript { probes } = node {
             let probes = probes.into_iter().map(|item| {
                 *item.clone()
             }).collect();
-            emit_wasm(&probes, app_wasm);
+            emit_wasm(&probes, app_wasm)
         } else if let AstNode::CoreProbe{ .. } = node {
-            core_emit_wasm(&ast, node, app_wasm);
+            core_emit_wasm(&ast, node, app_wasm)
         } else if let AstNode::DfinityProbe{ .. } = node {
-            dfinity_emit_wasm(&ast, node, app_wasm);
+            dfinity_emit_wasm(&ast, node, app_wasm)
         } else {
-            error!("Expected Core or Dfinity probe, received: {:?}", node)
+            error!("Expected Core or Dfinity probe, received: {:?}", node);
+            exit(1);
         }
     }
 
     // At this point `app_wasm` should now contain the instrumented variation of the app code.
+    return success;
 }
 
 // ================
 // = Target: Wasi =
 // ================
 
-pub fn _emit_wasi(_ast: Vec<AstNode>, _app_wasm: &[u8]) -> &[u8] {
-    todo!()
+pub fn _emit_wasi(_ast: Vec<AstNode>, _app_wasm: &[u8]) -> bool {
+    error!("Not yet implemented");
+    false
 }
 
 // ==================
