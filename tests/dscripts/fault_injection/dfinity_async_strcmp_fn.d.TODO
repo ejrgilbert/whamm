@@ -1,0 +1,8 @@
+/*
+ * This will perform an asynchronous fault in Dfinity (redirect call to fault_injector canister endpoint).
+ * TODO -- support syntax for function calls
+ * TODO -- create the strpaircmp function in walrus
+ */
+dfinity:ic0:call_new:alt / strpaircmp((arg0, arg1), "bookings") && strpaircmp((arg2, arg3, "record") / {
+    redirect_to_fault_injector;
+}

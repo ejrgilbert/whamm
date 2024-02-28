@@ -1,8 +1,8 @@
 use std::collections::HashMap;
-use crate::parser::dtrace_parser::{AstNode, DfinityProbeName};
+use crate::parser::dtrace_parser::{AstNode, CoreProbeName, DfinityProbeName};
 use crate::parser::dtrace_parser;
 
-use log::{ error, info };
+use log::{ debug, error, info };
 use std::path::PathBuf;
 use std::process::exit;
 use walrus::{ Import, MemoryId, Module, ModuleImports };
@@ -156,26 +156,27 @@ fn get_memory_id(m: &Module) -> MemoryId {
         .id()
 }
 
-fn inject_call_by_name(body: &mut walrus::InstrSeqBuilder, params: &[walrus::LocalId], funcs: &walrus::ModuleFunctions, fn_name: &String) {
+fn inject_call_by_name(wrapper_body: &mut walrus::InstrSeqBuilder, params: &[walrus::LocalId], funcs: &walrus::ModuleFunctions, fn_name: &String) {
+    debug!("Injecting call by name");
     match funcs.by_name(fn_name) {
         None => {
-            error!("ERROR: Cannot inject call, function def not found: {}", fn_name);
+            error!("Cannot inject call, function def not found: {}", fn_name);
         },
         Some(fid) => {
             // add new call to this function
-            inject_call_by_id(body, params, &fid);
+            inject_call_by_id(wrapper_body, params, &fid);
         }
     }
 }
 
-fn inject_call_by_id(body: &mut walrus::InstrSeqBuilder, params: &[walrus::LocalId], fid: &walrus::FunctionId) {
+fn inject_call_by_id(wrapper_body: &mut walrus::InstrSeqBuilder, params: &[walrus::LocalId], fid: &walrus::FunctionId) {
+    debug!("Injecting call by ID");
     for p in params.iter() {
-        // body = body.local_get(*p);
-        body.local_get(*p);
+        wrapper_body.local_get(*p);
     }
 
     // add new call to this function
-    body.call(*fid);
+    wrapper_body.call(*fid);
 }
 
 // PROBE HELPERS
@@ -191,17 +192,17 @@ fn get_import_for_probe<'a>(imports: &'a ModuleImports, module: &String, functio
     return None;
 }
 
-fn inject_probe(_memory: MemoryId, funcs: &mut walrus::ModuleFunctions, _locals: &mut walrus::ModuleLocals, _orig_call_id: &walrus::FunctionId, fn_body: &mut walrus::InstrSeqBuilder, params: &mut Vec<walrus::LocalId>,
+fn inject_probe(_memory: MemoryId, funcs: &mut walrus::ModuleFunctions, _locals: &mut walrus::ModuleLocals, _orig_call_id: &walrus::FunctionId, wrapper_body: &mut walrus::InstrSeqBuilder, params: &mut Vec<walrus::LocalId>,
                 probe: &DfinityProbe) {
     if probe.predicate.is_some() {
         // TODO -- inject predicate
         error!("Not implemented - inject_probe for predicates");
-        // inject_predicate(memory, funcs, locals, orig_call_id, fn_body, params, probe);
+        // inject_predicate(memory, funcs, locals, orig_call_id, wrapper_body, params, probe);
         exit(1);
     } else {
         // TODO -- eventually support more complex probe body...right now it only supports a single function call specified by the body content
-        if let AstNode::ProbeId{name} = probe.body.as_ref().unwrap().get(0).unwrap() {
-            inject_call_by_name(fn_body, params, funcs, name);
+        if let AstNode::VarId{name} = probe.body.as_ref().unwrap().get(0).unwrap() {
+            inject_call_by_name(wrapper_body, params, funcs, name);
         }
     }
 }
@@ -230,8 +231,8 @@ fn create_wrapper(memory: MemoryId, all_types: &mut walrus::ModuleTypes, locals:
     let mut wrapper = walrus::FunctionBuilder::new(all_types, params, results);
 
     // Create params
-    let fn_body = &mut wrapper.func_body();
-    // body = body.i32_const(1234);  // Uncomment if debugging, helpful to flag the generated methods (but will cause module to be invalid)
+    let wrapper_body = &mut wrapper.func_body();
+    // wrapper_body.i32_const(1234);  // Uncomment if debugging, helpful to flag the generated methods (but will cause module to be invalid)
     let mut created_params = Vec::new();
     for param in params.iter() {
         let p = locals.add(*param);
@@ -240,7 +241,7 @@ fn create_wrapper(memory: MemoryId, all_types: &mut walrus::ModuleTypes, locals:
 
     // Inject before probes
     for before_probe in fn_probes.fn_probes.get(&DfinityProbeName::Before).unwrap() {
-        inject_probe(memory, funcs, locals, &import_id, fn_body, &mut created_params, before_probe)
+        inject_probe(memory, funcs, locals, &import_id, wrapper_body, &mut created_params, before_probe)
     }
 
     // Inject alt probes
@@ -251,14 +252,14 @@ fn create_wrapper(memory: MemoryId, all_types: &mut walrus::ModuleTypes, locals:
         }
         let alt_probe = alt_probes.last().unwrap();
 
-        inject_probe(memory, funcs, locals, &import_id, fn_body, &mut created_params, alt_probe);
+        inject_probe(memory, funcs, locals, &import_id, wrapper_body, &mut created_params, alt_probe);
     } else {
-        inject_call_by_id(fn_body, &created_params, &import_id);
+        inject_call_by_id(wrapper_body, &created_params, &import_id);
     }
 
     // Inject after probes
     for after_probe in fn_probes.fn_probes.get(&DfinityProbeName::After).unwrap() {
-        inject_probe(memory, funcs, locals, &import_id, fn_body, &mut created_params, after_probe);
+        inject_probe(memory, funcs, locals, &import_id, wrapper_body, &mut created_params, after_probe);
     }
 
     // Finish the builder, wrap it all up and insert it into the module's functions
@@ -309,12 +310,25 @@ fn redirect_to_wrapper(funcs: &mut walrus::ModuleFunctions, imp_to_replace: &Imp
 // = Target: Wasm =
 // ================
 
+fn dump_to_file(instrumented_app: &mut Module, output_wasm_path: &String) -> bool {
+    match instrumented_app.emit_wasm_file(output_wasm_path) {
+        Ok(_ok) => {
+            true
+        },
+        Err(err) => {
+            error!("Failed to dump instrumented wasm to {} from error: {}", &output_wasm_path, err);
+            false
+        },
+    }
+}
+
 fn core_emit_wasm(_probe: CoreProbe, _app_wasm: &mut Module) -> bool {
     error!("Not yet implemented");
     false
 }
 
 fn dfinity_emit_wasm(fn_probes: DfinityFnProbes, app_wasm: &mut Module) -> bool {
+    // TODO: BUG - if import not found, unwrap() is on a None value...BAD!
     let imp = get_import_for_probe(&app_wasm.imports, &fn_probes.module, &fn_probes.function).unwrap();
 
     // Create instrumented wrapper function for import
@@ -324,17 +338,21 @@ fn dfinity_emit_wasm(fn_probes: DfinityFnProbes, app_wasm: &mut Module) -> bool 
     return true;
 }
 
-pub fn emit_wasm(ast: &Vec<AstNode>, app_wasm_path: &PathBuf) -> bool {
+pub fn emit_wasm(ast: &Vec<AstNode>, app_wasm_path: &PathBuf, output_wasm_path: &String) -> bool {
     let mut success = true;
     let (core_probes, dfinity_fn_probes) = organize_probes(ast);
 
     let mut wasm = get_walrus_module(app_wasm_path);
-    for probe in core_probes {
+    for mut probe in core_probes {
         success &= core_emit_wasm(probe, &mut wasm);
     }
 
     for probe in dfinity_fn_probes.all_probes {
         success &= dfinity_emit_wasm(probe.1, &mut wasm);
+    }
+
+    if success {
+        success &= dump_to_file(&mut wasm, output_wasm_path);
     }
 
     // At this point `app_wasm` should now contain the instrumented variation of the app code.

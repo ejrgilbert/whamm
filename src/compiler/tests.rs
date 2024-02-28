@@ -18,7 +18,7 @@ pub fn setup_logger() {
 // ====================
 
 const VALID_SCRIPTS: &'static [&'static str] = &[
-    "dfinity:module:function:alt { }",
+    "dfinity:ic0:call_new:alt { redirect_to_fault_injector; }",
 ];
 
 // lazy_static::lazy_static! {
@@ -79,7 +79,8 @@ pub fn test_emit_wasm() {
         match tests::get_ast(script) {
             Some(ast) => {
                 let wasm_path = PathBuf::from("tests/apps/users.wasm");
-                assert!(emit_wasm(&ast, &wasm_path));
+                let output_path = "./output.wasm".to_string();
+                assert!(emit_wasm(&ast, &wasm_path, &output_path));
             },
             None => {
                 error!("Could not get ast from script: {script}");
