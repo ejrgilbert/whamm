@@ -4,7 +4,7 @@ use crate::compiler::dtrace_compiler::*;
 pub mod parser;
 pub mod compiler;
 
-use log::{info, debug, error};
+use log::{info, error};
 use std::env;
 use std::io;
 use std::process::exit;
@@ -39,8 +39,8 @@ fn main() -> io::Result<()> {
     }
 
     // Use first arg as the app Wasm to instrument
-    // let app_wasm_path = PathBuf::from(&args[1]);
-    let app_wasm = get_wasm(PathBuf::from(&args[1]));
+    let app_wasm_path = PathBuf::from(&args[1]);
+    // let app_wasm = get_wasm(PathBuf::from(&args[1]));
     // Use second arg the probes definitions
     let probes = std::fs::read_to_string(&args[2]);
     match probes {
@@ -56,7 +56,7 @@ fn main() -> io::Result<()> {
                 }
             };
 
-            emit_wasm(&ast, &app_wasm);
+            emit_wasm(&ast, &app_wasm_path);
         },
         Err(e) => {
             error!("Cannot read specified file {}: {e}", &args[1]);

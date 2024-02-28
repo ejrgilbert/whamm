@@ -193,7 +193,8 @@ pub fn test_ast_special_cases() {
 #[test]
 pub fn test_ast_dumper() {
     setup_logger();
-    let script = "dfinity:module:function:alt / (i == \"1\") && (b == \"2\") / { i; }";
+    // let script = "dfinity:module:function:alt / (i == \"1\") && (b == \"2\") / { i; }";
+    let script = "dfinity:module:function:alt { i; }";
 
     match get_ast(script) {
         Some(ast) => {

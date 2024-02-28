@@ -59,8 +59,8 @@ pub enum AstNode {
 
     // Probes
     DfinityProbe {
-        module: Box<AstNode>, // TODO -- can I make these Strings instead?
-        function: Box<AstNode>, // TODO -- can I make these Strings instead?
+        module: String,
+        function: String,
         name: DfinityProbeName,
         predicate: Option<Box<AstNode>>,
         body: Option<Vec<Box<AstNode>>>
@@ -333,21 +333,25 @@ fn get_ast_from_pair(pair: Pair<Rule>) -> AstNode {
             let spec = pair.next().unwrap();
             let mut base_probe = get_ast_from_pair(spec);
 
-            let this_predicate = match pair.next() {
-                Some(pred) => {
-                    Some(Box::new(get_ast_from_expr(pred.into_inner())))
-                },
-                None => None,
+            let next = pair.next().unwrap();
+            let (this_predicate, mut this_body) = match next.as_rule() {
+                Rule::predicate => (Some(Box::new(get_ast_from_expr(next.into_inner()))), None),
+                Rule::statement => (None, Some(next.into_inner().map(get_ast_from_pair).map(|res| {
+                    Box::new(res)
+                }).collect())),
+                _ => { (None, None) },
             };
 
-            let this_body = match pair.next() {
-                Some(b) => {
-                    Some(b.into_inner().map(get_ast_from_pair).map(|res| {
-                        Box::new(res)
-                    }).collect())
-                },
-                None => None
-            };
+            if this_body.is_none() {
+                this_body = match pair.next() {
+                    Some(b) => {
+                        Some(b.into_inner().map(get_ast_from_pair).map(|res| {
+                            Box::new(res)
+                        }).collect())
+                    },
+                    None => None
+                };
+            }
 
             if let AstNode::CoreProbe{name: _, ref mut body} = base_probe {
                 if !this_predicate.is_none() {
@@ -466,8 +470,8 @@ fn get_ast_from_pair(pair: Pair<Rule>) -> AstNode {
 
             let base_probe = match this_provider.to_uppercase().as_str() {
                 "DFINITY" => AstNode::DfinityProbe {
-                    module: Box::new(AstNode::ProbeId {name: this_module}),
-                    function: Box::new(AstNode::ProbeId {name: this_function}),
+                    module: this_module,
+                    function: this_function,
                     name: DfinityProbeName::from_str(&this_name).unwrap(),
                     predicate: None,
                     body: None,
@@ -624,12 +628,8 @@ fn dump(node: AstNode, mut indent: i32) -> (String, i32) {
             indent = increase_indent(indent);
 
             // spec
-            if let AstNode::ProbeId {name: n} = *module {
-                s += &*(get_indent(indent) + "module: " + n.as_str() + &*nl);
-            }
-            if let AstNode::ProbeId {name: n} = *function {
-                s += &*(get_indent(indent) + "function: " + n.as_str() + &*nl);
-            }
+            s += &*(get_indent(indent) + "module: " + &*module + &*nl);
+            s += &*(get_indent(indent) + "function: " + &*function + &*nl);
             s += &*(get_indent(indent) + "name: " + &*name.to_string() + &*nl);
 
             // predicate
