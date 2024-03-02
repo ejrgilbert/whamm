@@ -3,10 +3,10 @@ use crate::compiler::dtrace_compiler::*;
 
 pub mod parser;
 pub mod compiler;
+pub mod verifier;
 
+use clap::Parser;
 use log::{info, error};
-use std::env;
-use std::io;
 use std::process::exit;
 use std::path::PathBuf;
 
@@ -14,37 +14,46 @@ fn setup_logger() {
     env_logger::init();
 }
 
-pub fn get_wasm(path: PathBuf) -> Vec<u8> {
-    if !path.exists() {
-        error!("could not read Wasm module: {path:?}");
-        exit(1);
-    }
-    match std::fs::read(&path) {
-        Ok(wasm) => wasm,
-        Err(err) => {
-            error!("Could not read Wasm module '{:?}': {}", path, err);
-            exit(1);
+/// `dtrace` instruments a Wasm application with the Probes defined in the specified Dscript.
+#[derive(Parser, Debug)]
+#[clap(author, version, about, long_about = None)]
+struct Args {
+    /// The path to the application's Wasm module we want to instrument.
+    #[clap(short, long, value_parser)]
+    wasm_app_path: String,
+    /// The path to the Dscript containing the instrumentation Probe definitions.
+    #[clap(short, long, value_parser)]
+    dscript_path: String,
+    /// The path that the instrumented version of the Wasm app should be output to.
+    #[clap(short, long, value_parser, default_value = "./target/output.wasm")]
+    output_path: String,
+
+    #[clap(long, short, action)]
+    run_verifier: bool
+}
+
+fn main() {
+    if let Err(e) = try_main() {
+        eprintln!("error: {}", e);
+        for c in e.iter_chain().skip(1) {
+            eprintln!("  caused by {}", c);
         }
+        eprintln!("{}", e.backtrace());
+        exit(1)
     }
 }
 
-// TODO -- create CLI
-fn main() -> io::Result<()> {
+fn try_main() -> Result<(), failure::Error> {
     setup_logger();
-    let args: Vec<_> = env::args().collect();
-    if args.len() <= 3 {
-        // TODO -- this CLI output is not accurate...
-        error!("Please provide path to a Dtrace script.");
-        exit(1);
-    }
 
-    // Use first arg as the app Wasm to instrument
-    let app_wasm_path = PathBuf::from(&args[1]);
-    // let app_wasm = get_wasm(PathBuf::from(&args[1]));
-    // Use second arg the probes definitions
-    let probes = std::fs::read_to_string(&args[2]);
-    let output_file_path = &args[3];
-    match probes {
+    // Get information from user command line args
+    let args = Args::parse();
+    let wasm_app_path = PathBuf::from(args.wasm_app_path);
+    let dscript_path = args.dscript_path;
+    let dscript = std::fs::read_to_string(&dscript_path);
+    let output_path = args.output_path;
+
+    match dscript {
         Ok(unparsed_str) => {
             let ast = match parse_script(unparsed_str) {
                 Ok(ast) => {
@@ -57,10 +66,10 @@ fn main() -> io::Result<()> {
                 }
             };
 
-            emit_wasm(&ast, &app_wasm_path, &output_file_path);
+            emit_wasm(&ast, &wasm_app_path, &output_path);
         },
         Err(e) => {
-            error!("Cannot read specified file {}: {e}", &args[1]);
+            error!("Cannot read specified file {}: {e}", dscript_path);
             exit(1);
         }
     }

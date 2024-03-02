@@ -1,4 +1,7 @@
 use crate::parser::dtrace_parser::*;
+use crate::parser::types;
+
+use types::AstNode;
 use glob::{glob, glob_with};
 
 use log::{info, error, warn};

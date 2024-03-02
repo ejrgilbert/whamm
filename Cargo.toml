@@ -3,7 +3,14 @@ name = "instr_dsl"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+doc = false
+name = "dtrace"
+path = "src/main.rs"
+required-features = ["exe"]
+
 [dependencies]
+failure = "0.1.5"
 glob = "0.3.1"
 lazy_static = "1.4.0"
 walrus = { version = "0.20.3" }
@@ -15,3 +22,12 @@ log = "0.4.20"
 # Pest
 pest = "2.7.7"
 pest_derive = "2.7.7"
+
+[dependencies.clap]
+optional = true
+version = "3.2.23"
+features = ["derive"]
+
+[features]
+default = ["exe"]
+exe = ["clap"]

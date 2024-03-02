@@ -1,8 +1,8 @@
-use std::collections::HashMap;
-use crate::parser::dtrace_parser::{AstNode, CoreProbeName, DfinityProbeName};
-use crate::parser::dtrace_parser;
+use crate::parser::types as parser_types;
+use parser_types::{AstNode, CoreProbeName, DfinityProbeName};
 
 use log::{ debug, error, info };
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::exit;
 use walrus::{ Import, MemoryId, Module, ModuleImports };
@@ -121,7 +121,7 @@ impl Probe for DfinityProbe {}
 // TODO -- CoreProbe compilation
 #[derive(Clone, Debug)]
 struct CoreProbe {
-    name: dtrace_parser::CoreProbeName,
+    name: CoreProbeName,
     body: Option<Vec<AstNode>>
 }
 impl Probe for CoreProbe {}
@@ -343,7 +343,7 @@ pub fn emit_wasm(ast: &Vec<AstNode>, app_wasm_path: &PathBuf, output_wasm_path: 
     let (core_probes, dfinity_fn_probes) = organize_probes(ast);
 
     let mut wasm = get_walrus_module(app_wasm_path);
-    for mut probe in core_probes {
+    for probe in core_probes {
         success &= core_emit_wasm(probe, &mut wasm);
     }
 

@@ -1,4 +1,4 @@
-pub mod dtrace_parser;
+pub mod verifier;
 pub mod types;
 
 #[cfg(test)]
