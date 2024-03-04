@@ -4,6 +4,6 @@
  *       to add granularity, another probe on call_new will need to be added to collect
  *       call site/target canister info.
  */
-dfinity:ic0:call_perform:alt {
-    inject_synchronous_fault;
+wasm:ic0:call_perform:alt {
+    new_target_fn_name = inject_synchronous_fault;
 }

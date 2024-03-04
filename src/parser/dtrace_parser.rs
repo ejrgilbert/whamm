@@ -1,15 +1,14 @@
 use crate::parser::types;
-use types::{AstNode, CoreProbeName, DfinityProbeName, DtraceParser, Op, PRATT_PARSER, Rule};
+use types::{AstNode, CoreProbeName, DtraceParser, Op, PRATT_PARSER, Rule};
 
-// use pest_derive::Parser;
 use pest::error::Error;
 use pest::Parser;
 use pest::iterators::{Pair, Pairs};
-// use pest::pratt_parser::PrattParser;
 
 use log::{debug, error, trace};
 use std::cmp;
 use std::str::FromStr;
+use crate::parser::types::WasmProbeName;
 
 // ====================
 // = AST Constructors =
@@ -76,36 +75,43 @@ fn get_ast_from_pair(pair: Pair<Rule>) -> AstNode {
             let spec = pair.next().unwrap();
             let mut base_probe = get_ast_from_pair(spec);
 
-            let next = pair.next().unwrap();
-            let (this_predicate, mut this_body) = match next.as_rule() {
-                Rule::predicate => (Some(Box::new(get_ast_from_expr(next.into_inner()))), None),
-                Rule::statement => (None, Some(next.into_inner().map(get_ast_from_pair).map(|res| {
-                    Box::new(res)
-                }).collect())),
-                _ => { (None, None) },
-            };
-
-            if this_body.is_none() {
-                this_body = match pair.next() {
-                    Some(b) => {
-                        Some(b.into_inner().map(get_ast_from_pair).map(|res| {
+            let next = pair.next();
+            let (this_predicate, this_body) = match next {
+                Some(n) => {
+                    let (this_predicate, mut this_body) = match n.as_rule() {
+                        Rule::predicate => (Some(Box::new(get_ast_from_expr(n.into_inner()))), None),
+                        Rule::statement => (None, Some(n.into_inner().map(get_ast_from_pair).map(|res| {
                             Box::new(res)
-                        }).collect())
-                    },
-                    None => None
-                };
-            }
+                        }).collect())),
+                        _ => { (None, None) },
+                    };
+
+                    if this_body.is_none() {
+                        this_body = match pair.next() {
+                            Some(b) => {
+                                Some(b.into_inner().map(get_ast_from_pair).map(|res| {
+                                    Box::new(res)
+                                }).collect())
+                            },
+                            None => None
+                        };
+                    }
+
+                    (this_predicate, this_body)
+                },
+                None => (None, None)
+            };
 
             if let AstNode::CoreProbe{name: _, ref mut body} = base_probe {
                 if !this_predicate.is_none() {
                     error!("Core probe should not have a predicate, ignoring.");
                 }
                 *body = this_body;
-            } else if let AstNode::DfinityProbe{module: _, function: _, name: _, ref mut predicate, ref mut body} = base_probe {
+            } else if let AstNode::WasmProbe{module: _, function: _, name: _, ref mut predicate, ref mut body} = base_probe {
                 *predicate = this_predicate;
                 *body = this_body;
-            } else {
-                error!("Expected Core or Dfinity probe, received: {:?}", base_probe)
+            }else {
+                error!("Expected Core or Wasm probe, received: {:?}", base_probe)
             }
 
             trace!("Exiting probe_def");
@@ -132,6 +138,51 @@ fn get_ast_from_pair(pair: Pair<Rule>) -> AstNode {
             trace!("Exiting statement");
             res
         },
+        Rule::assignment => {
+            trace!("Entering assignment");
+            let mut pair = pair.into_inner();
+            let var_id_rule = pair.next().unwrap();
+            let expr_rule = pair.next().unwrap().into_inner();
+
+            let var_id = Box::new(get_ast_from_pair(var_id_rule));
+            let expr = Box::new(get_ast_from_expr(expr_rule));
+            trace!("Exiting assignment");
+
+            AstNode::Assign {
+                var_id,
+                expr,
+            }
+        },
+        Rule::fn_call => {
+            trace!("Entering fn_call");
+            let mut pair = pair.into_inner();
+            
+            // handle fn target
+            let fn_rule = pair.next().unwrap();
+            let fn_target = Box::new(get_ast_from_pair(fn_rule));
+            
+            // handle args
+            let mut next = pair.next();
+            let mut init = vec!();
+            while next.is_some() {
+                let mut others = next.unwrap().into_inner().map(get_ast_from_pair).map(|res| {
+                    Box::new(res)
+                }).collect();
+                init.append(&mut others);
+                next = pair.next();
+            };
+            let args = if init.len() > 0 {
+                Some(init)
+            } else {
+                None
+            };
+
+            trace!("Exiting fn_call");
+            AstNode::Call {
+                fn_target,
+                args
+            }
+        },
         Rule::expr => {
             trace!("Entering expr");
             let res = get_ast_from_expr(pair.into_inner());
@@ -145,6 +196,20 @@ fn get_ast_from_pair(pair: Pair<Rule>) -> AstNode {
 
             trace!("Exiting operand");
             res
+        },
+        Rule::tuple => {
+            trace!("Entering tuple");
+            let val_rules = pair.into_inner();
+
+            // handle vals
+            let vals = val_rules.map(get_ast_from_pair).map(|res| {
+                Box::new(res)
+            }).collect();
+
+            trace!("Exiting tuple");
+            AstNode::Tuple {
+                vals
+            }
         },
         Rule::ID => {
             trace!("Entering ID");
@@ -212,10 +277,10 @@ fn get_ast_from_pair(pair: Pair<Rule>) -> AstNode {
             let this_provider = contents.pop().unwrap();
 
             let base_probe = match this_provider.to_uppercase().as_str() {
-                "DFINITY" => AstNode::DfinityProbe {
+                "WASM" => AstNode::WasmProbe {
                     module: this_module,
                     function: this_function,
-                    name: DfinityProbeName::from_str(&this_name).unwrap(),
+                    name: WasmProbeName::from_str(&this_name).unwrap(),
                     predicate: None,
                     body: None,
                 },
@@ -223,7 +288,7 @@ fn get_ast_from_pair(pair: Pair<Rule>) -> AstNode {
                     name: CoreProbeName::from_str(&this_name).unwrap(),
                     body: None,
                 } ,
-                n => unreachable!("Only dfinity and core providers are supported, received: {:?}", n)
+                n => unreachable!("Only wasm and core providers are supported, received: {:?}", n)
             };
 
             trace!("Exiting PROBE_SPEC");
@@ -299,6 +364,27 @@ fn dump(node: AstNode, mut indent: i32) -> (String, i32) {
     let nl: &str = "\n";
 
     match node {
+        AstNode::Integer { val } => {
+            let mut s = get_indent(indent);
+            s += &format!("Int: {val}{nl}");
+            (s, indent)
+        }
+        AstNode::Str { val } => {
+            let mut s = get_indent(indent);
+            s += &format!("Str: {val}{nl}");
+            (s, indent)
+        }
+        AstNode::Tuple { vals } => {
+            let mut s = get_indent(indent);
+            s += &format!("Tuple: ({nl}");
+            indent = increase_indent(indent);
+            for val in vals {
+                s += &format!("{}", &*dump(*val, indent).0);
+            }
+            indent = decrease_indent(indent);
+            s += &format!("{}){nl}", get_indent(indent));
+            (s, indent)
+        }
         AstNode::VarId { name } => {
             let mut s = get_indent(indent);
             s += &*format!("VarId: {name}{nl}");
@@ -309,14 +395,33 @@ fn dump(node: AstNode, mut indent: i32) -> (String, i32) {
             s += &*format!("ProbeId: {name}{nl}");
             (s, indent)
         }
-        AstNode::Integer { val } => {
+        AstNode::Assign { var_id, expr } => {
             let mut s = get_indent(indent);
-            s += &*format!("Int: {val}{nl}");
+            s += &*format!("Assign:{nl}");
+            indent = increase_indent(indent);
+            s += &format!("{}var_id: {nl}{}", get_indent(indent), &*dump(*var_id, increase_indent(indent)).0);
+            s += &format!("{}expr:{nl}{}", get_indent(indent), &*dump(*expr, increase_indent(indent)).0);
+            indent = decrease_indent(indent);
             (s, indent)
         }
-        AstNode::Str { val } => {
+        AstNode::Call { fn_target, args } => {
             let mut s = get_indent(indent);
-            s += &*format!("Str: {val}{nl}");
+            s += &format!("Call:{nl}");
+            indent = increase_indent(indent);
+
+            s += &format!("{}function target:{nl}", get_indent(indent));
+            s += &format!("{}", &*dump(*fn_target, increase_indent(indent)).0);
+
+            if args.is_some() {
+                let mut i = 0;
+                for arg in args.unwrap() {
+                    s += &format!("{}arg{i}:{nl}", get_indent(indent));
+                    s += &format!("{}", &*dump(*arg, increase_indent(indent)).0);
+                    i += 1;
+                }
+            }
+
+            indent = decrease_indent(indent);
             (s, indent)
         }
         AstNode::BinOp { lhs, op, rhs } => {
@@ -365,9 +470,9 @@ fn dump(node: AstNode, mut indent: i32) -> (String, i32) {
 
             indent = decrease_indent(indent);
             (s, indent)
-        }
-        AstNode::DfinityProbe {module, function, name, predicate, body} => {
-            let mut s = get_indent(indent) + "DfinityProbe:" + &*nl;
+        },
+        AstNode::WasmProbe {module, function, name, predicate, body} => {
+            let mut s = get_indent(indent) + "WasmProbe:" + &*nl;
             indent = increase_indent(indent);
 
             // spec

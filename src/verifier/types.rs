@@ -132,6 +132,34 @@ impl SymbolTable {
         self.get_method(self.curr_method_rec)
     }
 
+    pub fn add_dscript(&mut self, new_dscript_name: String) {
+        match self.lookup(&new_dscript_name) {
+            Some(_) => {
+                error!("Duplicate dscript name [ {} ]", new_dscript_name);
+                // TODO -- failed!
+                exit(1);
+            },
+            None => {
+                // create record
+                let curr_dscript = DscriptRecord::new(
+                    new_dscript_name.clone(),
+                    Box::new(ScopeType::Dscript)
+                );
+
+                // add dscript record
+                let id = self.put(new_dscript_name.clone(), Box::new(curr_dscript));
+
+                // enter probe scope
+                self.enter_scope();
+
+                // set scope name and type
+                self.curr_dscript_rec = id;
+                self.set_curr_scope_info(new_dscript_name.clone(), Box::new(ScopeType::Dscript));
+                // NOTE -- cannot return a probe...must be pulled out in calling function!
+            }
+        }
+    }
+
     pub fn add_probe(&mut self, new_probe_name: String) {
         match self.lookup(&new_probe_name) {
             Some(_) => {
@@ -148,13 +176,14 @@ impl SymbolTable {
 
                 // add probe to dscript scope and record
                 let id = self.put(new_probe_name.clone(), Box::new(curr_probe));
-                let mut dscript: &mut DscriptRecord = self.get_curr_dscript_mut();
+                let dscript: &mut DscriptRecord = self.get_curr_dscript_mut();
                 dscript.add_probe(new_probe_name.clone(), id);
 
                 // enter probe scope
                 self.enter_scope();
 
                 // set scope name and type
+                self.curr_probe_rec = id;
                 self.set_curr_scope_info(new_probe_name.clone(), Box::new(ScopeType::Probe));
                 // NOTE -- cannot return a probe...must be pulled out in calling function!
             }
@@ -177,13 +206,14 @@ impl SymbolTable {
 
                 // add method to current scope and dscript (only dscripts have methods for now)
                 let id = self.put(new_method_name.clone(), Box::new(curr_method));
-                let mut dscript = self.get_curr_dscript_mut();
+                let dscript = self.get_curr_dscript_mut();
                 dscript.add_method(new_method_name.clone(), id);
 
                 // enter method scope
                 self.enter_scope();
 
                 // set scope name and type
+                self.curr_method_rec = id;
                 self.set_curr_scope_info(new_method_name.clone(), Box::new(ScopeType::Method));
                 // NOTE -- cannot return a method...must be pulled out in calling function!
             }
@@ -228,6 +258,9 @@ impl SymbolTable {
 
                     next_scope = self.next_parent(curr.id);
                 }
+                if res_id.is_none() {
+                    return None;
+                }
                 Some(self.records.get(*res_id.unwrap()).unwrap())
             }
         }
@@ -259,7 +292,7 @@ impl SymbolTable {
 
     pub fn enter_scope(&mut self) {
         let new_id = self.scopes.len();
-        let mut curr = self.get_curr_scope_mut();
+        let curr = self.get_curr_scope_mut();
 
         if curr.has_next() {
             curr.next_child();

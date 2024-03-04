@@ -1,9 +1,6 @@
 use std::str::FromStr;
 
 use pest_derive::Parser;
-// use pest::error::Error;
-// use pest::Parser;
-// use pest::iterators::{Pair, Pairs};
 use pest::pratt_parser::PrattParser;
 
 #[derive(Parser)]
@@ -31,6 +28,17 @@ lazy_static::lazy_static! {
 
 #[derive(Debug, Clone)]
 pub enum AstNode {
+    // Values
+    Integer {
+        val: i32,
+    },
+    Str {
+        val: String,
+    },
+    Tuple {
+        vals: Vec<Box<AstNode>>
+    },
+
     // IDs
     VarId {
         name: String,
@@ -39,12 +47,14 @@ pub enum AstNode {
         name: String,
     },
 
-    // Values
-    Integer {
-        val: i32,
+    // Statements
+    Assign {
+        var_id: Box<AstNode>, // should be VarId
+        expr: Box<AstNode> // Should be BinOp
     },
-    Str {
-        val: String,
+    Call {
+        fn_target: Box<AstNode>, // Should be VarId
+        args: Option<Vec<Box<AstNode>>>
     },
 
     // Expressions
@@ -56,10 +66,10 @@ pub enum AstNode {
     },
 
     // Probes
-    DfinityProbe {
+    WasmProbe {
         module: String,
         function: String,
-        name: DfinityProbeName,
+        name: WasmProbeName,
         predicate: Option<Box<AstNode>>,
         body: Option<Vec<Box<AstNode>>>
     },
@@ -88,72 +98,72 @@ pub enum AstNode {
 // = Providers =
 // =============
 
-// ** Dfinity Provider **
+// ** Wasm Provider **
 
 #[derive(Clone, Debug, Eq, Hash)]
-pub enum DfinityProbeName {
+pub enum WasmProbeName {
     Before,
     After,
     Alt
 }
 
-impl PartialEq for DfinityProbeName {
+impl PartialEq for WasmProbeName {
     #[inline]
-    fn eq(&self, other: &DfinityProbeName) -> bool {
+    fn eq(&self, other: &WasmProbeName) -> bool {
         match *self {
-            DfinityProbeName::Before => match other {
-                DfinityProbeName::Before => true,
+            WasmProbeName::Before => match other {
+                WasmProbeName::Before => true,
                 _ => false,
             },
-            DfinityProbeName::After => match other {
-                DfinityProbeName::After => true,
+            WasmProbeName::After => match other {
+                WasmProbeName::After => true,
                 _ => false,
             },
-            DfinityProbeName::Alt => match other {
-                DfinityProbeName::Alt => true,
+            WasmProbeName::Alt => match other {
+                WasmProbeName::Alt => true,
                 _ => false,
             },
         }
     }
 
     #[inline]
-    fn ne(&self, other: &DfinityProbeName) -> bool {
+    fn ne(&self, other: &WasmProbeName) -> bool {
         match *self {
-            DfinityProbeName::Before => match other {
-                DfinityProbeName::Before => false,
+            WasmProbeName::Before => match other {
+                WasmProbeName::Before => false,
                 _ => true,
             },
-            DfinityProbeName::After => match other {
-                DfinityProbeName::After => false,
+            WasmProbeName::After => match other {
+                WasmProbeName::After => false,
                 _ => true,
             },
-            DfinityProbeName::Alt => match other {
-                DfinityProbeName::Alt => false,
+            WasmProbeName::Alt => match other {
+                WasmProbeName::Alt => false,
                 _ => true,
             },
         }
     }
 }
 
-impl FromStr for DfinityProbeName {
+impl FromStr for WasmProbeName {
     type Err = ();
 
-    fn from_str(input: &str) -> Result<DfinityProbeName, ()> {
+    fn from_str(input: &str) -> Result<WasmProbeName, ()> {
         match input.to_uppercase().as_str() {
-            "BEFORE" => Ok(DfinityProbeName::Before),
-            "AFTER" => Ok(DfinityProbeName::After),
-            "ALT" => Ok(DfinityProbeName::Alt),
+            "BEFORE" => Ok(WasmProbeName::Before),
+            "AFTER" => Ok(WasmProbeName::After),
+            "ALT" => Ok(WasmProbeName::Alt),
             _ => Err(()),
         }
     }
 }
 
-impl ToString for DfinityProbeName {
+impl ToString for WasmProbeName {
     fn to_string(&self) -> String {
         match *self {
-            DfinityProbeName::Before => "Before".to_string(),
-            DfinityProbeName::After => "After".to_string(),
-            DfinityProbeName::Alt => "Alt".to_string(),
+            WasmProbeName::Before => "Before".to_string(),
+            WasmProbeName::After => "After".to_string(),
+            WasmProbeName::Alt => "Alt".to_string(),
         }
     }
 }

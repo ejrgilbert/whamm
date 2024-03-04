@@ -17,13 +17,13 @@ pub fn setup_logger() {
 const VALID_SCRIPTS: &'static [&'static str] = &[
     // Variations of PROBE_SPEC
     r#"
-    dfinity:module:function:alt { }
+    wasm:module:function:alt { }
     "#,
     r#"
-    dfinity:module:function:before { }
+    wasm:module:function:before { }
     "#,
     r#"
-    dfinity:module:function:after { }
+    wasm:module:function:after { }
     "#,
     r#"
     BEGIN { }
@@ -35,69 +35,88 @@ const VALID_SCRIPTS: &'static [&'static str] = &[
     // "function:after { }", // TODO -- support regex matching on names
     // "name { }", // TODO -- support regex matching on names
     // "::: { }", // TODO -- support regex matching on names
-    // "dfinity::: { }", // TODO -- support regex matching on names
+    // "wasm::: { }", // TODO -- support regex matching on names
     // ":module:: { }", // TODO -- support regex matching on names
     // "::function: { }", // TODO -- support regex matching on names
     // ":::before { }", // TODO -- support regex matching on names
     // ":module:function:alt { }", // TODO -- support regex matching on names
-    "dfinity::function:alt { }",
-    "dfinity:module::alt { }",
+    "wasm::function:alt { }",
+    "wasm:module::alt { }",
 
     // Predicates
-    "dfinity:module:function:before / i / { }",
-    "dfinity:module:function:before / \"i\" <= 1 / { }",
-    "dfinity:module:function:before / i54 < r77 / { }",
-    "dfinity:module:function:before / i54 < r77 / { }",
-    "dfinity:module:function:before / i != 7 / { }",
-    "dfinity:module:function:before / (i == \"1\") && (b == \"2\") / { }",
-    "dfinity:module:function:before / i == \"1\" && b == \"2\" / { }",
-    "dfinity:module:function:before / i == (1 + 3) / { i; }",
+    "wasm:module:function:before / i / { }",
+    "wasm:module:function:before / \"i\" <= 1 / { }",
+    "wasm:module:function:before / i54 < r77 / { }",
+    "wasm:module:function:before / i54 < r77 / { }",
+    "wasm:module:function:before / i != 7 / { }",
+    "wasm:module:function:before / (i == \"1\") && (b == \"2\") / { }",
+    "wasm:module:function:before / i == \"1\" && b == \"2\" / { }",
+    "wasm:module:function:before / i == (1 + 3) / { count = 0; }",
+
+    // Function calls
+    r#"
+wasm::call:alt / strpaircmp((arg2, arg3), "record") / {
+    new_target_fn_name = "redirect_to_fault_injector";
+}
+    "#,
+    r#"
+wasm::call:alt /
+    target_fn_type == "import" &&
+    target_fn_module == "ic0" &&
+    target_fn_name == "call_new" &&
+    strpaircmp((arg0, arg1), "bookings") &&
+    strpaircmp((arg2, arg3), "record")
+/ {
+    new_target_fn_name = "redirect_to_fault_injector";
+}
+    "#,
 
     // Statements
     r#"
-    dfinity:module:function:before {
-        i;
+    wasm:module:function:before {
+        i = 0;
     }
     "#,
 
     // Comments
     r#"
     /* comment */
-    dfinity:module:function:before { }
+    wasm:module:function:before { }
     "#,
-    "dfinity:module:function:before { } // this is a comment",
+    "wasm:module:function:before { } // this is a comment",
     r#"/* comment */
-    dfinity:module:function:before { } // this is a comment
+    wasm:module:function:before { } // this is a comment
     "#,
     r#"
-    dfinity:module:function:before {
-        i; // this is a comment
+    wasm:module:function:before {
+        i = 0; // this is a comment
     }
     "#,
 ];
 
 const INVALID_SCRIPTS: &'static [&'static str] = &[
     // Variations of PROBE_SPEC
-    "dfinity:module:function:alt: { }",
-    "dfinity:module:function:alt",
-    "dfinity:module:function:alt: { }",
-    "dfinity:module:function:dne",
+    "wasm:module:function:alt: { }",
+    "wasm:module:function:alt",
+    "wasm:module:function:alt: { }",
+    "wasm:module:function:dne",
 
     // Empty predicate
-    "dfinity:module:function:alt  // { }",
-    "dfinity:module:function:alt / 5i < r77 / { }",
-    //            "dfinity:module:function:alt / i < 1 < 2 / { }", // TODO -- make invalid on semantic pass
-    //            "dfinity:module:function:alt / (1 + 3) / { i }", // TODO -- make invalid on type check
-    "dfinity:module:function:alt  / i == \"\"\"\" / { }",
+    "wasm:module:function:alt  // { }",
+    "wasm:module:function:alt / 5i < r77 / { }",
+    //            "wasm:module:function:alt / i < 1 < 2 / { }", // TODO -- make invalid on semantic pass
+    //            "wasm:module:function:alt / (1 + 3) / { i }", // TODO -- make invalid on type check
+    "wasm:module:function:alt  / i == \"\"\"\" / { }",
 
     // bad statement
-    "dfinity:module:function:alt / i == 1 / { 2i; }",
+    "wasm:module:function:alt / i == 1 / { i; }",
 ];
 
 const SPECIAL: &'static [&'static str] = &[
     "BEGIN { }",
     "END { }",
-    "dfinity:::alt { }"
+    "wasm:::alt { }",
+    "wasm:::alt { }"
 ];
 
 // ====================
@@ -196,8 +215,17 @@ pub fn test_ast_special_cases() {
 #[test]
 pub fn test_ast_dumper() {
     setup_logger();
-    // let script = "dfinity:module:function:alt / (i == \"1\") && (b == \"2\") / { i; }";
-    let script = "dfinity:module:function:alt { i; }";
+    let script =     r#"
+wasm::call:alt /
+    target_fn_type == "import" &&
+    target_fn_module == "ic0" &&
+    target_fn_name == "call_new" &&
+    strpaircmp((arg0, arg1), "bookings") &&
+    strpaircmp((arg2, arg3), "record")
+/ {
+    new_target_fn_name = "redirect_to_fault_injector";
+}
+    "#;
 
     match get_ast(script) {
         Some(ast) => {
@@ -213,7 +241,7 @@ pub fn test_ast_dumper() {
 #[test]
 pub fn test_implicit_probe_defs_dumper() {
     setup_logger();
-    let script = "dfinity:::alt / (i == \"1\") && (b == \"2\") / { i; }";
+    let script = "wasm:::alt / (i == \"1\") && (b == \"2\") / { i = 0; }";
 
     match get_ast(script) {
         Some(ast) => {

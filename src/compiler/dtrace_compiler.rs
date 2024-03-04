@@ -1,5 +1,5 @@
 use crate::parser::types as parser_types;
-use parser_types::{AstNode, CoreProbeName, DfinityProbeName};
+use parser_types::{AstNode, CoreProbeName, WasmProbeName};
 
 use log::{ debug, error, info };
 use std::collections::HashMap;
@@ -13,14 +13,14 @@ use walrus::{ Import, MemoryId, Module, ModuleImports };
 // =========
 
 // Probes
-fn organize_probes(ast: &Vec<AstNode>) -> (Vec<CoreProbe>, AllDfinityFnProbes) {
+fn organize_probes(ast: &Vec<AstNode>) -> (Vec<CoreProbe>, AllWasmFnProbes) {
     let mut core_probes = vec![];
-    let mut dfinity_fn_probes = AllDfinityFnProbes::new();
+    let mut wasm_fn_probes = AllWasmFnProbes::new();
 
     for node in ast {
         if let AstNode::Dscript { probes } = node {
             let probes = unbox(probes);
-            (core_probes, dfinity_fn_probes) = organize_probes(&probes);
+            (core_probes, wasm_fn_probes) = organize_probes(&probes);
         } else if let AstNode::CoreProbe{ name, body } = node {
             let b = match body {
                 Some(bd) => Some(unbox(bd)),
@@ -30,7 +30,7 @@ fn organize_probes(ast: &Vec<AstNode>) -> (Vec<CoreProbe>, AllDfinityFnProbes) {
                 name: name.clone(),
                 body: b
             });
-        } else if let AstNode::DfinityProbe{ module, function, name, predicate, body } = node {
+        } else if let AstNode::WasmProbe{ module, function, name, predicate, body } = node {
             let pred = match predicate {
                 Some(pred) => Some((**pred).clone()),
                 None => None
@@ -40,32 +40,32 @@ fn organize_probes(ast: &Vec<AstNode>) -> (Vec<CoreProbe>, AllDfinityFnProbes) {
                 None => None
             };
 
-            dfinity_fn_probes.add_probe(module, function, name, DfinityProbe {
+            wasm_fn_probes.add_probe(module, function, name, WasmProbe {
                 predicate: pred,
                 body: b
             });
         } else {
-            error!("Expected Core or Dfinity probe, received: {:?}", node);
+            error!("Expected Core or Wasm probe, received: {:?}", node);
             exit(1);
         }
     }
 
-    return (core_probes, dfinity_fn_probes);
+    return (core_probes, wasm_fn_probes);
 }
 
-struct AllDfinityFnProbes {
-    all_probes: HashMap<String, DfinityFnProbes>
+struct AllWasmFnProbes {
+    all_probes: HashMap<String, WasmFnProbes>
 }
 
-impl AllDfinityFnProbes {
+impl AllWasmFnProbes {
     pub fn new() -> Self {
-        return AllDfinityFnProbes {
+        return AllWasmFnProbes {
             all_probes: HashMap::new()
         }
     }
 
-    fn add_or_append(&mut self, module: &String, function: &String, probe_type: &DfinityProbeName, probe: DfinityProbe) {
-        let mut new_fn_probes = DfinityFnProbes::new(module.clone(), function.clone()); // might not be used
+    fn add_or_append(&mut self, module: &String, function: &String, probe_type: &WasmProbeName, probe: WasmProbe) {
+        let mut new_fn_probes = WasmFnProbes::new(module.clone(), function.clone()); // might not be used
 
         self.all_probes.entry(format!("{module}.{function}"))
             .and_modify(|fn_probes| fn_probes.add_probe(module, function, probe_type, probe.clone()))
@@ -75,32 +75,32 @@ impl AllDfinityFnProbes {
             });
     }
 
-    pub fn add_probe(&mut self, module: &String, function: &String, probe_type: &DfinityProbeName, probe: DfinityProbe) {
+    pub fn add_probe(&mut self, module: &String, function: &String, probe_type: &WasmProbeName, probe: WasmProbe) {
         self.add_or_append(module, function, probe_type, probe);
     }
 }
 
-struct DfinityFnProbes {
+struct WasmFnProbes {
     module: String,
     function: String,
-    fn_probes: HashMap<DfinityProbeName, Vec<DfinityProbe>>
+    fn_probes: HashMap<WasmProbeName, Vec<WasmProbe>>
 }
 
-impl DfinityFnProbes {
+impl WasmFnProbes {
     pub fn new(module: String, function: String) -> Self {
         let mut fps = HashMap::new();
-        fps.insert(DfinityProbeName::Before, Vec::new());
-        fps.insert(DfinityProbeName::After, Vec::new());
-        fps.insert(DfinityProbeName::Alt, Vec::new());
+        fps.insert(WasmProbeName::Before, Vec::new());
+        fps.insert(WasmProbeName::After, Vec::new());
+        fps.insert(WasmProbeName::Alt, Vec::new());
 
-        return DfinityFnProbes {
+        return WasmFnProbes {
             module,
             function,
             fn_probes: fps
         }
     }
 
-    pub fn add_probe(&mut self, module: &String, function: &String, probe_type: &DfinityProbeName, probe: DfinityProbe) {
+    pub fn add_probe(&mut self, module: &String, function: &String, probe_type: &WasmProbeName, probe: WasmProbe) {
         if self.module != *module && self.function != *function {
             println!("ERROR: trying to add probe with mismatching clause. Expected: {}:{}. Actual: {module}:{function}.", self.module, self.function);
             return;
@@ -111,12 +111,13 @@ impl DfinityFnProbes {
 }
 
 trait Probe {}
+
 #[derive(Clone, Debug)]
-struct DfinityProbe {
+struct WasmProbe {
     predicate: Option<AstNode>,
     body: Option<Vec<AstNode>>
 }
-impl Probe for DfinityProbe {}
+impl Probe for WasmProbe {}
 
 // TODO -- CoreProbe compilation
 #[derive(Clone, Debug)]
@@ -193,7 +194,7 @@ fn get_import_for_probe<'a>(imports: &'a ModuleImports, module: &String, functio
 }
 
 fn inject_probe(_memory: MemoryId, funcs: &mut walrus::ModuleFunctions, _locals: &mut walrus::ModuleLocals, _orig_call_id: &walrus::FunctionId, wrapper_body: &mut walrus::InstrSeqBuilder, params: &mut Vec<walrus::LocalId>,
-                probe: &DfinityProbe) {
+                probe: &WasmProbe) {
     if probe.predicate.is_some() {
         // TODO -- inject predicate
         error!("Not implemented - inject_probe for predicates");
@@ -207,7 +208,7 @@ fn inject_probe(_memory: MemoryId, funcs: &mut walrus::ModuleFunctions, _locals:
     }
 }
 
-fn create_wrapper(memory: MemoryId, all_types: &mut walrus::ModuleTypes, locals: &mut walrus::ModuleLocals, funcs: &mut walrus::ModuleFunctions, import: &Import, fn_probes: DfinityFnProbes) -> walrus::FunctionId {
+fn create_wrapper(memory: MemoryId, all_types: &mut walrus::ModuleTypes, locals: &mut walrus::ModuleLocals, funcs: &mut walrus::ModuleFunctions, import: &Import, fn_probes: WasmFnProbes) -> walrus::FunctionId {
     // Build the wrapper function
     info!("Instrumenting import: {}::{}", import.module, import.name);
 
@@ -240,12 +241,12 @@ fn create_wrapper(memory: MemoryId, all_types: &mut walrus::ModuleTypes, locals:
     }
 
     // Inject before probes
-    for before_probe in fn_probes.fn_probes.get(&DfinityProbeName::Before).unwrap() {
+    for before_probe in fn_probes.fn_probes.get(&WasmProbeName::Before).unwrap() {
         inject_probe(memory, funcs, locals, &import_id, wrapper_body, &mut created_params, before_probe)
     }
 
     // Inject alt probes
-    let alt_probes = fn_probes.fn_probes.get(&DfinityProbeName::Alt).unwrap();
+    let alt_probes = fn_probes.fn_probes.get(&WasmProbeName::Alt).unwrap();
     if alt_probes.len() > 0 {
         if alt_probes.len() > 1 {
             println!("WARN: Multiple ALT probes configured for function, defaulting to last in configuration.");
@@ -258,7 +259,7 @@ fn create_wrapper(memory: MemoryId, all_types: &mut walrus::ModuleTypes, locals:
     }
 
     // Inject after probes
-    for after_probe in fn_probes.fn_probes.get(&DfinityProbeName::After).unwrap() {
+    for after_probe in fn_probes.fn_probes.get(&WasmProbeName::After).unwrap() {
         inject_probe(memory, funcs, locals, &import_id, wrapper_body, &mut created_params, after_probe);
     }
 
@@ -327,7 +328,7 @@ fn core_emit_wasm(_probe: CoreProbe, _app_wasm: &mut Module) -> bool {
     false
 }
 
-fn dfinity_emit_wasm(fn_probes: DfinityFnProbes, app_wasm: &mut Module) -> bool {
+fn wasm_emit_wasm(fn_probes: WasmFnProbes, app_wasm: &mut Module) -> bool {
     // TODO: BUG - if import not found, unwrap() is on a None value...BAD!
     let imp = get_import_for_probe(&app_wasm.imports, &fn_probes.module, &fn_probes.function).unwrap();
 
@@ -340,15 +341,15 @@ fn dfinity_emit_wasm(fn_probes: DfinityFnProbes, app_wasm: &mut Module) -> bool 
 
 pub fn emit_wasm(ast: &Vec<AstNode>, app_wasm_path: &PathBuf, output_wasm_path: &String) -> bool {
     let mut success = true;
-    let (core_probes, dfinity_fn_probes) = organize_probes(ast);
+    let (core_probes, wasm_fn_probes) = organize_probes(ast);
 
     let mut wasm = get_walrus_module(app_wasm_path);
     for probe in core_probes {
         success &= core_emit_wasm(probe, &mut wasm);
     }
 
-    for probe in dfinity_fn_probes.all_probes {
-        success &= dfinity_emit_wasm(probe.1, &mut wasm);
+    for probe in wasm_fn_probes.all_probes {
+        success &= wasm_emit_wasm(probe.1, &mut wasm);
     }
 
     if success {

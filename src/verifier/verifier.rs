@@ -19,6 +19,7 @@ fn build_table_from_node(node: &AstNode, table: &mut SymbolTable) {
     match node {
         AstNode::Dscript { probes } => {
             trace!("Enter Dscript node");
+            table.add_dscript("Dscript".to_string());
             table.set_curr_scope_info("Dscript".to_string(), Box::new(ScopeType::Dscript));
 
             // TODO -- add variables provided by Dscript
@@ -27,12 +28,12 @@ fn build_table_from_node(node: &AstNode, table: &mut SymbolTable) {
             }
             trace!("Exit Dscript node");
         },
-        AstNode::DfinityProbe { module, function, name,
+        AstNode::WasmProbe { module, function, name,
             predicate, body} => {
-            trace!("Enter DfinityProbe node");
+            trace!("Enter WasmProbe node");
             table.add_probe(format!("{module}:{function}:{}", name.to_string()));
 
-            // TODO -- add variables provided by DfinityProbe
+            // TODO -- add variables provided by WasmProbe
 
             // visit predicate
             match predicate {
@@ -53,7 +54,7 @@ fn build_table_from_node(node: &AstNode, table: &mut SymbolTable) {
             };
 
             table.exit_scope();
-            trace!("Exit DfinityProbe node");
+            trace!("Exit WasmProbe node");
         },
         AstNode::CoreProbe {name, body} => {
             trace!("Enter CoreProbe node");

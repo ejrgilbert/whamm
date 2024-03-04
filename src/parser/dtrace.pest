@@ -6,13 +6,10 @@ dscript = { SOI ~ probe_def+ ~ EOI }
 
 // TODO -- support comma separated list of specs: https://docs.oracle.com/cd/E23824_01/html/E22973/glghi.html#scrolltoc
 probe_def = { spec ~ PUSH(predicate?) ~ "{" ~ statement* ~ "}" }
-// probe_def = { spec ~ ( "{" ~ statement* ~ "}" ) }
 
 predicate = { "/" ~ expr ~ "/" }
 
 spec = { PROBE_SPEC | PROBE_ID }
-
-statement = { expr ~ ";" }
 
 // =====================
 // ---- Identifiers ----
@@ -39,13 +36,26 @@ PROBE_SPEC = ${
     | PROBE_ID? ~ ":" ~ PROBE_ID?
 }
 
+// ====================
+// ---- Statements ----
+// ====================
+
+arg = { tuple | expr | val }
+fn_call = { ID ~ "(" ~ ( arg )? ~ ( "," ~ arg )* ~ ")" }
+
+assignment = { ID ~ "=" ~ expr }
+statement = { ( ( fn_call | assignment ) ~ ";" )+ }
+
 // =====================
 // ---- Expressions ----
 // =====================
 
 expr = { operand ~ (BINOP ~ operand)* }
 
-operand = { ID | INT | STRING | "(" ~ expr ~ ")" }
+val = _{ ID | INT | STRING }
+operand = { fn_call | "(" ~ expr ~ ")" | val }
+
+tuple = { "(" ~ (val) ~ ( "," ~ val )* ~ ")" }
 
 // TODO -- add support for NOT (e.g. !(a == b)
 BINOP = _{ LOGOP | RELOP | SUMOP | MULOP }

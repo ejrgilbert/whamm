@@ -1,9 +1,8 @@
 use crate::parser::tests;
 use crate::verifier::verifier;
-use crate::verifier::types;
 
 use log::{debug, error};
-use crate::verifier::types::SymbolTable;
+
 // =================
 // = Setup Logging =
 // =================
@@ -17,22 +16,25 @@ pub fn setup_logger() {
 // ====================
 
 const VALID_SCRIPTS: &'static [&'static str] = &[
-    "dfinity:ic0:call_new:alt { redirect_to_fault_injector; }",
+    "wasm:ic0:call_new:alt { new_target_fn_name = redirect_to_fault_injector; }",
 ];
 
 // =============
 // = The Tests =
 // =============
 
-// TODO -- debug broken test
 #[test]
 pub fn test_build_table() {
+    setup_logger();
+    // TODO:
+    //   1. add strcmp function
+    //   2. support: target_fn_type, target_fn_module/name, new_target_fn_name
+    //   3. add symbols for providers/modules/etc.
     for script in VALID_SCRIPTS {
         match tests::get_ast(script) {
             Some(ast) => {
                 let table = verifier::build_symbol_table(ast);
-                // debug!("{:?}", table);
-                println!();
+                table.print();
             },
             None => {
                 error!("Could not get ast from script: {script}");
