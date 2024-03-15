@@ -1,7 +1,7 @@
 use crate::parser::tests;
 use crate::verifier::verifier;
 
-use log::{debug, error};
+use log::{error};
 
 // =================
 // = Setup Logging =

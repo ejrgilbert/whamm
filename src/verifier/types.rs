@@ -18,9 +18,10 @@ pub struct SymbolTable {
 
 impl SymbolTable {
     pub fn new() -> Self {
-        let root_scope = Scope::new(0, None);
+        let ty = ScopeType::DtraceCore;
+        let root_scope = Scope::new(0, ty.to_string(), Box::new(ty), None);
         return SymbolTable {
-            scopes: vec![root_scope],
+            scopes: vec![ root_scope ],
             curr_scope: 0,
             records: vec![],
             curr_dscript_rec: 0,
@@ -35,7 +36,7 @@ impl SymbolTable {
         }
     }
 
-    fn print_scope(&self, scope: &Scope) -> String {
+    fn print_scope(&self, scope: &Scope, col_width: usize) -> String {
         let mut res = "".to_string();
 
         // Print scope info
@@ -47,8 +48,9 @@ impl SymbolTable {
 
             let rec_info = format!("{} - {}", *rec.get_name(), (*rec.get_ty()).to_string().as_str());
             res += format!(
-                "| {:<20} | {:<20} | {:<20} |",
-                name, rec_info, scope_info
+                "| {:<width$} | {:<width$} | {:<width$} |\n",
+                name, rec_info, scope_info,
+                width = col_width
             ).as_str();
         }
 
@@ -58,18 +60,23 @@ impl SymbolTable {
     pub fn print(&self) {
         let mut res = "".to_string();
         res += "\nPrinting the Symbol Table\n";
-        res += format!("+{:-<70}+", "").as_str();
+        let col_width: usize = 30;
+        let num_cols: usize = 3;
+        let extra_chars: usize = 8;
+
+        res += format!("+{:-<width$}+\n", "", width = (col_width * num_cols) + extra_chars).as_str();
 
         res += format!(
-            "| {:<20} | {:<20} | {:<20} |",
-            "ID", "RECORD", "SCOPE"
+            "| {:<width$} | {:<width$} | {:<width$} |\n",
+            "ID: \"rec_name\"", "RECORD: \"rec_name - rec_ty\"", "SCOPE: \"scp_name[ scp_ty ]\"",
+            width = col_width
         ).as_str();
-        res += format!("+{:-<70}+", "").as_str();
+        res += format!("+{:-<width$}+\n", "", width = (col_width * num_cols) + extra_chars).as_str();
 
         for scope in self.scopes.iter() {
-            res += self.print_scope(&scope).as_str();
+            res += self.print_scope(&scope, col_width).as_str();
         }
-        res += format!("+{:-<70}+", "").as_str();
+        res += format!("+{:-<width$}+\n", "", width = (col_width * num_cols) + extra_chars).as_str();
 
         debug!("{res}");
     }
@@ -140,6 +147,9 @@ impl SymbolTable {
                 exit(1);
             },
             None => {
+                // enter dscript scope
+                self.enter_scope();
+
                 // create record
                 let curr_dscript = DscriptRecord::new(
                     new_dscript_name.clone(),
@@ -148,9 +158,6 @@ impl SymbolTable {
 
                 // add dscript record
                 let id = self.put(new_dscript_name.clone(), Box::new(curr_dscript));
-
-                // enter probe scope
-                self.enter_scope();
 
                 // set scope name and type
                 self.curr_dscript_rec = id;
@@ -224,7 +231,7 @@ impl SymbolTable {
         let rec_id = self.records.len();
         self.records.push(rec);
 
-        self.get_curr_scope_mut().put(key.clone(), rec_id);
+        self.get_curr_scope_mut().unwrap().put(key.clone(), rec_id);
 
         rec_id
     }
@@ -242,26 +249,33 @@ impl SymbolTable {
     }
 
     pub fn lookup(&self, key: &String) -> Option<&Box<dyn Record>> {
-        let curr = self.get_curr_scope();
-        match curr.lookup(key) {
-            Some(res) => {
-                Some(self.records.get(*res).unwrap())
-            },
-            None => {
-                let mut res_id = None;
+        let c = self.get_curr_scope();
+        match c {
+            None => None,
+            Some(curr) => {
+                match curr.lookup(key) {
+                    Some(res) => {
+                        Some(self.records.get(*res).unwrap())
+                    },
+                    None => {
+                        let mut res_id = None;
 
-                // Search the parent instead
-                let mut next_scope = self.next_parent(curr.id);
-                while res_id.is_none() && next_scope.is_some() {
-                    // Perform lookup in next_scope (moving in the chain of parent scopes)
-                    res_id = next_scope.unwrap().lookup(key);
+                        // Search the parent instead
+                        let mut lookup_idx = curr.id;
+                        let mut next_scope = self.next_parent(lookup_idx);
+                        while res_id.is_none() && next_scope.is_some() {
+                            // Perform lookup in next_scope (moving in the chain of parent scopes)
+                            res_id = next_scope.unwrap().lookup(key);
 
-                    next_scope = self.next_parent(curr.id);
+                            lookup_idx = next_scope.unwrap().id;
+                            next_scope = self.next_parent(lookup_idx);
+                        }
+                        if res_id.is_none() {
+                            return None;
+                        }
+                        Some(self.records.get(*res_id.unwrap()).unwrap())
+                    }
                 }
-                if res_id.is_none() {
-                    return None;
-                }
-                Some(self.records.get(*res_id.unwrap()).unwrap())
             }
         }
     }
@@ -269,51 +283,60 @@ impl SymbolTable {
     // ---- Scopes ----
 
     pub fn set_curr_scope_info(&mut self, name: String, ty: Box<dyn RecordType>) {
-        let mut curr = self.get_curr_scope_mut();
+        let mut curr = self.get_curr_scope_mut().unwrap();
         curr.name = name;
         curr.ty = ty;
     }
 
-    pub fn get_curr_scope(&self) -> &Scope {
-        &self.scopes.get(self.curr_scope).unwrap()
+    pub fn get_curr_scope(&self) -> Option<&Scope> {
+        self.scopes.get(self.curr_scope)
     }
 
-    pub fn get_curr_scope_mut(&mut self) -> &mut Scope {
-        self.scopes.get_mut(self.curr_scope).unwrap()
+    pub fn get_curr_scope_mut(&mut self) -> Option<&mut Scope> {
+        self.scopes.get_mut(self.curr_scope)
     }
 
     pub fn get_curr_scope_name(&self) -> &String {
-        &self.get_curr_scope().name
+        &self.get_curr_scope().unwrap().name
     }
 
     pub fn get_curr_scope_type(&self) -> &Box<dyn RecordType> {
-        &self.get_curr_scope().ty
+        &self.get_curr_scope().unwrap().ty
     }
 
     pub fn enter_scope(&mut self) {
         let new_id = self.scopes.len();
-        let curr = self.get_curr_scope_mut();
-
-        if curr.has_next() {
-            curr.next_child();
-            return;
-        }
+        let parent = match self.get_curr_scope_mut() {
+            Some(curr) => {
+                if curr.has_next() {
+                    curr.next_child();
+                    return;
+                }
+                // Will need to create a new next scope
+                // Store new scope in the current scope's children
+                curr.add_child(new_id);
+                Some(curr.id)
+            },
+            _ => {
+                None
+            }
+        };
 
         // Does not have next child, create it
         let new_scope = Scope::new(
             new_id,
-            Some(curr.id)
+            "".to_string(),
+            Box::new(ScopeType::Null),
+            parent
         );
-
-        // Store new scope in the current scope's children
-        curr.add_child(new_id);
 
         // Add new scope
         self.scopes.push(new_scope);
+        self.curr_scope = new_id;
     }
 
     pub fn exit_scope(&mut self) {
-        match self.get_curr_scope().parent {
+        match self.get_curr_scope().unwrap().parent {
             Some(parent) => self.curr_scope = parent.clone(),
             None => {
                 error!("Attempted to exit current scope, but there was no parent to exit into.")
@@ -338,11 +361,11 @@ pub struct Scope {
 }
 
 impl Scope {
-    pub fn new(id: usize, parent: Option<usize>) -> Self {
+    pub fn new(id: usize, name: String, ty: Box<ScopeType>, parent: Option<usize>) -> Self {
         return Scope {
             id,
-            name: "".to_string(),
-            ty: Box::new(ScopeType::Null),
+            name,
+            ty,
             next: 0,
             parent,
             children: vec![],
@@ -631,6 +654,7 @@ pub trait RecordType {
 
 #[derive(Clone, Debug, Eq, Hash)]
 pub enum ScopeType {
+    DtraceCore,
     Dscript,
     Probe,
     Method,
@@ -640,6 +664,7 @@ pub enum ScopeType {
 impl RecordType for ScopeType {
     fn to_string(&self) -> String {
         match *self {
+            ScopeType::DtraceCore => "DtraceCore".to_string(),
             ScopeType::Dscript => "Dscript".to_string(),
             ScopeType::Probe => "Probe".to_string(),
             ScopeType::Method => "Method".to_string(),
@@ -652,6 +677,10 @@ impl PartialEq for ScopeType {
     #[inline]
     fn eq(&self, other: &ScopeType) -> bool {
         match *self {
+            ScopeType::DtraceCore => match other {
+                ScopeType::DtraceCore => true,
+                _ => false,
+            },
             ScopeType::Dscript => match other {
                 ScopeType::Dscript => true,
                 _ => false,
@@ -674,6 +703,10 @@ impl PartialEq for ScopeType {
     #[inline]
     fn ne(&self, other: &ScopeType) -> bool {
         match *self {
+            ScopeType::DtraceCore => match other {
+                ScopeType::DtraceCore => false,
+                _ => true,
+            },
             ScopeType::Dscript => match other {
                 ScopeType::Dscript => false,
                 _ => true,
@@ -699,6 +732,7 @@ impl FromStr for ScopeType {
 
     fn from_str(input: &str) -> Result<ScopeType, ()> {
         match input.to_uppercase().as_str() {
+            "DTRACECORE" => Ok(ScopeType::DtraceCore),
             "DSCRIPT" => Ok(ScopeType::Dscript),
             "PROBE" => Ok(ScopeType::Probe),
             "METHOD" => Ok(ScopeType::Method),

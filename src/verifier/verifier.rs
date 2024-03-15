@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use crate::verifier::types as verifier_types;
 use crate::parser::types as parser_types;
 
@@ -5,6 +6,10 @@ use parser_types::AstNode;
 use verifier_types::{ScopeType, SymbolTable};
 
 use log::{error, trace};
+
+thread_local! {
+    static NUM_DSCRIPTS: RefCell<i32> = RefCell::new(0);
+}
 
 pub fn build_symbol_table(ast: Vec<AstNode>) -> SymbolTable {
     let mut table = SymbolTable::new();
@@ -19,8 +24,12 @@ fn build_table_from_node(node: &AstNode, table: &mut SymbolTable) {
     match node {
         AstNode::Dscript { probes } => {
             trace!("Enter Dscript node");
-            table.add_dscript("Dscript".to_string());
-            table.set_curr_scope_info("Dscript".to_string(), Box::new(ScopeType::Dscript));
+            let i = NUM_DSCRIPTS.with(|num| {
+                let orig = num.borrow().clone();
+                *num.borrow_mut() = orig + 1; // increment Dscript count
+                orig
+            });
+            table.add_dscript(format!("Dscript{}", i));
 
             // TODO -- add variables provided by Dscript
             for probe in probes {
@@ -76,6 +85,7 @@ fn build_table_from_node(node: &AstNode, table: &mut SymbolTable) {
             trace!("Exit CoreProbe node");
         }
         other => {
+            table.print();
             error!("Visited unexpected node: {other:?}");
         }
     }
