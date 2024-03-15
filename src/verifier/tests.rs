@@ -16,7 +16,7 @@ pub fn setup_logger() {
 // ====================
 
 const VALID_SCRIPTS: &'static [&'static str] = &[
-    "wasm:ic0:call_new:alt { new_target_fn_name = redirect_to_fault_injector; }",
+    "wasm::call:alt { new_target_fn_name = redirect_to_fault_injector; }",
 ];
 
 // =============
@@ -33,7 +33,7 @@ pub fn test_build_table() {
     for script in VALID_SCRIPTS {
         match tests::get_ast(script) {
             Some(ast) => {
-                let table = verifier::build_symbol_table(ast);
+                let (table, _core_probes, _wasm_probes) = verifier::verify(&ast);
                 table.print();
             },
             None => {

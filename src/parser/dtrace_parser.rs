@@ -66,7 +66,8 @@ fn get_ast_from_pair(pair: Pair<Rule>) -> AstNode {
 
             trace!("Exiting dscript");
             AstNode::Dscript {
-                probes
+                probes,
+                // id: None
             }
         }
         Rule::probe_def => {

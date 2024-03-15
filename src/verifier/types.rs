@@ -1,5 +1,10 @@
-use log::{debug, error};
+use crate::parser::types as parser_types;
+use parser_types::{AstNode, CoreProbeName, WasmProbeName};
+use crate::verifier::providers;
 
+use providers::*;
+
+use log::{ debug, error };
 use std::any::Any;
 use std::collections::HashMap;
 use std::process::exit;
@@ -9,25 +14,44 @@ pub struct SymbolTable {
     scopes: Vec<Scope>,
     curr_scope: usize, // Index into `scopes` that stores our current scope
 
-    // TODO -- could split out
     records: Vec<Box<dyn Record>>,
+    curr_dtrace_rec: usize,
     curr_dscript_rec: usize,
     curr_probe_rec: usize,
     curr_method_rec: usize
+    // TODO -- fields
 }
 
 impl SymbolTable {
     pub fn new() -> Self {
+        // Create DtraceCore scope
         let ty = ScopeType::DtraceCore;
         let root_scope = Scope::new(0, ty.to_string(), Box::new(ty), None);
-        return SymbolTable {
+
+        // Create DtraceCore record
+        let rec_name = "DtraceCore";
+        let curr_dtrace_core = DtraceCoreRecord::new(
+            rec_name.clone().to_string(),
+            Box::new(ScopeType::DtraceCore)
+        );
+
+        let mut table = SymbolTable {
             scopes: vec![ root_scope ],
             curr_scope: 0,
             records: vec![],
+            curr_dtrace_rec: 0,
             curr_dscript_rec: 0,
             curr_probe_rec: 0,
             curr_method_rec: 0
-        }
+        };
+
+        // add symbols from the DtraceCore provider
+        table.put(rec_name.clone().to_string(), Box::new(curr_dtrace_core));
+
+        let dtrace_provider = DtraceCoreProvider::new();
+        dtrace_provider.add_symbols(&mut table);
+
+        table
     }
 
     pub fn reset(&mut self) {
@@ -83,6 +107,20 @@ impl SymbolTable {
 
     // ---- Records ----
 
+    pub fn get_dtrace_core_mut(&mut self, id: usize) -> &mut DtraceCoreRecord {
+        match self.records.get_mut(id).unwrap().as_any_mut().downcast_mut::<DtraceCoreRecord>() {
+            Some(d) => d,
+            None => {
+                error!("Something went wrong! Couldn't downcast to DtraceCoreRecord");
+                exit(1);
+            }
+        }
+    }
+
+    pub fn get_curr_dtrace_core_mut(&mut self) -> &mut DtraceCoreRecord {
+        self.get_dtrace_core_mut(self.curr_dscript_rec)
+    }
+
     pub fn get_dscript(&self, id: usize) -> &DscriptRecord {
         match self.records.get(id).unwrap().as_any().downcast_ref::<DscriptRecord>() {
             Some(d) => d,
@@ -121,8 +159,22 @@ impl SymbolTable {
         }
     }
 
+    pub fn get_probe_mut(&mut self, id: usize) -> &mut ProbeRecord {
+        match self.records.get_mut(id).unwrap().as_any_mut().downcast_mut::<ProbeRecord>() {
+            Some(d) => d,
+            None => {
+                error!("Something went wrong! Couldn't downcast to ProbeRecord");
+                exit(1);
+            }
+        }
+    }
+
     pub fn get_curr_probe(&self) -> &ProbeRecord {
         self.get_probe(self.curr_probe_rec)
+    }
+
+    pub fn get_curr_probe_mut(&mut self) -> &mut ProbeRecord {
+        self.get_probe_mut(self.curr_probe_rec)
     }
 
     pub fn get_method(&self, id: usize) -> &MethodRecord {
@@ -139,11 +191,10 @@ impl SymbolTable {
         self.get_method(self.curr_method_rec)
     }
 
-    pub fn add_dscript(&mut self, new_dscript_name: String) {
+    pub fn add_dscript(&mut self, new_dscript_name: String) -> usize {
         match self.lookup(&new_dscript_name) {
             Some(_) => {
                 error!("Duplicate dscript name [ {} ]", new_dscript_name);
-                // TODO -- failed!
                 exit(1);
             },
             None => {
@@ -163,15 +214,15 @@ impl SymbolTable {
                 self.curr_dscript_rec = id;
                 self.set_curr_scope_info(new_dscript_name.clone(), Box::new(ScopeType::Dscript));
                 // NOTE -- cannot return a probe...must be pulled out in calling function!
+                id
             }
         }
     }
 
-    pub fn add_probe(&mut self, new_probe_name: String) {
+    pub fn add_probe(&mut self, new_probe_name: String) -> usize {
         match self.lookup(&new_probe_name) {
             Some(_) => {
                 error!("Duplicate probe name [ {} ]", new_probe_name);
-                // TODO -- failed!
                 exit(1);
             },
             None => {
@@ -192,16 +243,21 @@ impl SymbolTable {
                 // set scope name and type
                 self.curr_probe_rec = id;
                 self.set_curr_scope_info(new_probe_name.clone(), Box::new(ScopeType::Probe));
+
+                // Add symbols for probe provider
+                let probe_provider = ProbeProvider::new();
+                probe_provider.add_symbols(self);
+
                 // NOTE -- cannot return a probe...must be pulled out in calling function!
+                id
             }
         }
     }
 
-    pub fn add_method(&mut self, new_method_name: String) {
+    pub fn add_core_method(&mut self, new_method_name: String) -> usize {
         match self.lookup(&new_method_name) {
             Some(_) => {
                 error!("Duplicate method name [ {new_method_name} ]");
-                // TODO -- failed!
                 exit(1);
             },
             None => {
@@ -213,8 +269,8 @@ impl SymbolTable {
 
                 // add method to current scope and dscript (only dscripts have methods for now)
                 let id = self.put(new_method_name.clone(), Box::new(curr_method));
-                let dscript = self.get_curr_dscript_mut();
-                dscript.add_method(new_method_name.clone(), id);
+                let dtrace_core = self.get_curr_dtrace_core_mut();
+                dtrace_core.add_method(new_method_name.clone(), id);
 
                 // enter method scope
                 self.enter_scope();
@@ -222,7 +278,62 @@ impl SymbolTable {
                 // set scope name and type
                 self.curr_method_rec = id;
                 self.set_curr_scope_info(new_method_name.clone(), Box::new(ScopeType::Method));
+
                 // NOTE -- cannot return a method...must be pulled out in calling function!
+                id
+            }
+        }
+    }
+
+    // TODO pub fn add_method(&mut self, new_method_name: String) -> usize {
+    //     match self.lookup(&new_method_name) {
+    //         Some(_) => {
+    //             error!("Duplicate method name [ {new_method_name} ]");
+    //             exit(1);
+    //         },
+    //         None => {
+    //             // create record
+    //             let curr_method = MethodRecord::new(
+    //                 new_method_name.clone(),
+    //                 Box::new(ScopeType::Method)
+    //             );
+    //
+    //             // add method to current scope and dscript (only dscripts have methods for now)
+    //             let id = self.put(new_method_name.clone(), Box::new(curr_method));
+    //             let dscript = self.get_curr_dscript_mut();
+    //             dscript.add_method(new_method_name.clone(), id);
+    //
+    //             // enter method scope
+    //             self.enter_scope();
+    //
+    //             // set scope name and type
+    //             self.curr_method_rec = id;
+    //             self.set_curr_scope_info(new_method_name.clone(), Box::new(ScopeType::Method));
+    //             // NOTE -- cannot return a method...must be pulled out in calling function!
+    //             id
+    //         }
+    //     }
+    // }
+
+    pub fn add_probe_local(&mut self, new_local_name: String) -> usize {
+        match self.lookup(&new_local_name) {
+            Some(_) => {
+                error!("Duplicate local name [ {new_local_name} ]");
+                exit(1);
+            },
+            None => {
+                // create record
+                let new_local = VarRecord::new(
+                    new_local_name.clone(),
+                    Box::new(ScopeType::Var)
+                );
+
+                // add field to current scope and probe
+                let id = self.put(new_local_name.clone(), Box::new(new_local));
+                let probe = self.get_curr_probe_mut();
+                probe.add_local(new_local_name.clone(), id);
+
+                id
             }
         }
     }
@@ -349,7 +460,7 @@ impl SymbolTable {
 
 pub struct Scope {
     id: usize,
-    name: String,
+    pub name: String,
     ty: Box<dyn RecordType>, // Should be scope type
 
     next: usize,
@@ -395,6 +506,7 @@ impl Scope {
 
     pub fn add_child(&mut self, id: usize) {
         self.children.push(id);
+        self.next += 1; // TODO -- check this
     }
 
     pub fn has_next(&self) -> bool {
@@ -421,16 +533,15 @@ pub trait Record {
     fn get_ty(&self) -> &Box<dyn RecordType>;
 }
 
-pub struct DscriptRecord {
+pub struct DtraceCoreRecord {
     name: String,
     ty: Box<dyn RecordType>,
 
-    probes: HashMap<String, usize>, // e.g. user defined probes
     globals: HashMap<String, usize>, // e.g. global variables provided by dtrace
     methods: HashMap<String, usize> // e.g. strcmp would go here
 }
 
-impl Record for DscriptRecord {
+impl Record for DtraceCoreRecord {
     fn as_any(&self) -> &dyn Any { self }
     fn as_any_mut(&mut self) -> &mut dyn Any { self }
     fn get_name(&self) -> &String {
@@ -441,26 +552,16 @@ impl Record for DscriptRecord {
     }
 }
 
-impl DscriptRecord {
+impl DtraceCoreRecord {
     pub fn new(name: String, ty: Box<dyn RecordType>) -> Self {
-        let probes = HashMap::new();
         let globals = HashMap::new();
         let methods = HashMap::new();
-        return DscriptRecord {
+        return DtraceCoreRecord {
             name,
             ty,
-            probes,
             globals,
             methods
         }
-    }
-
-    pub fn add_probe(&mut self, name: String, record: usize) {
-        self.probes.insert(name, record);
-    }
-
-    pub fn get_probe(&self, name: String) -> Option<&usize> {
-        return self.probes.get(&name);
     }
 
     pub fn add_method(&mut self, name: String, record: usize) {
@@ -495,12 +596,51 @@ impl DscriptRecord {
     // }
 }
 
+pub struct DscriptRecord {
+    name: String,
+    ty: Box<dyn RecordType>,
+
+    probes: HashMap<String, usize>, // e.g. user defined probes
+    // TODO methods: HashMap<String, usize> // e.g. user defined methods
+}
+
+impl Record for DscriptRecord {
+    fn as_any(&self) -> &dyn Any { self }
+    fn as_any_mut(&mut self) -> &mut dyn Any { self }
+    fn get_name(&self) -> &String {
+        &self.name
+    }
+    fn get_ty(&self) -> &Box<dyn RecordType> {
+        &self.ty
+    }
+}
+
+impl DscriptRecord {
+    pub fn new(name: String, ty: Box<dyn RecordType>) -> Self {
+        let probes = HashMap::new();
+        return DscriptRecord {
+            name,
+            ty,
+            probes
+        }
+    }
+
+    pub fn add_probe(&mut self, name: String, record: usize) {
+        self.probes.insert(name, record);
+    }
+
+    pub fn get_probe(&self, name: String) -> Option<&usize> {
+        return self.probes.get(&name);
+    }
+}
+
 pub struct MethodRecord {
     pub name: String,
     pub ty: Box<dyn RecordType>,
 
     params: HashMap<i32, usize>,
     next_param_idx: i32,
+    used: bool
 }
 
 impl Record for MethodRecord {
@@ -521,13 +661,18 @@ impl MethodRecord {
             name,
             ty,
             params,
-            next_param_idx: -1
+            next_param_idx: -1,
+            used: false
         }
     }
 
     pub fn add_param(&mut self, param: usize) {
         self.params.insert(self.next_param_idx, param);
         self.next_param_idx += 1;
+    }
+
+    pub fn mark_used(&mut self) {
+        self.used = true;
     }
 
     // pub fn contains_param(&self, name: String) -> bool {
@@ -557,6 +702,7 @@ impl MethodRecord {
         res += format!("\tty: {}", (*self.ty).to_string()).as_str();
         res += format!("\tparams: {}", self.print_params()).as_str();
         res += format!("\tnext_param_idx: {}", self.next_param_idx).as_str();
+        res += format!("\tused: {}", self.used).as_str();
         res += "]";
 
         res
@@ -658,6 +804,7 @@ pub enum ScopeType {
     Dscript,
     Probe,
     Method,
+    Var,
     Null
 }
 
@@ -668,6 +815,7 @@ impl RecordType for ScopeType {
             ScopeType::Dscript => "Dscript".to_string(),
             ScopeType::Probe => "Probe".to_string(),
             ScopeType::Method => "Method".to_string(),
+            ScopeType::Var => "Var".to_string(),
             ScopeType::Null => "Null".to_string(),
         }
     }
@@ -691,6 +839,10 @@ impl PartialEq for ScopeType {
             },
             ScopeType::Method => match other {
                 ScopeType::Method => true,
+                _ => false,
+            },
+            ScopeType::Var => match other {
+                ScopeType::Var => true,
                 _ => false,
             },
             ScopeType::Null => match other {
@@ -719,6 +871,10 @@ impl PartialEq for ScopeType {
                 ScopeType::Method => false,
                 _ => true,
             },
+            ScopeType::Var => match other {
+                ScopeType::Var => false,
+                _ => true,
+            },
             ScopeType::Null => match other {
                 ScopeType::Null => false,
                 _ => true,
@@ -736,6 +892,7 @@ impl FromStr for ScopeType {
             "DSCRIPT" => Ok(ScopeType::Dscript),
             "PROBE" => Ok(ScopeType::Probe),
             "METHOD" => Ok(ScopeType::Method),
+            "VAR" => Ok(ScopeType::Var),
             "NULL" => Ok(ScopeType::Null),
             _ => Err(()),
         }
@@ -820,3 +977,95 @@ impl FromStr for VarType {
         }
     }
 }
+
+// ** Organized AST **
+
+// ==================
+// = Helper Methods =
+// ==================
+
+pub fn unbox(contents: &Vec<Box<AstNode>>) -> Vec<AstNode> {
+    contents.into_iter().map(|item| {
+        *item.clone()
+    }).collect()
+}
+
+// =========
+// = Types =
+// =========
+
+pub struct AllWasmFnProbes {
+    all_probes: HashMap<String, WasmFnProbes>
+}
+
+impl AllWasmFnProbes {
+    pub fn new() -> Self {
+        return AllWasmFnProbes {
+            all_probes: HashMap::new()
+        }
+    }
+
+    fn add_or_append(&mut self, module: &String, function: &String, probe_type: &WasmProbeName, probe: WasmProbe) {
+        let mut new_fn_probes = WasmFnProbes::new(module.clone(), function.clone()); // might not be used
+
+        self.all_probes.entry(format!("{module}.{function}"))
+            .and_modify(|fn_probes| fn_probes.add_probe(module, function, probe_type, probe.clone()))
+            .or_insert_with(|| {
+                new_fn_probes.add_probe(module, function, probe_type, probe);
+                new_fn_probes
+            });
+    }
+
+    pub fn add_probe(&mut self, module: &String, function: &String, probe_type: &WasmProbeName, probe: WasmProbe) {
+        self.add_or_append(module, function, probe_type, probe);
+    }
+}
+
+pub struct WasmFnProbes {
+    module: String,
+    function: String,
+    fn_probes: HashMap<WasmProbeName, Vec<WasmProbe>>
+}
+
+impl WasmFnProbes {
+    pub fn new(module: String, function: String) -> Self {
+        let mut fps = HashMap::new();
+        fps.insert(WasmProbeName::Before, Vec::new());
+        fps.insert(WasmProbeName::After, Vec::new());
+        fps.insert(WasmProbeName::Alt, Vec::new());
+
+        return WasmFnProbes {
+            module,
+            function,
+            fn_probes: fps
+        }
+    }
+
+    pub fn add_probe(&mut self, module: &String, function: &String, probe_type: &WasmProbeName, probe: WasmProbe) {
+        if self.module != *module && self.function != *function {
+            println!("ERROR: trying to add probe with mismatching clause. Expected: {}:{}. Actual: {module}:{function}.", self.module, self.function);
+            return;
+        }
+
+        self.fn_probes.get_mut(&probe_type).unwrap().push(probe);
+    }
+}
+
+trait Probe {}
+
+#[derive(Clone, Debug)]
+pub struct WasmProbe {
+    // pub(crate) id: usize, // The id of this probe's scope (for SymbolTable lookup)
+    pub(crate) predicate: Option<AstNode>,
+    pub(crate) body: Option<Vec<AstNode>>
+}
+impl Probe for WasmProbe {}
+
+// TODO -- CoreProbe code generation
+#[derive(Clone, Debug)]
+pub struct CoreProbe {
+    // pub(crate) id: usize, // The id of this probe's scope (for SymbolTable lookup)
+    pub(crate) name: CoreProbeName,
+    pub(crate) body: Option<Vec<AstNode>>
+}
+impl Probe for CoreProbe {}

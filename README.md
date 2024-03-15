@@ -35,7 +35,7 @@ Steps:
     - Eventually:
         - Support global vars at Dscript scope
         - Support function defs at Dscript scope
-3. Pass both of these to a CodeGenerator
+3. TODO - Pass both of these to a CodeGenerator
     - Traverse the AST
         - Add in functions/variables built into DtraceCore and ProbeTypes to the SymbolTable for lookup
             - This structure keeps a logical separation between the provider symbols and the user symbols

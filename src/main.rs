@@ -1,9 +1,12 @@
 use crate::parser::dtrace_parser::*;
 use crate::compiler::dtrace_compiler::*;
+use crate::verifier::verifier::*;
 
 pub mod parser;
-pub mod compiler;
 pub mod verifier;
+// TODO -- remove all compiler stuff
+pub mod compiler;
+pub mod generator;
 
 use clap::Parser;
 use log::{info, error};
@@ -55,6 +58,7 @@ fn try_main() -> Result<(), failure::Error> {
 
     match dscript {
         Ok(unparsed_str) => {
+            // Parse the script and build the AST
             let ast = match parse_script(unparsed_str) {
                 Ok(ast) => {
                     info!("successfully parsed");
@@ -65,6 +69,12 @@ fn try_main() -> Result<(), failure::Error> {
                     exit(1);
                 }
             };
+
+            // Build the symbol table from the AST
+            let (symbol_table, _core_probes, _wasm_probes) = verify(&ast);
+            symbol_table.print();
+
+            //
 
             emit_wasm(&ast, &wasm_app_path, &output_path);
         },

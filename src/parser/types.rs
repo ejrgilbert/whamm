@@ -71,11 +71,13 @@ pub enum AstNode {
         function: String,
         name: WasmProbeName,
         predicate: Option<Box<AstNode>>,
-        body: Option<Vec<Box<AstNode>>>
+        body: Option<Vec<Box<AstNode>>>,
+        // id: Option<usize> // To be populated during verifier phase
     },
     CoreProbe {
         name: CoreProbeName,
-        body: Option<Vec<Box<AstNode>>>
+        body: Option<Vec<Box<AstNode>>>,
+        // id: Option<usize> // To be populated during verifier phase
     },
 
     Spec {
@@ -87,7 +89,8 @@ pub enum AstNode {
 
     // Dscript
     Dscript {
-        probes: Vec<Box<AstNode>>
+        probes: Vec<Box<AstNode>>,
+        // id: Option<usize> // To be populated during verifier phase
     },
 
     // EOI because it's an easier workaround than hiding the dscript rule
