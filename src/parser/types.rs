@@ -145,6 +145,16 @@ impl Str {
     }
 }
 
+fn tuple_as_str(tuple: &Tuple,  indent: &mut i32) -> String {
+    let mut s = "".to_string();
+    s += &format!("(");
+    for v in tuple.val.iter() {
+        s += &format!("{}, ", (*v).as_str(indent));
+    }
+    s += &format!(")");
+    s
+}
+
 pub struct Tuple {
     ty: DataType,
     val: Vec<Box<dyn Expression>>,
@@ -153,24 +163,12 @@ impl Expression for Tuple {
     fn as_any(&self) -> &dyn Any { self }
     fn as_any_mut(&mut self) -> &mut dyn Any { self }
     fn as_str(&self, indent: &mut i32) -> String {
-        let mut s = "".to_string();
-        s += &format!("(");
-        for v in self.val.iter() {
-            s += &format!("{}, ", (*v).as_str(indent));
-        }
-        s += &format!(")");
-        s
+        tuple_as_str(self, indent)
     }
 }
 impl Value for Tuple {
     fn as_str(&self, indent: &mut i32) -> String {
-        let mut s = "".to_string();
-        s += &format!("(");
-        for v in self.val.iter() {
-            s += &format!("{}, ", (*v).as_str(indent));
-        }
-        s += &format!(")");
-        s
+        tuple_as_str(self, indent)
     }
 }
 impl Tuple {
@@ -205,26 +203,6 @@ impl VarId {
     }
 }
 
-// struct ProbeId {
-//     name: String,
-// }
-// impl ID for ProbeId {}
-// impl ProbeId {
-//     pub fn from_pair(pair: Pair<Rule>) -> Self {
-//         trace!("Entering PROBE_ID");
-//         let name: String = pair.as_str().parse().unwrap();
-//
-//         trace!("Exiting PROBE_ID");
-//         ProbeId {
-//             name
-//         }
-//     }
-//
-//     fn as_str(&self, _indent: &i32) -> String {
-//         format!("{}", self.name)
-//     }
-// }
-
 // Statements
 pub trait Statement {
     fn as_str(&self, indent: &mut i32) -> String;
@@ -239,6 +217,20 @@ impl Statement for Assign {
     }
 }
 
+fn call_as_str(call: &Call, indent: &mut i32) -> String {
+    let mut s = "".to_string();
+    s += &format!("{}(", &call.fn_target.as_str(indent));
+    match &call.args {
+        Some(args) => {
+            for arg in args {
+                s += &format!("{}, ", (*arg).as_str(indent));
+            }
+        },
+        _ => {}
+    }
+    s += &format!(")");
+    s
+}
 pub struct Call {
     pub fn_target: VarId,
     pub args: Option<Vec<Box<dyn Expression>>>
@@ -248,34 +240,12 @@ impl Expression for Call {
     fn as_any(&self) -> &dyn Any { self }
     fn as_any_mut(&mut self) -> &mut dyn Any { self }
     fn as_str(&self, indent: &mut i32) -> String {
-        let mut s = "".to_string();
-        s += &format!("{}(", &self.fn_target.as_str(indent));
-        match &self.args {
-            Some(args) => {
-                for arg in args {
-                    s += &format!("{}, ", (*arg).as_str(indent));
-                }
-            },
-            _ => {}
-        }
-        s += &format!(")");
-        s
+        call_as_str(self, indent)
     }
 }
 impl Statement for Call {
     fn as_str(&self, indent: &mut i32) -> String {
-        let mut s = "".to_string();
-        s += &format!("{}(", &self.fn_target.as_str(indent));
-        match &self.args {
-            Some(args) => {
-                for arg in args {
-                    s += &format!("{}, ", (*arg).as_str(indent));
-                }
-            },
-            _ => {}
-        }
-        s += &format!(")");
-        s
+        call_as_str(self, indent)
     }
 }
 
@@ -519,9 +489,20 @@ impl Dtrace {
     }
 }
 
+fn globals_as_str(globals: &HashMap<VarId, Option<Box<dyn Value>>>, indent: &mut i32) -> String {
+    let mut s = "".to_string();
+    for (var_id, val) in globals.iter() {
+        s += &format!("{}{} := ", get_indent(indent), var_id.as_str(indent));
+        match val {
+            Some(v) => s += &format!("{}{NL}", (**v).as_str(indent)),
+            None => s += &format!("None{NL}")
+        }
+    }
+    s
+}
+
 pub struct Dscript {
     /// The providers of the probes that have been used in the Dscript.
-    /// TODO -- how to validate that these providers are available?
     pub providers: HashMap<String, Provider>,
     pub fns: Vec<Fn>,                               // User-provided
     pub globals: HashMap<VarId, Option<Box<dyn Value>>>, // User-provided
@@ -529,7 +510,7 @@ pub struct Dscript {
     /// The probes that have been used in the Dscript.
     /// This keeps us from having to keep multiple copies of probes across probe specs matched by
     ///     user specified glob pattern.
-    /// These will be the probes available for this Function. TODO -- how to validate this?
+    /// These will be the probes available for this Function.
     pub probes: Vec<Probe>,
 }
 impl Dscript {
@@ -559,13 +540,7 @@ impl Dscript {
         if self.globals.len() > 0 {
             s += &format!("{} dscript globals:{NL}", get_indent(indent));
             increase_indent(indent);
-            for (var_id, val) in self.globals.iter() {
-                s += &format!("{}{} := ", get_indent(indent), var_id.as_str(indent));
-                match val {
-                    Some(v) => s += &format!("{}{NL}", (**v).as_str(indent)),
-                    None => s += &format!("None{NL}")
-                }
-            }
+            globals_as_str(&self.globals, indent);
             decrease_indent(indent);
         }
 
@@ -653,11 +628,11 @@ impl Dscript {
 
 pub struct Provider {
     pub name: String,
-    pub fns: Vec<Fn>,                               // Comp-provided
+    pub fns: Vec<Fn>,                                    // Comp-provided
     pub globals: HashMap<VarId, Option<Box<dyn Value>>>, // Comp-provided
 
     /// The modules of the probes that have been used in the Dscript.
-    /// These will be sub-modules of this Provider. TODO -- how to validate this?
+    /// These will be sub-modules of this Provider.
     pub modules: HashMap<String, Module>
 }
 impl Provider {
@@ -687,13 +662,7 @@ impl Provider {
         if self.globals.len() > 0 {
             s += &format!("{} globals:{NL}", get_indent(indent));
             increase_indent(indent);
-            for (var_id, val) in self.globals.iter() {
-                s += &format!("{}{} := ", get_indent(indent), var_id.as_str(indent));
-                match val {
-                    Some(v) => s += &format!("{}{NL}", (**v).as_str(indent)),
-                    None => s += &format!("None{NL}")
-                }
-            }
+            globals_as_str(&self.globals, indent);
             decrease_indent(indent);
         }
 
@@ -733,11 +702,11 @@ impl Provider {
 
 pub struct Module {
     pub name: String,
-    pub fns: Vec<Fn>,                               // Comp-provided
+    pub fns: Vec<Fn>,                                    // Comp-provided
     pub globals: HashMap<VarId, Option<Box<dyn Value>>>, // Comp-provided
 
     /// The functions of the probes that have been used in the Dscript.
-    /// These will be sub-functions of this Module. TODO -- how to validate this?
+    /// These will be sub-functions of this Module.
     pub functions: HashMap<String, Function>
 }
 impl Module {
@@ -767,13 +736,7 @@ impl Module {
         if self.globals.len() > 0 {
             s += &format!("{} module globals:{NL}", get_indent(indent));
             increase_indent(indent);
-            for (var_id, val) in self.globals.iter() {
-                s += &format!("{}{} := ", get_indent(indent), var_id.as_str(indent));
-                match val {
-                    Some(v) => s += &format!("{}{NL}", (**v).as_str(indent)),
-                    None => s += &format!("None{NL}")
-                }
-            }
+            globals_as_str(&self.globals, indent);
             decrease_indent(indent);
         }
 
@@ -844,13 +807,7 @@ impl Function {
         if self.globals.len() > 0 {
             s += &format!("{} function globals:{NL}", get_indent(indent));
             increase_indent(indent);
-            for (var_id, val) in self.globals.iter() {
-                s += &format!("{}{} := ", get_indent(indent), var_id.as_str(indent));
-                match val {
-                    Some(v) => s += &format!("{}{NL}", (**v).as_str(indent)),
-                    None => s += &format!("None{NL}")
-                }
-            }
+            globals_as_str(&self.globals, indent);
             decrease_indent(indent);
         }
 
@@ -984,9 +941,6 @@ impl Probe {
         s
     }
 }
-
-// EOI because it's an easier workaround than hiding the dscript rule
-pub struct EOI {}
 
 // =====================
 // ---- Expressions ----

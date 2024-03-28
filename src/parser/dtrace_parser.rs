@@ -101,6 +101,38 @@ fn process_pair(dtrace: &mut Dtrace, mut dscript_count: usize, pair: Pair<Rule>)
     }
 }
 
+fn fn_call_from_rule(pair: Pair<Rule>) -> Call {
+    trace!("Entering fn_call");
+    // This has to be duplicated due to the Expression/Statement masking as the function return type
+    let mut pair = pair.into_inner();
+
+    // handle fn target
+    let fn_rule = pair.next().unwrap();
+    let fn_target = VarId::from_pair(fn_rule);
+
+    // handle args
+    let mut next = pair.next();
+    let mut init = vec!();
+    while next.is_some() {
+        let mut others = vec!();
+        others.push(expr_from_pairs(next.unwrap().into_inner()));
+        init.append(&mut others);
+        next = pair.next();
+    };
+    let args = if init.len() > 0 {
+        Some(init)
+    } else {
+        None
+    };
+
+    trace!("Exiting fn_call");
+
+    Call {
+        fn_target,
+        args
+    }
+}
+
 fn stmt_from_rule(pair: Pair<Rule>) -> Box<dyn Statement> {
     trace!("Entered stmt_from_rule");
     match pair.as_rule() {
@@ -129,36 +161,10 @@ fn stmt_from_rule(pair: Pair<Rule>) -> Box<dyn Statement> {
             });
         },
         Rule::fn_call => {
-            trace!("Entering fn_call");
-            // This has to be duplicated due to the Expression/Statement masking as the function return type
-            let mut pair = pair.into_inner();
-
-            // handle fn target
-            let fn_rule = pair.next().unwrap();
-            let fn_target = VarId::from_pair(fn_rule);
-
-            // handle args
-            let mut next = pair.next();
-            let mut init = vec!();
-            while next.is_some() {
-                let mut others = vec!();
-                others.push(expr_from_pairs(next.unwrap().into_inner()));
-                init.append(&mut others);
-                next = pair.next();
-            };
-            let args = if init.len() > 0 {
-                Some(init)
-            } else {
-                None
-            };
-
-            trace!("Exiting fn_call");
+            let call = fn_call_from_rule(pair);
             trace!("Exiting stmt_from_rule");
 
-            Box::new(Call {
-                fn_target,
-                args
-            })
+            Box::new(call)
         },
         rule => unreachable!("Expected statement, assignment, or fn_call, found {:?}", rule)
     }
@@ -233,35 +239,8 @@ fn probe_spec_from_rule(pair: Pair<Rule>) -> String {
 fn expr_primary(pair: Pair<Rule>) -> Box<dyn Expression> {
     match pair.as_rule() {
         Rule::fn_call => {
-            trace!("Entering fn_call");
-            let mut pair = pair.into_inner();
-            let str = pair.as_str();
-
-            // handle fn target
-            let fn_rule = pair.next().unwrap();
-            let fn_str = fn_rule.as_str().clone();
-            let fn_target = VarId::from_pair(fn_rule);
-
-            // handle args
-            let mut next = pair.next();
-            let mut init = vec!();
-            while next.is_some() {
-                let mut others = vec!();
-                others.push(expr_from_pairs(next.unwrap().into_inner()));
-                init.append(&mut others);
-                next = pair.next();
-            };
-            let args = if init.len() > 0 {
-                Some(init)
-            } else {
-                None
-            };
-
-            trace!("Exiting fn_call");
-            return Box::new(Call {
-                fn_target,
-                args
-            });
+            let call = fn_call_from_rule(pair);
+            return Box::new(call);
         },
         Rule::ID => {
             return Box::new(VarId::from_pair(pair));
