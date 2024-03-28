@@ -34,13 +34,12 @@ fn process_pair(dtrace: &mut Dtrace, mut dscript_count: usize, pair: Pair<Rule>)
     match pair.as_rule() {
         Rule::dscript => {
             trace!("Entering dscript");
+            let base_dscript = Dscript::new();
+            dtrace.add_dscript(base_dscript);
             pair.into_inner().for_each(| p | {
-                let base_dscript = Dscript::new();
-                dtrace.add_dscript(base_dscript);
-
                 process_pair(dtrace, dscript_count, p);
-                dscript_count += 1;
             });
+            dscript_count += 1;
             trace!("Exiting dscript");
         }
         Rule::probe_def => {
@@ -143,9 +142,7 @@ fn stmt_from_rule(pair: Pair<Rule>) -> Box<dyn Statement> {
             let mut init = vec!();
             while next.is_some() {
                 let mut others = vec!();
-                next.unwrap().into_inner().for_each(|n| {
-                    others.push(expr_from_pairs(n.into_inner()));
-                });
+                others.push(expr_from_pairs(next.unwrap().into_inner()));
                 init.append(&mut others);
                 next = pair.next();
             };
@@ -208,6 +205,13 @@ fn probe_spec_from_rule(pair: Pair<Rule>) -> String {
                 // Add missing '*'s
                 while spec_as_str.starts_with("::") {
                     contents.push("*".to_string());
+                    spec_as_str = spec_as_str.strip_prefix("::").unwrap();
+                    if spec_as_str.starts_with(":") {
+                        contents.push("*".to_string());
+                        spec_as_str = spec_as_str.strip_prefix(":").unwrap();
+                    }
+                }
+                if spec_as_str.starts_with(":") {
                     spec_as_str = spec_as_str.strip_prefix(":").unwrap();
                 }
             }
@@ -231,16 +235,21 @@ fn expr_primary(pair: Pair<Rule>) -> Box<dyn Expression> {
         Rule::fn_call => {
             trace!("Entering fn_call");
             let mut pair = pair.into_inner();
+            let str = pair.as_str();
 
             // handle fn target
             let fn_rule = pair.next().unwrap();
+            let fn_str = fn_rule.as_str().clone();
             let fn_target = VarId::from_pair(fn_rule);
 
             // handle args
-            let next = pair.next();
+            let mut next = pair.next();
             let mut init = vec!();
-            if next.is_some() {
-                init = next.unwrap().into_inner().map(expr_primary).collect();
+            while next.is_some() {
+                let mut others = vec!();
+                others.push(expr_from_pairs(next.unwrap().into_inner()));
+                init.append(&mut others);
+                next = pair.next();
             };
             let args = if init.len() > 0 {
                 Some(init)

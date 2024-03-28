@@ -178,30 +178,30 @@ pub fn run_test_on_valid_list(scripts: Vec<String>) {
 // = The Tests =
 // =============
 
-// #[test]
-// pub fn test_parse_valid_scripts() {
-//     setup_logger();
-//     run_test_on_valid_list(VALID_SCRIPTS.iter().map(|s| s.to_string()).collect());
-// }
-//
-// #[test]
-// pub fn test_parse_invalid_scripts() {
-//     setup_logger();
-//     for script in INVALID_SCRIPTS {
-//         info!("Parsing: {script}");
-//         assert!(
-//             !is_valid_script(script),
-//             "string = '{}' is recognized as valid, but it should not",
-//             script
-//         );
-//     }
-// }
-//
-// #[test]
-// pub fn test_ast_special_cases() {
-//     setup_logger();
-//     run_test_on_valid_list(SPECIAL.iter().map(|s| s.to_string()).collect());
-// }
+#[test]
+pub fn test_parse_valid_scripts() {
+    setup_logger();
+    run_test_on_valid_list(VALID_SCRIPTS.iter().map(|s| s.to_string()).collect());
+}
+
+#[test]
+pub fn test_parse_invalid_scripts() {
+    setup_logger();
+    for script in INVALID_SCRIPTS {
+        info!("Parsing: {script}");
+        assert!(
+            !is_valid_script(script),
+            "string = '{}' is recognized as valid, but it should not",
+            script
+        );
+    }
+}
+
+#[test]
+pub fn test_ast_special_cases() {
+    setup_logger();
+    run_test_on_valid_list(SPECIAL.iter().map(|s| s.to_string()).collect());
+}
 
 #[test]
 pub fn test_dtrace_print() {
@@ -220,8 +220,47 @@ wasm::call:alt /
 
     match get_ast(script) {
         Some(ast) => {
-            // TODO -- add assertions on expected numbers in AST
-            // TODO -- debug why provider has no submodules, maybe "*" not matching correctly?
+            // dscript
+            assert_eq!(1, ast.dscripts.len()); // a single dscript
+            let dscript = ast.dscripts.get(0).unwrap();
+
+            // provider
+            assert_eq!(1, dscript.providers.len());
+            let provider = dscript.providers.get("wasm").unwrap();
+            assert_eq!("wasm", provider.name);
+            assert_eq!(0, provider.globals.len());
+            assert_eq!(0, provider.fns.len());
+
+            assert_eq!(1, provider.modules.len());
+            let module = provider.modules.get("bytecode").unwrap();
+            assert_eq!("bytecode", module.name);
+            assert_eq!(0, module.globals.len());
+            assert_eq!(0, module.fns.len());
+
+            assert_eq!(1, module.functions.len());
+            let function = module.functions.get("call").unwrap();
+            assert_eq!("call", function.name);
+            assert_eq!(0, function.globals.len());
+            assert_eq!(0, function.fns.len());
+
+            assert_eq!(1, function.probe_map.len());
+            assert_eq!(1, function.probe_map.get("alt").unwrap().len());
+            assert_eq!(0, *function.probe_map.get("alt").unwrap().get(0).unwrap());
+
+            assert_eq!(1, dscript.probes.len()); // a single probe
+            let probe = dscript.probes.get(0).unwrap();
+
+            assert_eq!(0, probe.globals.len());
+            assert_eq!(0, probe.fns.len());
+            assert_eq!("alt", probe.name);
+
+            // probe predicate
+            assert!(probe.predicate.is_some());
+
+            // probe body
+            assert!(&probe.body.is_some());
+            assert_eq!(1, probe.body.as_ref().unwrap().len());
+
             println!("{}", ast.as_str());
         },
         None => {
@@ -231,52 +270,52 @@ wasm::call:alt /
     };
 }
 
-// #[test]
-// pub fn test_implicit_probe_defs_dumper() {
-//     setup_logger();
-//     let script = "wasm:::alt / (i == \"1\") && (b == \"2\") / { i = 0; }";
-//
-//     match get_ast(script) {
-//         Some(ast) => {
-//             dump_ast(ast);
-//         },
-//         None => {
-//             error!("Could not get ast from script: {script}");
-//             assert!(false);
-//         }
-//     };
-// }
+#[test]
+pub fn test_implicit_probe_defs_dumper() {
+    setup_logger();
+    let script = "wasm:::alt / (i == \"1\") && (b == \"2\") / { i = 0; }";
+
+    match get_ast(script) {
+        Some(ast) => {
+            println!("{}", ast.as_str());
+        },
+        None => {
+            error!("Could not get ast from script: {script}");
+            assert!(false);
+        }
+    };
+}
 
 // ===================
 // = Full File Tests =
 // ===================
 
-// #[test]
-// pub fn fault_injection() {
-//     setup_logger();
-//     let scripts = get_test_scripts("fault_injection");
-//     if scripts.len() == 0 {
-//         warn!("No test scripts found for `fault_injection` test.");
-//     }
-//     run_test_on_valid_list(scripts);
-// }
-//
-// #[test]
-// pub fn wizard_monitors() {
-//     setup_logger();
-//     let scripts = get_test_scripts("wizard_monitors");
-//     if scripts.len() == 0 {
-//         warn!("No test scripts found for `wizard_monitors` test.");
-//     }
-//     run_test_on_valid_list(scripts);
-// }
-//
-// #[test]
-// pub fn replay() {
-//     setup_logger();
-//     let scripts = get_test_scripts("replay");
-//     if scripts.len() == 0 {
-//         warn!("No test scripts found for `replay` test.");
-//     }
-//     run_test_on_valid_list(scripts);
-// }
+#[test]
+pub fn fault_injection() {
+    setup_logger();
+    let scripts = get_test_scripts("fault_injection");
+    if scripts.len() == 0 {
+        warn!("No test scripts found for `fault_injection` test.");
+    }
+    run_test_on_valid_list(scripts);
+}
+
+#[test]
+pub fn wizard_monitors() {
+    setup_logger();
+    let scripts = get_test_scripts("wizard_monitors");
+    if scripts.len() == 0 {
+        warn!("No test scripts found for `wizard_monitors` test.");
+    }
+    run_test_on_valid_list(scripts);
+}
+
+#[test]
+pub fn replay() {
+    setup_logger();
+    let scripts = get_test_scripts("replay");
+    if scripts.len() == 0 {
+        warn!("No test scripts found for `replay` test.");
+    }
+    run_test_on_valid_list(scripts);
+}

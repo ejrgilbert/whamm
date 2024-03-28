@@ -1,13 +1,13 @@
 use std::any::Any;
 use std::cmp;
 use std::collections::HashMap;
+use glob::Pattern;
 use pest::iterators::Pair;
 
 use pest_derive::Parser;
 use pest::pratt_parser::PrattParser;
 
 use log::{trace};
-use regex::Regex;
 
 #[derive(Parser)]
 #[grammar = "./parser/dtrace.pest"] // Path relative to base `src` dir
@@ -35,13 +35,6 @@ lazy_static::lazy_static! {
 // ============================
 // ===== Helper Functions =====
 // ============================
-
-fn fix_regex(regex_str: &str) -> String {
-    // TODO -- follow description here to fix correctly:
-    //         https://illumos.org/books/dtrace/chp-prog.html#chp-prog
-    let new_regex = format!("^{}$", regex_str);
-    new_regex.replace("*", "\\*")
-}
 
 const NL: &str = "\n";
 
@@ -91,7 +84,7 @@ impl DataType {
 }
 
 // Values
-trait Value {
+pub trait Value {
     fn as_str(&self, indent: &mut i32) -> String;
 }
 pub struct Integer {
@@ -256,7 +249,7 @@ impl Expression for Call {
     fn as_any_mut(&mut self) -> &mut dyn Any { self }
     fn as_str(&self, indent: &mut i32) -> String {
         let mut s = "".to_string();
-        s += &format!("{}.(", &self.fn_target.as_str(indent));
+        s += &format!("{}(", &self.fn_target.as_str(indent));
         match &self.args {
             Some(args) => {
                 for arg in args {
@@ -272,7 +265,7 @@ impl Expression for Call {
 impl Statement for Call {
     fn as_str(&self, indent: &mut i32) -> String {
         let mut s = "".to_string();
-        s += &format!("{}.(", &self.fn_target.as_str(indent));
+        s += &format!("{}(", &self.fn_target.as_str(indent));
         match &self.args {
             Some(args) => {
                 for arg in args {
@@ -312,7 +305,7 @@ impl Expression for BinOp {
 }
 
 // Functions
-struct Fn {
+pub struct Fn {
     name: String,
     params: Option<Vec<DataType>>,
     return_ty: Option<DataType>,
@@ -356,7 +349,7 @@ impl Fn {
             _ => {}
         }
         decrease_indent(indent);
-        s += &format!("{}}}{NL}", get_indent(indent));
+        s += &format!("{} }}{NL}", get_indent(indent));
 
         s
     }
@@ -511,7 +504,7 @@ impl Dtrace {
         s += &format!("Dtrace dscripts:{NL}");
         increase_indent(&mut indent);
         for (i, dscript) in self.dscripts.iter().enumerate() {
-            s += &format!("{} dscript{i}:{NL}", get_indent(&mut indent));
+            s += &format!("{} `dscript{i}`:{NL}", get_indent(&mut indent));
             increase_indent(&mut indent);
             s += &format!("{}", dscript.as_str(&mut indent));
             decrease_indent(&mut indent);
@@ -529,15 +522,15 @@ impl Dtrace {
 pub struct Dscript {
     /// The providers of the probes that have been used in the Dscript.
     /// TODO -- how to validate that these providers are available?
-    providers: HashMap<String, Provider>,
-    fns: Vec<Fn>,                               // User-provided
-    globals: HashMap<VarId, Option<Box<dyn Value>>>, // User-provided
+    pub providers: HashMap<String, Provider>,
+    pub fns: Vec<Fn>,                               // User-provided
+    pub globals: HashMap<VarId, Option<Box<dyn Value>>>, // User-provided
 
     /// The probes that have been used in the Dscript.
     /// This keeps us from having to keep multiple copies of probes across probe specs matched by
-    ///     user specified regex.
+    ///     user specified glob pattern.
     /// These will be the probes available for this Function. TODO -- how to validate this?
-    probes: Vec<Probe>,
+    pub probes: Vec<Probe>,
 }
 impl Dscript {
     pub fn new() -> Self {
@@ -580,7 +573,7 @@ impl Dscript {
         s += &format!("{} dscript providers:{NL}", get_indent(indent));
         for (name, provider) in self.providers.iter() {
             increase_indent(indent);
-            s += &format!("{} {name} {{{NL}", get_indent(indent));
+            s += &format!("{} `{name}` {{{NL}", get_indent(indent));
 
             increase_indent(indent);
             s += &format!("{}", provider.as_str(indent));
@@ -622,9 +615,9 @@ impl Dscript {
                 Some(prov) => prov,
                 None => {
                     // add the provider!
-                    let new_prov = Provider::new(provider_str.to_string());
-                    self.providers.insert(provider_str.to_string(), new_prov);
-                    self.providers.get_mut(provider_str).unwrap()
+                    let new_prov = Provider::new(provider_str.to_lowercase().to_string());
+                    self.providers.insert(provider_str.to_lowercase().to_string(), new_prov);
+                    self.providers.get_mut(&provider_str.to_lowercase()).unwrap()
                 }
             };
             for module_str in Module::get_matches(provided_probes,provider_str, mod_patt).iter() {
@@ -633,9 +626,9 @@ impl Dscript {
                     Some(m) => m,
                     None => {
                         // add the module!
-                        let new_mod = Module::new(module_str.to_string());
-                        provider.modules.insert(module_str.to_string(), new_mod);
-                        provider.modules.get_mut(module_str).unwrap()
+                        let new_mod = Module::new(module_str.to_lowercase().to_string());
+                        provider.modules.insert(module_str.to_lowercase().to_string(), new_mod);
+                        provider.modules.get_mut(&module_str.to_lowercase()).unwrap()
                     }
                 };
                 for function_str in Function::get_matches(provided_probes, provider_str, module_str, func_patt).iter() {
@@ -644,9 +637,9 @@ impl Dscript {
                         Some(f) => f,
                         None => {
                             // add the module!
-                            let new_fn = Function::new(function_str.to_string());
-                            module.functions.insert(function_str.to_string(), new_fn);
-                            module.functions.get_mut(function_str).unwrap()
+                            let new_fn = Function::new(function_str.to_lowercase().to_string());
+                            module.functions.insert(function_str.to_lowercase().to_string(), new_fn);
+                            module.functions.get_mut(&function_str.to_lowercase()).unwrap()
                         }
                     };
                     for name_str in Probe::get_matches(provided_probes, provider_str, module_str, function_str, nm_patt).iter() {
@@ -658,14 +651,14 @@ impl Dscript {
     }
 }
 
-struct Provider {
-    name: String,
-    fns: Vec<Fn>,                               // Comp-provided
-    globals: HashMap<VarId, Option<Box<dyn Value>>>, // Comp-provided
+pub struct Provider {
+    pub name: String,
+    pub fns: Vec<Fn>,                               // Comp-provided
+    pub globals: HashMap<VarId, Option<Box<dyn Value>>>, // Comp-provided
 
     /// The modules of the probes that have been used in the Dscript.
     /// These will be sub-modules of this Provider. TODO -- how to validate this?
-    modules: HashMap<String, Module>
+    pub modules: HashMap<String, Module>
 }
 impl Provider {
     pub fn new(name: String) -> Self {
@@ -707,31 +700,29 @@ impl Provider {
         // print modules
         if self.modules.len() > 0 {
             s += &format!("{} modules:{NL}", get_indent(indent));
-            increase_indent(indent);
             for (name, module) in self.modules.iter() {
                 increase_indent(indent);
-                s += &format!("{} {name} {{", get_indent(indent));
+                s += &format!("{} `{name}` {{{NL}", get_indent(indent));
 
                 increase_indent(indent);
                 s += &format!("{}", module.as_str(indent));
                 decrease_indent(indent);
 
-                s += &format!("}}");
+                s += &format!("{} }}{NL}", get_indent(indent));
                 decrease_indent(indent);
             }
-            decrease_indent(indent);
         }
 
         s
     }
 
-    /// Get the provider names that match the passed regex pattern
+    /// Get the provider names that match the passed glob pattern
     pub fn get_matches(provided_probes: &HashMap<String, HashMap<String, HashMap<String, Vec<String>>>>, prov_patt: &str) -> Vec<String> {
-        let regex = Regex::new(fix_regex(prov_patt).as_str()).unwrap();
+        let glob = Pattern::new(&prov_patt.to_lowercase()).unwrap();
 
         let mut matches = vec![];
         for (provider_name, _provider) in provided_probes.into_iter() {
-            if regex.is_match(provider_name) {
+            if glob.matches(&provider_name.to_lowercase()) {
                 matches.push(provider_name.clone());
             }
         }
@@ -740,14 +731,14 @@ impl Provider {
     }
 }
 
-struct Module {
-    name: String,
-    fns: Vec<Fn>,                               // Comp-provided
-    globals: HashMap<VarId, Option<Box<dyn Value>>>, // Comp-provided
+pub struct Module {
+    pub name: String,
+    pub fns: Vec<Fn>,                               // Comp-provided
+    pub globals: HashMap<VarId, Option<Box<dyn Value>>>, // Comp-provided
 
     /// The functions of the probes that have been used in the Dscript.
     /// These will be sub-functions of this Module. TODO -- how to validate this?
-    functions: HashMap<String, Function>
+    pub functions: HashMap<String, Function>
 }
 impl Module {
     pub fn new(name: String) -> Self {
@@ -761,9 +752,6 @@ impl Module {
 
     pub fn as_str(&self, indent: &mut i32) -> String {
         let mut s = "".to_string();
-
-        s += &format!("{}{}{NL}", get_indent(indent), self.name);
-        increase_indent(indent);
 
         // print fns
         if self.fns.len() > 0 {
@@ -791,32 +779,29 @@ impl Module {
 
         // print functions
         s += &format!("{} module functions:{NL}", get_indent(indent));
-        increase_indent(indent);
         for (name, function) in self.functions.iter() {
             increase_indent(indent);
-            s += &format!("{} {name} {{", get_indent(indent));
+            s += &format!("{} `{name}` {{{NL}", get_indent(indent));
 
             increase_indent(indent);
             s += &format!("{}", function.as_str(indent));
             decrease_indent(indent);
 
-            s += &format!("}}");
+            s += &format!("{} }}{NL}", get_indent(indent));
             decrease_indent(indent);
         }
-        decrease_indent(indent);
 
-        decrease_indent(indent);
         s
     }
 
-    /// Get the Module names that match the passed regex pattern
+    /// Get the Module names that match the passed glob pattern
     pub fn get_matches(provided_probes: &HashMap<String, HashMap<String, HashMap<String, Vec<String>>>>, provider: &str, mod_patt: &str) -> Vec<String> {
-        let regex = Regex::new(fix_regex(mod_patt).as_str()).unwrap();
+        let glob = Pattern::new(&mod_patt.to_lowercase()).unwrap();
 
         let mut matches = vec![];
 
         for (mod_name, _module) in provided_probes.get(provider).unwrap().into_iter() {
-            if regex.is_match(mod_name) {
+            if glob.matches(&mod_name.to_lowercase()) {
                 matches.push(mod_name.clone());
             }
         }
@@ -825,12 +810,12 @@ impl Module {
     }
 }
 
-struct Function {
-    name: String,
-    fns: Vec<Fn>,                                    // Comp-provided
-    globals: HashMap<VarId, Option<Box<dyn Value>>>, // Comp-provided
+pub struct Function {
+    pub name: String,
+    pub fns: Vec<Fn>,                                    // Comp-provided
+    pub globals: HashMap<VarId, Option<Box<dyn Value>>>, // Comp-provided
     /// Mapping from probe type to list of indices (into `probes` in dscript above) of the probes tied to that type
-    probe_map: HashMap<String, Vec<usize>>
+    pub probe_map: HashMap<String, Vec<usize>>
 }
 impl Function {
     pub fn new(name: String) -> Self {
@@ -844,9 +829,6 @@ impl Function {
 
     pub fn as_str(&self, indent: &mut i32) -> String {
         let mut s = "".to_string();
-
-        s += &format!("{}{}{NL}", get_indent(indent), self.name);
-        increase_indent(indent);
 
         // print fns
         if self.fns.len() > 0 {
@@ -873,37 +855,32 @@ impl Function {
         }
 
         // print functions
-        s += &format!("{} function probe_map:{NL}", get_indent(indent));
-        increase_indent(indent);
-        for (name, probe_idxs) in self.probe_map.iter() {
-            increase_indent(indent);
-            s += &format!("{} {name} {{", get_indent(indent));
+        if self.probe_map.len() > 0 {
+            s += &format!("{} function probe_map:{NL}", get_indent(indent));
+            for (name, probe_idxs) in self.probe_map.iter() {
+                increase_indent(indent);
+                s += &format!("{} {name}: ", get_indent(indent));
 
-            increase_indent(indent);
-            s += &format!("(");
-            for idx in probe_idxs {
-                s += &format!("{idx}, ");
+                s += &format!("(");
+                for idx in probe_idxs {
+                    s += &format!("{idx}, ");
+                }
+                s += &format!("){NL}");
+                decrease_indent(indent);
             }
-            s += &format!(")");
-            decrease_indent(indent);
-
-            s += &format!("}}");
-            decrease_indent(indent);
         }
-        decrease_indent(indent);
 
-        decrease_indent(indent);
         s
     }
 
-    /// Get the Function names that match the passed regex pattern
+    /// Get the Function names that match the passed glob pattern
     pub fn get_matches(provided_probes: &HashMap<String, HashMap<String, HashMap<String, Vec<String>>>>, provider: &str, module: &str, func_patt: &str) -> Vec<String> {
-        let regex = Regex::new(fix_regex(func_patt).as_str()).unwrap();
+        let glob = Pattern::new(&func_patt.to_lowercase()).unwrap();
 
         let mut matches = vec![];
 
         for (fn_name, _module) in provided_probes.get(provider).unwrap().get(module).unwrap().into_iter() {
-            if regex.is_match(fn_name) {
+            if glob.matches(&fn_name.to_lowercase()) {
                 matches.push(fn_name.clone());
             }
         }
@@ -925,23 +902,23 @@ impl Function {
     }
 }
 
-struct Probe {
-    name: String,
-    fns: Vec<Fn>,                                    // Comp-provided
-    globals: HashMap<VarId, Option<Box<dyn Value>>>, // Comp-provided
+pub struct Probe {
+    pub name: String,
+    pub fns: Vec<Fn>,                                    // Comp-provided
+    pub globals: HashMap<VarId, Option<Box<dyn Value>>>, // Comp-provided
 
-    predicate: Option<Box<dyn Expression>>,
-    body: Option<Vec<Box<dyn Statement>>>
+    pub predicate: Option<Box<dyn Expression>>,
+    pub body: Option<Vec<Box<dyn Statement>>>
 }
 impl Probe {
-    /// Get the Probe names that match the passed regex pattern
+    /// Get the Probe names that match the passed glob pattern
     pub fn get_matches(provided_probes: &HashMap<String, HashMap<String, HashMap<String, Vec<String>>>>, provider: &str, module: &str, function: &str, probe_patt: &str) -> Vec<String> {
-        let regex = Regex::new(fix_regex(probe_patt).as_str()).unwrap();
+        let glob = Pattern::new(&probe_patt.to_lowercase()).unwrap();
 
         let mut matches = vec![];
 
         for p_name in provided_probes.get(provider).unwrap().get(module).unwrap().get(function).unwrap().iter() {
-            if regex.is_match(p_name) {
+            if glob.matches(&p_name.to_lowercase()) {
                 matches.push(p_name.clone());
             }
         }
@@ -952,7 +929,7 @@ impl Probe {
     pub fn as_str(&self, indent: &mut i32) -> String {
         let mut s = "".to_string();
 
-        s += &format!("{} {} probe {{{NL}", get_indent(indent), self.name);
+        s += &format!("{} `{}` probe {{{NL}", get_indent(indent), self.name);
         increase_indent(indent);
 
         // print fns
@@ -980,7 +957,7 @@ impl Probe {
         }
 
         // print predicate
-        s += &format!("{} probe predicate:{NL}", get_indent(indent));
+        s += &format!("{} `predicate`:{NL}", get_indent(indent));
         increase_indent(indent);
         match &self.predicate {
             Some(pred) => s += &format!("{} / {} /{NL}", get_indent(indent), (**pred).as_str(indent)),
@@ -989,7 +966,7 @@ impl Probe {
         decrease_indent(indent);
 
         // print body
-        s += &format!("{} probe body:{NL}", get_indent(indent));
+        s += &format!("{} `body`:{NL}", get_indent(indent));
         increase_indent(indent);
         match &self.body {
             Some(b) => {
@@ -1002,7 +979,7 @@ impl Probe {
         decrease_indent(indent);
 
         decrease_indent(indent);
-        s += &format!("{}}}{NL}", get_indent(indent));
+        s += &format!("{} }}{NL}", get_indent(indent));
 
         s
     }
