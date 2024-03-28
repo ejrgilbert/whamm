@@ -36,19 +36,19 @@ lazy_static::lazy_static! {
 // ===== Helper Functions =====
 // ============================
 
-const NL: &str = "\n";
-
-fn increase_indent(i: &mut i32) {
-    *i += 1;
-}
-
-fn decrease_indent(i: &mut i32) {
-    *i -= 1;
-}
-
-fn get_indent(i: &mut i32) -> String {
-    "--".repeat(cmp::max(0, *i as usize))
-}
+// const NL: &str = "\n";
+//
+// fn increase_indent(i: &mut i32) {
+//     *i += 1;
+// }
+//
+// fn decrease_indent(i: &mut i32) {
+//     *i -= 1;
+// }
+//
+// fn get_indent(i: &mut i32) -> String {
+//     "--".repeat(cmp::max(0, *i as usize))
+// }
 
 // ===============
 // ==== Types ====
@@ -61,274 +61,70 @@ pub enum DataType {
     Str,
     Tuple
 }
-impl DataType {
-    fn as_str(&self) -> String {
-        match self {
-            DataType::Integer => {
-                "int".to_string()
-            },
-            DataType::Boolean => {
-                "bool".to_string()
-            },
-            DataType::Null => {
-                "null".to_string()
-            },
-            DataType::Str => {
-                "str".to_string()
-            },
-            DataType::Tuple => {
-                "tuple".to_string()
-            },
-        }
-    }
-}
 
 // Values
-pub trait Value {
-    fn as_str(&self, indent: &mut i32) -> String;
-}
-pub struct Integer {
-    pub ty: DataType,
-    pub val: i32,
-}
-impl Expression for Integer {
-    fn as_any(&self) -> &dyn Any { self }
-    fn as_any_mut(&mut self) -> &mut dyn Any { self }
-    fn as_str(&self, _indent: &mut i32) -> String {
-        let mut s = "".to_string();
-        s += &format!("{}", self.val);
-        s
-    }
-}
-impl Value for Integer {
-    fn as_str(&self, _indent: &mut i32) -> String {
-        let mut s = "".to_string();
-        s += &format!("{}", self.val);
-        s
-    }
-}
-impl Integer {
-    pub fn new(val: i32) -> Self {
-        Integer {
-            ty: DataType::Integer,
-            val
-        }
+pub enum Value {
+    Integer {
+        ty: DataType,
+        val: i32,
+    },
+    Str {
+        ty: DataType,
+        val: String,
+    },
+    Tuple {
+        ty: DataType,
+        vals: Vec<Expr>,
     }
 }
 
-pub struct Str {
-    ty: DataType,
-    val: String,
-}
-impl Expression for Str {
-    fn as_any(&self) -> &dyn Any { self }
-    fn as_any_mut(&mut self) -> &mut dyn Any { self }
-    fn as_str(&self, _indent: &mut i32) -> String {
-        let mut s = "".to_string();
-        s += &format!("\"{}\"", self.val);
-        s
-    }
-}
-impl Value for Str {
-    fn as_str(&self, _indent: &mut i32) -> String {
-        let mut s = "".to_string();
-        s += &format!("\"{}\"", self.val);
-        s
-    }
-}
-impl Str {
-    pub fn new(val: String) -> Self {
-        Str {
-            ty: DataType::Str,
-            val
-        }
-    }
-}
-
-fn tuple_as_str(tuple: &Tuple,  indent: &mut i32) -> String {
-    let mut s = "".to_string();
-    s += &format!("(");
-    for v in tuple.val.iter() {
-        s += &format!("{}, ", (*v).as_str(indent));
-    }
-    s += &format!(")");
-    s
-}
-
-pub struct Tuple {
-    ty: DataType,
-    val: Vec<Box<dyn Expression>>,
-}
-impl Expression for Tuple {
-    fn as_any(&self) -> &dyn Any { self }
-    fn as_any_mut(&mut self) -> &mut dyn Any { self }
-    fn as_str(&self, indent: &mut i32) -> String {
-        tuple_as_str(self, indent)
-    }
-}
-impl Value for Tuple {
-    fn as_str(&self, indent: &mut i32) -> String {
-        tuple_as_str(self, indent)
-    }
-}
-impl Tuple {
-    pub fn new(val: Vec<Box<dyn Expression>>) -> Self {
-        Tuple {
-            ty: DataType::Tuple,
-            val
-        }
-    }
-}
-
-// IDs
-trait ID {}
-pub struct VarId {
-    name: String,
-}
-impl Expression for VarId {
-    fn as_any(&self) -> &dyn Any { self }
-    fn as_any_mut(&mut self) -> &mut dyn Any { self }
-    fn as_str(&self, _indent: &mut i32) -> String {
-        format!("{}", self.name)
-    }
-}
-impl ID for VarId {}
-impl VarId {
-    pub fn from_pair(pair: Pair<Rule>) -> Self {
-        trace!("Entering ID");
-        trace!("Exiting ID");
-        VarId {
-            name: pair.as_str().parse().unwrap()
-        }
-    }
-}
 
 // Statements
-pub trait Statement {
-    fn as_str(&self, indent: &mut i32) -> String;
-}
-pub struct Assign {
-    pub var_id: VarId,
-    pub expr: Box<dyn Expression>
-}
-impl Statement for Assign {
-    fn as_str(&self, indent: &mut i32) -> String {
-        format!("{} = {}", self.var_id.as_str(indent), self.expr.as_str(indent))
+pub enum Statement {
+    Assign {
+        var_id: Expr, // Should be VarId
+        expr: Expr
+    },
+    /// Standalone `Exp` statement, which means we can write programs like this:
+    /// int main() {
+    ///   2 + 2;
+    ///   return 0;
+    /// }
+    Expr {
+        expr: Expr
     }
 }
 
-fn call_as_str(call: &Call, indent: &mut i32) -> String {
-    let mut s = "".to_string();
-    s += &format!("{}(", &call.fn_target.as_str(indent));
-    match &call.args {
-        Some(args) => {
-            for arg in args {
-                s += &format!("{}, ", (*arg).as_str(indent));
-            }
-        },
-        _ => {}
-    }
-    s += &format!(")");
-    s
-}
-pub struct Call {
-    pub fn_target: VarId,
-    pub args: Option<Vec<Box<dyn Expression>>>
-}
-// This can be in the context of an expression OR a complete statement!
-impl Expression for Call {
-    fn as_any(&self) -> &dyn Any { self }
-    fn as_any_mut(&mut self) -> &mut dyn Any { self }
-    fn as_str(&self, indent: &mut i32) -> String {
-        call_as_str(self, indent)
-    }
-}
-impl Statement for Call {
-    fn as_str(&self, indent: &mut i32) -> String {
-        call_as_str(self, indent)
-    }
-}
-
-// Expressions
-pub trait Expression {
-    fn as_any(&self) -> &dyn Any;
-    fn as_any_mut(&mut self) -> &mut dyn Any;
-    fn as_str(&self, indent: &mut i32) -> String;
-}
-pub struct BinOp {
-    pub lhs: Box<dyn Expression>,
-    pub op: Op,
-    pub rhs: Box<dyn Expression>,
-}
-impl Expression for BinOp {
-    fn as_any(&self) -> &dyn Any { self }
-    fn as_any_mut(&mut self) -> &mut dyn Any { self }
-    fn as_str(&self, indent: &mut i32) -> String {
-        let mut s = "".to_string();
-        s += &format!("{} {} {}",
-            self.lhs.as_str(indent),
-            self.op.as_str(),
-            self.rhs.as_str(indent)
-        );
-        s
+pub enum Expr {
+    BinOp {
+        lhs: Box<Expr>,
+        op: Op,
+        rhs: Box<Expr>,
+    },
+    Call {
+        fn_target: Box<Expr>, // Should be VarId
+        args: Option<Vec<Box<Expr>>>
+    },
+    VarId {
+        name: String,
+    },
+    Primitive {
+        val: Value
     }
 }
 
 // Functions
 pub struct Fn {
-    name: String,
-    params: Option<Vec<DataType>>,
-    return_ty: Option<DataType>,
-    body: Option<Vec<Box<dyn Statement>>>
-}
-impl Fn {
-    pub fn as_str(&self, indent: &mut i32) -> String {
-        let mut s = "".to_string();
-
-        // print name
-        s += &format!("{} {} (", get_indent(indent), &self.name);
-
-        // print params
-        match &self.params {
-            Some(ps) => {
-                for p in ps.iter() {
-                    s += &format!("{}, ", p.as_str());
-                }
-            },
-            _ => {}
-        }
-        s += &format!(")");
-
-        // print return type
-        match &self.return_ty {
-            Some(ty) => {
-                s += &format!(" -> {}", ty.as_str());
-            },
-            _ => {}
-        }
-        s += &format!(" {{{NL}");
-
-        // print body
-        increase_indent(indent);
-        match &self.body {
-            Some(stmts) => {
-                for stmt in stmts.iter() {
-                    s += &format!("{}{}{NL}", get_indent(indent),( **stmt).as_str(indent));
-                }
-            },
-            _ => {}
-        }
-        decrease_indent(indent);
-        s += &format!("{} }}{NL}", get_indent(indent));
-
-        s
-    }
+    pub(crate) name: String,
+    pub(crate) params: Option<Vec<DataType>>,
+    pub(crate) return_ty: Option<DataType>,
+    pub(crate) body: Option<Vec<Statement>>
 }
 
 pub struct Dtrace {
     pub provided_probes: HashMap<String, HashMap<String, HashMap<String, Vec<String>>>>,
-    fns: Vec<Fn>,                                    // Comp-provided
-    globals: HashMap<VarId, Option<Box<dyn Value>>>, // Comp-provided
+    pub(crate) fns: Vec<Fn>,                          // Comp-provided
+    pub(crate) globals: HashMap<Expr, Option<Value>>, // Comp-provided, should be VarId -> Value
 
     pub dscripts: Vec<Dscript>
 }
@@ -442,70 +238,16 @@ impl Dtrace {
             ("bytecode".to_string(), wasm_bytecode_map)
         ]));
     }
-
-    pub fn as_str(&self) -> String {
-        let mut indent = 0;
-        let mut s = "".to_string();
-
-        // print fns
-        if self.fns.len() > 0 {
-            s += &format!("Dtrace functions:{NL}");
-            increase_indent(&mut indent);
-            for f in self.fns.iter() {
-                s += &format!("{}{NL}", f.as_str(&mut indent));
-            }
-            decrease_indent(&mut indent);
-        }
-
-        // print globals
-        if self.globals.len() > 0 {
-            s += &format!("Dtrace globals:{NL}");
-            increase_indent(&mut indent);
-            for (var_id, val) in self.globals.iter() {
-                s += &format!("{}{} := ", get_indent(&mut indent), var_id.as_str(&mut indent));
-                match val {
-                    Some(v) => s += &format!("{}{NL}", (**v).as_str(&mut indent)),
-                    None => s += &format!("None{NL}")
-                }
-            }
-            decrease_indent(&mut indent);
-        }
-
-        s += &format!("Dtrace dscripts:{NL}");
-        increase_indent(&mut indent);
-        for (i, dscript) in self.dscripts.iter().enumerate() {
-            s += &format!("{} `dscript{i}`:{NL}", get_indent(&mut indent));
-            increase_indent(&mut indent);
-            s += &format!("{}", dscript.as_str(&mut indent));
-            decrease_indent(&mut indent);
-        }
-        decrease_indent(&mut indent);
-
-        s
-    }
-
     pub fn add_dscript(&mut self, dscript: Dscript) {
         self.dscripts.push(dscript);
     }
-}
-
-fn globals_as_str(globals: &HashMap<VarId, Option<Box<dyn Value>>>, indent: &mut i32) -> String {
-    let mut s = "".to_string();
-    for (var_id, val) in globals.iter() {
-        s += &format!("{}{} := ", get_indent(indent), var_id.as_str(indent));
-        match val {
-            Some(v) => s += &format!("{}{NL}", (**v).as_str(indent)),
-            None => s += &format!("None{NL}")
-        }
-    }
-    s
 }
 
 pub struct Dscript {
     /// The providers of the probes that have been used in the Dscript.
     pub providers: HashMap<String, Provider>,
     pub fns: Vec<Fn>,                               // User-provided
-    pub globals: HashMap<VarId, Option<Box<dyn Value>>>, // User-provided
+    pub globals: HashMap<Expr, Option<Value>>, // User-provided, should be VarId -> Value
 
     /// The probes that have been used in the Dscript.
     /// This keeps us from having to keep multiple copies of probes across probe specs matched by
@@ -523,57 +265,11 @@ impl Dscript {
         }
     }
 
-    pub fn as_str(&self, indent: &mut i32) -> String {
-        let mut s = "".to_string();
-
-        // print fns
-        if self.fns.len() > 0 {
-            s += &format!("{} dscript functions:{NL}", get_indent(indent));
-            increase_indent(indent);
-            for f in self.fns.iter() {
-                s += &format!("{}{}{NL}", get_indent(indent), f.as_str(indent));
-            }
-            decrease_indent(indent);
-        }
-
-        // print globals
-        if self.globals.len() > 0 {
-            s += &format!("{} dscript globals:{NL}", get_indent(indent));
-            increase_indent(indent);
-            globals_as_str(&self.globals, indent);
-            decrease_indent(indent);
-        }
-
-        // print providers
-        s += &format!("{} dscript providers:{NL}", get_indent(indent));
-        for (name, provider) in self.providers.iter() {
-            increase_indent(indent);
-            s += &format!("{} `{name}` {{{NL}", get_indent(indent));
-
-            increase_indent(indent);
-            s += &format!("{}", provider.as_str(indent));
-            decrease_indent(indent);
-
-            s += &format!("{} }}{NL}", get_indent(indent));
-            decrease_indent(indent);
-        }
-
-        // print probes
-        s += &format!("{} dscript probes:{NL}", get_indent(indent));
-        increase_indent(indent);
-        for probe in self.probes.iter() {
-            s += &format!("{}", probe.as_str(indent));
-        }
-        decrease_indent(indent);
-
-        s
-    }
-
     /// Iterates over all of the matched providers, modules, functions, and probe names
     /// to add a copy of the user-defined Probe for each of them.
     pub fn add_probe(&mut self, provided_probes: &HashMap<String, HashMap<String, HashMap<String, Vec<String>>>>,
                      prov_patt: &str, mod_patt: &str, func_patt: &str, nm_patt: &str,
-                     predicate: Option<Box<dyn Expression>>, body: Option<Vec<Box<dyn Statement>>>) {
+                     predicate: Option<Expr>, body: Option<Vec<Statement>>) {
         // Add new probe to dscript
         let idx = self.probes.len();
         self.probes.push(Probe {
@@ -628,8 +324,8 @@ impl Dscript {
 
 pub struct Provider {
     pub name: String,
-    pub fns: Vec<Fn>,                                    // Comp-provided
-    pub globals: HashMap<VarId, Option<Box<dyn Value>>>, // Comp-provided
+    pub fns: Vec<Fn>,                          // Comp-provided
+    pub globals: HashMap<Expr, Option<Value>>, // Comp-provided, should be VarId -> Value
 
     /// The modules of the probes that have been used in the Dscript.
     /// These will be sub-modules of this Provider.
@@ -643,46 +339,6 @@ impl Provider {
             globals: HashMap::new(),
             modules: HashMap::new()
         }
-    }
-
-    pub fn as_str(&self, indent: &mut i32) -> String {
-        let mut s = "".to_string();
-
-        // print fns
-        if self.fns.len() > 0 {
-            s += &format!("{} functions:{NL}", get_indent(indent));
-            increase_indent(indent);
-            for f in self.fns.iter() {
-                s += &format!("{}{}{NL}", get_indent(indent), f.as_str(indent));
-            }
-            decrease_indent(indent);
-        }
-
-        // print globals
-        if self.globals.len() > 0 {
-            s += &format!("{} globals:{NL}", get_indent(indent));
-            increase_indent(indent);
-            globals_as_str(&self.globals, indent);
-            decrease_indent(indent);
-        }
-
-        // print modules
-        if self.modules.len() > 0 {
-            s += &format!("{} modules:{NL}", get_indent(indent));
-            for (name, module) in self.modules.iter() {
-                increase_indent(indent);
-                s += &format!("{} `{name}` {{{NL}", get_indent(indent));
-
-                increase_indent(indent);
-                s += &format!("{}", module.as_str(indent));
-                decrease_indent(indent);
-
-                s += &format!("{} }}{NL}", get_indent(indent));
-                decrease_indent(indent);
-            }
-        }
-
-        s
     }
 
     /// Get the provider names that match the passed glob pattern
@@ -702,8 +358,8 @@ impl Provider {
 
 pub struct Module {
     pub name: String,
-    pub fns: Vec<Fn>,                                    // Comp-provided
-    pub globals: HashMap<VarId, Option<Box<dyn Value>>>, // Comp-provided
+    pub fns: Vec<Fn>,                          // Comp-provided
+    pub globals: HashMap<Expr, Option<Value>>, // Comp-provided, should be VarId -> Value
 
     /// The functions of the probes that have been used in the Dscript.
     /// These will be sub-functions of this Module.
@@ -717,44 +373,6 @@ impl Module {
             globals: HashMap::new(),
             functions: HashMap::new()
         }
-    }
-
-    pub fn as_str(&self, indent: &mut i32) -> String {
-        let mut s = "".to_string();
-
-        // print fns
-        if self.fns.len() > 0 {
-            s += &format!("{} module fns:{NL}", get_indent(indent));
-            increase_indent(indent);
-            for f in self.fns.iter() {
-                s += &format!("{}{}{NL}", get_indent(indent), f.as_str(indent));
-            }
-            decrease_indent(indent);
-        }
-
-        // print globals
-        if self.globals.len() > 0 {
-            s += &format!("{} module globals:{NL}", get_indent(indent));
-            increase_indent(indent);
-            globals_as_str(&self.globals, indent);
-            decrease_indent(indent);
-        }
-
-        // print functions
-        s += &format!("{} module functions:{NL}", get_indent(indent));
-        for (name, function) in self.functions.iter() {
-            increase_indent(indent);
-            s += &format!("{} `{name}` {{{NL}", get_indent(indent));
-
-            increase_indent(indent);
-            s += &format!("{}", function.as_str(indent));
-            decrease_indent(indent);
-
-            s += &format!("{} }}{NL}", get_indent(indent));
-            decrease_indent(indent);
-        }
-
-        s
     }
 
     /// Get the Module names that match the passed glob pattern
@@ -775,8 +393,8 @@ impl Module {
 
 pub struct Function {
     pub name: String,
-    pub fns: Vec<Fn>,                                    // Comp-provided
-    pub globals: HashMap<VarId, Option<Box<dyn Value>>>, // Comp-provided
+    pub fns: Vec<Fn>,                          // Comp-provided
+    pub globals: HashMap<Expr, Option<Value>>, // Comp-provided, should be VarId -> Value
     /// Mapping from probe type to list of indices (into `probes` in dscript above) of the probes tied to that type
     pub probe_map: HashMap<String, Vec<usize>>
 }
@@ -788,46 +406,6 @@ impl Function {
             globals: HashMap::new(),
             probe_map: HashMap::new()
         }
-    }
-
-    pub fn as_str(&self, indent: &mut i32) -> String {
-        let mut s = "".to_string();
-
-        // print fns
-        if self.fns.len() > 0 {
-            s += &format!("{} function fns:{NL}", get_indent(indent));
-            increase_indent(indent);
-            for f in self.fns.iter() {
-                s += &format!("{}{}{NL}", get_indent(indent), f.as_str(indent));
-            }
-            decrease_indent(indent);
-        }
-
-        // print globals
-        if self.globals.len() > 0 {
-            s += &format!("{} function globals:{NL}", get_indent(indent));
-            increase_indent(indent);
-            globals_as_str(&self.globals, indent);
-            decrease_indent(indent);
-        }
-
-        // print functions
-        if self.probe_map.len() > 0 {
-            s += &format!("{} function probe_map:{NL}", get_indent(indent));
-            for (name, probe_idxs) in self.probe_map.iter() {
-                increase_indent(indent);
-                s += &format!("{} {name}: ", get_indent(indent));
-
-                s += &format!("(");
-                for idx in probe_idxs {
-                    s += &format!("{idx}, ");
-                }
-                s += &format!("){NL}");
-                decrease_indent(indent);
-            }
-        }
-
-        s
     }
 
     /// Get the Function names that match the passed glob pattern
@@ -861,11 +439,11 @@ impl Function {
 
 pub struct Probe {
     pub name: String,
-    pub fns: Vec<Fn>,                                    // Comp-provided
-    pub globals: HashMap<VarId, Option<Box<dyn Value>>>, // Comp-provided
+    pub fns: Vec<Fn>,                          // Comp-provided
+    pub globals: HashMap<Expr, Option<Value>>, // Comp-provided, should be VarId -> Value
 
-    pub predicate: Option<Box<dyn Expression>>,
-    pub body: Option<Vec<Box<dyn Statement>>>
+    pub predicate: Option<Expr>,
+    pub body: Option<Vec<Statement>>
 }
 impl Probe {
     /// Get the Probe names that match the passed glob pattern
@@ -881,64 +459,6 @@ impl Probe {
         }
 
         matches
-    }
-
-    pub fn as_str(&self, indent: &mut i32) -> String {
-        let mut s = "".to_string();
-
-        s += &format!("{} `{}` probe {{{NL}", get_indent(indent), self.name);
-        increase_indent(indent);
-
-        // print fns
-        if self.fns.len() > 0 {
-            s += &format!("{} probe fns:{NL}", get_indent(indent));
-            increase_indent(indent);
-            for f in self.fns.iter() {
-                s += &format!("{}{}{NL}", get_indent(indent), f.as_str(indent));
-            }
-            decrease_indent(indent);
-        }
-
-        // print globals
-        if self.globals.len() > 0 {
-            s += &format!("{} probe globals:{NL}", get_indent(indent));
-            increase_indent(indent);
-            for (var_id, val) in self.globals.iter() {
-                s += &format!("{}{} := ", get_indent(indent), var_id.as_str(indent));
-                match val {
-                    Some(v) => s += &format!("{}{NL}", (**v).as_str(indent)),
-                    None => s += &format!("None{NL}")
-                }
-            }
-            decrease_indent(indent);
-        }
-
-        // print predicate
-        s += &format!("{} `predicate`:{NL}", get_indent(indent));
-        increase_indent(indent);
-        match &self.predicate {
-            Some(pred) => s += &format!("{} / {} /{NL}", get_indent(indent), (**pred).as_str(indent)),
-            None => s += &format!("{} / None /{NL}", get_indent(indent))
-        }
-        decrease_indent(indent);
-
-        // print body
-        s += &format!("{} `body`:{NL}", get_indent(indent));
-        increase_indent(indent);
-        match &self.body {
-            Some(b) => {
-                for stmt in b {
-                    s += &format!("{} {};{NL}", get_indent(indent), (**stmt).as_str(indent))
-                }
-            },
-            None => s += &format!("{{}}")
-        }
-        decrease_indent(indent);
-
-        decrease_indent(indent);
-        s += &format!("{} }}{NL}", get_indent(indent));
-
-        s
     }
 }
 
@@ -970,22 +490,21 @@ pub enum Op {
     Modulo,
 }
 
-impl Op {
-    pub(crate) fn as_str(&self) -> &'static str {
-        match self {
-            Op::And => "&&",
-            Op::Or => "||",
-            Op::EQ => "==",
-            Op::NE => "!=",
-            Op::GE => ">=",
-            Op::GT => ">",
-            Op::LE => "<=",
-            Op::LT => "<",
-            Op::Add => "+",
-            Op::Subtract => "-",
-            Op::Multiply => "*",
-            Op::Divide => "/",
-            Op::Modulo => "%",
-        }
-    }
+// =================
+// ==== Visitor ====
+// =================
+
+pub trait DtraceVisitor<T> {
+    fn visit_datatype(&mut self, datatype: &DataType) -> T;
+    fn visit_value(&mut self, int: &Value) -> T;
+    fn visit_stmt(&mut self, assign: &Statement) -> T;
+    fn visit_expr(&mut self, call: &Expr) -> T;
+    fn visit_op(&mut self, op: &Op) -> T;
+    fn visit_fn(&mut self, f: &Fn) -> T;
+    fn visit_dtrace(&mut self, dtrace: &Dtrace) -> T;
+    fn visit_dscript(&mut self, dscript: &Dscript) -> T;
+    fn visit_provider(&mut self, provider: &Provider) -> T;
+    fn visit_module(&mut self, module: &Module) -> T;
+    fn visit_function(&mut self, function: &Function) -> T;
+    fn visit_probe(&mut self, probe: &Probe) -> T;
 }

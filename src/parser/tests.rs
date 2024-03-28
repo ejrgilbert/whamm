@@ -1,9 +1,10 @@
 use crate::parser::dtrace_parser::*;
-use crate::parser::types::{Dtrace};
+use crate::parser::types::{Dtrace, DtraceVisitor};
 
 use glob::{glob, glob_with};
 
 use log::{info, error, warn};
+use crate::parser::print_visitor::AsStrVisitor;
 
 // =================
 // = Setup Logging =
@@ -203,6 +204,11 @@ pub fn test_ast_special_cases() {
     run_test_on_valid_list(SPECIAL.iter().map(|s| s.to_string()).collect());
 }
 
+fn print_ast(ast: &Dtrace ) {
+    let mut visitor = AsStrVisitor::new();
+    println!("{}", visitor.visit_dtrace(&ast));
+}
+
 #[test]
 pub fn test_dtrace_print() {
     setup_logger();
@@ -261,7 +267,7 @@ wasm::call:alt /
             assert!(&probe.body.is_some());
             assert_eq!(1, probe.body.as_ref().unwrap().len());
 
-            println!("{}", ast.as_str());
+            print_ast(&ast);
         },
         None => {
             error!("Could not get ast from script: {script}");
@@ -277,7 +283,7 @@ pub fn test_implicit_probe_defs_dumper() {
 
     match get_ast(script) {
         Some(ast) => {
-            println!("{}", ast.as_str());
+            print_ast(&ast);
         },
         None => {
             error!("Could not get ast from script: {script}");

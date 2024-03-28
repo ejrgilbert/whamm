@@ -6,7 +6,7 @@ use pest::Parser;
 use pest::iterators::{Pair, Pairs};
 
 use log::{trace};
-use crate::parser::types::{Assign, BinOp, Call, Dscript, Dtrace, Expression, Integer, Statement, Str, Tuple, VarId};
+use crate::parser::types::{DataType, Dscript, Dtrace, Expr, Statement, Value};
 
 // ====================
 // = AST Constructors =
@@ -101,21 +101,23 @@ fn process_pair(dtrace: &mut Dtrace, mut dscript_count: usize, pair: Pair<Rule>)
     }
 }
 
-fn fn_call_from_rule(pair: Pair<Rule>) -> Call {
+fn fn_call_from_rule(pair: Pair<Rule>) -> Expr {
     trace!("Entering fn_call");
     // This has to be duplicated due to the Expression/Statement masking as the function return type
     let mut pair = pair.into_inner();
 
     // handle fn target
     let fn_rule = pair.next().unwrap();
-    let fn_target = VarId::from_pair(fn_rule);
+    let fn_target = Expr::VarId {
+        name: fn_rule.as_str().parse().unwrap()
+    };
 
     // handle args
     let mut next = pair.next();
     let mut init = vec!();
     while next.is_some() {
         let mut others = vec!();
-        others.push(expr_from_pairs(next.unwrap().into_inner()));
+        others.push(Box::new(expr_from_pairs(next.unwrap().into_inner())));
         init.append(&mut others);
         next = pair.next();
     };
@@ -127,13 +129,13 @@ fn fn_call_from_rule(pair: Pair<Rule>) -> Call {
 
     trace!("Exiting fn_call");
 
-    Call {
-        fn_target,
+    Expr::Call {
+        fn_target: Box::new(fn_target),
         args
     }
 }
 
-fn stmt_from_rule(pair: Pair<Rule>) -> Box<dyn Statement> {
+fn stmt_from_rule(pair: Pair<Rule>) -> Statement {
     trace!("Entered stmt_from_rule");
     match pair.as_rule() {
         Rule::statement => {
@@ -150,21 +152,25 @@ fn stmt_from_rule(pair: Pair<Rule>) -> Box<dyn Statement> {
             let var_id_rule = pair.next().unwrap();
             let expr_rule = pair.next().unwrap().into_inner();
 
-            let var_id = VarId::from_pair(var_id_rule);
+            let var_id = Expr::VarId {
+                name: var_id_rule.as_str().parse().unwrap()
+            };
             let expr = expr_from_pairs(expr_rule);
             trace!("Exiting assignment");
             trace!("Exiting stmt_from_rule");
 
-            return Box::new(Assign {
+            return Statement::Assign {
                 var_id,
                 expr,
-            });
+            };
         },
         Rule::fn_call => {
             let call = fn_call_from_rule(pair);
             trace!("Exiting stmt_from_rule");
 
-            Box::new(call)
+            return Statement::Expr {
+                expr: call
+            };
         },
         rule => unreachable!("Expected statement, assignment, or fn_call, found {:?}", rule)
     }
@@ -236,14 +242,16 @@ fn probe_spec_from_rule(pair: Pair<Rule>) -> String {
     }
 }
 
-fn expr_primary(pair: Pair<Rule>) -> Box<dyn Expression> {
+fn expr_primary(pair: Pair<Rule>) -> Expr {
     match pair.as_rule() {
         Rule::fn_call => {
             let call = fn_call_from_rule(pair);
-            return Box::new(call);
+            return call;
         },
         Rule::ID => {
-            return Box::new(VarId::from_pair(pair));
+            return Expr::VarId {
+                name: pair.as_str().parse().unwrap()
+            };
         },
         Rule::tuple => {
             trace!("Entering tuple");
@@ -251,14 +259,24 @@ fn expr_primary(pair: Pair<Rule>) -> Box<dyn Expression> {
             let vals = pair.into_inner().map(expr_primary).collect();
 
             trace!("Exiting tuple");
-            return Box::new(Tuple::new(vals));
+            return Expr::Primitive {
+                val: Value::Tuple {
+                    ty: DataType::Tuple,
+                    vals
+                }
+            };
         },
         Rule::INT => {
             trace!("Entering INT");
             let val = pair.as_str().parse::<i32>().unwrap();
 
             trace!("Exiting INT");
-            return Box::new(Integer::new(val));
+            return Expr::Primitive {
+                val: Value::Integer {
+                    ty: DataType::Integer,
+                    val
+                }
+            };
         },
         Rule::STRING => {
             trace!("Entering STRING");
@@ -271,15 +289,20 @@ fn expr_primary(pair: Pair<Rule>) -> Box<dyn Expression> {
             }
 
             trace!("Exiting STRING");
-            return Box::new(Str::new(val));
+            return Expr::Primitive {
+                val: Value::Str {
+                    ty: DataType::Str,
+                    val
+                }
+            };
         },
         _ => expr_from_pairs(pair.into_inner())
     }
 }
 
-fn expr_from_pairs(pairs: Pairs<Rule>) -> Box<dyn Expression> {
+fn expr_from_pairs(pairs: Pairs<Rule>) -> Expr {
     PRATT_PARSER
-        .map_primary(|primary| -> Box<dyn Expression> {
+        .map_primary(|primary| -> Expr {
             expr_primary(primary)
         })
         .map_infix(|lhs, op, rhs| {
@@ -306,11 +329,11 @@ fn expr_from_pairs(pairs: Pairs<Rule>) -> Box<dyn Expression> {
                 Rule::modulo => Op::Modulo,
                 rule => unreachable!("Expr::parse expected infix operation, found {:?}", rule),
             };
-            return Box::new(BinOp {
-                lhs,
+            return Expr::BinOp {
+                lhs: Box::new(lhs),
                 op,
-                rhs,
-            });
+                rhs: Box::new(rhs),
+            };
         })
         .parse(pairs)
 }
