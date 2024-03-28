@@ -5,11 +5,11 @@
 dscript = { SOI ~ probe_def+ ~ EOI }
 
 // TODO -- support comma separated list of specs: https://docs.oracle.com/cd/E23824_01/html/E22973/glghi.html#scrolltoc
-probe_def = { spec ~ PUSH(predicate?) ~ "{" ~ statement* ~ "}" }
+probe_def = { PROBE_SPEC ~ PUSH(predicate?) ~ "{" ~ statement* ~ "}" }
 
 predicate = { "/" ~ expr ~ "/" }
 
-spec = { PROBE_SPEC | PROBE_ID }
+// spec = { PROBE_SPEC | PROBE_ID }
 
 // =====================
 // ---- Identifiers ----
@@ -30,10 +30,12 @@ PROBE_ID = @{
     | "]")+
 }
 
+// TODO -- I think we only want the one that has all three colons, or a single PROBE_ID
 PROBE_SPEC = ${
     PROBE_ID? ~ ":" ~ PROBE_ID? ~ ":" ~ PROBE_ID? ~ ":" ~ PROBE_ID?
     | PROBE_ID? ~ ":" ~ PROBE_ID? ~ ":" ~ PROBE_ID?
     | PROBE_ID? ~ ":" ~ PROBE_ID?
+    | PROBE_ID
 }
 
 // ====================
