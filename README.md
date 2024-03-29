@@ -12,6 +12,7 @@ cargo build
 To run tests:
 ```shell
 cargo test
+cargo test parser # Only run the tests for the `parser` module
 cargo test -- --nocapture # With stdout tracing
 ```
 
