@@ -3,5 +3,10 @@
 //         2. wasm (call, alt, etc.)
 
 // provider defs should:
-// 1. have a function to add their symbols to table
 // 2. have functions to emit code for the fields/functions they provide
+
+use walrus::Module;
+
+pub trait Provider {
+    fn emit_fn(&self, module: &mut Module, name: &String) -> bool;
+}
