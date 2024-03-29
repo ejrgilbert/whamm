@@ -246,7 +246,7 @@ wasm::call:alt /
             assert_eq!(1, module.functions.len());
             let function = module.functions.get("call").unwrap();
             assert_eq!("call", function.name);
-            assert_eq!(0, function.globals.len());
+            assert_eq!(4, function.globals.len());
             assert_eq!(0, function.fns.len());
 
             assert_eq!(1, function.probe_map.len());

@@ -251,7 +251,7 @@ fn expr_primary(pair: Pair<Rule>) -> Expr {
             trace!("Exiting tuple");
             return Expr::Primitive {
                 val: Value::Tuple {
-                    ty: DataType::Tuple,
+                    ty: DataType::Tuple {ty_info: None},
                     vals
                 }
             };

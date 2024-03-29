@@ -36,17 +36,19 @@ lazy_static::lazy_static! {
 // ==== Types ====
 // ===============
 
+#[derive(Eq, Hash, PartialEq)]
 pub enum DataType {
     Integer,
     Boolean,
     Null,
     Str,
     Tuple {
-        vals: Vec<Box<DataType>>
+        ty_info: Option<Vec<Box<DataType>>>
     }
 }
 
 // Values
+#[derive(Eq, Hash, PartialEq)]
 pub enum Value {
     Integer {
         ty: DataType,
@@ -80,6 +82,7 @@ pub enum Statement {
     }
 }
 
+#[derive(Eq, Hash, PartialEq)]
 pub enum Expr {
     BinOp {     // Type is based on the outermost `op` (if arithmetic op, also based on types of lhs/rhs due to doubles)
         lhs: Box<Expr>,
@@ -131,10 +134,10 @@ impl Dtrace {
             name: "strcmp".to_string(),
             params: Some(vec![
                 DataType::Tuple {
-                    vals: vec![
+                    ty_info: Some(vec![
                         Box::new(DataType::Integer),
                         Box::new(DataType::Integer)
-                    ],
+                    ]),
                 },
                 DataType::Str
             ]),
@@ -243,8 +246,8 @@ impl Dtrace {
 pub struct Dscript {
     /// The providers of the probes that have been used in the Dscript.
     pub providers: HashMap<String, Provider>,
-    pub fns: Vec<Fn>,                          // User-provided
-    pub globals: HashMap<Expr, Option<Value>>, // User-provided, should be VarId -> Value
+    pub fns: Vec<Fn>,                                      // User-provided
+    pub globals: HashMap<(DataType, Expr), Option<Value>>, // User-provided, should be VarId -> Value
 
     /// The probes that have been used in the Dscript.
     /// This keeps us from having to keep multiple copies of probes across probe specs matched by
@@ -324,10 +327,12 @@ pub struct Provider {
 }
 impl Provider {
     pub fn new(name: String) -> Self {
+        let fns = Provider::get_provided_fns(&name);
+        let globals = Provider::get_provided_globals(&name);
         Provider {
             name,
-            fns: Provider::get_provided_fns(&name),
-            globals: Provider::get_provided_globals(&name),
+            fns,
+            globals,
             modules: HashMap::new()
         }
     }
@@ -366,10 +371,12 @@ pub struct Module {
 }
 impl Module {
     pub fn new(name: String) -> Self {
+        let fns = Module::get_provided_fns(&name);
+        let globals = Module::get_provided_globals(&name);
         Module {
             name,
-            fns: Module::get_provided_fns(&name),
-            globals: Module::get_provided_globals(&name),
+            fns,
+            globals,
             functions: HashMap::new()
         }
     }
@@ -407,10 +414,12 @@ pub struct Function {
 }
 impl Function {
     pub fn new(name: String) -> Self {
+        let fns = Function::get_provided_fns(&name);
+        let globals = Function::get_provided_globals(&name);
         Function {
             name,
-            fns: Function::get_provided_fns(&name),
-            globals: Function::get_provided_globals(&name),
+            fns,
+            globals,
             probe_map: HashMap::new()
         }
     }
@@ -479,10 +488,12 @@ pub struct Probe {
 }
 impl Probe {
     pub fn new(name: String, predicate: Option<Expr>, body: Option<Vec<Statement>>) -> Self {
+        let fns = Probe::get_provided_fns(&name);
+        let globals = Probe::get_provided_globals(&name);
         Probe {
             name,
-            fns: Probe::get_provided_fns(&name),
-            globals: Probe::get_provided_globals(&name),
+            fns,
+            globals,
 
             predicate,
             body
@@ -517,7 +528,7 @@ impl Probe {
 // ---- Expressions ----
 // =====================
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Op {
     // Logical operators
     And,
