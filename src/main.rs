@@ -1,17 +1,16 @@
 use crate::parser::dtrace_parser::*;
-use crate::compiler::dtrace_compiler::*;
 use crate::verifier::verifier::*;
+// use crate::generator::code_generator::*;
 
 pub mod parser;
 pub mod verifier;
-// TODO -- remove all compiler stuff
-pub mod compiler;
-pub mod generator;
+// pub mod generator;
 
 use clap::Parser;
 use log::{info, error};
 use std::process::exit;
-use std::path::PathBuf;
+// use std::path::PathBuf;
+// use crate::generator::emitters::WasmEmitter;
 
 fn setup_logger() {
     env_logger::init();
@@ -31,11 +30,17 @@ struct Args {
     #[clap(short, long, value_parser, default_value = "./target/output.wasm")]
     output_path: String,
 
+    /// Whether to emit Virgil
+    #[clap(short, long, action)]
+    emit_virgil: bool,
+
     #[clap(long, short, action)]
     run_verifier: bool
 }
 
 fn main() {
+    // TODO add subcommands for virgil/wasm with different options per subcommand
+    //      https://github.com/clap-rs/clap/blob/4e07b438584bb8a19e37599d4c5b11797bec5579/examples/git.rs
     if let Err(e) = try_main() {
         eprintln!("error: {}", e);
         for c in e.iter_chain().skip(1) {
@@ -51,7 +56,7 @@ fn try_main() -> Result<(), failure::Error> {
 
     // Get information from user command line args
     let args = Args::parse();
-    let wasm_app_path = PathBuf::from(args.wasm_app_path);
+    let wasm_app_path = args.wasm_app_path;
     let dscript_path = args.dscript_path;
     let dscript = std::fs::read_to_string(&dscript_path);
     let output_path = args.output_path;
@@ -71,12 +76,11 @@ fn try_main() -> Result<(), failure::Error> {
             };
 
             // Build the symbol table from the AST
-            let (symbol_table, _core_probes, _wasm_probes) = verify(&ast);
-            symbol_table.print();
+            let symbol_table = verify(&ast);
+            println!("{:?}", symbol_table);
 
-            //
-
-            emit_wasm(&ast, &wasm_app_path, &output_path);
+            // let emitter = WasmEmitter::new(wasm_app_path, output_path);
+            // emit(&emitter, &symbol_table, &core_probes, &wasm_probes);
         },
         Err(e) => {
             error!("Cannot read specified file {}: {e}", dscript_path);
