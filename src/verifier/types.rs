@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use log::{debug, error };
+use crate::parser::types::DataType;
 
 #[derive(Debug)]
 pub struct SymbolTable {
@@ -77,6 +78,14 @@ impl SymbolTable {
 
     // Record operations
 
+    pub fn set_curr_dscript(&mut self, id: usize) {
+        self.get_curr_scope_mut().unwrap().containing_dscript = Some(id);
+    }
+
+    pub fn get_record_mut(&mut self, rec_id: usize) -> Option<&mut Record> {
+        self.records.get_mut(rec_id)
+    }
+
     pub fn put(&mut self, key: String, rec: Record) -> usize {
         let new_rec_id = self.records.len();
         self.records.push(rec);
@@ -131,11 +140,12 @@ pub struct Scope {
     name: String,
     ty: ScopeType,
 
-    parent: Option<usize>,           // indexes into SymbolTable::scopes
-    children: Vec<usize>,            // indexes into SymbolTable::scopes
-    next: usize,                     // indexes into this::children
+    parent: Option<usize>,             // indexes into SymbolTable::scopes
+    children: Vec<usize>,              // indexes into SymbolTable::scopes
+    next: usize,                       // indexes into this::children
 
-    records: HashMap<String, usize>, // indexes into SymbolTable::records
+    containing_dscript: Option<usize>, // indexes into SymbolTable::records
+    records: HashMap<String, usize>,   // indexes into SymbolTable::records
 }
 impl Scope {
     pub fn new(id: usize, name: String, ty: ScopeType, parent: Option<usize>) -> Self {
@@ -144,6 +154,7 @@ impl Scope {
             name,
             ty,
 
+            containing_dscript: None,
             next: 0,
             parent,
             children: vec![],
@@ -209,36 +220,46 @@ pub enum ScopeType {
 #[derive(Debug)]
 pub enum Record {
     Dtrace {
+        name: String,
         fns: Vec<usize>,
         globals: Vec<usize>,
         dscripts: Vec<usize>
     },
     Dscript {
+        name: String,
         fns: Vec<usize>,
         globals: Vec<usize>,
         providers: Vec<usize>
     },
     Provider {
+        name: String,
         fns: Vec<usize>,
         globals: Vec<usize>,
         modules: Vec<usize>
     },
     Module {
+        name: String,
         fns: Vec<usize>,
         globals: Vec<usize>,
         functions: Vec<usize>
     },
     Function {
+        name: String,
         fns: Vec<usize>,
         globals: Vec<usize>,
         probes: Vec<usize>
     },
     Probe {
+        name: String,
         fns: Vec<usize>,
         globals: Vec<usize>
     },
     Fn {
+        name: String,
         params: Vec<usize>
     },
-    Var
+    Var {
+        ty: DataType,
+        name: String
+    }
 }

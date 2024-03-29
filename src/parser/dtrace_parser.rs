@@ -34,12 +34,11 @@ fn process_pair(dtrace: &mut Dtrace, mut dscript_count: usize, pair: Pair<Rule>)
     match pair.as_rule() {
         Rule::dscript => {
             trace!("Entering dscript");
-            let base_dscript = Dscript::new();
-            dtrace.add_dscript(base_dscript);
+            let mut base_dscript = Dscript::new();
+            let id = dtrace.add_dscript(base_dscript);
             pair.into_inner().for_each(| p | {
-                process_pair(dtrace, dscript_count, p);
+                process_pair(dtrace, id, p);
             });
-            dscript_count += 1;
             trace!("Exiting dscript");
         }
         Rule::probe_def => {
@@ -189,7 +188,7 @@ fn probe_spec_from_rule(pair: Pair<Rule>) -> String {
         },
         Rule::PROBE_SPEC => {
             trace!("Entering PROBE_SPEC");
-            let mut spec_as_str = pair.as_str();
+            let spec_as_str = pair.as_str();
             let mut parts = pair.into_inner();
 
             let str_parts = spec_as_str.split(":");

@@ -41,156 +41,8 @@ impl AsStrVisitor {
         s
     }
 }
+
 impl DtraceVisitor<String> for AsStrVisitor {
-    fn visit_datatype(&mut self, datatype: &DataType) -> String {
-        match datatype {
-            DataType::Integer => {
-                "int".to_string()
-            },
-            DataType::Boolean => {
-                "bool".to_string()
-            },
-            DataType::Null => {
-                "null".to_string()
-            },
-            DataType::Str => {
-                "str".to_string()
-            },
-            DataType::Tuple {..} => {
-                "tuple".to_string()
-            },
-        }
-    }
-
-    fn visit_value(&mut self, value: &Value) -> String {
-        match value {
-            Value::Integer { ty: _ty, val} => {
-                let mut s = "".to_string();
-                s += &format!("{}", val);
-                s
-            },
-            Value::Str {ty: _ty, val} => {
-                let mut s = "".to_string();
-                s += &format!("\"{}\"", val);
-                s
-            },
-            Value::Tuple {ty: _ty, vals} => {
-                let mut s = "".to_string();
-                s += &format!("(");
-                for v in vals.iter() {
-                    s += &format!("{}, ", self.visit_expr(v));
-                }
-                s += &format!(")");
-                s
-            }
-        }
-    }
-
-    fn visit_stmt(&mut self, stmt: &Statement) -> String {
-        match stmt {
-            Statement::Assign {var_id, expr} => {
-                format!("{} = {}", self.visit_expr(var_id), self.visit_expr(expr))
-            },
-            Statement::Expr {expr} => {
-                self.visit_expr(expr)
-            }
-        }
-    }
-
-    fn visit_expr(&mut self, expr: &Expr) -> String {
-        match expr {
-            Expr::BinOp {lhs, op, rhs} => {
-                let mut s = "".to_string();
-                s += &format!("{} {} {}",
-                    self.visit_expr(lhs),
-                    self.visit_op(op),
-                    self.visit_expr(rhs)
-                );
-                s
-            },
-            Expr::Call {fn_target, args} => {
-                let mut s = "".to_string();
-                s += &format!("{}(", self.visit_expr(fn_target));
-                match args {
-                    Some(args) => {
-                        for arg in args {
-                            s += &format!("{}, ", self.visit_expr(arg));
-                        }
-                    },
-                    _ => {}
-                }
-                s += &format!(")");
-                s
-            },
-            Expr::VarId {name} => {
-                format!("{}", name)
-            }
-            Expr::Primitive {val} => {
-                self.visit_value(val)
-            }
-        }
-    }
-
-    fn visit_op(&mut self, op: &Op) -> String {
-        match op {
-            Op::And => "&&",
-            Op::Or => "||",
-            Op::EQ => "==",
-            Op::NE => "!=",
-            Op::GE => ">=",
-            Op::GT => ">",
-            Op::LE => "<=",
-            Op::LT => "<",
-            Op::Add => "+",
-            Op::Subtract => "-",
-            Op::Multiply => "*",
-            Op::Divide => "/",
-            Op::Modulo => "%",
-        }.parse().unwrap()
-    }
-
-    fn visit_fn(&mut self, f: &parser_types::Fn) -> String {
-        let mut s = "".to_string();
-
-        // print name
-        s += &format!("{} {} (", self.get_indent(), f.name);
-
-        // print params
-        match &f.params {
-            Some(params) => {
-                for param in params.iter() {
-                    s += &format!("{}, ", self.visit_datatype(param));
-                }
-            },
-            _ => {}
-        }
-        s += &format!(")");
-
-        // print return type
-        match &f.return_ty {
-            Some(ty) => {
-                s += &format!(" -> {}", self.visit_datatype(ty));
-            },
-            _ => {}
-        }
-        s += &format!(" {{{NL}");
-
-        // print body
-        self.increase_indent();
-        match &f.body {
-            Some(stmts) => {
-                for stmt in stmts.iter() {
-                    s += &format!("{}{}{NL}", self.get_indent(), self.visit_stmt(stmt));
-                }
-            },
-            _ => {}
-        }
-        self.decrease_indent();
-        s += &format!("{} }}{NL}", self.get_indent());
-
-        s
-    }
-
     fn visit_dtrace(&mut self, dtrace: &Dtrace) -> String {
         let mut s = "".to_string();
 
@@ -221,7 +73,7 @@ impl DtraceVisitor<String> for AsStrVisitor {
         s += &format!("Dtrace dscripts:{NL}");
         self.increase_indent();
         for (i, dscript) in dtrace.dscripts.iter().enumerate() {
-            s += &format!("{} `dscript{i}`:{NL}", self.get_indent());
+            s += &format!("{} `{}`:{NL}", self.get_indent(), dscript.name);
             self.increase_indent();
             s += &format!("{}", self.visit_dscript(dscript));
             self.decrease_indent();
@@ -445,5 +297,154 @@ impl DtraceVisitor<String> for AsStrVisitor {
         s += &format!("{} }}{NL}", self.get_indent());
 
         s
+    }
+
+    fn visit_fn(&mut self, f: &parser_types::Fn) -> String {
+        let mut s = "".to_string();
+
+        // print name
+        s += &format!("{} {} (", self.get_indent(), f.name);
+
+        // print params
+        match &f.params {
+            Some(params) => {
+                for param in params.iter() {
+                    s += &format!("{}, ", self.visit_datatype(param));
+                }
+            },
+            _ => {}
+        }
+        s += &format!(")");
+
+        // print return type
+        match &f.return_ty {
+            Some(ty) => {
+                s += &format!(" -> {}", self.visit_datatype(ty));
+            },
+            _ => {}
+        }
+        s += &format!(" {{{NL}");
+
+        // print body
+        self.increase_indent();
+        match &f.body {
+            Some(stmts) => {
+                for stmt in stmts.iter() {
+                    s += &format!("{}{}{NL}", self.get_indent(), self.visit_stmt(stmt));
+                }
+            },
+            _ => {}
+        }
+        self.decrease_indent();
+        s += &format!("{} }}{NL}", self.get_indent());
+
+        s
+    }
+
+    fn visit_stmt(&mut self, stmt: &Statement) -> String {
+        match stmt {
+            Statement::Assign {var_id, expr} => {
+                format!("{} = {}", self.visit_expr(var_id), self.visit_expr(expr))
+            },
+            Statement::Expr {expr} => {
+                self.visit_expr(expr)
+            }
+        }
+    }
+
+    fn visit_expr(&mut self, expr: &Expr) -> String {
+        match expr {
+            Expr::BinOp {lhs, op, rhs} => {
+                let mut s = "".to_string();
+                s += &format!("{} {} {}",
+                    self.visit_expr(lhs),
+                    self.visit_op(op),
+                    self.visit_expr(rhs)
+                );
+                s
+            },
+            Expr::Call {fn_target, args} => {
+                let mut s = "".to_string();
+                s += &format!("{}(", self.visit_expr(fn_target));
+                match args {
+                    Some(args) => {
+                        for arg in args {
+                            s += &format!("{}, ", self.visit_expr(arg));
+                        }
+                    },
+                    _ => {}
+                }
+                s += &format!(")");
+                s
+            },
+            Expr::VarId {name} => {
+                format!("{}", name)
+            }
+            Expr::Primitive {val} => {
+                self.visit_value(val)
+            }
+        }
+    }
+
+    fn visit_op(&mut self, op: &Op) -> String {
+        match op {
+            Op::And => "&&",
+            Op::Or => "||",
+            Op::EQ => "==",
+            Op::NE => "!=",
+            Op::GE => ">=",
+            Op::GT => ">",
+            Op::LE => "<=",
+            Op::LT => "<",
+            Op::Add => "+",
+            Op::Subtract => "-",
+            Op::Multiply => "*",
+            Op::Divide => "/",
+            Op::Modulo => "%",
+        }.parse().unwrap()
+    }
+
+    fn visit_datatype(&mut self, datatype: &DataType) -> String {
+        match datatype {
+            DataType::Integer => {
+                "int".to_string()
+            },
+            DataType::Boolean => {
+                "bool".to_string()
+            },
+            DataType::Null => {
+                "null".to_string()
+            },
+            DataType::Str => {
+                "str".to_string()
+            },
+            DataType::Tuple {..} => {
+                "tuple".to_string()
+            },
+        }
+    }
+
+    fn visit_value(&mut self, value: &Value) -> String {
+        match value {
+            Value::Integer { ty: _ty, val} => {
+                let mut s = "".to_string();
+                s += &format!("{}", val);
+                s
+            },
+            Value::Str {ty: _ty, val} => {
+                let mut s = "".to_string();
+                s += &format!("\"{}\"", val);
+                s
+            },
+            Value::Tuple {ty: _ty, vals} => {
+                let mut s = "".to_string();
+                s += &format!("(");
+                for v in vals.iter() {
+                    s += &format!("{}, ", self.visit_expr(v));
+                }
+                s += &format!(")");
+                s
+            }
+        }
     }
 }

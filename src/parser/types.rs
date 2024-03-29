@@ -36,7 +36,7 @@ lazy_static::lazy_static! {
 // ==== Types ====
 // ===============
 
-#[derive(Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum DataType {
     Integer,
     Boolean,
@@ -100,6 +100,26 @@ pub enum Expr {
         val: Value
     }
 }
+
+// impl Expr {
+//     pub fn ty(&self) {
+//         match self {
+//             Expr::BinOp {..} => {
+//                 println!("BinOp");
+//             },
+//             Expr::Call {..} => {
+//                 println!("Call");
+//             },
+//             Expr::VarId {..} => {
+//                 println!("VarId");
+//             },
+//             Expr::Primitive {..} => {
+//                 println!("Primitive");
+//             }
+//             _ => {}
+//         }
+//     }
+// }
 
 // Functions
 pub struct Fn {
@@ -238,12 +258,17 @@ impl Dtrace {
             ("bytecode".to_string(), wasm_bytecode_map)
         ]));
     }
-    pub fn add_dscript(&mut self, dscript: Dscript) {
+    pub fn add_dscript(&mut self, mut dscript: Dscript) -> usize {
+        let id = self.dscripts.len();
+        dscript.name = format!("dscript{}", id);
         self.dscripts.push(dscript);
+
+        id
     }
 }
 
 pub struct Dscript {
+    pub name: String,
     /// The providers of the probes that have been used in the Dscript.
     pub providers: HashMap<String, Provider>,
     pub fns: Vec<Fn>,                                      // User-provided
@@ -258,6 +283,7 @@ pub struct Dscript {
 impl Dscript {
     pub fn new() -> Self {
         Dscript {
+            name: "".to_string(),
             providers: HashMap::new(),
             fns: vec![],
             globals: HashMap::new(),
@@ -557,16 +583,16 @@ pub enum Op {
 // =================
 
 pub trait DtraceVisitor<T> {
-    fn visit_datatype(&mut self, datatype: &DataType) -> T;
-    fn visit_value(&mut self, int: &Value) -> T;
-    fn visit_stmt(&mut self, assign: &Statement) -> T;
-    fn visit_expr(&mut self, call: &Expr) -> T;
-    fn visit_op(&mut self, op: &Op) -> T;
-    fn visit_fn(&mut self, f: &Fn) -> T;
     fn visit_dtrace(&mut self, dtrace: &Dtrace) -> T;
     fn visit_dscript(&mut self, dscript: &Dscript) -> T;
     fn visit_provider(&mut self, provider: &Provider) -> T;
     fn visit_module(&mut self, module: &Module) -> T;
     fn visit_function(&mut self, function: &Function) -> T;
     fn visit_probe(&mut self, probe: &Probe) -> T;
+    fn visit_fn(&mut self, f: &Fn) -> T;
+    fn visit_stmt(&mut self, assign: &Statement) -> T;
+    fn visit_expr(&mut self, call: &Expr) -> T;
+    fn visit_op(&mut self, op: &Op) -> T;
+    fn visit_datatype(&mut self, datatype: &DataType) -> T;
+    fn visit_value(&mut self, val: &Value) -> T;
 }

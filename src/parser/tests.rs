@@ -1,5 +1,5 @@
 use crate::parser::dtrace_parser::*;
-use crate::parser::types::{Dtrace, DtraceVisitor};
+use crate::parser::types::{Dtrace, DtraceVisitor, Expr};
 
 use glob::{glob, glob_with};
 
