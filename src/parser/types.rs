@@ -32,24 +32,6 @@ lazy_static::lazy_static! {
     };
 }
 
-// ============================
-// ===== Helper Functions =====
-// ============================
-
-// const NL: &str = "\n";
-//
-// fn increase_indent(i: &mut i32) {
-//     *i += 1;
-// }
-//
-// fn decrease_indent(i: &mut i32) {
-//     *i -= 1;
-// }
-//
-// fn get_indent(i: &mut i32) -> String {
-//     "--".repeat(cmp::max(0, *i as usize))
-// }
-
 // ===============
 // ==== Types ====
 // ===============
@@ -59,7 +41,9 @@ pub enum DataType {
     Boolean,
     Null,
     Str,
-    Tuple
+    Tuple {
+        vals: Vec<Box<DataType>>
+    }
 }
 
 // Values
@@ -85,7 +69,8 @@ pub enum Statement {
         var_id: Expr, // Should be VarId
         expr: Expr
     },
-    /// Standalone `Exp` statement, which means we can write programs like this:
+
+    /// Standalone `Expr` statement, which means we can write programs like this:
     /// int main() {
     ///   2 + 2;
     ///   return 0;
@@ -96,19 +81,19 @@ pub enum Statement {
 }
 
 pub enum Expr {
-    BinOp {
+    BinOp {     // Type is based on the outermost `op` (if arithmetic op, also based on types of lhs/rhs due to doubles)
         lhs: Box<Expr>,
         op: Op,
         rhs: Box<Expr>,
     },
-    Call {
-        fn_target: Box<Expr>, // Should be VarId
+    Call {      // Type is fn_target.return_ty, should be VarId
+        fn_target: Box<Expr>,
         args: Option<Vec<Box<Expr>>>
     },
-    VarId {
+    VarId {     // Type is TODO
         name: String,
     },
-    Primitive {
+    Primitive { // Type is val.ty
         val: Value
     }
 }
@@ -123,32 +108,44 @@ pub struct Fn {
 
 pub struct Dtrace {
     pub provided_probes: HashMap<String, HashMap<String, HashMap<String, Vec<String>>>>,
-    pub(crate) fns: Vec<Fn>,                          // Comp-provided
-    pub(crate) globals: HashMap<Expr, Option<Value>>, // Comp-provided, should be VarId -> Value
+    pub(crate) fns: Vec<Fn>,                                      // Comp-provided
+    pub(crate) globals: HashMap<(DataType, Expr), Option<Value>>, // Comp-provided, should be VarId -> Value
 
     pub dscripts: Vec<Dscript>
 }
 impl Dtrace {
     pub fn new() -> Self {
-        let strcmp_fn = Fn {
-            name: "strcmp".to_string(),
-            params: Some(vec![
-                DataType::Tuple,
-                DataType::Str
-            ]),
-            return_ty: Some(DataType::Boolean),
-            body: None
-        };
-
         let mut dtrace = Dtrace {
             provided_probes: HashMap::new(),
-            fns: vec![ strcmp_fn ],
-            globals: HashMap::new(),
+            fns: Dtrace::get_provided_fns(),
+            globals: Dtrace::get_provided_globals(),
 
             dscripts: vec![]
         };
         dtrace.init_provided_probes();
         dtrace
+    }
+
+    fn get_provided_fns() -> Vec<Fn> {
+        let strcmp_fn = Fn {
+            name: "strcmp".to_string(),
+            params: Some(vec![
+                DataType::Tuple {
+                    vals: vec![
+                        Box::new(DataType::Integer),
+                        Box::new(DataType::Integer)
+                    ],
+                },
+                DataType::Str
+            ]),
+            return_ty: Some(DataType::Boolean),
+            body: None
+        };
+        vec![ strcmp_fn ]
+    }
+
+    fn get_provided_globals() -> HashMap<(DataType, Expr), Option<Value>> {
+        HashMap::new()
     }
 
     fn init_provided_probes(&mut self) {
@@ -246,7 +243,7 @@ impl Dtrace {
 pub struct Dscript {
     /// The providers of the probes that have been used in the Dscript.
     pub providers: HashMap<String, Provider>,
-    pub fns: Vec<Fn>,                               // User-provided
+    pub fns: Vec<Fn>,                          // User-provided
     pub globals: HashMap<Expr, Option<Value>>, // User-provided, should be VarId -> Value
 
     /// The probes that have been used in the Dscript.
@@ -272,13 +269,7 @@ impl Dscript {
                      predicate: Option<Expr>, body: Option<Vec<Statement>>) {
         // Add new probe to dscript
         let idx = self.probes.len();
-        self.probes.push(Probe {
-            name: nm_patt.to_string(),
-            fns: vec![],
-            globals: Default::default(),
-            predicate,
-            body,
-        });
+        self.probes.push(Probe::new(nm_patt.to_string(), predicate, body));
 
         for provider_str in Provider::get_matches(provided_probes, prov_patt).iter() {
             // Does provider exist yet?
@@ -324,8 +315,8 @@ impl Dscript {
 
 pub struct Provider {
     pub name: String,
-    pub fns: Vec<Fn>,                          // Comp-provided
-    pub globals: HashMap<Expr, Option<Value>>, // Comp-provided, should be VarId -> Value
+    pub fns: Vec<Fn>,                                      // Comp-provided
+    pub globals: HashMap<(DataType, Expr), Option<Value>>, // Comp-provided, should be VarId -> Value
 
     /// The modules of the probes that have been used in the Dscript.
     /// These will be sub-modules of this Provider.
@@ -335,10 +326,18 @@ impl Provider {
     pub fn new(name: String) -> Self {
         Provider {
             name,
-            fns: vec![],
-            globals: HashMap::new(),
+            fns: Provider::get_provided_fns(&name),
+            globals: Provider::get_provided_globals(&name),
             modules: HashMap::new()
         }
+    }
+
+    fn get_provided_fns(_name: &String) -> Vec<Fn> {
+        vec![]
+    }
+
+    fn get_provided_globals(_name: &String) -> HashMap<(DataType, Expr), Option<Value>> {
+        HashMap::new()
     }
 
     /// Get the provider names that match the passed glob pattern
@@ -358,8 +357,8 @@ impl Provider {
 
 pub struct Module {
     pub name: String,
-    pub fns: Vec<Fn>,                          // Comp-provided
-    pub globals: HashMap<Expr, Option<Value>>, // Comp-provided, should be VarId -> Value
+    pub fns: Vec<Fn>,                                      // Comp-provided
+    pub globals: HashMap<(DataType, Expr), Option<Value>>, // Comp-provided, should be VarId -> Value
 
     /// The functions of the probes that have been used in the Dscript.
     /// These will be sub-functions of this Module.
@@ -369,10 +368,18 @@ impl Module {
     pub fn new(name: String) -> Self {
         Module {
             name,
-            fns: vec![],
-            globals: HashMap::new(),
+            fns: Module::get_provided_fns(&name),
+            globals: Module::get_provided_globals(&name),
             functions: HashMap::new()
         }
+    }
+
+    fn get_provided_fns(_name: &String) -> Vec<Fn> {
+        vec![]
+    }
+
+    fn get_provided_globals(_name: &String) -> HashMap<(DataType, Expr), Option<Value>> {
+        HashMap::new()
     }
 
     /// Get the Module names that match the passed glob pattern
@@ -393,8 +400,8 @@ impl Module {
 
 pub struct Function {
     pub name: String,
-    pub fns: Vec<Fn>,                          // Comp-provided
-    pub globals: HashMap<Expr, Option<Value>>, // Comp-provided, should be VarId -> Value
+    pub fns: Vec<Fn>,                                      // Comp-provided
+    pub globals: HashMap<(DataType, Expr), Option<Value>>, // Comp-provided, should be VarId -> Value
     /// Mapping from probe type to list of indices (into `probes` in dscript above) of the probes tied to that type
     pub probe_map: HashMap<String, Vec<usize>>
 }
@@ -402,10 +409,35 @@ impl Function {
     pub fn new(name: String) -> Self {
         Function {
             name,
-            fns: vec![],
-            globals: HashMap::new(),
+            fns: Function::get_provided_fns(&name),
+            globals: Function::get_provided_globals(&name),
             probe_map: HashMap::new()
         }
+    }
+
+    fn get_provided_fns(_name: &String) -> Vec<Fn> {
+        vec![]
+    }
+
+    fn get_provided_globals(name: &String) -> HashMap<(DataType, Expr), Option<Value>> {
+        let mut globals = HashMap::new();
+        if name.to_lowercase() == "call" {
+            // Add in provided globals for the "call" function
+            globals.insert((DataType::Str, Expr::VarId {
+                name: "target_fn_type".to_string(),
+            }), None);
+            globals.insert((DataType::Str, Expr::VarId {
+                name: "target_fn_module".to_string(),
+            }), None);
+            globals.insert((DataType::Str, Expr::VarId {
+                name: "target_fn_name".to_string(),
+            }), None);
+            globals.insert((DataType::Str, Expr::VarId {
+                name: "new_target_fn_name".to_string(),
+            }), None);
+        }
+
+        globals
     }
 
     /// Get the Function names that match the passed glob pattern
@@ -439,13 +471,32 @@ impl Function {
 
 pub struct Probe {
     pub name: String,
-    pub fns: Vec<Fn>,                          // Comp-provided
-    pub globals: HashMap<Expr, Option<Value>>, // Comp-provided, should be VarId -> Value
+    pub fns: Vec<Fn>,                                      // Comp-provided
+    pub globals: HashMap<(DataType, Expr), Option<Value>>, // Comp-provided, should be VarId -> Value
 
     pub predicate: Option<Expr>,
     pub body: Option<Vec<Statement>>
 }
 impl Probe {
+    pub fn new(name: String, predicate: Option<Expr>, body: Option<Vec<Statement>>) -> Self {
+        Probe {
+            name,
+            fns: Probe::get_provided_fns(&name),
+            globals: Probe::get_provided_globals(&name),
+
+            predicate,
+            body
+        }
+    }
+
+    fn get_provided_fns(_name: &String) -> Vec<Fn> {
+        vec![]
+    }
+
+    fn get_provided_globals(_name: &String) -> HashMap<(DataType, Expr), Option<Value>> {
+        HashMap::new()
+    }
+
     /// Get the Probe names that match the passed glob pattern
     pub fn get_matches(provided_probes: &HashMap<String, HashMap<String, HashMap<String, Vec<String>>>>, provider: &str, module: &str, function: &str, probe_patt: &str) -> Vec<String> {
         let glob = Pattern::new(&probe_patt.to_lowercase()).unwrap();
