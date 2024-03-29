@@ -1,30 +1,64 @@
-use std::any::Any;
 use crate::parser::types as parser_types;
-use parser_types::{Dtrace};
-use crate::parser::types::Expression;
+use parser_types::{DataType, Dscript, Dtrace, DtraceVisitor, Expr, Function, Module, Op, Probe, Provider, Statement, Value};
+use crate::verifier::types::SymbolTable;
 
-trait Visit {
-    fn visit(&self, table: SymbolTable);
+pub struct SymbolTableBuilder {
+    pub table: SymbolTable
+}
+impl SymbolTableBuilder {
+    pub fn new() -> Self {
+        SymbolTableBuilder {
+            table: SymbolTable::new()
+        }
+    }
 }
 
-impl Visit for Dtrace {
-
-}
-
-impl Expression for BinOp {
-    fn as_any(&self) -> &dyn Any {
+impl DtraceVisitor<()> for SymbolTableBuilder {
+    fn visit_datatype(&mut self, datatype: &DataType) -> () {
         todo!()
     }
 
-    fn as_any_mut(&mut self) -> &mut dyn Any {
+    fn visit_value(&mut self, int: &Value) -> () {
         todo!()
     }
 
-    fn as_str(&self, indent: &mut i32) -> String {
+    fn visit_stmt(&mut self, assign: &Statement) -> () {
         todo!()
     }
 
-    fn visit(&self, table: SymbolTable) {
+    fn visit_expr(&mut self, call: &Expr) -> () {
+        todo!()
+    }
+
+    fn visit_op(&mut self, op: &Op) -> () {
+        todo!()
+    }
+
+    fn visit_fn(&mut self, f: &parser_types::Fn) -> () {
+        todo!()
+    }
+
+    fn visit_dtrace(&mut self, dtrace: &Dtrace) -> () {
+        todo!()
+    }
+
+    fn visit_dscript(&mut self, dscript: &Dscript) -> () {
+        todo!()
+    }
+
+    fn visit_provider(&mut self, provider: &Provider) -> () {
+        todo!()
+    }
+
+    fn visit_module(&mut self, module: &Module) -> () {
+        todo!()
+    }
+
+    fn visit_function(&mut self, function: &Function) -> () {
+        todo!()
+    }
+
+    fn visit_probe(&mut self, probe: &Probe) -> () {
         todo!()
     }
 }

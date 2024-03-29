@@ -1,6 +1,6 @@
 pub mod verifier;
+pub mod builder_visitor;
 pub mod types;
-pub mod providers;
 
 #[cfg(test)]
 pub mod tests;
