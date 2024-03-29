@@ -217,52 +217,6 @@ fn probe_spec_from_rule(pair: Pair<Rule>) -> String {
                 };
                 contents.push(res);
             }
-            // while contents.len() < 4 {
-            //     if spec_as_str.starts_with(":") {
-            //         contents.push("*".to_string());
-            //         spec_as_str = spec_as_str.strip_prefix(":").unwrap();
-            //         continue;
-            //     }
-            //
-            //     let res = match parts.next() {
-            //         Some(part) => {
-            //             match part.as_rule() {
-            //                 Rule::PROBE_ID => {
-            //                     let p = probe_spec_from_rule(part);
-            //                     spec_as_str = spec_as_str.strip_prefix(&p).unwrap();
-            //                     spec_as_str = spec_as_str.strip_prefix(":").unwrap();
-            //
-            //                     p
-            //                 },
-            //                 _ => "*".to_string()
-            //             }
-            //         }
-            //         None => {
-            //             break;
-            //         }
-            //     };
-            //     contents.push(res);
-            //
-            //     // Add missing '*'s
-            //     // while spec_as_str.starts_with("::") {
-            //     //     contents.push("*".to_string());
-            //     //     spec_as_str = spec_as_str.strip_prefix(":").unwrap();
-            //     //     if spec_as_str.starts_with("::") {
-            //     //         contents.push("*".to_string());
-            //     //         spec_as_str = spec_as_str.strip_prefix(":").unwrap();
-            //     //     }
-            //     //     if spec_as_str.starts_with(":") {
-            //     //         contents.push("*".to_string());
-            //     //         spec_as_str = spec_as_str.strip_prefix(":").unwrap();
-            //     //     }
-            //     // }
-            //     if spec_as_str.eq(":") {
-            //         contents.push("*".to_string());
-            //     }
-            //     // if spec_as_str.starts_with(":") {
-            //     //     spec_as_str = spec_as_str.strip_prefix(":").unwrap();
-            //     // }
-            // }
             trace!("Exiting PROBE_SPEC");
             trace!("Exiting probe_spec_from_rule");
             if contents.len() == 1 {
