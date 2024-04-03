@@ -1,16 +1,14 @@
 use crate::parser::dtrace_parser::*;
 use crate::verifier::verifier::*;
-// use crate::generator::code_generator::*;
+use crate::generator::emitters::{Emitter, WasmRewritingEmitter};
 
 pub mod parser;
 pub mod verifier;
-// pub mod generator;
+pub mod generator;
 
 use clap::Parser;
 use log::{info, error};
 use std::process::exit;
-// use std::path::PathBuf;
-// use crate::generator::emitters::WasmEmitter;
 
 fn setup_logger() {
     env_logger::init();
@@ -56,15 +54,15 @@ fn try_main() -> Result<(), failure::Error> {
 
     // Get information from user command line args
     let args = Args::parse();
-    let wasm_app_path = args.wasm_app_path;
+    let app_wasm_path = args.wasm_app_path;
     let dscript_path = args.dscript_path;
     let dscript = std::fs::read_to_string(&dscript_path);
-    let output_path = args.output_path;
+    let output_wasm_path = args.output_path;
 
     match dscript {
         Ok(unparsed_str) => {
             // Parse the script and build the AST
-            let ast = match parse_script(unparsed_str) {
+            let dtrace = match parse_script(unparsed_str) {
                 Ok(ast) => {
                     info!("successfully parsed");
                     ast
@@ -76,11 +74,21 @@ fn try_main() -> Result<(), failure::Error> {
             };
 
             // Build the symbol table from the AST
-            let symbol_table = verify(&ast);
+            let symbol_table = verify(&dtrace);
             println!("{:?}", symbol_table);
 
-            // let emitter = WasmEmitter::new(wasm_app_path, output_path);
-            // emit(&emitter, &symbol_table, &core_probes, &wasm_probes);
+            // Read app Wasm into Walrus module
+            let _config =  walrus::ModuleConfig::new();
+            let app_wasm = walrus::Module::from_file(&app_wasm_path).unwrap();
+
+            let mut emitter = WasmRewritingEmitter {
+                table: &symbol_table,
+                app_wasm,
+                output_wasm_path
+            };
+
+            emitter.emit(&dtrace);
+            emitter.dump_to_file();
         },
         Err(e) => {
             error!("Cannot read specified file {}: {e}", dscript_path);
