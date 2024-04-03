@@ -4,6 +4,8 @@ use crate::verifier::types::SymbolTable;
 
 pub fn verify(ast: &Dtrace) -> SymbolTable {
     let table = build_symbol_table(&ast);
+
+    // TODO do typechecking!
     return table;
 }
 
