@@ -21,6 +21,13 @@ pub(crate) struct WasmRewritingEmitter<'a> {
 
     pub(crate) table: &'a SymbolTable
 }
+/// Walrus Visitor over `app.wasm`
+/// - as we get relevant info, lookup in SymbolTable for binding to globally set that value
+/// - for each bytecode, do we have a probe?
+///   - fold predicate with known globals. FALSE? Don't inject! NOT FALSE? inject (with remaining Expr, not folded parts)
+///   - See fold Rust pattern: https://rust-unofficial.github.io/patterns/patterns/creational/fold.html
+/// - now we have instrumented `app.wasm`
+///   - write to app_instr.wasm
 impl Emitter for WasmRewritingEmitter<'_> {
     fn emit(&mut self, dtrace: &Dtrace) -> bool {
         let mut is_success = false;
@@ -41,28 +48,53 @@ impl Emitter for WasmRewritingEmitter<'_> {
         }
     }
 }
+// TODO -- this might need to have a first and second pass traversal.
+// 1. emit fns and globals
+// 2. emit probes
 impl DtraceVisitor<bool> for WasmRewritingEmitter<'_> {
     fn visit_dtrace(&mut self, dtrace: &Dtrace) -> bool {
+        // TODO -- inject fns
+        // TODO -- inject globals
+        // TODO -- define any compiler constants
         todo!()
     }
 
     fn visit_dscript(&mut self, dscript: &Dscript) -> bool {
+        // TODO -- inject fns
+        // TODO -- inject globals
+        // TODO -- define any compiler constants
         todo!()
     }
 
     fn visit_provider(&mut self, provider: &Provider) -> bool {
+        // TODO -- inject fns
+        // TODO -- inject globals
+        // TODO -- define any compiler constants
         todo!()
     }
 
     fn visit_module(&mut self, module: &Module) -> bool {
+        // TODO -- inject fns
+        // TODO -- inject globals
+        // TODO -- define any compiler constants
+        // TODO -- set up `walrus::ir::VisitorMut`
+        //         at each bytecode as traversing IR, do we have a `function` for the bytecode?
+        //         If so, enter that function
         todo!()
     }
 
     fn visit_function(&mut self, function: &Function) -> bool {
+        // TODO -- inject fns
+        // TODO -- inject globals
+        // TODO -- define any compiler constants
+        // TODO -- inject probes (should be at this point in the `walrus::ir::VisitorMut` since visited from `visit_module` above
         todo!()
     }
 
     fn visit_probe(&mut self, probe: &Probe) -> bool {
+        // TODO -- inject fns
+        // TODO -- inject globals
+        // TODO -- define any compiler constants
         todo!()
     }
 
