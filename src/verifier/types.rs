@@ -4,10 +4,10 @@ use crate::parser::types::DataType;
 
 #[derive(Debug)]
 pub struct SymbolTable {
-    scopes: Vec<Scope>,
+    pub scopes: Vec<Scope>,
     curr_scope: usize,    // indexes into this::scopes
 
-    records: Vec<Record>,
+    pub records: Vec<Record>,
     pub curr_rec: usize,    // indexes into this::records
 }
 impl SymbolTable {

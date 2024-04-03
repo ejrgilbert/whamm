@@ -1,5 +1,5 @@
 use crate::parser::dtrace_parser::*;
-use crate::parser::types::{Dtrace, DtraceVisitor, Expr};
+use crate::parser::types::{Dtrace, DtraceVisitor};
 
 use glob::{glob, glob_with};
 
@@ -212,9 +212,9 @@ fn print_ast(ast: &Dtrace ) {
 }
 
 #[test]
-pub fn test_dtrace_print() {
+pub fn test_dtrace_with_asserts() {
     setup_logger();
-    let script =     r#"
+    let script = r#"
 wasm::call:alt /
     target_fn_type == "import" &&
     target_fn_module == "ic0" &&
