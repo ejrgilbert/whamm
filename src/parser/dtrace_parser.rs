@@ -29,12 +29,12 @@ pub fn to_ast(pair: Pair<Rule>) -> Result<Dtrace, Error<Rule>> {
     Ok(dtrace)
 }
 
-fn process_pair(dtrace: &mut Dtrace, mut dscript_count: usize, pair: Pair<Rule>) {
+fn process_pair(dtrace: &mut Dtrace, dscript_count: usize, pair: Pair<Rule>) {
     trace!("Entered process_pair");
     match pair.as_rule() {
         Rule::dscript => {
             trace!("Entering dscript");
-            let mut base_dscript = Dscript::new();
+            let base_dscript = Dscript::new();
             let id = dtrace.add_dscript(base_dscript);
             pair.into_inner().for_each(| p | {
                 process_pair(dtrace, id, p);

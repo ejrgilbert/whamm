@@ -205,7 +205,9 @@ pub fn test_ast_special_cases() {
 }
 
 fn print_ast(ast: &Dtrace ) {
-    let mut visitor = AsStrVisitor::new();
+    let mut visitor = AsStrVisitor {
+        indent: 0
+    };
     println!("{}", visitor.visit_dtrace(&ast));
 }
 
@@ -251,11 +253,8 @@ wasm::call:alt /
 
             assert_eq!(1, function.probe_map.len());
             assert_eq!(1, function.probe_map.get("alt").unwrap().len());
-            assert_eq!(0, *function.probe_map.get("alt").unwrap().get(0).unwrap());
 
-            assert_eq!(1, dscript.probes.len()); // a single probe
-            let probe = dscript.probes.get(0).unwrap();
-
+            let probe = function.probe_map.get("alt").unwrap().get(0).unwrap();
             assert_eq!(0, probe.globals.len());
             assert_eq!(0, probe.fns.len());
             assert_eq!("alt", probe.name);

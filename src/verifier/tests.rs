@@ -31,7 +31,7 @@ pub fn test_build_table() {
         match tests::get_ast(script) {
             Some(ast) => {
                 let table = verifier::verify(&ast);
-                println!("{:?}", table);
+                println!("{:#?}", table);
             },
             None => {
                 error!("Could not get ast from script: {script}");

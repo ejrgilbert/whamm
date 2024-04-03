@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use log::{debug, error };
+use log::{ error };
 use crate::parser::types::DataType;
 
 #[derive(Debug)]
@@ -7,16 +7,18 @@ pub struct SymbolTable {
     scopes: Vec<Scope>,
     curr_scope: usize,    // indexes into this::scopes
 
-    records: Vec<Record>
+    records: Vec<Record>,
+    pub curr_rec: usize,    // indexes into this::records
 }
 impl SymbolTable {
     pub fn new() -> Self {
-        let root = Scope::new(0, "".to_string(), ScopeType::Null, None);
+        let root_scope = Scope::new(0, "".to_string(), ScopeType::Null, None);
 
         SymbolTable {
-            scopes: vec![ root ],
+            scopes: vec![ root_scope ],
             curr_scope: 0,
-            records: vec![]
+            records: vec![],
+            curr_rec: 0,
         }
     }
 
@@ -62,6 +64,9 @@ impl SymbolTable {
             Some(curr_scope.id)
         );
 
+        // Increment current scope's next child pointer
+        curr_scope.next += 1;
+
         // Add new scope
         self.scopes.push(new_scope);
         self.curr_scope = new_id.clone();
@@ -86,8 +91,30 @@ impl SymbolTable {
         self.records.get_mut(rec_id)
     }
 
+    pub fn get_curr_rec(&self) -> Option<&Record> {
+        self.records.get(self.curr_rec)
+    }
+
+    pub fn get_curr_rec_mut(&mut self) -> Option<&mut Record> {
+        self.records.get_mut(self.curr_rec)
+    }
+
     pub fn put(&mut self, key: String, rec: Record) -> usize {
         let new_rec_id = self.records.len();
+        match rec {
+            Record::Dtrace { .. } |
+            Record::Dscript { .. } |
+            Record::Provider { .. } |
+            Record::Module { .. } |
+            Record::Function { .. } |
+            Record::Probe { .. } => {
+                self.curr_rec = new_rec_id.clone();
+            }
+            _ => {
+                // ignore, not a record container we'd want to add to!
+            }
+        }
+
         self.records.push(rec);
 
         self.get_curr_scope_mut().unwrap().put(key.clone(), new_rec_id);
@@ -144,7 +171,7 @@ pub struct Scope {
     children: Vec<usize>,              // indexes into SymbolTable::scopes
     next: usize,                       // indexes into this::children
 
-    containing_dscript: Option<usize>, // indexes into SymbolTable::records
+    pub containing_dscript: Option<usize>, // indexes into SymbolTable::records
     records: HashMap<String, usize>,   // indexes into SymbolTable::records
 }
 impl Scope {

@@ -1,13 +1,8 @@
-use std::any::Any;
-use std::cmp;
 use std::collections::HashMap;
 use glob::Pattern;
-use pest::iterators::Pair;
 
 use pest_derive::Parser;
 use pest::pratt_parser::PrattParser;
-
-use log::{trace};
 
 #[derive(Parser)]
 #[grammar = "./parser/dtrace.pest"] // Path relative to base `src` dir
@@ -48,7 +43,7 @@ pub enum DataType {
 }
 
 // Values
-#[derive(Eq, Hash, PartialEq)]
+#[derive(Clone, Eq, Hash, PartialEq)]
 pub enum Value {
     Integer {
         ty: DataType,
@@ -66,6 +61,7 @@ pub enum Value {
 
 
 // Statements
+#[derive(Clone)]
 pub enum Statement {
     Assign {
         var_id: Expr, // Should be VarId
@@ -82,7 +78,7 @@ pub enum Statement {
     }
 }
 
-#[derive(Eq, Hash, PartialEq)]
+#[derive(Clone, Eq, Hash, PartialEq)]
 pub enum Expr {
     BinOp {     // Type is based on the outermost `op` (if arithmetic op, also based on types of lhs/rhs due to doubles)
         lhs: Box<Expr>,
@@ -124,7 +120,7 @@ pub enum Expr {
 // Functions
 pub struct Fn {
     pub(crate) name: String,
-    pub(crate) params: Option<Vec<DataType>>,
+    pub(crate) params: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
     pub(crate) return_ty: Option<DataType>,
     pub(crate) body: Option<Vec<Statement>>
 }
@@ -150,17 +146,28 @@ impl Dtrace {
     }
 
     fn get_provided_fns() -> Vec<Fn> {
-        let strcmp_fn = Fn {
-            name: "strcmp".to_string(),
-            params: Some(vec![
+        let params = vec![
+            (
+                Expr::VarId {
+                    name: "str_addr".to_string()
+                },
                 DataType::Tuple {
                     ty_info: Some(vec![
                         Box::new(DataType::Integer),
                         Box::new(DataType::Integer)
                     ]),
+                }
+            ),
+            (
+                Expr::VarId {
+                    name: "value".to_string()
                 },
                 DataType::Str
-            ]),
+            )
+        ];
+        let strcmp_fn = Fn {
+            name: "strcmp".to_string(),
+            params,
             return_ty: Some(DataType::Boolean),
             body: None
         };
@@ -296,10 +303,6 @@ impl Dscript {
     pub fn add_probe(&mut self, provided_probes: &HashMap<String, HashMap<String, HashMap<String, Vec<String>>>>,
                      prov_patt: &str, mod_patt: &str, func_patt: &str, nm_patt: &str,
                      predicate: Option<Expr>, body: Option<Vec<Statement>>) {
-        // Add new probe to dscript
-        let idx = self.probes.len();
-        self.probes.push(Probe::new(nm_patt.to_string(), predicate, body));
-
         for provider_str in Provider::get_matches(provided_probes, prov_patt).iter() {
             // Does provider exist yet?
             let provider = match self.providers.get_mut(provider_str) {
@@ -334,7 +337,7 @@ impl Dscript {
                         }
                     };
                     for name_str in Probe::get_matches(provided_probes, provider_str, module_str, function_str, nm_patt).iter() {
-                        function.insert_probe(name_str.to_string(), idx);
+                        function.insert_probe(name_str.to_string(), Probe::new(nm_patt.to_string(), predicate.clone(), body.clone()));
                     }
                 }
             }
@@ -436,7 +439,7 @@ pub struct Function {
     pub fns: Vec<Fn>,                                      // Comp-provided
     pub globals: HashMap<(DataType, Expr), Option<Value>>, // Comp-provided, should be VarId -> Value
     /// Mapping from probe type to list of indices (into `probes` in dscript above) of the probes tied to that type
-    pub probe_map: HashMap<String, Vec<usize>>
+    pub probe_map: HashMap<String, Vec<Probe>>
 }
 impl Function {
     pub fn new(name: String) -> Self {
@@ -490,15 +493,15 @@ impl Function {
         matches
     }
 
-    pub fn insert_probe(&mut self, name: String, probe_idx: usize) {
+    pub fn insert_probe(&mut self, name: String, probe: Probe) {
         // Does name exist yet?
         match self.probe_map.get_mut(&name) {
-            Some(probe_idxs) => {
-                // Add index for this probe to list
-                probe_idxs.push(probe_idx);
+            Some(probes) => {
+                // Add probe to list
+                probes.push(probe);
             },
             None => {
-                self.probe_map.insert(name, vec![ probe_idx ]);
+                self.probe_map.insert(name, vec![ probe ]);
             }
         };
     }
@@ -590,6 +593,7 @@ pub trait DtraceVisitor<T> {
     fn visit_function(&mut self, function: &Function) -> T;
     fn visit_probe(&mut self, probe: &Probe) -> T;
     fn visit_fn(&mut self, f: &Fn) -> T;
+    fn visit_formal_param(&mut self, param: &(Expr, DataType)) -> T;
     fn visit_stmt(&mut self, assign: &Statement) -> T;
     fn visit_expr(&mut self, call: &Expr) -> T;
     fn visit_op(&mut self, op: &Op) -> T;

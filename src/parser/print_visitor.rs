@@ -8,15 +8,9 @@ use crate::parser::types::{DataType, Dscript, Dtrace, Expr, Function, Module, Op
 const NL: &str = "\n";
 
 pub struct AsStrVisitor {
-    indent: i32
+    pub indent: i32
 }
 impl AsStrVisitor {
-    pub(crate) fn new() -> Self {
-        AsStrVisitor {
-            indent: 0
-        }
-    }
-
     fn increase_indent(&mut self) {
         self.indent += 1;
     }
@@ -72,7 +66,7 @@ impl DtraceVisitor<String> for AsStrVisitor {
 
         s += &format!("Dtrace dscripts:{NL}");
         self.increase_indent();
-        for (i, dscript) in dtrace.dscripts.iter().enumerate() {
+        for dscript in dtrace.dscripts.iter() {
             s += &format!("{} `{}`:{NL}", self.get_indent(), dscript.name);
             self.increase_indent();
             s += &format!("{}", self.visit_dscript(dscript));
@@ -231,13 +225,13 @@ impl DtraceVisitor<String> for AsStrVisitor {
         // print functions
         if function.probe_map.len() > 0 {
             s += &format!("{} function probe_map:{NL}", self.get_indent());
-            for (name, probe_idxs) in function.probe_map.iter() {
+            for (name, probes) in function.probe_map.iter() {
                 self.increase_indent();
                 s += &format!("{} {name}: ", self.get_indent());
 
                 s += &format!("(");
-                for idx in probe_idxs {
-                    s += &format!("{idx}, ");
+                for probe in probes.iter() {
+                    self.visit_probe(probe);
                 }
                 s += &format!("){NL}");
                 self.decrease_indent();
@@ -306,13 +300,8 @@ impl DtraceVisitor<String> for AsStrVisitor {
         s += &format!("{} {} (", self.get_indent(), f.name);
 
         // print params
-        match &f.params {
-            Some(params) => {
-                for param in params.iter() {
-                    s += &format!("{}, ", self.visit_datatype(param));
-                }
-            },
-            _ => {}
+        for param in f.params.iter() {
+            s += &format!("{}, ", self.visit_formal_param(param));
         }
         s += &format!(")");
 
@@ -339,6 +328,10 @@ impl DtraceVisitor<String> for AsStrVisitor {
         s += &format!("{} }}{NL}", self.get_indent());
 
         s
+    }
+
+    fn visit_formal_param(&mut self, param: &(Expr, DataType)) -> String {
+        format!("{}: {}", self.visit_expr(&param.0), self.visit_datatype(&param.1))
     }
 
     fn visit_stmt(&mut self, stmt: &Statement) -> String {

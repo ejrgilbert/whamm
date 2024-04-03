@@ -67,6 +67,7 @@ impl SymbolTableBuilder {
 
         // enter dscript scope
         self.table.enter_scope();
+        self.curr_dscript = Some(id.clone());
 
         // set scope name and type
         self.table.set_curr_scope_info(dscript.name.clone(), ScopeType::Dscript);
@@ -101,6 +102,7 @@ impl SymbolTableBuilder {
 
         // enter provider scope
         self.table.enter_scope();
+        self.curr_provider = Some(id.clone());
 
         // set scope name and type
         self.table.set_curr_scope_info(provider.name.clone(), ScopeType::Provider);
@@ -134,6 +136,7 @@ impl SymbolTableBuilder {
 
         // enter module scope
         self.table.enter_scope();
+        self.curr_module = Some(id.clone());
 
         // set scope name and type
         self.table.set_curr_scope_info(module.name.clone(), ScopeType::Module);
@@ -165,8 +168,9 @@ impl SymbolTableBuilder {
             }
         }
 
-        // enter provider scope
+        // enter function scope
         self.table.enter_scope();
+        self.curr_function = Some(id.clone());
 
         // set scope name and type
         self.table.set_curr_scope_info(function.name.clone(), ScopeType::Function);
@@ -188,8 +192,8 @@ impl SymbolTableBuilder {
         let id = self.table.put(probe.name.clone(), probe_rec);
 
         // Add probe to current function record
-        match self.table.get_record_mut(self.curr_function.unwrap()).unwrap() {
-            Record::Function { probes, .. } => {
+        match self.table.get_record_mut(self.curr_function.unwrap()) {
+            Some(Record::Function { probes, .. }) => {
                 probes.push(id.clone());
             }
             _ => {
@@ -197,8 +201,9 @@ impl SymbolTableBuilder {
             }
         }
 
-        // enter provider scope
+        // enter probe scope
         self.table.enter_scope();
+        self.curr_probe = Some(id.clone());
 
         // set scope name and type
         self.table.set_curr_scope_info(probe.name.clone(), ScopeType::Probe);
@@ -216,15 +221,60 @@ impl SymbolTableBuilder {
         };
 
         // Add fn to scope
-        self.table.put(f.name.clone(), fn_rec);
+        let id = self.table.put(f.name.clone(), fn_rec);
 
-        // TODO add fn record to the right context
+        // add fn record to the current record
+        match self.table.get_curr_rec_mut() {
+            Some(Record::Dtrace { fns, .. }) |
+            Some(Record::Dscript { fns, .. }) |
+            Some(Record::Provider { fns, .. }) |
+            Some(Record::Module { fns, .. }) |
+            Some(Record::Function { fns, .. }) |
+            Some(Record::Probe { fns, .. }) => {
+                fns.push(id.clone());
+            }
+            _ => {
+                unreachable!()
+            }
+        }
 
         // enter fn scope
         self.table.enter_scope();
+        self.curr_fn = Some(id.clone());
 
         // set scope name and type
         self.table.set_curr_scope_info(f.name.clone(), ScopeType::Fn);
+
+        // visit parameters
+        f.params.iter().for_each(| param | self.visit_formal_param(param));
+    }
+
+    fn add_param(&mut self, var_id: &Expr, ty: &DataType) {
+        let name = match var_id {
+            Expr::VarId {name} => name,
+            _ => {
+                unreachable!();
+            }
+        };
+
+        // create record
+        let param_rec = Record::Var {
+            name: name.clone(),
+            ty: ty.clone(),
+        };
+
+        // add var to scope
+        let id = self.table.put(name.clone(), param_rec);
+
+        // add param to fn record
+        match self.table.get_record_mut(self.curr_fn.unwrap()) {
+            Some(Record::Fn { params, .. }) => {
+                params.push(id.clone());
+            }
+            _ => {
+                unreachable!()
+            }
+        }
     }
 
     /// Insert `global` record into scope
@@ -233,13 +283,26 @@ impl SymbolTableBuilder {
             error!("duplicated identifier [ {name} ]");
         }
 
-        // TODO add global record to the right context
-
-        // add global
-        self.table.put(name.clone(), Record::Var {
+        // Add global to scope
+        let id = self.table.put(name.clone(), Record::Var {
             ty,
             name,
         });
+
+        // add global record to the current record
+        match self.table.get_curr_rec_mut() {
+            Some(Record::Dtrace { globals, .. }) |
+            Some(Record::Dscript { globals, .. }) |
+            Some(Record::Provider { globals, .. }) |
+            Some(Record::Module { globals, .. }) |
+            Some(Record::Function { globals, .. }) |
+            Some(Record::Probe { globals, .. }) => {
+                globals.push(id.clone());
+            }
+            _ => {
+                unreachable!()
+            }
+        };
     }
 
     fn visit_globals(&mut self, globals: &HashMap<(DataType, Expr), Option<Value>>) {
@@ -253,7 +316,21 @@ impl SymbolTableBuilder {
 impl DtraceVisitor<()> for SymbolTableBuilder {
     fn visit_dtrace(&mut self, dtrace: &Dtrace) -> () {
         trace!("Entering: visit_dtrace");
-        self.table.set_curr_scope_info("dtrace".to_string(), ScopeType::Dtrace);
+        let name: String = "dtrace".to_string();
+        self.table.set_curr_scope_info(name.clone(), ScopeType::Dtrace);
+
+        // add dtrace record
+        let dtrace_rec = Record::Dtrace {
+            name: name.clone(),
+            fns: vec![],
+            globals: vec![],
+            dscripts: vec![],
+        };
+
+        // Add dtrace to scope
+        let id = self.table.put(name.clone(), dtrace_rec);
+
+        self.curr_dtrace = Some(id);
 
         // visit fns
         dtrace.fns.iter().for_each(| f | self.visit_fn(f) );
@@ -265,6 +342,7 @@ impl DtraceVisitor<()> for SymbolTableBuilder {
         dtrace.dscripts.iter().for_each(| dscript | self.visit_dscript(dscript));
 
         trace!("Exiting: visit_dtrace");
+        self.curr_dtrace = None;
     }
 
     fn visit_dscript(&mut self, dscript: &Dscript) -> () {
@@ -276,10 +354,10 @@ impl DtraceVisitor<()> for SymbolTableBuilder {
         dscript.providers.iter().for_each(| (_name, provider) | {
             self.visit_provider(provider)
         });
-        // TODO visit probes (need to add these, can always be referenced via Scope::containing_dscript)
 
         trace!("Exiting: visit_dscript");
         self.table.exit_scope();
+        self.curr_dscript = None;
     }
 
     fn visit_provider(&mut self, provider: &Provider) -> () {
@@ -293,6 +371,8 @@ impl DtraceVisitor<()> for SymbolTableBuilder {
         });
 
         trace!("Exiting: visit_provider");
+        self.table.exit_scope();
+        self.curr_provider = None;
     }
 
     fn visit_module(&mut self, module: &Module) -> () {
@@ -306,6 +386,8 @@ impl DtraceVisitor<()> for SymbolTableBuilder {
         });
 
         trace!("Exiting: visit_module");
+        self.table.exit_scope();
+        self.curr_module = None;
     }
 
     fn visit_function(&mut self, function: &Function) -> () {
@@ -314,9 +396,17 @@ impl DtraceVisitor<()> for SymbolTableBuilder {
         self.add_function(function);
         function.fns.iter().for_each(| f | self.visit_fn(f) );
         self.visit_globals(&function.globals);
-        // TODO visit probe_map -- unsure how this is going to look?
+
+        // visit probe_map
+        function.probe_map.iter().for_each(| probes | {
+            probes.1.iter().for_each(| probe | {
+                self.visit_probe(probe);
+            });
+        });
 
         trace!("Exiting: visit_function");
+        self.table.exit_scope();
+        self.curr_function = None;
     }
 
     fn visit_probe(&mut self, probe: &Probe) -> () {
@@ -329,16 +419,30 @@ impl DtraceVisitor<()> for SymbolTableBuilder {
         // Will not visit predicate/body at this stage
 
         trace!("Exiting: visit_probe");
+        self.table.exit_scope();
+        self.curr_probe = None;
     }
 
-    fn visit_fn(&mut self, f: &parser_types::Fn) -> () {
+    fn visit_fn(&mut self, f: &Fn) -> () {
         trace!("Entering: visit_fn");
 
-        // TODO add fn
+        // add fn
+        self.add_fn(f);
 
         // Will not visit predicate/body at this stage
 
         trace!("Exiting: visit_fn");
+        self.table.exit_scope();
+        self.curr_fn = None;
+    }
+
+    fn visit_formal_param(&mut self, param: &(Expr, DataType)) -> () {
+        trace!("Entering: visit_formal_param");
+
+        // add param
+        self.add_param(&param.0, &param.1);
+
+        trace!("Exiting: visit_formal_param");
     }
 
     fn visit_stmt(&mut self, _assign: &Statement) -> () {
