@@ -45,6 +45,7 @@ impl CodeGenerator {
 impl DtraceVisitor<bool> for CodeGenerator {
     fn visit_dtrace(&mut self, dtrace: &Dtrace) -> bool {
         trace!("Entering: CodeGenerator::visit_dtrace");
+        self.emitter.enter_scope();
         let mut is_success = self.emitter.emit_dtrace(dtrace);
 
         // TODO -- do I need to pass the Dtrace type/name as context to emitter...actually this is in the scope...
@@ -60,11 +61,13 @@ impl DtraceVisitor<bool> for CodeGenerator {
         });
 
         trace!("Exiting: CodeGenerator::visit_dtrace");
+        self.emitter.exit_scope();
         is_success
     }
 
     fn visit_dscript(&mut self, dscript: &Dscript) -> bool {
         trace!("Entering: CodeGenerator::visit_dscript");
+        self.emitter.enter_scope();
         let mut is_success = self.emitter.emit_dscript(dscript);
 
         // visit fns
@@ -79,11 +82,13 @@ impl DtraceVisitor<bool> for CodeGenerator {
         });
 
         trace!("Exiting: CodeGenerator::visit_dscript");
+        self.emitter.exit_scope();
         is_success
     }
 
     fn visit_provider(&mut self, provider: &Provider) -> bool {
         trace!("Entering: CodeGenerator::visit_provider");
+        self.emitter.enter_scope();
         let mut is_success = self.emitter.emit_provider(provider);
 
         // visit fns
@@ -92,18 +97,24 @@ impl DtraceVisitor<bool> for CodeGenerator {
         });
         // inject globals
         is_success &= self.visit_globals(&provider.globals);
-        // inject modules
+        // inject module fns/globals
         provider.modules.iter().for_each(|(_name, module)| {
             is_success &= self.visit_module(module);
         });
 
+        // At this point we've traversed the entire tree to generate necessary
+        // globals and fns!
+        // Now, we emit_provider which will do the actual instrumentation step!
+        let mut is_success = self.emitter.emit_provider(provider);
+
         trace!("Exiting: CodeGenerator::visit_provider");
+        self.emitter.exit_scope();
         is_success
     }
 
     fn visit_module(&mut self, module: &Module) -> bool {
         trace!("Entering: CodeGenerator::visit_module");
-        let mut is_success = self.emitter.emit_module(module);
+        self.emitter.enter_scope();
 
         // visit fns
         module.fns.iter().for_each(| f | {
@@ -111,16 +122,19 @@ impl DtraceVisitor<bool> for CodeGenerator {
         });
         // inject globals
         is_success &= self.visit_globals(&module.globals);
-        // TODO -- define any compiler constants
-        // TODO -- set up `walrus::ir::VisitorMut`
-        //         at each bytecode as traversing IR, do we have a `function` for the bytecode?
-        //         If so, enter that function
+        // inject function fns/globals
+        module.functions.iter().for_each(|(_name, function)| {
+            is_success &= self.visit_function(function);
+        });
+
         trace!("Exiting: CodeGenerator::visit_module");
+        self.emitter.exit_scope();
         is_success
     }
 
     fn visit_function(&mut self, function: &Function) -> bool {
         trace!("Entering: CodeGenerator::visit_function");
+        self.emitter.enter_scope();
         let mut is_success = self.emitter.emit_function(function);
 
         // visit fns
@@ -129,14 +143,21 @@ impl DtraceVisitor<bool> for CodeGenerator {
         });
         // inject globals
         is_success &= self.visit_globals(&function.globals);
-        // TODO -- define any compiler constants
-        // TODO -- inject probes (should be at this point in the `walrus::ir::VisitorMut` since visited from `visit_module` above
+        // inject probe fns/globals
+        function.probe_map.iter().for_each(|(_name, probes)| {
+            probes.iter().for_each(|probe| {
+                is_success &= self.visit_probe(probe);
+            });
+        });
+
         trace!("Exiting: CodeGenerator::visit_function");
+        self.emitter.exit_scope();
         is_success
     }
 
     fn visit_probe(&mut self, probe: &Probe) -> bool {
         trace!("Entering: CodeGenerator::visit_probe");
+        self.emitter.enter_scope();
         let mut is_success = self.emitter.emit_probe(probe);
 
         // visit fns
@@ -145,15 +166,18 @@ impl DtraceVisitor<bool> for CodeGenerator {
         });
         // inject globals
         is_success &= self.visit_globals(&probe.globals);
-        // TODO -- define any compiler constants
+
         trace!("Exiting: CodeGenerator::visit_probe");
+        self.emitter.exit_scope();
         is_success
     }
 
     fn visit_fn(&mut self, f: &crate::parser::types::Fn) -> bool {
         trace!("Entering: CodeGenerator::visit_fn");
+        self.emitter.enter_scope();
         let is_success = self.emitter.emit_fn(f);
         trace!("Exiting: CodeGenerator::visit_fn");
+        self.emitter.exit_scope();
         is_success
     }
 
