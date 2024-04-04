@@ -1,6 +1,7 @@
 use crate::parser::dtrace_parser::*;
 use crate::verifier::verifier::*;
-use crate::generator::emitters::{Emitter, WasmRewritingEmitter};
+use crate::generator::emitters::{WasmRewritingEmitter};
+use crate::generator::code_generator::{CodeGenerator};
 
 pub mod parser;
 pub mod verifier;
@@ -81,14 +82,17 @@ fn try_main() -> Result<(), failure::Error> {
             let _config =  walrus::ModuleConfig::new();
             let app_wasm = walrus::Module::from_file(&app_wasm_path).unwrap();
 
-            let mut emitter = WasmRewritingEmitter {
-                table: &symbol_table,
-                app_wasm,
-                output_wasm_path
+            let emitter = WasmRewritingEmitter {
+                table: symbol_table,
+                app_wasm
             };
 
-            emitter.emit(&dtrace);
-            emitter.dump_to_file();
+            let mut generator = CodeGenerator {
+                emitter: Box::new(emitter)
+            };
+
+            generator.generate(&dtrace);
+            generator.dump_to_file(output_wasm_path);
         },
         Err(e) => {
             error!("Cannot read specified file {}: {e}", dscript_path);

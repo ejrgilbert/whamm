@@ -112,14 +112,6 @@ impl DtraceVisitor<String> for AsStrVisitor {
             self.decrease_indent();
         }
 
-        // print probes
-        s += &format!("{} dscript probes:{NL}", self.get_indent());
-        self.increase_indent();
-        for probe in dscript.probes.iter() {
-            s += &format!("{}", self.visit_probe(probe));
-        }
-        self.decrease_indent();
-
         s
     }
 
@@ -222,7 +214,7 @@ impl DtraceVisitor<String> for AsStrVisitor {
             self.decrease_indent();
         }
 
-        // print functions
+        // print probes
         if function.probe_map.len() > 0 {
             s += &format!("{} function probe_map:{NL}", self.get_indent());
             for (name, probes) in function.probe_map.iter() {

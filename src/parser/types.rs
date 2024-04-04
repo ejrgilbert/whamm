@@ -280,12 +280,6 @@ pub struct Dscript {
     pub providers: HashMap<String, Provider>,
     pub fns: Vec<Fn>,                                      // User-provided
     pub globals: HashMap<(DataType, Expr), Option<Value>>, // User-provided, should be VarId -> Value
-
-    /// The probes that have been used in the Dscript.
-    /// This keeps us from having to keep multiple copies of probes across probe specs matched by
-    ///     user specified glob pattern.
-    /// These will be the probes available for this Function.
-    pub probes: Vec<Probe>,
 }
 impl Dscript {
     pub fn new() -> Self {
@@ -293,8 +287,7 @@ impl Dscript {
             name: "".to_string(),
             providers: HashMap::new(),
             fns: vec![],
-            globals: HashMap::new(),
-            probes: vec![],
+            globals: HashMap::new()
         }
     }
 
@@ -438,7 +431,6 @@ pub struct Function {
     pub name: String,
     pub fns: Vec<Fn>,                                      // Comp-provided
     pub globals: HashMap<(DataType, Expr), Option<Value>>, // Comp-provided, should be VarId -> Value
-    /// Mapping from probe type to list of indices (into `probes` in dscript above) of the probes tied to that type
     pub probe_map: HashMap<String, Vec<Probe>>
 }
 impl Function {
@@ -594,8 +586,8 @@ pub trait DtraceVisitor<T> {
     fn visit_probe(&mut self, probe: &Probe) -> T;
     fn visit_fn(&mut self, f: &Fn) -> T;
     fn visit_formal_param(&mut self, param: &(Expr, DataType)) -> T;
-    fn visit_stmt(&mut self, assign: &Statement) -> T;
-    fn visit_expr(&mut self, call: &Expr) -> T;
+    fn visit_stmt(&mut self, stmt: &Statement) -> T;
+    fn visit_expr(&mut self, expr: &Expr) -> T;
     fn visit_op(&mut self, op: &Op) -> T;
     fn visit_datatype(&mut self, datatype: &DataType) -> T;
     fn visit_value(&mut self, val: &Value) -> T;

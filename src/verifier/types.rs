@@ -1,3 +1,4 @@
+use std::borrow::BorrowMut;
 use std::collections::HashMap;
 use log::{ error };
 use crate::parser::types::DataType;
@@ -87,8 +88,8 @@ impl SymbolTable {
         self.get_curr_scope_mut().unwrap().containing_dscript = Some(id);
     }
 
-    pub fn get_record_mut(&mut self, rec_id: usize) -> Option<&mut Record> {
-        self.records.get_mut(rec_id)
+    pub fn get_record_mut(&mut self, rec_id: &usize) -> Option<&mut Record> {
+        self.records.get_mut(*rec_id)
     }
 
     pub fn get_curr_rec(&self) -> Option<&Record> {
@@ -122,13 +123,13 @@ impl SymbolTable {
         new_rec_id
     }
 
-    pub fn lookup(&self, key: &String) -> Option<&Record> {
+    pub fn lookup(&self, key: &String) -> Option<&usize> {
         match self.get_curr_scope() {
             None => None,
             Some(curr) => {
                 match curr.lookup(key) {
                     Some(rec_id) => {
-                        self.records.get(*rec_id)
+                        Some(rec_id)
                     },
                     None => {
                         let mut rec_id = None;
@@ -152,7 +153,7 @@ impl SymbolTable {
 
                         match rec_id {
                             None => None,
-                            Some(id) => Some(self.records.get(*id).unwrap())
+                            Some(id) => Some(id)
                         }
                     }
                 }
@@ -283,10 +284,16 @@ pub enum Record {
     },
     Fn {
         name: String,
-        params: Vec<usize>
+        params: Vec<usize>,
+
+        /// The address of this function post-injection
+        addr: i32
     },
     Var {
         ty: DataType,
-        name: String
+        name: String,
+
+        /// The address of this function post-injection
+        addr: i32
     }
 }

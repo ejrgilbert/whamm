@@ -56,7 +56,7 @@ impl SymbolTableBuilder {
         let id = self.table.put(dscript.name.clone(), dscript_rec);
 
         // Add dscript to current dtrace record
-        match self.table.get_record_mut(self.curr_dtrace.unwrap()).unwrap() {
+        match self.table.get_record_mut(&self.curr_dtrace.unwrap()).unwrap() {
             Record::Dtrace { dscripts, .. } => {
                 dscripts.push(id.clone());
             }
@@ -91,7 +91,7 @@ impl SymbolTableBuilder {
         let id = self.table.put(provider.name.clone(), provider_rec);
 
         // Add provider to current dscript record
-        match self.table.get_record_mut(self.curr_dscript.unwrap()).unwrap() {
+        match self.table.get_record_mut(&self.curr_dscript.unwrap()).unwrap() {
             Record::Dscript { providers, .. } => {
                 providers.push(id.clone());
             }
@@ -125,7 +125,7 @@ impl SymbolTableBuilder {
         let id = self.table.put(module.name.clone(), module_rec);
 
         // Add module to current provider record
-        match self.table.get_record_mut(self.curr_provider.unwrap()).unwrap() {
+        match self.table.get_record_mut(&self.curr_provider.unwrap()).unwrap() {
             Record::Provider { modules, .. } => {
                 modules.push(id.clone());
             }
@@ -159,7 +159,7 @@ impl SymbolTableBuilder {
         let id = self.table.put(function.name.clone(), function_rec);
 
         // Add function to current module record
-        match self.table.get_record_mut(self.curr_module.unwrap()).unwrap() {
+        match self.table.get_record_mut(&self.curr_module.unwrap()).unwrap() {
             Record::Module { functions, .. } => {
                 functions.push(id.clone());
             }
@@ -192,7 +192,7 @@ impl SymbolTableBuilder {
         let id = self.table.put(probe.name.clone(), probe_rec);
 
         // Add probe to current function record
-        match self.table.get_record_mut(self.curr_function.unwrap()) {
+        match self.table.get_record_mut(&self.curr_function.unwrap()) {
             Some(Record::Function { probes, .. }) => {
                 probes.push(id.clone());
             }
@@ -218,6 +218,7 @@ impl SymbolTableBuilder {
         let fn_rec = Record::Fn {
             name: f.name.clone(),
             params: vec![],
+            addr: -1
         };
 
         // Add fn to scope
@@ -261,13 +262,14 @@ impl SymbolTableBuilder {
         let param_rec = Record::Var {
             name: name.clone(),
             ty: ty.clone(),
+            addr: -1
         };
 
         // add var to scope
         let id = self.table.put(name.clone(), param_rec);
 
         // add param to fn record
-        match self.table.get_record_mut(self.curr_fn.unwrap()) {
+        match self.table.get_record_mut(&self.curr_fn.unwrap()) {
             Some(Record::Fn { params, .. }) => {
                 params.push(id.clone());
             }
@@ -287,6 +289,7 @@ impl SymbolTableBuilder {
         let id = self.table.put(name.clone(), Record::Var {
             ty,
             name,
+            addr: -1
         });
 
         // add global record to the current record
