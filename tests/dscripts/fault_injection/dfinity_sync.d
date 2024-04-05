@@ -5,5 +5,5 @@
  *       call site/target canister info.
  */
 wasm:ic0:call_perform:alt {
-    new_target_fn_name = inject_synchronous_fault;
+    new_target_imp_name = inject_synchronous_fault;
 }

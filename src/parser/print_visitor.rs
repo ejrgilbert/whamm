@@ -23,10 +23,10 @@ impl AsStrVisitor {
         "--".repeat(cmp::max(0, self.indent as usize))
     }
 
-    fn visit_globals(&mut self, globals: &HashMap<(DataType, Expr), Option<Value>>) -> String {
+    fn visit_globals(&mut self, globals: &HashMap<String, (DataType, Expr, Option<Value>)>) -> String {
         let mut s = "".to_string();
-        for ((_ty, var_id), val) in globals.iter() {
-            s += &format!("{}{} := ", self.get_indent(), self.visit_expr(var_id));
+        for (name, (_ty, _var_id, val)) in globals.iter() {
+            s += &format!("{}{} := ", self.get_indent(), name);
             match val {
                 Some(v) => s += &format!("{}{NL}", self.visit_value(v)),
                 None => s += &format!("None{NL}")
@@ -54,8 +54,8 @@ impl DtraceVisitor<String> for AsStrVisitor {
         if dtrace.globals.len() > 0 {
             s += &format!("Dtrace globals:{NL}");
             self.increase_indent();
-            for ((_ty, var_id), val) in dtrace.globals.iter() {
-                s += &format!("{}{} := ", self.get_indent(), self.visit_expr(var_id));
+            for (name, (_ty, _var_id, val)) in dtrace.globals.iter() {
+                s += &format!("{}{} := ", self.get_indent(), name);
                 match val {
                     Some(v) => s += &format!("{}{NL}", self.visit_value(v)),
                     None => s += &format!("None{NL}")

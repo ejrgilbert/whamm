@@ -130,7 +130,7 @@ pub struct Fn {
 pub struct Dtrace {
     pub provided_probes: HashMap<String, HashMap<String, HashMap<String, Vec<String>>>>,
     pub(crate) fns: Vec<Fn>,                                      // Comp-provided
-    pub(crate) globals: HashMap<(DataType, Expr), Option<Value>>, // Comp-provided, should be VarId -> Value
+    pub globals: HashMap<String, (DataType, Expr, Option<Value>)>, // Comp-provided, should be VarId
 
     pub dscripts: Vec<Dscript>
 }
@@ -177,7 +177,7 @@ impl Dtrace {
         vec![ strcmp_fn ]
     }
 
-    fn get_provided_globals() -> HashMap<(DataType, Expr), Option<Value>> {
+    fn get_provided_globals() -> HashMap<String, (DataType, Expr, Option<Value>)> {
         HashMap::new()
     }
 
@@ -282,7 +282,7 @@ pub struct Dscript {
     /// The providers of the probes that have been used in the Dscript.
     pub providers: HashMap<String, Provider>,
     pub fns: Vec<Fn>,                                      // User-provided
-    pub globals: HashMap<(DataType, Expr), Option<Value>>, // User-provided, should be VarId -> Value
+    pub globals: HashMap<String, (DataType, Expr, Option<Value>)>, // User-provided, should be VarId
 }
 impl Dscript {
     pub fn new() -> Self {
@@ -344,7 +344,7 @@ impl Dscript {
 pub struct Provider {
     pub name: String,
     pub fns: Vec<Fn>,                                      // Comp-provided
-    pub globals: HashMap<(DataType, Expr), Option<Value>>, // Comp-provided, should be VarId -> Value
+    pub globals: HashMap<String, (DataType, Expr, Option<Value>)>, // Comp-provided, should be VarId
 
     /// The modules of the probes that have been used in the Dscript.
     /// These will be sub-modules of this Provider.
@@ -366,7 +366,7 @@ impl Provider {
         vec![]
     }
 
-    fn get_provided_globals(_name: &String) -> HashMap<(DataType, Expr), Option<Value>> {
+    fn get_provided_globals(_name: &String) -> HashMap<String, (DataType, Expr, Option<Value>)> {
         HashMap::new()
     }
 
@@ -388,7 +388,7 @@ impl Provider {
 pub struct Module {
     pub name: String,
     pub fns: Vec<Fn>,                                      // Comp-provided
-    pub globals: HashMap<(DataType, Expr), Option<Value>>, // Comp-provided, should be VarId -> Value
+    pub globals: HashMap<String, (DataType, Expr, Option<Value>)>, // Comp-provided, should be VarId
 
     /// The functions of the probes that have been used in the Dscript.
     /// These will be sub-functions of this Module.
@@ -410,7 +410,7 @@ impl Module {
         vec![]
     }
 
-    fn get_provided_globals(_name: &String) -> HashMap<(DataType, Expr), Option<Value>> {
+    fn get_provided_globals(_name: &String) -> HashMap<String, (DataType, Expr, Option<Value>)> {
         HashMap::new()
     }
 
@@ -433,7 +433,7 @@ impl Module {
 pub struct Function {
     pub name: String,
     pub fns: Vec<Fn>,                                      // Comp-provided
-    pub globals: HashMap<(DataType, Expr), Option<Value>>, // Comp-provided, should be VarId -> Value
+    pub globals: HashMap<String, (DataType, Expr, Option<Value>)>, // Comp-provided, should be VarId
     pub probe_map: HashMap<String, Vec<Probe>>
 }
 impl Function {
@@ -452,22 +452,22 @@ impl Function {
         vec![]
     }
 
-    fn get_provided_globals(name: &String) -> HashMap<(DataType, Expr), Option<Value>> {
+    fn get_provided_globals(name: &String) -> HashMap<String, (DataType, Expr, Option<Value>)> {
         let mut globals = HashMap::new();
         if name.to_lowercase() == "call" {
             // Add in provided globals for the "call" function
-            globals.insert((DataType::Str, Expr::VarId {
+            globals.insert("target_fn_type".to_string(),(DataType::Str, Expr::VarId {
                 name: "target_fn_type".to_string(),
-            }), None);
-            globals.insert((DataType::Str, Expr::VarId {
-                name: "target_fn_module".to_string(),
-            }), None);
-            globals.insert((DataType::Str, Expr::VarId {
-                name: "target_fn_name".to_string(),
-            }), None);
-            globals.insert((DataType::Str, Expr::VarId {
-                name: "new_target_fn_name".to_string(),
-            }), None);
+            }, None));
+            globals.insert("target_imp_module".to_string(), (DataType::Str, Expr::VarId {
+                name: "target_imp_module".to_string(),
+            }, None));
+            globals.insert("target_imp_name".to_string(), (DataType::Str, Expr::VarId {
+                name: "target_imp_name".to_string(),
+            }, None));
+            globals.insert("new_target_imp_name".to_string(), (DataType::Str, Expr::VarId {
+                name: "new_target_imp_name".to_string(),
+            }, None));
         }
 
         globals
@@ -505,7 +505,7 @@ impl Function {
 pub struct Probe {
     pub name: String,
     pub fns: Vec<Fn>,                                      // Comp-provided
-    pub globals: HashMap<(DataType, Expr), Option<Value>>, // Comp-provided, should be VarId -> Value
+    pub globals: HashMap<String, (DataType, Expr, Option<Value>)>, // Comp-provided, should be VarId
 
     pub predicate: Option<Expr>,
     pub body: Option<Vec<Statement>>
@@ -528,7 +528,7 @@ impl Probe {
         vec![]
     }
 
-    fn get_provided_globals(_name: &String) -> HashMap<(DataType, Expr), Option<Value>> {
+    fn get_provided_globals(_name: &String) -> HashMap<String, (DataType, Expr, Option<Value>)> {
         HashMap::new()
     }
 
@@ -594,4 +594,21 @@ pub trait DtraceVisitor<T> {
     fn visit_op(&mut self, op: &Op) -> T;
     fn visit_datatype(&mut self, datatype: &DataType) -> T;
     fn visit_value(&mut self, val: &Value) -> T;
+}
+
+/// To support setting constant-provided global vars
+pub trait DtraceVisitorMut<T> {
+    fn visit_dtrace(&mut self, dtrace: &mut Dtrace) -> T;
+    fn visit_dscript(&mut self, dscript: &mut Dscript) -> T;
+    fn visit_provider(&mut self, provider: &mut Provider) -> T;
+    fn visit_module(&mut self, module: &mut Module) -> T;
+    fn visit_function(&mut self, function: &mut Function) -> T;
+    fn visit_probe(&mut self, probe: &mut Probe) -> T;
+    fn visit_fn(&mut self, f: &mut Fn) -> T;
+    fn visit_formal_param(&mut self, param: &mut (Expr, DataType)) -> T;
+    fn visit_stmt(&mut self, stmt: &mut Statement) -> T;
+    fn visit_expr(&mut self, expr: &mut Expr) -> T;
+    fn visit_op(&mut self, op: &mut Op) -> T;
+    fn visit_datatype(&mut self, datatype: &mut DataType) -> T;
+    fn visit_value(&mut self, val: &mut Value) -> T;
 }

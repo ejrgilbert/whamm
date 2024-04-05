@@ -308,10 +308,9 @@ impl SymbolTableBuilder {
         };
     }
 
-    fn visit_globals(&mut self, globals: &HashMap<(DataType, Expr), Option<Value>>) {
-        for ((ty, expr), _val) in globals.iter() {
-            let name = self.get_var_name(expr).unwrap();
-            self.add_global(ty.clone(), name);
+    fn visit_globals(&mut self, globals: &HashMap<String, (DataType, Expr, Option<Value>)>) {
+        for (name, (ty, _expr, _val)) in globals.iter() {
+            self.add_global(ty.clone(), name.clone());
         }
     }
 }

@@ -5,7 +5,7 @@
 use std::collections::HashMap;
 use log::trace;
 use crate::generator::emitters::Emitter;
-use crate::parser::types::{DataType, Dscript, Dtrace, DtraceVisitor, Expr, Function, Module, Op, Probe, Provider, Statement, Value};
+use crate::parser::types::{DataType, Dscript, Dtrace, DtraceVisitorMut, Expr, Function, Module, Op, Probe, Provider, Statement, Value};
 
 /// The code generator traverses the AST and calls the passed emitter to
 /// emit some instruction/code/function/etc.
@@ -22,7 +22,7 @@ impl CodeGenerator {
             context_name: "".to_string()
         }
     }
-    pub fn generate(&mut self, dtrace: &Dtrace) -> bool {
+    pub fn generate(&mut self, dtrace: &mut Dtrace) -> bool {
         self.visit_dtrace(dtrace)
     }
     pub fn dump_to_file(&mut self, output_wasm_path: String) -> bool {
@@ -36,30 +36,29 @@ impl CodeGenerator {
             _ => None
         }
     }
-    fn visit_globals(&mut self, globals: &HashMap<(DataType, Expr), Option<Value>>) -> bool {
+    fn visit_globals(&mut self, globals: &HashMap<String, (DataType, Expr, Option<Value>)>) -> bool {
         let mut is_success = true;
-        for ((ty, expr), val) in globals.iter() {
-            let name = self.get_var_name(expr).unwrap();
-            is_success &= self.emitter.emit_global(name, ty.clone(), val);
+        for (name, (ty, _expr, val)) in globals.iter() {
+            is_success &= self.emitter.emit_global(name.clone(), ty.clone(), val);
         }
 
         is_success
     }
 }
-impl DtraceVisitor<bool> for CodeGenerator {
-    fn visit_dtrace(&mut self, dtrace: &Dtrace) -> bool {
+impl DtraceVisitorMut<bool> for CodeGenerator {
+    fn visit_dtrace(&mut self, dtrace: &mut Dtrace) -> bool {
         trace!("Entering: CodeGenerator::visit_dtrace");
         self.emitter.enter_scope();
         self.context_name  = "dtrace".to_string();
         let mut is_success = self.emitter.emit_dtrace(dtrace);
 
         // visit fns
-        dtrace.fns.iter().for_each(| f | {
+        dtrace.fns.iter_mut().for_each(| f | {
             is_success &= self.visit_fn(f);
         });
         // DO NOT inject globals (used by compiler)
         // inject dscripts
-        dtrace.dscripts.iter().for_each(|dscript| {
+        dtrace.dscripts.iter_mut().for_each(|dscript| {
             is_success &= self.visit_dscript(dscript);
         });
 
@@ -70,20 +69,20 @@ impl DtraceVisitor<bool> for CodeGenerator {
         is_success
     }
 
-    fn visit_dscript(&mut self, dscript: &Dscript) -> bool {
+    fn visit_dscript(&mut self, dscript: &mut Dscript) -> bool {
         trace!("Entering: CodeGenerator::visit_dscript");
         self.emitter.enter_scope();
         self.context_name += &format!(":{}", dscript.name.clone());
         let mut is_success = self.emitter.emit_dscript(dscript);
 
         // visit fns
-        dscript.fns.iter().for_each(| f | {
+        dscript.fns.iter_mut().for_each(| f | {
             is_success &= self.visit_fn(f);
         });
         // inject globals
         is_success &= self.visit_globals(&dscript.globals);
         // inject providers
-        dscript.providers.iter().for_each(|(_name, provider)| {
+        dscript.providers.iter_mut().for_each(|(_name, provider)| {
             is_success &= self.visit_provider(provider);
         });
 
@@ -94,26 +93,26 @@ impl DtraceVisitor<bool> for CodeGenerator {
         is_success
     }
 
-    fn visit_provider(&mut self, provider: &Provider) -> bool {
+    fn visit_provider(&mut self, provider: &mut Provider) -> bool {
         trace!("Entering: CodeGenerator::visit_provider");
         self.emitter.enter_scope();
         self.context_name += &format!(":{}", provider.name.clone());
-        let mut is_success = self.emitter.emit_provider(provider);
+        let mut is_success = true;
 
         // visit fns
-        provider.fns.iter().for_each(| f | {
+        provider.fns.iter_mut().for_each(| f | {
             is_success &= self.visit_fn(f);
         });
         // DO NOT inject globals (used by compiler)
         // inject module fns/globals
-        provider.modules.iter().for_each(|(_name, module)| {
+        provider.modules.iter_mut().for_each(|(_name, module)| {
             is_success &= self.visit_module(module);
         });
 
         // At this point we've traversed the entire tree to generate necessary
         // globals and fns!
         // Now, we emit_provider which will do the actual instrumentation step!
-        is_success &= self.emitter.emit_provider(provider);
+        is_success &= self.emitter.emit_provider(&self.context_name, provider);
 
         trace!("Exiting: CodeGenerator::visit_provider");
         self.emitter.exit_scope();
@@ -122,19 +121,19 @@ impl DtraceVisitor<bool> for CodeGenerator {
         is_success
     }
 
-    fn visit_module(&mut self, module: &Module) -> bool {
+    fn visit_module(&mut self, module: &mut Module) -> bool {
         trace!("Entering: CodeGenerator::visit_module");
         self.emitter.enter_scope();
         let mut is_success = true;
         self.context_name += &format!(":{}", module.name.clone());
 
         // visit fns
-        module.fns.iter().for_each(| f | {
+        module.fns.iter_mut().for_each(| f | {
             is_success &= self.visit_fn(f);
         });
         // DO NOT inject globals (used by compiler)
         // inject function fns/globals
-        module.functions.iter().for_each(|(_name, function)| {
+        module.functions.iter_mut().for_each(|(_name, function)| {
             is_success &= self.visit_function(function);
         });
 
@@ -145,20 +144,21 @@ impl DtraceVisitor<bool> for CodeGenerator {
         is_success
     }
 
-    fn visit_function(&mut self, function: &Function) -> bool {
+    fn visit_function(&mut self, function: &mut Function) -> bool {
         trace!("Entering: CodeGenerator::visit_function");
         self.emitter.enter_scope();
-        let mut is_success = self.emitter.emit_function(function);
+        // let mut is_success = self.emitter.emit_function(function);
         self.context_name += &format!(":{}", function.name.clone());
+        let mut is_success = true;
 
         // visit fns
-        function.fns.iter().for_each(| f | {
+        function.fns.iter_mut().for_each(| f | {
             is_success &= self.visit_fn(f);
         });
         // DO NOT inject globals (used by compiler)
         // inject probe fns/globals
-        function.probe_map.iter().for_each(|(_name, probes)| {
-            probes.iter().for_each(|probe| {
+        function.probe_map.iter_mut().for_each(|(_name, probes)| {
+            probes.iter_mut().for_each(|probe| {
                 is_success &= self.visit_probe(probe);
             });
         });
@@ -170,14 +170,15 @@ impl DtraceVisitor<bool> for CodeGenerator {
         is_success
     }
 
-    fn visit_probe(&mut self, probe: &Probe) -> bool {
+    fn visit_probe(&mut self, probe: &mut Probe) -> bool {
         trace!("Entering: CodeGenerator::visit_probe");
         self.emitter.enter_scope();
-        let mut is_success = self.emitter.emit_probe(probe);
+        // let mut is_success = self.emitter.emit_probe(probe);
         self.context_name += &format!(":{}", probe.name.clone());
+        let mut is_success = true;
 
         // visit fns
-        probe.fns.iter().for_each(| f | {
+        probe.fns.iter_mut().for_each(| f | {
             is_success &= self.visit_fn(f);
         });
         // DO NOT inject globals (used by compiler)
@@ -189,7 +190,7 @@ impl DtraceVisitor<bool> for CodeGenerator {
         is_success
     }
 
-    fn visit_fn(&mut self, f: &crate::parser::types::Fn) -> bool {
+    fn visit_fn(&mut self, f: &mut crate::parser::types::Fn) -> bool {
         trace!("Entering: CodeGenerator::visit_fn");
         self.emitter.enter_scope();
         let is_success = self.emitter.emit_fn(&self.context_name, f);
@@ -198,42 +199,42 @@ impl DtraceVisitor<bool> for CodeGenerator {
         is_success
     }
 
-    fn visit_formal_param(&mut self, param: &(Expr, DataType)) -> bool {
+    fn visit_formal_param(&mut self, param: &mut (Expr, DataType)) -> bool {
         trace!("Entering: CodeGenerator::visit_formal_param");
         let is_success = self.emitter.emit_formal_param(param);
         trace!("Exiting: CodeGenerator::visit_formal_param");
         is_success
     }
 
-    fn visit_stmt(&mut self, stmt: &Statement) -> bool {
+    fn visit_stmt(&mut self, stmt: &mut Statement) -> bool {
         trace!("Entering: CodeGenerator::visit_stmt");
         let is_success = self.emitter.emit_stmt(stmt);
         trace!("Exiting: CodeGenerator::visit_stmt");
         is_success
     }
 
-    fn visit_expr(&mut self, expr: &Expr) -> bool {
+    fn visit_expr(&mut self, expr: &mut Expr) -> bool {
         trace!("Entering: CodeGenerator::visit_expr");
         let is_success = self.emitter.emit_expr(expr);
         trace!("Exiting: CodeGenerator::visit_expr");
         is_success
     }
 
-    fn visit_op(&mut self, op: &Op) -> bool {
+    fn visit_op(&mut self, op: &mut Op) -> bool {
         trace!("Entering: CodeGenerator::visit_op");
         let is_success = self.emitter.emit_op(op);
         trace!("Exiting: CodeGenerator::visit_op");
         is_success
     }
 
-    fn visit_datatype(&mut self, datatype: &DataType) -> bool {
+    fn visit_datatype(&mut self, datatype: &mut DataType) -> bool {
         trace!("Entering: CodeGenerator::visit_datatype");
         let is_success = self.emitter.emit_datatype(datatype);
         trace!("Exiting: CodeGenerator::visit_datatype");
         is_success
     }
 
-    fn visit_value(&mut self, val: &Value) -> bool {
+    fn visit_value(&mut self, val: &mut Value) -> bool {
         trace!("Entering: CodeGenerator::visit_value");
         let is_success = self.emitter.emit_value(val);
         trace!("Exiting: CodeGenerator::visit_value");

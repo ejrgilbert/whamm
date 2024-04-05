@@ -47,18 +47,18 @@ const VALID_SCRIPTS: &'static [&'static str] = &[
     // Function calls
     r#"
 wasm::call:alt / strpaircmp((arg2, arg3), "record") / {
-    new_target_fn_name = "redirect_to_fault_injector";
+    new_target_imp_name = "redirect_to_fault_injector";
 }
     "#,
     r#"
 wasm::call:alt /
     target_fn_type == "import" &&
-    target_fn_module == "ic0" &&
-    target_fn_name == "call_new" &&
+    target_imp_module == "ic0" &&
+    target_imp_name == "call_new" &&
     strpaircmp((arg0, arg1), "bookings") &&
     strpaircmp((arg2, arg3), "record")
 / {
-    new_target_fn_name = "redirect_to_fault_injector";
+    new_target_imp_name = "redirect_to_fault_injector";
 }
     "#,
 
@@ -217,12 +217,12 @@ pub fn test_dtrace_with_asserts() {
     let script = r#"
 wasm::call:alt /
     target_fn_type == "import" &&
-    target_fn_module == "ic0" &&
-    target_fn_name == "call_new" &&
+    target_imp_module == "ic0" &&
+    target_imp_name == "call_new" &&
     strpaircmp((arg0, arg1), "bookings") &&
     strpaircmp((arg2, arg3), "record")
 / {
-    new_target_fn_name = "redirect_to_fault_injector";
+    new_target_imp_name = "redirect_to_fault_injector";
 }
     "#;
 

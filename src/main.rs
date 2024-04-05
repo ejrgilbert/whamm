@@ -63,7 +63,7 @@ fn try_main() -> Result<(), failure::Error> {
     match dscript {
         Ok(unparsed_str) => {
             // Parse the script and build the AST
-            let dtrace = match parse_script(unparsed_str) {
+            let mut dtrace = match parse_script(unparsed_str) {
                 Ok(ast) => {
                     info!("successfully parsed");
                     ast
@@ -89,7 +89,7 @@ fn try_main() -> Result<(), failure::Error> {
 
             let mut generator = CodeGenerator::new(Box::new(emitter));
 
-            generator.generate(&dtrace);
+            generator.generate(&mut dtrace);
             generator.dump_to_file(output_wasm_path);
         },
         Err(e) => {

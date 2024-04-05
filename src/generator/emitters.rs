@@ -1,7 +1,8 @@
+use std::collections::HashMap;
 use log::error;
-use walrus::FunctionId;
+use walrus::{FunctionKind};
 use walrus::ir::{BinaryOp, ExtendedLoad, LoadKind, MemArg};
-use crate::parser::types::{DataType, Dscript, Dtrace, Expr, Fn, Function, Module, Op, Probe, Provider, Statement, Value};
+use crate::parser::types::{DataType, Dscript, Dtrace, Expr, Fn, Module, Op, Probe, Provider, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable};
 
 // =================================================
@@ -14,12 +15,10 @@ pub trait Emitter {
 
     fn emit_dtrace(&mut self, dtrace: &Dtrace) -> bool;
     fn emit_dscript(&mut self, dscript: &Dscript) -> bool;
-    fn emit_provider(&mut self, provider: &Provider) -> bool;
+    fn emit_provider(&mut self, context: &String, provider: &mut Provider) -> bool;
 
     // TODO -- should emit module/function/probe be private?
-    fn emit_module(&mut self, module: &Module) -> bool;
-    fn emit_function(&mut self, function: &Function) -> bool;
-    fn emit_probe(&mut self, probe: &Probe) -> bool;
+    fn emit_module(&mut self, context: &String, module: &mut Module) -> bool;
 
     fn emit_fn(&mut self, context_name: &String, f: &Fn) -> bool;
     fn emit_formal_param(&mut self, param: &(Expr, DataType)) -> bool;
@@ -50,6 +49,97 @@ impl WasmRewritingEmitter {
             table,
             fn_providing_contexts: vec![ "dtrace".to_string() ]
         }
+    }
+
+    fn emit_wasm_bytecode_module(&mut self, module: &mut Module) -> bool {
+        // TODO -- set up `walrus::ir::VisitorMut`
+        //         at each bytecode as traversing IR, do we have a `function` for the bytecode?
+        //         If so, enter that function
+        // See https://github.com/rustwasm/wasm-snip/blob/master/src/lib.rs#L236
+        struct InstrumentationVisitor<'a> {
+            emitter: &'a WasmRewritingEmitter,
+            module: &'a mut Module
+        }
+        impl InstrumentationVisitor<'_> {
+            fn emit_function(&mut self, instr_as_str: &String, instr: &mut walrus::ir::Instr) -> bool {
+                let mut is_success = true;
+                let function = self.module.functions.get_mut(instr_as_str).unwrap();
+                if function.name.to_lowercase() == "call" {
+                    // This is a call instruction and a call function!
+                    match instr {
+                        walrus::ir::Instr::Call(func) => {
+                            let func = self.emitter.app_wasm.funcs.get(func.func);
+                            let (func_kind, module, name) = match &func.kind {
+                                FunctionKind::Import(imp) => {
+                                    let func_kind = "import";
+                                    let import = self.emitter.app_wasm.imports.get(imp.import);
+
+                                    (func_kind, Some(&import.module), Some(&import.name))
+                                },
+                                FunctionKind::Local(..) => {
+                                    let func_kind = "local";
+
+                                    (func_kind, None, None)
+                                },
+                                FunctionKind::Uninitialized(..) => {
+                                    let func_kind = "uninitialized";
+
+                                    (func_kind, None, None)
+                                }
+                            };
+                            // define compiler constants
+                            let tuple = function.globals.get_mut("target_fn_type").unwrap();
+                            tuple.2 = Some(Value::Str {
+                                ty: DataType::Str,
+                                val: func_kind.to_string(),
+                            });
+
+                            if module.is_some() {
+                                let tuple = function.globals.get_mut("target_imp_module").unwrap();
+                                tuple.2 = Some(Value::Str {
+                                    ty: DataType::Str,
+                                    val: module.unwrap().to_string(),
+                                });
+                            }
+
+                            if name.is_some() {
+                                let tuple = function.globals.get_mut("target_imp_name").unwrap();
+                                tuple.2 = Some(Value::Str {
+                                    ty: DataType::Str,
+                                    val: name.unwrap().to_string(),
+                                });
+                            }
+                        },
+                        _ => {
+                            unreachable!()
+                        }
+                    }
+                }
+                // inject probes (should be at the correct point in the `walrus::ir::VisitorMut`)
+                self.emit_probes(&function.probe_map);
+
+                is_success
+            }
+            fn emit_probes(&mut self, probe_map: &HashMap<String, Vec<Probe>>) -> bool {
+                // TODO -- define any compiler constants
+                probe_map.iter().for_each(|(_name, probes)| {
+                    probes.iter().for_each(| probe | {
+                        is_success &= self.emit_probe(probe);
+                    });
+                });
+
+                false
+            }
+        }
+        impl walrus::ir::VisitorMut for InstrumentationVisitor<'_> {
+            fn visit_instr_mut(&mut self, instr: &mut walrus::ir::Instr, _instr_loc: &mut walrus::ir::InstrLocId) {
+                let instr_as_str = &format!("{:?}", instr);
+                if self.module.functions.contains_key(instr_as_str) {
+                    self.emit_function(instr_as_str, instr);
+                }
+            }
+        }
+        false
     }
 
     fn emit_provided_fn(&mut self, context: &String, f: &Fn) -> bool {
@@ -232,28 +322,21 @@ impl Emitter for WasmRewritingEmitter {
         // nothing to do here
         true
     }
-    fn emit_provider(&mut self, provider: &Provider) -> bool {
+    fn emit_provider(&mut self, context: &String, provider: &mut Provider) -> bool {
         let mut is_success = true;
-        provider.modules.iter().for_each(|(_name, module)| {
-            is_success &= self.emit_module(module);
+        provider.modules.iter_mut().for_each(|(_name, module)| {
+            is_success &= self.emit_module(context, module);
         });
         is_success
     }
-    fn emit_module(&mut self, _module: &Module) -> bool {
+    fn emit_module(&mut self, context: &String, module: &mut Module) -> bool {
         // TODO -- define any compiler constants
-        // TODO -- set up `walrus::ir::VisitorMut`
-        //         at each bytecode as traversing IR, do we have a `function` for the bytecode?
-        //         If so, enter that function
-        todo!();
-    }
-    fn emit_function(&mut self, _function: &Function) -> bool {
-        // TODO -- define any compiler constants
-        // TODO -- inject probes (should be at this point in the `walrus::ir::VisitorMut` since visited from `visit_module` above
-        todo!();
-    }
-    fn emit_probe(&mut self, _probe: &Probe) -> bool {
-        // TODO -- define any compiler constants
-        todo!();
+        return if context == &"dtrace:dscript:wasm:bytecode".to_string() {
+            self.emit_wasm_bytecode_module(module)
+        } else {
+            error!("Provided function, but could not find a context to provide the definition");
+            false
+        };
     }
     fn emit_fn(&mut self, context: &String, f: &Fn) -> bool {
         self.table.enter_scope();
@@ -270,12 +353,10 @@ impl Emitter for WasmRewritingEmitter {
         // TODO -- emit non-provided fn
         //         only when we're supporting user-defined fns in dscript...
         unimplemented!();
-        return false
     }
     fn emit_formal_param(&mut self, _param: &(Expr, DataType)) -> bool {
         // TODO -- only when we're supporting user-defined fns in dscript...
         unimplemented!();
-        return false
     }
     fn emit_global(&mut self, name: String, _ty: DataType, _val: &Option<Value>) -> bool {
         let rec_id = match self.table.lookup(&name) {
@@ -288,7 +369,7 @@ impl Emitter for WasmRewritingEmitter {
 
         let rec = self.table.get_record_mut(&rec_id);
         return match rec {
-            Some(Record::Var { addr, .. }) => {
+            Some(Record::Var { addr: _addr, .. }) => {
                 // TODO -- emit global variable and set addr in symbol table
                 //         only when we're supporting user-defined globals in dscript...
                 unimplemented!();

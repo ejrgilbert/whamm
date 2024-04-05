@@ -16,7 +16,7 @@ pub fn setup_logger() {
 // ====================
 
 const VALID_SCRIPTS: &'static [&'static str] = &[
-    "wasm:bytecode:call:alt { new_target_fn_name = redirect_to_fault_injector; }",
+    "wasm:bytecode:call:alt { new_target_imp_name = redirect_to_fault_injector; }",
 ];
 
 // =============
@@ -46,12 +46,12 @@ pub fn test_build_table_with_asserts() {
     let script = r#"
 wasm::call:alt /
     target_fn_type == "import" &&
-    target_fn_module == "ic0" &&
-    target_fn_name == "call_new" &&
+    target_imp_module == "ic0" &&
+    target_imp_name == "call_new" &&
     strpaircmp((arg0, arg1), "bookings") &&
     strpaircmp((arg2, arg3), "record")
 / {
-    new_target_fn_name = "redirect_to_fault_injector";
+    new_target_imp_name = "redirect_to_fault_injector";
 }
     "#;
 
@@ -62,7 +62,7 @@ wasm::call:alt /
 
             // 7 scopes: dtrace, strcmp, dscript, wasm, bytecode, call, alt
             let num_scopes = 7;
-            // records: num_scopes PLUS (target_fn_type, target_fn_module, target_fn_name, new_target_fn_name,
+            // records: num_scopes PLUS (target_fn_type, target_imp_module, target_imp_name, new_target_imp_name,
             //          str_addr, value)
             let num_recs = num_scopes + 6;
 
