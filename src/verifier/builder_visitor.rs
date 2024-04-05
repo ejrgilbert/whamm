@@ -32,13 +32,6 @@ impl SymbolTableBuilder {
         }
     }
 
-    fn get_var_name(&self, expr: &Expr) -> Option<String> {
-        match expr {
-            Expr::VarId {name} => Some(name.clone()),
-            _ => None
-        }
-    }
-
     fn add_dscript(&mut self, dscript: &Dscript) {
         if self.table.lookup(&dscript.name).is_some() {
             error!("duplicated dscript [ {} ]", &dscript.name);

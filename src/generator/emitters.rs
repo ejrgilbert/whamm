@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::process::exit;
 use log::error;
 use walrus::{FunctionKind};
 use walrus::ir::{BinaryOp, ExtendedLoad, LoadKind, MemArg};
@@ -56,13 +57,22 @@ impl WasmRewritingEmitter {
         //         at each bytecode as traversing IR, do we have a `function` for the bytecode?
         //         If so, enter that function
         // See https://github.com/rustwasm/wasm-snip/blob/master/src/lib.rs#L236
+        self.app_wasm.funcs.iter_local_mut().for_each(|(id, func)| {
+            // TODO -- make sure that the id is not any of the injected function IDs
+            let entry = func.entry_block();
+            walrus::ir::dfs_pre_order_mut(&mut InstrumentationVisitor {
+                emitter: self,
+                module
+            }, func, entry);
+        });
+
         struct InstrumentationVisitor<'a> {
             emitter: &'a WasmRewritingEmitter,
             module: &'a mut Module
         }
         impl InstrumentationVisitor<'_> {
             fn emit_function(&mut self, instr_as_str: &String, instr: &mut walrus::ir::Instr) -> bool {
-                let mut is_success = true;
+                let is_success = true;
                 let function = self.module.functions.get_mut(instr_as_str).unwrap();
                 if function.name.to_lowercase() == "call" {
                     // This is a call instruction and a call function!
@@ -116,19 +126,47 @@ impl WasmRewritingEmitter {
                     }
                 }
                 // inject probes (should be at the correct point in the `walrus::ir::VisitorMut`)
-                self.emit_probes(&function.probe_map);
+                self.emit_probes(instr_as_str);
 
                 is_success
             }
-            fn emit_probes(&mut self, probe_map: &HashMap<String, Vec<Probe>>) -> bool {
-                // TODO -- define any compiler constants
-                probe_map.iter().for_each(|(_name, probes)| {
-                    probes.iter().for_each(| probe | {
-                        is_success &= self.emit_probe(probe);
-                    });
-                });
+            fn emit_probes(&mut self, instr_as_str: &String) -> bool {
+                let mut is_success = true;
+                is_success &= self.emit_before_probes(instr_as_str);
+                is_success &= self.emit_alt_probes(instr_as_str);
+                is_success &= self.emit_after_probes(instr_as_str);
 
-                false
+                is_success
+            }
+            fn emit_before_probes(&mut self, instr_as_str: &String) -> bool {
+                return match self.module.functions.get_mut(instr_as_str).unwrap().probe_map.get(&"before".to_string()) {
+                    Some(probes) => {
+                        todo!()
+                    },
+                    None => {
+                        true
+                    }
+                }
+            }
+            fn emit_alt_probes(&mut self, instr_as_str: &String) -> bool {
+                return match self.module.functions.get_mut(instr_as_str).unwrap().probe_map.get(&"alt".to_string()) {
+                    Some(probes) => {
+                        todo!()
+                    },
+                    None => {
+                        true
+                    }
+                }
+            }
+            fn emit_after_probes(&mut self, instr_as_str: &String) -> bool {
+                return match self.module.functions.get_mut(instr_as_str).unwrap().probe_map.get(&"after".to_string()) {
+                    Some(probes) => {
+                        todo!()
+                    },
+                    None => {
+                        true
+                    }
+                }
             }
         }
         impl walrus::ir::VisitorMut for InstrumentationVisitor<'_> {

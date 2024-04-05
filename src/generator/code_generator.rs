@@ -30,12 +30,6 @@ impl CodeGenerator {
     }
 
     // Private helper functions
-    fn get_var_name(&self, expr: &Expr) -> Option<String> {
-        match expr {
-            Expr::VarId {name} => Some(name.clone()),
-            _ => None
-        }
-    }
     fn visit_globals(&mut self, globals: &HashMap<String, (DataType, Expr, Option<Value>)>) -> bool {
         let mut is_success = true;
         for (name, (ty, _expr, val)) in globals.iter() {
