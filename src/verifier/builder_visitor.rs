@@ -218,7 +218,7 @@ impl SymbolTableBuilder {
         let fn_rec = Record::Fn {
             name: f.name.clone(),
             params: vec![],
-            addr: -1
+            addr: None
         };
 
         // Add fn to scope
@@ -262,7 +262,7 @@ impl SymbolTableBuilder {
         let param_rec = Record::Var {
             name: name.clone(),
             ty: ty.clone(),
-            addr: -1
+            addr: None
         };
 
         // add var to scope
@@ -289,7 +289,7 @@ impl SymbolTableBuilder {
         let id = self.table.put(name.clone(), Record::Var {
             ty,
             name,
-            addr: -1
+            addr: None
         });
 
         // add global record to the current record

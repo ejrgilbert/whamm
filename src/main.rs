@@ -82,14 +82,12 @@ fn try_main() -> Result<(), failure::Error> {
             let _config =  walrus::ModuleConfig::new();
             let app_wasm = walrus::Module::from_file(&app_wasm_path).unwrap();
 
-            let emitter = WasmRewritingEmitter {
-                table: symbol_table,
-                app_wasm
-            };
+            let emitter = WasmRewritingEmitter::new(
+                app_wasm,
+                symbol_table
+            );
 
-            let mut generator = CodeGenerator {
-                emitter: Box::new(emitter)
-            };
+            let mut generator = CodeGenerator::new(Box::new(emitter));
 
             generator.generate(&dtrace);
             generator.dump_to_file(output_wasm_path);

@@ -1,6 +1,6 @@
-use std::borrow::BorrowMut;
 use std::collections::HashMap;
 use log::{ error };
+use walrus::FunctionId;
 use crate::parser::types::DataType;
 
 #[derive(Debug)]
@@ -287,13 +287,16 @@ pub enum Record {
         params: Vec<usize>,
 
         /// The address of this function post-injection
-        addr: i32
+        // TODO -- this representation SUCKS...specific to walrus bytecode injection...
+        //         can't find another way though since I can't encode a FunctionId through the API
+        //         ...maybe use type parameters?
+        addr: Option<FunctionId>
     },
     Var {
         ty: DataType,
         name: String,
 
         /// The address of this function post-injection
-        addr: i32
+        addr: Option<usize>
     }
 }

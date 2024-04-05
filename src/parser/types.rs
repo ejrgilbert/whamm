@@ -89,8 +89,9 @@ pub enum Expr {
         fn_target: Box<Expr>,
         args: Option<Vec<Box<Expr>>>
     },
-    VarId {     // Type is TODO
-        name: String,
+    VarId {
+        // is_provided: bool, // TODO -- do I need this?
+        name: String
     },
     Primitive { // Type is val.ty
         val: Value
@@ -119,6 +120,7 @@ pub enum Expr {
 
 // Functions
 pub struct Fn {
+    pub(crate) is_provided: bool,
     pub(crate) name: String,
     pub(crate) params: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
     pub(crate) return_ty: Option<DataType>,
@@ -166,6 +168,7 @@ impl Dtrace {
             )
         ];
         let strcmp_fn = Fn {
+            is_provided: true,
             name: "strcmp".to_string(),
             params,
             return_ty: Some(DataType::Boolean),
