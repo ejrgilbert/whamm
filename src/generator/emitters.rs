@@ -38,14 +38,16 @@ pub trait Emitter {
 // ==============================
 
 pub(crate) struct WasmRewritingEmitter {
+    pub(crate) app_wasm_path: String,
     pub(crate) app_wasm: walrus::Module,
     pub(crate) table: SymbolTable,
 
     fn_providing_contexts: Vec<String>
 }
 impl WasmRewritingEmitter {
-    pub fn new(app_wasm: walrus::Module, table: SymbolTable) -> Self {
+    pub fn new(app_wasm_path: String, app_wasm: walrus::Module, table: SymbolTable) -> Self {
         Self {
+            app_wasm_path,
             app_wasm,
             table,
             fn_providing_contexts: vec![ "dtrace".to_string() ]
@@ -57,17 +59,23 @@ impl WasmRewritingEmitter {
         //         at each bytecode as traversing IR, do we have a `function` for the bytecode?
         //         If so, enter that function
         // See https://github.com/rustwasm/wasm-snip/blob/master/src/lib.rs#L236
+
+        // TODO -- creating a new instance of app_wasm is obscene.
+        // Create yet another copy of app_wasm because I cannot for the life of me figure out how to
+        // avoid this, but it still work with Rust syntax restrictions...
+        let app_wasm = walrus::Module::from_file(&self.app_wasm_path).unwrap();
         self.app_wasm.funcs.iter_local_mut().for_each(|(id, func)| {
             // TODO -- make sure that the id is not any of the injected function IDs
             let entry = func.entry_block();
             walrus::ir::dfs_pre_order_mut(&mut InstrumentationVisitor {
-                emitter: self,
+                // TODO -- this wont work...fuck.
+                app_wasm: &app_wasm,
                 module
             }, func, entry);
         });
 
         struct InstrumentationVisitor<'a> {
-            emitter: &'a WasmRewritingEmitter,
+            app_wasm: &'a walrus::Module,
             module: &'a mut Module
         }
         impl InstrumentationVisitor<'_> {
@@ -78,11 +86,11 @@ impl WasmRewritingEmitter {
                     // This is a call instruction and a call function!
                     match instr {
                         walrus::ir::Instr::Call(func) => {
-                            let func = self.emitter.app_wasm.funcs.get(func.func);
+                            let func = self.app_wasm.funcs.get(func.func);
                             let (func_kind, module, name) = match &func.kind {
                                 FunctionKind::Import(imp) => {
                                     let func_kind = "import";
-                                    let import = self.emitter.app_wasm.imports.get(imp.import);
+                                    let import = self.app_wasm.imports.get(imp.import);
 
                                     (func_kind, Some(&import.module), Some(&import.name))
                                 },

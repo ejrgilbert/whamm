@@ -83,6 +83,7 @@ fn try_main() -> Result<(), failure::Error> {
             let app_wasm = walrus::Module::from_file(&app_wasm_path).unwrap();
 
             let emitter = WasmRewritingEmitter::new(
+                app_wasm_path.clone(),
                 app_wasm,
                 symbol_table
             );
