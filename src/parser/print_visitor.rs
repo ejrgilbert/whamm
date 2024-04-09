@@ -411,6 +411,11 @@ impl DtraceVisitor<String> for AsStrVisitor {
 
     fn visit_value(&mut self, value: &Value) -> String {
         match value {
+            Value::Boolean { ty: _ty, val} => {
+                let mut s = "".to_string();
+                s += &format!("{}", val);
+                s
+            },
             Value::Integer { ty: _ty, val} => {
                 let mut s = "".to_string();
                 s += &format!("{}", val);

@@ -43,7 +43,7 @@ pub enum DataType {
 }
 
 // Values
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Value {
     Integer {
         ty: DataType,
@@ -56,6 +56,10 @@ pub enum Value {
     Tuple {
         ty: DataType,
         vals: Vec<Expr>,
+    },
+    Boolean {
+        ty: DataType,
+        val: bool
     }
 }
 
@@ -78,7 +82,7 @@ pub enum Statement {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Expr {
     BinOp {     // Type is based on the outermost `op` (if arithmetic op, also based on types of lhs/rhs due to doubles)
         lhs: Box<Expr>,

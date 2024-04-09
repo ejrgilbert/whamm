@@ -255,6 +255,7 @@ impl SymbolTableBuilder {
         let param_rec = Record::Var {
             name: name.clone(),
             ty: ty.clone(),
+            value: None,
             addr: None
         };
 
@@ -282,6 +283,7 @@ impl SymbolTableBuilder {
         let id = self.table.put(name.clone(), Record::Var {
             ty,
             name,
+            value: None,
             addr: None
         });
 

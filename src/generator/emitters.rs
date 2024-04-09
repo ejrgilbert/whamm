@@ -1,10 +1,11 @@
-use std::collections::HashMap;
-use std::process::exit;
 use log::error;
 use walrus::{FunctionKind};
 use walrus::ir::{BinaryOp, ExtendedLoad, LoadKind, MemArg};
-use crate::parser::types::{DataType, Dscript, Dtrace, Expr, Fn, Module, Op, Probe, Provider, Statement, Value};
+use crate::generator::types::ExprFolder;
+use crate::parser::types::{DataType, Dscript, Dtrace, Expr, Fn, Module, Op, Provider, Statement, Value};
+use crate::parser::types::Rule::predicate;
 use crate::verifier::types::{Record, SymbolTable};
+use crate::verifier::types::Record::Var;
 
 // =================================================
 // ==== Emitter Trait --> Used By All Emitters! ====
@@ -31,6 +32,79 @@ pub trait Emitter {
     fn emit_value(&mut self, val: &Value) -> bool;
 
     fn dump_to_file(&mut self, output_wasm_path: String) -> bool;
+}
+
+// =================================================================================
+// ================ WasmRewritingEmitter - HELPER FUNCTIONS ========================
+// Necessary to extract common logic between Emitter and InstrumentationVisitor.
+// Can't pass an Emitter instance to InstrumentationVisitor due to Rust not
+// allowing nested references to a common mutable object. So I can't pass the
+// Emitter to the InstrumentationVisitor since I must iterate over Emitter.app_wasm
+// with a construction of InstrumentationVisitor inside that loop.
+// =================================================================================
+// =================================================================================
+
+fn emit_body(body: &Vec<Statement>) -> bool {
+    let mut is_success = true;
+    body.iter().for_each(|stmt| {
+        is_success &= emit_stmt(stmt)
+    });
+    is_success
+}
+
+fn emit_stmt(stmt: &Statement) -> bool {
+    match stmt {
+        Statement::Assign { .. } => {
+            todo!()
+        }
+        Statement::Expr { expr } => {
+            emit_expr(expr)
+        }
+    }
+}
+
+fn emit_expr(expr: &Expr) -> bool {
+    match expr {
+        Expr::BinOp { .. } => {
+            todo!()
+        }
+        Expr::Call { .. } => {
+            todo!()
+        }
+        Expr::VarId { .. } => {
+            todo!()
+        }
+        Expr::Primitive { val } => {
+            emit_value(val)
+        }
+    }
+}
+
+fn emit_op(_op: &Op) -> bool {
+    // don't think i actually need this
+    false
+}
+
+fn emit_datatype(_datatype: &DataType) -> bool {
+    // don't think i actually need this
+    false
+}
+
+fn emit_value(val: &Value) -> bool {
+    match val {
+        Value::Integer { val, .. } => {
+            todo!()
+        }
+        Value::Str { val, .. } => {
+            todo!()
+        }
+        Value::Tuple { vals, .. } => {
+            todo!()
+        }
+        Value::Boolean { val, .. } => {
+            todo!()
+        }
+    }
 }
 
 // ==============================
@@ -63,20 +137,34 @@ impl WasmRewritingEmitter {
         // TODO -- creating a new instance of app_wasm is obscene.
         // Create yet another copy of app_wasm because I cannot for the life of me figure out how to
         // avoid this, but it still work with Rust syntax restrictions...
-        let app_wasm = walrus::Module::from_file(&self.app_wasm_path).unwrap();
+        let app_wasm = walrus::Module::from_file(&self.app_wasm_path.clone()).unwrap();
+
+        // This MUST be `self.app_wasm` so we're mutating what will be the instrumented application.
         self.app_wasm.funcs.iter_local_mut().for_each(|(id, func)| {
             // TODO -- make sure that the id is not any of the injected function IDs
             let entry = func.entry_block();
             walrus::ir::dfs_pre_order_mut(&mut InstrumentationVisitor {
-                // TODO -- this wont work...fuck.
+                // This is only used to lookup imports/functions, can be a fresh app Wasm module.
                 app_wasm: &app_wasm,
+                // All func/global addrs will be in the table, this enables us to use the fresh
+                // app_wasm above.
+                table: &mut self.table,
                 module
             }, func, entry);
         });
 
         struct InstrumentationVisitor<'a> {
             app_wasm: &'a walrus::Module,
+            table: &'a mut SymbolTable,
             module: &'a mut Module
+        }
+        impl walrus::ir::VisitorMut for InstrumentationVisitor<'_> {
+            fn visit_instr_mut(&mut self, instr: &mut walrus::ir::Instr, _instr_loc: &mut walrus::ir::InstrLocId) {
+                let instr_as_str = &format!("{:?}", instr);
+                if self.module.functions.contains_key(instr_as_str) {
+                    self.emit_function(instr_as_str, instr);
+                }
+            }
         }
         impl InstrumentationVisitor<'_> {
             fn emit_function(&mut self, instr_as_str: &String, instr: &mut walrus::ir::Instr) -> bool {
@@ -106,6 +194,24 @@ impl WasmRewritingEmitter {
                                 }
                             };
                             // define compiler constants
+                            let rec_id = match self.table.lookup(&"target_fn_type".to_string()) {
+                                Some(rec_id) => rec_id.clone(),
+                                _ => {
+                                    error!("target_fn_type symbol does not exist in this scope!");
+                                    return false;
+                                }
+                            };
+                            let mut rec = self.table.get_record_mut(&rec_id);
+                            match &mut rec {
+                                Some(Var{value, .. }) => {
+                                    *value = Some(Value::Str {
+                                        ty: DataType::Str,
+                                        val: func_kind.to_string(),
+                                    });
+                                }
+                                _ => {}
+                            }
+
                             let tuple = function.globals.get_mut("target_fn_type").unwrap();
                             tuple.2 = Some(Value::Str {
                                 ty: DataType::Str,
@@ -113,6 +219,23 @@ impl WasmRewritingEmitter {
                             });
 
                             if module.is_some() {
+                                let rec_id = match self.table.lookup(&"target_imp_module".to_string()) {
+                                    Some(rec_id) => rec_id.clone(),
+                                    _ => {
+                                        error!("target_imp_module symbol does not exist in this scope!");
+                                        return false;
+                                    }
+                                };
+                                let mut rec = self.table.get_record_mut(&rec_id);
+                                match &mut rec {
+                                    Some(Var{value, .. }) => {
+                                        *value = Some(Value::Str {
+                                            ty: DataType::Str,
+                                            val: module.unwrap().to_string(),
+                                        });
+                                    }
+                                    _ => {}
+                                }
                                 let tuple = function.globals.get_mut("target_imp_module").unwrap();
                                 tuple.2 = Some(Value::Str {
                                     ty: DataType::Str,
@@ -121,6 +244,23 @@ impl WasmRewritingEmitter {
                             }
 
                             if name.is_some() {
+                                let rec_id = match self.table.lookup(&"target_imp_name".to_string()) {
+                                    Some(rec_id) => rec_id.clone(),
+                                    _ => {
+                                        error!("target_imp_name symbol does not exist in this scope!");
+                                        return false;
+                                    }
+                                };
+                                let mut rec = self.table.get_record_mut(&rec_id);
+                                match &mut rec {
+                                    Some(Var{value, .. }) => {
+                                        *value = Some(Value::Str {
+                                            ty: DataType::Str,
+                                            val: name.unwrap().to_string(),
+                                        });
+                                    }
+                                    _ => {}
+                                }
                                 let tuple = function.globals.get_mut("target_imp_name").unwrap();
                                 tuple.2 = Some(Value::Str {
                                     ty: DataType::Str,
@@ -139,6 +279,18 @@ impl WasmRewritingEmitter {
                 is_success
             }
             fn emit_probes(&mut self, instr_as_str: &String) -> bool {
+                // TODO -- the following emit_probes logic
+                // 1. What are the inputs to the current bytecode?
+                //     - save these off (unless we have ALT probes, if we do, just discard stack...unless the ALT is a call)
+                // 2. Inject BEFORE probes
+                // 3. If ALT probes,
+                //     - inject, discard saved stack
+                //     - MAKE SURE FOLLOWING BYTECODE INPUT IS SATISFIED BY THE STACK!
+                //    Else,
+                //     - load saved params from memory
+                //     - replace original instruction
+                // 4. Inject AFTER probes
+
                 let mut is_success = true;
                 is_success &= self.emit_before_probes(instr_as_str);
                 is_success &= self.emit_alt_probes(instr_as_str);
@@ -147,14 +299,39 @@ impl WasmRewritingEmitter {
                 is_success
             }
             fn emit_before_probes(&mut self, instr_as_str: &String) -> bool {
-                return match self.module.functions.get_mut(instr_as_str).unwrap().probe_map.get(&"before".to_string()) {
+                let mut is_success = true;
+                is_success &= match self.module.functions.get_mut(instr_as_str).unwrap().probe_map.get(&"before".to_string()) {
                     Some(probes) => {
-                        todo!()
+                        let mut is_success = true;
+                        probes.iter().for_each(|probe| {
+                            if probe.predicate.is_some() {
+                                // Fold predicate via constant propagation
+                                let folded_pred = ExprFolder::fold_expr(&probe.predicate.as_ref().unwrap(), self.table);
+
+                                if let Some(pred_as_bool) = ExprFolder::get_single_bool(&folded_pred) {
+                                    if !pred_as_bool {
+                                        // predicate is FALSE, DON'T INJECT!
+                                        is_success &= true;
+                                        return;
+                                    }
+                                    // predicate is TRUE, unconditionally inject body stmts
+                                } else {
+                                    // predicate has not been reduced to a boolean value, inject
+                                    is_success &= emit_expr(&folded_pred);
+                                }
+                            }
+                            if probe.body.is_some() {
+                                let body = probe.body.as_ref().unwrap();
+                                is_success &= emit_body(&body);
+                            }
+                        });
+                        is_success
                     },
                     None => {
                         true
                     }
-                }
+                };
+                is_success
             }
             fn emit_alt_probes(&mut self, instr_as_str: &String) -> bool {
                 return match self.module.functions.get_mut(instr_as_str).unwrap().probe_map.get(&"alt".to_string()) {
@@ -174,14 +351,6 @@ impl WasmRewritingEmitter {
                     None => {
                         true
                     }
-                }
-            }
-        }
-        impl walrus::ir::VisitorMut for InstrumentationVisitor<'_> {
-            fn visit_instr_mut(&mut self, instr: &mut walrus::ir::Instr, _instr_loc: &mut walrus::ir::InstrLocId) {
-                let instr_as_str = &format!("{:?}", instr);
-                if self.module.functions.contains_key(instr_as_str) {
-                    self.emit_function(instr_as_str, instr);
                 }
             }
         }

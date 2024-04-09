@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use log::{ error };
 use walrus::FunctionId;
-use crate::parser::types::DataType;
+use crate::parser::types::{DataType, Value};
 
 #[derive(Debug)]
 pub struct SymbolTable {
@@ -86,6 +86,10 @@ impl SymbolTable {
 
     pub fn set_curr_dscript(&mut self, id: usize) {
         self.get_curr_scope_mut().unwrap().containing_dscript = Some(id);
+    }
+
+    pub fn get_record(&self, rec_id: &usize) -> Option<&Record> {
+        self.records.get(*rec_id)
     }
 
     pub fn get_record_mut(&mut self, rec_id: &usize) -> Option<&mut Record> {
@@ -295,6 +299,7 @@ pub enum Record {
     Var {
         ty: DataType,
         name: String,
+        value: Option<Value>,
 
         /// The address of this function post-injection
         addr: Option<usize>
