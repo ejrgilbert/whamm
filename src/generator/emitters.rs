@@ -1,11 +1,9 @@
 use log::error;
-use walrus::{FunctionBuilder, FunctionId, FunctionKind, InstrSeqBuilder, LocalFunction};
-use walrus::ir::{BinaryOp, ExtendedLoad, Instr, InstrLocId, InstrSeq, InstrSeqId, LoadKind, MemArg};
+use walrus::{FunctionBuilder, FunctionId, FunctionKind, ImportedFunction, InstrSeqBuilder, LocalFunction};
+use walrus::ir::{BinaryOp, ExtendedLoad, Instr, LoadKind, MemArg};
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{DataType, Dscript, Dtrace, Expr, Fn, Function, Module, Op, Provider, Statement, Value};
-use crate::parser::types::Rule::predicate;
-use crate::verifier::types::{Record, SymbolTable};
-use crate::verifier::types::Record::Var;
+use crate::verifier::types::{Record, SymbolTable, VarAddr};
 
 // =================================================
 // ==== Emitter Trait --> Used By All Emitters! ====
@@ -44,78 +42,396 @@ pub trait Emitter {
 // =================================================================================
 // =================================================================================
 
-fn emit_body(body: &Vec<Statement>, instr_builder: &InstrSeqBuilder, index: &mut usize, instr: &Instr, instr_loc: &InstrLocId) -> bool {
+fn emit_body(table: &mut SymbolTable, body: &Vec<Statement>, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> bool {
     let mut is_success = true;
     body.iter().for_each(|stmt| {
-        is_success &= emit_stmt(stmt, instr_builder, index, instr, instr_loc)
+        is_success &= emit_stmt(table, stmt, instr_builder, index)
     });
     is_success
 }
 
-fn emit_stmt(stmt: &Statement, instr_builder: &InstrSeqBuilder, index: &mut usize, instr: &Instr, instr_loc: &InstrLocId) -> bool {
+fn emit_stmt(table: &mut SymbolTable, stmt: &Statement, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> bool {
+    let mut is_success = true;
     match stmt {
-        Statement::Assign { .. } => {
-            // TODO -- update index to point to what follows our insertions
-            todo!()
+        Statement::Assign { var_id, expr } => {
+            let folded_expr = ExprFolder::fold_expr(expr, table);
+            if let Expr::Primitive { val } = folded_expr {
+                // This is a constant, just save the value to the symbol table for later use
+                return if let Expr::VarId { name } = var_id {
+                    let var_rec_id = match table.lookup(name) {
+                        Some(rec_id) => rec_id.clone(),
+                        _ => {
+                            error!("VarId '{name}' does not exist in this scope!");
+                            return false;
+                        }
+                    };
+                    match table.get_record_mut(&var_rec_id) {
+                        Some(Record::Var { value, .. }) => {
+                            *value = Some(val);
+                            true
+                        },
+                        Some(ty) => {
+                            error!("Incorrect variable record, expected Record::Var, found: {:?}", ty);
+                            false
+                        },
+                        None => {
+                            error!("Variable symbol does not exist!");
+                            false
+                        }
+                    }
+                } else {
+                    error!("Expected VarId.");
+                    false
+                }
+            } else {
+                is_success &= emit_expr(table, expr, instr_builder, index);
+
+                return if let Expr::VarId { name } = var_id {
+                    let var_rec_id = match table.lookup(name) {
+                        Some(rec_id) => rec_id.clone(),
+                        _ => {
+                            error!("VarId '{name}' does not exist in this scope!");
+                            return false;
+                        }
+                    };
+                    match table.get_record_mut(&var_rec_id) {
+                        Some(Record::Var { addr, .. }) => {
+                            // this will be different based on if this is a global or local var
+                            match addr {
+                                Some(VarAddr::Global { addr }) => {
+                                    instr_builder.instr_at( *index,walrus::ir::GlobalSet {
+                                        global: addr.clone()
+                                    });
+                                    // update index to point to what follows our insertions
+                                    *index += 1;
+                                }
+                                Some(VarAddr::Local { addr } ) => {
+                                    instr_builder.instr_at( *index,walrus::ir::LocalSet {
+                                        local: addr.clone()
+                                    });
+                                    // update index to point to what follows our insertions
+                                    *index += 1;
+                                },
+                                None => {
+                                    // TODO No address yet, let's make a new local variable
+                                    unimplemented!()
+                                }
+                            }
+                            true
+                        },
+                        Some(ty) => {
+                            error!("Incorrect variable record, expected Record::Var, found: {:?}", ty);
+                            false
+                        },
+                        None => {
+                            error!("Variable symbol does not exist!");
+                            false
+                        }
+                    }
+                } else {
+                    error!("Expected VarId.");
+                    false
+                };
+            }
         }
         Statement::Expr { expr } => {
-            emit_expr(expr, instr_builder, index, instr, instr_loc)
+            is_success &= emit_expr(table, expr, instr_builder, index);
         }
     }
+    is_success
 }
 
-fn emit_expr(expr: &Expr, instr_builder: &InstrSeqBuilder, index: &mut usize, instr: &Instr, instr_loc: &InstrLocId) -> bool {
+fn emit_expr(table: &mut SymbolTable, expr: &Expr, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> bool {
+    let mut is_success = true;
     match expr {
-        Expr::BinOp { .. } => {
-            // TODO -- update index to point to what follows our insertions
-            todo!()
+        Expr::BinOp {lhs, op, rhs} => {
+            is_success &= emit_expr(table, lhs, instr_builder, index);
+            is_success &= emit_expr(table, rhs, instr_builder, index);
+            is_success &= emit_op(op, instr_builder, index);
         }
-        Expr::Call { .. } => {
-            // TODO -- update index to point to what follows our insertions
-            todo!()
+        Expr::Call { fn_target, args } => {
+            let fn_name = match &**fn_target {
+                Expr::VarId{ name } => name.clone(),
+                _ => return false
+            };
+
+            // emit the arguments
+            if let Some(args) = args {
+                args.iter().for_each(|boxed_arg| {
+                    let arg = &**boxed_arg; // unbox
+                    is_success &= emit_expr(table, arg, instr_builder, index);
+                })
+            }
+
+            let fn_rec_id = match table.lookup(&fn_name) {
+                Some(rec_id) => Some(rec_id.clone()),
+                _ => {
+                    None
+                }
+            };
+            match fn_rec_id {
+                Some(rec_id) => {
+                    let mut fn_rec = table.get_record_mut(&rec_id);
+                    match fn_rec {
+                        Some(Record::Fn { addr, .. }) => {
+                            if let Some(f_id) = addr {
+                                instr_builder.instr_at( *index,walrus::ir::Call {
+                                    func: f_id.clone()
+                                });
+                                // update index to point to what follows our insertions
+                                *index += 1;
+                            } else {
+                                error!("fn_target address not in symbol table, not emitted yet...");
+                                return false;
+                            }
+                        }
+                        _ => {
+                            error!("fn_target not defined in symbol table!");
+                            return false;
+                        }
+                    }
+                },
+                None => {
+                    // Must be defined in the Wasm
+                    unimplemented!()
+                }
+            }
         }
-        Expr::VarId { .. } => {
-            // TODO -- update index to point to what follows our insertions
-            todo!()
+        Expr::VarId { name } => {
+            // also, pay attention to 'arg*' names. this could be a call probe
+            // if let Some(arg_idx) = name.strip_prefix("arg") {
+            //     // This is a compiler-provided `arg*` variable
+            //     // TODO -- this needs to exist in the symbol table. Not done custom here.
+            //
+            //     // lookup arg* in symbol table
+            //     // exists? reference it with the local ID
+            //     // DNE? create a new
+            //     instr_builder.instr_at( *index,walrus::ir::LocalGet {
+            //         local: addr.clone()
+            //     });
+            //     // update index to point to what follows our insertions
+            //     *index += 1;
+            // }
+
+            let var_rec_id = match table.lookup(&name) {
+                Some(rec_id) => rec_id.clone(),
+                _ => {
+                    error!("VarId '{name}' does not exist in this scope!");
+                    return false;
+                }
+            };
+            match table.get_record_mut(&var_rec_id) {
+                Some(Record::Var { addr, .. }) => {
+                    // this will be different based on if this is a global or local var
+                    match addr {
+                        Some(VarAddr::Global { addr }) => {
+                            instr_builder.instr_at( *index,walrus::ir::GlobalGet {
+                                global: addr.clone()
+                            });
+                            // update index to point to what follows our insertions
+                            *index += 1;
+                        }
+                        Some(VarAddr::Local { addr } ) => {
+                            instr_builder.instr_at( *index,walrus::ir::LocalGet {
+                                local: addr.clone()
+                            });
+                            // update index to point to what follows our insertions
+                            *index += 1;
+                        },
+                        None => {
+                            // TODO could be an `arg*` variable, need to check and initialize if so.
+
+                            error!("Variable does not exist in scope: {name}");
+                            return false;
+                        }
+                    }
+                    return true;
+                },
+                Some(ty) => {
+                    error!("Incorrect variable record, expected Record::Var, found: {:?}", ty);
+                    return false;
+                },
+                None => {
+                    error!("Variable symbol does not exist!");
+                    return false;
+                }
+            }
         }
         Expr::Primitive { val } => {
-            emit_value(val, instr_builder, index, instr, instr_loc)
+            is_success &= emit_value(table, val, instr_builder, index);
+        }
+    }
+    is_success
+}
+
+fn emit_op(op: &Op, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> bool {
+    match op {
+        Op::And => {
+            // we only support i32's at the moment
+            instr_builder.instr_at( *index,walrus::ir::Binop {
+                op: BinaryOp::I32And
+            });
+            // update index to point to what follows our insertions
+            *index += 1;
+            true
+        }
+        Op::Or => {
+            // we only support i32's at the moment
+            instr_builder.instr_at( *index,walrus::ir::Binop {
+                op: BinaryOp::I32Or
+            });
+            // update index to point to what follows our insertions
+            *index += 1;
+            true
+        }
+        Op::EQ => {
+            // we only support i32's at the moment
+            instr_builder.instr_at( *index,walrus::ir::Binop {
+                op: BinaryOp::I32Eq
+            });
+            // update index to point to what follows our insertions
+            *index += 1;
+            true
+        }
+        Op::NE => {
+            // we only support i32's at the moment
+            instr_builder.instr_at( *index,walrus::ir::Binop {
+                op: BinaryOp::I32Ne
+            });
+            // update index to point to what follows our insertions
+            *index += 1;
+            true
+        }
+        Op::GE => {
+            // we only support i32's at the moment (assumes signed)
+            instr_builder.instr_at( *index,walrus::ir::Binop {
+                op: BinaryOp::I32GeS
+            });
+            // update index to point to what follows our insertions
+            *index += 1;
+            true
+        }
+        Op::GT => {
+            // we only support i32's at the moment (assumes signed)
+            instr_builder.instr_at( *index,walrus::ir::Binop {
+                op: BinaryOp::I32GtS
+            });
+            // update index to point to what follows our insertions
+            *index += 1;
+            true
+        }
+        Op::LE => {
+            // we only support i32's at the moment (assumes signed)
+            instr_builder.instr_at( *index,walrus::ir::Binop {
+                op: BinaryOp::I32LeS
+            });
+            // update index to point to what follows our insertions
+            *index += 1;
+            true
+        }
+        Op::LT => {
+            // we only support i32's at the moment (assumes signed)
+            instr_builder.instr_at( *index,walrus::ir::Binop {
+                op: BinaryOp::I32LtS
+            });
+            // update index to point to what follows our insertions
+            *index += 1;
+            true
+        }
+        Op::Add => {
+            // we only support i32's at the moment (assumes signed)
+            instr_builder.instr_at( *index,walrus::ir::Binop {
+                op: BinaryOp::I32Add
+            });
+            // update index to point to what follows our insertions
+            *index += 1;
+            true
+        }
+        Op::Subtract => {
+            // we only support i32's at the moment (assumes signed)
+            instr_builder.instr_at( *index,walrus::ir::Binop {
+                op: BinaryOp::I32Sub
+            });
+            // update index to point to what follows our insertions
+            *index += 1;
+            true
+        }
+        Op::Multiply => {
+            // we only support i32's at the moment (assumes signed)
+            instr_builder.instr_at( *index,walrus::ir::Binop {
+                op: BinaryOp::I32Mul
+            });
+            // update index to point to what follows our insertions
+            *index += 1;
+            true
+        }
+        Op::Divide => {
+            // we only support i32's at the moment (assumes signed)
+            instr_builder.instr_at( *index,walrus::ir::Binop {
+                op: BinaryOp::I32DivS
+            });
+            // update index to point to what follows our insertions
+            *index += 1;
+            true
+        }
+        Op::Modulo => {
+            // we only support i32's at the moment (assumes signed)
+            instr_builder.instr_at( *index,walrus::ir::Binop {
+                op: BinaryOp::I32RemS
+            });
+            // update index to point to what follows our insertions
+            *index += 1;
+            true
         }
     }
 }
 
-fn emit_op(_op: &Op, _instr_builder: &InstrSeqBuilder, index: &mut usize, instr: &Instr, instr_loc: &InstrLocId) -> bool {
+fn emit_datatype(_datatype: &DataType, _instr_builder: &InstrSeqBuilder, _index: &mut usize) -> bool {
     // don't think i actually need this
     false
 }
 
-fn emit_datatype(_datatype: &DataType, _instr_builder: &InstrSeqBuilder, index: &mut usize, instr: &Instr, instr_loc: &InstrLocId) -> bool {
-    // don't think i actually need this
-    false
-}
-
-fn emit_value(val: &Value, _instr_builder: &InstrSeqBuilder, index: &mut usize, instr: &Instr, instr_loc: &InstrLocId) -> bool {
+fn emit_value(table: &mut SymbolTable, val: &Value, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> bool {
+    let mut is_success = true;
     match val {
         Value::Integer { val, .. } => {
-            // instr_seq.instrs.insert(index, (Instr::Const {
-            //     value: walrus::ir::Value::I32(val.clone())
-            // }, index))
-            // TODO -- update index to point to what follows our insertions
-            todo!()
+            instr_builder.instr_at( *index,walrus::ir::Const {
+                value: walrus::ir::Value::I32(val.clone())
+            });
+            // update index to point to what follows our insertions
+            *index += 1;
+            is_success &= true;
         }
         Value::Str { val, .. } => {
             // TODO -- update index to point to what follows our insertions
+            // NEXT
             todo!()
         }
         Value::Tuple { vals, .. } => {
-            // TODO -- update index to point to what follows our insertions
-            todo!()
+            vals.iter().for_each(|val| {
+                is_success &= emit_expr(table, val, instr_builder, index);
+            });
         }
         Value::Boolean { val, .. } => {
-            // TODO -- update index to point to what follows our insertions
-            todo!()
+            // "In a boolean context, such as a br_if condition, any non-zero value is interpreted as true and 0 is interpreted as false."
+            // https://github.com/sunfishcode/wasm-reference-manual/blob/master/WebAssembly.md#booleans
+            if *val {
+                // insert true (non-zero)
+                instr_builder.instr_at( *index,walrus::ir::Const {
+                    value: walrus::ir::Value::I32(1)
+                });
+            } else {
+                // insert false (zero)
+                instr_builder.instr_at( *index,walrus::ir::Const {
+                    value: walrus::ir::Value::I32(0)
+                });
+            }
+            // update index to point to what follows our insertions
+            *index += 1;
+            is_success &= true;
         }
     }
+    is_success
 }
 
 // ==============================
@@ -149,13 +465,13 @@ impl WasmRewritingEmitter {
         app_wasm.funcs.iter_local().for_each(|(id, func)| {
             // TODO -- make sure that the id is not any of the injected function IDs
             let instr_seq = func.block(func.entry_block());
-            instr_seq.instrs.iter().enumerate().for_each(|(index, (instr, instr_loc))| {
+            instr_seq.instrs.iter().enumerate().for_each(|(index, (instr, ..))| {
                 let instr_as_str = &format!("{:?}", instr);
                 if let Some(function) = module.functions.get_mut(instr_as_str) {
                     // preprocess
                     self.preprocess_instr(instr, function);
                     // passing a clone of index so it can be mutated as instructions are injected
-                    is_success &= self.emit_function(function, id, &mut index.clone(), instr, instr_loc);
+                    is_success &= self.emit_function(function, id, &mut index.clone());
                 }
             });
         });
@@ -165,22 +481,29 @@ impl WasmRewritingEmitter {
         if function.name.to_lowercase() == "call" {
             if let Instr::Call(func) = &instr {
                 let func = self.app_wasm.funcs.get(func.func);
-                let (func_kind, module, name) = match &func.kind {
-                    FunctionKind::Import(imp) => {
+                let (func_kind, module, name, params) = match &func.kind {
+                    FunctionKind::Import(ImportedFunction { ty: ty_id, import: import_id }) => {
                         let func_kind = "import";
-                        let import = self.app_wasm.imports.get(imp.import);
+                        let import = self.app_wasm.imports.get(*import_id);
+                        let ty = self.app_wasm.types.get(*ty_id);
 
-                        (func_kind, Some(&import.module), Some(&import.name))
+                        (func_kind, Some(&import.module), Some(&import.name), Vec::from(ty.params()))
                     },
-                    FunctionKind::Local(..) => {
+                    FunctionKind::Local(LocalFunction{ args, ..}) => {
                         let func_kind = "local";
+                        let mut params = vec![];
+                        args.iter().for_each(|arg_id| {
+                            let arg = self.app_wasm.locals.get(*arg_id);
+                            params.push(arg.ty());
+                        });
 
-                        (func_kind, None, None)
+                        (func_kind, None, None, Vec::from(params))
                     },
-                    FunctionKind::Uninitialized(..) => {
+                    FunctionKind::Uninitialized(ty_id) => {
                         let func_kind = "uninitialized";
+                        let ty = self.app_wasm.types.get(*ty_id);
 
-                        (func_kind, None, None)
+                        (func_kind, None, None, Vec::from(ty.params()))
                     }
                 };
                 // define compiler constants
@@ -193,7 +516,7 @@ impl WasmRewritingEmitter {
                 };
                 let mut rec = self.table.get_record_mut(&rec_id);
                 match &mut rec {
-                    Some(Var { value, .. }) => {
+                    Some(Record::Var { value, .. }) => {
                         *value = Some(Value::Str {
                             ty: DataType::Str,
                             val: func_kind.to_string(),
@@ -218,7 +541,7 @@ impl WasmRewritingEmitter {
                     };
                     let mut rec = self.table.get_record_mut(&rec_id);
                     match &mut rec {
-                        Some(Var { value, .. }) => {
+                        Some(Record::Var { value, .. }) => {
                             *value = Some(Value::Str {
                                 ty: DataType::Str,
                                 val: module.unwrap().to_string(),
@@ -243,7 +566,7 @@ impl WasmRewritingEmitter {
                     };
                     let mut rec = self.table.get_record_mut(&rec_id);
                     match &mut rec {
-                        Some(Var { value, .. }) => {
+                        Some(Record::Var { value, .. }) => {
                             *value = Some(Value::Str {
                                 ty: DataType::Str,
                                 val: name.unwrap().to_string(),
@@ -257,47 +580,61 @@ impl WasmRewritingEmitter {
                         val: name.unwrap().to_string(),
                     });
                 }
+                // for each param (found above and saved to num_params), define `arg*`
+                // place in symbol table with var addr for future reference
+                params.iter().enumerate().for_each(|(num, _param_ty)| {
+                    let arg_name = format!("arg{num}");
 
-                //TODO: What are the inputs to the current bytecode?
-                //     - save these off
+                    // TODO when/where should i save off `arg*` values?
+                    // maybe I can create a new local variable in the module and then
+                    // assign to it when I'm actually emitting the probe?
+
+                    // save to table
+                    self.table.put(arg_name.clone(), Record::Var {
+                        ty: DataType::Integer, // we only support integers right now.
+                        name: arg_name,
+                        value: None,
+                        addr: None,
+                    });
+                });
             };
         }
     }
-    fn emit_function(&mut self, function: &mut Function, func_id: FunctionId, index: &mut usize, instr: &Instr, instr_loc: &InstrLocId) -> bool {
+    fn emit_function(&mut self, function: &mut Function, func_id: FunctionId, index: &mut usize) -> bool {
         self.table.enter_scope();
         let is_success = true;
 
         // inject probes (should be at the correct point in the `walrus::ir::VisitorMut`)
-        self.emit_probes_for_fn(function, func_id, index, instr, instr_loc);
+        self.emit_probes_for_fn(function, func_id, index);
 
         self.table.exit_scope();
         is_success
     }
-    fn emit_probes_for_fn(&mut self, function: &Function, func_id: FunctionId, index: &mut usize, instr: &Instr, instr_loc: &InstrLocId) -> bool {
+    fn emit_probes_for_fn(&mut self, function: &Function, func_id: FunctionId, index: &mut usize) -> bool {
         let mut is_success = true;
         // 1. Inject BEFORE probes
-        if let Some(res) = self.emit_probes(function, func_id, &"before".to_string(), index, instr, instr_loc) {
+        if let Some(res) = self.emit_probes(function, func_id, &"before".to_string(), index) {
             // Assumption: before probes push/pop from stack so it is equivalent to what it was originally
             is_success &= res;
         }
         // 2. Inject ALT probes
-        if let Some(res) = self.emit_probes(function, func_id, &"alt".to_string(), index, instr, instr_loc) {
+        if let Some(res) = self.emit_probes(function, func_id, &"alt".to_string(), index) {
             is_success &= res;
         }
         // 3. Inject AFTER probes
-        if let Some(res) = self.emit_probes(function, func_id, &"after".to_string(), index, instr, instr_loc) {
+        if let Some(res) = self.emit_probes(function, func_id, &"after".to_string(), index) {
             // Assumption: before probes push/pop from stack so it is equivalent to what it was originally
             is_success &= res;
         }
 
         is_success
     }
-    fn emit_probes(&mut self, function: &Function, func_id: FunctionId, probe_name: &String, index: &mut usize, instr: &Instr, instr_loc: &InstrLocId) -> Option<bool> {
+    fn emit_probes(&mut self, function: &Function, func_id: FunctionId, probe_name: &String, index: &mut usize) -> Option<bool> {
         let mut is_success = true;
 
         // This MUST be `self.app_wasm` so we're mutating what will be the instrumented application.
-        let mut func = self.app_wasm.funcs.get_mut(func_id).kind.unwrap_local_mut();
-        let mut entry_block_id = func.entry_block();
+        let func = self.app_wasm.funcs.get_mut(func_id).kind.unwrap_local_mut();
+        let entry_block_id = func.entry_block();
         let func_builder = func.builder_mut();
         let mut instr_builder = func_builder.instr_seq(entry_block_id);
 
@@ -325,12 +662,61 @@ impl WasmRewritingEmitter {
                         // predicate is TRUE, unconditionally inject body stmts
                     } else {
                         // predicate has not been reduced to a boolean value, inject
-                        is_success &= emit_expr(&folded_pred, &instr_builder, index, instr, instr_loc);
+
+                        if function.name == "call" {
+                            //TODO: What are the inputs to the current bytecode?
+                            //     - save these off
+                        }
+
+                        // inject predicate
+                        is_success &= emit_expr(&mut self.table, &folded_pred, &mut instr_builder, index);
                     }
                 }
                 if probe.body.is_some() {
+                    if function.name == "call" {
+                        //TODO: What are the inputs to the current bytecode?
+                        //     - save these off
+                    }
+
                     let body = probe.body.as_ref().unwrap();
-                    is_success &= emit_body(&body, &instr_builder, index, instr, instr_loc);
+                    is_success &= emit_body(&mut self.table, &body, &mut instr_builder, index);
+                }
+
+                if probe_name == "alt" {
+                    // check if we should inject an alternate call!
+                    let rec_id = match self.table.lookup(&"new_target_imp_name".to_string()) {
+                        Some(rec_id) => Some(rec_id.clone()),
+                        None => None
+                    };
+
+                    if let Some(r_id) = rec_id {
+                        if let Some(Record::Var { value: Some(value), .. }) = self.table.get_record_mut(&r_id) {
+                            if let Value::Str {val, ..} = value {
+                                // we need to inject an alternate call to the specified fn name!
+
+                                // XXX -- creating a new instance of app_wasm is obscene.
+                                // Create yet another copy of app_wasm because I cannot for the life of me figure out how to
+                                // avoid this, but it still work with Rust syntax restrictions...
+                                let app_wasm = walrus::Module::from_file(&self.app_wasm_path.clone()).unwrap();
+
+                                let f_id = match app_wasm.funcs.by_name(&val) {
+                                    Some(f_id) => Some(f_id.clone()),
+                                    None => None
+                                };
+                                if let Some(f_id) = f_id {
+                                    instr_builder.instr_at( *index,walrus::ir::Call {
+                                        func: f_id.clone()
+                                    });
+                                    // update index to point to what follows our insertions
+                                    *index += 1;
+                                    is_success &= true;
+                                } else {
+                                    error!("Could not inject alternate call to '{val}' function, not found in Wasm module");
+                                    is_success &= false;
+                                }
+                            }
+                        }
+                    }
                 }
                 self.table.exit_scope();
             });
@@ -353,7 +739,7 @@ impl WasmRewritingEmitter {
         let strcmp_params = vec![walrus::ValType::I32, walrus::ValType::I32, walrus::ValType::I32, walrus::ValType::I32];
         let strcmp_result = vec![walrus::ValType::I32];
 
-        let mut strcmp = walrus::FunctionBuilder::new(&mut self.app_wasm.types, &strcmp_params, &strcmp_result);
+        let mut strcmp = FunctionBuilder::new(&mut self.app_wasm.types, &strcmp_params, &strcmp_result);
 
         // get memory id
         let memory_id = self.app_wasm.memories
@@ -547,12 +933,12 @@ impl Emitter for WasmRewritingEmitter {
             }
         }
 
-        // TODO -- emit non-provided fn
-        //         only when we're supporting user-defined fns in dscript...
+        // emit non-provided fn
+        // only when we're supporting user-defined fns in dscript...
         unimplemented!();
     }
     fn emit_formal_param(&mut self, _param: &(Expr, DataType)) -> bool {
-        // TODO -- only when we're supporting user-defined fns in dscript...
+        // only when we're supporting user-defined fns in dscript...
         unimplemented!();
     }
     fn emit_global(&mut self, name: String, _ty: DataType, _val: &Option<Value>) -> bool {
@@ -567,8 +953,8 @@ impl Emitter for WasmRewritingEmitter {
         let rec = self.table.get_record_mut(&rec_id);
         return match rec {
             Some(Record::Var { addr: _addr, .. }) => {
-                // TODO -- emit global variable and set addr in symbol table
-                //         only when we're supporting user-defined globals in dscript...
+                // emit global variable and set addr in symbol table
+                // only when we're supporting user-defined globals in dscript...
                 unimplemented!();
             },
             Some(ty) => {
@@ -583,23 +969,23 @@ impl Emitter for WasmRewritingEmitter {
     }
 
     fn emit_stmt(&mut self, _stmt: &Statement) -> bool {
-        todo!()
+        unimplemented!()
     }
 
     fn emit_expr(&mut self, _expr: &Expr) -> bool {
-        todo!()
+        unimplemented!()
     }
 
     fn emit_op(&mut self, _op: &Op) -> bool {
-        todo!()
+        unimplemented!()
     }
 
     fn emit_datatype(&mut self, _datatype: &DataType) -> bool {
-        todo!()
+        unimplemented!()
     }
 
     fn emit_value(&mut self, _val: &Value) -> bool {
-        todo!()
+        unimplemented!()
     }
 
     fn dump_to_file(&mut self, output_wasm_path: String) -> bool {
@@ -618,9 +1004,9 @@ impl Emitter for WasmRewritingEmitter {
 // =====================
 // ==== WasiEmitter ====
 // =====================
-// TODO
+// unimplemented
 
 // =======================
 // ==== VirgilEmitter ====
 // =======================
-// TODO
+// unimplemented

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use log::{ error };
-use walrus::FunctionId;
+use walrus::{FunctionId, GlobalId, LocalId};
 use crate::parser::types::{DataType, Value};
 
 #[derive(Debug)]
@@ -169,7 +169,7 @@ impl SymbolTable {
 #[derive(Debug)]
 pub struct Scope {
     pub id: usize,                       // indexes into SymbolTable::scopes
-    name: String,
+    pub name: String,
     ty: ScopeType,
 
     parent: Option<usize>,             // indexes into SymbolTable::scopes
@@ -301,7 +301,17 @@ pub enum Record {
         name: String,
         value: Option<Value>,
 
-        /// The address of this function post-injection
-        addr: Option<usize>
+        /// The address of this var post-injection
+        addr: Option<VarAddr>
+    }
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub enum VarAddr {
+    Local {
+        addr: LocalId
+    },
+    Global {
+        addr: GlobalId
     }
 }
