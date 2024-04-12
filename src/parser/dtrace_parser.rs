@@ -267,6 +267,18 @@ fn expr_primary(pair: Pair<Rule>) -> Expr {
                 }
             };
         },
+        Rule::BOOL => {
+            trace!("Entering BOOL");
+            let val = pair.as_str().parse::<bool>().unwrap();
+
+            trace!("Exiting BOOL");
+            return Expr::Primitive {
+                val: Value::Boolean {
+                    ty: DataType::Boolean,
+                    val
+                }
+            };
+        },
         Rule::STRING => {
             trace!("Entering STRING");
             let mut val: String = pair.as_str().parse().unwrap();

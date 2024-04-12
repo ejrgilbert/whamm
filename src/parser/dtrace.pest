@@ -54,7 +54,7 @@ statement = { ( ( fn_call | assignment ) ~ ";" )+ }
 
 expr = { operand ~ (BINOP ~ operand)* }
 
-val = _{ ID | INT | STRING }
+val = _{ BOOL | ID | INT | STRING }
 operand = { fn_call | "(" ~ expr ~ ")" | val }
 
 tuple = { "(" ~ (val) ~ ( "," ~ val )* ~ ")" }
@@ -98,6 +98,11 @@ INT = @{
     | "0" ~ ASCII_OCT_DIGIT+ // Octal digit
     | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT+ // Multiple digit, base 10
     | ASCII_DIGIT // Single digit, base 10 (account for having just '0')
+}
+
+BOOL = @{
+    "true"
+    | "false"
 }
 
 STRING = @{ "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
