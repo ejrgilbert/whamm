@@ -3,6 +3,7 @@ use glob::Pattern;
 
 use pest_derive::Parser;
 use pest::pratt_parser::PrattParser;
+use walrus::DataId;
 
 #[derive(Parser)]
 #[grammar = "./parser/dtrace.pest"] // Path relative to base `src` dir
@@ -52,6 +53,12 @@ pub enum Value {
     Str {
         ty: DataType,
         val: String,
+
+        // Used by emitter to store this string's address/len in Wasm memory
+        // DataId: Walrus ID to reference data segment
+        // u32: address of data in memory
+        // usize:  the length of the string in memory
+        addr: Option<(DataId, u32, usize)>
     },
     Tuple {
         ty: DataType,

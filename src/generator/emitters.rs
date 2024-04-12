@@ -1,5 +1,5 @@
 use log::error;
-use walrus::{FunctionBuilder, FunctionId, FunctionKind, ImportedFunction, InstrSeqBuilder, LocalFunction, ModuleLocals, ValType};
+use walrus::{ActiveData, ActiveDataLocation, DataKind, FunctionBuilder, FunctionId, FunctionKind, ImportedFunction, InstrSeqBuilder, LocalFunction, MemoryId, ModuleData, ModuleLocals, ValType};
 use walrus::ir::{BinaryOp, ExtendedLoad, Instr, LoadKind, MemArg};
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{DataType, Dscript, Dtrace, Expr, Fn, Function, Module, Op, Provider, Statement, Value};
@@ -72,15 +72,15 @@ fn create_arg_vars(table: &mut SymbolTable, app_locals: &mut ModuleLocals, func_
     }
 }
 
-fn emit_body(table: &mut SymbolTable, body: &Vec<Statement>, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> bool {
+fn emit_body(table: &mut SymbolTable, module_data: &mut ModuleData, mem_id: &MemoryId, curr_mem_offset: &mut u32, body: &Vec<Statement>, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> bool {
     let mut is_success = true;
     body.iter().for_each(|stmt| {
-        is_success &= emit_stmt(table, stmt, instr_builder, index)
+        is_success &= emit_stmt(table, module_data, mem_id, curr_mem_offset, stmt, instr_builder, index)
     });
     is_success
 }
 
-fn emit_stmt(table: &mut SymbolTable, stmt: &Statement, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> bool {
+fn emit_stmt(table: &mut SymbolTable, module_data: &mut ModuleData, mem_id: &MemoryId, curr_mem_offset: &mut u32, stmt: &Statement, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> bool {
     let mut is_success = true;
     match stmt {
         Statement::Assign { var_id, expr } => {
@@ -114,7 +114,7 @@ fn emit_stmt(table: &mut SymbolTable, stmt: &Statement, instr_builder: &mut Inst
                     false
                 }
             } else {
-                is_success &= emit_expr(table, expr, instr_builder, index);
+                is_success &= emit_expr(table, module_data, mem_id, curr_mem_offset, expr, instr_builder, index);
 
                 return if let Expr::VarId { name } = var_id {
                     let var_rec_id = match table.lookup(name) {
@@ -165,18 +165,18 @@ fn emit_stmt(table: &mut SymbolTable, stmt: &Statement, instr_builder: &mut Inst
             }
         }
         Statement::Expr { expr } => {
-            is_success &= emit_expr(table, expr, instr_builder, index);
+            is_success &= emit_expr(table, module_data, mem_id, curr_mem_offset, expr, instr_builder, index);
         }
     }
     is_success
 }
 
-fn emit_expr(table: &mut SymbolTable, expr: &Expr, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> bool {
+fn emit_expr(table: &mut SymbolTable, module_data: &mut ModuleData, mem_id: &MemoryId, curr_mem_offset: &mut u32, expr: &Expr, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> bool {
     let mut is_success = true;
     match expr {
         Expr::BinOp {lhs, op, rhs} => {
-            is_success &= emit_expr(table, lhs, instr_builder, index);
-            is_success &= emit_expr(table, rhs, instr_builder, index);
+            is_success &= emit_expr(table, module_data, mem_id, curr_mem_offset, lhs, instr_builder, index);
+            is_success &= emit_expr(table, module_data, mem_id, curr_mem_offset, rhs, instr_builder, index);
             is_success &= emit_op(op, instr_builder, index);
         }
         Expr::Call { fn_target, args } => {
@@ -189,7 +189,7 @@ fn emit_expr(table: &mut SymbolTable, expr: &Expr, instr_builder: &mut InstrSeqB
             if let Some(args) = args {
                 args.iter().for_each(|boxed_arg| {
                     let arg = &**boxed_arg; // unbox
-                    is_success &= emit_expr(table, arg, instr_builder, index);
+                    is_success &= emit_expr(table, module_data, mem_id, curr_mem_offset, arg, instr_builder, index);
                 })
             }
 
@@ -228,21 +228,7 @@ fn emit_expr(table: &mut SymbolTable, expr: &Expr, instr_builder: &mut InstrSeqB
             }
         }
         Expr::VarId { name } => {
-            // also, pay attention to 'arg*' names. this could be a call probe
-            // if let Some(arg_idx) = name.strip_prefix("arg") {
-            //     // This is a compiler-provided `arg*` variable
-            //     // TODO -- this needs to exist in the symbol table. Not done custom here.
-            //
-            //     // lookup arg* in symbol table
-            //     // exists? reference it with the local ID
-            //     // DNE? create a new
-            //     instr_builder.instr_at( *index,walrus::ir::LocalGet {
-            //         local: addr.clone()
-            //     });
-            //     // update index to point to what follows our insertions
-            //     *index += 1;
-            // }
-
+            // TODO -- support string vars (unimplemented)
             let var_rec_id = match table.lookup(&name) {
                 Some(rec_id) => rec_id.clone(),
                 _ => {
@@ -269,8 +255,6 @@ fn emit_expr(table: &mut SymbolTable, expr: &Expr, instr_builder: &mut InstrSeqB
                             *index += 1;
                         },
                         None => {
-                            // TODO could be an `arg*` variable, need to check and initialize if so.
-
                             error!("Variable does not exist in scope: {name}");
                             return false;
                         }
@@ -288,7 +272,7 @@ fn emit_expr(table: &mut SymbolTable, expr: &Expr, instr_builder: &mut InstrSeqB
             }
         }
         Expr::Primitive { val } => {
-            is_success &= emit_value(table, val, instr_builder, index);
+            is_success &= emit_value(table, mem_id, module_data, curr_mem_offset, val, instr_builder, index);
         }
     }
     is_success
@@ -421,7 +405,7 @@ fn emit_datatype(_datatype: &DataType, _instr_builder: &InstrSeqBuilder, _index:
     false
 }
 
-fn emit_value(table: &mut SymbolTable, val: &Value, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> bool {
+fn emit_value(table: &mut SymbolTable, mem_id: &MemoryId, module_data: &mut ModuleData, curr_mem_offset: &mut u32, val: &Value, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> bool {
     let mut is_success = true;
     match val {
         Value::Integer { val, .. } => {
@@ -432,19 +416,34 @@ fn emit_value(table: &mut SymbolTable, val: &Value, instr_builder: &mut InstrSeq
             *index += 1;
             is_success &= true;
         }
-        Value::Str { val, .. } => {
-            // TODO -- decide where to insert the string
-            //         1. store in a new memory...but not supported in dfinity
-            //         2. store at a memory offset
-            //         3. store at address 0 (for local strings)
-            //            ...but will have to keep track of what we've used and then write back what we changed.
-            // TODO -- update index to point to what follows our insertions
-            // NEXT
-            todo!()
+        Value::Str { val, mut addr, ty } => {
+            let data_id = module_data.add(DataKind::Active(ActiveData {
+                memory: *mem_id,
+                location: ActiveDataLocation::Absolute(curr_mem_offset.clone())
+            }), Vec::from(val.as_bytes()));
+
+            // save the memory addresses/lens so they can be used as appropriate
+            addr = Some((data_id, curr_mem_offset.clone(), val.len()));
+
+            // emit Wasm instructions for the memory address and string length
+            instr_builder.instr_at( *index,walrus::ir::Const {
+                value: walrus::ir::Value::I32(curr_mem_offset.clone() as i32)
+            });
+            // update index to point to what follows our insertions
+            *index += 1;
+            instr_builder.instr_at( *index,walrus::ir::Const {
+                value: walrus::ir::Value::I32(val.len() as i32)
+            });
+            // update index to point to what follows our insertions
+            *index += 1;
+
+            // update curr_mem_offset to account for new data
+            *curr_mem_offset += val.len() as u32;
+            is_success &= true;
         }
         Value::Tuple { vals, .. } => {
             vals.iter().for_each(|val| {
-                is_success &= emit_expr(table, val, instr_builder, index);
+                is_success &= emit_expr(table, module_data, mem_id, curr_mem_offset, val, instr_builder, index);
             });
         }
         Value::Boolean { val, .. } => {
@@ -496,6 +495,11 @@ impl WasmRewritingEmitter {
         // avoid this, but it still work with Rust syntax restrictions...
         let app_wasm = walrus::Module::from_file(&self.app_wasm_path.clone()).unwrap();
 
+        // Initialize this to 4 MB
+        let mut mem_id = self.app_wasm.memories.iter().next()
+            .expect("only single memory is supported")
+            .id();
+        let mut curr_mem_offset: u32 = 1_048_576;
         let mut is_success = true;
         app_wasm.funcs.iter_local().for_each(|(id, func)| {
             // TODO -- make sure that the id is not any of the injected function IDs
@@ -506,7 +510,7 @@ impl WasmRewritingEmitter {
                     // preprocess
                     let params = self.preprocess_instr(instr, function);
                     // passing a clone of index so it can be mutated as instructions are injected
-                    is_success &= self.emit_function(function, id, &params, &mut index.clone());
+                    is_success &= self.emit_function(function, &mem_id, &mut curr_mem_offset, id, &params, &mut index.clone());
                 }
             });
         });
@@ -555,6 +559,7 @@ impl WasmRewritingEmitter {
                         *value = Some(Value::Str {
                             ty: DataType::Str,
                             val: func_kind.to_string(),
+                            addr: None
                         });
                     }
                     _ => {}
@@ -564,6 +569,7 @@ impl WasmRewritingEmitter {
                 tuple.2 = Some(Value::Str {
                     ty: DataType::Str,
                     val: func_kind.to_string(),
+                    addr: None
                 });
 
                 if module.is_some() {
@@ -580,6 +586,7 @@ impl WasmRewritingEmitter {
                             *value = Some(Value::Str {
                                 ty: DataType::Str,
                                 val: module.unwrap().to_string(),
+                                addr: None
                             });
                         }
                         _ => {}
@@ -588,6 +595,7 @@ impl WasmRewritingEmitter {
                     tuple.2 = Some(Value::Str {
                         ty: DataType::Str,
                         val: module.unwrap().to_string(),
+                        addr: None
                     });
                 }
 
@@ -605,6 +613,7 @@ impl WasmRewritingEmitter {
                             *value = Some(Value::Str {
                                 ty: DataType::Str,
                                 val: name.unwrap().to_string(),
+                                addr: None
                             });
                         }
                         _ => {}
@@ -613,6 +622,7 @@ impl WasmRewritingEmitter {
                     tuple.2 = Some(Value::Str {
                         ty: DataType::Str,
                         val: name.unwrap().to_string(),
+                        addr: None
                     });
                 }
                 return Some(params);
@@ -620,36 +630,36 @@ impl WasmRewritingEmitter {
         }
         None
     }
-    fn emit_function(&mut self, function: &mut Function, func_id: FunctionId, func_params: &Option<Vec<ValType>>, index: &mut usize) -> bool {
+    fn emit_function(&mut self, function: &mut Function, mem_id: &MemoryId, curr_mem_offset: &mut u32, func_id: FunctionId, func_params: &Option<Vec<ValType>>, index: &mut usize) -> bool {
         self.table.enter_scope();
         let is_success = true;
 
         // inject probes (should be at the correct point in the `walrus::ir::VisitorMut`)
-        self.emit_probes_for_fn(function, func_id, func_params, index);
+        self.emit_probes_for_fn(function, mem_id, curr_mem_offset, func_id, func_params, index);
 
         self.table.exit_scope();
         is_success
     }
-    fn emit_probes_for_fn(&mut self, function: &Function, func_id: FunctionId, func_params: &Option<Vec<ValType>>, index: &mut usize) -> bool {
+    fn emit_probes_for_fn(&mut self, function: &Function, mem_id: &MemoryId, curr_mem_offset: &mut u32, func_id: FunctionId, func_params: &Option<Vec<ValType>>, index: &mut usize) -> bool {
         let mut is_success = true;
         // 1. Inject BEFORE probes
-        if let Some(res) = self.emit_probes(function, func_id, func_params, &"before".to_string(), index) {
+        if let Some(res) = self.emit_probes(function, mem_id, curr_mem_offset, func_id, func_params, &"before".to_string(), index) {
             // Assumption: before probes push/pop from stack so it is equivalent to what it was originally
             is_success &= res;
         }
         // 2. Inject ALT probes
-        if let Some(res) = self.emit_probes(function, func_id, func_params, &"alt".to_string(), index) {
+        if let Some(res) = self.emit_probes(function, mem_id, curr_mem_offset, func_id, func_params, &"alt".to_string(), index) {
             is_success &= res;
         }
         // 3. Inject AFTER probes
-        if let Some(res) = self.emit_probes(function, func_id, func_params, &"after".to_string(), index) {
+        if let Some(res) = self.emit_probes(function, mem_id, curr_mem_offset, func_id, func_params, &"after".to_string(), index) {
             // Assumption: before probes push/pop from stack so it is equivalent to what it was originally
             is_success &= res;
         }
 
         is_success
     }
-    fn emit_probes(&mut self, function: &Function, func_id: FunctionId, func_params: &Option<Vec<ValType>>, probe_name: &String, index: &mut usize) -> Option<bool> {
+    fn emit_probes(&mut self, function: &Function, mem_id: &MemoryId, curr_mem_offset: &mut u32, func_id: FunctionId, func_params: &Option<Vec<ValType>>, probe_name: &String, index: &mut usize) -> Option<bool> {
         let mut is_success = true;
 
         // This MUST be `self.app_wasm` so we're mutating what will be the instrumented application.
@@ -690,7 +700,7 @@ impl WasmRewritingEmitter {
                         }
 
                         // inject predicate
-                        is_success &= emit_expr(&mut self.table, &folded_pred, &mut instr_builder, index);
+                        is_success &= emit_expr(&mut self.table, &mut self.app_wasm.data, mem_id, curr_mem_offset, &folded_pred, &mut instr_builder, index);
                     }
                 }
                 if probe.body.is_some() {
@@ -701,7 +711,7 @@ impl WasmRewritingEmitter {
                     }
 
                     let body = probe.body.as_ref().unwrap();
-                    is_success &= emit_body(&mut self.table, &body, &mut instr_builder, index);
+                    is_success &= emit_body(&mut self.table, &mut self.app_wasm.data, mem_id, curr_mem_offset, &body, &mut instr_builder, index);
                 }
 
                 if probe_name == "alt" {

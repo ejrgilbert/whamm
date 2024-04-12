@@ -421,7 +421,7 @@ impl DtraceVisitor<String> for AsStrVisitor {
                 s += &format!("{}", val);
                 s
             },
-            Value::Str {ty: _ty, val} => {
+            Value::Str {ty: _ty, val, addr: _addr} => {
                 let mut s = "".to_string();
                 s += &format!("\"{}\"", val);
                 s

@@ -281,7 +281,8 @@ fn expr_primary(pair: Pair<Rule>) -> Expr {
             return Expr::Primitive {
                 val: Value::Str {
                     ty: DataType::Str,
-                    val
+                    val,
+                    addr: None
                 }
             };
         },

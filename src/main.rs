@@ -1,3 +1,5 @@
+extern crate core;
+
 use crate::parser::dtrace_parser::*;
 use crate::verifier::verifier::*;
 use crate::generator::emitters::{WasmRewritingEmitter};
