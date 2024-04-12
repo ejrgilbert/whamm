@@ -1,5 +1,5 @@
 use log::error;
-use walrus::{FunctionBuilder, FunctionId, FunctionKind, ImportedFunction, InstrSeqBuilder, LocalFunction};
+use walrus::{FunctionBuilder, FunctionId, FunctionKind, ImportedFunction, InstrSeqBuilder, LocalFunction, ModuleLocals, ValType};
 use walrus::ir::{BinaryOp, ExtendedLoad, Instr, LoadKind, MemArg};
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{DataType, Dscript, Dtrace, Expr, Fn, Function, Module, Op, Provider, Statement, Value};
@@ -41,6 +41,36 @@ pub trait Emitter {
 // with a construction of InstrumentationVisitor inside that loop.
 // =================================================================================
 // =================================================================================
+fn create_arg_vars(table: &mut SymbolTable, app_locals: &mut ModuleLocals, func_params: &Option<Vec<ValType>>, instr_builder: &mut InstrSeqBuilder, index: &mut usize) {
+    // No bytecodes should have been emitted in the module yet!
+    // So, we can just save off the first * items in the stack as the args
+    // to the call.
+    if let Some(params) = func_params {
+        params.iter().enumerate().for_each(|(num, param_ty)| {
+            // create local for the param in the module
+            let arg_local_id = app_locals.add(*param_ty);
+
+            // emit a bytecode in the function to assign the ToS to this new local
+            instr_builder.instr_at( *index,walrus::ir::LocalSet {
+                local: arg_local_id.clone()
+            });
+
+            // update index to point to what follows our insertions
+            *index += 1;
+
+            // place in symbol table with var addr for future reference
+            let arg_name = format!("arg{num}");
+            table.put(arg_name.clone(), Record::Var {
+                ty: DataType::Integer, // we only support integers right now.
+                name: arg_name,
+                value: None,
+                addr: Some(VarAddr::Local {
+                    addr: arg_local_id
+                })
+            });
+        });
+    }
+}
 
 fn emit_body(table: &mut SymbolTable, body: &Vec<Statement>, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> bool {
     let mut is_success = true;
@@ -403,6 +433,11 @@ fn emit_value(table: &mut SymbolTable, val: &Value, instr_builder: &mut InstrSeq
             is_success &= true;
         }
         Value::Str { val, .. } => {
+            // TODO -- decide where to insert the string
+            //         1. store in a new memory...but not supported in dfinity
+            //         2. store at a memory offset
+            //         3. store at address 0 (for local strings)
+            //            ...but will have to keep track of what we've used and then write back what we changed.
             // TODO -- update index to point to what follows our insertions
             // NEXT
             todo!()
@@ -469,15 +504,15 @@ impl WasmRewritingEmitter {
                 let instr_as_str = &format!("{:?}", instr);
                 if let Some(function) = module.functions.get_mut(instr_as_str) {
                     // preprocess
-                    self.preprocess_instr(instr, function);
+                    let params = self.preprocess_instr(instr, function);
                     // passing a clone of index so it can be mutated as instructions are injected
-                    is_success &= self.emit_function(function, id, &mut index.clone());
+                    is_success &= self.emit_function(function, id, &params, &mut index.clone());
                 }
             });
         });
         is_success
     }
-    fn preprocess_instr(&mut self, instr: &Instr, function: &mut Function) {
+    fn preprocess_instr(&mut self, instr: &Instr, function: &mut Function) -> Option<Vec<ValType>> {
         if function.name.to_lowercase() == "call" {
             if let Instr::Call(func) = &instr {
                 let func = self.app_wasm.funcs.get(func.func);
@@ -511,7 +546,7 @@ impl WasmRewritingEmitter {
                     Some(rec_id) => rec_id.clone(),
                     _ => {
                         error!("target_fn_type symbol does not exist in this scope!");
-                        return;
+                        return Some(params);
                     }
                 };
                 let mut rec = self.table.get_record_mut(&rec_id);
@@ -536,7 +571,7 @@ impl WasmRewritingEmitter {
                         Some(rec_id) => rec_id.clone(),
                         _ => {
                             error!("target_imp_module symbol does not exist in this scope!");
-                            return;
+                            return Some(params);
                         }
                     };
                     let mut rec = self.table.get_record_mut(&rec_id);
@@ -561,7 +596,7 @@ impl WasmRewritingEmitter {
                         Some(rec_id) => rec_id.clone(),
                         _ => {
                             error!("target_imp_name symbol does not exist in this scope!");
-                            return;
+                            return Some(params);
                         }
                     };
                     let mut rec = self.table.get_record_mut(&rec_id);
@@ -580,56 +615,41 @@ impl WasmRewritingEmitter {
                         val: name.unwrap().to_string(),
                     });
                 }
-                // for each param (found above and saved to num_params), define `arg*`
-                // place in symbol table with var addr for future reference
-                params.iter().enumerate().for_each(|(num, _param_ty)| {
-                    let arg_name = format!("arg{num}");
-
-                    // TODO when/where should i save off `arg*` values?
-                    // maybe I can create a new local variable in the module and then
-                    // assign to it when I'm actually emitting the probe?
-
-                    // save to table
-                    self.table.put(arg_name.clone(), Record::Var {
-                        ty: DataType::Integer, // we only support integers right now.
-                        name: arg_name,
-                        value: None,
-                        addr: None,
-                    });
-                });
-            };
+                return Some(params);
+            }
         }
+        None
     }
-    fn emit_function(&mut self, function: &mut Function, func_id: FunctionId, index: &mut usize) -> bool {
+    fn emit_function(&mut self, function: &mut Function, func_id: FunctionId, func_params: &Option<Vec<ValType>>, index: &mut usize) -> bool {
         self.table.enter_scope();
         let is_success = true;
 
         // inject probes (should be at the correct point in the `walrus::ir::VisitorMut`)
-        self.emit_probes_for_fn(function, func_id, index);
+        self.emit_probes_for_fn(function, func_id, func_params, index);
 
         self.table.exit_scope();
         is_success
     }
-    fn emit_probes_for_fn(&mut self, function: &Function, func_id: FunctionId, index: &mut usize) -> bool {
+    fn emit_probes_for_fn(&mut self, function: &Function, func_id: FunctionId, func_params: &Option<Vec<ValType>>, index: &mut usize) -> bool {
         let mut is_success = true;
         // 1. Inject BEFORE probes
-        if let Some(res) = self.emit_probes(function, func_id, &"before".to_string(), index) {
+        if let Some(res) = self.emit_probes(function, func_id, func_params, &"before".to_string(), index) {
             // Assumption: before probes push/pop from stack so it is equivalent to what it was originally
             is_success &= res;
         }
         // 2. Inject ALT probes
-        if let Some(res) = self.emit_probes(function, func_id, &"alt".to_string(), index) {
+        if let Some(res) = self.emit_probes(function, func_id, func_params, &"alt".to_string(), index) {
             is_success &= res;
         }
         // 3. Inject AFTER probes
-        if let Some(res) = self.emit_probes(function, func_id, &"after".to_string(), index) {
+        if let Some(res) = self.emit_probes(function, func_id, func_params, &"after".to_string(), index) {
             // Assumption: before probes push/pop from stack so it is equivalent to what it was originally
             is_success &= res;
         }
 
         is_success
     }
-    fn emit_probes(&mut self, function: &Function, func_id: FunctionId, probe_name: &String, index: &mut usize) -> Option<bool> {
+    fn emit_probes(&mut self, function: &Function, func_id: FunctionId, func_params: &Option<Vec<ValType>>, probe_name: &String, index: &mut usize) -> Option<bool> {
         let mut is_success = true;
 
         // This MUST be `self.app_wasm` so we're mutating what will be the instrumented application.
@@ -640,6 +660,7 @@ impl WasmRewritingEmitter {
 
         if let Some(probes) = function.probe_map.get(probe_name) {
             let mut removed = false;
+            let mut emitted_params = false;
             probes.iter().for_each(|probe| {
                 if !removed && probe_name == "alt" && probe.body.is_some() {
                     // remove the original bytecode first
@@ -662,10 +683,10 @@ impl WasmRewritingEmitter {
                         // predicate is TRUE, unconditionally inject body stmts
                     } else {
                         // predicate has not been reduced to a boolean value, inject
-
-                        if function.name == "call" {
-                            //TODO: What are the inputs to the current bytecode?
-                            //     - save these off
+                        if !emitted_params && function.name == "call" {
+                            // save the inputs to the current bytecode
+                            create_arg_vars(&mut self.table, &mut self.app_wasm.locals, func_params, &mut instr_builder, index);
+                            emitted_params = true;
                         }
 
                         // inject predicate
@@ -673,9 +694,10 @@ impl WasmRewritingEmitter {
                     }
                 }
                 if probe.body.is_some() {
-                    if function.name == "call" {
-                        //TODO: What are the inputs to the current bytecode?
-                        //     - save these off
+                    if !emitted_params && function.name == "call" {
+                        // save the inputs to the current bytecode
+                        create_arg_vars(&mut self.table, &mut self.app_wasm.locals, func_params, &mut instr_builder, index);
+                        emitted_params = true;
                     }
 
                     let body = probe.body.as_ref().unwrap();
@@ -723,6 +745,37 @@ impl WasmRewritingEmitter {
             Some(is_success)
         } else {
             None
+        }
+    }
+
+    fn create_arg_vars(&mut self, func_params: &Option<Vec<ValType>>, instr_builder: &mut InstrSeqBuilder, index: &mut usize) {
+        // No bytecodes should have been emitted in the module yet!
+        // So, we can just save off the first * items in the stack as the args
+        // to the call.
+        if let Some(params) = func_params {
+            params.iter().enumerate().for_each(|(num, param_ty)| {
+                // create local for the param in the module
+                let arg_local_id = self.app_wasm.locals.add(*param_ty);
+
+                // emit a bytecode in the function to assign the ToS to this new local
+                instr_builder.instr_at( *index,walrus::ir::LocalSet {
+                    local: arg_local_id.clone()
+                });
+
+                // update index to point to what follows our insertions
+                *index += 1;
+
+                // place in symbol table with var addr for future reference
+                let arg_name = format!("arg{num}");
+                self.table.put(arg_name.clone(), Record::Var {
+                    ty: DataType::Integer, // we only support integers right now.
+                    name: arg_name,
+                    value: None,
+                    addr: Some(VarAddr::Local {
+                        addr: arg_local_id
+                    })
+                });
+            });
         }
     }
 
