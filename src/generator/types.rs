@@ -30,6 +30,7 @@ impl ExprFolder {
                         let (lhs_val, rhs_val) = ExprFolder::get_bool(&lhs, &rhs);
                         if let Some(lhs_bool) = lhs_val {
                             if let Some(rhs_bool) = rhs_val {
+                                // both are boolean primitives
                                 return Expr::Primitive {
                                     val: Value::Boolean {
                                         ty: DataType::Boolean,
@@ -37,18 +38,79 @@ impl ExprFolder {
                                     }
                                 };
                             }
+                            // only lhs is boolean primitive
+                            // - if it's a true,  can drop it
+                            // - if it's a false, this expression is false
+                            return if lhs_bool {
+                                rhs
+                            } else {
+                                Expr::Primitive {
+                                    val: Value::Boolean {
+                                        ty: DataType::Boolean,
+                                        val: false,
+                                    }
+                                }
+                            }
+                        } else {
+                            // lhs is not a primitive
+                            if let Some(rhs_bool) = rhs_val {
+                                // only rhs is boolean primitive
+                                // - if it's a true,  can drop it
+                                // - if it's a false, this expression is false
+                                return if rhs_bool {
+                                    lhs
+                                } else {
+                                    Expr::Primitive {
+                                        val: Value::Boolean {
+                                            ty: DataType::Boolean,
+                                            val: false,
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                     Op::Or => {
                         let (lhs_val, rhs_val) = ExprFolder::get_bool(&lhs, &rhs);
                         if let Some(lhs_bool) = lhs_val {
                             if let Some(rhs_bool) = rhs_val {
+                                // both are boolean primitives
                                 return Expr::Primitive {
                                     val: Value::Boolean {
                                         ty: DataType::Boolean,
                                         val: lhs_bool || rhs_bool,
                                     }
                                 };
+                            }
+                            // only lhs is boolean primitive
+                            // - if it's a false, can drop it
+                            // - if it's a true,  this expression is true
+                            return if lhs_bool {
+                                Expr::Primitive {
+                                    val: Value::Boolean {
+                                        ty: DataType::Boolean,
+                                        val: true,
+                                    }
+                                }
+                            } else {
+                                rhs
+                            }
+                        } else {
+                            // lhs is not a primitive
+                            if let Some(rhs_bool) = rhs_val {
+                                // only rhs is boolean primitive
+                                // - if it's a true,  this expression is true
+                                // - if it's a false, can drop it
+                                return if rhs_bool {
+                                    Expr::Primitive {
+                                        val: Value::Boolean {
+                                            ty: DataType::Boolean,
+                                            val: true,
+                                        }
+                                    }
+                                } else {
+                                    lhs
+                                }
                             }
                         }
                     }

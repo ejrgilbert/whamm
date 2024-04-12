@@ -40,6 +40,7 @@ impl SymbolTable {
     }
 
     pub fn reset(&mut self) {
+        self.curr_scope = 0;
         for scope in self.scopes.iter_mut() {
             scope.reset();
         }
@@ -170,7 +171,7 @@ impl SymbolTable {
 pub struct Scope {
     pub id: usize,                       // indexes into SymbolTable::scopes
     pub name: String,
-    ty: ScopeType,
+    pub ty: ScopeType,
 
     parent: Option<usize>,             // indexes into SymbolTable::scopes
     children: Vec<usize>,              // indexes into SymbolTable::scopes
@@ -236,7 +237,7 @@ impl Scope {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum ScopeType {
     Dtrace,
     Dscript,

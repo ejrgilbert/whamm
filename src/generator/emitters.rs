@@ -716,7 +716,7 @@ impl WasmRewritingEmitter {
 
                 if probe_name == "alt" {
                     // check if we should inject an alternate call!
-                    let rec_id = match self.table.lookup(&"new_target_imp_name".to_string()) {
+                    let rec_id = match self.table.lookup(&"new_target_fn_name".to_string()) {
                         Some(rec_id) => Some(rec_id.clone()),
                         None => None
                     };

@@ -476,8 +476,8 @@ impl Function {
             globals.insert("target_imp_name".to_string(), (DataType::Str, Expr::VarId {
                 name: "target_imp_name".to_string(),
             }, None));
-            globals.insert("new_target_imp_name".to_string(), (DataType::Str, Expr::VarId {
-                name: "new_target_imp_name".to_string(),
+            globals.insert("new_target_fn_name".to_string(), (DataType::Str, Expr::VarId {
+                name: "new_target_fn_name".to_string(),
             }, None));
         }
 

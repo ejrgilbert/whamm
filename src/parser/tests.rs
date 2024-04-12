@@ -47,7 +47,7 @@ const VALID_SCRIPTS: &'static [&'static str] = &[
     // Function calls
     r#"
 wasm::call:alt / strpaircmp((arg2, arg3), "record") / {
-    new_target_imp_name = "redirect_to_fault_injector";
+    new_target_fn_name = "redirect_to_fault_injector";
 }
     "#,
     r#"
@@ -58,7 +58,7 @@ wasm::call:alt /
     strpaircmp((arg0, arg1), "bookings") &&
     strpaircmp((arg2, arg3), "record")
 / {
-    new_target_imp_name = "redirect_to_fault_injector";
+    new_target_fn_name = "redirect_to_fault_injector";
 }
     "#,
 
@@ -222,7 +222,7 @@ wasm::call:alt /
     strpaircmp((arg0, arg1), "bookings") &&
     strpaircmp((arg2, arg3), "record")
 / {
-    new_target_imp_name = "redirect_to_fault_injector";
+    new_target_fn_name = "redirect_to_fault_injector";
 }
     "#;
 
