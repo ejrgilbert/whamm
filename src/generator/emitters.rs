@@ -1,4 +1,7 @@
+use std::collections::HashMap;
+use std::process::exit;
 use log::error;
+use regex::Regex;
 use walrus::{ActiveData, ActiveDataLocation, DataKind, FunctionBuilder, FunctionId, FunctionKind, ImportedFunction, InstrSeqBuilder, LocalFunction, MemoryId, ModuleData, ModuleLocals, ValType};
 use walrus::ir::{BinaryOp, ExtendedLoad, Instr, LoadKind, MemArg};
 use crate::generator::types::ExprFolder;
@@ -12,6 +15,7 @@ use crate::verifier::types::{Record, SymbolTable, VarAddr};
 pub trait Emitter {
     fn enter_scope(&mut self);
     fn exit_scope(&mut self);
+    fn reset_children(&mut self);
 
     fn emit_dtrace(&mut self, dtrace: &Dtrace) -> bool;
     fn emit_dscript(&mut self, dscript: &Dscript) -> bool;
@@ -201,7 +205,7 @@ fn emit_expr(table: &mut SymbolTable, module_data: &mut ModuleData, mem_id: &Mem
             };
             match fn_rec_id {
                 Some(rec_id) => {
-                    let mut fn_rec = table.get_record_mut(&rec_id);
+                    let fn_rec = table.get_record_mut(&rec_id);
                     match fn_rec {
                         Some(Record::Fn { addr, .. }) => {
                             if let Some(f_id) = addr {
@@ -416,7 +420,7 @@ fn emit_value(table: &mut SymbolTable, mem_id: &MemoryId, module_data: &mut Modu
             *index += 1;
             is_success &= true;
         }
-        Value::Str { val, mut addr, ty } => {
+        Value::Str { val, mut addr, ty: _ty } => {
             let data_id = module_data.add(DataKind::Active(ActiveData {
                 memory: *mem_id,
                 location: ActiveDataLocation::Absolute(curr_mem_offset.clone())
@@ -490,36 +494,82 @@ impl WasmRewritingEmitter {
     }
 
     fn emit_wasm_bytecode_module(&mut self, module: &mut Module) -> bool {
-        // TODO -- creating a new instance of app_wasm is obscene.
-        // Create yet another copy of app_wasm because I cannot for the life of me figure out how to
-        // avoid this, but it still work with Rust syntax restrictions...
-        let app_wasm = walrus::Module::from_file(&self.app_wasm_path.clone()).unwrap();
-
         // Initialize this to 4 MB
-        let mut mem_id = self.app_wasm.memories.iter().next()
+        let mem_id = self.app_wasm.memories.iter().next()
             .expect("only single memory is supported")
             .id();
         let mut curr_mem_offset: u32 = 1_048_576;
         let mut is_success = true;
-        app_wasm.funcs.iter_local().for_each(|(id, func)| {
-            // TODO -- make sure that the id is not any of the injected function IDs
-            let instr_seq = func.block(func.entry_block());
-            instr_seq.instrs.iter().enumerate().for_each(|(index, (instr, ..))| {
-                let instr_as_str = &format!("{:?}", instr);
-                if let Some(function) = module.functions.get_mut(instr_as_str) {
-                    // preprocess
-                    let params = self.preprocess_instr(instr, function);
-                    // passing a clone of index so it can be mutated as instructions are injected
-                    is_success &= self.emit_function(function, &mem_id, &mut curr_mem_offset, id, &params, &mut index.clone());
+        // Figure out which functions to visit
+        let mut to_visit = HashMap::new();
+        self.app_wasm.funcs.iter().for_each(|func| {
+            let id = func.id();
+            if let Some(name) = func.name.as_ref() {
+                if name.contains("CallFuture") {
+                    println!("reached it!");
                 }
-            });
+                println!("{name}");
+            }
+
+            if let FunctionKind::Local(local_func) = &func.kind {
+                // TODO -- make sure that the id is not any of the injected function IDs
+                let instr_seq = local_func.block(local_func.entry_block());
+
+                instr_seq.instrs.iter().enumerate().for_each(|(index, (instr, ..))| {
+                    // TODO -- if block instruction, enter it!
+                    let instr_as_str = &format!("{:?}", instr);
+                    let instr_name = instr_as_str.split("(").next().unwrap().to_lowercase();
+                    if let Some(_function) = module.functions.get_mut(&instr_name) {
+                        to_visit.insert(instr_name.clone(), (id.clone() as FunctionId, instr.clone(), index.clone()));
+                    }
+                });
+            } else {
+                if func.name.as_ref().unwrap().contains("CallFuture") {
+                    println!("{}", func.name.as_ref().unwrap());
+                }
+            }
         });
+
+
+        // self.app_wasm.funcs.iter_local().for_each(|(id, func)| {
+        //     // TODO -- make sure that the id is not any of the injected function IDs
+        //     let instr_seq = func.block(func.entry_block());
+        //
+        //     instr_seq.instrs.iter().enumerate().for_each(|(index, (instr, ..))| {
+        //         let instr_as_str = &format!("{:?}", instr);
+        //         let instr_name = instr_as_str.split("(").next().unwrap().to_lowercase();
+        //         if let Some(_function) = module.functions.get_mut(&instr_name) {
+        //             to_visit.insert(instr_name.clone(), (id.clone() as FunctionId, instr.clone(), index.clone()));
+        //         }
+        //     });
+        // });
+
+        for (_function_name, (f_id, ..)) in to_visit.iter() {
+            let func = self.app_wasm.funcs.get(*f_id);
+            println!("{}", func.name.as_ref().unwrap());
+            if func.name.as_ref().unwrap().contains("ZN87") {
+                println!("{}", func.name.as_ref().unwrap());
+            }
+        }
+
+        // for (function_name, (f_id, instr, index)) in to_visit.iter_mut() {
+        //     self.table.enter_named_scope(function_name);
+        //     let function = module.functions.get_mut(function_name).unwrap();
+        //     // preprocess
+        //     let params = self.preprocess_instr(instr, function);
+        //     // passing a clone of index so it can be mutated as instructions are injected
+        //     is_success &= self.emit_function(function, &mem_id, &mut curr_mem_offset, *f_id, &params, &mut index.clone());
+        //     self.table.exit_scope();
+        // }
         is_success
     }
     fn preprocess_instr(&mut self, instr: &Instr, function: &mut Function) -> Option<Vec<ValType>> {
         if function.name.to_lowercase() == "call" {
             if let Instr::Call(func) = &instr {
                 let func = self.app_wasm.funcs.get(func.func);
+                if func.name.as_ref().unwrap().contains("ZN87") {
+                    println!("{}", func.name.as_ref().unwrap());
+                }
                 let (func_kind, module, name, params) = match &func.kind {
                     FunctionKind::Import(ImportedFunction { ty: ty_id, import: import_id }) => {
                         let func_kind = "import";
@@ -631,14 +681,8 @@ impl WasmRewritingEmitter {
         None
     }
     fn emit_function(&mut self, function: &mut Function, mem_id: &MemoryId, curr_mem_offset: &mut u32, func_id: FunctionId, func_params: &Option<Vec<ValType>>, index: &mut usize) -> bool {
-        self.table.enter_scope();
-        let is_success = true;
-
         // inject probes (should be at the correct point in the `walrus::ir::VisitorMut`)
-        self.emit_probes_for_fn(function, mem_id, curr_mem_offset, func_id, func_params, index);
-
-        self.table.exit_scope();
-        is_success
+        self.emit_probes_for_fn(function, mem_id, curr_mem_offset, func_id, func_params, index)
     }
     fn emit_probes_for_fn(&mut self, function: &Function, mem_id: &MemoryId, curr_mem_offset: &mut u32, func_id: FunctionId, func_params: &Option<Vec<ValType>>, index: &mut usize) -> bool {
         let mut is_success = true;
@@ -793,7 +837,7 @@ impl WasmRewritingEmitter {
         return if context == &"dtrace".to_string() && &f.name == &"strcmp".to_string() {
             self.emit_dtrace_strcmp_fn(f)
         } else {
-            error!("Provided function, but could not find a context to provide the definition");
+            error!("Provided function, but could not find a context to provide the definition, context: {context}");
             false
         }
     }
@@ -961,6 +1005,9 @@ impl Emitter for WasmRewritingEmitter {
     fn exit_scope(&mut self) {
         self.table.exit_scope();
     }
+    fn reset_children(&mut self) {
+        self.table.reset_children();
+    }
     fn emit_dtrace(&mut self, _dtrace: &Dtrace) -> bool {
         // nothing to do here
         true
@@ -971,27 +1018,31 @@ impl Emitter for WasmRewritingEmitter {
     }
     fn emit_provider(&mut self, context: &String, provider: &mut Provider) -> bool {
         let mut is_success = true;
-        provider.modules.iter_mut().for_each(|(_name, module)| {
-            is_success &= self.emit_module(context, module);
+        provider.modules.iter_mut().for_each(|(name, module)| {
+            is_success &= self.emit_module(&format!("{context}:{name}"), module);
         });
         is_success
     }
     fn emit_module(&mut self, context: &String, module: &mut Module) -> bool {
-        return if context == &"dtrace:dscript:wasm:bytecode".to_string() {
-            self.emit_wasm_bytecode_module(module)
+        self.table.enter_scope();
+        let regex = Regex::new(r"dtrace:dscript([0-9]+):wasm:bytecode").unwrap();
+        return if let Some(_caps) = regex.captures(context) {
+            let res = self.emit_wasm_bytecode_module(module);
+            self.table.exit_scope();
+            res
         } else {
-            error!("Provided function, but could not find a context to provide the definition");
+            self.table.exit_scope();
+            error!("Provided module, but could not find a context to provide the definition, context: {context}");
             false
         };
     }
     fn emit_fn(&mut self, context: &String, f: &Fn) -> bool {
-        self.table.enter_scope();
         // figure out if this is a provided fn.
         if f.is_provided {
             return if self.fn_providing_contexts.contains(context) {
                 self.emit_provided_fn(context, f)
             } else {
-                error!("Provided function, but could not find a context to provide the definition");
+                error!("Provided fn, but could not find a context to provide the definition, context: {context}");
                 false
             }
         }

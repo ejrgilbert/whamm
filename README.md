@@ -23,5 +23,5 @@ cargo run <app_wasm_path> <path_to_dscript> <path_for_compiled_output>
 
 To specify log level:
 ```shell
-RUST_LOG={ error | warn | info | debug | trace | off } cargo run <path_to_app_wasm> <path_to_dscript> <path_for_compiled_output>
+RUST_LOG={ error | warn | info | debug | trace | off } cargo run --wasm-app-path <path_to_app_wasm> --dscript-path <path_to_dscript> <path_for_compiled_output>
 ```

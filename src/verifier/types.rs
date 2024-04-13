@@ -46,6 +46,41 @@ impl SymbolTable {
         }
     }
 
+    pub fn reset_children(&mut self) {
+        let mut curr = self.get_curr_scope_mut().unwrap();
+        curr.reset();
+        let children = curr.children.clone();
+
+        children.iter().for_each(|child| {
+            let child_scope: &mut Scope = self.scopes.get_mut(*child).unwrap();
+            child_scope.reset();
+        });
+    }
+
+    pub fn enter_named_scope(&mut self, scope_name: &String) {
+        let mut curr = self.get_curr_scope_mut().unwrap();
+        let children = curr.children.clone();
+
+        let mut new_curr_scope = None;
+        let mut new_next = None;
+        for (i, child_id) in children.iter().enumerate() {
+            let child_scope: &Scope = self.scopes.get(*child_id).unwrap();
+            if child_scope.name == *scope_name {
+                new_curr_scope = Some(child_id.clone());
+                new_next = Some(i.clone() + 1);
+            }
+        };
+
+        // create new instance fix Rust's compilation issue.
+        let mut curr = self.get_curr_scope_mut().unwrap();
+        if let (Some(new_curr), Some(new_next)) = (new_curr_scope, new_next) {
+            curr.next = new_next;
+            self.curr_scope = new_curr;
+        } else {
+            error!("Could not find the specified scope by name: `{scope_name}`");
+        }
+    }
+
     pub fn enter_scope(&mut self) {
         let new_id = self.scopes.len();
 

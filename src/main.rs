@@ -23,12 +23,12 @@ fn setup_logger() {
 struct Args {
     /// The path to the application's Wasm module we want to instrument.
     #[clap(short, long, value_parser)]
-    wasm_app_path: String,
+    app: String,
     /// The path to the Dscript containing the instrumentation Probe definitions.
     #[clap(short, long, value_parser)]
-    dscript_path: String,
+    dscript: String,
     /// The path that the instrumented version of the Wasm app should be output to.
-    #[clap(short, long, value_parser, default_value = "./target/output.wasm")]
+    #[clap(short, long, value_parser, default_value = "./output/output.wasm")]
     output_path: String,
 
     /// Whether to emit Virgil
@@ -57,8 +57,8 @@ fn try_main() -> Result<(), failure::Error> {
 
     // Get information from user command line args
     let args = Args::parse();
-    let app_wasm_path = args.wasm_app_path;
-    let dscript_path = args.dscript_path;
+    let app_wasm_path = args.app;
+    let dscript_path = args.dscript;
     let dscript = std::fs::read_to_string(&dscript_path);
     let output_wasm_path = args.output_path;
 
@@ -77,8 +77,9 @@ fn try_main() -> Result<(), failure::Error> {
             };
 
             // Build the symbol table from the AST
-            let symbol_table = verify(&dtrace);
+            let mut symbol_table = verify(&dtrace);
             println!("{:?}", symbol_table);
+            symbol_table.reset();
 
             // Read app Wasm into Walrus module
             let _config =  walrus::ModuleConfig::new();

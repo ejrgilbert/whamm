@@ -42,7 +42,6 @@ impl CodeGenerator {
 impl DtraceVisitorMut<bool> for CodeGenerator {
     fn visit_dtrace(&mut self, dtrace: &mut Dtrace) -> bool {
         trace!("Entering: CodeGenerator::visit_dtrace");
-        self.emitter.enter_scope();
         self.context_name  = "dtrace".to_string();
         let mut is_success = self.emitter.emit_dtrace(dtrace);
 
@@ -57,7 +56,6 @@ impl DtraceVisitorMut<bool> for CodeGenerator {
         });
 
         trace!("Exiting: CodeGenerator::visit_dtrace");
-        self.emitter.exit_scope();
         // Remove from `context_name`
         self.context_name = "".to_string();
         is_success
@@ -106,6 +104,7 @@ impl DtraceVisitorMut<bool> for CodeGenerator {
         // At this point we've traversed the entire tree to generate necessary
         // globals and fns!
         // Now, we emit_provider which will do the actual instrumentation step!
+        self.emitter.reset_children();
         is_success &= self.emitter.emit_provider(&self.context_name, provider);
 
         trace!("Exiting: CodeGenerator::visit_provider");

@@ -1,7 +1,5 @@
 /*
  * This will perform an asynchronous fault in Dfinity (redirect call to fault_injector canister endpoint).
- * TODO -- support syntax for function calls
- * TODO -- create the strpaircmp function in walrus
  */
 wasm::call:alt /
     target_fn_type == "import" &&

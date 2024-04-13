@@ -18,3 +18,4 @@ Cargo.lock
 
 # Ignore the huge test files
 tests/apps/*
+output/
