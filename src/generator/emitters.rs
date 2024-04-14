@@ -559,30 +559,37 @@ impl WasmRewritingEmitter {
         let mem_id = self.app_wasm.memories.iter().next()
             .expect("only single memory is supported")
             .id();
-        let mut curr_mem_offset: u32 = 1_048_576;
+        let mut curr_mem_offset: u32 = 1_052_576; // Set default memory base address to DEFAULT + 4KB = 1048576 bytes + 4000 bytes = 1052576 bytes
         let mut is_success = true;
         // Figure out which functions to visit
         let mut probe_locs: HashMap<String, ProbeLoc> = HashMap::new();
-        self.app_wasm.funcs.iter().for_each(|func| {
+
+        for func in self.app_wasm.funcs.iter() {
             let id = func.id();
             if let Some(name) = func.name.as_ref() {
+                // TODO -- get rid of this necessity (probably by removing the need to have
+                //         functions already present in the app code)
+                if name.starts_with("instr_") {
+                    continue;
+                }
+
                 if name.contains("CallFuture$LT") {
                     println!("reached it!");
                 }
             }
 
             if let FunctionKind::Local(local_func) = &func.kind {
-                // TODO -- make sure that the id is not any of the injected function IDs
+                // TODO -- make sure that the id is not any of the injected function IDs (strcmp)
                 get_probe_insert_locations(&mut probe_locs, module, id, func.name.clone(), local_func, local_func.entry_block());
             }
-        });
+        }
 
         for (function_name, ProbeLoc {positions}) in probe_locs.iter() {
             for (func_name, func_id, instr_seq_id, index, instr) in positions.iter() {
                 if let Some(name) = func_name.as_ref() {
-                    if name.contains("CallFuture$LT") {
-                        println!("reached it!");
-                    }
+                    // if name.contains("CallFuture$LT") {
+                    //     println!("Possibly injecting probes for {name}");
+                    // }
                 }
                 self.table.enter_named_scope(function_name);
                 let function = module.functions.get_mut(function_name).unwrap();
@@ -850,6 +857,7 @@ impl WasmRewritingEmitter {
                         }
 
                         // inject predicate
+                        // println!("{:#?}", folded_pred);
                         is_success &= emit_expr(&mut self.table, &mut self.app_wasm.data, mem_id, curr_mem_offset, &mut folded_pred, &mut instr_builder, index);
                     }
                 }
@@ -1020,20 +1028,17 @@ impl WasmRewritingEmitter {
             }
         };
 
-        let rec = self.table.get_record_mut(&rec_id);
-        return match rec {
-            Some(Record::Fn { mut addr, .. }) => {
-                addr = Some(strcmp_id);
+        return if let Some(rec) = self.table.get_record_mut(&rec_id) {
+            if let Record::Fn { addr, ..} = rec {
+                *addr = Some(strcmp_id);
                 true
-            },
-            Some(ty) => {
-                error!("Incorrect global variable record, expected Record::Var, found: {:?}", ty);
-                false
-            },
-            None => {
-                error!("Global variable symbol does not exist!");
+            } else {
+                error!("Incorrect global variable record, expected Record::Var, found: {:?}", rec);
                 false
             }
+        } else {
+            error!("Global variable symbol does not exist!");
+            false
         };
     }
 }

@@ -67,6 +67,14 @@ impl ExprFolder {
                                         }
                                     }
                                 }
+                            } else {
+                                // rhs is not a primitive
+                                // return folded lhs/rhs
+                                return Expr::BinOp {
+                                    lhs: Box::new(lhs),
+                                    op: Op::And,
+                                    rhs: Box::new(rhs),
+                                }
                             }
                         }
                     }
@@ -110,6 +118,14 @@ impl ExprFolder {
                                     }
                                 } else {
                                     lhs
+                                }
+                            } else {
+                                // rhs is not a primitive
+                                // return folded lhs/rhs
+                                return Expr::BinOp {
+                                    lhs: Box::new(lhs),
+                                    op: Op::Or,
+                                    rhs: Box::new(rhs),
                                 }
                             }
                         }

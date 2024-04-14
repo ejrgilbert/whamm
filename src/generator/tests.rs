@@ -6,8 +6,8 @@ use std::process::exit;
 use log::error;
 use crate::generator::types::ExprFolder;
 use crate::parser::tests;
-use crate::parser::types::Expr::VarId;
-use crate::parser::types::{DataType, Dtrace, Expr, Value};
+use crate::parser::types::Expr::{BinOp, VarId};
+use crate::parser::types::{DataType, Dtrace, Expr, Op, Value};
 use crate::verifier::types::{Record, ScopeType, SymbolTable};
 use crate::verifier::verifier;
 
@@ -158,7 +158,7 @@ wasm::call:alt /
 }
 
 #[test]
-pub fn complex_test() {
+pub fn basic_with_compiler_vars() {
     setup_logger();
     basic_run(r#"
 wasm::call:alt /
@@ -168,4 +168,76 @@ wasm::call:alt /
     i
 / {}
     "#);
+}
+
+fn asserts_on_call(call: &Expr) {
+    if let Expr::Call {
+        fn_target,
+        args
+    } = call {
+        if let VarId { name } = &**fn_target {
+            assert_eq!("strcmp", name);
+        } else {
+            error!("ExprFolder did not fold correctly...");
+            assert!(false);
+        }
+
+        let args = args.as_ref().unwrap();
+        assert_eq!(2, args.len());
+
+        let tuple = &**args.get(0).unwrap();
+        if let Expr::Primitive { val: Value::Tuple {vals, ..}} = tuple {
+            assert_eq!(2, vals.len());
+        } else {
+            error!("ExprFolder did not fold correctly...");
+            assert!(false);
+        }
+    }
+}
+
+#[test]
+pub fn basic_with_fn_call() {
+    setup_logger();
+    let script =r#"
+wasm::call:alt /
+    target_fn_type == "import" &&
+    target_imp_module == "ic0" &&
+    target_imp_name == "call_new" &&
+    strcmp((arg0, arg1), "bookings") &&
+    strcmp((arg2, arg3), "record")
+/ {}
+    "#;
+
+    match tests::get_ast(script) {
+        Some(dtrace) => {
+            let mut table = verifier::verify(&dtrace);
+            table.reset();
+
+            let pred = get_pred(&dtrace);
+            hardcode_compiler_constants(&mut table);
+
+            let folded_expr = ExprFolder::fold_expr(pred, &table);
+            println!("{:#?}", folded_expr);
+
+            // ExprFolder should not be able to simplify the Call expressions at all.
+            if let BinOp{
+                lhs,
+                op,
+                rhs
+            } = pred {
+                assert!(*op == Op::And);
+                asserts_on_call(&**lhs);
+                asserts_on_call(&**rhs);
+            } else {
+                // failed!
+                error!("ExprFolder did not fold correctly...");
+                print!("{:#?}\n", folded_expr);
+                assert!(false);
+            }
+        },
+        None => {
+            error!("Could not get ast from script: {script}");
+            assert!(false);
+        }
+    };
 }
