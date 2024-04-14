@@ -47,7 +47,7 @@ impl SymbolTable {
     }
 
     pub fn reset_children(&mut self) {
-        let mut curr = self.get_curr_scope_mut().unwrap();
+        let curr = self.get_curr_scope_mut().unwrap();
         curr.reset();
         let children = curr.children.clone();
 
@@ -58,16 +58,17 @@ impl SymbolTable {
     }
 
     pub fn enter_named_scope(&mut self, scope_name: &String) {
-        let mut curr = self.get_curr_scope_mut().unwrap();
+        let curr = self.get_curr_scope_mut().unwrap();
         let children = curr.children.clone();
 
         let mut new_curr_scope = None;
         let mut new_next = None;
         for (i, child_id) in children.iter().enumerate() {
-            let child_scope: &Scope = self.scopes.get(*child_id).unwrap();
+            let child_scope = self.scopes.get_mut(*child_id).unwrap();
             if child_scope.name == *scope_name {
                 new_curr_scope = Some(child_id.clone());
                 new_next = Some(i.clone() + 1);
+                child_scope.reset();
             }
         };
 
