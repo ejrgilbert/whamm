@@ -487,9 +487,9 @@ fn emit_value(table: &mut SymbolTable, mem_id: &MemoryId, module_data: &mut Modu
 #[derive(Debug)]
 struct ProbeLoc {
     // (instr position, no. of paths, nested ProbeInsertLocs)
-    positions: Vec<(FunctionId, InstrSeqId, usize, Instr)>,
+    positions: Vec<(Option<String>, FunctionId, InstrSeqId, usize, Instr)>,
 }
-fn get_probe_insert_locations(probe_locs: &mut HashMap<String, ProbeLoc>, module: &mut Module, func_id: FunctionId, func: &LocalFunction, instr_seq_id: InstrSeqId) {
+fn get_probe_insert_locations(probe_locs: &mut HashMap<String, ProbeLoc>, module: &mut Module, func_id: FunctionId, func_name: Option<String>, func: &LocalFunction, instr_seq_id: InstrSeqId) {
     func.block(instr_seq_id)
         .iter()
         .enumerate()
@@ -515,20 +515,20 @@ fn get_probe_insert_locations(probe_locs: &mut HashMap<String, ProbeLoc>, module
                 };
 
                 // add current instr
-                probe_loc.positions.push((func_id.clone(), instr_seq_id, index, instr.clone()));
+                probe_loc.positions.push((func_name.clone(), func_id.clone(), instr_seq_id, index, instr.clone()));
             }
             // visit nested blocks
             match instr {
                 Instr::Block(block) => {
-                    get_probe_insert_locations(probe_locs, module, func_id, func, block.seq);
+                    get_probe_insert_locations(probe_locs, module, func_id, func_name.clone(), func, block.seq);
                 }
                 Instr::Loop(_loop) => {
-                    get_probe_insert_locations(probe_locs, module, func_id, func, _loop.seq);
+                    get_probe_insert_locations(probe_locs, module, func_id, func_name.clone(), func, _loop.seq);
                 }
                 Instr::IfElse(if_else, ..) => {
                     println!("IfElse: {:#?}", if_else);
-                    get_probe_insert_locations(probe_locs, module, func_id, func, if_else.consequent);
-                    get_probe_insert_locations(probe_locs, module, func_id, func, if_else.alternative);
+                    get_probe_insert_locations(probe_locs, module, func_id, func_name.clone(), func, if_else.consequent);
+                    get_probe_insert_locations(probe_locs, module, func_id, func_name.clone(), func, if_else.alternative);
                 }
                 _ => {
                     // do nothing extra
@@ -573,12 +573,17 @@ impl WasmRewritingEmitter {
 
             if let FunctionKind::Local(local_func) = &func.kind {
                 // TODO -- make sure that the id is not any of the injected function IDs
-                get_probe_insert_locations(&mut probe_locs, module, id, local_func, local_func.entry_block());
+                get_probe_insert_locations(&mut probe_locs, module, id, func.name.clone(), local_func, local_func.entry_block());
             }
         });
 
         for (function_name, ProbeLoc {positions}) in probe_locs.iter() {
-            for (func_id, instr_seq_id, index, instr) in positions.iter() {
+            for (func_name, func_id, instr_seq_id, index, instr) in positions.iter() {
+                if let Some(name) = func_name.as_ref() {
+                    if name.contains("CallFuture$LT") {
+                        println!("reached it!");
+                    }
+                }
                 self.table.enter_named_scope(function_name);
                 let function = module.functions.get_mut(function_name).unwrap();
                 let params = self.preprocess_instr(instr, function);
