@@ -18,10 +18,10 @@ cargo test -- --nocapture # With stdout tracing
 
 To run project (there are example dscripts in `tests/dscripts` folder):
 ```shell
-cargo run <app_wasm_path> <path_to_dscript> <path_for_compiled_output>
+cargo run -- --app <path_to_app_wasm> --dscript <path_to_dscript> <path_for_compiled_output>
 ```
 
 To specify log level:
 ```shell
-RUST_LOG={ error | warn | info | debug | trace | off } cargo run --wasm-app-path <path_to_app_wasm> --dscript-path <path_to_dscript> <path_for_compiled_output>
+RUST_LOG={ error | warn | info | debug | trace | off } cargo run -- --app <path_to_app_wasm> --dscript <path_to_dscript> <path_for_compiled_output>
 ```
