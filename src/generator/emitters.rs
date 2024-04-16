@@ -750,13 +750,6 @@ impl WasmRewritingEmitter {
         // enter the scope for this probe
         self.table.enter_named_scope(&probe.name);
 
-        let emitted_params = if function_name == "call" {
-            // save the inputs to the current bytecode (do this once)
-            Some(self.create_arg_vars(func_params, func_id, instr_seq_id, index))
-        } else {
-            None
-        };
-
         // determine if I should inject a predicate.
         let mut pred_to_inject: Option<Expr> = if probe.predicate.is_some() {
             // Fold predicate via constant propagation
@@ -775,6 +768,13 @@ impl WasmRewritingEmitter {
                 // println!("{:#?}", folded_pred);
                 Some(folded_pred)
             }
+        } else {
+            None
+        };
+
+        let emitted_params = if function_name == "call" {
+            // save the inputs to the current bytecode (do this once)
+            Some(self.create_arg_vars(func_params, func_id, instr_seq_id, index))
         } else {
             None
         };
