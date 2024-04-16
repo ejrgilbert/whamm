@@ -2,10 +2,13 @@
   <img width="175" alt="The logo for wham!. Shows a spice jar with the WebAssembly logo, but with the 'h' and 'mm' letters written in between the 'wa' to spell 'whamm'."  src="/docs/logos/wham!_logo.png">
 </picture>
 
+# whamm! #
 
-# Instrumentation DSL #
+Debugging Wasm? Put some `whamm` on it!
 
-This DSL is inspired by the dtrace D language.
+`whamm!` is a tool for Wasm Application Monitoring and Manipulation[^1], a DSL inspired by Dtrace's D language.
+
+[^1]: The 'h' is silent.
 
 ## Tutorials ##
 
