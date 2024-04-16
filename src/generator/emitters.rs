@@ -1,10 +1,11 @@
 use std::collections::HashMap;
-use log::{error, info};
+use std::process::exit;
+use log::{error, info, warn};
 use regex::Regex;
-use walrus::{ActiveData, ActiveDataLocation, DataKind, FunctionBuilder, FunctionId, FunctionKind, ImportedFunction, InstrSeqBuilder, LocalFunction, MemoryId, ModuleData, ModuleLocals, ValType};
+use walrus::{ActiveData, ActiveDataLocation, DataKind, FunctionBuilder, FunctionId, FunctionKind, ImportedFunction, InstrLocId, InstrSeqBuilder, LocalFunction, MemoryId, ModuleData, ValType};
 use walrus::ir::{BinaryOp, ExtendedLoad, Instr, InstrSeqId, LoadKind, MemArg};
 use crate::generator::types::ExprFolder;
-use crate::parser::types::{DataType, Dscript, Dtrace, Expr, Fn, Function, Module, Op, Provider, Statement, Value};
+use crate::parser::types::{DataType, Dscript, Dtrace, Expr, Fn, Function, Module, Op, Probe, Provider, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 
 // =================================================
@@ -44,39 +45,6 @@ pub trait Emitter {
 // with a construction of InstrumentationVisitor inside that loop.
 // =================================================================================
 // =================================================================================
-fn create_arg_vars(table: &mut SymbolTable, app_locals: &mut ModuleLocals, func_params: &Option<Vec<ValType>>, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> Vec<(String, usize)> {
-    // No bytecodes should have been emitted in the module yet!
-    // So, we can just save off the first * items in the stack as the args
-    // to the call.
-    let mut arg_recs = vec![]; // vec to retain order!
-    if let Some(params) = func_params {
-        params.iter().enumerate().for_each(|(num, param_ty)| {
-            // create local for the param in the module
-            let arg_local_id = app_locals.add(*param_ty);
-
-            // emit a bytecode in the function to assign the ToS to this new local
-            instr_builder.instr_at( *index,walrus::ir::LocalSet {
-                local: arg_local_id.clone()
-            });
-
-            // update index to point to what follows our insertions
-            *index += 1;
-
-            // place in symbol table with var addr for future reference
-            let arg_name = format!("arg{num}");
-            let id = table.put(arg_name.clone(), Record::Var {
-                ty: DataType::Integer, // we only support integers right now.
-                name: arg_name.clone(),
-                value: None,
-                addr: Some(VarAddr::Local {
-                    addr: arg_local_id
-                })
-            });
-            arg_recs.push((arg_name, id));
-        });
-    }
-    arg_recs
-}
 
 fn emit_body(table: &mut SymbolTable, module_data: &mut ModuleData, mem_id: &MemoryId, curr_mem_offset: &mut u32, body: &mut Vec<Statement>, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> bool {
     let mut is_success = true;
@@ -726,165 +694,321 @@ impl WasmRewritingEmitter {
                           instr_seq_id: &InstrSeqId, func_params: &Option<Vec<ValType>>, index: &mut usize) -> bool {
         let mut is_success = true;
         // 1. Inject BEFORE probes
-        if let Some((_arg_recs, res)) = self.emit_probes(function, mem_id, curr_mem_offset, func_id, instr_seq_id, func_params, &"before".to_string(), index) {
+        if let Some(res) = self.emit_probes(function, mem_id, curr_mem_offset, func_id, instr_seq_id, func_params, &"before".to_string(), index) {
             // Assumption: before probes push/pop from stack so it is equivalent to what it was originally
             is_success &= res;
         }
         // 2a. Inject ALT probes
-        if let Some((arg_recs, res)) = self.emit_probes(function, mem_id, curr_mem_offset, func_id, instr_seq_id, func_params, &"alt".to_string(), index) {
-            if res && arg_recs.is_some() {
-                // 2b. At this point the body has been visited, so "new_target_fn_name" would be defined
-                //     let's check if we should inject an alternate call. Will do this for the final alt probe that declares "new_target_fn_name".
-                //     Ignores all else!
-                if let Some(res) = self.emit_alt_call(function, func_id, instr_seq_id, index, arg_recs.unwrap()) {
-                    is_success &= res;
-                }
-            }
+        if let Some(res) = self.emit_probes(function, mem_id, curr_mem_offset, func_id, instr_seq_id, func_params, &"alt".to_string(), index) {
             is_success &= res;
         }
 
         // 3. Inject AFTER probes
-        if let Some((_arg_recs, res)) = self.emit_probes(function, mem_id, curr_mem_offset, func_id, instr_seq_id, func_params,&"after".to_string(), index) {
+        if let Some(res) = self.emit_probes(function, mem_id, curr_mem_offset, func_id, instr_seq_id, func_params,&"after".to_string(), index) {
             // Assumption: before probes push/pop from stack so it is equivalent to what it was originally
             is_success &= res;
         }
 
         is_success
     }
-    fn emit_alt_call(&mut self, function: &mut Function, id: FunctionId, instr_seq_id: &InstrSeqId, index: &mut usize, arg_recs: Vec<(String, usize)>) -> Option<bool> {
-        if function.name != "call" {
-            return None;
-        }
-        let mut is_success = true;
-
-        // check if we should inject an alternate call!
-        let rec_id = match self.table.lookup(&"new_target_fn_name".to_string()) {
-            Some(rec_id) => Some(rec_id.clone()),
-            None => None
-        };
-        if rec_id.is_none() {
-            info!("`new_target_fn_name` not configured for this probe module.");
-            return None;
-        }
-
-        let func_id = match rec_id {
-            Some(r_id) => {
-                let rec = self.table.get_record_mut(&r_id);
-                if let Some(Record::Var { value: Some(Value::Str {val, addr, ..}), .. }) = rec {
-                    self.app_wasm.funcs.by_name(val)
-                } else {
-                    None
-                }
-            }
-            None => {
-                None
-            },
-        };
-        if func_id.is_none() {
-            // might have just not emitted the body yet (due to predicate short circuiting)
-            info!("`new_target_fn_name` not configured for this probe module.");
-            return None;
-        }
-
-        // This MUST be `self.app_wasm` so we're mutating what will be the instrumented application.
-        let func = self.app_wasm.funcs.get_mut(id).kind.unwrap_local_mut();
-        let func_builder = func.builder_mut();
-        let mut instr_builder = func_builder.instr_seq(*instr_seq_id);
-
-        if let Some(f_id) = func_id {
-            // we need to inject an alternate call to the specified fn name!
-            // replace the arguments
-            for (arg_name, arg_rec_id) in arg_recs.iter() {
-                let arg_rec = self.table.get_record_mut(&arg_rec_id);
-                if let Some(Record::Var { addr: Some(VarAddr::Local {addr}), .. }) = arg_rec {
-                    instr_builder.instr_at( *index,walrus::ir::LocalGet {
-                        local: addr.clone()
-                    });
-                    // update index to point to what follows our insertions
-                    *index += 1;
-                } else {
-                    error!("Something went wrong when emitting alt call args");
-                    return Some(false)
-                }
-            }
-
-            // inject call
-            instr_builder.instr_at( *index,walrus::ir::Call {
-                func: f_id.clone()
-            });
-            // update index to point to what follows our insertions
-            *index += 1;
-            is_success &= true;
-        } else {
-            error!("Could not inject alternate call to function, something went wrong...");
-            is_success &= false;
-        }
-
-        Some(is_success)
-    }
 
     fn emit_probes(&mut self, function: &mut Function, mem_id: &MemoryId, curr_mem_offset: &mut u32, func_id: FunctionId,
-                   instr_seq_id: &InstrSeqId, func_params: &Option<Vec<ValType>>, probe_name: &String, index: &mut usize) -> Option<(Option<Vec<(String, usize)>>, bool)> {
+                   instr_seq_id: &InstrSeqId, func_params: &Option<Vec<ValType>>, probe_name: &String, index: &mut usize) -> Option<bool> {
         let mut is_success = true;
 
+        if let Some(probes) = function.probe_map.get_mut(probe_name) {
+            // if this is an alt probe, only will emit one!
+            // The last alt probe in the list will be emitted.
+            if probe_name == "alt" {
+                if probes.len() > 1 {
+                    warn!("Detected multiple `alt` probes, will only emit the last one and ignore the rest!")
+                }
+                if let Some(probe) = probes.last_mut() {
+                    is_success &= self.emit_probe(&function.name, probe, mem_id, curr_mem_offset, func_id, instr_seq_id, func_params, index);
+                }
+            } else {
+                probes.iter_mut().for_each(|probe| {
+                    is_success &= self.emit_probe(&function.name, probe, mem_id, curr_mem_offset, func_id, instr_seq_id, func_params, index);
+                });
+            }
+            Some(is_success)
+        } else {
+            None
+        }
+    }
+
+    fn emit_probe(&mut self, function_name: &String, probe: &mut Probe, mem_id: &MemoryId, curr_mem_offset: &mut u32, func_id: FunctionId,
+                  instr_seq_id: &InstrSeqId, func_params: &Option<Vec<ValType>>, index: &mut usize) -> bool {
+        let mut is_success = true;
+
+        if probe.body.is_none() {
+            // No need to emit the probe...there's no body!
+            return true;
+        }
+        // probe has a body, continue to emit logic!
+
+        // enter the scope for this probe
+        self.table.enter_named_scope(&probe.name);
+
+        let emitted_params = if function_name == "call" {
+            // save the inputs to the current bytecode (do this once)
+            Some(self.create_arg_vars(func_params, func_id, instr_seq_id, index))
+        } else {
+            None
+        };
+
+        // determine if I should inject a predicate.
+        let mut pred_to_inject: Option<Expr> = if probe.predicate.is_some() {
+            // Fold predicate via constant propagation
+            let mut folded_pred = ExprFolder::fold_expr(&probe.predicate.as_ref().unwrap(), &self.table);
+
+            if let Some(pred_as_bool) = ExprFolder::get_single_bool(&folded_pred) {
+                if !pred_as_bool {
+                    // predicate is FALSE, DON'T INJECT PROBE IN GENERAL, so just return from this fn call!
+                    self.table.exit_scope();
+                    return false;
+                }
+                // predicate is TRUE, unconditionally inject body stmts
+                None
+            } else {
+                // predicate has not been reduced to a boolean value, will need to inject the folded predicate
+                // println!("{:#?}", folded_pred);
+                Some(folded_pred)
+            }
+        } else {
+            None
+        };
+
+        if let Some(mut pred) = pred_to_inject {
+            if probe.name == "alt" {
+                self.emit_predicate(&mut pred, mem_id, curr_mem_offset, func_id, instr_seq_id, index);
+
+                // an alternate probe will need to emit an if/else
+                // if pred { <alt_body>; Optional(<alt_call>;) } else { <original_instr> }
+                let if_then_block_id = self.emit_alt_body( probe, mem_id, curr_mem_offset, func_id, instr_seq_id, index);
+
+                // 2. possibly emit alt call (if configured to do so)
+                if function_name == "call" {
+                    self.emit_alt_call(emitted_params, func_id, &if_then_block_id);
+                }
+            } else {
+                // other probe types will just need to have an if block conditional on the predicate
+                // if pred { <probe_body>; }
+                self.emit_predicated_body(probe, &mut pred, mem_id, curr_mem_offset, func_id, instr_seq_id, index);
+            }
+        } else {
+            // No predicate, just emit the un-predicated probe body
+            // <probe_body>;
+            is_success &= self.emit_body(mem_id, curr_mem_offset, probe.body.as_mut().unwrap(), func_id, instr_seq_id, index);
+        }
+
+        self.table.exit_scope();
+        is_success
+    }
+
+    fn create_arg_vars(&mut self, func_params: &Option<Vec<ValType>>, func_id: FunctionId, instr_seq_id: &InstrSeqId, index: &mut usize) -> Vec<(String, usize)> {
         // This MUST be `self.app_wasm` so we're mutating what will be the instrumented application.
         let func = self.app_wasm.funcs.get_mut(func_id).kind.unwrap_local_mut();
         let func_builder = func.builder_mut();
         let mut instr_builder = func_builder.instr_seq(*instr_seq_id);
 
-        if let Some(probes) = function.probe_map.get_mut(probe_name) {
-            let mut removed = false;
-            let mut emitted_params = None;
-            probes.iter_mut().for_each(|probe| {
-                self.table.enter_named_scope(&probe.name);
-                if probe.body.is_some() && probe.predicate.is_some() {
-                    // Fold predicate via constant propagation
-                    let mut folded_pred = ExprFolder::fold_expr(&probe.predicate.as_ref().unwrap(), &self.table);
+        // No bytecodes should have been emitted in the module yet!
+        // So, we can just save off the first * items in the stack as the args
+        // to the call.
+        let mut arg_recs = vec![]; // vec to retain order!
+        if let Some(params) = func_params {
+            params.iter().enumerate().for_each(|(num, param_ty)| {
+                // create local for the param in the module
+                let arg_local_id = self.app_wasm.locals.add(*param_ty);
 
-                    if let Some(pred_as_bool) = ExprFolder::get_single_bool(&folded_pred) {
-                        if !pred_as_bool {
-                            // predicate is FALSE, DON'T INJECT!
-                            is_success &= true;
-                            self.table.exit_scope();
-                            return;
-                        }
-                        // predicate is TRUE, unconditionally inject body stmts
-                    } else {
-                        // predicate has not been reduced to a boolean value, inject
-                        if emitted_params.is_none() && function.name == "call" {
-                            // save the inputs to the current bytecode
-                            emitted_params = Some(create_arg_vars(&mut self.table, &mut self.app_wasm.locals, func_params, &mut instr_builder, index));
-                        }
+                // emit a bytecode in the function to assign the ToS to this new local
+                instr_builder.instr_at( *index,walrus::ir::LocalSet {
+                    local: arg_local_id.clone()
+                });
 
-                        // inject predicate
-                        // println!("{:#?}", folded_pred);
-                        is_success &= emit_expr(&mut self.table, &mut self.app_wasm.data, mem_id, curr_mem_offset, &mut folded_pred, &mut instr_builder, index);
-                    }
-                }
+                // update index to point to what follows our insertions
+                *index += 1;
 
-                // emit body!
-                if probe.body.is_some() {
-                    if !removed && probe_name == "alt" {
-                        // remove the original bytecode first
-                        instr_builder.instrs_mut().remove(*index);
-                        // only remove the original bytecode index once!
-                        removed = true;
-                    }
-
-                    if emitted_params.is_none() && function.name == "call" {
-                        // save the inputs to the current bytecode
-                        emitted_params = Some(create_arg_vars(&mut self.table, &mut self.app_wasm.locals, func_params, &mut instr_builder, index));
-                    }
-
-                    let body = probe.body.as_mut().unwrap();
-                    is_success &= emit_body(&mut self.table, &mut self.app_wasm.data, mem_id, curr_mem_offset, body, &mut instr_builder, index);
-                }
-                self.table.exit_scope();
+                // place in symbol table with var addr for future reference
+                let arg_name = format!("arg{num}");
+                let id = self.table.put(arg_name.clone(), Record::Var {
+                    ty: DataType::Integer, // we only support integers right now.
+                    name: arg_name.clone(),
+                    value: None,
+                    addr: Some(VarAddr::Local {
+                        addr: arg_local_id
+                    })
+                });
+                arg_recs.push((arg_name, id));
             });
-            Some((emitted_params, is_success))
-        } else {
-            None
         }
+        arg_recs
+    }
+
+    fn emit_predicated_body(&mut self, probe: &mut Probe, predicate: &mut Expr, mem_id: &MemoryId, curr_mem_offset: &mut u32, func_id: FunctionId,
+                 instr_seq_id: &InstrSeqId, index: &mut usize) {
+        // This MUST be `self.app_wasm` so we're mutating what will be the instrumented application.
+        let func = self.app_wasm.funcs.get_mut(func_id).kind.unwrap_local_mut();
+        let func_builder = func.builder_mut();
+        let mut instr_builder = func_builder.instr_seq(*instr_seq_id);
+
+        instr_builder.block_at(
+            *index,
+            None,
+            |mut probe_block| {
+                let probe_block_id = probe_block.id();
+                // create new `index` var to store current index into the of the `then` instr sequence
+                let mut probe_block_idx = 0 as usize;
+
+                // inject predicate
+                if !emit_expr(&mut self.table, &mut self.app_wasm.data, mem_id, curr_mem_offset, predicate, &mut probe_block, &mut probe_block_idx) {
+                    error!("Failed to inject predicate!");
+                    exit(1);
+                }
+
+                // If result of predicate equals 0, break out of the probe block.
+                // Will continue with the application code.
+                probe_block
+                    .i32_const(0)
+                    .binop(BinaryOp::I32Eq)
+                    .br_if(probe_block_id);
+
+                probe_block_idx += 3; // account for the 3 instructions above!
+
+                // At this point we know the predicate returned `true`, so we need to fire the probe body
+                emit_body(&mut self.table, &mut self.app_wasm.data, mem_id, curr_mem_offset, probe.body.as_mut().unwrap(), &mut probe_block, &mut probe_block_idx);
+            });
+
+        *index += 1;
+    }
+
+    fn emit_predicate(&mut self, predicate: &mut Expr, mem_id: &MemoryId, curr_mem_offset: &mut u32, func_id: FunctionId, instr_seq_id: &InstrSeqId, index: &mut usize) {
+        // This MUST be `self.app_wasm` so we're mutating what will be the instrumented application.
+        let func = self.app_wasm.funcs.get_mut(func_id).kind.unwrap_local_mut();
+        let func_builder = func.builder_mut();
+        let mut instr_builder = func_builder.instr_seq(*instr_seq_id);
+
+        if !emit_expr(&mut self.table, &mut self.app_wasm.data, mem_id, curr_mem_offset, predicate, &mut instr_builder, index) {
+            error!("Failed to inject predicate!");
+            exit(1);
+        }
+    }
+
+    fn emit_body(&mut self, mem_id: &MemoryId, curr_mem_offset: &mut u32, body: &mut Vec<Statement>, func_id: FunctionId, instr_seq_id: &InstrSeqId, index: &mut usize) -> bool {
+        // This MUST be `self.app_wasm` so we're mutating what will be the instrumented application.
+        let func = self.app_wasm.funcs.get_mut(func_id).kind.unwrap_local_mut();
+        let func_builder = func.builder_mut();
+        let mut instr_builder = func_builder.instr_seq(*instr_seq_id);
+
+        emit_body(&mut self.table, &mut self.app_wasm.data, mem_id, curr_mem_offset, body, &mut instr_builder, index)
+    }
+
+    /// Returns the InstrSeqId of the `then` block
+    fn emit_alt_body(&mut self, probe: &mut Probe, mem_id: &MemoryId, curr_mem_offset: &mut u32, func_id: FunctionId,
+                     instr_seq_id: &InstrSeqId, index: &mut usize) -> InstrSeqId {
+        let mut is_success = true;
+        // This MUST be `self.app_wasm` so we're mutating what will be the instrumented application.
+        let func = self.app_wasm.funcs.get_mut(func_id).kind.unwrap_local_mut();
+        let func_builder = func.builder_mut();
+        let mut instr_builder = func_builder.instr_seq(*instr_seq_id);
+
+        // remove the original instruction and store it for later use
+        let mut orig_instr: Option<(Instr, InstrLocId)> = None;
+        if probe.name == "alt" {
+            // remove the original bytecode first
+            orig_instr = Some(instr_builder.instrs_mut().remove(*index))
+        }
+
+        // We've injected a predicate prior to this point, need to create if/else
+        // block to conditionally execute the body.
+        let mut then_seq_id = None;
+        instr_builder.if_else_at(
+            *index,
+            ValType::I32,
+            | then | {
+                then_seq_id = Some(then.id());
+                // create new `index` var to store current index into the of the `then` instr sequence
+                let mut then_idx = 0 as usize;
+                // 1. emit alt body
+                is_success &= emit_body(&mut self.table, &mut self.app_wasm.data, mem_id, curr_mem_offset,
+                                        probe.body.as_mut().unwrap(), then, &mut then_idx);
+                // Will not emit the original instruction since this is an alternate probe
+            },
+            |else_| {
+                if let Some((instr, _instr_loc_id)) = orig_instr {
+                    else_.instr(instr.clone());
+                }
+            },
+        );
+
+        then_seq_id.unwrap()
+    }
+
+    fn emit_alt_call(&mut self, emitted_params: Option<Vec<(String, usize)>>, func_id: FunctionId,
+                     if_then_block_id: &InstrSeqId) -> bool {
+        let mut is_success = true;
+        // check if we should inject an alternate call!
+        // At this point the body has been visited, so "new_target_fn_name" would be defined
+        let rec_id = match self.table.lookup(&"new_target_fn_name".to_string()) {
+            Some(rec_id) => Some(rec_id.clone()),
+            None => None
+        };
+
+        if rec_id.is_none() {
+            info!("`new_target_fn_name` not configured for this probe module.");
+        } else {
+            let (name, func_id) = match rec_id {
+                Some(r_id) => {
+                    let rec = self.table.get_record_mut(&r_id);
+                    if let Some(Record::Var { value: Some(Value::Str {val, addr, ..}), .. }) = rec {
+                        (val.clone(), self.app_wasm.funcs.by_name(val).clone())
+                    } else {
+                        ("".to_string(), None)
+                    }
+                }
+                None => {
+                    ("".to_string(), None)
+                },
+            };
+
+            if let Some(f_id) = func_id {
+                // This MUST be `self.app_wasm` so we're mutating what will be the instrumented application.
+                let func = self.app_wasm.funcs.get_mut(f_id).kind.unwrap_local_mut();
+                let func_builder = func.builder_mut();
+                let mut then_block = func_builder.instr_seq(*if_then_block_id);
+
+                // we need to inject an alternate call to the specified fn name!
+                // replace the arguments
+                if let Some(params) = emitted_params {
+                    for (_param_name, param_rec_id) in params.iter() {
+                        let param_rec = self.table.get_record_mut(&param_rec_id);
+                        if let Some(Record::Var { addr: Some(VarAddr::Local {addr}), .. }) = param_rec {
+                            then_block.instr(walrus::ir::LocalGet {
+                                local: addr.clone()
+                            });
+                        } else {
+                            error!("Could not inject alternate call to function, something went wrong...");
+                            exit(1);
+                        }
+                    }
+                }
+
+                // inject call
+                then_block.instr( walrus::ir::Call {
+                    func: f_id.clone()
+                });
+                is_success &= true;
+            } else {
+                if name != "".to_string() {
+                    info!("Could not find function in app Wasm specified by `new_target_fn_name`: {name}");
+                    exit(1);
+                } else {
+                    error!("Could not inject alternate call to function, something went wrong...");
+                    exit(1);
+                }
+            }
+        }
+        is_success
     }
 
     fn emit_provided_fn(&mut self, context: &String, f: &Fn) -> bool {
