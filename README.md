@@ -1,3 +1,8 @@
+<picture>
+  <img width="175" alt="The logo for wham!. Shows a spice jar with the WebAssembly logo, but with the 'h' and 'mm' letters written in between the 'wa' to spell 'whamm'."  src="/docs/logos/wham!_logo.png">
+</picture>
+
+
 # Instrumentation DSL #
 
 This DSL is inspired by the dtrace D language.
