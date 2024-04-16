@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::process::exit;
+use std::process::{exit, id};
 use log::{error, info, warn};
 use regex::Regex;
 use walrus::{ActiveData, ActiveDataLocation, DataKind, FunctionBuilder, FunctionId, FunctionKind, ImportedFunction, InstrLocId, InstrSeqBuilder, LocalFunction, MemoryId, ModuleData, ValType};
@@ -554,11 +554,11 @@ impl WasmRewritingEmitter {
 
         for (function_name, ProbeLoc {positions}) in probe_locs.iter() {
             for (func_name, func_id, instr_seq_id, index, instr) in positions.iter() {
-                if let Some(name) = func_name.as_ref() {
-                    if name.contains("CallFuture$LT") {
-                        println!("Possibly injecting probes for {name}");
-                    }
-                }
+                // if let Some(name) = func_name.as_ref() {
+                //     if name.contains("CallFuture$LT") {
+                //         println!("Possibly injecting probes for {name}");
+                //     }
+                // }
                 self.table.enter_named_scope(function_name);
                 let function = module.functions.get_mut(function_name).unwrap();
                 let params = self.preprocess_instr(instr, function);
@@ -785,11 +785,14 @@ impl WasmRewritingEmitter {
 
                 // an alternate probe will need to emit an if/else
                 // if pred { <alt_body>; Optional(<alt_call>;) } else { <original_instr> }
-                let (if_then_block_id, mut if_then_idx) = self.emit_alt_body( probe, mem_id, curr_mem_offset, func_id, instr_seq_id, index);
+                let (if_then_block_id, mut if_then_idx, else_block_id, mut else_idx) = self.emit_alt_body(function_name, probe, &emitted_params, mem_id, curr_mem_offset, func_id, instr_seq_id, index);
 
                 // 2. possibly emit alt call (if configured to do so)
                 if function_name == "call" {
-                    self.emit_alt_call(emitted_params, func_id, &if_then_block_id, &mut if_then_idx);
+                    self.emit_alt_call(&emitted_params, func_id, &if_then_block_id, &mut if_then_idx);
+
+                    // This is a call instruction, emit original parameters for the original call in the `else` block
+                    self.emit_params(&emitted_params, func_id, &else_block_id, &mut else_idx);
                 }
             } else {
                 // other probe types will just need to have an if block conditional on the predicate
@@ -805,7 +808,7 @@ impl WasmRewritingEmitter {
                 self.remove_orig_bytecode(probe, func_id, instr_seq_id, index);
 
                 // 2. possibly emit alt call (if configured to do so)
-                self.emit_alt_call(emitted_params, func_id, instr_seq_id, index);
+                self.emit_alt_call(&emitted_params, func_id, instr_seq_id, index);
             }
         }
 
@@ -926,9 +929,32 @@ impl WasmRewritingEmitter {
         orig_instr
     }
 
+    fn emit_params(&mut self, emitted_params: &Option<Vec<(String, usize)>>, func_id: FunctionId,
+                   instr_seq_id: &InstrSeqId, index: &mut usize) {
+        // This MUST be `self.app_wasm` so we're mutating what will be the instrumented application.
+        let func = self.app_wasm.funcs.get_mut(func_id).kind.unwrap_local_mut();
+        let func_builder = func.builder_mut();
+        let mut instr_builder = func_builder.instr_seq(*instr_seq_id);
+
+        if let Some(params) = emitted_params {
+            for (_param_name, param_rec_id) in params.iter() {
+                let param_rec = self.table.get_record_mut(&param_rec_id);
+                if let Some(Record::Var { addr: Some(VarAddr::Local {addr}), .. }) = param_rec {
+                    instr_builder.instr_at(*index, walrus::ir::LocalGet {
+                        local: addr.clone()
+                    });
+                    *index += 1;
+                } else {
+                    error!("Could not inject alternate call to function, something went wrong...");
+                    exit(1);
+                }
+            }
+        }
+    }
+
     /// Returns the InstrSeqId of the `then` block
-    fn emit_alt_body(&mut self, probe: &mut Probe, mem_id: &MemoryId, curr_mem_offset: &mut u32, func_id: FunctionId,
-                     instr_seq_id: &InstrSeqId, index: &mut usize) -> (InstrSeqId, usize) {
+    fn emit_alt_body(&mut self, function_name: &String, probe: &mut Probe, emitted_params: &Option<Vec<(String, usize)>>, mem_id: &MemoryId, curr_mem_offset: &mut u32, func_id: FunctionId,
+                     instr_seq_id: &InstrSeqId, index: &mut usize) -> (InstrSeqId, usize, InstrSeqId, usize) {
         let mut is_success = true;
 
         let orig_instr = self.remove_orig_bytecode(probe, func_id, instr_seq_id, index);
@@ -942,29 +968,34 @@ impl WasmRewritingEmitter {
         // block to conditionally execute the body.
         let mut then_seq_id = None;
         let mut then_idx = None;
+        let mut else_seq_id = None;
+        let mut else_idx = None;
         instr_builder.if_else_at(
             *index,
-            ValType::I32,
+            None,
             | then | {
                 then_seq_id = Some(then.id());
                 // create new `index` var to store current index into the of the `then` instr sequence
-                let mut then_idx = 0 as usize;
+                let mut idx = 0 as usize;
                 // 1. emit alt body
                 is_success &= emit_body(&mut self.table, &mut self.app_wasm.data, mem_id, curr_mem_offset,
-                                        probe.body.as_mut().unwrap(), then, &mut then_idx);
+                                        probe.body.as_mut().unwrap(), then, &mut idx);
+                then_idx = Some(idx);
                 // Will not emit the original instruction since this is an alternate probe
             },
             |else_| {
+                else_seq_id = Some(else_.id());
+                else_idx = Some(0 as usize); // leave at 0 to allow injecting parameters before the original bytecode
                 if let Some((instr, _instr_loc_id)) = orig_instr {
                     else_.instr(instr.clone());
                 }
             },
         );
 
-        (then_seq_id.unwrap(), then_idx.unwrap())
+        (then_seq_id.unwrap(), then_idx.unwrap(), else_seq_id.unwrap(), else_idx.unwrap())
     }
 
-    fn emit_alt_call(&mut self, emitted_params: Option<Vec<(String, usize)>>, func_id: FunctionId,
+    fn emit_alt_call(&mut self, emitted_params: &Option<Vec<(String, usize)>>, func_id: FunctionId,
                      instr_seq_id: &InstrSeqId, index: &mut usize) -> bool {
         let mut is_success = true;
         // check if we should inject an alternate call!
