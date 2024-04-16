@@ -5,7 +5,7 @@ use regex::Regex;
 use walrus::{ActiveData, ActiveDataLocation, DataKind, FunctionBuilder, FunctionId, FunctionKind, ImportedFunction, InstrLocId, InstrSeqBuilder, LocalFunction, MemoryId, ModuleData, ValType};
 use walrus::ir::{BinaryOp, ExtendedLoad, Instr, InstrSeqId, LoadKind, MemArg};
 use crate::generator::types::ExprFolder;
-use crate::parser::types::{DataType, Dscript, Dtrace, Expr, Fn, Function, Module, Op, Probe, Provider, Statement, Value};
+use crate::parser::types::{DataType, MMScript, Whamm, Expr, Fn, Function, Module, Op, Probe, Provider, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 
 // =================================================
@@ -17,8 +17,8 @@ pub trait Emitter {
     fn exit_scope(&mut self);
     fn reset_children(&mut self);
 
-    fn emit_dtrace(&mut self, dtrace: &Dtrace) -> bool;
-    fn emit_dscript(&mut self, dscript: &Dscript) -> bool;
+    fn emit_whamm(&mut self, whamm: &Whamm) -> bool;
+    fn emit_mmscript(&mut self, mmscript: &MMScript) -> bool;
     fn emit_provider(&mut self, context: &String, provider: &mut Provider) -> bool;
 
     // TODO -- should emit module/function/probe be private?
@@ -518,7 +518,7 @@ impl WasmRewritingEmitter {
         Self {
             app_wasm,
             table,
-            fn_providing_contexts: vec![ "dtrace".to_string() ]
+            fn_providing_contexts: vec![ "whamm".to_string() ]
         }
     }
 
@@ -1066,15 +1066,15 @@ impl WasmRewritingEmitter {
     }
 
     fn emit_provided_fn(&mut self, context: &String, f: &Fn) -> bool {
-        return if context == &"dtrace".to_string() && &f.name == &"strcmp".to_string() {
-            self.emit_dtrace_strcmp_fn(f)
+        return if context == &"whamm".to_string() && &f.name == &"strcmp".to_string() {
+            self.emit_whamm_strcmp_fn(f)
         } else {
             error!("Provided function, but could not find a context to provide the definition, context: {context}");
             false
         }
     }
 
-    fn emit_dtrace_strcmp_fn(&mut self, f: &Fn) -> bool {
+    fn emit_whamm_strcmp_fn(&mut self, f: &Fn) -> bool {
         let strcmp_params = vec![ValType::I32, ValType::I32, ValType::I32, ValType::I32];
         let strcmp_result = vec![ValType::I32];
 
@@ -1238,11 +1238,11 @@ impl Emitter for WasmRewritingEmitter {
         self.table.reset_children();
     }
     
-    fn emit_dtrace(&mut self, _dtrace: &Dtrace) -> bool {
+    fn emit_whamm(&mut self, _whamm: &Whamm) -> bool {
         // nothing to do here
         true
     }
-    fn emit_dscript(&mut self, _dscript: &Dscript) -> bool {
+    fn emit_mmscript(&mut self, _mmscript: &MMScript) -> bool {
         // nothing to do here
         true
     }
@@ -1255,7 +1255,7 @@ impl Emitter for WasmRewritingEmitter {
     }
     fn emit_module(&mut self, context: &String, module: &mut Module) -> bool {
         self.table.enter_scope();
-        let regex = Regex::new(r"dtrace:dscript([0-9]+):wasm:bytecode").unwrap();
+        let regex = Regex::new(r"whamm:mmscript([0-9]+):wasm:bytecode").unwrap();
         return if let Some(_caps) = regex.captures(context) {
             let res = self.emit_wasm_bytecode_module(module);
             self.table.exit_scope();
@@ -1278,11 +1278,11 @@ impl Emitter for WasmRewritingEmitter {
         }
 
         // emit non-provided fn
-        // only when we're supporting user-defined fns in dscript...
+        // only when we're supporting user-defined fns in mmscript...
         unimplemented!();
     }
     fn emit_formal_param(&mut self, _param: &(Expr, DataType)) -> bool {
-        // only when we're supporting user-defined fns in dscript...
+        // only when we're supporting user-defined fns in mmscript...
         unimplemented!();
     }
     fn emit_global(&mut self, name: String, _ty: DataType, _val: &Option<Value>) -> bool {
@@ -1298,7 +1298,7 @@ impl Emitter for WasmRewritingEmitter {
         return match rec {
             Some(Record::Var { addr: _addr, .. }) => {
                 // emit global variable and set addr in symbol table
-                // only when we're supporting user-defined globals in dscript...
+                // only when we're supporting user-defined globals in mmscript...
                 unimplemented!();
             },
             Some(ty) => {

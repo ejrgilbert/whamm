@@ -1,5 +1,5 @@
-use crate::parser::dtrace_parser::*;
-use crate::parser::types::{Dtrace, DtraceVisitor};
+use crate::parser::whamm_parser::*;
+use crate::parser::types::{Whamm, WhammVisitor};
 
 use glob::{glob, glob_with};
 
@@ -115,8 +115,8 @@ const SPECIAL: &'static [&'static str] = &[
 // = Helper Functions =
 // ====================
 
-const TEST_RSC_DIR: &str = "tests/dscripts/";
-const PATTERN: &str = "*.d";
+const TEST_RSC_DIR: &str = "tests/mmscripts/";
+const PATTERN: &str = "*.mm";
 const TODO: &str = "*.TODO";
 
 pub fn get_test_scripts(subdir: &str) -> Vec<String> {
@@ -140,7 +140,7 @@ pub fn get_test_scripts(subdir: &str) -> Vec<String> {
     scripts
 }
 
-pub fn get_ast(script: &str) -> Option<Dtrace> {
+pub fn get_ast(script: &str) -> Option<Whamm> {
     info!("Getting the AST");
     match parse_script(script.to_string()) {
         Ok(ast) => {
@@ -204,15 +204,15 @@ pub fn test_ast_special_cases() {
     run_test_on_valid_list(SPECIAL.iter().map(|s| s.to_string()).collect());
 }
 
-fn print_ast(ast: &Dtrace ) {
+fn print_ast(ast: &Whamm ) {
     let mut visitor = AsStrVisitor {
         indent: 0
     };
-    println!("{}", visitor.visit_dtrace(&ast));
+    println!("{}", visitor.visit_whamm(&ast));
 }
 
 #[test]
-pub fn test_dtrace_with_asserts() {
+pub fn test_whamm_with_asserts() {
     setup_logger();
     let script = r#"
 wasm::call:alt /
@@ -228,13 +228,13 @@ wasm::call:alt /
 
     match get_ast(script) {
         Some(ast) => {
-            // dscript
-            assert_eq!(1, ast.dscripts.len()); // a single dscript
-            let dscript = ast.dscripts.get(0).unwrap();
+            // mmscript
+            assert_eq!(1, ast.mmscripts.len()); // a single mmscript
+            let mmscript = ast.mmscripts.get(0).unwrap();
 
             // provider
-            assert_eq!(1, dscript.providers.len());
-            let provider = dscript.providers.get("wasm").unwrap();
+            assert_eq!(1, mmscript.providers.len());
+            let provider = mmscript.providers.get("wasm").unwrap();
             assert_eq!("wasm", provider.name);
             assert_eq!(0, provider.globals.len());
             assert_eq!(0, provider.fns.len());

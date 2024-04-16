@@ -1,4 +1,4 @@
-# Example DScripts for Testing #
+# Example MMScripts for Testing #
 
 ## Fault Injection ##
 

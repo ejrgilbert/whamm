@@ -1,4 +1,4 @@
-pub mod dtrace_parser;
+pub mod whamm_parser;
 pub mod types;
 pub mod print_visitor;
 

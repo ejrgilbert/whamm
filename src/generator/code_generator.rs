@@ -5,7 +5,7 @@
 use std::collections::HashMap;
 use log::trace;
 use crate::generator::emitters::Emitter;
-use crate::parser::types::{DataType, Dscript, Dtrace, DtraceVisitorMut, Expr, Function, Module, Op, Probe, Provider, Statement, Value};
+use crate::parser::types::{DataType, MMScript, Whamm, WhammVisitorMut, Expr, Function, Module, Op, Probe, Provider, Statement, Value};
 
 /// The code generator traverses the AST and calls the passed emitter to
 /// emit some instruction/code/function/etc.
@@ -22,8 +22,8 @@ impl CodeGenerator {
             context_name: "".to_string()
         }
     }
-    pub fn generate(&mut self, dtrace: &mut Dtrace) -> bool {
-        self.visit_dtrace(dtrace)
+    pub fn generate(&mut self, whamm: &mut Whamm) -> bool {
+        self.visit_whamm(whamm)
     }
     pub fn dump_to_file(&mut self, output_wasm_path: String) -> bool {
         self.emitter.dump_to_file(output_wasm_path)
@@ -39,46 +39,46 @@ impl CodeGenerator {
         is_success
     }
 }
-impl DtraceVisitorMut<bool> for CodeGenerator {
-    fn visit_dtrace(&mut self, dtrace: &mut Dtrace) -> bool {
-        trace!("Entering: CodeGenerator::visit_dtrace");
-        self.context_name  = "dtrace".to_string();
-        let mut is_success = self.emitter.emit_dtrace(dtrace);
+impl WhammVisitorMut<bool> for CodeGenerator {
+    fn visit_whamm(&mut self, whamm: &mut Whamm) -> bool {
+        trace!("Entering: CodeGenerator::visit_whamm");
+        self.context_name  = "whamm".to_string();
+        let mut is_success = self.emitter.emit_whamm(whamm);
 
         // visit fns
-        dtrace.fns.iter_mut().for_each(| f | {
+        whamm.fns.iter_mut().for_each(| f | {
             is_success &= self.visit_fn(f);
         });
         // DO NOT inject globals (used by compiler)
-        // inject dscripts
-        dtrace.dscripts.iter_mut().for_each(|dscript| {
-            is_success &= self.visit_dscript(dscript);
+        // inject mmscripts
+        whamm.mmscripts.iter_mut().for_each(|mmscript| {
+            is_success &= self.visit_mmscript(mmscript);
         });
 
-        trace!("Exiting: CodeGenerator::visit_dtrace");
+        trace!("Exiting: CodeGenerator::visit_whamm");
         // Remove from `context_name`
         self.context_name = "".to_string();
         is_success
     }
 
-    fn visit_dscript(&mut self, dscript: &mut Dscript) -> bool {
-        trace!("Entering: CodeGenerator::visit_dscript");
+    fn visit_mmscript(&mut self, mmscript: &mut MMScript) -> bool {
+        trace!("Entering: CodeGenerator::visit_mmscript");
         self.emitter.enter_scope();
-        self.context_name += &format!(":{}", dscript.name.clone());
-        let mut is_success = self.emitter.emit_dscript(dscript);
+        self.context_name += &format!(":{}", mmscript.name.clone());
+        let mut is_success = self.emitter.emit_mmscript(mmscript);
 
         // visit fns
-        dscript.fns.iter_mut().for_each(| f | {
+        mmscript.fns.iter_mut().for_each(| f | {
             is_success &= self.visit_fn(f);
         });
         // inject globals
-        is_success &= self.visit_globals(&dscript.globals);
+        is_success &= self.visit_globals(&mmscript.globals);
         // inject providers
-        dscript.providers.iter_mut().for_each(|(_name, provider)| {
+        mmscript.providers.iter_mut().for_each(|(_name, provider)| {
             is_success &= self.visit_provider(provider);
         });
 
-        trace!("Exiting: CodeGenerator::visit_dscript");
+        trace!("Exiting: CodeGenerator::visit_mmscript");
         self.emitter.exit_scope();
         // Remove from `context_name`
         self.context_name = self.context_name[..self.context_name.rfind(":").unwrap()].to_string();

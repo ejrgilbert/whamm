@@ -1,6 +1,6 @@
 extern crate core;
 
-use crate::parser::dtrace_parser::*;
+use crate::parser::whamm_parser::*;
 use crate::verifier::verifier::*;
 use crate::generator::emitters::{WasmRewritingEmitter};
 use crate::generator::code_generator::{CodeGenerator};
@@ -17,16 +17,16 @@ fn setup_logger() {
     env_logger::init();
 }
 
-/// `dtrace` instruments a Wasm application with the Probes defined in the specified Dscript.
+/// `whamm` instruments a Wasm application with the Probes defined in the specified MMScript.
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
     /// The path to the application's Wasm module we want to instrument.
     #[clap(short, long, value_parser)]
     app: String,
-    /// The path to the Dscript containing the instrumentation Probe definitions.
+    /// The path to the MMScript containing the instrumentation Probe definitions.
     #[clap(short, long, value_parser)]
-    dscript: String,
+    mmscript: String,
     /// The path that the instrumented version of the Wasm app should be output to.
     #[clap(short, long, value_parser, default_value = "./output/output.wasm")]
     output_path: String,
@@ -58,14 +58,14 @@ fn try_main() -> Result<(), failure::Error> {
     // Get information from user command line args
     let args = Args::parse();
     let app_wasm_path = args.app;
-    let dscript_path = args.dscript;
-    let dscript = std::fs::read_to_string(&dscript_path);
+    let mmscript_path = args.mmscript;
+    let mmscript = std::fs::read_to_string(&mmscript_path);
     let output_wasm_path = args.output_path;
 
-    match dscript {
+    match mmscript {
         Ok(unparsed_str) => {
             // Parse the script and build the AST
-            let mut dtrace = match parse_script(unparsed_str) {
+            let mut whamm = match parse_script(unparsed_str) {
                 Ok(ast) => {
                     info!("successfully parsed");
                     ast
@@ -77,7 +77,7 @@ fn try_main() -> Result<(), failure::Error> {
             };
 
             // Build the symbol table from the AST
-            let mut symbol_table = verify(&dtrace);
+            let mut symbol_table = verify(&whamm);
             println!("{:#?}", symbol_table);
             symbol_table.reset();
 
@@ -92,11 +92,11 @@ fn try_main() -> Result<(), failure::Error> {
 
             let mut generator = CodeGenerator::new(Box::new(emitter));
 
-            generator.generate(&mut dtrace);
+            generator.generate(&mut whamm);
             generator.dump_to_file(output_wasm_path);
         },
         Err(e) => {
-            error!("Cannot read specified file {}: {e}", dscript_path);
+            error!("Cannot read specified file {}: {e}", mmscript_path);
             exit(1);
         }
     }

@@ -5,7 +5,7 @@ edition = "2021"
 
 [[bin]]
 doc = false
-name = "dtrace"
+name = "whamm"
 path = "src/main.rs"
 required-features = ["exe"]
 

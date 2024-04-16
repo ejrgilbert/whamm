@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use crate::parser::types as parser_types;
-use parser_types::{DataType, Dscript, Dtrace, DtraceVisitor, Expr, Fn, Function, Module, Op, Probe, Provider, Statement, Value};
+use parser_types::{DataType, MMScript, Whamm, WhammVisitor, Expr, Fn, Function, Module, Op, Probe, Provider, Statement, Value};
 use crate::verifier::types::{Record, ScopeType, SymbolTable};
 
 use log::{error, trace};
@@ -9,8 +9,8 @@ pub struct SymbolTableBuilder {
     pub table: SymbolTable,
 
     // TODO -- these should be updated as they are entered/exited
-    curr_dtrace: Option<usize>,   // indexes into this::table::records
-    curr_dscript: Option<usize>,  // indexes into this::table::records
+    curr_whamm: Option<usize>,   // indexes into this::table::records
+    curr_mmscript: Option<usize>,  // indexes into this::table::records
     curr_provider: Option<usize>, // indexes into this::table::records
     curr_module: Option<usize>,   // indexes into this::table::records
     curr_function: Option<usize>, // indexes into this::table::records
@@ -22,8 +22,8 @@ impl SymbolTableBuilder {
     pub fn new() -> Self {
         SymbolTableBuilder {
             table: SymbolTable::new(),
-            curr_dtrace: None,
-            curr_dscript: None,
+            curr_whamm: None,
+            curr_mmscript: None,
             curr_provider: None,
             curr_module: None,
             curr_function: None,
@@ -32,39 +32,39 @@ impl SymbolTableBuilder {
         }
     }
 
-    fn add_dscript(&mut self, dscript: &Dscript) {
-        if self.table.lookup(&dscript.name).is_some() {
-            error!("duplicated dscript [ {} ]", &dscript.name);
+    fn add_mmscript(&mut self, mmscript: &MMScript) {
+        if self.table.lookup(&mmscript.name).is_some() {
+            error!("duplicated mmscript [ {} ]", &mmscript.name);
         }
 
         // create record
-        let dscript_rec = Record::Dscript {
-            name: dscript.name.clone(),
+        let mmscript_rec = Record::MMScript {
+            name: mmscript.name.clone(),
             fns: vec![],
             globals: vec![],
             providers: vec![],
         };
 
-        // Add dscript to scope
-        let id = self.table.put(dscript.name.clone(), dscript_rec);
+        // Add mmscript to scope
+        let id = self.table.put(mmscript.name.clone(), mmscript_rec);
 
-        // Add dscript to current dtrace record
-        match self.table.get_record_mut(&self.curr_dtrace.unwrap()).unwrap() {
-            Record::Dtrace { dscripts, .. } => {
-                dscripts.push(id.clone());
+        // Add mmscript to current whamm record
+        match self.table.get_record_mut(&self.curr_whamm.unwrap()).unwrap() {
+            Record::Whamm { mmscripts, .. } => {
+                mmscripts.push(id.clone());
             }
             _ => {
                 unreachable!()
             }
         }
 
-        // enter dscript scope
+        // enter mmscript scope
         self.table.enter_scope();
-        self.curr_dscript = Some(id.clone());
+        self.curr_mmscript = Some(id.clone());
 
         // set scope name and type
-        self.table.set_curr_scope_info(dscript.name.clone(), ScopeType::Dscript);
-        self.table.set_curr_dscript(id.clone());
+        self.table.set_curr_scope_info(mmscript.name.clone(), ScopeType::MMScript);
+        self.table.set_curr_mmscript(id.clone());
     }
 
     fn add_provider(&mut self, provider: &Provider) {
@@ -83,9 +83,9 @@ impl SymbolTableBuilder {
         // Add provider to scope
         let id = self.table.put(provider.name.clone(), provider_rec);
 
-        // Add provider to current dscript record
-        match self.table.get_record_mut(&self.curr_dscript.unwrap()).unwrap() {
-            Record::Dscript { providers, .. } => {
+        // Add provider to current mmscript record
+        match self.table.get_record_mut(&self.curr_mmscript.unwrap()).unwrap() {
+            Record::MMScript { providers, .. } => {
                 providers.push(id.clone());
             }
             _ => {
@@ -219,8 +219,8 @@ impl SymbolTableBuilder {
 
         // add fn record to the current record
         match self.table.get_curr_rec_mut() {
-            Some(Record::Dtrace { fns, .. }) |
-            Some(Record::Dscript { fns, .. }) |
+            Some(Record::Whamm { fns, .. }) |
+            Some(Record::MMScript { fns, .. }) |
             Some(Record::Provider { fns, .. }) |
             Some(Record::Module { fns, .. }) |
             Some(Record::Function { fns, .. }) |
@@ -289,8 +289,8 @@ impl SymbolTableBuilder {
 
         // add global record to the current record
         match self.table.get_curr_rec_mut() {
-            Some(Record::Dtrace { globals, .. }) |
-            Some(Record::Dscript { globals, .. }) |
+            Some(Record::Whamm { globals, .. }) |
+            Some(Record::MMScript { globals, .. }) |
             Some(Record::Provider { globals, .. }) |
             Some(Record::Module { globals, .. }) |
             Some(Record::Function { globals, .. }) |
@@ -310,51 +310,51 @@ impl SymbolTableBuilder {
     }
 }
 
-impl DtraceVisitor<()> for SymbolTableBuilder {
-    fn visit_dtrace(&mut self, dtrace: &Dtrace) -> () {
-        trace!("Entering: visit_dtrace");
-        let name: String = "dtrace".to_string();
-        self.table.set_curr_scope_info(name.clone(), ScopeType::Dtrace);
+impl WhammVisitor<()> for SymbolTableBuilder {
+    fn visit_whamm(&mut self, whamm: &Whamm) -> () {
+        trace!("Entering: visit_whamm");
+        let name: String = "whamm".to_string();
+        self.table.set_curr_scope_info(name.clone(), ScopeType::Whamm);
 
-        // add dtrace record
-        let dtrace_rec = Record::Dtrace {
+        // add whamm record
+        let whamm_rec = Record::Whamm {
             name: name.clone(),
             fns: vec![],
             globals: vec![],
-            dscripts: vec![],
+            mmscripts: vec![],
         };
 
-        // Add dtrace to scope
-        let id = self.table.put(name.clone(), dtrace_rec);
+        // Add whamm to scope
+        let id = self.table.put(name.clone(), whamm_rec);
 
-        self.curr_dtrace = Some(id);
+        self.curr_whamm = Some(id);
 
         // visit fns
-        dtrace.fns.iter().for_each(| f | self.visit_fn(f) );
+        whamm.fns.iter().for_each(| f | self.visit_fn(f) );
 
         // visit globals
-        self.visit_globals(&dtrace.globals);
+        self.visit_globals(&whamm.globals);
 
-        // visit dscripts
-        dtrace.dscripts.iter().for_each(| dscript | self.visit_dscript(dscript));
+        // visit mmscripts
+        whamm.mmscripts.iter().for_each(| mmscript | self.visit_mmscript(mmscript));
 
-        trace!("Exiting: visit_dtrace");
-        self.curr_dtrace = None;
+        trace!("Exiting: visit_whamm");
+        self.curr_whamm = None;
     }
 
-    fn visit_dscript(&mut self, dscript: &Dscript) -> () {
-        trace!("Entering: visit_dscript");
+    fn visit_mmscript(&mut self, mmscript: &MMScript) -> () {
+        trace!("Entering: visit_mmscript");
 
-        self.add_dscript(dscript);
-        dscript.fns.iter().for_each(| f | self.visit_fn(f) );
-        self.visit_globals(&dscript.globals);
-        dscript.providers.iter().for_each(| (_name, provider) | {
+        self.add_mmscript(mmscript);
+        mmscript.fns.iter().for_each(| f | self.visit_fn(f) );
+        self.visit_globals(&mmscript.globals);
+        mmscript.providers.iter().for_each(| (_name, provider) | {
             self.visit_provider(provider)
         });
 
-        trace!("Exiting: visit_dscript");
+        trace!("Exiting: visit_mmscript");
         self.table.exit_scope();
-        self.curr_dscript = None;
+        self.curr_mmscript = None;
     }
 
     fn visit_provider(&mut self, provider: &Provider) -> () {

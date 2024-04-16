@@ -7,7 +7,7 @@ use log::error;
 use crate::generator::types::ExprFolder;
 use crate::parser::tests;
 use crate::parser::types::Expr::{BinOp, VarId};
-use crate::parser::types::{DataType, Dtrace, Expr, Op, Value};
+use crate::parser::types::{DataType, Whamm, Expr, Op, Value};
 use crate::verifier::types::{Record, ScopeType, SymbolTable};
 use crate::verifier::verifier;
 
@@ -36,8 +36,8 @@ fn get_rec<'a>(table: &'a mut SymbolTable, name: &str) -> Option<&'a mut Record>
     }
 }
 
-fn get_pred(dtrace: &Dtrace) -> &Expr {
-    dtrace.dscripts.get(0).unwrap()
+fn get_pred(whamm: &Whamm) -> &Expr {
+    whamm.mmscripts.get(0).unwrap()
         .providers.get("wasm").unwrap()
         .modules.get("bytecode").unwrap()
         .functions.get("call").unwrap()
@@ -47,7 +47,7 @@ fn get_pred(dtrace: &Dtrace) -> &Expr {
 
 fn hardcode_compiler_constants(table: &mut SymbolTable) {
     table.enter_scope();
-    while table.get_curr_scope().unwrap().ty != ScopeType::Dscript {
+    while table.get_curr_scope().unwrap().ty != ScopeType::MMScript {
         table.exit_scope();
         table.enter_scope()
     }
@@ -124,11 +124,11 @@ fn assert_simplified_predicate(pred: &Expr) {
 
 fn basic_run(script: &str) {
     match tests::get_ast(script) {
-        Some(dtrace) => {
-            let mut table = verifier::verify(&dtrace);
+        Some(whamm) => {
+            let mut table = verifier::verify(&whamm);
             table.reset();
 
-            let pred = get_pred(&dtrace);
+            let pred = get_pred(&whamm);
             hardcode_compiler_constants(&mut table);
 
             let folded_expr = ExprFolder::fold_expr(pred, &table);
@@ -209,11 +209,11 @@ wasm::call:alt /
     "#;
 
     match tests::get_ast(script) {
-        Some(dtrace) => {
-            let mut table = verifier::verify(&dtrace);
+        Some(whamm) => {
+            let mut table = verifier::verify(&whamm);
             table.reset();
 
-            let pred = get_pred(&dtrace);
+            let pred = get_pred(&whamm);
             hardcode_compiler_constants(&mut table);
 
             let folded_expr = ExprFolder::fold_expr(pred, &table);

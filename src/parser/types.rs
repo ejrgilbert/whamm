@@ -6,8 +6,8 @@ use pest::pratt_parser::PrattParser;
 use walrus::DataId;
 
 #[derive(Parser)]
-#[grammar = "./parser/dtrace.pest"] // Path relative to base `src` dir
-pub struct DtraceParser;
+#[grammar = "./parser/whamm.pest"] // Path relative to base `src` dir
+pub struct WhammParser;
 
 lazy_static::lazy_static! {
     pub static ref PRATT_PARSER: PrattParser<Rule> = {
@@ -138,24 +138,24 @@ pub struct Fn {
     pub(crate) body: Option<Vec<Statement>>
 }
 
-pub struct Dtrace {
+pub struct Whamm {
     pub provided_probes: HashMap<String, HashMap<String, HashMap<String, Vec<String>>>>,
     pub(crate) fns: Vec<Fn>,                                      // Comp-provided
     pub globals: HashMap<String, (DataType, Expr, Option<Value>)>, // Comp-provided, should be VarId
 
-    pub dscripts: Vec<Dscript>
+    pub mmscripts: Vec<MMScript>
 }
-impl Dtrace {
+impl Whamm {
     pub fn new() -> Self {
-        let mut dtrace = Dtrace {
+        let mut whamm = Whamm {
             provided_probes: HashMap::new(),
-            fns: Dtrace::get_provided_fns(),
-            globals: Dtrace::get_provided_globals(),
+            fns: Whamm::get_provided_fns(),
+            globals: Whamm::get_provided_globals(),
 
-            dscripts: vec![]
+            mmscripts: vec![]
         };
-        dtrace.init_provided_probes();
-        dtrace
+        whamm.init_provided_probes();
+        whamm
     }
 
     fn get_provided_fns() -> Vec<Fn> {
@@ -279,25 +279,25 @@ impl Dtrace {
             ("bytecode".to_string(), wasm_bytecode_map)
         ]));
     }
-    pub fn add_dscript(&mut self, mut dscript: Dscript) -> usize {
-        let id = self.dscripts.len();
-        dscript.name = format!("dscript{}", id);
-        self.dscripts.push(dscript);
+    pub fn add_mmscript(&mut self, mut mmscript: MMScript) -> usize {
+        let id = self.mmscripts.len();
+        mmscript.name = format!("mmscript{}", id);
+        self.mmscripts.push(mmscript);
 
         id
     }
 }
 
-pub struct Dscript {
+pub struct MMScript {
     pub name: String,
-    /// The providers of the probes that have been used in the Dscript.
+    /// The providers of the probes that have been used in the MMScript.
     pub providers: HashMap<String, Provider>,
     pub fns: Vec<Fn>,                                      // User-provided
     pub globals: HashMap<String, (DataType, Expr, Option<Value>)>, // User-provided, should be VarId
 }
-impl Dscript {
+impl MMScript {
     pub fn new() -> Self {
-        Dscript {
+        MMScript {
             name: "".to_string(),
             providers: HashMap::new(),
             fns: vec![],
@@ -357,7 +357,7 @@ pub struct Provider {
     pub fns: Vec<Fn>,                                      // Comp-provided
     pub globals: HashMap<String, (DataType, Expr, Option<Value>)>, // Comp-provided, should be VarId
 
-    /// The modules of the probes that have been used in the Dscript.
+    /// The modules of the probes that have been used in the MMScript.
     /// These will be sub-modules of this Provider.
     pub modules: HashMap<String, Module>
 }
@@ -401,7 +401,7 @@ pub struct Module {
     pub fns: Vec<Fn>,                                      // Comp-provided
     pub globals: HashMap<String, (DataType, Expr, Option<Value>)>, // Comp-provided, should be VarId
 
-    /// The functions of the probes that have been used in the Dscript.
+    /// The functions of the probes that have been used in the MMScript.
     /// These will be sub-functions of this Module.
     pub functions: HashMap<String, Function>
 }
@@ -591,9 +591,9 @@ pub enum Op {
 // ==== Visitor ====
 // =================
 
-pub trait DtraceVisitor<T> {
-    fn visit_dtrace(&mut self, dtrace: &Dtrace) -> T;
-    fn visit_dscript(&mut self, dscript: &Dscript) -> T;
+pub trait WhammVisitor<T> {
+    fn visit_whamm(&mut self, whamm: &Whamm) -> T;
+    fn visit_mmscript(&mut self, mmscript: &MMScript) -> T;
     fn visit_provider(&mut self, provider: &Provider) -> T;
     fn visit_module(&mut self, module: &Module) -> T;
     fn visit_function(&mut self, function: &Function) -> T;
@@ -608,9 +608,9 @@ pub trait DtraceVisitor<T> {
 }
 
 /// To support setting constant-provided global vars
-pub trait DtraceVisitorMut<T> {
-    fn visit_dtrace(&mut self, dtrace: &mut Dtrace) -> T;
-    fn visit_dscript(&mut self, dscript: &mut Dscript) -> T;
+pub trait WhammVisitorMut<T> {
+    fn visit_whamm(&mut self, whamm: &mut Whamm) -> T;
+    fn visit_mmscript(&mut self, mmscript: &mut MMScript) -> T;
     fn visit_provider(&mut self, provider: &mut Provider) -> T;
     fn visit_module(&mut self, module: &mut Module) -> T;
     fn visit_function(&mut self, function: &mut Function) -> T;

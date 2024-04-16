@@ -1,9 +1,9 @@
 use crate::parser::types as parser_types;
-use parser_types::{DtraceVisitor};
+use parser_types::{WhammVisitor};
 
 use std::cmp;
 use std::collections::HashMap;
-use crate::parser::types::{DataType, Dscript, Dtrace, Expr, Function, Module, Op, Probe, Provider, Statement, Value};
+use crate::parser::types::{DataType, MMScript, Whamm, Expr, Function, Module, Op, Probe, Provider, Statement, Value};
 
 const NL: &str = "\n";
 
@@ -36,25 +36,25 @@ impl AsStrVisitor {
     }
 }
 
-impl DtraceVisitor<String> for AsStrVisitor {
-    fn visit_dtrace(&mut self, dtrace: &Dtrace) -> String {
+impl WhammVisitor<String> for AsStrVisitor {
+    fn visit_whamm(&mut self, whamm: &Whamm) -> String {
         let mut s = "".to_string();
 
         // print fns
-        if dtrace.fns.len() > 0 {
-            s += &format!("Dtrace functions:{NL}");
+        if whamm.fns.len() > 0 {
+            s += &format!("Whamm functions:{NL}");
             self.increase_indent();
-            for f in dtrace.fns.iter() {
+            for f in whamm.fns.iter() {
                 s += &format!("{}{NL}", self.visit_fn(f));
             }
             self.decrease_indent();
         }
 
         // print globals
-        if dtrace.globals.len() > 0 {
-            s += &format!("Dtrace globals:{NL}");
+        if whamm.globals.len() > 0 {
+            s += &format!("Whamm globals:{NL}");
             self.increase_indent();
-            for (name, (_ty, _var_id, val)) in dtrace.globals.iter() {
+            for (name, (_ty, _var_id, val)) in whamm.globals.iter() {
                 s += &format!("{}{} := ", self.get_indent(), name);
                 match val {
                     Some(v) => s += &format!("{}{NL}", self.visit_value(v)),
@@ -64,12 +64,12 @@ impl DtraceVisitor<String> for AsStrVisitor {
             self.decrease_indent();
         }
 
-        s += &format!("Dtrace dscripts:{NL}");
+        s += &format!("Whamm mmscripts:{NL}");
         self.increase_indent();
-        for dscript in dtrace.dscripts.iter() {
-            s += &format!("{} `{}`:{NL}", self.get_indent(), dscript.name);
+        for mmscript in whamm.mmscripts.iter() {
+            s += &format!("{} `{}`:{NL}", self.get_indent(), mmscript.name);
             self.increase_indent();
-            s += &format!("{}", self.visit_dscript(dscript));
+            s += &format!("{}", self.visit_mmscript(mmscript));
             self.decrease_indent();
         }
         self.decrease_indent();
@@ -77,30 +77,30 @@ impl DtraceVisitor<String> for AsStrVisitor {
         s
     }
 
-    fn visit_dscript(&mut self, dscript: &Dscript) -> String {
+    fn visit_mmscript(&mut self, mmscript: &MMScript) -> String {
         let mut s = "".to_string();
 
         // print fns
-        if dscript.fns.len() > 0 {
-            s += &format!("{} dscript functions:{NL}", self.get_indent());
+        if mmscript.fns.len() > 0 {
+            s += &format!("{} mmscript functions:{NL}", self.get_indent());
             self.increase_indent();
-            for f in dscript.fns.iter() {
+            for f in mmscript.fns.iter() {
                 s += &format!("{}{}{NL}", self.get_indent(), self.visit_fn(f));
             }
             self.decrease_indent();
         }
 
         // print globals
-        if dscript.globals.len() > 0 {
-            s += &format!("{} dscript globals:{NL}", self.get_indent());
+        if mmscript.globals.len() > 0 {
+            s += &format!("{} mmscript globals:{NL}", self.get_indent());
             self.increase_indent();
-            self.visit_globals(&dscript.globals);
+            self.visit_globals(&mmscript.globals);
             self.decrease_indent();
         }
 
         // print providers
-        s += &format!("{} dscript providers:{NL}", self.get_indent());
-        for (name, provider) in dscript.providers.iter() {
+        s += &format!("{} mmscript providers:{NL}", self.get_indent());
+        for (name, provider) in mmscript.providers.iter() {
             self.increase_indent();
             s += &format!("{} `{name}` {{{NL}", self.get_indent());
 

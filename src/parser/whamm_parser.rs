@@ -1,45 +1,45 @@
 use crate::parser::types;
-use types::{DtraceParser, Op, PRATT_PARSER, Rule};
+use types::{WhammParser, Op, PRATT_PARSER, Rule};
 
 use pest::error::Error;
 use pest::Parser;
 use pest::iterators::{Pair, Pairs};
 
 use log::{trace};
-use crate::parser::types::{DataType, Dscript, Dtrace, Expr, Statement, Value};
+use crate::parser::types::{DataType, MMScript, Whamm, Expr, Statement, Value};
 
 // ====================
 // = AST Constructors =
 // ====================
 
-pub fn to_ast(pair: Pair<Rule>) -> Result<Dtrace, Error<Rule>> {
+pub fn to_ast(pair: Pair<Rule>) -> Result<Whamm, Error<Rule>> {
     trace!("Entered to_ast");
 
-    // Create initial AST with Dtrace node
-    let mut dtrace = Dtrace::new();
-    let dscript_count = 0;
+    // Create initial AST with Whamm node
+    let mut whamm = Whamm::new();
+    let mmscript_count = 0;
 
     match pair.as_rule() {
-        Rule::dscript => {
-            process_pair(&mut dtrace, dscript_count, pair);
+        Rule::mmscript => {
+            process_pair(&mut whamm, mmscript_count, pair);
         }
-        rule => unreachable!("Expected dscript, found {:?}", rule)
+        rule => unreachable!("Expected mmscript, found {:?}", rule)
     }
 
-    Ok(dtrace)
+    Ok(whamm)
 }
 
-fn process_pair(dtrace: &mut Dtrace, dscript_count: usize, pair: Pair<Rule>) {
+fn process_pair(whamm: &mut Whamm, mmscript_count: usize, pair: Pair<Rule>) {
     trace!("Entered process_pair");
     match pair.as_rule() {
-        Rule::dscript => {
-            trace!("Entering dscript");
-            let base_dscript = Dscript::new();
-            let id = dtrace.add_dscript(base_dscript);
+        Rule::mmscript => {
+            trace!("Entering mmscript");
+            let base_mmscript = MMScript::new();
+            let id = whamm.add_mmscript(base_mmscript);
             pair.into_inner().for_each(| p | {
-                process_pair(dtrace, id, p);
+                process_pair(whamm, id, p);
             });
-            trace!("Exiting dscript");
+            trace!("Exiting mmscript");
         }
         Rule::probe_def => {
             trace!("Entering probe_def");
@@ -89,9 +89,9 @@ fn process_pair(dtrace: &mut Dtrace, dscript_count: usize, pair: Pair<Rule>) {
                 None => (None, None)
             };
 
-            // Add probe definition to the dscript
-            let dscript: &mut Dscript = dtrace.dscripts.get_mut(dscript_count).unwrap();
-            dscript.add_probe(&dtrace.provided_probes, provider, module, function, name, this_predicate, this_body);
+            // Add probe definition to the mmscript
+            let mmscript: &mut MMScript = whamm.mmscripts.get_mut(mmscript_count).unwrap();
+            mmscript.add_probe(&whamm.provided_probes, provider, module, function, name, this_predicate, this_body);
 
             trace!("Exiting probe_def");
         },
@@ -344,10 +344,10 @@ fn expr_from_pairs(pairs: Pairs<Rule>) -> Expr {
 // = Parser =
 // ==========
 
-pub fn parse_script(script: String) -> Result<Dtrace, String> {
+pub fn parse_script(script: String) -> Result<Whamm, String> {
     trace!("Entered parse_script");
 
-    match DtraceParser::parse(Rule::dscript, &*script) {
+    match WhammParser::parse(Rule::mmscript, &*script) {
         Ok(mut pairs) => {
             let res = to_ast(
                 // inner of script

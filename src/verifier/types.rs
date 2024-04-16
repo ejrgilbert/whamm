@@ -121,8 +121,8 @@ impl SymbolTable {
 
     // Record operations
 
-    pub fn set_curr_dscript(&mut self, id: usize) {
-        self.get_curr_scope_mut().unwrap().containing_dscript = Some(id);
+    pub fn set_curr_mmscript(&mut self, id: usize) {
+        self.get_curr_scope_mut().unwrap().containing_mmscript = Some(id);
     }
 
     pub fn get_record(&self, rec_id: &usize) -> Option<&Record> {
@@ -144,8 +144,8 @@ impl SymbolTable {
     pub fn put(&mut self, key: String, rec: Record) -> usize {
         let new_rec_id = self.records.len();
         match rec {
-            Record::Dtrace { .. } |
-            Record::Dscript { .. } |
+            Record::Whamm { .. } |
+            Record::MMScript { .. } |
             Record::Provider { .. } |
             Record::Module { .. } |
             Record::Function { .. } |
@@ -213,7 +213,7 @@ pub struct Scope {
     children: Vec<usize>,              // indexes into SymbolTable::scopes
     next: usize,                       // indexes into this::children
 
-    pub containing_dscript: Option<usize>, // indexes into SymbolTable::records
+    pub containing_mmscript: Option<usize>, // indexes into SymbolTable::records
     records: HashMap<String, usize>,   // indexes into SymbolTable::records
 }
 impl Scope {
@@ -223,7 +223,7 @@ impl Scope {
             name,
             ty,
 
-            containing_dscript: None,
+            containing_mmscript: None,
             next: 0,
             parent,
             children: vec![],
@@ -275,8 +275,8 @@ impl Scope {
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum ScopeType {
-    Dtrace,
-    Dscript,
+    Whamm,
+    MMScript,
     Provider,
     Module,
     Function,
@@ -288,13 +288,13 @@ pub enum ScopeType {
 /// The usize values in the record fields index into the SymbolTable::records Vec.
 #[derive(Debug)]
 pub enum Record {
-    Dtrace {
+    Whamm {
         name: String,
         fns: Vec<usize>,
         globals: Vec<usize>,
-        dscripts: Vec<usize>
+        mmscripts: Vec<usize>
     },
-    Dscript {
+    MMScript {
         name: String,
         fns: Vec<usize>,
         globals: Vec<usize>,

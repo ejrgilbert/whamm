@@ -1,7 +1,7 @@
 /* Facts:
  * Bytecode names are probe types
  * Bound variables
- * - probe_func  : (dtrace standard) is the Wasm function
+ * - probe_func  : (whamm standard) is the Wasm function
  * - tos         : Wasm top-of-stack
  * - pc          : Wasm program counter
  * - local0...N  : Wasm locals
