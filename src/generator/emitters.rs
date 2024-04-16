@@ -555,9 +555,9 @@ impl WasmRewritingEmitter {
         for (function_name, ProbeLoc {positions}) in probe_locs.iter() {
             for (func_name, func_id, instr_seq_id, index, instr) in positions.iter() {
                 if let Some(name) = func_name.as_ref() {
-                    // if name.contains("CallFuture$LT") {
-                    //     println!("Possibly injecting probes for {name}");
-                    // }
+                    if name.contains("CallFuture$LT") {
+                        println!("Possibly injecting probes for {name}");
+                    }
                 }
                 self.table.enter_named_scope(function_name);
                 let function = module.functions.get_mut(function_name).unwrap();
@@ -785,11 +785,11 @@ impl WasmRewritingEmitter {
 
                 // an alternate probe will need to emit an if/else
                 // if pred { <alt_body>; Optional(<alt_call>;) } else { <original_instr> }
-                let if_then_block_id = self.emit_alt_body( probe, mem_id, curr_mem_offset, func_id, instr_seq_id, index);
+                let (if_then_block_id, mut if_then_idx) = self.emit_alt_body( probe, mem_id, curr_mem_offset, func_id, instr_seq_id, index);
 
                 // 2. possibly emit alt call (if configured to do so)
                 if function_name == "call" {
-                    self.emit_alt_call(emitted_params, func_id, &if_then_block_id);
+                    self.emit_alt_call(emitted_params, func_id, &if_then_block_id, &mut if_then_idx);
                 }
             } else {
                 // other probe types will just need to have an if block conditional on the predicate
@@ -800,6 +800,13 @@ impl WasmRewritingEmitter {
             // No predicate, just emit the un-predicated probe body
             // <probe_body>;
             is_success &= self.emit_body(mem_id, curr_mem_offset, probe.body.as_mut().unwrap(), func_id, instr_seq_id, index);
+
+            if function_name == "call" && probe.name == "alt" {
+                self.remove_orig_bytecode(probe, func_id, instr_seq_id, index);
+
+                // 2. possibly emit alt call (if configured to do so)
+                self.emit_alt_call(emitted_params, func_id, instr_seq_id, index);
+            }
         }
 
         self.table.exit_scope();
@@ -903,10 +910,8 @@ impl WasmRewritingEmitter {
         emit_body(&mut self.table, &mut self.app_wasm.data, mem_id, curr_mem_offset, body, &mut instr_builder, index)
     }
 
-    /// Returns the InstrSeqId of the `then` block
-    fn emit_alt_body(&mut self, probe: &mut Probe, mem_id: &MemoryId, curr_mem_offset: &mut u32, func_id: FunctionId,
-                     instr_seq_id: &InstrSeqId, index: &mut usize) -> InstrSeqId {
-        let mut is_success = true;
+    fn remove_orig_bytecode(&mut self, probe: &mut Probe, func_id: FunctionId,
+                            instr_seq_id: &InstrSeqId, index: &mut usize) -> Option<(Instr, InstrLocId)> {
         // This MUST be `self.app_wasm` so we're mutating what will be the instrumented application.
         let func = self.app_wasm.funcs.get_mut(func_id).kind.unwrap_local_mut();
         let func_builder = func.builder_mut();
@@ -918,10 +923,25 @@ impl WasmRewritingEmitter {
             // remove the original bytecode first
             orig_instr = Some(instr_builder.instrs_mut().remove(*index))
         }
+        orig_instr
+    }
+
+    /// Returns the InstrSeqId of the `then` block
+    fn emit_alt_body(&mut self, probe: &mut Probe, mem_id: &MemoryId, curr_mem_offset: &mut u32, func_id: FunctionId,
+                     instr_seq_id: &InstrSeqId, index: &mut usize) -> (InstrSeqId, usize) {
+        let mut is_success = true;
+
+        let orig_instr = self.remove_orig_bytecode(probe, func_id, instr_seq_id, index);
+
+        // This MUST be `self.app_wasm` so we're mutating what will be the instrumented application.
+        let func = self.app_wasm.funcs.get_mut(func_id).kind.unwrap_local_mut();
+        let func_builder = func.builder_mut();
+        let mut instr_builder = func_builder.instr_seq(*instr_seq_id);
 
         // We've injected a predicate prior to this point, need to create if/else
         // block to conditionally execute the body.
         let mut then_seq_id = None;
+        let mut then_idx = None;
         instr_builder.if_else_at(
             *index,
             ValType::I32,
@@ -941,11 +961,11 @@ impl WasmRewritingEmitter {
             },
         );
 
-        then_seq_id.unwrap()
+        (then_seq_id.unwrap(), then_idx.unwrap())
     }
 
     fn emit_alt_call(&mut self, emitted_params: Option<Vec<(String, usize)>>, func_id: FunctionId,
-                     if_then_block_id: &InstrSeqId) -> bool {
+                     instr_seq_id: &InstrSeqId, index: &mut usize) -> bool {
         let mut is_success = true;
         // check if we should inject an alternate call!
         // At this point the body has been visited, so "new_target_fn_name" would be defined
@@ -957,11 +977,11 @@ impl WasmRewritingEmitter {
         if rec_id.is_none() {
             info!("`new_target_fn_name` not configured for this probe module.");
         } else {
-            let (name, func_id) = match rec_id {
+            let (name, func_call_id) = match rec_id {
                 Some(r_id) => {
                     let rec = self.table.get_record_mut(&r_id);
                     if let Some(Record::Var { value: Some(Value::Str {val, addr, ..}), .. }) = rec {
-                        (val.clone(), self.app_wasm.funcs.by_name(val).clone())
+                        (val.clone(), self.app_wasm.funcs.by_name(val))
                     } else {
                         ("".to_string(), None)
                     }
@@ -971,11 +991,11 @@ impl WasmRewritingEmitter {
                 },
             };
 
-            if let Some(f_id) = func_id {
+            if let Some(f_call_id) = func_call_id {
                 // This MUST be `self.app_wasm` so we're mutating what will be the instrumented application.
-                let func = self.app_wasm.funcs.get_mut(f_id).kind.unwrap_local_mut();
+                let func = self.app_wasm.funcs.get_mut(func_id).kind.unwrap_local_mut();
                 let func_builder = func.builder_mut();
-                let mut then_block = func_builder.instr_seq(*if_then_block_id);
+                let mut instr_seq = func_builder.instr_seq(*instr_seq_id);
 
                 // we need to inject an alternate call to the specified fn name!
                 // replace the arguments
@@ -983,9 +1003,10 @@ impl WasmRewritingEmitter {
                     for (_param_name, param_rec_id) in params.iter() {
                         let param_rec = self.table.get_record_mut(&param_rec_id);
                         if let Some(Record::Var { addr: Some(VarAddr::Local {addr}), .. }) = param_rec {
-                            then_block.instr(walrus::ir::LocalGet {
+                            instr_seq.instr_at(*index, walrus::ir::LocalGet {
                                 local: addr.clone()
                             });
+                            *index += 1;
                         } else {
                             error!("Could not inject alternate call to function, something went wrong...");
                             exit(1);
@@ -994,9 +1015,11 @@ impl WasmRewritingEmitter {
                 }
 
                 // inject call
-                then_block.instr( walrus::ir::Call {
-                    func: f_id.clone()
+                instr_seq.instr_at(*index, walrus::ir::Call {
+                    func: f_call_id.clone()
                 });
+                *index += 1;
+
                 is_success &= true;
             } else {
                 if name != "".to_string() {
