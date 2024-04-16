@@ -4,9 +4,9 @@
 
 # whamm! #
 
-## Debugging Wasm? Put some `whamm` on it! ##
+## Debugging Wasm? Put some `whamm!` on it! ##
 
-`whamm!` is a tool for Wasm Application Monitoring and Manipulation[^1], a DSL inspired by Whamm's D language.
+`whamm!` is a tool for "Wasm Application Monitoring and Manipulation"[^1], a DSL inspired by the D language.
 
 [^1]: The 'h' is silent.
 
