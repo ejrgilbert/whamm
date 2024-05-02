@@ -508,10 +508,10 @@ fn get_probe_insert_locations(probe_locs: &mut HashMap<String, ProbeLoc>, module
 }
 
 
-pub(crate) struct WasmRewritingEmitter {
-    // pub(crate) app_wasm_path: String,
-    pub(crate) app_wasm: walrus::Module,
-    pub(crate) table: SymbolTable,
+pub struct WasmRewritingEmitter {
+    // pub app_wasm_path: String,
+    pub app_wasm: walrus::Module,
+    pub table: SymbolTable,
 
     fn_providing_contexts: Vec<String>
 }

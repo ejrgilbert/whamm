@@ -2,6 +2,10 @@ use crate::parser::types::{DataType, Expr, Op, Value};
 use crate::verifier::types::Record::Var;
 use crate::verifier::types::SymbolTable;
 
+// =======================================
+// = Constant Propagation via ExprFolder =
+// =======================================
+
 pub struct ExprFolder;
 impl ExprFolder {
     pub fn fold_expr(expr: &Expr, table: &SymbolTable) -> Expr {
