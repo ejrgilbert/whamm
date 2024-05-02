@@ -1,4 +1,4 @@
-# Example MMScripts for Testing #
+# Example Whammys for Testing #
 
 ## Fault Injection ##
 

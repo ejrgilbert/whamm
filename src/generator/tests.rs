@@ -19,7 +19,7 @@ fn get_rec<'a>(table: &'a mut SymbolTable, name: &str) -> Option<&'a mut Record>
     let var_rec_id = match table.lookup(&name.to_string()) {
         Some(id) => id.clone(),
         None => {
-            error!("Variable symbol does not exist for name {name}!");
+            error!("Variable symbol does not exist for name {}!", name);
             println!("{:#?}", table);
             exit(1);
         }
@@ -37,7 +37,7 @@ fn get_rec<'a>(table: &'a mut SymbolTable, name: &str) -> Option<&'a mut Record>
 }
 
 fn get_pred(whamm: &Whamm) -> &Expr {
-    whamm.mmscripts.get(0).unwrap()
+    whamm.whammys.get(0).unwrap()
         .providers.get("wasm").unwrap()
         .modules.get("bytecode").unwrap()
         .functions.get("call").unwrap()
@@ -47,7 +47,7 @@ fn get_pred(whamm: &Whamm) -> &Expr {
 
 fn hardcode_compiler_constants(table: &mut SymbolTable) {
     table.enter_scope();
-    while table.get_curr_scope().unwrap().ty != ScopeType::MMScript {
+    while table.get_curr_scope().unwrap().ty != ScopeType::Whammy {
         table.exit_scope();
         table.enter_scope()
     }
@@ -135,7 +135,7 @@ fn basic_run(script: &str) {
             assert_simplified_predicate(&folded_expr);
         },
         None => {
-            error!("Could not get ast from script: {script}");
+            error!("Could not get ast from script: {}", script);
             assert!(false);
         }
     };
@@ -225,7 +225,7 @@ wasm::call:alt /
                 op,
                 rhs
             } = pred {
-                assert!(*op == Op::And);
+                assert_eq!(*op, Op::And);
                 asserts_on_call(&**lhs);
                 asserts_on_call(&**rhs);
             } else {
@@ -236,7 +236,7 @@ wasm::call:alt /
             }
         },
         None => {
-            error!("Could not get ast from script: {script}");
+            error!("Could not get ast from script: {}", script);
             assert!(false);
         }
     };

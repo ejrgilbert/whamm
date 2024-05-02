@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use crate::parser::types as parser_types;
-use parser_types::{DataType, MMScript, Whamm, WhammVisitor, Expr, Fn, Function, Module, Op, Probe, Provider, Statement, Value};
+use parser_types::{DataType, Whammy, Whamm, WhammVisitor, Expr, Fn, Function, Module, Op, Probe, Provider, Statement, Value};
 use crate::verifier::types::{Record, ScopeType, SymbolTable};
 
 use log::{error, trace};
@@ -10,7 +10,7 @@ pub struct SymbolTableBuilder {
 
     // TODO -- these should be updated as they are entered/exited
     curr_whamm: Option<usize>,   // indexes into this::table::records
-    curr_mmscript: Option<usize>,  // indexes into this::table::records
+    curr_whammy: Option<usize>,  // indexes into this::table::records
     curr_provider: Option<usize>, // indexes into this::table::records
     curr_module: Option<usize>,   // indexes into this::table::records
     curr_function: Option<usize>, // indexes into this::table::records
@@ -23,7 +23,7 @@ impl SymbolTableBuilder {
         SymbolTableBuilder {
             table: SymbolTable::new(),
             curr_whamm: None,
-            curr_mmscript: None,
+            curr_whammy: None,
             curr_provider: None,
             curr_module: None,
             curr_function: None,
@@ -32,39 +32,39 @@ impl SymbolTableBuilder {
         }
     }
 
-    fn add_mmscript(&mut self, mmscript: &MMScript) {
-        if self.table.lookup(&mmscript.name).is_some() {
-            error!("duplicated mmscript [ {} ]", &mmscript.name);
+    fn add_whammy(&mut self, whammy: &Whammy) {
+        if self.table.lookup(&whammy.name).is_some() {
+            error!("duplicated whammy [ {} ]", &whammy.name);
         }
 
         // create record
-        let mmscript_rec = Record::MMScript {
-            name: mmscript.name.clone(),
+        let whammy_rec = Record::Whammy {
+            name: whammy.name.clone(),
             fns: vec![],
             globals: vec![],
             providers: vec![],
         };
 
-        // Add mmscript to scope
-        let id = self.table.put(mmscript.name.clone(), mmscript_rec);
+        // Add whammy to scope
+        let id = self.table.put(whammy.name.clone(), whammy_rec);
 
-        // Add mmscript to current whamm record
+        // Add whammy to current whamm record
         match self.table.get_record_mut(&self.curr_whamm.unwrap()).unwrap() {
-            Record::Whamm { mmscripts, .. } => {
-                mmscripts.push(id.clone());
+            Record::Whamm { whammys, .. } => {
+                whammys.push(id.clone());
             }
             _ => {
                 unreachable!()
             }
         }
 
-        // enter mmscript scope
+        // enter whammy scope
         self.table.enter_scope();
-        self.curr_mmscript = Some(id.clone());
+        self.curr_whammy = Some(id.clone());
 
         // set scope name and type
-        self.table.set_curr_scope_info(mmscript.name.clone(), ScopeType::MMScript);
-        self.table.set_curr_mmscript(id.clone());
+        self.table.set_curr_scope_info(whammy.name.clone(), ScopeType::Whammy);
+        self.table.set_curr_whammy(id.clone());
     }
 
     fn add_provider(&mut self, provider: &Provider) {
@@ -83,9 +83,9 @@ impl SymbolTableBuilder {
         // Add provider to scope
         let id = self.table.put(provider.name.clone(), provider_rec);
 
-        // Add provider to current mmscript record
-        match self.table.get_record_mut(&self.curr_mmscript.unwrap()).unwrap() {
-            Record::MMScript { providers, .. } => {
+        // Add provider to current whammy record
+        match self.table.get_record_mut(&self.curr_whammy.unwrap()).unwrap() {
+            Record::Whammy { providers, .. } => {
                 providers.push(id.clone());
             }
             _ => {
@@ -220,7 +220,7 @@ impl SymbolTableBuilder {
         // add fn record to the current record
         match self.table.get_curr_rec_mut() {
             Some(Record::Whamm { fns, .. }) |
-            Some(Record::MMScript { fns, .. }) |
+            Some(Record::Whammy { fns, .. }) |
             Some(Record::Provider { fns, .. }) |
             Some(Record::Module { fns, .. }) |
             Some(Record::Function { fns, .. }) |
@@ -276,7 +276,7 @@ impl SymbolTableBuilder {
     /// Insert `global` record into scope
     fn add_global(&mut self, ty: DataType, name: String) {
         if self.table.lookup(&name).is_some() {
-            error!("duplicated identifier [ {name} ]");
+            error!("duplicated identifier [ {} ]", name);
         }
 
         // Add global to scope
@@ -290,7 +290,7 @@ impl SymbolTableBuilder {
         // add global record to the current record
         match self.table.get_curr_rec_mut() {
             Some(Record::Whamm { globals, .. }) |
-            Some(Record::MMScript { globals, .. }) |
+            Some(Record::Whammy { globals, .. }) |
             Some(Record::Provider { globals, .. }) |
             Some(Record::Module { globals, .. }) |
             Some(Record::Function { globals, .. }) |
@@ -321,7 +321,7 @@ impl WhammVisitor<()> for SymbolTableBuilder {
             name: name.clone(),
             fns: vec![],
             globals: vec![],
-            mmscripts: vec![],
+            whammys: vec![],
         };
 
         // Add whamm to scope
@@ -335,26 +335,26 @@ impl WhammVisitor<()> for SymbolTableBuilder {
         // visit globals
         self.visit_globals(&whamm.globals);
 
-        // visit mmscripts
-        whamm.mmscripts.iter().for_each(| mmscript | self.visit_mmscript(mmscript));
+        // visit whammys
+        whamm.whammys.iter().for_each(| whammy | self.visit_whammy(whammy));
 
         trace!("Exiting: visit_whamm");
         self.curr_whamm = None;
     }
 
-    fn visit_mmscript(&mut self, mmscript: &MMScript) -> () {
-        trace!("Entering: visit_mmscript");
+    fn visit_whammy(&mut self, whammy: &Whammy) -> () {
+        trace!("Entering: visit_whammy");
 
-        self.add_mmscript(mmscript);
-        mmscript.fns.iter().for_each(| f | self.visit_fn(f) );
-        self.visit_globals(&mmscript.globals);
-        mmscript.providers.iter().for_each(| (_name, provider) | {
+        self.add_whammy(whammy);
+        whammy.fns.iter().for_each(| f | self.visit_fn(f) );
+        self.visit_globals(&whammy.globals);
+        whammy.providers.iter().for_each(| (_name, provider) | {
             self.visit_provider(provider)
         });
 
-        trace!("Exiting: visit_mmscript");
+        trace!("Exiting: visit_whammy");
         self.table.exit_scope();
-        self.curr_mmscript = None;
+        self.curr_whammy = None;
     }
 
     fn visit_provider(&mut self, provider: &Provider) -> () {

@@ -1,11 +1,11 @@
 use std::collections::HashMap;
-use std::process::{exit, id};
+use std::process::exit;
 use log::{error, info, warn};
 use regex::Regex;
 use walrus::{ActiveData, ActiveDataLocation, DataKind, FunctionBuilder, FunctionId, FunctionKind, ImportedFunction, InstrLocId, InstrSeqBuilder, LocalFunction, MemoryId, ModuleData, ValType};
 use walrus::ir::{BinaryOp, ExtendedLoad, Instr, InstrSeqId, LoadKind, MemArg};
 use crate::generator::types::ExprFolder;
-use crate::parser::types::{DataType, MMScript, Whamm, Expr, Fn, Function, Module, Op, Probe, Provider, Statement, Value};
+use crate::parser::types::{DataType, Whammy, Whamm, Expr, Fn, Function, Module, Op, Probe, Provider, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 
 // =================================================
@@ -18,13 +18,13 @@ pub trait Emitter {
     fn reset_children(&mut self);
 
     fn emit_whamm(&mut self, whamm: &Whamm) -> bool;
-    fn emit_mmscript(&mut self, mmscript: &MMScript) -> bool;
-    fn emit_provider(&mut self, context: &String, provider: &mut Provider) -> bool;
+    fn emit_whammy(&mut self, whammy: &Whammy) -> bool;
+    fn emit_provider(&mut self, context: &str, provider: &mut Provider) -> bool;
 
     // TODO -- should emit module/function/probe be private?
-    fn emit_module(&mut self, context: &String, module: &mut Module) -> bool;
+    fn emit_module(&mut self, context: &str, module: &mut Module) -> bool;
 
-    fn emit_fn(&mut self, context_name: &String, f: &Fn) -> bool;
+    fn emit_fn(&mut self, context_name: &str, f: &Fn) -> bool;
     fn emit_formal_param(&mut self, param: &(Expr, DataType)) -> bool;
     fn emit_global(&mut self, name: String, ty: DataType, val: &Option<Value>) -> bool;
     fn emit_stmt(&mut self, stmt: &Statement) -> bool;
@@ -46,7 +46,8 @@ pub trait Emitter {
 // =================================================================================
 // =================================================================================
 
-fn emit_body(table: &mut SymbolTable, module_data: &mut ModuleData, mem_id: &MemoryId, curr_mem_offset: &mut u32, body: &mut Vec<Statement>, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> bool {
+fn emit_body(table: &mut SymbolTable, module_data: &mut ModuleData, mem_id: &MemoryId, curr_mem_offset: &mut u32,
+             body: &mut Vec<Statement>, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> bool {
     let mut is_success = true;
     body.iter_mut().for_each(|stmt| {
         is_success &= emit_stmt(table, module_data, mem_id, curr_mem_offset, stmt, instr_builder, index)
@@ -54,18 +55,19 @@ fn emit_body(table: &mut SymbolTable, module_data: &mut ModuleData, mem_id: &Mem
     is_success
 }
 
-fn emit_stmt(table: &mut SymbolTable, module_data: &mut ModuleData, mem_id: &MemoryId, curr_mem_offset: &mut u32, stmt: &mut Statement, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> bool {
+fn emit_stmt(table: &mut SymbolTable, module_data: &mut ModuleData, mem_id: &MemoryId, curr_mem_offset: &mut u32,
+             stmt: &mut Statement, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> bool {
     let mut is_success = true;
     match stmt {
         Statement::Assign { var_id, expr } => {
             let folded_expr = ExprFolder::fold_expr(expr, table);
-            if let Expr::Primitive { val } = folded_expr {
+            return if let Expr::Primitive { val } = folded_expr {
                 // This is a constant, just save the value to the symbol table for later use
-                return if let Expr::VarId { name } = var_id {
+                if let Expr::VarId { name } = var_id {
                     let var_rec_id = match table.lookup(name) {
                         Some(rec_id) => rec_id.clone(),
                         _ => {
-                            error!("VarId '{name}' does not exist in this scope!");
+                            error!("VarId '{}' does not exist in this scope!", name);
                             return false;
                         }
                     };
@@ -90,11 +92,11 @@ fn emit_stmt(table: &mut SymbolTable, module_data: &mut ModuleData, mem_id: &Mem
             } else {
                 is_success &= emit_expr(table, module_data, mem_id, curr_mem_offset, expr, instr_builder, index);
 
-                return if let Expr::VarId { name } = var_id {
+                if let Expr::VarId { name } = var_id {
                     let var_rec_id = match table.lookup(name) {
                         Some(rec_id) => rec_id.clone(),
                         _ => {
-                            error!("VarId '{name}' does not exist in this scope!");
+                            error!("VarId '{}' does not exist in this scope!", name);
                             return false;
                         }
                     };
@@ -103,14 +105,14 @@ fn emit_stmt(table: &mut SymbolTable, module_data: &mut ModuleData, mem_id: &Mem
                             // this will be different based on if this is a global or local var
                             match addr {
                                 Some(VarAddr::Global { addr }) => {
-                                    instr_builder.instr_at( *index,walrus::ir::GlobalSet {
+                                    instr_builder.instr_at(*index, walrus::ir::GlobalSet {
                                         global: addr.clone()
                                     });
                                     // update index to point to what follows our insertions
                                     *index += 1;
                                 }
-                                Some(VarAddr::Local { addr } ) => {
-                                    instr_builder.instr_at( *index,walrus::ir::LocalSet {
+                                Some(VarAddr::Local { addr }) => {
+                                    instr_builder.instr_at(*index, walrus::ir::LocalSet {
                                         local: addr.clone()
                                     });
                                     // update index to point to what follows our insertions
@@ -135,7 +137,7 @@ fn emit_stmt(table: &mut SymbolTable, module_data: &mut ModuleData, mem_id: &Mem
                 } else {
                     error!("Expected VarId.");
                     false
-                };
+                }
             }
         }
         Statement::Expr { expr } => {
@@ -206,42 +208,42 @@ fn emit_expr(table: &mut SymbolTable, module_data: &mut ModuleData, mem_id: &Mem
             let var_rec_id = match table.lookup(&name) {
                 Some(rec_id) => rec_id.clone(),
                 _ => {
-                    error!("VarId '{name}' does not exist in this scope!");
+                    error!("VarId '{}' does not exist in this scope!", name);
                     return false;
                 }
             };
-            match table.get_record_mut(&var_rec_id) {
+            return match table.get_record_mut(&var_rec_id) {
                 Some(Record::Var { addr, .. }) => {
                     // this will be different based on if this is a global or local var
                     match addr {
                         Some(VarAddr::Global { addr }) => {
-                            instr_builder.instr_at( *index,walrus::ir::GlobalGet {
+                            instr_builder.instr_at(*index, walrus::ir::GlobalGet {
                                 global: addr.clone()
                             });
                             // update index to point to what follows our insertions
                             *index += 1;
                         }
-                        Some(VarAddr::Local { addr } ) => {
-                            instr_builder.instr_at( *index,walrus::ir::LocalGet {
+                        Some(VarAddr::Local { addr }) => {
+                            instr_builder.instr_at(*index, walrus::ir::LocalGet {
                                 local: addr.clone()
                             });
                             // update index to point to what follows our insertions
                             *index += 1;
                         },
                         None => {
-                            error!("Variable does not exist in scope: {name}");
+                            error!("Variable does not exist in scope: {}", name);
                             return false;
                         }
                     }
-                    return true;
+                    true
                 },
                 Some(ty) => {
                     error!("Incorrect variable record, expected Record::Var, found: {:?}", ty);
-                    return false;
+                    false
                 },
                 None => {
                     error!("Variable symbol does not exist!");
-                    return false;
+                    false
                 }
             }
         }
@@ -751,9 +753,9 @@ impl WasmRewritingEmitter {
         self.table.enter_named_scope(&probe.name);
 
         // determine if I should inject a predicate.
-        let mut pred_to_inject: Option<Expr> = if probe.predicate.is_some() {
+        let pred_to_inject: Option<Expr> = if probe.predicate.is_some() {
             // Fold predicate via constant propagation
-            let mut folded_pred = ExprFolder::fold_expr(&probe.predicate.as_ref().unwrap(), &self.table);
+            let folded_pred = ExprFolder::fold_expr(&probe.predicate.as_ref().unwrap(), &self.table);
 
             if let Some(pred_as_bool) = ExprFolder::get_single_bool(&folded_pred) {
                 if !pred_as_bool {
@@ -840,7 +842,7 @@ impl WasmRewritingEmitter {
                 *index += 1;
 
                 // place in symbol table with var addr for future reference
-                let arg_name = format!("arg{num}");
+                let arg_name = format!("arg{}", num);
                 let id = self.table.put(arg_name.clone(), Record::Var {
                     ty: DataType::Integer, // we only support integers right now.
                     name: arg_name.clone(),
@@ -1011,7 +1013,7 @@ impl WasmRewritingEmitter {
             let (name, func_call_id) = match rec_id {
                 Some(r_id) => {
                     let rec = self.table.get_record_mut(&r_id);
-                    if let Some(Record::Var { value: Some(Value::Str {val, addr, ..}), .. }) = rec {
+                    if let Some(Record::Var { value: Some(Value::Str {val, ..}), .. }) = rec {
                         (val.clone(), self.app_wasm.funcs.by_name(val))
                     } else {
                         ("".to_string(), None)
@@ -1052,24 +1054,22 @@ impl WasmRewritingEmitter {
                 *index += 1;
 
                 is_success &= true;
+            } else if name != "".to_string() {
+                info!("Could not find function in app Wasm specified by `new_target_fn_name`: {}", name);
+                exit(1);
             } else {
-                if name != "".to_string() {
-                    info!("Could not find function in app Wasm specified by `new_target_fn_name`: {name}");
-                    exit(1);
-                } else {
-                    error!("Could not inject alternate call to function, something went wrong...");
-                    exit(1);
-                }
+                error!("Could not inject alternate call to function, something went wrong...");
+                exit(1);
             }
         }
         is_success
     }
 
-    fn emit_provided_fn(&mut self, context: &String, f: &Fn) -> bool {
-        return if context == &"whamm".to_string() && &f.name == &"strcmp".to_string() {
+    fn emit_provided_fn(&mut self, context: &str, f: &Fn) -> bool {
+        return if context == "whamm" && f.name == "strcmp" {
             self.emit_whamm_strcmp_fn(f)
         } else {
-            error!("Provided function, but could not find a context to provide the definition, context: {context}");
+            error!("Provided function, but could not find a context to provide the definition, context: {}", context);
             false
         }
     }
@@ -1088,15 +1088,15 @@ impl WasmRewritingEmitter {
             .id();
 
         // create params
-        let str0_offset = self.app_wasm.locals.add(walrus::ValType::I32);
-        let str0_size = self.app_wasm.locals.add(walrus::ValType::I32);
-        let str1_offset = self.app_wasm.locals.add(walrus::ValType::I32);
-        let str1_size = self.app_wasm.locals.add(walrus::ValType::I32);
+        let str0_offset = self.app_wasm.locals.add(ValType::I32);
+        let str0_size = self.app_wasm.locals.add(ValType::I32);
+        let str1_offset = self.app_wasm.locals.add(ValType::I32);
+        let str1_size = self.app_wasm.locals.add(ValType::I32);
 
         // create locals
-        let i = self.app_wasm.locals.add(walrus::ValType::I32);
-        let str0_char = self.app_wasm.locals.add(walrus::ValType::I32);
-        let str1_char = self.app_wasm.locals.add(walrus::ValType::I32);
+        let i = self.app_wasm.locals.add(ValType::I32);
+        let str0_char = self.app_wasm.locals.add(ValType::I32);
+        let str1_char = self.app_wasm.locals.add(ValType::I32);
 
         // create the body of strcmp
         strcmp
@@ -1199,7 +1199,7 @@ impl WasmRewritingEmitter {
 
         let strcmp_id = strcmp.finish(vec![ str0_offset, str0_size, str1_offset, str1_size ], &mut self.app_wasm.funcs);
         let rec_id = match self.table.lookup(&f.name) {
-            Some(rec_id) => rec_id.clone(),
+            Some(rec_id) => *rec_id,
             _ => {
                 error!("strcmp fn symbol does not exist in this scope!");
                 return false;
@@ -1242,47 +1242,47 @@ impl Emitter for WasmRewritingEmitter {
         // nothing to do here
         true
     }
-    fn emit_mmscript(&mut self, _mmscript: &MMScript) -> bool {
+    fn emit_whammy(&mut self, _whammy: &Whammy) -> bool {
         // nothing to do here
         true
     }
-    fn emit_provider(&mut self, context: &String, provider: &mut Provider) -> bool {
+    fn emit_provider(&mut self, context: &str, provider: &mut Provider) -> bool {
         let mut is_success = true;
         provider.modules.iter_mut().for_each(|(name, module)| {
-            is_success &= self.emit_module(&format!("{context}:{name}"), module);
+            is_success &= self.emit_module(&format!("{}:{}", context, name), module);
         });
         is_success
     }
-    fn emit_module(&mut self, context: &String, module: &mut Module) -> bool {
+    fn emit_module(&mut self, context: &str, module: &mut Module) -> bool {
         self.table.enter_scope();
-        let regex = Regex::new(r"whamm:mmscript([0-9]+):wasm:bytecode").unwrap();
+        let regex = Regex::new(r"whamm:whammy([0-9]+):wasm:bytecode").unwrap();
         return if let Some(_caps) = regex.captures(context) {
             let res = self.emit_wasm_bytecode_module(module);
             self.table.exit_scope();
             res
         } else {
             self.table.exit_scope();
-            error!("Provided module, but could not find a context to provide the definition, context: {context}");
+            error!("Provided module, but could not find a context to provide the definition, context: {}", context);
             false
         };
     }
-    fn emit_fn(&mut self, context: &String, f: &Fn) -> bool {
+    fn emit_fn(&mut self, context: &str, f: &Fn) -> bool {
         // figure out if this is a provided fn.
         if f.is_provided {
-            return if self.fn_providing_contexts.contains(context) {
+            return if self.fn_providing_contexts.contains(&context.to_string()) {
                 self.emit_provided_fn(context, f)
             } else {
-                error!("Provided fn, but could not find a context to provide the definition, context: {context}");
+                error!("Provided fn, but could not find a context to provide the definition, context: {}", context);
                 false
             }
         }
 
         // emit non-provided fn
-        // only when we're supporting user-defined fns in mmscript...
+        // only when we're supporting user-defined fns in whammy...
         unimplemented!();
     }
     fn emit_formal_param(&mut self, _param: &(Expr, DataType)) -> bool {
-        // only when we're supporting user-defined fns in mmscript...
+        // only when we're supporting user-defined fns in whammy...
         unimplemented!();
     }
     fn emit_global(&mut self, name: String, _ty: DataType, _val: &Option<Value>) -> bool {
@@ -1298,7 +1298,7 @@ impl Emitter for WasmRewritingEmitter {
         return match rec {
             Some(Record::Var { addr: _addr, .. }) => {
                 // emit global variable and set addr in symbol table
-                // only when we're supporting user-defined globals in mmscript...
+                // only when we're supporting user-defined globals in whammy...
                 unimplemented!();
             },
             Some(ty) => {

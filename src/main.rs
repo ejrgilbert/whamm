@@ -17,16 +17,16 @@ fn setup_logger() {
     env_logger::init();
 }
 
-/// `whamm` instruments a Wasm application with the Probes defined in the specified MMScript.
+/// `whamm` instruments a Wasm application with the Probes defined in the specified Whammy.
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
     /// The path to the application's Wasm module we want to instrument.
     #[clap(short, long, value_parser)]
     app: String,
-    /// The path to the MMScript containing the instrumentation Probe definitions.
+    /// The path to the Whammy containing the instrumentation Probe definitions.
     #[clap(short, long, value_parser)]
-    mmscript: String,
+    whammy: String,
     /// The path that the instrumented version of the Wasm app should be output to.
     #[clap(short, long, value_parser, default_value = "./output/output.wasm")]
     output_path: String,
@@ -58,11 +58,11 @@ fn try_main() -> Result<(), failure::Error> {
     // Get information from user command line args
     let args = Args::parse();
     let app_wasm_path = args.app;
-    let mmscript_path = args.mmscript;
-    let mmscript = std::fs::read_to_string(&mmscript_path);
+    let whammy_path = args.whammy;
+    let whammy = std::fs::read_to_string(&whammy_path);
     let output_wasm_path = args.output_path;
 
-    match mmscript {
+    match whammy {
         Ok(unparsed_str) => {
             // Parse the script and build the AST
             let mut whamm = match parse_script(unparsed_str) {
@@ -70,8 +70,8 @@ fn try_main() -> Result<(), failure::Error> {
                     info!("successfully parsed");
                     ast
                 },
-                Err(e) => {
-                    error!("Parse failed: {e}");
+                Err(error) => {
+                    error!("Parse failed: {}", error);
                     exit(1);
                 }
             };
@@ -95,8 +95,8 @@ fn try_main() -> Result<(), failure::Error> {
             generator.generate(&mut whamm);
             generator.dump_to_file(output_wasm_path);
         },
-        Err(e) => {
-            error!("Cannot read specified file {}: {e}", mmscript_path);
+        Err(error) => {
+            error!("Cannot read specified file {}: {}", whammy_path, error);
             exit(1);
         }
     }

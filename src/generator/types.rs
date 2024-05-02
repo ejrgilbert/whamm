@@ -53,11 +53,11 @@ impl ExprFolder {
                             }
                         } else {
                             // lhs is not a primitive
-                            if let Some(rhs_bool) = rhs_val {
+                            return if let Some(rhs_bool) = rhs_val {
                                 // only rhs is boolean primitive
                                 // - if it's a true,  can drop it
                                 // - if it's a false, this expression is false
-                                return if rhs_bool {
+                                if rhs_bool {
                                     lhs
                                 } else {
                                     Expr::Primitive {
@@ -70,7 +70,7 @@ impl ExprFolder {
                             } else {
                                 // rhs is not a primitive
                                 // return folded lhs/rhs
-                                return Expr::BinOp {
+                                Expr::BinOp {
                                     lhs: Box::new(lhs),
                                     op: Op::And,
                                     rhs: Box::new(rhs),
@@ -80,7 +80,7 @@ impl ExprFolder {
                     }
                     Op::Or => {
                         let (lhs_val, rhs_val) = ExprFolder::get_bool(&lhs, &rhs);
-                        if let Some(lhs_bool) = lhs_val {
+                        return if let Some(lhs_bool) = lhs_val {
                             if let Some(rhs_bool) = rhs_val {
                                 // both are boolean primitives
                                 return Expr::Primitive {
@@ -93,7 +93,7 @@ impl ExprFolder {
                             // only lhs is boolean primitive
                             // - if it's a false, can drop it
                             // - if it's a true,  this expression is true
-                            return if lhs_bool {
+                            if lhs_bool {
                                 Expr::Primitive {
                                     val: Value::Boolean {
                                         ty: DataType::Boolean,
@@ -109,7 +109,7 @@ impl ExprFolder {
                                 // only rhs is boolean primitive
                                 // - if it's a true,  this expression is true
                                 // - if it's a false, can drop it
-                                return if rhs_bool {
+                                if rhs_bool {
                                     Expr::Primitive {
                                         val: Value::Boolean {
                                             ty: DataType::Boolean,
@@ -122,7 +122,7 @@ impl ExprFolder {
                             } else {
                                 // rhs is not a primitive
                                 // return folded lhs/rhs
-                                return Expr::BinOp {
+                                Expr::BinOp {
                                     lhs: Box::new(lhs),
                                     op: Op::Or,
                                     rhs: Box::new(rhs),
