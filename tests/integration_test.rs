@@ -53,6 +53,10 @@ fn instrument_with_fault_injection() {
         let out_wat_path = format!("{OUT_BASE_DIR}/{OUT_WAT_NAME}");
 
         generator.dump_to_file(out_wasm_path.to_string());
+        let mut ls = Command::new("ls");
+        ls.arg(OUT_BASE_DIR)
+            .arg("-al");
+        ls.status().expect("process failed to execute");
 
         let mut wasm2wat = Command::new("wasm2wat");
         wasm2wat.arg(out_wasm_path)
@@ -65,7 +69,6 @@ fn instrument_with_fault_injection() {
                 if !code.success() {
                     assert!(false, "`wasm2wat` verification check failed!");
                 }
-                wasm2wat.output().expect("bad");
             }
             Err(err) => {
                 error!("{}", err.to_string());
