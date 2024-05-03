@@ -4,12 +4,16 @@ use whamm::generator::emitters::{WasmRewritingEmitter};
 use whamm::generator::code_generator::{CodeGenerator};
 
 use log::error;
+use std::fs;
 use std::process::Command;
+use std::path::Path;
 use walrus::Module;
 
 const APP_WASM_PATH: &str = "tests/apps/users.wasm";
-const OUT_WASM_PATH: &str = "target/out.wasm";
-const OUT_WAT_PATH: &str = "target/out.wat";
+
+const OUT_BASE_DIR: &str = "target/";
+const OUT_WASM_NAME: &str = "out.wasm";
+const OUT_WAT_NAME: &str = "out.wat";
 
 fn get_wasm_module() -> Module {
     // Read app Wasm into Walrus module
@@ -35,12 +39,25 @@ fn instrument_with_fault_injection() {
 
         assert!(generator.generate(&mut whamm));
 
-        generator.dump_to_file(OUT_WASM_PATH.to_string());
+        if !Path::new(OUT_BASE_DIR).exists() {
+            match fs::create_dir(OUT_BASE_DIR) {
+                Err(err) => {
+                    error!("{}", err.to_string());
+                    assert!(false, "Could not create base output path.");
+                },
+                _ => {}
+            }
+        }
+
+        let out_wasm_path = format!("{OUT_BASE_DIR}/{OUT_WASM_NAME}");
+        let out_wat_path = format!("{OUT_BASE_DIR}/{OUT_WAT_NAME}");
+
+        generator.dump_to_file(out_wasm_path.to_string());
 
         let mut wasm2wat = Command::new("wasm2wat");
-        wasm2wat.arg(OUT_WASM_PATH)
+        wasm2wat.arg(out_wasm_path)
             .arg("-o")
-            .arg(OUT_WAT_PATH);
+            .arg(out_wat_path);
 
         // wasm2wat verification check
         match wasm2wat.status() {
