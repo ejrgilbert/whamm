@@ -69,6 +69,9 @@ fn instrument_with_fault_injection() {
         ls.status().expect("process failed to execute");
         //
         // info!("out_wat_path: {out_wat_path}");
+        let mut ls = Command::new("which");
+        ls.arg("wasm2wat");
+        ls.status().expect("process failed to execute");
 
         let mut wasm2wat = Command::new("wasm2wat");
         wasm2wat.arg(out_wasm_path)
