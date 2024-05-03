@@ -17,5 +17,5 @@ Cargo.lock
 *.pdb
 
 # Ignore the huge test files
-tests/apps/*
+tests/apps/*.wat
 output/
