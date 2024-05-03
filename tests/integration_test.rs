@@ -3,7 +3,7 @@ mod common;
 use whamm::generator::emitters::{WasmRewritingEmitter};
 use whamm::generator::code_generator::{CodeGenerator};
 
-use log::error;
+use log::{error, info};
 use std::fs;
 use std::process::Command;
 use std::path::Path;
@@ -11,7 +11,7 @@ use walrus::Module;
 
 const APP_WASM_PATH: &str = "tests/apps/users.wasm";
 
-const OUT_BASE_DIR: &str = "target/";
+const OUT_BASE_DIR: &str = "target";
 const OUT_WASM_NAME: &str = "out.wasm";
 const OUT_WAT_NAME: &str = "out.wat";
 
@@ -54,9 +54,21 @@ fn instrument_with_fault_injection() {
 
         generator.dump_to_file(out_wasm_path.to_string());
         let mut ls = Command::new("ls");
-        ls.arg(OUT_BASE_DIR)
-            .arg("-al");
+        ls.arg("-al")
+            .arg(OUT_BASE_DIR);
         ls.status().expect("process failed to execute");
+
+        let mut ls = Command::new("ls");
+        ls.arg("-al")
+            .arg(out_wasm_path.clone());
+        ls.status().expect("process failed to execute");
+
+        let mut ls = Command::new("ls");
+        ls.arg("-al")
+            .arg(out_wat_path.clone());
+        ls.status().expect("process failed to execute");
+        //
+        // info!("out_wat_path: {out_wat_path}");
 
         let mut wasm2wat = Command::new("wasm2wat");
         wasm2wat.arg(out_wasm_path)
