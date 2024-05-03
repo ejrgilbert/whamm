@@ -761,7 +761,8 @@ impl WasmRewritingEmitter {
                 if !pred_as_bool {
                     // predicate is FALSE, DON'T INJECT PROBE IN GENERAL, so just return from this fn call!
                     self.table.exit_scope();
-                    return false;
+                    info!("Predicate is false, no need to inject probe.");
+                    return true;
                 }
                 // predicate is TRUE, unconditionally inject body stmts
                 None
