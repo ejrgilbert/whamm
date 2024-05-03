@@ -3,7 +3,7 @@ mod common;
 use whamm::generator::emitters::{WasmRewritingEmitter};
 use whamm::generator::code_generator::{CodeGenerator};
 
-use log::{error, info};
+use log::error;
 use std::fs;
 use std::process::{Command, Stdio};
 use std::path::Path;
@@ -13,7 +13,6 @@ const APP_WASM_PATH: &str = "tests/apps/users.wasm";
 
 const OUT_BASE_DIR: &str = "target";
 const OUT_WASM_NAME: &str = "out.wasm";
-const OUT_WAT_NAME: &str = "out.wat";
 
 fn get_wasm_module() -> Module {
     // Read app Wasm into Walrus module
@@ -50,33 +49,11 @@ fn instrument_with_fault_injection() {
         }
 
         let out_wasm_path = format!("{OUT_BASE_DIR}/{OUT_WASM_NAME}");
-        let out_wat_path = format!("{OUT_BASE_DIR}/{OUT_WAT_NAME}");
-
         generator.dump_to_file(out_wasm_path.to_string());
-        // let mut ls = Command::new("ls");
-        // ls.arg("-al")
-        //     .arg(OUT_BASE_DIR);
-        // ls.status().expect("process failed to execute");
-        //
-        // let mut ls = Command::new("ls");
-        // ls.arg("-al")
-        //     .arg(out_wasm_path.clone());
-        // ls.status().expect("process failed to execute");
-        //
-        // let mut ls = Command::new("ls");
-        // ls.arg("-al")
-        //     .arg(out_wat_path.clone());
-        // ls.status().expect("process failed to execute");
-        // //
-        // // info!("out_wat_path: {out_wat_path}");
-        // let mut which = Command::new("which");
-        // which.arg("wasm2wat");
-        // which.status().expect("process failed to execute");
 
         let mut wasm2wat = Command::new("wasm2wat");
-        wasm2wat.arg("--help");
-        // wasm2wat.stdout(Stdio::null())
-        //     .arg(out_wasm_path);
+        wasm2wat.stdout(Stdio::null())
+            .arg(out_wasm_path);
 
         // wasm2wat verification check
         match wasm2wat.status() {
