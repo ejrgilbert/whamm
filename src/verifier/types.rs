@@ -34,7 +34,7 @@ impl SymbolTable {
     }
 
     pub fn set_curr_scope_info(&mut self, name: String, ty: ScopeType) {
-        let mut curr = self.get_curr_scope_mut().unwrap();
+        let curr = self.get_curr_scope_mut().unwrap();
         curr.name = name;
         curr.ty = ty;
     }
@@ -74,7 +74,7 @@ impl SymbolTable {
         };
 
         // create new instance fix Rust's compilation issue.
-        let mut curr = self.get_curr_scope_mut().unwrap();
+        let curr = self.get_curr_scope_mut().unwrap();
         if let (Some(new_curr), Some(new_next)) = (new_curr_scope, new_next) {
             curr.next = new_next;
             self.curr_scope = new_curr;
