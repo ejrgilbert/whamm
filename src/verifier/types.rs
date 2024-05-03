@@ -64,11 +64,12 @@ impl SymbolTable {
         let mut new_curr_scope = None;
         let mut new_next = None;
         for (i, child_id) in children.iter().enumerate() {
-            let child_scope = self.scopes.get_mut(*child_id).unwrap();
-            if child_scope.name == *scope_name {
-                new_curr_scope = Some(child_id.clone());
-                new_next = Some(i.clone() + 1);
-                child_scope.reset();
+            if let Some(child_scope) = self.scopes.get_mut(*child_id) {
+                if child_scope.name == *scope_name {
+                    new_curr_scope = Some(child_id.clone());
+                    new_next = Some(i.clone() + 1);
+                    child_scope.reset();
+                }
             }
         };
 
@@ -78,7 +79,7 @@ impl SymbolTable {
             curr.next = new_next;
             self.curr_scope = new_curr;
         } else {
-            error!("Could not find the specified scope by name: `{scope_name}`");
+            error!("Could not find the specified scope by name: `{}`", scope_name);
         }
     }
 
@@ -121,8 +122,8 @@ impl SymbolTable {
 
     // Record operations
 
-    pub fn set_curr_mmscript(&mut self, id: usize) {
-        self.get_curr_scope_mut().unwrap().containing_mmscript = Some(id);
+    pub fn set_curr_whammy(&mut self, id: usize) {
+        self.get_curr_scope_mut().unwrap().containing_whammy = Some(id);
     }
 
     pub fn get_record(&self, rec_id: &usize) -> Option<&Record> {
@@ -145,7 +146,7 @@ impl SymbolTable {
         let new_rec_id = self.records.len();
         match rec {
             Record::Whamm { .. } |
-            Record::MMScript { .. } |
+            Record::Whammy { .. } |
             Record::Provider { .. } |
             Record::Module { .. } |
             Record::Function { .. } |
@@ -213,7 +214,7 @@ pub struct Scope {
     children: Vec<usize>,              // indexes into SymbolTable::scopes
     next: usize,                       // indexes into this::children
 
-    pub containing_mmscript: Option<usize>, // indexes into SymbolTable::records
+    pub containing_whammy: Option<usize>, // indexes into SymbolTable::records
     records: HashMap<String, usize>,   // indexes into SymbolTable::records
 }
 impl Scope {
@@ -223,7 +224,7 @@ impl Scope {
             name,
             ty,
 
-            containing_mmscript: None,
+            containing_whammy: None,
             next: 0,
             parent,
             children: vec![],
@@ -276,7 +277,7 @@ impl Scope {
 #[derive(Debug, Eq, PartialEq)]
 pub enum ScopeType {
     Whamm,
-    MMScript,
+    Whammy,
     Provider,
     Module,
     Function,
@@ -292,9 +293,9 @@ pub enum Record {
         name: String,
         fns: Vec<usize>,
         globals: Vec<usize>,
-        mmscripts: Vec<usize>
+        whammys: Vec<usize>
     },
-    MMScript {
+    Whammy {
         name: String,
         fns: Vec<usize>,
         globals: Vec<usize>,

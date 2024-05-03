@@ -115,7 +115,7 @@ const SPECIAL: &'static [&'static str] = &[
 // = Helper Functions =
 // ====================
 
-const TEST_RSC_DIR: &str = "tests/mmscripts/";
+const TEST_RSC_DIR: &str = "tests/whammys/";
 const PATTERN: &str = "*.mm";
 const TODO: &str = "*.TODO";
 
@@ -147,7 +147,7 @@ pub fn get_ast(script: &str) -> Option<Whamm> {
             Some(ast)
         },
         Err(e) => {
-            error!("Parse failed {e}");
+            error!("Parse failed {}", e);
             None
         }
     }
@@ -166,7 +166,7 @@ fn is_valid_script(script: &str) -> bool {
 
 pub fn run_test_on_valid_list(scripts: Vec<String>) {
     for script in scripts {
-        info!("Parsing: {script}");
+        info!("Parsing: {}", script);
         assert!(
             is_valid_script(&script),
             "script = '{}' is not recognized as valid, but it should be",
@@ -189,7 +189,7 @@ pub fn test_parse_valid_scripts() {
 pub fn test_parse_invalid_scripts() {
     setup_logger();
     for script in INVALID_SCRIPTS {
-        info!("Parsing: {script}");
+        info!("Parsing: {}", script);
         assert!(
             !is_valid_script(script),
             "string = '{}' is recognized as valid, but it should not",
@@ -228,13 +228,13 @@ wasm::call:alt /
 
     match get_ast(script) {
         Some(ast) => {
-            // mmscript
-            assert_eq!(1, ast.mmscripts.len()); // a single mmscript
-            let mmscript = ast.mmscripts.get(0).unwrap();
+            // whammy
+            assert_eq!(1, ast.whammys.len()); // a single whammy
+            let whammy = ast.whammys.get(0).unwrap();
 
             // provider
-            assert_eq!(1, mmscript.providers.len());
-            let provider = mmscript.providers.get("wasm").unwrap();
+            assert_eq!(1, whammy.providers.len());
+            let provider = whammy.providers.get("wasm").unwrap();
             assert_eq!("wasm", provider.name);
             assert_eq!(0, provider.globals.len());
             assert_eq!(0, provider.fns.len());
@@ -269,7 +269,7 @@ wasm::call:alt /
             print_ast(&ast);
         },
         None => {
-            error!("Could not get ast from script: {script}");
+            error!("Could not get ast from script: {}", script);
             assert!(false);
         }
     };
@@ -285,7 +285,7 @@ pub fn test_implicit_probe_defs_dumper() {
             print_ast(&ast);
         },
         None => {
-            error!("Could not get ast from script: {script}");
+            error!("Could not get ast from script: {}", script);
             assert!(false);
         }
     };

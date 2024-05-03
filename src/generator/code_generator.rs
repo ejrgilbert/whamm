@@ -5,7 +5,7 @@
 use std::collections::HashMap;
 use log::trace;
 use crate::generator::emitters::Emitter;
-use crate::parser::types::{DataType, MMScript, Whamm, WhammVisitorMut, Expr, Function, Module, Op, Probe, Provider, Statement, Value};
+use crate::parser::types::{DataType, Whammy, Whamm, WhammVisitorMut, Expr, Function, Module, Op, Probe, Provider, Statement, Value};
 
 /// The code generator traverses the AST and calls the passed emitter to
 /// emit some instruction/code/function/etc.
@@ -50,9 +50,9 @@ impl WhammVisitorMut<bool> for CodeGenerator {
             is_success &= self.visit_fn(f);
         });
         // DO NOT inject globals (used by compiler)
-        // inject mmscripts
-        whamm.mmscripts.iter_mut().for_each(|mmscript| {
-            is_success &= self.visit_mmscript(mmscript);
+        // inject whammys
+        whamm.whammys.iter_mut().for_each(|whammy| {
+            is_success &= self.visit_whammy(whammy);
         });
 
         trace!("Exiting: CodeGenerator::visit_whamm");
@@ -61,24 +61,24 @@ impl WhammVisitorMut<bool> for CodeGenerator {
         is_success
     }
 
-    fn visit_mmscript(&mut self, mmscript: &mut MMScript) -> bool {
-        trace!("Entering: CodeGenerator::visit_mmscript");
+    fn visit_whammy(&mut self, whammy: &mut Whammy) -> bool {
+        trace!("Entering: CodeGenerator::visit_whammy");
         self.emitter.enter_scope();
-        self.context_name += &format!(":{}", mmscript.name.clone());
-        let mut is_success = self.emitter.emit_mmscript(mmscript);
+        self.context_name += &format!(":{}", whammy.name.clone());
+        let mut is_success = self.emitter.emit_whammy(whammy);
 
         // visit fns
-        mmscript.fns.iter_mut().for_each(| f | {
+        whammy.fns.iter_mut().for_each(| f | {
             is_success &= self.visit_fn(f);
         });
         // inject globals
-        is_success &= self.visit_globals(&mmscript.globals);
+        is_success &= self.visit_globals(&whammy.globals);
         // inject providers
-        mmscript.providers.iter_mut().for_each(|(_name, provider)| {
+        whammy.providers.iter_mut().for_each(|(_name, provider)| {
             is_success &= self.visit_provider(provider);
         });
 
-        trace!("Exiting: CodeGenerator::visit_mmscript");
+        trace!("Exiting: CodeGenerator::visit_whammy");
         self.emitter.exit_scope();
         // Remove from `context_name`
         self.context_name = self.context_name[..self.context_name.rfind(":").unwrap()].to_string();
@@ -104,6 +104,8 @@ impl WhammVisitorMut<bool> for CodeGenerator {
         // At this point we've traversed the entire tree to generate necessary
         // globals and fns!
         // Now, we emit_provider which will do the actual instrumentation step!
+        // TODO -- this isn't flexible at all...need to visit with the generator to help generalize
+        //         the visiting logic
         self.emitter.reset_children();
         is_success &= self.emitter.emit_provider(&self.context_name, provider);
 

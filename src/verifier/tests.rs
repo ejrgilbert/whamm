@@ -34,7 +34,7 @@ pub fn test_build_table() {
                 println!("{:#?}", table);
             },
             None => {
-                error!("Could not get ast from script: {script}");
+                error!("Could not get ast from script: {}", script);
                 assert!(false);
             }
         };
@@ -60,7 +60,7 @@ wasm::call:alt /
             let table = verifier::verify(&ast);
             println!("{:#?}", table);
 
-            // 7 scopes: whamm, strcmp, mmscript, wasm, bytecode, call, alt
+            // 7 scopes: whamm, strcmp, whammy, wasm, bytecode, call, alt
             let num_scopes = 7;
             // records: num_scopes PLUS (target_fn_type, target_imp_module, target_imp_name, new_target_fn_name,
             //          str_addr, value)
@@ -71,7 +71,7 @@ wasm::call:alt /
             assert_eq!(num_recs, table.records.len());
         },
         None => {
-            error!("Could not get ast from script: {script}");
+            error!("Could not get ast from script: {}", script);
             assert!(false);
         }
     };

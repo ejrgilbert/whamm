@@ -6,7 +6,7 @@ use pest::Parser;
 use pest::iterators::{Pair, Pairs};
 
 use log::{trace};
-use crate::parser::types::{DataType, MMScript, Whamm, Expr, Statement, Value};
+use crate::parser::types::{DataType, Whammy, Whamm, Expr, Statement, Value};
 
 // ====================
 // = AST Constructors =
@@ -17,29 +17,29 @@ pub fn to_ast(pair: Pair<Rule>) -> Result<Whamm, Error<Rule>> {
 
     // Create initial AST with Whamm node
     let mut whamm = Whamm::new();
-    let mmscript_count = 0;
+    let whammy_count = 0;
 
     match pair.as_rule() {
-        Rule::mmscript => {
-            process_pair(&mut whamm, mmscript_count, pair);
+        Rule::whammy => {
+            process_pair(&mut whamm, whammy_count, pair);
         }
-        rule => unreachable!("Expected mmscript, found {:?}", rule)
+        rule => unreachable!("Expected whammy, found {:?}", rule)
     }
 
     Ok(whamm)
 }
 
-fn process_pair(whamm: &mut Whamm, mmscript_count: usize, pair: Pair<Rule>) {
+fn process_pair(whamm: &mut Whamm, whammy_count: usize, pair: Pair<Rule>) {
     trace!("Entered process_pair");
     match pair.as_rule() {
-        Rule::mmscript => {
-            trace!("Entering mmscript");
-            let base_mmscript = MMScript::new();
-            let id = whamm.add_mmscript(base_mmscript);
+        Rule::whammy => {
+            trace!("Entering whammy");
+            let base_whammy = Whammy::new();
+            let id = whamm.add_whammy(base_whammy);
             pair.into_inner().for_each(| p | {
                 process_pair(whamm, id, p);
             });
-            trace!("Exiting mmscript");
+            trace!("Exiting whammy");
         }
         Rule::probe_def => {
             trace!("Entering probe_def");
@@ -89,9 +89,9 @@ fn process_pair(whamm: &mut Whamm, mmscript_count: usize, pair: Pair<Rule>) {
                 None => (None, None)
             };
 
-            // Add probe definition to the mmscript
-            let mmscript: &mut MMScript = whamm.mmscripts.get_mut(mmscript_count).unwrap();
-            mmscript.add_probe(&whamm.provided_probes, provider, module, function, name, this_predicate, this_body);
+            // Add probe definition to the whammy
+            let whammy: &mut Whammy = whamm.whammys.get_mut(whammy_count).unwrap();
+            whammy.add_probe(&whamm.provided_probes, provider, module, function, name, this_predicate, this_body);
 
             trace!("Exiting probe_def");
         },
@@ -347,7 +347,7 @@ fn expr_from_pairs(pairs: Pairs<Rule>) -> Expr {
 pub fn parse_script(script: String) -> Result<Whamm, String> {
     trace!("Entered parse_script");
 
-    match WhammParser::parse(Rule::mmscript, &*script) {
+    match WhammParser::parse(Rule::whammy, &*script) {
         Ok(mut pairs) => {
             let res = to_ast(
                 // inner of script
