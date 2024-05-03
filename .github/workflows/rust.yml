@@ -16,11 +16,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-#    - uses: supplypike/setup-bin@v4
-#      with:
-#        uri: 'https://github.com/WebAssembly/wabt/releases/download/1.0.34/wabt-1.0.34-ubuntu.tar.gz'
-#        name: 'wabt'
-#        version: '1.0.34'
     - uses: plinioh/setup-binary-action@v1.0.0
       with:
         binaryName: wasm2wat
