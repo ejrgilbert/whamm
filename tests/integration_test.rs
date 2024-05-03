@@ -1,10 +1,15 @@
-use walrus::Module;
+mod common;
+
 use whamm::generator::emitters::{WasmRewritingEmitter};
 use whamm::generator::code_generator::{CodeGenerator};
 
-mod common;
+use log::error;
+use std::process::Command;
+use walrus::Module;
 
 const APP_WASM_PATH: &str = "tests/apps/users.wasm";
+const OUT_WASM_PATH: &str = "target/out.wasm";
+const OUT_WAT_PATH: &str = "target/out.wat";
 
 fn get_wasm_module() -> Module {
     // Read app Wasm into Walrus module
@@ -29,6 +34,27 @@ fn instrument_with_fault_injection() {
         let mut generator = CodeGenerator::new(Box::new(emitter));
 
         assert!(generator.generate(&mut whamm));
+
+        generator.dump_to_file(OUT_WASM_PATH.to_string());
+
+        let mut wasm2wat = Command::new("wasm2wat");
+        wasm2wat.arg(OUT_WASM_PATH)
+            .arg("-o")
+            .arg(OUT_WAT_PATH);
+
+        // wasm2wat verification check
+        match wasm2wat.status() {
+            Ok(code) => {
+                if !code.success() {
+                    assert!(false, "`wasm2wat` verification check failed!");
+                }
+                wasm2wat.output().expect("bad");
+            }
+            Err(err) => {
+                error!("{}", err.to_string());
+                assert!(false, "`wasm2wat` verification check failed!");
+            }
+        };
     }
 }
 

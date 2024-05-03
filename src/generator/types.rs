@@ -32,7 +32,7 @@ impl ExprFolder {
                 match op {
                     Op::And => {
                         let (lhs_val, rhs_val) = ExprFolder::get_bool(&lhs, &rhs);
-                        if let Some(lhs_bool) = lhs_val {
+                        return if let Some(lhs_bool) = lhs_val {
                             if let Some(rhs_bool) = rhs_val {
                                 // both are boolean primitives
                                 return Expr::Primitive {
@@ -45,7 +45,7 @@ impl ExprFolder {
                             // only lhs is boolean primitive
                             // - if it's a true,  can drop it
                             // - if it's a false, this expression is false
-                            return if lhs_bool {
+                            if lhs_bool {
                                 rhs
                             } else {
                                 Expr::Primitive {
@@ -57,7 +57,7 @@ impl ExprFolder {
                             }
                         } else {
                             // lhs is not a primitive
-                            return if let Some(rhs_bool) = rhs_val {
+                            if let Some(rhs_bool) = rhs_val {
                                 // only rhs is boolean primitive
                                 // - if it's a true,  can drop it
                                 // - if it's a false, this expression is false
@@ -136,191 +136,47 @@ impl ExprFolder {
                     }
                     Op::EQ => {
                         let (lhs_val, rhs_val) = ExprFolder::get_bool(&lhs, &rhs);
-                        if let Some(lhs_bool) = lhs_val {
-                            if let Some(rhs_bool) = rhs_val {
-                                return Expr::Primitive {
-                                    val: Value::Boolean {
-                                        ty: DataType::Boolean,
-                                        val: lhs_bool == rhs_bool,
-                                    }
-                                };
-                            }
+                        if let Some(res) = ExprFolder::fold_bools(&lhs_val, &rhs_val, &op) {
+                            return res;
                         }
 
                         let (lhs_val, rhs_val) = ExprFolder::get_int(&lhs, &rhs);
-                        if let Some(lhs_int) = lhs_val {
-                            if let Some(rhs_int) = rhs_val {
-                                return Expr::Primitive {
-                                    val: Value::Boolean {
-                                        ty: DataType::Boolean,
-                                        val: lhs_int == rhs_int,
-                                    }
-                                };
-                            }
+                        if let Some(res) = ExprFolder::fold_ints(&lhs_val, &rhs_val, &op) {
+                            return res;
                         }
                         let (lhs_val, rhs_val) = ExprFolder::get_str(&lhs, &rhs);
-                        if let Some(lhs_str) = lhs_val {
-                            if let Some(rhs_str) = rhs_val {
-                                return Expr::Primitive {
-                                    val: Value::Boolean {
-                                        ty: DataType::Boolean,
-                                        val: lhs_str == rhs_str,
-                                    }
-                                };
-                            }
+                        if let Some(res) = ExprFolder::fold_strings(&lhs_val, &rhs_val, &op) {
+                            return res;
                         }
                     }
                     Op::NE => {
                         let (lhs_val, rhs_val) = ExprFolder::get_bool(&lhs, &rhs);
-                        if let Some(lhs_bool) = lhs_val {
-                            if let Some(rhs_bool) = rhs_val {
-                                return Expr::Primitive {
-                                    val: Value::Boolean {
-                                        ty: DataType::Boolean,
-                                        val: lhs_bool != rhs_bool,
-                                    }
-                                };
-                            }
+                        if let Some(res) = ExprFolder::fold_bools(&lhs_val, &rhs_val, &op) {
+                            return res;
                         }
 
                         let (lhs_val, rhs_val) = ExprFolder::get_int(&lhs, &rhs);
-                        if let Some(lhs_int) = lhs_val {
-                            if let Some(rhs_int) = rhs_val {
-                                return Expr::Primitive {
-                                    val: Value::Boolean {
-                                        ty: DataType::Boolean,
-                                        val: lhs_int != rhs_int,
-                                    }
-                                };
-                            }
+                        if let Some(res) = ExprFolder::fold_ints(&lhs_val, &rhs_val, &op) {
+                            return res;
                         }
+
                         let (lhs_val, rhs_val) = ExprFolder::get_str(&lhs, &rhs);
-                        if let Some(lhs_str) = lhs_val {
-                            if let Some(rhs_str) = rhs_val {
-                                return Expr::Primitive {
-                                    val: Value::Boolean {
-                                        ty: DataType::Boolean,
-                                        val: lhs_str != rhs_str,
-                                    }
-                                };
-                            }
+                        if let Some(res) = ExprFolder::fold_strings(&lhs_val, &rhs_val, &op) {
+                            return res;
                         }
                     }
-                    Op::GE => {
-                        let (lhs_val, rhs_val) = ExprFolder::get_int(&lhs, &rhs);
-                        if let Some(lhs_int) = lhs_val {
-                            if let Some(rhs_int) = rhs_val {
-                                return Expr::Primitive {
-                                    val: Value::Boolean {
-                                        ty: DataType::Boolean,
-                                        val: lhs_int >= rhs_int,
-                                    }
-                                };
-                            }
-                        }
-                    }
-                    Op::GT => {
-                        let (lhs_val, rhs_val) = ExprFolder::get_int(&lhs, &rhs);
-                        if let Some(lhs_int) = lhs_val {
-                            if let Some(rhs_int) = rhs_val {
-                                return Expr::Primitive {
-                                    val: Value::Boolean {
-                                        ty: DataType::Boolean,
-                                        val: lhs_int > rhs_int,
-                                    }
-                                };
-                            }
-                        }
-                    }
-                    Op::LE => {
-                        let (lhs_val, rhs_val) = ExprFolder::get_int(&lhs, &rhs);
-                        if let Some(lhs_int) = lhs_val {
-                            if let Some(rhs_int) = rhs_val {
-                                return Expr::Primitive {
-                                    val: Value::Boolean {
-                                        ty: DataType::Boolean,
-                                        val: lhs_int <= rhs_int,
-                                    }
-                                };
-                            }
-                        }
-                    }
-                    Op::LT => {
-                        let (lhs_val, rhs_val) = ExprFolder::get_int(&lhs, &rhs);
-                        if let Some(lhs_int) = lhs_val {
-                            if let Some(rhs_int) = rhs_val {
-                                return Expr::Primitive {
-                                    val: Value::Boolean {
-                                        ty: DataType::Boolean,
-                                        val: lhs_int < rhs_int,
-                                    }
-                                };
-                            }
-                        }
-                    }
-                    Op::Add => {
-                        let (lhs_val, rhs_val) = ExprFolder::get_int(&lhs, &rhs);
-                        if let Some(lhs_int) = lhs_val {
-                            if let Some(rhs_int) = rhs_val {
-                                return Expr::Primitive {
-                                    val: Value::Integer {
-                                        ty: DataType::Integer,
-                                        val: lhs_int + rhs_int,
-                                    }
-                                };
-                            }
-                        }
-                    }
-                    Op::Subtract => {
-                        let (lhs_val, rhs_val) = ExprFolder::get_int(&lhs, &rhs);
-                        if let Some(lhs_int) = lhs_val {
-                            if let Some(rhs_int) = rhs_val {
-                                return Expr::Primitive {
-                                    val: Value::Integer {
-                                        ty: DataType::Integer,
-                                        val: lhs_int - rhs_int,
-                                    }
-                                };
-                            }
-                        }
-                    }
-                    Op::Multiply => {
-                        let (lhs_val, rhs_val) = ExprFolder::get_int(&lhs, &rhs);
-                        if let Some(lhs_int) = lhs_val {
-                            if let Some(rhs_int) = rhs_val {
-                                return Expr::Primitive {
-                                    val: Value::Integer {
-                                        ty: DataType::Integer,
-                                        val: lhs_int * rhs_int,
-                                    }
-                                };
-                            }
-                        }
-                    }
-                    Op::Divide => {
-                        let (lhs_val, rhs_val) = ExprFolder::get_int(&lhs, &rhs);
-                        if let Some(lhs_int) = lhs_val {
-                            if let Some(rhs_int) = rhs_val {
-                                return Expr::Primitive {
-                                    val: Value::Integer {
-                                        ty: DataType::Integer,
-                                        val: lhs_int / rhs_int,
-                                    }
-                                };
-                            }
-                        }
-                    }
+                    Op::GE |
+                    Op::GT |
+                    Op::LE |
+                    Op::LT |
+                    Op::Add |
+                    Op::Subtract |
+                    Op::Multiply |
+                    Op::Divide |
                     Op::Modulo => {
                         let (lhs_val, rhs_val) = ExprFolder::get_int(&lhs, &rhs);
-                        if let Some(lhs_int) = lhs_val {
-                            if let Some(rhs_int) = rhs_val {
-                                return Expr::Primitive {
-                                    val: Value::Integer {
-                                        ty: DataType::Integer,
-                                        val: lhs_int % rhs_int,
-                                    }
-                                };
-                            }
+                        if let Some(res) = ExprFolder::fold_ints(&lhs_val, &rhs_val, &op) {
+                            return res;
                         }
                     }
                 }
@@ -331,6 +187,130 @@ impl ExprFolder {
         // Cannot fold any more
         binop.clone()
     }
+
+    fn fold_bools(lhs_val: &Option<bool>, rhs_val: &Option<bool>, op: &Op) -> Option<Expr> {
+        if let Some(lhs_bool) = lhs_val {
+            if let Some(rhs_bool) = rhs_val {
+                return match op {
+                    Op::EQ => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            ty: DataType::Boolean,
+                            val: lhs_bool == rhs_bool,
+                        }
+                    }),
+                    Op::NE => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            ty: DataType::Boolean,
+                            val: lhs_bool != rhs_bool,
+                        }
+                    }),
+                    _ => None
+                }
+            }
+        }
+        None
+    }
+
+    fn fold_ints(lhs_val: &Option<i32>, rhs_val: &Option<i32>, op: &Op) -> Option<Expr> {
+        if let Some(lhs_int) = lhs_val {
+            if let Some(rhs_int) = rhs_val {
+                return match op {
+                    Op::EQ => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            ty: DataType::Boolean,
+                            val: lhs_int == rhs_int,
+                        }
+                    }),
+                    Op::NE => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            ty: DataType::Boolean,
+                            val: lhs_int != rhs_int,
+                        }
+                    }),
+                    Op::GE => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            ty: DataType::Boolean,
+                            val: lhs_int >= rhs_int,
+                        }
+                    }),
+                    Op::GT => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            ty: DataType::Boolean,
+                            val: lhs_int > rhs_int,
+                        }
+                    }),
+                    Op::LE => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            ty: DataType::Boolean,
+                            val: lhs_int <= rhs_int,
+                        }
+                    }),
+                    Op::LT => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            ty: DataType::Boolean,
+                            val: lhs_int < rhs_int,
+                        }
+                    }),
+                    Op::Add => Some(Expr::Primitive {
+                        val: Value::Integer {
+                            ty: DataType::Integer,
+                            val: lhs_int + rhs_int,
+                        }
+                    }),
+                    Op::Subtract => Some(Expr::Primitive {
+                        val: Value::Integer {
+                            ty: DataType::Integer,
+                            val: lhs_int - rhs_int,
+                        }
+                    }),
+                    Op::Multiply => Some(Expr::Primitive {
+                        val: Value::Integer {
+                            ty: DataType::Integer,
+                            val: lhs_int * rhs_int,
+                        }
+                    }),
+                    Op::Divide => Some(Expr::Primitive {
+                        val: Value::Integer {
+                            ty: DataType::Integer,
+                            val: lhs_int / rhs_int,
+                        }
+                    }),
+                    Op::Modulo => Some(Expr::Primitive {
+                        val: Value::Integer {
+                            ty: DataType::Integer,
+                            val: lhs_int % rhs_int,
+                        }
+                    }),
+                    _ => None
+                }
+            }
+        }
+        None
+    }
+
+    fn fold_strings(lhs_val: &Option<String>, rhs_val: &Option<String>, op: &Op) -> Option<Expr> {
+        if let Some(lhs_str) = lhs_val {
+            if let Some(rhs_str) = rhs_val {
+                return match op {
+                    Op::EQ => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            ty: DataType::Boolean,
+                            val: lhs_str == rhs_str,
+                        }
+                    }),
+                    Op::NE => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            ty: DataType::Boolean,
+                            val: lhs_str != rhs_str,
+                        }
+                    }),
+                    _ => None
+                }
+            }
+        }
+        None
+    }
+
     fn fold_call(call: &Expr, _table: &SymbolTable) -> Expr {
         call.clone()
     }

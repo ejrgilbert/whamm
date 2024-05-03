@@ -92,7 +92,7 @@ fn emit_stmt(table: &mut SymbolTable, module_data: &mut ModuleData, mem_id: &Mem
             } else {
                 is_success &= emit_expr(table, module_data, mem_id, curr_mem_offset, expr, instr_builder, index);
 
-                if let Expr::VarId { name } = var_id {
+                return if let Expr::VarId { name } = var_id {
                     let var_rec_id = match table.lookup(name) {
                         Some(rec_id) => rec_id.clone(),
                         _ => {
@@ -124,23 +124,23 @@ fn emit_stmt(table: &mut SymbolTable, module_data: &mut ModuleData, mem_id: &Mem
                                     unimplemented!()
                                 }
                             }
-                            return is_success;
+                            is_success
                         },
                         Some(ty) => {
                             error!("Incorrect variable record, expected Record::Var, found: {:?}", ty);
                             is_success &= false;
-                            return is_success
+                            is_success
                         },
                         None => {
                             error!("Variable symbol does not exist!");
                             is_success &= false;
-                            return is_success
+                            is_success
                         }
                     }
                 } else {
                     error!("Expected VarId.");
                     is_success &= false;
-                    return is_success
+                    is_success
                 }
             }
         }
@@ -577,6 +577,16 @@ impl WasmRewritingEmitter {
         is_success
     }
 
+    fn override_var_val(&mut self, rec_id: &usize, val: Option<Value>) {
+        let mut rec = self.table.get_record_mut(&rec_id);
+        match &mut rec {
+            Some(Record::Var { value, .. }) => {
+                *value = val;
+            }
+            _ => {}
+        }
+    }
+
     fn preprocess_instr(&mut self, instr: &Instr, function: &mut Function) -> Option<Vec<ValType>> {
         if function.name.to_lowercase() == "call" {
             if let Instr::Call(func) = &instr {
@@ -617,17 +627,11 @@ impl WasmRewritingEmitter {
                         return Some(params);
                     }
                 };
-                let mut rec = self.table.get_record_mut(&rec_id);
-                match &mut rec {
-                    Some(Record::Var { value, .. }) => {
-                        *value = Some(Value::Str {
-                            ty: DataType::Str,
-                            val: func_kind.to_string(),
-                            addr: None
-                        });
-                    }
-                    _ => {}
-                }
+                self.override_var_val(&rec_id, Some(Value::Str {
+                    ty: DataType::Str,
+                    val: func_kind.to_string(),
+                    addr: None
+                }));
 
                 let tuple = function.globals.get_mut("target_fn_type").unwrap();
                 tuple.2 = Some(Value::Str {
@@ -643,17 +647,12 @@ impl WasmRewritingEmitter {
                         return Some(params);
                     }
                 };
-                let mut rec = self.table.get_record_mut(&rec_id);
-                match &mut rec {
-                    Some(Record::Var { value, .. }) => {
-                        *value = Some(Value::Str {
-                            ty: DataType::Str,
-                            val: module.clone(),
-                            addr: None
-                        });
-                    }
-                    _ => {}
-                }
+                self.override_var_val(&rec_id, Some(Value::Str {
+                    ty: DataType::Str,
+                    val: module.clone(),
+                    addr: None
+                }));
+
                 let tuple = function.globals.get_mut("target_imp_module").unwrap();
                 tuple.2 = Some(Value::Str {
                     ty: DataType::Str,
@@ -668,17 +667,12 @@ impl WasmRewritingEmitter {
                         return Some(params);
                     }
                 };
-                let mut rec = self.table.get_record_mut(&rec_id);
-                match &mut rec {
-                    Some(Record::Var { value, .. }) => {
-                        *value = Some(Value::Str {
-                            ty: DataType::Str,
-                            val: name.clone(),
-                            addr: None
-                        });
-                    }
-                    _ => {}
-                }
+                self.override_var_val(&rec_id, Some(Value::Str {
+                    ty: DataType::Str,
+                    val: name.clone(),
+                    addr: None
+                }));
+
                 let tuple = function.globals.get_mut("target_imp_name").unwrap();
                 tuple.2 = Some(Value::Str {
                     ty: DataType::Str,
@@ -1030,27 +1024,14 @@ impl WasmRewritingEmitter {
             };
 
             if let Some(f_call_id) = func_call_id {
+                // we need to inject an alternate call to the specified fn name!
+                // replace the arguments
+                self.emit_params(&emitted_params, func_id, &instr_seq_id, index);
+
                 // This MUST be `self.app_wasm` so we're mutating what will be the instrumented application.
                 let func = self.app_wasm.funcs.get_mut(func_id).kind.unwrap_local_mut();
                 let func_builder = func.builder_mut();
                 let mut instr_seq = func_builder.instr_seq(*instr_seq_id);
-
-                // we need to inject an alternate call to the specified fn name!
-                // replace the arguments
-                if let Some(params) = emitted_params {
-                    for (_param_name, param_rec_id) in params.iter() {
-                        let param_rec = self.table.get_record_mut(&param_rec_id);
-                        if let Some(Record::Var { addr: Some(VarAddr::Local {addr}), .. }) = param_rec {
-                            instr_seq.instr_at(*index, walrus::ir::LocalGet {
-                                local: addr.clone()
-                            });
-                            *index += 1;
-                        } else {
-                            error!("Could not inject alternate call to function, something went wrong...");
-                            exit(1);
-                        }
-                    }
-                }
 
                 // inject call
                 instr_seq.instr_at(*index, walrus::ir::Call {
