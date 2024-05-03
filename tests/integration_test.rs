@@ -84,6 +84,7 @@ fn instrument_with_fault_injection() {
                 if !code.success() {
                     assert!(false, "`wasm2wat` verification check failed!");
                 }
+                assert!(true);
             }
             Err(err) => {
                 error!("{}", err.to_string());
