@@ -74,8 +74,9 @@ fn instrument_with_fault_injection() {
         // which.status().expect("process failed to execute");
 
         let mut wasm2wat = Command::new("wasm2wat");
-        wasm2wat.stdout(Stdio::null())
-            .arg(out_wasm_path);
+        wasm2wat.arg("--help");
+        // wasm2wat.stdout(Stdio::null())
+        //     .arg(out_wasm_path);
 
         // wasm2wat verification check
         match wasm2wat.status() {
