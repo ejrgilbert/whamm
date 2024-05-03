@@ -92,12 +92,13 @@ fn emit_stmt(table: &mut SymbolTable, module_data: &mut ModuleData, mem_id: &Mem
             } else {
                 is_success &= emit_expr(table, module_data, mem_id, curr_mem_offset, expr, instr_builder, index);
 
-                if let Expr::VarId { name } = var_id {
+                return if let Expr::VarId { name } = var_id {
                     let var_rec_id = match table.lookup(name) {
                         Some(rec_id) => rec_id.clone(),
                         _ => {
                             error!("VarId '{}' does not exist in this scope!", name);
-                            return false;
+                            is_success &= false;
+                            return is_success
                         }
                     };
                     match table.get_record_mut(&var_rec_id) {
@@ -123,20 +124,23 @@ fn emit_stmt(table: &mut SymbolTable, module_data: &mut ModuleData, mem_id: &Mem
                                     unimplemented!()
                                 }
                             }
-                            true
+                            is_success
                         },
                         Some(ty) => {
                             error!("Incorrect variable record, expected Record::Var, found: {:?}", ty);
-                            false
+                            is_success &= false;
+                            is_success
                         },
                         None => {
                             error!("Variable symbol does not exist!");
-                            false
+                            is_success &= false;
+                            is_success
                         }
                     }
                 } else {
                     error!("Expected VarId.");
-                    false
+                    is_success &= false;
+                    is_success
                 }
             }
         }
@@ -376,7 +380,7 @@ fn emit_op(op: &Op, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> b
     }
 }
 
-fn emit_datatype(_datatype: &DataType, _instr_builder: &InstrSeqBuilder, _index: &mut usize) -> bool {
+fn _emit_datatype(_datatype: &DataType, _instr_builder: &InstrSeqBuilder, _index: &mut usize) -> bool {
     // don't think i actually need this
     false
 }
@@ -555,7 +559,7 @@ impl WasmRewritingEmitter {
         }
 
         for (function_name, ProbeLoc {positions}) in probe_locs.iter() {
-            for (func_name, func_id, instr_seq_id, index, instr) in positions.iter() {
+            for (_func_name, func_id, instr_seq_id, index, instr) in positions.iter() {
                 // if let Some(name) = func_name.as_ref() {
                 //     if name.contains("CallFuture$LT") {
                 //         println!("Possibly injecting probes for {name}");
@@ -571,6 +575,16 @@ impl WasmRewritingEmitter {
             }
         }
         is_success
+    }
+
+    fn override_var_val(&mut self, rec_id: &usize, val: Option<Value>) {
+        let mut rec = self.table.get_record_mut(&rec_id);
+        match &mut rec {
+            Some(Record::Var { value, .. }) => {
+                *value = val;
+            }
+            _ => {}
+        }
     }
 
     fn preprocess_instr(&mut self, instr: &Instr, function: &mut Function) -> Option<Vec<ValType>> {
@@ -613,17 +627,11 @@ impl WasmRewritingEmitter {
                         return Some(params);
                     }
                 };
-                let mut rec = self.table.get_record_mut(&rec_id);
-                match &mut rec {
-                    Some(Record::Var { value, .. }) => {
-                        *value = Some(Value::Str {
-                            ty: DataType::Str,
-                            val: func_kind.to_string(),
-                            addr: None
-                        });
-                    }
-                    _ => {}
-                }
+                self.override_var_val(&rec_id, Some(Value::Str {
+                    ty: DataType::Str,
+                    val: func_kind.to_string(),
+                    addr: None
+                }));
 
                 let tuple = function.globals.get_mut("target_fn_type").unwrap();
                 tuple.2 = Some(Value::Str {
@@ -639,17 +647,12 @@ impl WasmRewritingEmitter {
                         return Some(params);
                     }
                 };
-                let mut rec = self.table.get_record_mut(&rec_id);
-                match &mut rec {
-                    Some(Record::Var { value, .. }) => {
-                        *value = Some(Value::Str {
-                            ty: DataType::Str,
-                            val: module.clone(),
-                            addr: None
-                        });
-                    }
-                    _ => {}
-                }
+                self.override_var_val(&rec_id, Some(Value::Str {
+                    ty: DataType::Str,
+                    val: module.clone(),
+                    addr: None
+                }));
+
                 let tuple = function.globals.get_mut("target_imp_module").unwrap();
                 tuple.2 = Some(Value::Str {
                     ty: DataType::Str,
@@ -664,17 +667,12 @@ impl WasmRewritingEmitter {
                         return Some(params);
                     }
                 };
-                let mut rec = self.table.get_record_mut(&rec_id);
-                match &mut rec {
-                    Some(Record::Var { value, .. }) => {
-                        *value = Some(Value::Str {
-                            ty: DataType::Str,
-                            val: name.clone(),
-                            addr: None
-                        });
-                    }
-                    _ => {}
-                }
+                self.override_var_val(&rec_id, Some(Value::Str {
+                    ty: DataType::Str,
+                    val: name.clone(),
+                    addr: None
+                }));
+
                 let tuple = function.globals.get_mut("target_imp_name").unwrap();
                 tuple.2 = Some(Value::Str {
                     ty: DataType::Str,
@@ -956,7 +954,7 @@ impl WasmRewritingEmitter {
     }
 
     /// Returns the InstrSeqId of the `then` block
-    fn emit_alt_body(&mut self, function_name: &String, probe: &mut Probe, emitted_params: &Option<Vec<(String, usize)>>, mem_id: &MemoryId, curr_mem_offset: &mut u32, func_id: FunctionId,
+    fn emit_alt_body(&mut self, _function_name: &String, probe: &mut Probe, _emitted_params: &Option<Vec<(String, usize)>>, mem_id: &MemoryId, curr_mem_offset: &mut u32, func_id: FunctionId,
                      instr_seq_id: &InstrSeqId, index: &mut usize) -> (InstrSeqId, usize, InstrSeqId, usize) {
         let mut is_success = true;
 
@@ -1026,27 +1024,14 @@ impl WasmRewritingEmitter {
             };
 
             if let Some(f_call_id) = func_call_id {
+                // we need to inject an alternate call to the specified fn name!
+                // replace the arguments
+                self.emit_params(&emitted_params, func_id, &instr_seq_id, index);
+
                 // This MUST be `self.app_wasm` so we're mutating what will be the instrumented application.
                 let func = self.app_wasm.funcs.get_mut(func_id).kind.unwrap_local_mut();
                 let func_builder = func.builder_mut();
                 let mut instr_seq = func_builder.instr_seq(*instr_seq_id);
-
-                // we need to inject an alternate call to the specified fn name!
-                // replace the arguments
-                if let Some(params) = emitted_params {
-                    for (_param_name, param_rec_id) in params.iter() {
-                        let param_rec = self.table.get_record_mut(&param_rec_id);
-                        if let Some(Record::Var { addr: Some(VarAddr::Local {addr}), .. }) = param_rec {
-                            instr_seq.instr_at(*index, walrus::ir::LocalGet {
-                                local: addr.clone()
-                            });
-                            *index += 1;
-                        } else {
-                            error!("Could not inject alternate call to function, something went wrong...");
-                            exit(1);
-                        }
-                    }
-                }
 
                 // inject call
                 instr_seq.instr_at(*index, walrus::ir::Call {

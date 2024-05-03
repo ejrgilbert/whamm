@@ -2,11 +2,12 @@ use crate::parser::types::{Whamm, WhammVisitor};
 use crate::verifier::builder_visitor::SymbolTableBuilder;
 use crate::verifier::types::SymbolTable;
 
-pub fn verify(ast: &Whamm) -> SymbolTable {
-    let table = build_symbol_table(&ast);
-
-    // TODO do typechecking!
-    return table;
+pub fn verify(ast: &Whamm, verify: bool) -> SymbolTable {
+    if verify {
+        // TODO do typechecking!
+        unimplemented!()
+    }
+    build_symbol_table(&ast)
 }
 
 // ================

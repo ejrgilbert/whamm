@@ -31,11 +31,12 @@ struct Args {
     #[clap(short, long, value_parser, default_value = "./output/output.wasm")]
     output_path: String,
 
-    /// Whether to emit Virgil
-    #[clap(short, long, action)]
-    emit_virgil: bool,
+    /// Whether to emit Virgil code as the instrumentation code
+    #[clap(short, long, action, default_value = "false")]
+    virgil: bool,
 
-    #[clap(long, short, action)]
+    /// Whether to run the verifier on the specified whammy
+    #[clap(long, short, action, default_value = "true")]
     run_verifier: bool
 }
 
@@ -62,6 +63,9 @@ fn try_main() -> Result<(), failure::Error> {
     let whammy = std::fs::read_to_string(&whammy_path);
     let output_wasm_path = args.output_path;
 
+    let emit_virgil = args.virgil;
+    let run_verifier = args.run_verifier;
+
     match whammy {
         Ok(unparsed_str) => {
             // Parse the script and build the AST
@@ -77,7 +81,7 @@ fn try_main() -> Result<(), failure::Error> {
             };
 
             // Build the symbol table from the AST
-            let mut symbol_table = verify(&whamm);
+            let mut symbol_table = verify(&whamm, run_verifier);
             println!("{:#?}", symbol_table);
             symbol_table.reset();
 
@@ -85,10 +89,14 @@ fn try_main() -> Result<(), failure::Error> {
             let _config =  walrus::ModuleConfig::new();
             let app_wasm = walrus::Module::from_file(&app_wasm_path).unwrap();
 
-            let emitter = WasmRewritingEmitter::new(
+            // Configure the emitter based on target instrumentation code format
+            let emitter = if emit_virgil {
+                unimplemented!();
+            } else {
+                WasmRewritingEmitter::new(
                 app_wasm,
                 symbol_table
-            );
+            )};
 
             let mut generator = CodeGenerator::new(Box::new(emitter));
 

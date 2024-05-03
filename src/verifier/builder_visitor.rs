@@ -218,6 +218,20 @@ impl SymbolTableBuilder {
         let id = self.table.put(f.name.clone(), fn_rec);
 
         // add fn record to the current record
+        self.add_fn_id_to_curr_rec(id);
+
+        // enter fn scope
+        self.table.enter_scope();
+        self.curr_fn = Some(id.clone());
+
+        // set scope name and type
+        self.table.set_curr_scope_info(f.name.clone(), ScopeType::Fn);
+
+        // visit parameters
+        f.params.iter().for_each(| param | self.visit_formal_param(param));
+    }
+
+    fn add_fn_id_to_curr_rec(&mut self, id: usize) {
         match self.table.get_curr_rec_mut() {
             Some(Record::Whamm { fns, .. }) |
             Some(Record::Whammy { fns, .. }) |
@@ -231,16 +245,6 @@ impl SymbolTableBuilder {
                 unreachable!()
             }
         }
-
-        // enter fn scope
-        self.table.enter_scope();
-        self.curr_fn = Some(id.clone());
-
-        // set scope name and type
-        self.table.set_curr_scope_info(f.name.clone(), ScopeType::Fn);
-
-        // visit parameters
-        f.params.iter().for_each(| param | self.visit_formal_param(param));
     }
 
     fn add_param(&mut self, var_id: &Expr, ty: &DataType) {
@@ -288,19 +292,7 @@ impl SymbolTableBuilder {
         });
 
         // add global record to the current record
-        match self.table.get_curr_rec_mut() {
-            Some(Record::Whamm { globals, .. }) |
-            Some(Record::Whammy { globals, .. }) |
-            Some(Record::Provider { globals, .. }) |
-            Some(Record::Module { globals, .. }) |
-            Some(Record::Function { globals, .. }) |
-            Some(Record::Probe { globals, .. }) => {
-                globals.push(id.clone());
-            }
-            _ => {
-                unreachable!()
-            }
-        };
+        self.add_fn_id_to_curr_rec(id);
     }
 
     fn visit_globals(&mut self, globals: &HashMap<String, (DataType, Expr, Option<Value>)>) {

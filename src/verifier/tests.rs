@@ -30,7 +30,7 @@ pub fn test_build_table() {
     for script in VALID_SCRIPTS {
         match tests::get_ast(script) {
             Some(ast) => {
-                let table = verifier::verify(&ast);
+                let table = verifier::verify(&ast, false);
                 println!("{:#?}", table);
             },
             None => {
@@ -57,7 +57,7 @@ wasm::call:alt /
 
     match tests::get_ast(script) {
         Some(ast) => {
-            let table = verifier::verify(&ast);
+            let table = verifier::verify(&ast, false);
             println!("{:#?}", table);
 
             // 7 scopes: whamm, strcmp, whammy, wasm, bytecode, call, alt
