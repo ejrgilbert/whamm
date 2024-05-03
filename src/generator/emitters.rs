@@ -97,7 +97,8 @@ fn emit_stmt(table: &mut SymbolTable, module_data: &mut ModuleData, mem_id: &Mem
                         Some(rec_id) => rec_id.clone(),
                         _ => {
                             error!("VarId '{}' does not exist in this scope!", name);
-                            return false;
+                            is_success &= false;
+                            return is_success
                         }
                     };
                     match table.get_record_mut(&var_rec_id) {
@@ -123,20 +124,23 @@ fn emit_stmt(table: &mut SymbolTable, module_data: &mut ModuleData, mem_id: &Mem
                                     unimplemented!()
                                 }
                             }
-                            true
+                            return is_success;
                         },
                         Some(ty) => {
                             error!("Incorrect variable record, expected Record::Var, found: {:?}", ty);
-                            false
+                            is_success &= false;
+                            return is_success
                         },
                         None => {
                             error!("Variable symbol does not exist!");
-                            false
+                            is_success &= false;
+                            return is_success
                         }
                     }
                 } else {
                     error!("Expected VarId.");
-                    false
+                    is_success &= false;
+                    return is_success
                 }
             }
         }
@@ -376,7 +380,7 @@ fn emit_op(op: &Op, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> b
     }
 }
 
-fn emit_datatype(_datatype: &DataType, _instr_builder: &InstrSeqBuilder, _index: &mut usize) -> bool {
+fn _emit_datatype(_datatype: &DataType, _instr_builder: &InstrSeqBuilder, _index: &mut usize) -> bool {
     // don't think i actually need this
     false
 }
@@ -555,7 +559,7 @@ impl WasmRewritingEmitter {
         }
 
         for (function_name, ProbeLoc {positions}) in probe_locs.iter() {
-            for (func_name, func_id, instr_seq_id, index, instr) in positions.iter() {
+            for (_func_name, func_id, instr_seq_id, index, instr) in positions.iter() {
                 // if let Some(name) = func_name.as_ref() {
                 //     if name.contains("CallFuture$LT") {
                 //         println!("Possibly injecting probes for {name}");
@@ -956,7 +960,7 @@ impl WasmRewritingEmitter {
     }
 
     /// Returns the InstrSeqId of the `then` block
-    fn emit_alt_body(&mut self, function_name: &String, probe: &mut Probe, emitted_params: &Option<Vec<(String, usize)>>, mem_id: &MemoryId, curr_mem_offset: &mut u32, func_id: FunctionId,
+    fn emit_alt_body(&mut self, _function_name: &String, probe: &mut Probe, _emitted_params: &Option<Vec<(String, usize)>>, mem_id: &MemoryId, curr_mem_offset: &mut u32, func_id: FunctionId,
                      instr_seq_id: &InstrSeqId, index: &mut usize) -> (InstrSeqId, usize, InstrSeqId, usize) {
         let mut is_success = true;
 

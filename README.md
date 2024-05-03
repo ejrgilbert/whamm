@@ -27,10 +27,10 @@ cargo test -- --nocapture # With stdout tracing
 
 To run project (there are example Whammys in `tests/whammys` folder):
 ```shell
-cargo run -- --app <path_to_app_wasm> --mm <path_to_whammy> <path_for_compiled_output>
+cargo run -- --app <path_to_app_wasm> --whammy <path_to_whammy> <path_for_compiled_output>
 ```
 
 To specify log level:
 ```shell
-RUST_LOG={ error | warn | info | debug | trace | off } cargo run -- --app <path_to_app_wasm> --mm <path_to_whammy> <path_for_compiled_output>
+RUST_LOG={ error | warn | info | debug | trace | off } cargo run -- --app <path_to_app_wasm> --whammy <path_to_whammy> <path_for_compiled_output>
 ```
