@@ -412,6 +412,10 @@ impl WhammVisitor<()> for SymbolTableBuilder {
         self.curr_probe = None;
     }
 
+    // fn visit_predicate(&mut self, _predicate: &Expr) -> () {
+    //     unimplemented!()
+    // }
+
     fn visit_fn(&mut self, f: &Fn) -> () {
         trace!("Entering: visit_fn");
 

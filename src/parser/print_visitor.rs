@@ -285,6 +285,10 @@ impl WhammVisitor<String> for AsStrVisitor {
         s
     }
 
+    // fn visit_predicate(&mut self, _predicate: &Expr) -> String {
+    //     unimplemented!()
+    // }
+
     fn visit_fn(&mut self, f: &parser_types::Fn) -> String {
         let mut s = "".to_string();
 

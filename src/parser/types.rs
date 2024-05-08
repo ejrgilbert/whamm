@@ -598,6 +598,7 @@ pub trait WhammVisitor<T> {
     fn visit_module(&mut self, module: &Module) -> T;
     fn visit_function(&mut self, function: &Function) -> T;
     fn visit_probe(&mut self, probe: &Probe) -> T;
+    // fn visit_predicate(&mut self, predicate: &Expr) -> T;
     fn visit_fn(&mut self, f: &Fn) -> T;
     fn visit_formal_param(&mut self, param: &(Expr, DataType)) -> T;
     fn visit_stmt(&mut self, stmt: &Statement) -> T;
@@ -615,6 +616,7 @@ pub trait WhammVisitorMut<T> {
     fn visit_module(&mut self, module: &mut Module) -> T;
     fn visit_function(&mut self, function: &mut Function) -> T;
     fn visit_probe(&mut self, probe: &mut Probe) -> T;
+    // fn visit_predicate(&mut self, predicate: &mut Expr) -> T;
     fn visit_fn(&mut self, f: &mut Fn) -> T;
     fn visit_formal_param(&mut self, param: &mut (Expr, DataType)) -> T;
     fn visit_stmt(&mut self, stmt: &mut Statement) -> T;

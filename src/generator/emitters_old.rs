@@ -1,11 +1,9 @@
 use std::collections::HashMap;
-use std::fs::metadata;
-use std::path::is_separator;
 use std::process::exit;
 use log::{error, info, warn};
 use regex::Regex;
 use walrus::{ActiveData, ActiveDataLocation, DataKind, FunctionBuilder, FunctionId, FunctionKind, ImportedFunction, InstrLocId, InstrSeqBuilder, LocalFunction, MemoryId, ModuleData, ValType};
-use walrus::ir::{BinaryOp, dfs_pre_order_mut, ExtendedLoad, Instr, InstrSeqId, LoadKind, MemArg};
+use walrus::ir::{BinaryOp, ExtendedLoad, Instr, InstrSeqId, LoadKind, MemArg};
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{DataType, Whammy, Whamm, Expr, Fn, Function, Module, Op, Probe, Provider, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
@@ -16,18 +14,15 @@ use crate::verifier::types::{Record, SymbolTable, VarAddr};
 
 pub trait Emitter {
     fn enter_scope(&mut self);
-    fn enter_named_scope(&mut self, scope_name: &String);
     fn exit_scope(&mut self);
     fn reset_children(&mut self);
 
     fn emit_whamm(&mut self, whamm: &Whamm) -> bool;
     fn emit_whammy(&mut self, whammy: &Whammy) -> bool;
     fn emit_provider(&mut self, context: &str, provider: &mut Provider) -> bool;
+
+    // TODO -- should emit module/function/probe be private?
     fn emit_module(&mut self, context: &str, module: &mut Module) -> bool;
-    fn emit_function(&mut self, context: &str, function: &mut Function) -> bool;
-    fn emit_params(&mut self) -> bool;
-    fn emit_probe(&mut self, context: &str, probe: &mut Probe) -> bool;
-    fn fold_expr(&mut self, expr: &mut Expr) -> bool;
 
     fn emit_fn(&mut self, context_name: &str, f: &Fn) -> bool;
     fn emit_formal_param(&mut self, param: &(Expr, DataType)) -> bool;
@@ -51,17 +46,17 @@ pub trait Emitter {
 // =================================================================================
 // =================================================================================
 
-fn emit_body(table: &mut SymbolTable, module_data: &mut ModuleData, body: &mut Vec<Statement>,
-             instr_builder: &mut InstrSeqBuilder, metadata: &mut InsertionMetadata, index: &mut usize) -> bool {
+fn emit_body(table: &mut SymbolTable, module_data: &mut ModuleData, mem_id: &MemoryId, curr_mem_offset: &mut u32,
+             body: &mut Vec<Statement>, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> bool {
     let mut is_success = true;
     body.iter_mut().for_each(|stmt| {
-        is_success &= emit_stmt(table, module_data, stmt, instr_builder, metadata, index)
+        is_success &= emit_stmt(table, module_data, mem_id, curr_mem_offset, stmt, instr_builder, index)
     });
     is_success
 }
 
-fn emit_stmt(table: &mut SymbolTable, module_data: &mut ModuleData, stmt: &mut Statement,
-             instr_builder: &mut InstrSeqBuilder, metadata: &mut InsertionMetadata, index: &mut usize) -> bool {
+fn emit_stmt(table: &mut SymbolTable, module_data: &mut ModuleData, mem_id: &MemoryId, curr_mem_offset: &mut u32,
+             stmt: &mut Statement, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> bool {
     let mut is_success = true;
     match stmt {
         Statement::Assign { var_id, expr } => {
@@ -95,7 +90,7 @@ fn emit_stmt(table: &mut SymbolTable, module_data: &mut ModuleData, stmt: &mut S
                     false
                 }
             } else {
-                is_success &= emit_expr(table, module_data, expr, instr_builder, metadata, index);
+                is_success &= emit_expr(table, module_data, mem_id, curr_mem_offset, expr, instr_builder, index);
 
                 return if let Expr::VarId { name } = var_id {
                     let var_rec_id = match table.lookup(name) {
@@ -150,19 +145,18 @@ fn emit_stmt(table: &mut SymbolTable, module_data: &mut ModuleData, stmt: &mut S
             }
         }
         Statement::Expr { expr } => {
-            is_success &= emit_expr(table, module_data, expr, instr_builder, metadata, index);
+            is_success &= emit_expr(table, module_data, mem_id, curr_mem_offset, expr, instr_builder, index);
         }
     }
     is_success
 }
 
-fn emit_expr(table: &mut SymbolTable, module_data: &mut ModuleData, expr: &mut Expr, instr_builder: &mut InstrSeqBuilder,
-             metadata: &mut InsertionMetadata, index: &mut usize) -> bool {
+fn emit_expr(table: &mut SymbolTable, module_data: &mut ModuleData, mem_id: &MemoryId, curr_mem_offset: &mut u32, expr: &mut Expr, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> bool {
     let mut is_success = true;
     match expr {
         Expr::BinOp {lhs, op, rhs} => {
-            is_success &= emit_expr(table, module_data, lhs, instr_builder, metadata, index);
-            is_success &= emit_expr(table, module_data, rhs, instr_builder, metadata, index);
+            is_success &= emit_expr(table, module_data, mem_id, curr_mem_offset, lhs, instr_builder, index);
+            is_success &= emit_expr(table, module_data, mem_id, curr_mem_offset, rhs, instr_builder, index);
             is_success &= emit_op(op, instr_builder, index);
         }
         Expr::Call { fn_target, args } => {
@@ -175,7 +169,7 @@ fn emit_expr(table: &mut SymbolTable, module_data: &mut ModuleData, expr: &mut E
             if let Some(args) = args {
                 args.iter_mut().for_each(|boxed_arg| {
                     let arg = &mut **boxed_arg; // unbox
-                    is_success &= emit_expr(table, module_data, arg, instr_builder, metadata, index);
+                    is_success &= emit_expr(table, module_data, mem_id, curr_mem_offset, arg, instr_builder, index);
                 })
             }
 
@@ -258,7 +252,7 @@ fn emit_expr(table: &mut SymbolTable, module_data: &mut ModuleData, expr: &mut E
             }
         }
         Expr::Primitive { val } => {
-            is_success &= emit_value(table, module_data, val, instr_builder, metadata, index);
+            is_success &= emit_value(table, mem_id, module_data, curr_mem_offset, val, instr_builder, index);
         }
     }
     is_success
@@ -391,8 +385,7 @@ fn _emit_datatype(_datatype: &DataType, _instr_builder: &InstrSeqBuilder, _index
     false
 }
 
-fn emit_value(table: &mut SymbolTable, module_data: &mut ModuleData, val: &mut Value, instr_builder: &mut InstrSeqBuilder,
-              metadata: &mut InsertionMetadata, index: &mut usize) -> bool {
+fn emit_value(table: &mut SymbolTable, mem_id: &MemoryId, module_data: &mut ModuleData, curr_mem_offset: &mut u32, val: &mut Value, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> bool {
     let mut is_success = true;
     match val {
         Value::Integer { val, .. } => {
@@ -405,20 +398,20 @@ fn emit_value(table: &mut SymbolTable, module_data: &mut ModuleData, val: &mut V
         }
         Value::Str { val, addr, ty: _ty } => {
             let data_id = module_data.add(DataKind::Active(ActiveData {
-                memory: metadata.mem_id,
-                location: ActiveDataLocation::Absolute(metadata.curr_mem_offset.clone())
+                memory: *mem_id,
+                location: ActiveDataLocation::Absolute(curr_mem_offset.clone())
             }), Vec::from(val.as_bytes()));
 
             // save the memory addresses/lens so they can be used as appropriate
             *addr = Some((
                 data_id,
-                metadata.curr_mem_offset.clone(),
+                curr_mem_offset.clone(),
                 val.len()
             ));
 
             // emit Wasm instructions for the memory address and string length
             instr_builder.instr_at( *index,walrus::ir::Const {
-                value: walrus::ir::Value::I32(metadata.curr_mem_offset.clone() as i32)
+                value: walrus::ir::Value::I32(curr_mem_offset.clone() as i32)
             });
             // update index to point to what follows our insertions
             *index += 1;
@@ -429,12 +422,12 @@ fn emit_value(table: &mut SymbolTable, module_data: &mut ModuleData, val: &mut V
             *index += 1;
 
             // update curr_mem_offset to account for new data
-            metadata.curr_mem_offset += val.len() as u32;
+            *curr_mem_offset += val.len() as u32;
             is_success &= true;
         }
         Value::Tuple { vals, .. } => {
             vals.iter_mut().for_each(|val| {
-                is_success &= emit_expr(table, module_data, val, instr_builder, metadata, index);
+                is_success &= emit_expr(table, module_data, mem_id, curr_mem_offset, val, instr_builder, index);
             });
         }
         Value::Boolean { val, .. } => {
@@ -463,33 +456,14 @@ fn emit_value(table: &mut SymbolTable, module_data: &mut ModuleData, val: &mut V
 // ==== WasmRewritingEmitter ====
 // ==============================
 
-struct InsertionMetadata {
-    curr_function: String,
-    mem_id: MemoryId,
-    curr_mem_offset: u32,
-}
-
 // Struct to store info on insertion locations for an instruction sequence.
 // Note that blocks can be indefinitely nested.
 #[derive(Debug)]
 struct ProbeLoc {
-    wasm_func_name: Option<String>,
-    wasm_func_id: FunctionId,
-    instr_seq_id: InstrSeqId,
-    index: usize,
-
-    instr_name: String,
-    instr: Instr,
-    instr_params: Option<Vec<ValType>>,
-    instr_created_args: Vec<(String, usize)>,
-
-    // Save off the compiler-defined constants for this instruction
-    instr_symbols: HashMap<String, Record>
+    // (instr position, no. of paths, nested ProbeInsertLocs)
+    positions: Vec<(Option<String>, FunctionId, InstrSeqId, usize, Instr)>,
 }
-
-fn get_probe_insert_locations(probe_locs: &mut HashMap<String, Vec<ProbeLoc>>, module: &mut Module,
-                              func_id: FunctionId, func_name: Option<String>, func: &LocalFunction,
-                              instr_seq_id: InstrSeqId) {
+fn get_probe_insert_locations(probe_locs: &mut HashMap<String, ProbeLoc>, module: &mut Module, func_id: FunctionId, func_name: Option<String>, func: &LocalFunction, instr_seq_id: InstrSeqId) {
     func.block(instr_seq_id)
         .iter()
         .enumerate()
@@ -500,28 +474,22 @@ fn get_probe_insert_locations(probe_locs: &mut HashMap<String, Vec<ProbeLoc>>, m
             if let Some(_function) = module.functions.get_mut(&instr_name) {
                 // This instruction might need to be probed!
                 // get current probe locations for this instr type
-                let loc_list = match probe_locs.get_mut(&instr_name) {
+                let probe_loc = match probe_locs.get_mut(&instr_name) {
                     Some(probe_loc) => {
                         probe_loc
                     },
                     None => {
-                        probe_locs.insert(instr_name.clone(), vec![]);
+                        // add new ProbeLoc instance for this instr
+                        let probe_loc = ProbeLoc {
+                            positions: vec![]
+                        };
+                        probe_locs.insert(instr_name.clone(), probe_loc);
                         probe_locs.get_mut(&instr_name).unwrap()
                     }
                 };
 
                 // add current instr
-                loc_list.push( ProbeLoc {
-                    wasm_func_name: func_name.clone(),
-                    wasm_func_id: func_id.clone(),
-                    instr_seq_id,
-                    index,
-                    instr_name: instr_name.clone(),
-                    instr: instr.clone(),
-                    instr_params: None,
-                    instr_created_args: vec![],
-                    instr_symbols: HashMap::new()
-                });
+                probe_loc.positions.push((func_name.clone(), func_id.clone(), instr_seq_id, index, instr.clone()));
             }
             // visit nested blocks
             match instr {
@@ -537,19 +505,17 @@ fn get_probe_insert_locations(probe_locs: &mut HashMap<String, Vec<ProbeLoc>>, m
                     get_probe_insert_locations(probe_locs, module, func_id, func_name.clone(), func, if_else.alternative);
                 }
                 _ => {
-                    // do nothing extra for other instructions
+                    // do nothing extra
                 }
             }
         });
 }
 
+
 pub struct WasmRewritingEmitter {
+    // pub app_wasm_path: String,
     pub app_wasm: walrus::Module,
     pub table: SymbolTable,
-
-    // whamm! AST traversal bookkeeping
-    metadata: Option<InsertionMetadata>,
-    probe_locs: HashMap<String, Vec<ProbeLoc>>, // function_name -> ProbeLoc
 
     fn_providing_contexts: Vec<String>
 }
@@ -558,22 +524,20 @@ impl WasmRewritingEmitter {
         Self {
             app_wasm,
             table,
-            metadata: None,
-            probe_locs: HashMap::new(),
             fn_providing_contexts: vec![ "whamm".to_string() ]
         }
     }
 
-    fn setup_wasm_bytecode_module(&mut self, _context: &str, module: &mut Module) -> bool {
+    fn emit_wasm_bytecode_module(&mut self, module: &mut Module) -> bool {
         // Initialize this to 4 MB
         let mem_id = self.app_wasm.memories.iter().next()
             .expect("only single memory is supported")
             .id();
         let mut curr_mem_offset: u32 = 1_052_576; // Set default memory base address to DEFAULT + 4KB = 1048576 bytes + 4000 bytes = 1052576 bytes
         let mut is_success = true;
-
         // Figure out which functions to visit
-        let mut probe_locs = HashMap::new();
+        let mut probe_locs: HashMap<String, ProbeLoc> = HashMap::new();
+
         for func in self.app_wasm.funcs.iter() {
             let id = func.id();
             if let Some(name) = func.name.as_ref() {
@@ -590,314 +554,291 @@ impl WasmRewritingEmitter {
 
             if let FunctionKind::Local(local_func) = &func.kind {
                 // TODO -- make sure that the id is not any of the injected function IDs (strcmp)
-                get_probe_insert_locations(&mut probe_locs, module, id, func.name.clone(),
-                                           local_func, local_func.entry_block());
-
-                // cache and store constants with the ProbeLoc
-                self.preprocess_instrs();
+                get_probe_insert_locations(&mut probe_locs, module, id, func.name.clone(), local_func, local_func.entry_block());
             }
         }
 
-        // Just have this find the probe insert locations, then emit_function iterates over this list!
-        self.metadata = Some(InsertionMetadata {
-            curr_function: "".to_string(),
-            mem_id,
-            curr_mem_offset
-        });
-        self.probe_locs = probe_locs;
+        for (function_name, ProbeLoc {positions}) in probe_locs.iter() {
+            for (_func_name, func_id, instr_seq_id, index, instr) in positions.iter() {
+                // if let Some(name) = func_name.as_ref() {
+                //     if name.contains("CallFuture$LT") {
+                //         println!("Possibly injecting probes for {name}");
+                //     }
+                // }
+                self.table.enter_named_scope(function_name);
+                let function = module.functions.get_mut(function_name).unwrap();
+                let params = self.preprocess_instr(instr, function);
+
+                // passing a clone of index so it can be mutated as instructions are injected
+                is_success &= self.emit_function(function, &mem_id, &mut curr_mem_offset, *func_id, instr_seq_id, &params, &mut index.clone());
+                self.table.exit_scope();
+            }
+        }
         is_success
     }
 
-    fn preprocess_instrs(&mut self) {
-        // iterate over found probe insert locations and process each instruction
-        // (define compiler constants and get params)
-        for (instr_name, probe_locs) in self.probe_locs.iter_mut() {
-            for probe_loc in probe_locs.iter_mut() {
-                if instr_name.to_lowercase() == "call" {
-                    if let Instr::Call(func) = &probe_loc.instr {
-                        let func = self.app_wasm.funcs.get(func.func);
-                        // if func.name.as_ref().unwrap().contains("ZN87") {
-                        //     println!("{}", func.name.as_ref().unwrap());
-                        // }
-                        let (func_kind, module, name, params) = match &func.kind {
-                            FunctionKind::Import(ImportedFunction { ty: ty_id, import: import_id }) => {
-                                let func_kind = "import";
-                                let import = self.app_wasm.imports.get(*import_id);
-                                let ty = self.app_wasm.types.get(*ty_id);
-
-                                (func_kind, import.module.clone(), import.name.clone(), Vec::from(ty.params()))
-                            },
-                            FunctionKind::Local(LocalFunction{ args, ..}) => {
-                                let func_kind = "local";
-                                let mut params = vec![];
-                                args.iter().for_each(|arg_id| {
-                                    let arg = self.app_wasm.locals.get(*arg_id);
-                                    params.push(arg.ty());
-                                });
-
-                                (func_kind, "".to_string(), "".to_string(), Vec::from(params))
-                            },
-                            FunctionKind::Uninitialized(ty_id) => {
-                                let func_kind = "uninitialized";
-                                let ty = self.app_wasm.types.get(*ty_id);
-
-                                (func_kind, "".to_string(), "".to_string(), Vec::from(ty.params()))
-                            }
-                        };
-                        // save off the param types to this instruction
-                        probe_loc.instr_params = Some(params);
-
-                        // define and save off compiler constants
-                        let var_name = "target_fn_type".to_string();
-                        let rec_id = match self.table.lookup(&var_name) {
-                            Some(rec_id) => rec_id.clone(),
-                            _ => {
-                                error!("{} symbol does not exist in this scope!", var_name);
-                                return;
-                            }
-                        };
-                        let rec = self.table.get_record_mut(&rec_id);
-                        if let Some(Record::Var {..}) = rec {
-                            let mut new_rec = rec.unwrap().clone();
-                            match &mut new_rec {
-                                Record::Var { value, .. } => {
-                                    *value = Some(Value::Str {
-                                        ty: DataType::Str,
-                                        val: func_kind.to_string(),
-                                        addr: None
-                                    });
-                                }
-                                _ => {}
-                            }
-
-                            probe_loc.instr_symbols.insert(var_name.clone(), new_rec);
-                        }
-
-                        let var_name = "target_imp_module".to_string();
-                        let rec_id = match self.table.lookup(&"target_imp_module".to_string()) {
-                            Some(rec_id) => rec_id.clone(),
-                            _ => {
-                                error!("{} symbol does not exist in this scope!", var_name);
-                                return;
-                            }
-                        };
-                        let rec = self.table.get_record_mut(&rec_id);
-                        if let Some(Record::Var {..}) = rec {
-                            let mut new_rec = rec.unwrap().clone();
-                            match &mut new_rec {
-                                Record::Var { value, .. } => {
-                                    *value = Some(Value::Str {
-                                        ty: DataType::Str,
-                                        val: module.clone(),
-                                        addr: None
-                                    });
-                                }
-                                _ => {}
-                            }
-
-                            probe_loc.instr_symbols.insert(var_name.clone(), new_rec);
-                        }
-
-                        let var_name = "target_imp_name".to_string();
-                        let rec_id = match self.table.lookup(&"target_imp_name".to_string()) {
-                            Some(rec_id) => rec_id.clone(),
-                            _ => {
-                                error!("{} symbol does not exist in this scope!", var_name);
-                                return;
-                            }
-                        };
-                        let rec = self.table.get_record_mut(&rec_id);
-                        if let Some(Record::Var {..}) = rec {
-                            let mut new_rec = rec.unwrap().clone();
-                            match &mut new_rec {
-                                Record::Var { value, .. } => {
-                                    *value = Some(Value::Str {
-                                        ty: DataType::Str,
-                                        val: name.clone(),
-                                        addr: None
-                                    });
-                                }
-                                _ => {}
-                            }
-
-                            probe_loc.instr_symbols.insert(var_name.clone(), new_rec);
-                        }
-                    }
-                }
+    fn override_var_val(&mut self, rec_id: &usize, val: Option<Value>) {
+        let mut rec = self.table.get_record_mut(&rec_id);
+        match &mut rec {
+            Some(Record::Var { value, .. }) => {
+                *value = val;
             }
+            _ => {}
         }
     }
 
-    fn emit_probe_for_loc(&mut self, probe: &mut Probe, instr_name: &String, probe_loc: &mut ProbeLoc) -> bool {
-        let mut is_success = true;
-        // TODO -- load symbols for this instruction
+    fn preprocess_instr(&mut self, instr: &Instr, function: &mut Function) -> Option<Vec<ValType>> {
+        if function.name.to_lowercase() == "call" {
+            if let Instr::Call(func) = &instr {
+                let func = self.app_wasm.funcs.get(func.func);
+                // if func.name.as_ref().unwrap().contains("ZN87") {
+                //     println!("{}", func.name.as_ref().unwrap());
+                // }
+                let (func_kind, module, name, params) = match &func.kind {
+                    FunctionKind::Import(ImportedFunction { ty: ty_id, import: import_id }) => {
+                        let func_kind = "import";
+                        let import = self.app_wasm.imports.get(*import_id);
+                        let ty = self.app_wasm.types.get(*ty_id);
 
-        if instr_name == "call" {
-            // save off call params if instrumenting a fn call
-            self.save_params(probe_loc);
+                        (func_kind, import.module.clone(), import.name.clone(), Vec::from(ty.params()))
+                    },
+                    FunctionKind::Local(LocalFunction{ args, ..}) => {
+                        let func_kind = "local";
+                        let mut params = vec![];
+                        args.iter().for_each(|arg_id| {
+                            let arg = self.app_wasm.locals.get(*arg_id);
+                            params.push(arg.ty());
+                        });
+
+                        (func_kind, "".to_string(), "".to_string(), Vec::from(params))
+                    },
+                    FunctionKind::Uninitialized(ty_id) => {
+                        let func_kind = "uninitialized";
+                        let ty = self.app_wasm.types.get(*ty_id);
+
+                        (func_kind, "".to_string(), "".to_string(), Vec::from(ty.params()))
+                    }
+                };
+                // define compiler constants
+                let rec_id = match self.table.lookup(&"target_fn_type".to_string()) {
+                    Some(rec_id) => rec_id.clone(),
+                    _ => {
+                        error!("target_fn_type symbol does not exist in this scope!");
+                        return Some(params);
+                    }
+                };
+                self.override_var_val(&rec_id, Some(Value::Str {
+                    ty: DataType::Str,
+                    val: func_kind.to_string(),
+                    addr: None
+                }));
+
+                let tuple = function.globals.get_mut("target_fn_type").unwrap();
+                tuple.2 = Some(Value::Str {
+                    ty: DataType::Str,
+                    val: func_kind.to_string(),
+                    addr: None
+                });
+
+                let rec_id = match self.table.lookup(&"target_imp_module".to_string()) {
+                    Some(rec_id) => rec_id.clone(),
+                    _ => {
+                        error!("target_imp_module symbol does not exist in this scope!");
+                        return Some(params);
+                    }
+                };
+                self.override_var_val(&rec_id, Some(Value::Str {
+                    ty: DataType::Str,
+                    val: module.clone(),
+                    addr: None
+                }));
+
+                let tuple = function.globals.get_mut("target_imp_module").unwrap();
+                tuple.2 = Some(Value::Str {
+                    ty: DataType::Str,
+                    val: module.clone(),
+                    addr: None
+                });
+
+                let rec_id = match self.table.lookup(&"target_imp_name".to_string()) {
+                    Some(rec_id) => rec_id.clone(),
+                    _ => {
+                        error!("target_imp_name symbol does not exist in this scope!");
+                        return Some(params);
+                    }
+                };
+                self.override_var_val(&rec_id, Some(Value::Str {
+                    ty: DataType::Str,
+                    val: name.clone(),
+                    addr: None
+                }));
+
+                let tuple = function.globals.get_mut("target_imp_name").unwrap();
+                tuple.2 = Some(Value::Str {
+                    ty: DataType::Str,
+                    val: name.clone(),
+                    addr: None
+                });
+
+                return Some(params);
+            }
         }
+        None
+    }
+    fn emit_function(&mut self, function: &mut Function, mem_id: &MemoryId, curr_mem_offset: &mut u32, func_id: FunctionId,
+                     instr_seq_id: &InstrSeqId, func_params: &Option<Vec<ValType>>, index: &mut usize) -> bool {
+        // inject probes (should be at the correct point in the `walrus::ir::VisitorMut`)
+        self.emit_probes_for_fn(function, mem_id, curr_mem_offset, func_id, instr_seq_id, func_params, index)
+    }
+    fn emit_probes_for_fn(&mut self, function: &mut Function, mem_id: &MemoryId, curr_mem_offset: &mut u32, func_id: FunctionId,
+                          instr_seq_id: &InstrSeqId, func_params: &Option<Vec<ValType>>, index: &mut usize) -> bool {
+        let mut is_success = true;
+        // 1. Inject BEFORE probes
+        if let Some(res) = self.emit_probes(function, mem_id, curr_mem_offset, func_id, instr_seq_id, func_params, &"before".to_string(), index) {
+            // Assumption: before probes push/pop from stack so it is equivalent to what it was originally
+            is_success &= res;
+        }
+        // 2a. Inject ALT probes
+        if let Some(res) = self.emit_probes(function, mem_id, curr_mem_offset, func_id, instr_seq_id, func_params, &"alt".to_string(), index) {
+            is_success &= res;
+        }
+
+        // 3. Inject AFTER probes
+        if let Some(res) = self.emit_probes(function, mem_id, curr_mem_offset, func_id, instr_seq_id, func_params,&"after".to_string(), index) {
+            // Assumption: before probes push/pop from stack so it is equivalent to what it was originally
+            is_success &= res;
+        }
+
+        is_success
+    }
+
+    fn emit_probes(&mut self, function: &mut Function, mem_id: &MemoryId, curr_mem_offset: &mut u32, func_id: FunctionId,
+                   instr_seq_id: &InstrSeqId, func_params: &Option<Vec<ValType>>, probe_name: &String, index: &mut usize) -> Option<bool> {
+        let mut is_success = true;
+
+        if let Some(probes) = function.probe_map.get_mut(probe_name) {
+            // if this is an alt probe, only will emit one!
+            // The last alt probe in the list will be emitted.
+            if probe_name == "alt" {
+                if probes.len() > 1 {
+                    warn!("Detected multiple `alt` probes, will only emit the last one and ignore the rest!")
+                }
+                if let Some(probe) = probes.last_mut() {
+                    is_success &= self.emit_probe(&function.name, probe, mem_id, curr_mem_offset, func_id, instr_seq_id, func_params, index);
+                }
+            } else {
+                probes.iter_mut().for_each(|probe| {
+                    is_success &= self.emit_probe(&function.name, probe, mem_id, curr_mem_offset, func_id, instr_seq_id, func_params, index);
+                });
+            }
+            Some(is_success)
+        } else {
+            None
+        }
+    }
+
+    fn emit_probe(&mut self, function_name: &String, probe: &mut Probe, mem_id: &MemoryId, curr_mem_offset: &mut u32, func_id: FunctionId,
+                  instr_seq_id: &InstrSeqId, func_params: &Option<Vec<ValType>>, index: &mut usize) -> bool {
+        let mut is_success = true;
+
+        if probe.body.is_none() {
+            // No need to emit the probe...there's no body!
+            return true;
+        }
+        // probe has a body, continue to emit logic!
+
+        // enter the scope for this probe
+        self.table.enter_named_scope(&probe.name);
 
         // determine if I should inject a predicate.
-        if let Some(predicate) = &mut probe.predicate {
+        let pred_to_inject: Option<Expr> = if probe.predicate.is_some() {
             // Fold predicate via constant propagation
-            self.fold_expr(predicate);
-        }
-        if let Some(pred_as_bool) = ExprFolder::get_single_bool(&probe.predicate.as_ref().unwrap()) {
-            // predicate has been reduced to a boolean value, check true/false
-            // otherwise: predicate has not been reduced to a boolean value, will need to inject the folded predicate
-            if !pred_as_bool {
-                // predicate is FALSE, DON'T INJECT PROBE IN GENERAL, so just return from this visit!
-                info!("Predicate is false, no need to inject probe.");
-                return true;
-            }
-            // predicate is TRUE, unconditionally inject body stmts
-            probe.predicate = None;
-        }
+            let folded_pred = ExprFolder::fold_expr(&probe.predicate.as_ref().unwrap(), &self.table);
 
-        if let Some(predicate) = &mut probe.predicate {
+            if let Some(pred_as_bool) = ExprFolder::get_single_bool(&folded_pred) {
+                if !pred_as_bool {
+                    // predicate is FALSE, DON'T INJECT PROBE IN GENERAL, so just return from this fn call!
+                    self.table.exit_scope();
+                    info!("Predicate is false, no need to inject probe.");
+                    return true;
+                }
+                // predicate is TRUE, unconditionally inject body stmts
+                None
+            } else {
+                // predicate has not been reduced to a boolean value, will need to inject the folded predicate
+                // println!("{:#?}", folded_pred);
+                Some(folded_pred)
+            }
+        } else {
+            None
+        };
+
+        let emitted_params = if function_name == "call" {
+            // save the inputs to the current bytecode (do this once)
+            Some(self.create_arg_vars(func_params, func_id, instr_seq_id, index))
+        } else {
+            None
+        };
+
+        if let Some(mut pred) = pred_to_inject {
             if probe.name == "alt" {
-                self.emit_predicate(predicate, probe_loc);
+                self.emit_predicate(&mut pred, mem_id, curr_mem_offset, func_id, instr_seq_id, index);
 
                 // an alternate probe will need to emit an if/else
                 // if pred { <alt_body>; Optional(<alt_call>;) } else { <original_instr> }
-                let (
-                    if_then_block_id,
-                    mut if_then_idx,
-                    else_block_id,
-                    mut else_idx
-                ) = self.emit_alt_body(probe, probe_loc);
+                let (if_then_block_id, mut if_then_idx, else_block_id, mut else_idx) = self.emit_alt_body(function_name, probe, &emitted_params, mem_id, curr_mem_offset, func_id, instr_seq_id, index);
 
                 // 2. possibly emit alt call (if configured to do so)
-                if instr_name == "call" {
-                    is_success &= self.emit_alt_call(probe_loc, &if_then_block_id, &mut if_then_idx);
+                if function_name == "call" {
+                    self.emit_alt_call(&emitted_params, func_id, &if_then_block_id, &mut if_then_idx);
 
                     // This is a call instruction, emit original parameters for the original call in the `else` block
-                    self.emit_params(probe_loc, &else_block_id, &mut else_idx);
+                    self.emit_params(&emitted_params, func_id, &else_block_id, &mut else_idx);
                 }
             } else {
                 // other probe types will just need to have an if block conditional on the predicate
                 // if pred { <probe_body>; }
-                self.emit_predicated_body(probe, predicate, probe_loc.wasm_func_id, &probe_loc.instr_seq_id, &mut probe_loc.index);
+                self.emit_predicated_body(probe, &mut pred, mem_id, curr_mem_offset, func_id, instr_seq_id, index);
             }
         } else {
             // No predicate, just emit the un-predicated probe body
             // <probe_body>;
-            is_success &= self.emit_body(probe.body.as_mut().unwrap(), probe_loc.wasm_func_id, &probe_loc.instr_seq_id, &mut probe_loc.index);
+            is_success &= self.emit_body(mem_id, curr_mem_offset, probe.body.as_mut().unwrap(), func_id, instr_seq_id, index);
 
-            if instr_name == "call" && probe.name == "alt" {
-                self.remove_orig_bytecode(probe, probe_loc);
+            if function_name == "call" && probe.name == "alt" {
+                self.remove_orig_bytecode(probe, func_id, instr_seq_id, index);
 
                 // 2. possibly emit alt call (if configured to do so)
-                self.emit_alt_call(probe_loc, &probe_loc.instr_seq_id, &mut probe_loc.index);
+                self.emit_alt_call(&emitted_params, func_id, instr_seq_id, index);
             }
         }
+
+        self.table.exit_scope();
         is_success
     }
 
-    // fn create_arg_vars(&mut self, func_params: &Option<Vec<ValType>>, func_id: FunctionId,
-    //                    instr_seq_id: &InstrSeqId, index: &mut usize) -> Vec<(String, usize)> {
-    //
-    // }
-
-    fn emit_predicated_body(&mut self, probe: &mut Probe, predicate: &mut Expr, func_id: FunctionId,
-                 instr_seq_id: &InstrSeqId, index: &mut usize) {
+    fn create_arg_vars(&mut self, func_params: &Option<Vec<ValType>>, func_id: FunctionId, instr_seq_id: &InstrSeqId, index: &mut usize) -> Vec<(String, usize)> {
         // This MUST be `self.app_wasm` so we're mutating what will be the instrumented application.
         let func = self.app_wasm.funcs.get_mut(func_id).kind.unwrap_local_mut();
         let func_builder = func.builder_mut();
         let mut instr_builder = func_builder.instr_seq(*instr_seq_id);
-
-        instr_builder.block_at(
-            *index,
-            None,
-            |mut probe_block| {
-                let probe_block_id = probe_block.id();
-                // create new `index` var to store current index into the of the `then` instr sequence
-                let mut probe_block_idx = 0 as usize;
-
-                // inject predicate
-                if !emit_expr(&mut self.table, &mut self.app_wasm.data, predicate, &mut probe_block,
-                              self.metadata.as_mut().unwrap(), &mut probe_block_idx) {
-                    error!("Failed to inject predicate!");
-                    exit(1);
-                }
-
-                // If result of predicate equals 0, break out of the probe block.
-                // Will continue with the application code.
-                probe_block
-                    .i32_const(0)
-                    .binop(BinaryOp::I32Eq)
-                    .br_if(probe_block_id);
-
-                probe_block_idx += 3; // account for the 3 instructions above!
-
-                // At this point we know the predicate returned `true`, so we need to fire the probe body
-                emit_body(&mut self.table, &mut self.app_wasm.data, probe.body.as_mut().unwrap(),
-                          &mut probe_block, self.metadata.as_mut().unwrap(), &mut probe_block_idx);
-            });
-
-        *index += 1;
-    }
-
-    fn emit_predicate(&mut self, predicate: &mut Expr, probe_loc: &mut ProbeLoc) {
-        // This MUST be `self.app_wasm` so we're mutating what will be the instrumented application.
-        let func = self.app_wasm.funcs.get_mut(probe_loc.wasm_func_id).kind.unwrap_local_mut();
-        let func_builder = func.builder_mut();
-        let mut instr_builder = func_builder.instr_seq(probe_loc.instr_seq_id);
-
-        if !emit_expr(&mut self.table, &mut self.app_wasm.data, predicate, &mut instr_builder,
-                      self.metadata.as_mut().unwrap(), &mut probe_loc.index) {
-            error!("Failed to inject predicate!");
-            exit(1);
-        }
-    }
-
-    fn emit_body(&mut self, body: &mut Vec<Statement>, func_id: FunctionId, instr_seq_id: &InstrSeqId, index: &mut usize) -> bool {
-        // This MUST be `self.app_wasm` so we're mutating what will be the instrumented application.
-        let func = self.app_wasm.funcs.get_mut(func_id).kind.unwrap_local_mut();
-        let func_builder = func.builder_mut();
-        let mut instr_builder = func_builder.instr_seq(*instr_seq_id);
-
-        emit_body(&mut self.table, &mut self.app_wasm.data, body, &mut instr_builder,
-                  self.metadata.as_mut().unwrap(), index)
-    }
-
-    fn remove_orig_bytecode(&mut self, probe: &mut Probe, probe_loc: &mut ProbeLoc) -> Option<(Instr, InstrLocId)> {
-        // This MUST be `self.app_wasm` so we're mutating what will be the instrumented application.
-        let func = self.app_wasm.funcs.get_mut(probe_loc.wasm_func_id).kind.unwrap_local_mut();
-        let func_builder = func.builder_mut();
-        let mut instr_builder = func_builder.instr_seq(probe_loc.instr_seq_id);
-
-        // remove the original instruction and store it for later use
-        let mut orig_instr: Option<(Instr, InstrLocId)> = None;
-        if probe.name == "alt" {
-            // remove the original bytecode first
-            orig_instr = Some(instr_builder.instrs_mut().remove(probe_loc.index))
-        }
-        orig_instr
-    }
-
-    fn save_params(&mut self, probe_loc: &mut ProbeLoc) {
-        // This MUST be `self.app_wasm` so we're mutating what will be the instrumented application.
-        let func = self.app_wasm.funcs.get_mut(probe_loc.wasm_func_id).kind.unwrap_local_mut();
-        let func_builder = func.builder_mut();
-        let mut instr_builder = func_builder.instr_seq(probe_loc.instr_seq_id);
 
         // No bytecodes should have been emitted in the module yet!
         // So, we can just save off the first * items in the stack as the args
         // to the call.
         let mut arg_recs = vec![]; // vec to retain order!
-        if let Some(params) = &probe_loc.instr_params {
+        if let Some(params) = func_params {
             params.iter().enumerate().for_each(|(num, param_ty)| {
                 // create local for the param in the module
                 let arg_local_id = self.app_wasm.locals.add(*param_ty);
 
                 // emit a bytecode in the function to assign the ToS to this new local
-                instr_builder.instr_at( probe_loc.index,walrus::ir::LocalSet {
+                instr_builder.instr_at( *index,walrus::ir::LocalSet {
                     local: arg_local_id.clone()
                 });
 
                 // update index to point to what follows our insertions
-                probe_loc.index += 1;
+                *index += 1;
 
                 // place in symbol table with var addr for future reference
                 let arg_name = format!("arg{}", num);
@@ -912,39 +853,117 @@ impl WasmRewritingEmitter {
                 arg_recs.push((arg_name, id));
             });
         }
-        probe_loc.instr_created_args = arg_recs;
+        arg_recs
     }
 
-    fn emit_params(&mut self, probe_loc: &ProbeLoc, instr_seq_id: &InstrSeqId, index: &mut usize) {
+    fn emit_predicated_body(&mut self, probe: &mut Probe, predicate: &mut Expr, mem_id: &MemoryId, curr_mem_offset: &mut u32, func_id: FunctionId,
+                            instr_seq_id: &InstrSeqId, index: &mut usize) {
         // This MUST be `self.app_wasm` so we're mutating what will be the instrumented application.
-        let func = self.app_wasm.funcs.get_mut(probe_loc.wasm_func_id).kind.unwrap_local_mut();
+        let func = self.app_wasm.funcs.get_mut(func_id).kind.unwrap_local_mut();
         let func_builder = func.builder_mut();
         let mut instr_builder = func_builder.instr_seq(*instr_seq_id);
 
-        for (_param_name, param_rec_id) in probe_loc.instr_created_args.iter() {
-            let param_rec = self.table.get_record_mut(&param_rec_id);
-            if let Some(Record::Var { addr: Some(VarAddr::Local {addr}), .. }) = param_rec {
-                instr_builder.instr_at(*index, walrus::ir::LocalGet {
-                    local: addr.clone()
-                });
-                *index += 1;
-            } else {
-                error!("Could not inject alternate call to function, something went wrong...");
-                exit(1);
+        instr_builder.block_at(
+            *index,
+            None,
+            |mut probe_block| {
+                let probe_block_id = probe_block.id();
+                // create new `index` var to store current index into the of the `then` instr sequence
+                let mut probe_block_idx = 0 as usize;
+
+                // inject predicate
+                if !emit_expr(&mut self.table, &mut self.app_wasm.data, mem_id, curr_mem_offset, predicate, &mut probe_block, &mut probe_block_idx) {
+                    error!("Failed to inject predicate!");
+                    exit(1);
+                }
+
+                // If result of predicate equals 0, break out of the probe block.
+                // Will continue with the application code.
+                probe_block
+                    .i32_const(0)
+                    .binop(BinaryOp::I32Eq)
+                    .br_if(probe_block_id);
+
+                probe_block_idx += 3; // account for the 3 instructions above!
+
+                // At this point we know the predicate returned `true`, so we need to fire the probe body
+                emit_body(&mut self.table, &mut self.app_wasm.data, mem_id, curr_mem_offset, probe.body.as_mut().unwrap(), &mut probe_block, &mut probe_block_idx);
+            });
+
+        *index += 1;
+    }
+
+    fn emit_predicate(&mut self, predicate: &mut Expr, mem_id: &MemoryId, curr_mem_offset: &mut u32, func_id: FunctionId, instr_seq_id: &InstrSeqId, index: &mut usize) {
+        // This MUST be `self.app_wasm` so we're mutating what will be the instrumented application.
+        let func = self.app_wasm.funcs.get_mut(func_id).kind.unwrap_local_mut();
+        let func_builder = func.builder_mut();
+        let mut instr_builder = func_builder.instr_seq(*instr_seq_id);
+
+        if !emit_expr(&mut self.table, &mut self.app_wasm.data, mem_id, curr_mem_offset, predicate, &mut instr_builder, index) {
+            error!("Failed to inject predicate!");
+            exit(1);
+        }
+    }
+
+    fn emit_body(&mut self, mem_id: &MemoryId, curr_mem_offset: &mut u32, body: &mut Vec<Statement>, func_id: FunctionId, instr_seq_id: &InstrSeqId, index: &mut usize) -> bool {
+        // This MUST be `self.app_wasm` so we're mutating what will be the instrumented application.
+        let func = self.app_wasm.funcs.get_mut(func_id).kind.unwrap_local_mut();
+        let func_builder = func.builder_mut();
+        let mut instr_builder = func_builder.instr_seq(*instr_seq_id);
+
+        emit_body(&mut self.table, &mut self.app_wasm.data, mem_id, curr_mem_offset, body, &mut instr_builder, index)
+    }
+
+    fn remove_orig_bytecode(&mut self, probe: &mut Probe, func_id: FunctionId,
+                            instr_seq_id: &InstrSeqId, index: &mut usize) -> Option<(Instr, InstrLocId)> {
+        // This MUST be `self.app_wasm` so we're mutating what will be the instrumented application.
+        let func = self.app_wasm.funcs.get_mut(func_id).kind.unwrap_local_mut();
+        let func_builder = func.builder_mut();
+        let mut instr_builder = func_builder.instr_seq(*instr_seq_id);
+
+        // remove the original instruction and store it for later use
+        let mut orig_instr: Option<(Instr, InstrLocId)> = None;
+        if probe.name == "alt" {
+            // remove the original bytecode first
+            orig_instr = Some(instr_builder.instrs_mut().remove(*index))
+        }
+        orig_instr
+    }
+
+    fn emit_params(&mut self, emitted_params: &Option<Vec<(String, usize)>>, func_id: FunctionId,
+                   instr_seq_id: &InstrSeqId, index: &mut usize) {
+        // This MUST be `self.app_wasm` so we're mutating what will be the instrumented application.
+        let func = self.app_wasm.funcs.get_mut(func_id).kind.unwrap_local_mut();
+        let func_builder = func.builder_mut();
+        let mut instr_builder = func_builder.instr_seq(*instr_seq_id);
+
+        if let Some(params) = emitted_params {
+            for (_param_name, param_rec_id) in params.iter() {
+                let param_rec = self.table.get_record_mut(&param_rec_id);
+                if let Some(Record::Var { addr: Some(VarAddr::Local {addr}), .. }) = param_rec {
+                    instr_builder.instr_at(*index, walrus::ir::LocalGet {
+                        local: addr.clone()
+                    });
+                    *index += 1;
+                } else {
+                    error!("Could not inject alternate call to function, something went wrong...");
+                    exit(1);
+                }
             }
         }
     }
 
     /// Returns the InstrSeqId of the `then` block
-    fn emit_alt_body(&mut self, probe: &mut Probe, probe_loc: &mut ProbeLoc) -> (InstrSeqId, usize, InstrSeqId, usize) {
+    fn emit_alt_body(&mut self, _function_name: &String, probe: &mut Probe, _emitted_params: &Option<Vec<(String, usize)>>, mem_id: &MemoryId, curr_mem_offset: &mut u32, func_id: FunctionId,
+                     instr_seq_id: &InstrSeqId, index: &mut usize) -> (InstrSeqId, usize, InstrSeqId, usize) {
         let mut is_success = true;
 
-        let orig_instr = self.remove_orig_bytecode(probe, probe_loc);
+        let orig_instr = self.remove_orig_bytecode(probe, func_id, instr_seq_id, index);
 
         // This MUST be `self.app_wasm` so we're mutating what will be the instrumented application.
-        let func = self.app_wasm.funcs.get_mut(probe_loc.wasm_func_id).kind.unwrap_local_mut();
+        let func = self.app_wasm.funcs.get_mut(func_id).kind.unwrap_local_mut();
         let func_builder = func.builder_mut();
-        let mut instr_builder = func_builder.instr_seq(probe_loc.instr_seq_id);
+        let mut instr_builder = func_builder.instr_seq(*instr_seq_id);
 
         // We've injected a predicate prior to this point, need to create if/else
         // block to conditionally execute the body.
@@ -953,16 +972,15 @@ impl WasmRewritingEmitter {
         let mut else_seq_id = None;
         let mut else_idx = None;
         instr_builder.if_else_at(
-            probe_loc.index,
+            *index,
             None,
             | then | {
                 then_seq_id = Some(then.id());
                 // create new `index` var to store current index into the of the `then` instr sequence
                 let mut idx = 0 as usize;
                 // 1. emit alt body
-                is_success &= emit_body(&mut self.table, &mut self.app_wasm.data,
-                                        probe.body.as_mut().unwrap(), then,
-                                        &mut self.metadata.as_mut().unwrap(), &mut idx);
+                is_success &= emit_body(&mut self.table, &mut self.app_wasm.data, mem_id, curr_mem_offset,
+                                        probe.body.as_mut().unwrap(), then, &mut idx);
                 then_idx = Some(idx);
                 // Will not emit the original instruction since this is an alternate probe
             },
@@ -978,7 +996,8 @@ impl WasmRewritingEmitter {
         (then_seq_id.unwrap(), then_idx.unwrap(), else_seq_id.unwrap(), else_idx.unwrap())
     }
 
-    fn emit_alt_call(&mut self, probe_loc: &ProbeLoc, instr_seq_id: &InstrSeqId, index: &mut usize) -> bool {
+    fn emit_alt_call(&mut self, emitted_params: &Option<Vec<(String, usize)>>, func_id: FunctionId,
+                     instr_seq_id: &InstrSeqId, index: &mut usize) -> bool {
         let mut is_success = true;
         // check if we should inject an alternate call!
         // At this point the body has been visited, so "new_target_fn_name" would be defined
@@ -1007,10 +1026,10 @@ impl WasmRewritingEmitter {
             if let Some(f_call_id) = func_call_id {
                 // we need to inject an alternate call to the specified fn name!
                 // replace the arguments
-                self.emit_params(probe_loc, &instr_seq_id, index);
+                self.emit_params(&emitted_params, func_id, &instr_seq_id, index);
 
                 // This MUST be `self.app_wasm` so we're mutating what will be the instrumented application.
-                let func = self.app_wasm.funcs.get_mut(probe_loc.wasm_func_id).kind.unwrap_local_mut();
+                let func = self.app_wasm.funcs.get_mut(func_id).kind.unwrap_local_mut();
                 let func_builder = func.builder_mut();
                 let mut instr_seq = func_builder.instr_seq(*instr_seq_id);
 
@@ -1156,9 +1175,9 @@ impl WasmRewritingEmitter {
                         // 4. Reached the end of each string without returning, return nonzero
                         .br(eq);
                 })
-                // they are equal, return '1'
-                .i32_const(1)
-                .return_();
+                    // they are equal, return '1'
+                    .i32_const(1)
+                    .return_();
             })
             // they are not equal, return '0'
             .i32_const(0)
@@ -1198,16 +1217,13 @@ impl Emitter for WasmRewritingEmitter {
     fn enter_scope(&mut self) {
         self.table.enter_scope();
     }
-    fn enter_named_scope(&mut self, scope_name: &String) {
-        self.table.enter_named_scope(scope_name);
-    }
     fn exit_scope(&mut self) {
         self.table.exit_scope();
     }
     fn reset_children(&mut self) {
         self.table.reset_children();
     }
-    
+
     fn emit_whamm(&mut self, _whamm: &Whamm) -> bool {
         // nothing to do here
         true
@@ -1216,100 +1232,26 @@ impl Emitter for WasmRewritingEmitter {
         // nothing to do here
         true
     }
-    fn emit_provider(&mut self, _context: &str, _provider: &mut Provider) -> bool {
-        // nothing to do here
-        true
+    fn emit_provider(&mut self, context: &str, provider: &mut Provider) -> bool {
+        let mut is_success = true;
+        provider.modules.iter_mut().for_each(|(name, module)| {
+            is_success &= self.emit_module(&format!("{}:{}", context, name), module);
+        });
+        is_success
     }
     fn emit_module(&mut self, context: &str, module: &mut Module) -> bool {
+        self.table.enter_scope();
         let regex = Regex::new(r"whamm:whammy([0-9]+):wasm:bytecode").unwrap();
         return if let Some(_caps) = regex.captures(context) {
-            let res = self.setup_wasm_bytecode_module(context, module);
+            let res = self.emit_wasm_bytecode_module(module);
+            self.table.exit_scope();
             res
         } else {
+            self.table.exit_scope();
             error!("Provided module, but could not find a context to provide the definition, context: {}", context);
             false
         };
     }
-    fn emit_function(&mut self, _context: &str, _function: &mut Function) -> bool {
-        // nothing to do here
-        true
-    }
-
-    fn emit_probe(&mut self, _context: &str, probe: &mut Probe) -> bool {
-        let mut is_success = true;
-        if let Some(probe_locs) = self.probe_locs.get_mut(self.metadata.as_ref().unwrap().curr_function.as_str()) {
-            for probe_loc in probe_locs.iter_mut() {
-                let mut is_success = true;
-                // TODO -- load symbols for this instruction
-
-                if probe_loc.instr_name == "call" {
-                    // save off call params if instrumenting a fn call
-                    self.save_params(probe_loc);
-                }
-
-                // determine if I should inject a predicate.
-                if let Some(predicate) = &mut probe.predicate {
-                    // Fold predicate via constant propagation
-                    self.fold_expr(predicate);
-                }
-                if let Some(pred_as_bool) = ExprFolder::get_single_bool(&probe.predicate.as_ref().unwrap()) {
-                    // predicate has been reduced to a boolean value, check true/false
-                    // otherwise: predicate has not been reduced to a boolean value, will need to inject the folded predicate
-                    if !pred_as_bool {
-                        // predicate is FALSE, DON'T INJECT PROBE IN GENERAL, so just return from this visit!
-                        info!("Predicate is false, no need to inject probe.");
-                        return true;
-                    }
-                    // predicate is TRUE, unconditionally inject body stmts
-                    probe.predicate = None;
-                }
-
-                if let Some(predicate) = &mut probe.predicate {
-                    if probe.name == "alt" {
-                        self.emit_predicate(predicate, probe_loc);
-
-                        // an alternate probe will need to emit an if/else
-                        // if pred { <alt_body>; Optional(<alt_call>;) } else { <original_instr> }
-                        let (
-                            if_then_block_id,
-                            mut if_then_idx,
-                            else_block_id,
-                            mut else_idx
-                        ) = self.emit_alt_body(probe, probe_loc);
-
-                        // 2. possibly emit alt call (if configured to do so)
-                        if probe_loc.instr_name == "call" {
-                            is_success &= self.emit_alt_call(probe_loc, &if_then_block_id, &mut if_then_idx);
-
-                            // This is a call instruction, emit original parameters for the original call in the `else` block
-                            self.emit_params(probe_loc, &else_block_id, &mut else_idx);
-                        }
-                    } else {
-                        // other probe types will just need to have an if block conditional on the predicate
-                        // if pred { <probe_body>; }
-                        self.emit_predicated_body(probe, predicate, probe_loc.wasm_func_id, &probe_loc.instr_seq_id, &mut probe_loc.index);
-                    }
-                } else {
-                    // No predicate, just emit the un-predicated probe body
-                    // <probe_body>;
-                    is_success &= self.emit_body(probe.body.as_mut().unwrap(), probe_loc.wasm_func_id, &probe_loc.instr_seq_id, &mut probe_loc.index);
-
-                    if probe_loc.instr_name == "call" && probe.name == "alt" {
-                        self.remove_orig_bytecode(probe, probe_loc);
-
-                        // 2. possibly emit alt call (if configured to do so)
-                        self.emit_alt_call(probe_loc, &probe_loc.instr_seq_id, &mut probe_loc.index);
-                    }
-                }
-            }
-        }
-        is_success
-    }
-
-    fn emit_params(&mut self) -> bool {
-        todo!()
-    }
-
     fn emit_fn(&mut self, context: &str, f: &Fn) -> bool {
         // figure out if this is a provided fn.
         if f.is_provided {
@@ -1358,11 +1300,6 @@ impl Emitter for WasmRewritingEmitter {
 
     fn emit_stmt(&mut self, _stmt: &Statement) -> bool {
         unimplemented!()
-    }
-
-    fn fold_expr(&mut self, expr: &mut Expr) -> bool {
-        *expr = ExprFolder::fold_expr(expr, &self.table);
-        true
     }
 
     fn emit_expr(&mut self, _expr: &Expr) -> bool {

@@ -3,8 +3,9 @@
 // =======================
 
 use std::collections::HashMap;
-use log::trace;
+use log::{info, trace, warn};
 use crate::generator::emitters::Emitter;
+use crate::generator::types::ExprFolder;
 use crate::parser::types::{DataType, Whammy, Whamm, WhammVisitorMut, Expr, Function, Module, Op, Probe, Provider, Statement, Value};
 
 /// The code generator traverses the AST and calls the passed emitter to
@@ -13,12 +14,14 @@ use crate::parser::types::{DataType, Whammy, Whamm, WhammVisitorMut, Expr, Funct
 /// instrumentation technique by the Emitter field.
 pub struct CodeGenerator {
     pub emitter: Box<dyn Emitter>,
+    pub init_pass: bool,
     pub context_name: String
 }
 impl CodeGenerator {
     pub fn new(emitter: Box<dyn Emitter>) -> Self {
         Self {
             emitter,
+            init_pass: true,
             context_name: "".to_string()
         }
     }
@@ -67,13 +70,32 @@ impl WhammVisitorMut<bool> for CodeGenerator {
         self.context_name += &format!(":{}", whammy.name.clone());
         let mut is_success = self.emitter.emit_whammy(whammy);
 
-        // visit fns
-        whammy.fns.iter_mut().for_each(| f | {
-            is_success &= self.visit_fn(f);
-        });
-        // inject globals
-        is_success &= self.visit_globals(&whammy.globals);
-        // inject providers
+        if self.init_pass {
+            // visit fns
+            whammy.fns.iter_mut().for_each(| f | {
+                is_success &= self.visit_fn(f);
+            });
+            // inject globals
+            is_success &= self.visit_globals(&whammy.globals);
+            // init visit of providers
+            whammy.providers.iter_mut().for_each(|(_name, provider)| {
+                is_success &= self.visit_provider(provider);
+            });
+        }
+
+        // We've finished the initial pass (for injecting fns/globals).
+        // Now revisit the providers to actually inject probe definitions.
+        // This structure is necessary since:
+        // 1. We need to have the fns/globals injected (a single time)
+        //    and ready to use in every body/predicate
+        // 2. We need the base provider:module:function context of a probe
+        //    definition to know *how* to inject it
+        // Performing a 2-phase visit provides these necessary properties.
+        self.init_pass = false;
+
+        // Second visit of providers to actually inject the probe definition.
+        self.emitter.reset_children();
+        self.emitter.enter_named_scope(&self.context_name);
         whammy.providers.iter_mut().for_each(|(_name, provider)| {
             is_success &= self.visit_provider(provider);
         });
@@ -91,23 +113,22 @@ impl WhammVisitorMut<bool> for CodeGenerator {
         self.context_name += &format!(":{}", provider.name.clone());
         let mut is_success = true;
 
-        // visit fns
-        provider.fns.iter_mut().for_each(| f | {
-            is_success &= self.visit_fn(f);
-        });
-        // DO NOT inject globals (used by compiler)
-        // inject module fns/globals
+        if self.init_pass {
+            // visit fns
+            provider.fns.iter_mut().for_each(| f | {
+                is_success &= self.visit_fn(f);
+            });
+            // DO NOT inject globals (used by compiler)
+        } else {
+            // emit this provider (sets up provider context in the emitter)
+            is_success &= self.emitter.emit_provider(&self.context_name, provider);
+
+        }
+
+        // visit the modules
         provider.modules.iter_mut().for_each(|(_name, module)| {
             is_success &= self.visit_module(module);
         });
-
-        // At this point we've traversed the entire tree to generate necessary
-        // globals and fns!
-        // Now, we emit_provider which will do the actual instrumentation step!
-        // TODO -- this isn't flexible at all...need to visit with the generator to help generalize
-        //         the visiting logic
-        self.emitter.reset_children();
-        is_success &= self.emitter.emit_provider(&self.context_name, provider);
 
         trace!("Exiting: CodeGenerator::visit_provider");
         self.emitter.exit_scope();
@@ -122,12 +143,18 @@ impl WhammVisitorMut<bool> for CodeGenerator {
         let mut is_success = true;
         self.context_name += &format!(":{}", module.name.clone());
 
-        // visit fns
-        module.fns.iter_mut().for_each(| f | {
-            is_success &= self.visit_fn(f);
-        });
-        // DO NOT inject globals (used by compiler)
-        // inject function fns/globals
+        if self.init_pass {
+            // visit fns
+            module.fns.iter_mut().for_each(| f | {
+                is_success &= self.visit_fn(f);
+            });
+            // DO NOT inject globals (used by compiler)
+        } else {
+            // emit this module (sets up module context in the emitter)
+            is_success &= self.emitter.emit_module(&self.context_name, module);
+        }
+
+        // visit the functions
         module.functions.iter_mut().for_each(|(_name, function)| {
             is_success &= self.visit_function(function);
         });
@@ -146,17 +173,42 @@ impl WhammVisitorMut<bool> for CodeGenerator {
         self.context_name += &format!(":{}", function.name.clone());
         let mut is_success = true;
 
-        // visit fns
-        function.fns.iter_mut().for_each(| f | {
-            is_success &= self.visit_fn(f);
-        });
-        // DO NOT inject globals (used by compiler)
-        // inject probe fns/globals
-        function.probe_map.iter_mut().for_each(|(_name, probes)| {
+        if self.init_pass {
+            // visit fns
+            function.fns.iter_mut().for_each(| f | {
+                is_success &= self.visit_fn(f);
+            });
+            // DO NOT inject globals (used by compiler)
+        } else {
+            // emit this function (sets up function context in the emitter)
+            is_success &= self.emitter.emit_function(&self.context_name, function);
+        }
+
+        // 1. visit the BEFORE probes
+        if let Some(probes) = function.probe_map.get_mut(&"before".to_string()) {
             probes.iter_mut().for_each(|probe| {
+                // Assumption: before probes push/pop from stack so it is equivalent to what it was originally
                 is_success &= self.visit_probe(probe);
             });
-        });
+        }
+        // 2. visit the ALT probes
+        if let Some(probes) = function.probe_map.get_mut(&"alt".to_string()) {
+            // only will emit one alt probe!
+            // The last alt probe in the list will be emitted.
+            if probes.len() > 1 {
+                warn!("Detected multiple `alt` probes, will only emit the last one and ignore the rest!")
+            }
+            if let Some(probe) = probes.last_mut() {
+                is_success &= self.visit_probe(probe);
+            }
+        }
+        // 3. visit the AFTER probes
+        if let Some(probes) = function.probe_map.get_mut(&"after".to_string()) {
+            probes.iter_mut().for_each(|probe| {
+                // Assumption: after probes push/pop from stack so it is equivalent to what it was originally
+                is_success &= self.visit_probe(probe);
+            });
+        }
 
         trace!("Exiting: CodeGenerator::visit_function");
         self.emitter.exit_scope();
@@ -172,11 +224,26 @@ impl WhammVisitorMut<bool> for CodeGenerator {
         self.context_name += &format!(":{}", probe.name.clone());
         let mut is_success = true;
 
-        // visit fns
-        probe.fns.iter_mut().for_each(| f | {
-            is_success &= self.visit_fn(f);
-        });
-        // DO NOT inject globals (used by compiler)
+        if self.init_pass {
+            // visit fns
+            probe.fns.iter_mut().for_each(| f | {
+                is_success &= self.visit_fn(f);
+            });
+            // DO NOT inject globals (used by compiler)
+        } else {
+            if probe.body.is_none() {
+                // No need to emit the probe...there's no body!
+                return true;
+            }
+            // probe has a body, continue to emit logic!
+
+            // Logic to emit a probe is unfortunately very injection-strategy-specific
+            // Problem: Emitter keeps track of all locations in application code to instrument.
+            //    EITHER I iterate over it here (and we're tying ourselves to a loop in the generator...injection-strategy-specific).
+            //    OR I iterate over it in the emitter, but then I can't put the AST traversal in the generator code.
+            //    This is because I need to make make decisions on how to emit based on the current instruction I'm "visiting"
+            self.emitter.emit_probe(&self.context_name, probe);
+        }
 
         trace!("Exiting: CodeGenerator::visit_probe");
         self.emitter.exit_scope();
@@ -184,6 +251,14 @@ impl WhammVisitorMut<bool> for CodeGenerator {
         self.context_name = self.context_name[..self.context_name.rfind(":").unwrap()].to_string();
         is_success
     }
+
+    // fn visit_predicate(&mut self, predicate: &mut Expr) -> bool {
+    //     todo!()
+    // }
+
+    // fn visit_predicate(&mut self, predicate: &mut Expr) -> bool {
+    //
+    // }
 
     fn visit_fn(&mut self, f: &mut crate::parser::types::Fn) -> bool {
         trace!("Entering: CodeGenerator::visit_fn");

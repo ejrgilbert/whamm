@@ -287,7 +287,7 @@ pub enum ScopeType {
 }
 
 /// The usize values in the record fields index into the SymbolTable::records Vec.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Record {
     Whamm {
         name: String,
