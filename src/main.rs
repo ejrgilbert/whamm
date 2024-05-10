@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use crate::parser::whamm_parser::*;
 use crate::behavior::builder_visitor::*;
 use crate::verifier::verifier::*;
-// use crate::generator::emitters::{WasmRewritingEmitter};
-// use crate::generator::code_generator::{CodeGenerator};
+use crate::generator::emitters::{WasmRewritingEmitter};
+use crate::generator::code_generator::{CodeGenerator};
 
 pub mod parser;
 pub mod behavior;
@@ -14,9 +14,8 @@ pub mod verifier;
 pub mod generator;
 
 use clap::{Args, Parser, Subcommand};
-use log::{info, error, trace};
+use log::{info, error};
 use std::process::exit;
-use opener::OpenError;
 use project_root::get_project_root;
 use crate::behavior::tree::BehaviorTree;
 use crate::behavior::visualize::visualization_to_file;
@@ -48,6 +47,10 @@ enum Command {
         #[clap(short, long, value_parser)]
         whammy: String,
 
+        /// Whether to run the verifier on the specified whammy
+        #[clap(long, short, action, default_value = "false")] // TODO -- change this default value to true when I have this implemented
+        run_verifier: bool,
+
         /// The path to output the visualization to.
         #[clap(short, long, value_parser, default_value = "output/vis.svg")]
         output_path: String,
@@ -76,13 +79,11 @@ struct InstrArgs {
     virgil: bool,
 
     /// Whether to run the verifier on the specified whammy
-    #[clap(long, short, action, default_value = "true")]
+    #[clap(long, short, action, default_value = "false")] // TODO -- change this default value to true when I have this implemented
     run_verifier: bool
 }
 
 fn main() {
-    // TODO add subcommands for virgil/wasm with different options per subcommand
-    //      https://github.com/clap-rs/clap/blob/4e07b438584bb8a19e37599d4c5b11797bec5579/examples/git.rs
     if let Err(e) = try_main() {
         eprintln!("error: {}", e);
         for c in e.iter_chain().skip(1) {
@@ -103,8 +104,8 @@ fn try_main() -> Result<(), failure::Error> {
         Command::Instr(args) => {
             run_instr(args.app, args.whammy, args.output_path, args.virgil, args.run_verifier);
         }
-        Command::VisTree {whammy, output_path} => {
-            run_vis_tree(whammy, output_path);
+        Command::VisTree {whammy, run_verifier, output_path} => {
+            run_vis_tree(whammy, run_verifier, output_path);
         }
     }
 
@@ -112,30 +113,31 @@ fn try_main() -> Result<(), failure::Error> {
 }
 
 fn run_instr(app_wasm_path: String, whammy_path: String, output_wasm_path: String, emit_virgil: bool, run_verifier: bool) {
-    let whamm = get_whammy_ast(&whammy_path);
+    let whamm = get_whammy_ast(&whammy_path, run_verifier);
     let behavior_tree = build_behavior(&whamm);
 
-    // // Read app Wasm into Walrus module
-    // let _config =  walrus::ModuleConfig::new();
-    // let app_wasm = walrus::Module::from_file(&app_wasm_path).unwrap();
-    //
+    // Read app Wasm into Walrus module
+    let _config =  walrus::ModuleConfig::new();
+    let app_wasm = walrus::Module::from_file(&app_wasm_path).unwrap();
+
     // Configure the emitter based on target instrumentation code format
-    // let emitter = if emit_virgil {
-    //     unimplemented!();
-    // } else {
-    //     WasmRewritingEmitter::new(
-    //     app_wasm,
-    //     symbol_table
-    // )};
-    //
-    // let mut generator = CodeGenerator::new(Box::new(emitter));
-    //
-    // generator.generate(&mut whamm);
-    // generator.dump_to_file(output_wasm_path);
+    let emitter = if emit_virgil {
+        unimplemented!();
+    } else {
+        WasmRewritingEmitter::new(
+            app_wasm,
+            symbol_table
+        )
+    };
+
+    let mut generator = CodeGenerator::new(Box::new(emitter));
+
+    generator.generate(&mut whamm);
+    generator.dump_to_file(output_wasm_path);
 }
 
-fn run_vis_tree(whammy_path: String, output_path: String) {
-    let whamm = get_whammy_ast(&whammy_path);
+fn run_vis_tree(whammy_path: String, run_verifier: bool, output_path: String) {
+    let whamm = get_whammy_ast(&whammy_path, run_verifier);
     let behavior_tree = build_behavior(&whamm);
 
     let path = match get_pb(&PathBuf::from(output_path.clone())) {
@@ -163,11 +165,11 @@ fn run_vis_tree(whammy_path: String, output_path: String) {
     exit(0);
 }
 
-fn get_whammy_ast(whammy_path: &String) -> Whamm {
+fn get_whammy_ast(whammy_path: &String, run_verifier: bool) -> Whamm {
     match std::fs::read_to_string(&whammy_path) {
         Ok(unparsed_str) => {
             // Parse the script and build the AST
-            match parse_script(unparsed_str) {
+            match parse_script(unparsed_str, run_verifier) {
                 Ok(ast) => {
                     info!("successfully parsed");
                     return ast;
