@@ -49,10 +49,6 @@ impl InstrGenerator<'_> {
     }
 }
 impl BehaviorVisitor<bool> for InstrGenerator<'_> {
-    fn visit_node(&mut self, node: &Node) -> bool {
-        todo!()
-    }
-
     fn visit_root(&mut self, node: &Node) -> bool {
         todo!()
     }
@@ -61,15 +57,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_> {
         todo!()
     }
 
-    fn visit_decorator(&mut self, node: &Node) -> bool {
-        todo!()
-    }
-
     fn visit_fallback(&mut self, node: &Node) -> bool {
-        todo!()
-    }
-
-    fn visit_parameterized_action(&mut self, node: &Node) -> bool {
         todo!()
     }
 
@@ -104,10 +92,6 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_> {
     }
 
     fn visit_emit_if(&mut self, node: &Node) -> bool {
-        todo!()
-    }
-
-    fn visit_action(&mut self, action: &Node) -> bool {
         todo!()
     }
 

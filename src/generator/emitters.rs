@@ -1,10 +1,9 @@
 use std::collections::HashMap;
-use std::fs::metadata;
-use std::path::is_separator;
 use std::process::exit;
 use log::{error, info, warn};
 use regex::Regex;
-use walrus::{ActiveData, ActiveDataLocation, DataKind, FunctionBuilder, FunctionId, FunctionKind, ImportedFunction, InstrLocId, InstrSeqBuilder, LocalFunction, MemoryId, ModuleData, ValType};
+use walrus::{ActiveData, ActiveDataLocation, DataKind, FunctionBuilder, FunctionId, FunctionKind,
+             ImportedFunction, InstrLocId, InstrSeqBuilder, LocalFunction, MemoryId, ModuleData, ValType};
 use walrus::ir::{BinaryOp, dfs_pre_order_mut, ExtendedLoad, Instr, InstrSeqId, LoadKind, MemArg};
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{DataType, Whammy, Whamm, Expr, Fn, Event, Package, Op, Probe, Provider, Statement, Value};
@@ -562,6 +561,10 @@ impl WasmRewritingEmitter {
             probe_locs: HashMap::new(),
             fn_providing_contexts: vec![ "whamm".to_string() ]
         }
+    }
+
+    fn next_instr(&mut self) {
+
     }
 
     fn setup_wasm_bytecode_package(&mut self, _context: &str, package: &mut Package) -> bool {

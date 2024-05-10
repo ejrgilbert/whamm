@@ -437,7 +437,6 @@ pub enum ParamActionType {
     }
 }
 
-
 pub trait BehaviorVisitor<T> {
     // Abstracted visit fn
     fn visit_node(&mut self, node: &Node) -> T {
