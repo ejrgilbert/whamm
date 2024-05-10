@@ -1,6 +1,6 @@
 mod common;
 
-use whamm::generator::emitters::{WasmRewritingEmitter};
+use whamm::generator::emitters_newer::{WasmRewritingEmitter};
 use whamm::generator::code_generator::{CodeGenerator};
 
 use log::error;

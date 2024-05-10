@@ -4,9 +4,9 @@
 
 use std::collections::HashMap;
 use log::{info, trace, warn};
-use crate::generator::emitters::Emitter;
+use crate::generator::emitters_newer::Emitter;
 use crate::generator::types::ExprFolder;
-use crate::parser::types::{DataType, Whammy, Whamm, WhammVisitorMut, Expr, Function, Module, Op, Probe, Provider, Statement, Value};
+use crate::parser::types::{DataType, Whammy, Whamm, WhammVisitorMut, Expr, Function, Module, Op, Probe, Provider, Statement, Value, Global};
 
 /// The code generator traverses the AST and calls the passed emitter to
 /// emit some instruction/code/function/etc.
@@ -33,10 +33,10 @@ impl CodeGenerator {
     }
 
     // Private helper functions
-    fn visit_globals(&mut self, globals: &HashMap<String, (DataType, Expr, Option<Value>)>) -> bool {
+    fn visit_globals(&mut self, globals: &HashMap<String, Global>) -> bool {
         let mut is_success = true;
-        for (name, (ty, _expr, val)) in globals.iter() {
-            is_success &= self.emitter.emit_global(name.clone(), ty.clone(), val);
+        for (name, global) in globals.iter() {
+            is_success &= self.emitter.emit_global(name.clone(), global.ty.clone(), &global.value);
         }
 
         is_success

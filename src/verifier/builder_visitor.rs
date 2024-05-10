@@ -4,6 +4,7 @@ use parser_types::{DataType, Whammy, Whamm, WhammVisitor, Expr, Fn, Function, Mo
 use crate::verifier::types::{Record, ScopeType, SymbolTable};
 
 use log::{error, trace};
+use crate::parser::types::Global;
 
 pub struct SymbolTableBuilder {
     pub table: SymbolTable,
@@ -295,9 +296,9 @@ impl SymbolTableBuilder {
         self.add_fn_id_to_curr_rec(id);
     }
 
-    fn visit_globals(&mut self, globals: &HashMap<String, (DataType, Expr, Option<Value>)>) {
-        for (name, (ty, _expr, _val)) in globals.iter() {
-            self.add_global(ty.clone(), name.clone());
+    fn visit_globals(&mut self, globals: &HashMap<String, Global>) {
+        for (name, global) in globals.iter() {
+            self.add_global(global.ty.clone(), name.clone());
         }
     }
 }

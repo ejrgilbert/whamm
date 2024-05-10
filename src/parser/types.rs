@@ -101,7 +101,7 @@ pub enum Expr {
         args: Option<Vec<Box<Expr>>>
     },
     VarId {
-        // is_provided: bool, // TODO -- do I need this?
+        // is_comp_provided: bool, // TODO -- do I need this?
         name: String
     },
     Primitive { // Type is val.ty
@@ -131,17 +131,25 @@ pub enum Expr {
 
 // Functions
 pub struct Fn {
-    pub(crate) is_provided: bool,
+    pub(crate) is_comp_provided: bool,
     pub(crate) name: String,
     pub(crate) params: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
     pub(crate) return_ty: Option<DataType>,
     pub(crate) body: Option<Vec<Statement>>
 }
 
+pub struct Global {
+    pub is_comp_provided: bool,
+
+    pub ty: DataType,
+    pub var_name: Expr, // Should be VarId
+    pub value: Option<Value>
+}
+
 pub struct Whamm {
     pub provided_probes: HashMap<String, HashMap<String, HashMap<String, Vec<String>>>>,
-    pub(crate) fns: Vec<Fn>,                                      // Comp-provided
-    pub globals: HashMap<String, (DataType, Expr, Option<Value>)>, // Comp-provided, should be VarId
+    pub(crate) fns: Vec<Fn>,              // Comp-provided
+    pub globals: HashMap<String, Global>, // Comp-provided
 
     pub whammys: Vec<Whammy>
 }
@@ -179,7 +187,7 @@ impl Whamm {
             )
         ];
         let strcmp_fn = Fn {
-            is_provided: true,
+            is_comp_provided: true,
             name: "strcmp".to_string(),
             params,
             return_ty: Some(DataType::Boolean),
@@ -188,7 +196,7 @@ impl Whamm {
         vec![ strcmp_fn ]
     }
 
-    fn get_provided_globals() -> HashMap<String, (DataType, Expr, Option<Value>)> {
+    fn get_provided_globals() -> HashMap<String, Global> {
         HashMap::new()
     }
 
@@ -292,8 +300,8 @@ pub struct Whammy {
     pub name: String,
     /// The providers of the probes that have been used in the Whammy.
     pub providers: HashMap<String, Provider>,
-    pub fns: Vec<Fn>,                                      // User-provided
-    pub globals: HashMap<String, (DataType, Expr, Option<Value>)>, // User-provided, should be VarId
+    pub fns: Vec<Fn>,                     // User-provided
+    pub globals: HashMap<String, Global>, // User-provided, should be VarId
 }
 impl Whammy {
     pub fn new() -> Self {
@@ -354,8 +362,8 @@ impl Whammy {
 
 pub struct Provider {
     pub name: String,
-    pub fns: Vec<Fn>,                                      // Comp-provided
-    pub globals: HashMap<String, (DataType, Expr, Option<Value>)>, // Comp-provided, should be VarId
+    pub fns: Vec<Fn>,                     // Comp-provided
+    pub globals: HashMap<String, Global>, // Comp-provided
 
     /// The modules of the probes that have been used in the Whammy.
     /// These will be sub-modules of this Provider.
@@ -377,7 +385,7 @@ impl Provider {
         vec![]
     }
 
-    fn get_provided_globals(_name: &String) -> HashMap<String, (DataType, Expr, Option<Value>)> {
+    fn get_provided_globals(_name: &String) -> HashMap<String, Global> {
         HashMap::new()
     }
 
@@ -398,8 +406,8 @@ impl Provider {
 
 pub struct Module {
     pub name: String,
-    pub fns: Vec<Fn>,                                      // Comp-provided
-    pub globals: HashMap<String, (DataType, Expr, Option<Value>)>, // Comp-provided, should be VarId
+    pub fns: Vec<Fn>,                     // Comp-provided
+    pub globals: HashMap<String, Global>, // Comp-provided
 
     /// The functions of the probes that have been used in the Whammy.
     /// These will be sub-functions of this Module.
@@ -421,7 +429,7 @@ impl Module {
         vec![]
     }
 
-    fn get_provided_globals(_name: &String) -> HashMap<String, (DataType, Expr, Option<Value>)> {
+    fn get_provided_globals(_name: &String) -> HashMap<String, Global> {
         HashMap::new()
     }
 
@@ -443,8 +451,8 @@ impl Module {
 
 pub struct Function {
     pub name: String,
-    pub fns: Vec<Fn>,                                      // Comp-provided
-    pub globals: HashMap<String, (DataType, Expr, Option<Value>)>, // Comp-provided, should be VarId
+    pub fns: Vec<Fn>,                     // Comp-provided
+    pub globals: HashMap<String, Global>, // Comp-provided
     pub probe_map: HashMap<String, Vec<Probe>>
 }
 impl Function {
@@ -463,22 +471,42 @@ impl Function {
         vec![]
     }
 
-    fn get_provided_globals(name: &String) -> HashMap<String, (DataType, Expr, Option<Value>)> {
+    fn get_provided_globals(name: &String) -> HashMap<String, Global> {
         let mut globals = HashMap::new();
         if name.to_lowercase() == "call" {
             // Add in provided globals for the "call" function
-            globals.insert("target_fn_type".to_string(),(DataType::Str, Expr::VarId {
-                name: "target_fn_type".to_string(),
-            }, None));
-            globals.insert("target_imp_module".to_string(), (DataType::Str, Expr::VarId {
-                name: "target_imp_module".to_string(),
-            }, None));
-            globals.insert("target_imp_name".to_string(), (DataType::Str, Expr::VarId {
-                name: "target_imp_name".to_string(),
-            }, None));
-            globals.insert("new_target_fn_name".to_string(), (DataType::Str, Expr::VarId {
-                name: "new_target_fn_name".to_string(),
-            }, None));
+            globals.insert("target_fn_type".to_string(),Global {
+                is_comp_provided: true,
+                ty: DataType::Str,
+                var_name: Expr::VarId {
+                    name: "target_fn_type".to_string(),
+                },
+                value: None
+            });
+            globals.insert("target_imp_module".to_string(),Global {
+                is_comp_provided: true,
+                ty: DataType::Str,
+                var_name: Expr::VarId {
+                    name: "target_imp_module".to_string(),
+                },
+                value: None
+            });
+            globals.insert("target_imp_name".to_string(),Global {
+                is_comp_provided: true,
+                ty: DataType::Str,
+                var_name: Expr::VarId {
+                    name: "target_imp_name".to_string(),
+                },
+                value: None
+            });
+            globals.insert("new_target_fn_name".to_string(),Global {
+                is_comp_provided: true,
+                ty: DataType::Str,
+                var_name: Expr::VarId {
+                    name: "new_target_fn_name".to_string(),
+                },
+                value: None
+            });
         }
 
         globals
@@ -515,8 +543,8 @@ impl Function {
 
 pub struct Probe {
     pub name: String,
-    pub fns: Vec<Fn>,                                      // Comp-provided
-    pub globals: HashMap<String, (DataType, Expr, Option<Value>)>, // Comp-provided, should be VarId
+    pub fns: Vec<Fn>,                     // Comp-provided
+    pub globals: HashMap<String, Global>, // Comp-provided
 
     pub predicate: Option<Expr>,
     pub body: Option<Vec<Statement>>
@@ -539,7 +567,7 @@ impl Probe {
         vec![]
     }
 
-    fn get_provided_globals(_name: &String) -> HashMap<String, (DataType, Expr, Option<Value>)> {
+    fn get_provided_globals(_name: &String) -> HashMap<String, Global> {
         HashMap::new()
     }
 

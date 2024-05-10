@@ -1,16 +1,18 @@
 extern crate core;
 
 use crate::parser::whamm_parser::*;
+use crate::behavior::builder_visitor::*;
 use crate::verifier::verifier::*;
-use crate::generator::emitters::{WasmRewritingEmitter};
-use crate::generator::code_generator::{CodeGenerator};
+// use crate::generator::emitters::{WasmRewritingEmitter};
+// use crate::generator::code_generator::{CodeGenerator};
 
 pub mod parser;
+pub mod behavior;
 pub mod verifier;
 pub mod generator;
 
 use clap::Parser;
-use log::{info, error};
+use log::{info, error, trace};
 use std::process::exit;
 
 fn setup_logger() {
@@ -69,7 +71,7 @@ fn try_main() -> Result<(), failure::Error> {
     match whammy {
         Ok(unparsed_str) => {
             // Parse the script and build the AST
-            let mut whamm = match parse_script(unparsed_str) {
+            let whamm = match parse_script(unparsed_str) {
                 Ok(ast) => {
                     info!("successfully parsed");
                     ast
@@ -80,28 +82,34 @@ fn try_main() -> Result<(), failure::Error> {
                 }
             };
 
+            // Build the behavior tree from the AST
+            let mut behavior = build_behavior_tree(&whamm);
+            behavior.reset();
+            trace!("{:#?}", behavior);
+            // exit(0);
+
             // Build the symbol table from the AST
             let mut symbol_table = verify(&whamm, run_verifier);
-            println!("{:#?}", symbol_table);
+            trace!("{:#?}", symbol_table);
             symbol_table.reset();
 
-            // Read app Wasm into Walrus module
-            let _config =  walrus::ModuleConfig::new();
-            let app_wasm = walrus::Module::from_file(&app_wasm_path).unwrap();
-
+            // // Read app Wasm into Walrus module
+            // let _config =  walrus::ModuleConfig::new();
+            // let app_wasm = walrus::Module::from_file(&app_wasm_path).unwrap();
+            //
             // Configure the emitter based on target instrumentation code format
-            let emitter = if emit_virgil {
-                unimplemented!();
-            } else {
-                WasmRewritingEmitter::new(
-                app_wasm,
-                symbol_table
-            )};
-
-            let mut generator = CodeGenerator::new(Box::new(emitter));
-
-            generator.generate(&mut whamm);
-            generator.dump_to_file(output_wasm_path);
+            // let emitter = if emit_virgil {
+            //     unimplemented!();
+            // } else {
+            //     WasmRewritingEmitter::new(
+            //     app_wasm,
+            //     symbol_table
+            // )};
+            //
+            // let mut generator = CodeGenerator::new(Box::new(emitter));
+            //
+            // generator.generate(&mut whamm);
+            // generator.dump_to_file(output_wasm_path);
         },
         Err(error) => {
             error!("Cannot read specified file {}: {}", whammy_path, error);

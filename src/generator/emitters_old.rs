@@ -1254,7 +1254,7 @@ impl Emitter for WasmRewritingEmitter {
     }
     fn emit_fn(&mut self, context: &str, f: &Fn) -> bool {
         // figure out if this is a provided fn.
-        if f.is_provided {
+        if f.is_comp_provided {
             return if self.fn_providing_contexts.contains(&context.to_string()) {
                 self.emit_provided_fn(context, f)
             } else {

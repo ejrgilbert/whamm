@@ -3,7 +3,7 @@ use parser_types::{WhammVisitor};
 
 use std::cmp;
 use std::collections::HashMap;
-use crate::parser::types::{DataType, Whammy, Whamm, Expr, Function, Module, Op, Probe, Provider, Statement, Value};
+use crate::parser::types::{DataType, Whammy, Whamm, Expr, Function, Module, Op, Probe, Provider, Statement, Value, Global};
 
 const NL: &str = "\n";
 
@@ -23,11 +23,11 @@ impl AsStrVisitor {
         "--".repeat(cmp::max(0, self.indent as usize))
     }
 
-    fn visit_globals(&mut self, globals: &HashMap<String, (DataType, Expr, Option<Value>)>) -> String {
+    fn visit_globals(&mut self, globals: &HashMap<String, Global>) -> String {
         let mut s = "".to_string();
-        for (name, (_ty, _var_id, val)) in globals.iter() {
+        for (name, global) in globals.iter() {
             s += &format!("{}{} := ", self.get_indent(), name);
-            match val {
+            match &global.value {
                 Some(v) => s += &format!("{}{}", self.visit_value(v), NL),
                 None => s += &format!("None{}", NL)
             }
@@ -54,9 +54,9 @@ impl WhammVisitor<String> for AsStrVisitor {
         if whamm.globals.len() > 0 {
             s += &format!("Whamm globals:{}", NL);
             self.increase_indent();
-            for (name, (_ty, _var_id, val)) in whamm.globals.iter() {
+            for (name, global) in whamm.globals.iter() {
                 s += &format!("{}{} := ", self.get_indent(), name);
-                match val {
+                match &global.value {
                     Some(v) => s += &format!("{}{}", self.visit_value(v), NL),
                     None => s += &format!("None{}", NL)
                 }
