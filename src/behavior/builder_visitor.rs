@@ -1,4 +1,4 @@
-use crate::behavior::tree::{BehaviorTree, DecoratorType, Node};
+use crate::behavior::tree::{BehaviorTree, DecoratorType};
 
 use std::collections::HashMap;
 use crate::parser::types as parser_types;
@@ -7,7 +7,6 @@ use parser_types::{DataType, Whammy, Whamm, WhammVisitor, Expr, Fn, Function, Mo
 use log::{error, trace};
 use regex::Regex;
 use crate::behavior::tree::ParamActionType;
-use crate::behavior::tree::ActionType::{EmitBody, EmitOrig, EmitParams, EmitPred};
 use crate::behavior::tree::DecoratorType::{HasParams, PredIs};
 use crate::parser::types::Global;
 

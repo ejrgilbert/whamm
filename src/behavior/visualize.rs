@@ -281,7 +281,7 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
     }
 
     fn visit_emit_if_else(&mut self, node: &TreeNode) -> () {
-        if let TreeNode::ParameterizedAction { id, parent, ty, children } = node {
+        if let TreeNode::ParameterizedAction { id, parent, ty, .. } = node {
             if let ParamActionType::EmitIfElse { cond, conseq, alt } = ty {
                 self.emit_param_action_node(id, "EmitIfElse");
                 self.emit_edge(parent, id);
@@ -310,7 +310,7 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
     }
 
     fn visit_emit_if(&mut self, node: &TreeNode) -> () {
-        if let TreeNode::ParameterizedAction { id, parent, ty, children } = node {
+        if let TreeNode::ParameterizedAction { id, parent, ty, .. } = node {
             if let ParamActionType::EmitIf { cond, conseq } = ty {
                 self.emit_param_action_node(id, "EmitIf");
                 self.emit_edge(parent, id);
