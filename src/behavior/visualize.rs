@@ -394,11 +394,12 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
     fn visit_emit_if_else(&mut self, node: &TreeNode) -> () {
         if let TreeNode::Action { id, ty, parent} = node {
             if let ActionType::EmitIfElse { cond, conseq, alt} = ty {
-                // TODO make connections here
                 self.emit_action_node(id, "EmitIfElse");
                 if let Some(parent) = parent {
                     self.emit_edge(parent, id);
                 }
+                // TODO make connections here
+                //      possibly move to cond, seq, alt being behind a new type of node: Arguments
             } else {
                 unreachable!()
             }
