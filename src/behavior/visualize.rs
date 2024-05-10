@@ -192,7 +192,11 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
             if let DecoratorType::IsInstr {instr_names} = ty {
                 let mut names = "".to_string();
                 for name in instr_names {
-                    names = format!("{names}_{}", name.clone());
+                    if names.is_empty() {
+                        names.push_str(name);
+                    } else {
+                        names.push_str(&format!("OR{name}"));
+                    }
                 }
                 self.emit_decorator_node(id, &format!("IsInstr_{}", names));
                 self.emit_edge(parent, id);
