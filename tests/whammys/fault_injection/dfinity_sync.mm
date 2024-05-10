@@ -12,6 +12,3 @@ wasm:bytecode:call:alt /
 / {
     new_target_fn_name = "instr_inject_synchronous_fault";
 }
-wasm:bytecode:br:before {
-    new_target_fn_name = "instr_inject_synchronous_fault";
-}
