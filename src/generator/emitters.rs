@@ -594,7 +594,7 @@ impl WasmRewritingEmitter {
                                            local_func, local_func.entry_block());
 
                 // cache and store constants with the ProbeLoc
-                self.preprocess_instrs();
+                // self.preprocess_instrs();
             }
         }
 
