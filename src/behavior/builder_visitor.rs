@@ -6,6 +6,7 @@ use parser_types::{DataType, Whammy, Whamm, WhammVisitor, Expr, Fn, Function, Mo
 
 use log::{error, trace};
 use regex::Regex;
+use crate::behavior::tree::ParamActionType;
 use crate::behavior::tree::ActionType::{EmitBody, EmitOrig, EmitParams, EmitPred};
 use crate::behavior::tree::DecoratorType::{HasParams, PredIs};
 use crate::parser::types::Global;
@@ -30,18 +31,20 @@ impl BehaviorTreeBuilder {
 }
 impl BehaviorTreeBuilder {
     fn visit_globals(&mut self, globals: &HashMap<String, Global>) {
-        self.tree.sequence();
+        if globals.len() > 0 {
+            self.tree.sequence();
 
-        // visit globals
-        for (_name, global) in globals.iter() {
-            if global.is_comp_provided {
-                if let Expr::VarId { name } = &global.var_name {
-                    self.tree.define(self.context_name.clone(),
-                                     name.clone());
+            // visit globals
+            for (_name, global) in globals.iter() {
+                if global.is_comp_provided {
+                    if let Expr::VarId { name } = &global.var_name {
+                        self.tree.define(self.context_name.clone(),
+                                         name.clone());
+                    }
                 }
             }
+            self.tree.exit_sequence();
         }
-        self.tree.exit_sequence();
     }
 
     fn is_in_context(&self, pattern: &str) -> bool {
@@ -115,25 +118,27 @@ impl BehaviorTreeBuilder {
                                     .exit_fallback()
                             .exit_sequence()
                         .exit_decorator()
-                        .fallback()
+                            .fallback()
+                            // before behavior
                             .decorator(DecoratorType::IsProbeType {
                                 probe_type: "before".to_string()
                             });
 
         self.emit_bytecode_probe_before_body(probe);
         self.tree.exit_decorator()
+            // alt behavior
             .decorator(DecoratorType::IsProbeType {
                 probe_type: "alt".to_string()
             });
-
         self.emit_bytecode_probe_alt_body(probe);
         self.tree.exit_decorator()
+            // after behavior
             .decorator(DecoratorType::IsProbeType {
                 probe_type: "after".to_string()
             });
-
         self.emit_bytecode_probe_after_body(probe);
         self.tree.exit_decorator()
+            // exit
             .exit_fallback()
             .exit_fallback()
             .exit_sequence()
@@ -142,59 +147,40 @@ impl BehaviorTreeBuilder {
     }
 
     fn emit_bytecode_probe_before_body(&mut self, _probe: &Probe) {
-        todo!()
+        self.tree.parameterized_action(ParamActionType::EmitIf {
+            cond: 0,
+            conseq: 1
+        })
+            .emit_pred()
+            .emit_body()
+            .exit_parameterized_action();
     }
 
     fn emit_bytecode_probe_alt_body(&mut self, _probe: &Probe) {
-        let mut id = usize::MAX;
-        // the conditional
-        let cond_id = self.tree.put_floating_child(Node::Action {
-            id,
-            parent: None,
-            ty: EmitPred
-        });
-        id -= 1;
-
-        // the consequent logic
-        let conseq_id = self.tree.put_floating_child(Node::Action {
-            id,
-            parent: None,
-            ty: EmitBody
-        });
-        id -= 1;
-
-        // the alternative logic
-        let emit_params_id = self.tree.put_floating_child(Node::Action {
-            id,
-            parent: None,
-            ty: EmitParams
-        });
-        id -= 1;
-        let has_params_id = self.tree.put_floating_child(Node::Decorator {
-            id,
-            ty: HasParams,
-            parent: None,
-            child: emit_params_id
-        });
-        id -= 1;
-        let emit_orig = self.tree.put_floating_child(Node::Action {
-            id,
-            parent: None,
-            ty: EmitOrig
-        });
-        id -= 1;
-        let alt_logic = self.tree.put_floating_child(Node::Sequence {
-            id,
-            parent: 0,
-            children: vec![has_params_id, emit_orig]
-        });
-        id -= 1;
-
-        self.tree.emit_if_else(cond_id, conseq_id, alt_logic);
+        self.tree.parameterized_action(ParamActionType::EmitIfElse {
+            cond: 0,
+            conseq: 1,
+            alt: 2
+        })
+            .emit_pred()
+            .emit_body()
+            .sequence()
+                .decorator(HasParams)
+                    .emit_params()
+                    .exit_decorator()
+                .emit_orig()
+                .exit_sequence()
+            .exit_parameterized_action();
     }
 
     fn emit_bytecode_probe_after_body(&mut self, _probe: &Probe) {
-        todo!()
+        self.tree.parameterized_action(ParamActionType::EmitIf {
+            cond: 0,
+            conseq: 1
+        })
+            .emit_pred()
+            .emit_body()
+            .exit_parameterized_action();
     }
 }
 impl WhammVisitor<()> for BehaviorTreeBuilder {
@@ -214,7 +200,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder {
         self.tree.exit_scope();
 
         trace!("Exiting: BehaviorTreeBuilder::visit_whamm");
-        self.tree.exit_child(); // exit the sequence
+        self.tree.exit_sequence();
         // Remove from `context_name`
         self.context_name = "".to_string();
     }
@@ -282,7 +268,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder {
         trace!("Entering: BehaviorTreeBuilder::visit_function");
         self.context_name += &format!(":{}", function.name.clone());
 
-        if self.is_in_context(r"whamm:whammy([0-9]+):wasm:bytecode:.*") {
+        if self.is_in_context(r"whamm:whammy([0-9]+):wasm:bytecode:(.*)") {
             self.visit_bytecode_function(function);
         } else {
             error!("Unsupported function: {}", function.name);
@@ -306,7 +292,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder {
         // visit globals
         self.visit_globals(&probe.globals);
 
-        if self.is_in_context(r"whamm:whammy([0-9]+):wasm:bytecode:.* ") {
+        if self.is_in_context(r"whamm:whammy([0-9]+):wasm:bytecode:(.*)") {
             self.visit_bytecode_probe(probe);
         } else {
             error!("Unsupported probe: {}", self.context_name);

@@ -93,7 +93,7 @@ impl BehaviorTree {
         self.put_child_and_enter(Node::Decorator {
             id,
             ty,
-            parent: Some(self.curr),
+            parent: self.curr,
             child: 0,
         });
         self
@@ -102,11 +102,30 @@ impl BehaviorTree {
     pub fn exit_decorator(&mut self) -> &mut Self {
         match self.get_curr_mut() {
             Some(Node::Decorator {parent, ..}) => {
-                if let Some(parent) = parent {
-                    self.curr = parent.clone()
-                } else {
-                    error!("Attempted to exit decorator, but there is no parent");
-                }
+                self.curr = parent.clone()
+            },
+            other => {
+                error!("Something went wrong, expected Decorator, but was: {:?}", other)
+            }
+        };
+        self
+    }
+
+    pub fn parameterized_action(&mut self, ty: ParamActionType) -> &mut Self {
+        let id = self.nodes.len();
+        self.put_child_and_enter(Node::ParameterizedAction {
+            id,
+            parent: self.curr,
+            ty,
+            children: vec![],
+        });
+        self
+    }
+
+    pub fn exit_parameterized_action(&mut self) -> &mut Self {
+        match self.get_curr_mut() {
+            Some(Node::ParameterizedAction {parent, ..}) => {
+                self.curr = parent.clone()
             },
             other => {
                 error!("Something went wrong, expected Decorator, but was: {:?}", other)
@@ -119,11 +138,41 @@ impl BehaviorTree {
     // ==== Actions =====
     // ==================
 
+    fn add_action_as_param(&mut self, idx: usize, id: usize) {
+        match self.get_curr_mut() {
+            Some(Node::ParameterizedAction {ty, ..}) => {
+                match ty {
+                    ParamActionType::EmitIf { cond, conseq } => {
+                        if idx == 0 {
+                            *cond = id;
+                        } else if idx == 1 {
+                            *conseq = id;
+                        } else {
+                            error!("Unexpected index for parameterized action (EmitIf): {}", idx);
+                        }
+                    },
+                    ParamActionType::EmitIfElse { cond, conseq, alt } => {
+                        if idx == 0 {
+                            *cond = id;
+                        } else if idx == 1 {
+                            *conseq = id;
+                        }else if idx == 2 {
+                            *alt = id;
+                        } else {
+                            error!("Unexpected index for parameterized action (EmitIfElse): {}", idx);
+                        }
+                    }
+                }
+            },
+            _ => {}
+        };
+    }
+
     pub fn define(&mut self, context: String, var_name: String) -> &mut Self {
         let id = self.nodes.len();
         self.put_child(Node::Action {
             id,
-            parent: Some(self.curr),
+            parent: self.curr,
             ty: ActionType::Define {
                 context,
                 var_name
@@ -136,22 +185,8 @@ impl BehaviorTree {
         let id = self.nodes.len();
         self.put_child(Node::Action {
             id,
-            parent: Some(self.curr),
+            parent: self.curr,
             ty: ActionType::EmitBody
-        });
-        self
-    }
-
-    pub fn emit_if_else(&mut self, cond: usize, conseq: usize, alt: usize) -> &mut Self {
-        let id = self.nodes.len();
-        self.put_child(Node::Action {
-            id,
-            parent: Some(self.curr),
-            ty: ActionType::EmitIfElse {
-                cond,
-                conseq,
-                alt
-            }
         });
         self
     }
@@ -160,8 +195,28 @@ impl BehaviorTree {
         let id = self.nodes.len();
         self.put_child(Node::Action {
             id,
-            parent: Some(self.curr),
+            parent: self.curr,
             ty: ActionType::EmitParams
+        });
+        self
+    }
+
+    pub fn emit_orig(&mut self) -> &mut Self {
+        let id = self.nodes.len();
+        self.put_child(Node::Action {
+            id,
+            parent: self.curr,
+            ty: ActionType::EmitOrig
+        });
+        self
+    }
+
+    pub fn emit_pred(&mut self) -> &mut Self {
+        let id = self.nodes.len();
+        self.put_child(Node::Action {
+            id,
+            parent: self.curr,
+            ty: ActionType::EmitPred
         });
         self
     }
@@ -170,7 +225,7 @@ impl BehaviorTree {
         let id = self.nodes.len();
         self.put_child(Node::Action {
             id,
-            parent: Some(self.curr),
+            parent: self.curr,
             ty: ActionType::EnterScope {
                 scope_name
             }
@@ -182,7 +237,7 @@ impl BehaviorTree {
         let id = self.nodes.len();
         self.put_child(Node::Action {
             id,
-            parent: Some(self.curr),
+            parent: self.curr,
             ty: ActionType::ExitScope
         });
         self
@@ -192,7 +247,7 @@ impl BehaviorTree {
         let id = self.nodes.len();
         self.put_child(Node::Action {
             id,
-            parent: Some(self.curr),
+            parent: self.curr,
             ty: ActionType::FoldPred
         });
         self
@@ -202,7 +257,7 @@ impl BehaviorTree {
         let id = self.nodes.len();
         self.put_child(Node::Action {
             id,
-            parent: Some(self.curr),
+            parent: self.curr,
             ty: ActionType::ForceSuccess
         });
         self
@@ -212,7 +267,7 @@ impl BehaviorTree {
         let id = self.nodes.len();
         self.put_child(Node::Action {
             id,
-            parent: Some(self.curr),
+            parent: self.curr,
             ty: ActionType::SaveParams
         });
         self
@@ -222,42 +277,49 @@ impl BehaviorTree {
     // ==== Base Fns ====
     // ==================
 
-    pub fn put_child(&mut self, node: Node) -> bool {
-        let mut added = false;
+    pub fn put_child(&mut self, node: Node) -> Option<usize> {
+        let mut assigned_id = None;
         let new_id = self.nodes.len();
 
         if let Some(curr) = self.get_curr_mut() {
             match curr {
                 Node::Root { child, .. } => {
                     *child = new_id;
-                    added = true;
+                    assigned_id = Some(new_id);
                 }
                 Node::Sequence { children, .. } => {
                     children.push(new_id);
-                    added = true;
+                    assigned_id = Some(new_id);
                 }
                 Node::Decorator { child, .. } => {
                     *child = new_id;
-                    added = true;
+                    assigned_id = Some(new_id);
                 }
                 Node::Fallback { children, .. } => {
                     children.push(new_id);
-                    added = true;
+                    assigned_id = Some(new_id);
+                }
+                Node::ParameterizedAction { children, .. } => {
+                    let idx = children.len();
+                    children.push(new_id);
+
+                    self.add_action_as_param(idx, new_id);
+                    assigned_id = Some(new_id);
                 }
                 _ => {
                     error!("Cannot add child to this Tree node type");
                 }
             }
         }
-        if added {
+        if assigned_id.is_some() {
             self.nodes.push(node);
         }
-        added
+        assigned_id
     }
 
     pub fn put_child_and_enter(&mut self, node: Node) -> bool {
-        if self.put_child(node) {
-            self.curr += 1;
+        if let Some(id) = self.put_child(node) {
+            self.curr = id;
         }
         false
     }
@@ -276,11 +338,7 @@ impl BehaviorTree {
                 self.curr = parent.clone()
             },
             Some(Node::Decorator {parent, ..}) => {
-                if let Some(parent) = parent {
-                    self.curr = parent.clone()
-                } else {
-                    error!("Attempted to exit decorator, but there is no parent");
-                }
+                self.curr = parent.clone()
             }
             _ => {
                 error!("Attempted to exit current scope, but there was no parent to exit into.")
@@ -303,7 +361,7 @@ pub enum Node {
     Decorator {
         id: usize,
         ty: DecoratorType,
-        parent: Option<usize>,
+        parent: usize,
         child: usize
     },
     Fallback {
@@ -311,9 +369,15 @@ pub enum Node {
         parent: usize,
         children: Vec<usize>
     },
+    ParameterizedAction {
+        id: usize,
+        parent: usize,
+        ty: ParamActionType,
+        children: Vec<usize>
+    },
     Action {
         id: usize,
-        parent: Option<usize>,
+        parent: usize,
         ty: ActionType
     }
 }
@@ -352,13 +416,22 @@ pub enum ActionType {
     EmitParams,
     EmitBody,
     EmitOrig,
+    ForceSuccess
+}
+
+#[derive(Debug)]
+pub enum ParamActionType {
+    EmitIf {
+        cond: usize,
+        conseq: usize
+    },
     EmitIfElse {
         cond: usize,
         conseq: usize,
         alt: usize
-    },
-    ForceSuccess
+    }
 }
+
 
 pub trait BehaviorVisitor<T> {
     // Abstracted visit fn
@@ -369,6 +442,7 @@ pub trait BehaviorVisitor<T> {
     fn visit_sequence(&mut self, node: &Node) -> T;
     fn visit_decorator(&mut self, node: &Node) -> T;
     fn visit_fallback(&mut self, node: &Node) -> T;
+    fn visit_parameterized_action(&mut self, node: &Node) -> T;
 
     // Decorator nodes
     fn visit_is_instr(&mut self, node: &Node) -> T;
@@ -376,6 +450,10 @@ pub trait BehaviorVisitor<T> {
     fn visit_has_params(&mut self, node: &Node) -> T;
     fn visit_pred_is(&mut self, node: &Node) -> T;
     fn visit_for_each(&mut self, node: &Node) -> T;
+
+    // Parameterized action nodes
+    fn visit_emit_if_else(&mut self, node: &Node) -> T;
+    fn visit_emit_if(&mut self, node: &Node) -> T;
 
     // Action nodes
     fn visit_action(&mut self, action: &Node) -> T;
@@ -389,6 +467,5 @@ pub trait BehaviorVisitor<T> {
     fn visit_emit_params(&mut self, node: &Node) -> T;
     fn visit_emit_body(&mut self, node: &Node) -> T;
     fn visit_emit_orig(&mut self, node: &Node) -> T;
-    fn visit_emit_if_else(&mut self, node: &Node) -> T;
     fn visit_force_success(&mut self, node: &Node) -> T;
 }
