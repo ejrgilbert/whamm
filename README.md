@@ -39,3 +39,24 @@ To visually debug the decision tree used during Wasm bytecode emission:
 ```shell
 cargo run -- vis-tree --whammy <path_to_whammy>
 ```
+
+## Available Packages ##
+
+Currently available: 
+- `wasm:bytecode`
+
+To be added:
+- `thread` operation events
+- `gc` operation events
+- `function` enter/exit/unwind events
+- `memory` access (read/write) events
+- `table` access (read/write) events
+- `component` operation events
+- `BEGIN`/`END` events
+- `traps`
+- `exception` throw/rethrow/catch events
+
+Example:
+`wasi:http:send_req:alt`
+`wasm:bytecode:call:alt`
+`wasm:fn:enter:before`
