@@ -189,8 +189,12 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
 
     fn visit_is_instr(&mut self, node: &TreeNode) -> () {
         if let TreeNode::Decorator { id, ty, parent, child } = node {
-            if let DecoratorType::IsInstr {instr_name} = ty {
-                self.emit_decorator_node(id, &format!("IsInstr_{}", instr_name.replace(":", "_")));
+            if let DecoratorType::IsInstr {instr_names} = ty {
+                let mut names = "".to_string();
+                for name in instr_names {
+                    names = format!("{names}_{}", name.clone());
+                }
+                self.emit_decorator_node(id, &format!("IsInstr_{}", names));
                 self.emit_edge(parent, id);
 
                 if let Some(node) = self.tree.get_node(child.clone()) {

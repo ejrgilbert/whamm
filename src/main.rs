@@ -201,7 +201,7 @@ pub(crate) fn get_pb(file_pb: &PathBuf) -> Result<PathBuf, String> {
                 full_path.push(file_pb);
                 Ok(full_path)
             }
-            Err(e) => Err("the root folder does not exist.".to_string()),
+            Err(e) => Err(format!("the root folder does not exist: {:?}", e)),
         }
     } else {
         Ok(file_pb.clone())

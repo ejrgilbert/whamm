@@ -385,7 +385,7 @@ pub enum Node {
 #[derive(Debug)]
 pub enum DecoratorType {
     IsInstr {
-        instr_name: String
+        instr_names: Vec<String>
     },
     IsProbeType {
         probe_type: String

@@ -57,17 +57,32 @@ impl BehaviorTreeBuilder {
     }
 
     fn visit_bytecode_module(&mut self, module: &Module) {
-        self.tree.fallback();
-        module.functions.iter().for_each(| (_name, function) | {
-            self.visit_function(function)
-        });
-        self.tree.exit_fallback();
+        // self.tree.fallback();
+        // module.functions.iter().for_each(| (_name, function) | {
+        //     self.visit_function(function)
+        // });
+        // self.tree.exit_fallback();
+        if module.functions.len() > 0 {
+            self.tree.decorator(DecoratorType::IsInstr {
+                instr_names: module.functions.keys().cloned().collect(),
+            });
+            for (_name, function) in module.functions.iter() {
+                // just grab the first one and emit behavior (the decorator above is what
+                // makes this apply to all functions)
+                self.visit_function(function);
+                break;
+            }
+            self.tree.exit_decorator();
+
+        }
     }
 
     fn visit_bytecode_function(&mut self, function: &Function) {
-        self.tree.decorator(DecoratorType::IsInstr {
-                instr_name: function.name.clone()
-            }).sequence()
+        // self.tree.decorator(DecoratorType::IsInstr {
+        //         instr_name: function.name.clone()
+        //     }).sequence()
+        //     .enter_scope(self.context_name.clone());
+        self.tree.sequence()
             .enter_scope(self.context_name.clone());
 
         // Define globals
