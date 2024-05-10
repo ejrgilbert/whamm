@@ -109,17 +109,6 @@ impl Visualizer<'_> {
     }
 }
 impl BehaviorVisitor<()> for Visualizer<'_> {
-    fn visit_node(&mut self, node: &TreeNode) -> () {
-        match node {
-            TreeNode::Root { .. } => self.visit_root(node),
-            TreeNode::Sequence { .. } => self.visit_sequence(node),
-            TreeNode::Decorator { .. } => self.visit_decorator(node),
-            TreeNode::Fallback { .. } => self.visit_fallback(node),
-            TreeNode::ParameterizedAction { .. } => self.visit_parameterized_action(node),
-            TreeNode::Action { .. } => self.visit_action(node),
-        };
-    }
-
     fn visit_root(&mut self, node: &TreeNode) -> () {
         if let TreeNode::Root { id, child } = node {
             self.emit_control_node(id, "root");
@@ -147,21 +136,6 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
         }
     }
 
-    fn visit_decorator(&mut self, node: &TreeNode) -> () {
-        if let TreeNode::Decorator { ty, ..} = node {
-            match ty {
-                DecoratorType::IsInstr {..} => self.visit_is_instr(node),
-                DecoratorType::IsProbeType {..} => self.visit_is_probe_type(node),
-                DecoratorType::HasParams {..} => self.visit_has_params(node),
-                DecoratorType::PredIs {..} => self.visit_pred_is(node),
-                DecoratorType::ForEachProbe {..} => self.visit_for_each_probe(node),
-                DecoratorType::ForFirstProbe {..} => self.visit_for_first_probe(node),
-            }
-        } else {
-            unreachable!()
-        }
-    }
-
     fn visit_fallback(&mut self, node: &TreeNode) -> () {
         if let TreeNode::Fallback { id, parent, children } = node {
             self.emit_control_node(id, "fallback");
@@ -171,17 +145,6 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
                 if let Some(node) = self.tree.get_node(child.clone()) {
                     self.visit_node(node);
                 }
-            }
-        } else {
-            unreachable!()
-        }
-    }
-
-    fn visit_parameterized_action(&mut self, node: &TreeNode) -> () {
-        if let TreeNode::ParameterizedAction { ty, ..} = node {
-            match ty {
-                ParamActionType::EmitIfElse {..} => self.visit_emit_if_else(node),
-                ParamActionType::EmitIf {..} => self.visit_emit_if(node)
             }
         } else {
             unreachable!()
@@ -351,26 +314,6 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
         }
     }
 
-    fn visit_action(&mut self, node: &TreeNode) -> () {
-        if let TreeNode::Action { ty, ..} = node {
-            match ty {
-                ActionType::EnterScope {..} => self.visit_enter_scope(node),
-                ActionType::ExitScope {..} => self.visit_exit_scope(node),
-                ActionType::Define {..} => self.visit_define(node),
-                ActionType::EmitPred {..} => self.visit_emit_pred(node),
-                ActionType::FoldPred {..} => self.visit_fold_pred(node),
-                ActionType::Reset {..} => self.visit_reset(node),
-                ActionType::SaveParams {..} => self.visit_save_params(node),
-                ActionType::EmitParams {..} => self.visit_emit_params(node),
-                ActionType::EmitBody {..} => self.visit_emit_body(node),
-                ActionType::EmitOrig {..} => self.visit_emit_orig(node),
-                ActionType::ForceSuccess {..} => self.visit_force_success(node),
-            }
-        } else {
-            unreachable!()
-        }
-    }
-
     fn visit_enter_scope(&mut self, node: &TreeNode) -> () {
         if let TreeNode::Action { id, ty, parent} = node {
             if let ActionType::EnterScope{ scope_name } = ty {
@@ -514,4 +457,3 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
         }
     }
 }
-

@@ -440,14 +440,45 @@ pub enum ParamActionType {
 
 pub trait BehaviorVisitor<T> {
     // Abstracted visit fn
-    fn visit_node(&mut self, node: &Node) -> T;
+    fn visit_node(&mut self, node: &Node) -> T {
+        match node {
+            Node::Root { .. } => self.visit_root(node),
+            Node::Sequence { .. } => self.visit_sequence(node),
+            Node::Decorator { .. } => self.visit_decorator(node),
+            Node::Fallback { .. } => self.visit_fallback(node),
+            Node::ParameterizedAction { .. } => self.visit_parameterized_action(node),
+            Node::Action { .. } => self.visit_action(node),
+        }
+    }
     fn visit_root(&mut self, node: &Node) -> T;
 
     // Control nodes
     fn visit_sequence(&mut self, node: &Node) -> T;
-    fn visit_decorator(&mut self, node: &Node) -> T;
+    fn visit_decorator(&mut self, node: &Node) -> T {
+        if let Node::Decorator { ty, ..} = node {
+            match ty {
+                DecoratorType::IsInstr {..} => self.visit_is_instr(node),
+                DecoratorType::IsProbeType {..} => self.visit_is_probe_type(node),
+                DecoratorType::HasParams {..} => self.visit_has_params(node),
+                DecoratorType::PredIs {..} => self.visit_pred_is(node),
+                DecoratorType::ForEachProbe {..} => self.visit_for_each_probe(node),
+                DecoratorType::ForFirstProbe {..} => self.visit_for_first_probe(node),
+            }
+        } else {
+            unreachable!()
+        }
+    }
     fn visit_fallback(&mut self, node: &Node) -> T;
-    fn visit_parameterized_action(&mut self, node: &Node) -> T;
+    fn visit_parameterized_action(&mut self, node: &Node) -> T {
+        if let Node::ParameterizedAction { ty, ..} = node {
+            match ty {
+                ParamActionType::EmitIfElse {..} => self.visit_emit_if_else(node),
+                ParamActionType::EmitIf {..} => self.visit_emit_if(node)
+            }
+        } else {
+            unreachable!()
+        }
+    }
 
     // Decorator nodes
     fn visit_is_instr(&mut self, node: &Node) -> T;
@@ -462,7 +493,25 @@ pub trait BehaviorVisitor<T> {
     fn visit_emit_if(&mut self, node: &Node) -> T;
 
     // Action nodes
-    fn visit_action(&mut self, action: &Node) -> T;
+    fn visit_action(&mut self, node: &Node) -> T {
+        if let Node::Action { ty, ..} = node {
+            match ty {
+                ActionType::EnterScope {..} => self.visit_enter_scope(node),
+                ActionType::ExitScope {..} => self.visit_exit_scope(node),
+                ActionType::Define {..} => self.visit_define(node),
+                ActionType::EmitPred {..} => self.visit_emit_pred(node),
+                ActionType::FoldPred {..} => self.visit_fold_pred(node),
+                ActionType::Reset {..} => self.visit_reset(node),
+                ActionType::SaveParams {..} => self.visit_save_params(node),
+                ActionType::EmitParams {..} => self.visit_emit_params(node),
+                ActionType::EmitBody {..} => self.visit_emit_body(node),
+                ActionType::EmitOrig {..} => self.visit_emit_orig(node),
+                ActionType::ForceSuccess {..} => self.visit_force_success(node),
+            }
+        } else {
+            unreachable!()
+        }
+    }
     fn visit_enter_scope(&mut self, node: &Node) -> T;
     fn visit_exit_scope(&mut self, node: &Node) -> T;
     fn visit_define(&mut self, node: &Node) -> T;
