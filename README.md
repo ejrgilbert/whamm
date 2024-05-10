@@ -34,3 +34,8 @@ To specify log level:
 ```shell
 RUST_LOG={ error | warn | info | debug | trace | off } cargo run -- --app <path_to_app_wasm> --whammy <path_to_whammy> <path_for_compiled_output>
 ```
+
+To visually debug the decision tree used during Wasm bytecode emission:
+```shell
+cargo run -- vis-tree --whammy <path_to_whammy>
+```
