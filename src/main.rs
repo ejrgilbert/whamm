@@ -1,5 +1,6 @@
 extern crate core;
 
+use std::collections::HashMap;
 use std::io::Error;
 use std::path::PathBuf;
 use crate::parser::whamm_parser::*;
@@ -19,7 +20,7 @@ use std::process::exit;
 use project_root::get_project_root;
 use crate::behavior::tree::BehaviorTree;
 use crate::behavior::visualize::visualization_to_file;
-use crate::parser::types::Whamm;
+use crate::parser::types::{Probe, Whamm};
 
 fn setup_logger() {
     env_logger::init();
@@ -113,8 +114,8 @@ fn try_main() -> Result<(), failure::Error> {
 }
 
 fn run_instr(app_wasm_path: String, whammy_path: String, output_wasm_path: String, emit_virgil: bool, run_verifier: bool) {
-    let whamm = get_whammy_ast(&whammy_path, run_verifier);
-    let behavior_tree = build_behavior(&whamm);
+    let mut whamm = get_whammy_ast(&whammy_path, run_verifier);
+    let (behavior_tree, simple_ast) = build_behavior(&whamm);
 
     // // Read app Wasm into Walrus module
     // let _config =  walrus::ModuleConfig::new();
@@ -132,13 +133,13 @@ fn run_instr(app_wasm_path: String, whammy_path: String, output_wasm_path: Strin
     //
     // let mut generator = CodeGenerator::new(Box::new(emitter));
     //
-    // generator.generate(&mut whamm);
+    // generator.generate(&mut whamm, &behavior_tree, &simple_ast);
     // generator.dump_to_file(output_wasm_path);
 }
 
 fn run_vis_tree(whammy_path: String, run_verifier: bool, output_path: String) {
     let whamm = get_whammy_ast(&whammy_path, run_verifier);
-    let behavior_tree = build_behavior(&whamm);
+    let (behavior_tree, simple_ast) = build_behavior(&whamm);
 
     let path = match get_pb(&PathBuf::from(output_path.clone())) {
         Ok(pb) => {
@@ -187,12 +188,12 @@ fn get_whammy_ast(whammy_path: &String, run_verifier: bool) -> Whamm {
     }
 }
 
-fn build_behavior(whamm: &Whamm) -> BehaviorTree {
+fn build_behavior(whamm: &Whamm) -> (BehaviorTree, HashMap<String, HashMap<String, HashMap<String, HashMap<String, Vec<Probe>>>>>) {
     // Build the behavior tree from the AST
-    let mut behavior = build_behavior_tree(&whamm);
+    let (mut behavior, simple_ast) = build_behavior_tree(&whamm);
     behavior.reset();
 
-    behavior
+    (behavior, simple_ast)
 }
 
 pub(crate) fn get_pb(file_pb: &PathBuf) -> Result<PathBuf, String> {

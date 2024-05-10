@@ -72,7 +72,7 @@ pub enum Value {
 
 
 // Statements
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Statement {
     Assign {
         var_id: Expr, // Should be VarId
@@ -130,6 +130,7 @@ pub enum Expr {
 // }
 
 // Functions
+#[derive(Clone, Debug)]
 pub struct Fn {
     pub(crate) is_comp_provided: bool,
     pub(crate) name: String,
@@ -138,6 +139,7 @@ pub struct Fn {
     pub(crate) body: Option<Vec<Statement>>
 }
 
+#[derive(Clone, Debug)]
 pub struct Global {
     pub is_comp_provided: bool,
 
@@ -541,6 +543,7 @@ impl Event {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct Probe {
     pub name: String,
     pub fns: Vec<Fn>,                     // Comp-provided
