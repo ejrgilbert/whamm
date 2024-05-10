@@ -1,13 +1,14 @@
 mod common;
 
 use whamm::generator::emitters_newer::{WasmRewritingEmitter};
-use whamm::generator::code_generator::{CodeGenerator};
+use whamm::generator::init_generator::{CodeGenerator, InitGenerator};
 
 use log::error;
 use std::fs;
 use std::process::{Command, Stdio};
 use std::path::Path;
 use walrus::Module;
+use whamm::generator::emitters::WasmRewritingEmitter;
 
 const APP_WASM_PATH: &str = "tests/apps/users.wasm";
 
@@ -29,14 +30,15 @@ fn instrument_with_fault_injection() {
 
     for (mut whamm, symbol_table) in processed_scripts {
         let app_wasm = get_wasm_module();
-        let emitter = WasmRewritingEmitter::new(
+        let mut emitter = WasmRewritingEmitter::new(
             app_wasm,
             symbol_table
         );
-
-        let mut generator = CodeGenerator::new(Box::new(emitter));
-
-        assert!(generator.generate(&mut whamm));
+        let mut init = InitGenerator {
+            emitter: Box::new(&mut emitter),
+            context_name: "".to_string(),
+        };
+        assert!(init.run(&mut whamm));
 
         if !Path::new(OUT_BASE_DIR).exists() {
             match fs::create_dir(OUT_BASE_DIR) {

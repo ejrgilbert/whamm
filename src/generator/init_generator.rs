@@ -19,9 +19,9 @@ pub struct InitGenerator<'a> {
     pub context_name: String
 }
 impl InitGenerator<'_> {
-    pub fn run(&mut self, whamm: &mut Whamm) {
+    pub fn run(&mut self, whamm: &mut Whamm) -> bool {
         // Generate globals and fns defined by `whamm` (this should modify the app_wasm)
-        self.visit_whamm(whamm);
+        self.visit_whamm(whamm)
     }
 
     // Private helper functions

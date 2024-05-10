@@ -22,13 +22,14 @@ pub struct InstrGenerator<'a> {
 impl InstrGenerator<'_> {
     pub fn run(&mut self,
         behavior: &BehaviorTree
-    ) {
+    ) -> bool {
         // Reset the emitter just in case
         self.emitter.reset_children();
         if let Some(root) = behavior.get_root() {
             // Traverse `behavior` tree and emit the probes held in `ast`
-            self.visit_root(root);
+            return self.visit_root(root);
         }
+        false
     }
     // ==================
     // = AST OPERATIONS =
