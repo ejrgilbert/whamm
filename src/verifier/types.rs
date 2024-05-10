@@ -148,8 +148,8 @@ impl SymbolTable {
             Record::Whamm { .. } |
             Record::Whammy { .. } |
             Record::Provider { .. } |
-            Record::Module { .. } |
-            Record::Function { .. } |
+            Record::Package { .. } |
+            Record::Event { .. } |
             Record::Probe { .. } => {
                 self.curr_rec = new_rec_id.clone();
             }
@@ -279,8 +279,8 @@ pub enum ScopeType {
     Whamm,
     Whammy,
     Provider,
-    Module,
-    Function,
+    Package,
+    Event,
     Probe,
     Fn,
     Null
@@ -305,15 +305,15 @@ pub enum Record {
         name: String,
         fns: Vec<usize>,
         globals: Vec<usize>,
-        modules: Vec<usize>
+        packages: Vec<usize>
     },
-    Module {
+    Package {
         name: String,
         fns: Vec<usize>,
         globals: Vec<usize>,
-        functions: Vec<usize>
+        events: Vec<usize>
     },
-    Function {
+    Event {
         name: String,
         fns: Vec<usize>,
         globals: Vec<usize>,

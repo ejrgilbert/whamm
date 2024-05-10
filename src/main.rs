@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use crate::parser::whamm_parser::*;
 use crate::behavior::builder_visitor::*;
 use crate::verifier::verifier::*;
-use crate::generator::emitters::{WasmRewritingEmitter};
-use crate::generator::code_generator::{CodeGenerator};
+// use crate::generator::emitters::{WasmRewritingEmitter};
+// use crate::generator::code_generator::{CodeGenerator};
 
 pub mod parser;
 pub mod behavior;
@@ -116,24 +116,24 @@ fn run_instr(app_wasm_path: String, whammy_path: String, output_wasm_path: Strin
     let whamm = get_whammy_ast(&whammy_path, run_verifier);
     let behavior_tree = build_behavior(&whamm);
 
-    // Read app Wasm into Walrus module
-    let _config =  walrus::ModuleConfig::new();
-    let app_wasm = walrus::Module::from_file(&app_wasm_path).unwrap();
-
-    // Configure the emitter based on target instrumentation code format
-    let emitter = if emit_virgil {
-        unimplemented!();
-    } else {
-        WasmRewritingEmitter::new(
-            app_wasm,
-            symbol_table
-        )
-    };
-
-    let mut generator = CodeGenerator::new(Box::new(emitter));
-
-    generator.generate(&mut whamm);
-    generator.dump_to_file(output_wasm_path);
+    // // Read app Wasm into Walrus module
+    // let _config =  walrus::ModuleConfig::new();
+    // let app_wasm = walrus::Module::from_file(&app_wasm_path).unwrap();
+    //
+    // // Configure the emitter based on target instrumentation code format
+    // let emitter = if emit_virgil {
+    //     unimplemented!();
+    // } else {
+    //     WasmRewritingEmitter::new(
+    //         app_wasm,
+    //         symbol_table
+    //     )
+    // };
+    //
+    // let mut generator = CodeGenerator::new(Box::new(emitter));
+    //
+    // generator.generate(&mut whamm);
+    // generator.dump_to_file(output_wasm_path);
 }
 
 fn run_vis_tree(whammy_path: String, run_verifier: bool, output_path: String) {

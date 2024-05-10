@@ -7,7 +7,7 @@ use regex::Regex;
 use walrus::{ActiveData, ActiveDataLocation, DataKind, FunctionBuilder, FunctionId, FunctionKind, ImportedFunction, InstrLocId, InstrSeqBuilder, LocalFunction, MemoryId, ModuleData, ValType};
 use walrus::ir::{BinaryOp, dfs_pre_order_mut, ExtendedLoad, Instr, InstrSeqId, LoadKind, MemArg};
 use crate::generator::types::ExprFolder;
-use crate::parser::types::{DataType, Whammy, Whamm, Expr, Fn, Function, Module, Op, Probe, Provider, Statement, Value};
+use crate::parser::types::{DataType, Whammy, Whamm, Expr, Fn, Event, Package, Op, Probe, Provider, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 
 // =================================================
@@ -23,8 +23,8 @@ pub trait Emitter {
     fn emit_whamm(&mut self, whamm: &Whamm) -> bool;
     fn emit_whammy(&mut self, whammy: &Whammy) -> bool;
     fn emit_provider(&mut self, context: &str, provider: &mut Provider) -> bool;
-    fn emit_module(&mut self, context: &str, module: &mut Module) -> bool;
-    fn emit_function(&mut self, context: &str, function: &mut Function) -> bool;
+    fn emit_package(&mut self, context: &str, package: &mut Package) -> bool;
+    fn emit_event(&mut self, context: &str, event: &mut Event) -> bool;
     fn emit_params(&mut self) -> bool;
     fn emit_probe(&mut self, context: &str, probe: &mut Probe) -> bool;
     fn fold_expr(&mut self, expr: &mut Expr) -> bool;
@@ -464,7 +464,7 @@ fn emit_value(table: &mut SymbolTable, module_data: &mut ModuleData, val: &mut V
 // ==============================
 
 struct InsertionMetadata {
-    curr_function: String,
+    curr_event: String,
     mem_id: MemoryId,
     curr_mem_offset: u32,
 }
@@ -487,7 +487,7 @@ struct ProbeLoc {
     instr_symbols: HashMap<String, Record>
 }
 
-fn get_probe_insert_locations(probe_locs: &mut HashMap<String, Vec<ProbeLoc>>, module: &mut Module,
+fn get_probe_insert_locations(probe_locs: &mut HashMap<String, Vec<ProbeLoc>>, package: &mut Package,
                               func_id: FunctionId, func_name: Option<String>, func: &LocalFunction,
                               instr_seq_id: InstrSeqId) {
     func.block(instr_seq_id)
@@ -497,7 +497,7 @@ fn get_probe_insert_locations(probe_locs: &mut HashMap<String, Vec<ProbeLoc>>, m
             let instr_as_str = &format!("{:?}", instr);
             let instr_name = instr_as_str.split("(").next().unwrap().to_lowercase();
 
-            if let Some(_function) = module.functions.get_mut(&instr_name) {
+            if let Some(_event) = package.events.get_mut(&instr_name) {
                 // This instruction might need to be probed!
                 // get current probe locations for this instr type
                 let loc_list = match probe_locs.get_mut(&instr_name) {
@@ -526,15 +526,15 @@ fn get_probe_insert_locations(probe_locs: &mut HashMap<String, Vec<ProbeLoc>>, m
             // visit nested blocks
             match instr {
                 Instr::Block(block) => {
-                    get_probe_insert_locations(probe_locs, module, func_id, func_name.clone(), func, block.seq);
+                    get_probe_insert_locations(probe_locs, package, func_id, func_name.clone(), func, block.seq);
                 }
                 Instr::Loop(_loop) => {
-                    get_probe_insert_locations(probe_locs, module, func_id, func_name.clone(), func, _loop.seq);
+                    get_probe_insert_locations(probe_locs, package, func_id, func_name.clone(), func, _loop.seq);
                 }
                 Instr::IfElse(if_else, ..) => {
                     println!("IfElse: {:#?}", if_else);
-                    get_probe_insert_locations(probe_locs, module, func_id, func_name.clone(), func, if_else.consequent);
-                    get_probe_insert_locations(probe_locs, module, func_id, func_name.clone(), func, if_else.alternative);
+                    get_probe_insert_locations(probe_locs, package, func_id, func_name.clone(), func, if_else.consequent);
+                    get_probe_insert_locations(probe_locs, package, func_id, func_name.clone(), func, if_else.alternative);
                 }
                 _ => {
                     // do nothing extra for other instructions
@@ -549,7 +549,7 @@ pub struct WasmRewritingEmitter {
 
     // whamm! AST traversal bookkeeping
     metadata: Option<InsertionMetadata>,
-    probe_locs: HashMap<String, Vec<ProbeLoc>>, // function_name -> ProbeLoc
+    probe_locs: HashMap<String, Vec<ProbeLoc>>, // event_name -> ProbeLoc
 
     fn_providing_contexts: Vec<String>
 }
@@ -564,7 +564,7 @@ impl WasmRewritingEmitter {
         }
     }
 
-    fn setup_wasm_bytecode_module(&mut self, _context: &str, module: &mut Module) -> bool {
+    fn setup_wasm_bytecode_package(&mut self, _context: &str, package: &mut Package) -> bool {
         // Initialize this to 4 MB
         let mem_id = self.app_wasm.memories.iter().next()
             .expect("only single memory is supported")
@@ -590,7 +590,7 @@ impl WasmRewritingEmitter {
 
             if let FunctionKind::Local(local_func) = &func.kind {
                 // TODO -- make sure that the id is not any of the injected function IDs (strcmp)
-                get_probe_insert_locations(&mut probe_locs, module, id, func.name.clone(),
+                get_probe_insert_locations(&mut probe_locs, package, id, func.name.clone(),
                                            local_func, local_func.entry_block());
 
                 // cache and store constants with the ProbeLoc
@@ -598,9 +598,9 @@ impl WasmRewritingEmitter {
             }
         }
 
-        // Just have this find the probe insert locations, then emit_function iterates over this list!
+        // Just have this find the probe insert locations, then emit_event iterates over this list!
         self.metadata = Some(InsertionMetadata {
-            curr_function: "".to_string(),
+            curr_event: "".to_string(),
             mem_id,
             curr_mem_offset
         });
@@ -891,7 +891,7 @@ impl WasmRewritingEmitter {
                 // create local for the param in the module
                 let arg_local_id = self.app_wasm.locals.add(*param_ty);
 
-                // emit a bytecode in the function to assign the ToS to this new local
+                // emit a bytecode in the event to assign the ToS to this new local
                 instr_builder.instr_at( probe_loc.index,walrus::ir::LocalSet {
                     local: arg_local_id.clone()
                 });
@@ -988,7 +988,7 @@ impl WasmRewritingEmitter {
         };
 
         if rec_id.is_none() {
-            info!("`new_target_fn_name` not configured for this probe module.");
+            info!("`new_target_fn_name` not configured for this probe.");
         } else {
             let (name, func_call_id) = match rec_id {
                 Some(r_id) => {
@@ -1220,24 +1220,24 @@ impl Emitter for WasmRewritingEmitter {
         // nothing to do here
         true
     }
-    fn emit_module(&mut self, context: &str, module: &mut Module) -> bool {
+    fn emit_package(&mut self, context: &str, package: &mut Package) -> bool {
         let regex = Regex::new(r"whamm:whammy([0-9]+):wasm:bytecode").unwrap();
         return if let Some(_caps) = regex.captures(context) {
-            let res = self.setup_wasm_bytecode_module(context, module);
+            let res = self.setup_wasm_bytecode_package(context, package);
             res
         } else {
-            error!("Provided module, but could not find a context to provide the definition, context: {}", context);
+            error!("Provided package, but could not find a context to provide the definition, context: {}", context);
             false
         };
     }
-    fn emit_function(&mut self, _context: &str, _function: &mut Function) -> bool {
+    fn emit_event(&mut self, _context: &str, _event: &mut Event) -> bool {
         // nothing to do here
         true
     }
 
     fn emit_probe(&mut self, _context: &str, probe: &mut Probe) -> bool {
         let mut is_success = true;
-        if let Some(probe_locs) = self.probe_locs.get_mut(self.metadata.as_ref().unwrap().curr_function.as_str()) {
+        if let Some(probe_locs) = self.probe_locs.get_mut(self.metadata.as_ref().unwrap().curr_event.as_str()) {
             for probe_loc in probe_locs.iter_mut() {
                 let mut is_success = true;
                 // TODO -- load symbols for this instruction

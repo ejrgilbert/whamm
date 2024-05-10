@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use crate::parser::types as parser_types;
-use parser_types::{DataType, Whammy, Whamm, WhammVisitor, Expr, Fn, Function, Module, Op, Probe, Provider, Statement, Value};
+use parser_types::{DataType, Whammy, Whamm, WhammVisitor, Expr, Fn, Event, Package, Op, Probe, Provider, Statement, Value};
 use crate::verifier::types::{Record, ScopeType, SymbolTable};
 
 use log::{error, trace};
@@ -13,8 +13,8 @@ pub struct SymbolTableBuilder {
     curr_whamm: Option<usize>,   // indexes into this::table::records
     curr_whammy: Option<usize>,  // indexes into this::table::records
     curr_provider: Option<usize>, // indexes into this::table::records
-    curr_module: Option<usize>,   // indexes into this::table::records
-    curr_function: Option<usize>, // indexes into this::table::records
+    curr_package: Option<usize>,   // indexes into this::table::records
+    curr_event: Option<usize>, // indexes into this::table::records
     curr_probe: Option<usize>,    // indexes into this::table::records
 
     curr_fn: Option<usize>,       // indexes into this::table::records
@@ -26,8 +26,8 @@ impl SymbolTableBuilder {
             curr_whamm: None,
             curr_whammy: None,
             curr_provider: None,
-            curr_module: None,
-            curr_function: None,
+            curr_package: None,
+            curr_event: None,
             curr_probe: None,
             curr_fn: None,
         }
@@ -78,7 +78,7 @@ impl SymbolTableBuilder {
             name: provider.name.clone(),
             fns: vec![],
             globals: vec![],
-            modules: vec![],
+            packages: vec![],
         };
 
         // Add provider to scope
@@ -102,72 +102,72 @@ impl SymbolTableBuilder {
         self.table.set_curr_scope_info(provider.name.clone(), ScopeType::Provider);
     }
 
-    fn add_module(&mut self, module: &Module) {
-        if self.table.lookup(&module.name).is_some() {
-            error!("duplicated module [ {} ]", &module.name);
+    fn add_package(&mut self, package: &Package) {
+        if self.table.lookup(&package.name).is_some() {
+            error!("duplicated package [ {} ]", &package.name);
         }
 
         // create record
-        let module_rec = Record::Module {
-            name: module.name.clone(),
+        let package_rec = Record::Package {
+            name: package.name.clone(),
             fns: vec![],
             globals: vec![],
-            functions: vec![],
+            events: vec![],
         };
 
-        // Add module to scope
-        let id = self.table.put(module.name.clone(), module_rec);
+        // Add package to scope
+        let id = self.table.put(package.name.clone(), package_rec);
 
-        // Add module to current provider record
+        // Add package to current provider record
         match self.table.get_record_mut(&self.curr_provider.unwrap()).unwrap() {
-            Record::Provider { modules, .. } => {
-                modules.push(id.clone());
+            Record::Provider { packages, .. } => {
+                packages.push(id.clone());
             }
             _ => {
                 unreachable!()
             }
         }
 
-        // enter module scope
+        // enter package scope
         self.table.enter_scope();
-        self.curr_module = Some(id.clone());
+        self.curr_package = Some(id.clone());
 
         // set scope name and type
-        self.table.set_curr_scope_info(module.name.clone(), ScopeType::Module);
+        self.table.set_curr_scope_info(package.name.clone(), ScopeType::Package);
     }
 
-    fn add_function(&mut self, function: &Function) {
-        if self.table.lookup(&function.name).is_some() {
-            error!("duplicated function [ {} ]", &function.name);
+    fn add_event(&mut self, event: &Event) {
+        if self.table.lookup(&event.name).is_some() {
+            error!("duplicated event [ {} ]", &event.name);
         }
 
         // create record
-        let function_rec = Record::Function {
-            name: function.name.clone(),
+        let event_rec = Record::Event {
+            name: event.name.clone(),
             fns: vec![],
             globals: vec![],
             probes: vec![],
         };
 
-        // Add function to scope
-        let id = self.table.put(function.name.clone(), function_rec);
+        // Add event to scope
+        let id = self.table.put(event.name.clone(), event_rec);
 
-        // Add function to current module record
-        match self.table.get_record_mut(&self.curr_module.unwrap()).unwrap() {
-            Record::Module { functions, .. } => {
-                functions.push(id.clone());
+        // Add event to current package record
+        match self.table.get_record_mut(&self.curr_package.unwrap()).unwrap() {
+            Record::Package { events, .. } => {
+                events.push(id.clone());
             }
             _ => {
                 unreachable!()
             }
         }
 
-        // enter function scope
+        // enter event scope
         self.table.enter_scope();
-        self.curr_function = Some(id.clone());
+        self.curr_event = Some(id.clone());
 
         // set scope name and type
-        self.table.set_curr_scope_info(function.name.clone(), ScopeType::Function);
+        self.table.set_curr_scope_info(event.name.clone(), ScopeType::Event);
     }
 
     fn add_probe(&mut self, probe: &Probe) {
@@ -185,9 +185,9 @@ impl SymbolTableBuilder {
         // Add probe to scope
         let id = self.table.put(probe.name.clone(), probe_rec);
 
-        // Add probe to current function record
-        match self.table.get_record_mut(&self.curr_function.unwrap()) {
-            Some(Record::Function { probes, .. }) => {
+        // Add probe to current event record
+        match self.table.get_record_mut(&self.curr_event.unwrap()) {
+            Some(Record::Event { probes, .. }) => {
                 probes.push(id.clone());
             }
             _ => {
@@ -237,8 +237,8 @@ impl SymbolTableBuilder {
             Some(Record::Whamm { fns, .. }) |
             Some(Record::Whammy { fns, .. }) |
             Some(Record::Provider { fns, .. }) |
-            Some(Record::Module { fns, .. }) |
-            Some(Record::Function { fns, .. }) |
+            Some(Record::Package { fns, .. }) |
+            Some(Record::Event { fns, .. }) |
             Some(Record::Probe { fns, .. }) => {
                 fns.push(id.clone());
             }
@@ -356,8 +356,8 @@ impl WhammVisitor<()> for SymbolTableBuilder {
         self.add_provider(provider);
         provider.fns.iter().for_each(| f | self.visit_fn(f) );
         self.visit_globals(&provider.globals);
-        provider.modules.iter().for_each(| (_name, module) | {
-            self.visit_module(module)
+        provider.packages.iter().for_each(| (_name, package) | {
+            self.visit_package(package)
         });
 
         trace!("Exiting: visit_provider");
@@ -365,38 +365,38 @@ impl WhammVisitor<()> for SymbolTableBuilder {
         self.curr_provider = None;
     }
 
-    fn visit_module(&mut self, module: &Module) -> () {
-        trace!("Entering: visit_module");
+    fn visit_package(&mut self, package: &Package) -> () {
+        trace!("Entering: visit_package");
 
-        self.add_module(module);
-        module.fns.iter().for_each(| f | self.visit_fn(f) );
-        self.visit_globals(&module.globals);
-        module.functions.iter().for_each(| (_name, function) | {
-            self.visit_function(function)
+        self.add_package(package);
+        package.fns.iter().for_each(| f | self.visit_fn(f) );
+        self.visit_globals(&package.globals);
+        package.events.iter().for_each(| (_name, event) | {
+            self.visit_event(event)
         });
 
-        trace!("Exiting: visit_module");
+        trace!("Exiting: visit_package");
         self.table.exit_scope();
-        self.curr_module = None;
+        self.curr_package = None;
     }
 
-    fn visit_function(&mut self, function: &Function) -> () {
-        trace!("Entering: visit_function");
+    fn visit_event(&mut self, event: &Event) -> () {
+        trace!("Entering: visit_event");
 
-        self.add_function(function);
-        function.fns.iter().for_each(| f | self.visit_fn(f) );
-        self.visit_globals(&function.globals);
+        self.add_event(event);
+        event.fns.iter().for_each(| f | self.visit_fn(f) );
+        self.visit_globals(&event.globals);
 
         // visit probe_map
-        function.probe_map.iter().for_each(| probes | {
+        event.probe_map.iter().for_each(| probes | {
             probes.1.iter().for_each(| probe | {
                 self.visit_probe(probe);
             });
         });
 
-        trace!("Exiting: visit_function");
+        trace!("Exiting: visit_event");
         self.table.exit_scope();
-        self.curr_function = None;
+        self.curr_event = None;
     }
 
     fn visit_probe(&mut self, probe: &Probe) -> () {
@@ -440,7 +440,7 @@ impl WhammVisitor<()> for SymbolTableBuilder {
     }
 
     fn visit_stmt(&mut self, _assign: &Statement) -> () {
-        // Not visiting function/probe bodies
+        // Not visiting event/probe bodies
         unreachable!()
     }
 

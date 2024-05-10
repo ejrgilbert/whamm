@@ -239,22 +239,22 @@ wasm::call:alt /
             assert_eq!(0, provider.globals.len());
             assert_eq!(0, provider.fns.len());
 
-            assert_eq!(1, provider.modules.len());
-            let module = provider.modules.get("bytecode").unwrap();
-            assert_eq!("bytecode", module.name);
-            assert_eq!(0, module.globals.len());
-            assert_eq!(0, module.fns.len());
+            assert_eq!(1, provider.packages.len());
+            let package = provider.packages.get("bytecode").unwrap();
+            assert_eq!("bytecode", package.name);
+            assert_eq!(0, package.globals.len());
+            assert_eq!(0, package.fns.len());
 
-            assert_eq!(1, module.functions.len());
-            let function = module.functions.get("call").unwrap();
-            assert_eq!("call", function.name);
-            assert_eq!(4, function.globals.len());
-            assert_eq!(0, function.fns.len());
+            assert_eq!(1, package.events.len());
+            let event = package.events.get("call").unwrap();
+            assert_eq!("call", event.name);
+            assert_eq!(4, event.globals.len());
+            assert_eq!(0, event.fns.len());
 
-            assert_eq!(1, function.probe_map.len());
-            assert_eq!(1, function.probe_map.get("alt").unwrap().len());
+            assert_eq!(1, event.probe_map.len());
+            assert_eq!(1, event.probe_map.get("alt").unwrap().len());
 
-            let probe = function.probe_map.get("alt").unwrap().get(0).unwrap();
+            let probe = event.probe_map.get("alt").unwrap().get(0).unwrap();
             assert_eq!(0, probe.globals.len());
             assert_eq!(0, probe.fns.len());
             assert_eq!("alt", probe.name);

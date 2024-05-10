@@ -9,7 +9,7 @@
 
 `whamm!` is a tool for "Wasm Application Monitoring and Manipulation"[^1], a DSL inspired by the D language.
 
-[^1]: The 'h' is silent.
+[^1] The 'h' is silent.
 
 ## Tutorials ##
 

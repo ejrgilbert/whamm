@@ -2,7 +2,7 @@ use crate::behavior::tree::{BehaviorTree, DecoratorType};
 
 use std::collections::HashMap;
 use crate::parser::types as parser_types;
-use parser_types::{DataType, Whammy, Whamm, WhammVisitor, Expr, Fn, Function, Module, Op, Probe, Provider, Statement, Value};
+use parser_types::{DataType, Whammy, Whamm, WhammVisitor, Expr, Fn, Event, Package, Op, Probe, Provider, Statement, Value};
 
 use log::{error, trace};
 use regex::Regex;
@@ -55,20 +55,20 @@ impl BehaviorTreeBuilder {
         }
     }
 
-    fn visit_bytecode_module(&mut self, module: &Module) {
+    fn visit_bytecode_package(&mut self, package: &Package) {
         // self.tree.fallback();
-        // module.functions.iter().for_each(| (_name, function) | {
-        //     self.visit_function(function)
+        // package.events.iter().for_each(| (_name, event) | {
+        //     self.visit_event(event)
         // });
         // self.tree.exit_fallback();
-        if module.functions.len() > 0 {
+        if package.events.len() > 0 {
             self.tree.decorator(DecoratorType::IsInstr {
-                instr_names: module.functions.keys().cloned().collect(),
+                instr_names: package.events.keys().cloned().collect(),
             });
-            for (_name, function) in module.functions.iter() {
+            for (_name, event) in package.events.iter() {
                 // just grab the first one and emit behavior (the decorator above is what
-                // makes this apply to all functions)
-                self.visit_function(function);
+                // makes this apply to all events)
+                self.visit_event(event);
                 break;
             }
             self.tree.exit_decorator();
@@ -76,28 +76,28 @@ impl BehaviorTreeBuilder {
         }
     }
 
-    fn visit_bytecode_function(&mut self, function: &Function) {
+    fn visit_bytecode_event(&mut self, event: &Event) {
         // self.tree.decorator(DecoratorType::IsInstr {
-        //         instr_name: function.name.clone()
+        //         instr_name: event.name.clone()
         //     }).sequence()
         //     .enter_scope(self.context_name.clone());
         self.tree.sequence()
             .enter_scope(self.context_name.clone());
 
         // Define globals
-        self.visit_globals(&function.globals);
+        self.visit_globals(&event.globals);
 
-        self.visit_probe_ty(function, "before");
-        self.visit_probe_ty(function, "alt");
-        self.visit_probe_ty(function, "after");
+        self.visit_probe_ty(event, "before");
+        self.visit_probe_ty(event, "alt");
+        self.visit_probe_ty(event, "after");
 
         self.tree.exit_scope();
         self.tree.exit_sequence();
         self.tree.exit_decorator();
     }
 
-    fn visit_probe_ty(&mut self, function: &Function, ty: &str) {
-        if let Some(probes) = function.probe_map.get(ty) {
+    fn visit_probe_ty(&mut self, event: &Event, ty: &str) {
+        if let Some(probes) = event.probe_map.get(ty) {
             if let Some(probe) = probes.get(0) {
                 // just grab the first one and emit behavior (the behavior includes a loop
                 // over all probes of this type)
@@ -248,48 +248,48 @@ impl WhammVisitor<()> for BehaviorTreeBuilder {
         // visit globals
         self.visit_globals(&provider.globals);
 
-        provider.modules.iter().for_each(| (_name, module) | {
-            self.visit_module(module)
+        provider.packages.iter().for_each(| (_name, package) | {
+            self.visit_package(package)
         });
 
         self.tree.exit_scope();
 
         trace!("Exiting: BehaviorTreeBuilder::visit_provider");
-        // Remove this module from `context_name`
+        // Remove this package from `context_name`
         self.context_name = self.context_name[..self.context_name.rfind(":").unwrap()].to_string();
     }
 
-    fn visit_module(&mut self, module: &Module) -> () {
-        trace!("Entering: BehaviorTreeBuilder::visit_module");
-        self.context_name += &format!(":{}", module.name.clone());
+    fn visit_package(&mut self, package: &Package) -> () {
+        trace!("Entering: BehaviorTreeBuilder::visit_package");
+        self.context_name += &format!(":{}", package.name.clone());
 
         self.tree.enter_scope(self.context_name.clone());
 
         if self.is_in_context(r"whamm:whammy([0-9]+):wasm:bytecode") {
-            self.visit_bytecode_module(module);
+            self.visit_bytecode_package(package);
         } else {
-            error!("Unsupported module: {}", module.name);
+            error!("Unsupported package: {}", package.name);
         };
 
         self.tree.exit_scope();
 
-        trace!("Exiting: BehaviorTreeBuilder::visit_module");
-        // Remove this module from `context_name`
+        trace!("Exiting: BehaviorTreeBuilder::visit_package");
+        // Remove this package from `context_name`
         self.context_name = self.context_name[..self.context_name.rfind(":").unwrap()].to_string();
     }
 
-    fn visit_function(&mut self, function: &Function) -> () {
-        trace!("Entering: BehaviorTreeBuilder::visit_function");
-        self.context_name += &format!(":{}", function.name.clone());
+    fn visit_event(&mut self, event: &Event) -> () {
+        trace!("Entering: BehaviorTreeBuilder::visit_event");
+        self.context_name += &format!(":{}", event.name.clone());
 
         if self.is_in_context(r"whamm:whammy([0-9]+):wasm:bytecode:(.*)") {
-            self.visit_bytecode_function(function);
+            self.visit_bytecode_event(event);
         } else {
-            error!("Unsupported function: {}", function.name);
+            error!("Unsupported event: {}", event.name);
         };
 
-        trace!("Exiting: BehaviorTreeBuilder::visit_function");
-        // Remove this function from `context_name`
+        trace!("Exiting: BehaviorTreeBuilder::visit_event");
+        // Remove this event from `context_name`
         self.context_name = self.context_name[..self.context_name.rfind(":").unwrap()].to_string();
     }
 
@@ -330,7 +330,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder {
     }
 
     fn visit_stmt(&mut self, _assign: &Statement) -> () {
-        // Not visiting function/probe bodies
+        // Not visiting event/probe bodies
         unreachable!()
     }
 

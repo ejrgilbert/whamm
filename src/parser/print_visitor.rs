@@ -3,7 +3,7 @@ use parser_types::{WhammVisitor};
 
 use std::cmp;
 use std::collections::HashMap;
-use crate::parser::types::{DataType, Whammy, Whamm, Expr, Function, Module, Op, Probe, Provider, Statement, Value, Global};
+use crate::parser::types::{DataType, Whammy, Whamm, Expr, Event, Package, Op, Probe, Provider, Statement, Value, Global};
 
 const NL: &str = "\n";
 
@@ -42,7 +42,7 @@ impl WhammVisitor<String> for AsStrVisitor {
 
         // print fns
         if whamm.fns.len() > 0 {
-            s += &format!("Whamm functions:{}", NL);
+            s += &format!("Whamm events:{}", NL);
             self.increase_indent();
             for f in whamm.fns.iter() {
                 s += &format!("{}{}", self.visit_fn(f), NL);
@@ -82,7 +82,7 @@ impl WhammVisitor<String> for AsStrVisitor {
 
         // print fns
         if whammy.fns.len() > 0 {
-            s += &format!("{} whammy functions:{}", self.get_indent(), NL);
+            s += &format!("{} whammy events:{}", self.get_indent(), NL);
             self.increase_indent();
             for f in whammy.fns.iter() {
                 s += &format!("{}{}{}", self.get_indent(), self.visit_fn(f), NL);
@@ -120,7 +120,7 @@ impl WhammVisitor<String> for AsStrVisitor {
 
         // print fns
         if provider.fns.len() > 0 {
-            s += &format!("{} functions:{}", self.get_indent(), NL);
+            s += &format!("{} events:{}", self.get_indent(), NL);
             self.increase_indent();
             for f in provider.fns.iter() {
                 s += &format!("{}{}{}", self.get_indent(), self.visit_fn(f), NL);
@@ -136,15 +136,15 @@ impl WhammVisitor<String> for AsStrVisitor {
             self.decrease_indent();
         }
 
-        // print modules
-        if provider.modules.len() > 0 {
-            s += &format!("{} modules:{}", self.get_indent(), NL);
-            for (name, module) in provider.modules.iter() {
+        // print packages
+        if provider.packages.len() > 0 {
+            s += &format!("{} packages:{}", self.get_indent(), NL);
+            for (name, package) in provider.packages.iter() {
                 self.increase_indent();
                 s += &format!("{} `{}` {{{}", self.get_indent(), name, NL);
 
                 self.increase_indent();
-                s += &format!("{}", self.visit_module(module));
+                s += &format!("{}", self.visit_package(package));
                 self.decrease_indent();
 
                 s += &format!("{} }}{}", self.get_indent(), NL);
@@ -155,35 +155,35 @@ impl WhammVisitor<String> for AsStrVisitor {
         s
     }
 
-    fn visit_module(&mut self, module: &Module) -> String {
+    fn visit_package(&mut self, package: &Package) -> String {
         let mut s = "".to_string();
 
         // print fns
-        if module.fns.len() > 0 {
-            s += &format!("{} module fns:{}", self.get_indent(), NL);
+        if package.fns.len() > 0 {
+            s += &format!("{} package fns:{}", self.get_indent(), NL);
             self.increase_indent();
-            for f in module.fns.iter() {
+            for f in package.fns.iter() {
                 s += &format!("{}{}{}", self.get_indent(), self.visit_fn(f), NL);
             }
             self.decrease_indent();
         }
 
         // print globals
-        if module.globals.len() > 0 {
-            s += &format!("{} module globals:{}", self.get_indent(), NL);
+        if package.globals.len() > 0 {
+            s += &format!("{} package globals:{}", self.get_indent(), NL);
             self.increase_indent();
-            self.visit_globals(&module.globals);
+            self.visit_globals(&package.globals);
             self.decrease_indent();
         }
 
-        // print functions
-        s += &format!("{} module functions:{}", self.get_indent(), NL);
-        for (name, function) in module.functions.iter() {
+        // print events
+        s += &format!("{} package events:{}", self.get_indent(), NL);
+        for (name, event) in package.events.iter() {
             self.increase_indent();
             s += &format!("{} `{}` {{{}", self.get_indent(), name, NL);
 
             self.increase_indent();
-            s += &format!("{}", self.visit_function(function));
+            s += &format!("{}", self.visit_event(event));
             self.decrease_indent();
 
             s += &format!("{} }}{}", self.get_indent(), NL);
@@ -193,31 +193,31 @@ impl WhammVisitor<String> for AsStrVisitor {
         s
     }
 
-    fn visit_function(&mut self, function: &Function) -> String {
+    fn visit_event(&mut self, event: &Event) -> String {
         let mut s = "".to_string();
 
         // print fns
-        if function.fns.len() > 0 {
-            s += &format!("{} function fns:{}", self.get_indent(), NL);
+        if event.fns.len() > 0 {
+            s += &format!("{} event fns:{}", self.get_indent(), NL);
             self.increase_indent();
-            for f in function.fns.iter() {
+            for f in event.fns.iter() {
                 s += &format!("{}{}{}", self.get_indent(), self.visit_fn(f), NL);
             }
             self.decrease_indent();
         }
 
         // print globals
-        if function.globals.len() > 0 {
-            s += &format!("{} function globals:{}", self.get_indent(), NL);
+        if event.globals.len() > 0 {
+            s += &format!("{} event globals:{}", self.get_indent(), NL);
             self.increase_indent();
-            self.visit_globals(&function.globals);
+            self.visit_globals(&event.globals);
             self.decrease_indent();
         }
 
         // print probes
-        if function.probe_map.len() > 0 {
-            s += &format!("{} function probe_map:{}", self.get_indent(), NL);
-            for (name, probes) in function.probe_map.iter() {
+        if event.probe_map.len() > 0 {
+            s += &format!("{} event probe_map:{}", self.get_indent(), NL);
+            for (name, probes) in event.probe_map.iter() {
                 self.increase_indent();
                 s += &format!("{} {}: ", self.get_indent(), name);
 

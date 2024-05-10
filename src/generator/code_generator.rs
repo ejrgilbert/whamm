@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use log::{info, trace, warn};
 use crate::generator::emitters_newer::Emitter;
 use crate::generator::types::ExprFolder;
-use crate::parser::types::{DataType, Whammy, Whamm, WhammVisitorMut, Expr, Function, Module, Op, Probe, Provider, Statement, Value, Global};
+use crate::parser::types::{DataType, Whammy, Whamm, WhammVisitorMut, Expr, Event, Package, Op, Probe, Provider, Statement, Value, Global};
 
 /// The code generator traverses the AST and calls the passed emitter to
 /// emit some instruction/code/function/etc.
@@ -88,7 +88,7 @@ impl WhammVisitorMut<bool> for CodeGenerator {
         // This structure is necessary since:
         // 1. We need to have the fns/globals injected (a single time)
         //    and ready to use in every body/predicate
-        // 2. We need the base provider:module:function context of a probe
+        // 2. We need the base provider:package:event context of a probe
         //    definition to know *how* to inject it
         // Performing a 2-phase visit provides these necessary properties.
         self.init_pass = false;
@@ -125,74 +125,74 @@ impl WhammVisitorMut<bool> for CodeGenerator {
 
         }
 
-        // visit the modules
-        provider.modules.iter_mut().for_each(|(_name, module)| {
-            is_success &= self.visit_module(module);
+        // visit the packages
+        provider.packages.iter_mut().for_each(|(_name, package)| {
+            is_success &= self.visit_package(package);
         });
 
         trace!("Exiting: CodeGenerator::visit_provider");
         self.emitter.exit_scope();
-        // Remove this module from `context_name`
+        // Remove this package from `context_name`
         self.context_name = self.context_name[..self.context_name.rfind(":").unwrap()].to_string();
         is_success
     }
 
-    fn visit_module(&mut self, module: &mut Module) -> bool {
-        trace!("Entering: CodeGenerator::visit_module");
+    fn visit_package(&mut self, package: &mut Package) -> bool {
+        trace!("Entering: CodeGenerator::visit_package");
         self.emitter.enter_scope();
         let mut is_success = true;
-        self.context_name += &format!(":{}", module.name.clone());
+        self.context_name += &format!(":{}", package.name.clone());
 
         if self.init_pass {
             // visit fns
-            module.fns.iter_mut().for_each(| f | {
+            package.fns.iter_mut().for_each(| f | {
                 is_success &= self.visit_fn(f);
             });
             // DO NOT inject globals (used by compiler)
         } else {
-            // emit this module (sets up module context in the emitter)
-            is_success &= self.emitter.emit_module(&self.context_name, module);
+            // emit this package (sets up package context in the emitter)
+            is_success &= self.emitter.emit_package(&self.context_name, package);
         }
 
-        // visit the functions
-        module.functions.iter_mut().for_each(|(_name, function)| {
-            is_success &= self.visit_function(function);
+        // visit the events
+        package.events.iter_mut().for_each(|(_name, event)| {
+            is_success &= self.visit_event(event);
         });
 
-        trace!("Exiting: CodeGenerator::visit_module");
+        trace!("Exiting: CodeGenerator::visit_package");
         self.emitter.exit_scope();
-        // Remove this module from `context_name`
+        // Remove this package from `context_name`
         self.context_name = self.context_name[..self.context_name.rfind(":").unwrap()].to_string();
         is_success
     }
 
-    fn visit_function(&mut self, function: &mut Function) -> bool {
-        trace!("Entering: CodeGenerator::visit_function");
+    fn visit_event(&mut self, event: &mut Event) -> bool {
+        trace!("Entering: CodeGenerator::visit_event");
         self.emitter.enter_scope();
-        // let mut is_success = self.emitter.emit_function(function);
-        self.context_name += &format!(":{}", function.name.clone());
+        // let mut is_success = self.emitter.emit_event(event);
+        self.context_name += &format!(":{}", event.name.clone());
         let mut is_success = true;
 
         if self.init_pass {
             // visit fns
-            function.fns.iter_mut().for_each(| f | {
+            event.fns.iter_mut().for_each(| f | {
                 is_success &= self.visit_fn(f);
             });
             // DO NOT inject globals (used by compiler)
         } else {
-            // emit this function (sets up function context in the emitter)
-            is_success &= self.emitter.emit_function(&self.context_name, function);
+            // emit this event (sets up event context in the emitter)
+            is_success &= self.emitter.emit_event(&self.context_name, event);
         }
 
         // 1. visit the BEFORE probes
-        if let Some(probes) = function.probe_map.get_mut(&"before".to_string()) {
+        if let Some(probes) = event.probe_map.get_mut(&"before".to_string()) {
             probes.iter_mut().for_each(|probe| {
                 // Assumption: before probes push/pop from stack so it is equivalent to what it was originally
                 is_success &= self.visit_probe(probe);
             });
         }
         // 2. visit the ALT probes
-        if let Some(probes) = function.probe_map.get_mut(&"alt".to_string()) {
+        if let Some(probes) = event.probe_map.get_mut(&"alt".to_string()) {
             // only will emit one alt probe!
             // The last alt probe in the list will be emitted.
             if probes.len() > 1 {
@@ -203,16 +203,16 @@ impl WhammVisitorMut<bool> for CodeGenerator {
             }
         }
         // 3. visit the AFTER probes
-        if let Some(probes) = function.probe_map.get_mut(&"after".to_string()) {
+        if let Some(probes) = event.probe_map.get_mut(&"after".to_string()) {
             probes.iter_mut().for_each(|probe| {
                 // Assumption: after probes push/pop from stack so it is equivalent to what it was originally
                 is_success &= self.visit_probe(probe);
             });
         }
 
-        trace!("Exiting: CodeGenerator::visit_function");
+        trace!("Exiting: CodeGenerator::visit_event");
         self.emitter.exit_scope();
-        // Remove this function from `context_name`
+        // Remove this event from `context_name`
         self.context_name = self.context_name[..self.context_name.rfind(":").unwrap()].to_string();
         is_success
     }

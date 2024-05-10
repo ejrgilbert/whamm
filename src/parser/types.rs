@@ -201,13 +201,13 @@ impl Whamm {
     }
 
     fn init_provided_probes(&mut self) {
-        // A giant data structure to encode the available `providers->modules->functions->probe_types`
+        // A giant data structure to encode the available `providers->packages->events->probe_types`
         self.init_core_probes();
         self.init_wasm_probes();
     }
 
     fn init_core_probes(&mut self) {
-        // Not really any modules or functions for a core probe...just two types!
+        // Not really any packages or events for a core probe...just two types!
         self.provided_probes.insert("core".to_string(), HashMap::from([
             ("".to_string(), HashMap::from([
                 ("".to_string(), vec![
@@ -219,9 +219,9 @@ impl Whamm {
     }
 
     fn init_wasm_probes(&mut self) {
-        // This list of functions matches up with bytecodes supported by Walrus.
+        // This list of events matches up with bytecodes supported by Walrus.
         // See: https://docs.rs/walrus/latest/walrus/ir/
-        let wasm_bytecode_functions = vec![
+        let wasm_bytecode_events = vec![
             "Block".to_string(),
             "Loop".to_string(),
             "Call".to_string(),
@@ -279,8 +279,8 @@ impl Whamm {
         let mut wasm_bytecode_map = HashMap::new();
 
         // Build out the wasm_bytecode_map
-        for function in wasm_bytecode_functions {
-            wasm_bytecode_map.insert(function, wasm_bytecode_probe_types.clone());
+        for event in wasm_bytecode_events {
+            wasm_bytecode_map.insert(event, wasm_bytecode_probe_types.clone());
         }
 
         self.provided_probes.insert("wasm".to_string(), HashMap::from([
@@ -313,7 +313,7 @@ impl Whammy {
         }
     }
 
-    /// Iterates over all of the matched providers, modules, functions, and probe names
+    /// Iterates over all of the matched providers, packages, events, and probe names
     /// to add a copy of the user-defined Probe for each of them.
     pub fn add_probe(&mut self, provided_probes: &HashMap<String, HashMap<String, HashMap<String, Vec<String>>>>,
                      prov_patt: &str, mod_patt: &str, func_patt: &str, nm_patt: &str,
@@ -329,30 +329,30 @@ impl Whammy {
                     self.providers.get_mut(&provider_str.to_lowercase()).unwrap()
                 }
             };
-            for module_str in Module::get_matches(provided_probes,provider_str, mod_patt).iter() {
-                // Does module exist yet?
-                let module = match provider.modules.get_mut(module_str) {
+            for package_str in Package::get_matches(provided_probes,provider_str, mod_patt).iter() {
+                // Does package exist yet?
+                let package = match provider.packages.get_mut(package_str) {
                     Some(m) => m,
                     None => {
-                        // add the module!
-                        let new_mod = Module::new(module_str.to_lowercase().to_string());
-                        provider.modules.insert(module_str.to_lowercase().to_string(), new_mod);
-                        provider.modules.get_mut(&module_str.to_lowercase()).unwrap()
+                        // add the package!
+                        let new_mod = Package::new(package_str.to_lowercase().to_string());
+                        provider.packages.insert(package_str.to_lowercase().to_string(), new_mod);
+                        provider.packages.get_mut(&package_str.to_lowercase()).unwrap()
                     }
                 };
-                for function_str in Function::get_matches(provided_probes, provider_str, module_str, func_patt).iter() {
-                    // Does function exist yet?
-                    let function = match module.functions.get_mut(function_str) {
+                for event_str in Event::get_matches(provided_probes, provider_str, package_str, func_patt).iter() {
+                    // Does event exist yet?
+                    let event = match package.events.get_mut(event_str) {
                         Some(f) => f,
                         None => {
-                            // add the module!
-                            let new_fn = Function::new(function_str.to_lowercase().to_string());
-                            module.functions.insert(function_str.to_lowercase().to_string(), new_fn);
-                            module.functions.get_mut(&function_str.to_lowercase()).unwrap()
+                            // add the package!
+                            let new_fn = Event::new(event_str.to_lowercase().to_string());
+                            package.events.insert(event_str.to_lowercase().to_string(), new_fn);
+                            package.events.get_mut(&event_str.to_lowercase()).unwrap()
                         }
                     };
-                    for name_str in Probe::get_matches(provided_probes, provider_str, module_str, function_str, nm_patt).iter() {
-                        function.insert_probe(name_str.to_string(), Probe::new(nm_patt.to_string(), predicate.clone(), body.clone()));
+                    for name_str in Probe::get_matches(provided_probes, provider_str, package_str, event_str, nm_patt).iter() {
+                        event.insert_probe(name_str.to_string(), Probe::new(nm_patt.to_string(), predicate.clone(), body.clone()));
                     }
                 }
             }
@@ -365,9 +365,9 @@ pub struct Provider {
     pub fns: Vec<Fn>,                     // Comp-provided
     pub globals: HashMap<String, Global>, // Comp-provided
 
-    /// The modules of the probes that have been used in the Whammy.
-    /// These will be sub-modules of this Provider.
-    pub modules: HashMap<String, Module>
+    /// The packages of the probes that have been used in the Whammy.
+    /// These will be sub-packages of this Provider.
+    pub packages: HashMap<String, Package>
 }
 impl Provider {
     pub fn new(name: String) -> Self {
@@ -377,7 +377,7 @@ impl Provider {
             name,
             fns,
             globals,
-            modules: HashMap::new()
+            packages: HashMap::new()
         }
     }
 
@@ -404,24 +404,24 @@ impl Provider {
     }
 }
 
-pub struct Module {
+pub struct Package {
     pub name: String,
     pub fns: Vec<Fn>,                     // Comp-provided
     pub globals: HashMap<String, Global>, // Comp-provided
 
-    /// The functions of the probes that have been used in the Whammy.
-    /// These will be sub-functions of this Module.
-    pub functions: HashMap<String, Function>
+    /// The events of the probes that have been used in the Whammy.
+    /// These will be sub-events of this Package.
+    pub events: HashMap<String, Event>
 }
-impl Module {
+impl Package {
     pub fn new(name: String) -> Self {
-        let fns = Module::get_provided_fns(&name);
-        let globals = Module::get_provided_globals(&name);
-        Module {
+        let fns = Package::get_provided_fns(&name);
+        let globals = Package::get_provided_globals(&name);
+        Package {
             name,
             fns,
             globals,
-            functions: HashMap::new()
+            events: HashMap::new()
         }
     }
 
@@ -433,13 +433,13 @@ impl Module {
         HashMap::new()
     }
 
-    /// Get the Module names that match the passed glob pattern
+    /// Get the Package names that match the passed glob pattern
     pub fn get_matches(provided_probes: &HashMap<String, HashMap<String, HashMap<String, Vec<String>>>>, provider: &str, mod_patt: &str) -> Vec<String> {
         let glob = Pattern::new(&mod_patt.to_lowercase()).unwrap();
 
         let mut matches = vec![];
 
-        for (mod_name, _module) in provided_probes.get(provider).unwrap().into_iter() {
+        for (mod_name, _package) in provided_probes.get(provider).unwrap().into_iter() {
             if glob.matches(&mod_name.to_lowercase()) {
                 matches.push(mod_name.clone());
             }
@@ -449,17 +449,17 @@ impl Module {
     }
 }
 
-pub struct Function {
+pub struct Event {
     pub name: String,
     pub fns: Vec<Fn>,                     // Comp-provided
     pub globals: HashMap<String, Global>, // Comp-provided
     pub probe_map: HashMap<String, Vec<Probe>>
 }
-impl Function {
+impl Event {
     pub fn new(name: String) -> Self {
-        let fns = Function::get_provided_fns(&name);
-        let globals = Function::get_provided_globals(&name);
-        Function {
+        let fns = Event::get_provided_fns(&name);
+        let globals = Event::get_provided_globals(&name);
+        Event {
             name,
             fns,
             globals,
@@ -474,7 +474,7 @@ impl Function {
     fn get_provided_globals(name: &String) -> HashMap<String, Global> {
         let mut globals = HashMap::new();
         if name.to_lowercase() == "call" {
-            // Add in provided globals for the "call" function
+            // Add in provided globals for the "call" event
             globals.insert("target_fn_type".to_string(),Global {
                 is_comp_provided: true,
                 ty: DataType::Str,
@@ -512,13 +512,13 @@ impl Function {
         globals
     }
 
-    /// Get the Function names that match the passed glob pattern
-    pub fn get_matches(provided_probes: &HashMap<String, HashMap<String, HashMap<String, Vec<String>>>>, provider: &str, module: &str, func_patt: &str) -> Vec<String> {
+    /// Get the Event names that match the passed glob pattern
+    pub fn get_matches(provided_probes: &HashMap<String, HashMap<String, HashMap<String, Vec<String>>>>, provider: &str, package: &str, func_patt: &str) -> Vec<String> {
         let glob = Pattern::new(&func_patt.to_lowercase()).unwrap();
 
         let mut matches = vec![];
 
-        for (fn_name, _module) in provided_probes.get(provider).unwrap().get(module).unwrap().into_iter() {
+        for (fn_name, _package) in provided_probes.get(provider).unwrap().get(package).unwrap().into_iter() {
             if glob.matches(&fn_name.to_lowercase()) {
                 matches.push(fn_name.clone());
             }
@@ -572,12 +572,12 @@ impl Probe {
     }
 
     /// Get the Probe names that match the passed glob pattern
-    pub fn get_matches(provided_probes: &HashMap<String, HashMap<String, HashMap<String, Vec<String>>>>, provider: &str, module: &str, function: &str, probe_patt: &str) -> Vec<String> {
+    pub fn get_matches(provided_probes: &HashMap<String, HashMap<String, HashMap<String, Vec<String>>>>, provider: &str, package: &str, event: &str, probe_patt: &str) -> Vec<String> {
         let glob = Pattern::new(&probe_patt.to_lowercase()).unwrap();
 
         let mut matches = vec![];
 
-        for p_name in provided_probes.get(provider).unwrap().get(module).unwrap().get(function).unwrap().iter() {
+        for p_name in provided_probes.get(provider).unwrap().get(package).unwrap().get(event).unwrap().iter() {
             if glob.matches(&p_name.to_lowercase()) {
                 matches.push(p_name.clone());
             }
@@ -623,8 +623,8 @@ pub trait WhammVisitor<T> {
     fn visit_whamm(&mut self, whamm: &Whamm) -> T;
     fn visit_whammy(&mut self, whammy: &Whammy) -> T;
     fn visit_provider(&mut self, provider: &Provider) -> T;
-    fn visit_module(&mut self, module: &Module) -> T;
-    fn visit_function(&mut self, function: &Function) -> T;
+    fn visit_package(&mut self, package: &Package) -> T;
+    fn visit_event(&mut self, event: &Event) -> T;
     fn visit_probe(&mut self, probe: &Probe) -> T;
     // fn visit_predicate(&mut self, predicate: &Expr) -> T;
     fn visit_fn(&mut self, f: &Fn) -> T;
@@ -641,8 +641,8 @@ pub trait WhammVisitorMut<T> {
     fn visit_whamm(&mut self, whamm: &mut Whamm) -> T;
     fn visit_whammy(&mut self, whammy: &mut Whammy) -> T;
     fn visit_provider(&mut self, provider: &mut Provider) -> T;
-    fn visit_module(&mut self, module: &mut Module) -> T;
-    fn visit_function(&mut self, function: &mut Function) -> T;
+    fn visit_package(&mut self, package: &mut Package) -> T;
+    fn visit_event(&mut self, event: &mut Event) -> T;
     fn visit_probe(&mut self, probe: &mut Probe) -> T;
     // fn visit_predicate(&mut self, predicate: &mut Expr) -> T;
     fn visit_fn(&mut self, f: &mut Fn) -> T;
