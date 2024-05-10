@@ -394,7 +394,12 @@ pub enum DecoratorType {
     PredIs {
         val: bool
     },
-    ForEach {
+    /// Iterates over all probes of the specified name in the list.
+    ForEachProbe {
+        target: String
+    },
+    /// Only pulls the first probe of the specified name from the list.
+    ForFirstProbe {
         target: String
     }
 }
@@ -449,7 +454,8 @@ pub trait BehaviorVisitor<T> {
     fn visit_is_probe_type(&mut self, node: &Node) -> T;
     fn visit_has_params(&mut self, node: &Node) -> T;
     fn visit_pred_is(&mut self, node: &Node) -> T;
-    fn visit_for_each(&mut self, node: &Node) -> T;
+    fn visit_for_each_probe(&mut self, node: &Node) -> T;
+    fn visit_for_first_probe(&mut self, node: &Node) -> T;
 
     // Parameterized action nodes
     fn visit_emit_if_else(&mut self, node: &Node) -> T;

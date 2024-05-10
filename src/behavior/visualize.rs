@@ -154,7 +154,8 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
                 DecoratorType::IsProbeType {..} => self.visit_is_probe_type(node),
                 DecoratorType::HasParams {..} => self.visit_has_params(node),
                 DecoratorType::PredIs {..} => self.visit_pred_is(node),
-                DecoratorType::ForEach {..} => self.visit_for_each(node),
+                DecoratorType::ForEachProbe {..} => self.visit_for_each_probe(node),
+                DecoratorType::ForFirstProbe {..} => self.visit_for_first_probe(node),
             }
         } else {
             unreachable!()
@@ -263,10 +264,27 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
         }
     }
 
-    fn visit_for_each(&mut self, node: &TreeNode) -> () {
+    fn visit_for_each_probe(&mut self, node: &TreeNode) -> () {
         if let TreeNode::Decorator { id, ty, parent, child } = node {
-            if let DecoratorType::ForEach{ target } = ty {
-                self.emit_decorator_node(id, &format!("ForEach_{}", target.replace(":", "_")));
+            if let DecoratorType::ForEachProbe { target } = ty {
+                self.emit_decorator_node(id, &format!("ForEachProbe_{}", target.replace(":", "_")));
+                self.emit_edge(parent, id);
+
+                if let Some(node) = self.tree.get_node(child.clone()) {
+                    self.visit_node(node);
+                }
+            } else {
+                unreachable!()
+            }
+        } else {
+            unreachable!()
+        }
+    }
+
+    fn visit_for_first_probe(&mut self, node: &TreeNode) -> () {
+        if let TreeNode::Decorator { id, ty, parent, child } = node {
+            if let DecoratorType::ForFirstProbe { target } = ty {
+                self.emit_decorator_node(id, &format!("ForFirstProbe_{}", target.replace(":", "_")));
                 self.emit_edge(parent, id);
 
                 if let Some(node) = self.tree.get_node(child.clone()) {

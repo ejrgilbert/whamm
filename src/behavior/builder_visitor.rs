@@ -297,10 +297,16 @@ impl WhammVisitor<()> for BehaviorTreeBuilder {
         trace!("Entering: BehaviorTreeBuilder::visit_probe");
         self.context_name += &format!(":{}", probe.name.clone());
 
-        self.tree.decorator(DecoratorType::ForEach {
+        if probe.name == "alt" {
+            self.tree.decorator(DecoratorType::ForFirstProbe {
                 target: probe.name.clone()
-            })
-            .sequence()
+            });
+        } else {
+            self.tree.decorator(DecoratorType::ForEachProbe {
+                target: probe.name.clone()
+            });
+        }
+        self.tree.sequence()
                 .enter_scope(self.context_name.clone());
 
         // visit globals
