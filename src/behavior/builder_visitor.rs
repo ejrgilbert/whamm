@@ -148,7 +148,6 @@ impl BehaviorTreeBuilder {
                 break;
             }
             self.tree.exit_decorator();
-
         }
     }
 
@@ -169,7 +168,6 @@ impl BehaviorTreeBuilder {
 
         self.tree.exit_scope();
         self.tree.exit_sequence();
-        self.tree.exit_decorator();
     }
 
     fn visit_probe_ty(&mut self, event: &Event, ty: &str) {

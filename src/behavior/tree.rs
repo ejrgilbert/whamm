@@ -128,7 +128,7 @@ impl BehaviorTree {
                 self.curr = parent.clone()
             },
             other => {
-                error!("Something went wrong, expected Decorator, but was: {:?}", other)
+                error!("Something went wrong, expected ParameterizedAction, but was: {:?}", other)
             }
         };
         self
