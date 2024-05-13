@@ -1,4 +1,4 @@
-use crate::behavior::tree::{BehaviorTree, DecoratorType};
+use crate::behavior::tree::{ActionWithChildType, BehaviorTree, DecoratorType};
 
 use std::collections::HashMap;
 use crate::parser::types as parser_types;
@@ -132,15 +132,13 @@ impl BehaviorTreeBuilder {
     }
 
     fn visit_bytecode_package(&mut self, package: &Package) {
-        // self.tree.fallback();
-        // package.events.iter().for_each(| (_name, event) | {
-        //     self.visit_event(event)
-        // });
-        // self.tree.exit_fallback();
         if package.events.len() > 0 {
-            self.tree.decorator(DecoratorType::IsInstr {
-                instr_names: package.events.keys().cloned().collect(),
-            });
+            self.tree.action_with_child(ActionWithChildType::EnterPackage {
+                    package_name: package.name.clone()
+                })
+                .decorator(DecoratorType::IsInstr {
+                    instr_names: package.events.keys().cloned().collect(),
+                });
             for (_name, event) in package.events.iter() {
                 // just grab the first one and emit behavior (the decorator above is what
                 // makes this apply to all events)
@@ -148,6 +146,7 @@ impl BehaviorTreeBuilder {
                 break;
             }
             self.tree.exit_decorator();
+            self.tree.exit_action_with_child();
         }
     }
 

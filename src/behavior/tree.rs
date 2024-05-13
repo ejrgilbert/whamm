@@ -111,6 +111,29 @@ impl BehaviorTree {
         self
     }
 
+    pub fn action_with_child(&mut self, ty: ActionWithChildType) -> &mut Self {
+        let id = self.nodes.len();
+        self.put_child_and_enter(Node::ActionWithChild {
+            id,
+            parent: self.curr,
+            ty,
+            child: 0,
+        });
+        self
+    }
+
+    pub fn exit_action_with_child(&mut self) -> &mut Self {
+        match self.get_curr_mut() {
+            Some(Node::ActionWithChild {parent, ..}) => {
+                self.curr = parent.clone()
+            },
+            other => {
+                error!("Something went wrong, expected ActionWithChild, but was: {:?}", other)
+            }
+        };
+        self
+    }
+
     pub fn parameterized_action(&mut self, ty: ParamActionType) -> &mut Self {
         let id = self.nodes.len();
         self.put_child_and_enter(Node::ParameterizedAction {
@@ -299,6 +322,10 @@ impl BehaviorTree {
                     children.push(new_id);
                     assigned_id = Some(new_id);
                 }
+                Node::ActionWithChild { child, .. } => {
+                    *child = new_id;
+                    assigned_id = Some(new_id);
+                }
                 Node::ParameterizedAction { children, .. } => {
                     let idx = children.len();
                     children.push(new_id);
@@ -369,6 +396,12 @@ pub enum Node {
         parent: usize,
         children: Vec<usize>
     },
+    ActionWithChild {
+        id: usize,
+        ty: ActionWithChildType,
+        parent: usize,
+        child: usize
+    },
     ParameterizedAction {
         id: usize,
         parent: usize,
@@ -425,6 +458,13 @@ pub enum ActionType {
 }
 
 #[derive(Debug)]
+pub enum ActionWithChildType {
+    EnterPackage {
+        package_name: String
+    },
+}
+
+#[derive(Debug)]
 pub enum ParamActionType {
     EmitIf {
         cond: usize,
@@ -445,6 +485,7 @@ pub trait BehaviorVisitor<T> {
             Node::Sequence { .. } => self.visit_sequence(node),
             Node::Decorator { .. } => self.visit_decorator(node),
             Node::Fallback { .. } => self.visit_fallback(node),
+            Node::ActionWithChild { .. } => self.visit_action_with_child(node),
             Node::ParameterizedAction { .. } => self.visit_parameterized_action(node),
             Node::Action { .. } => self.visit_action(node),
         }
@@ -468,6 +509,15 @@ pub trait BehaviorVisitor<T> {
         }
     }
     fn visit_fallback(&mut self, node: &Node) -> T;
+    fn visit_action_with_child(&mut self, node: &Node) -> T {
+        if let Node::ActionWithChild { ty, ..} = node {
+            match ty {
+                ActionWithChildType::EnterPackage {..} => self.visit_enter_package(node),
+            }
+        } else {
+            unreachable!()
+        }
+    }
     fn visit_parameterized_action(&mut self, node: &Node) -> T {
         if let Node::ParameterizedAction { ty, ..} = node {
             match ty {
@@ -486,6 +536,9 @@ pub trait BehaviorVisitor<T> {
     fn visit_pred_is(&mut self, node: &Node) -> T;
     fn visit_for_each_probe(&mut self, node: &Node) -> T;
     fn visit_for_first_probe(&mut self, node: &Node) -> T;
+
+    // Action with child nodes
+    fn visit_enter_package(&mut self, node: &Node) -> T;
 
     // Parameterized action nodes
     fn visit_emit_if_else(&mut self, node: &Node) -> T;

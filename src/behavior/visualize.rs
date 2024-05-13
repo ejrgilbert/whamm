@@ -5,7 +5,7 @@ use graphviz_rust::exec;
 use graphviz_rust::dot_structures::{Attribute, Edge, EdgeTy, Graph, Id, Node, NodeId, Stmt, Vertex};
 use graphviz_rust::dot_generator::{attr, edge, graph, id, node, node_id, stmt};
 use graphviz_rust::printer::PrinterContext;
-use crate::behavior::tree::{ActionType, BehaviorTree, BehaviorVisitor, DecoratorType, Node as TreeNode, ParamActionType};
+use crate::behavior::tree::{ActionType, ActionWithChildType, BehaviorTree, BehaviorVisitor, DecoratorType, Node as TreeNode, ParamActionType};
 
 pub fn visualization_to_file(tree: &BehaviorTree, path: PathBuf) -> Result<Vec<u8>> {
     let graph = visualize(tree);
@@ -42,7 +42,7 @@ fn visualize(tree: &BehaviorTree) -> Graph {
 const CONTROL_NODE_COLOR: &str = "dimgray";
 const DECORATOR_NODE_COLOR: &str = "darkseagreen";
 const ACTION_NODE_COLOR: &str = "indianred";
-const PARAM_ACTION_NODE_COLOR: &str = "maroon";
+const SPECIAL_ACTION_NODE_COLOR: &str = "maroon";
 
 struct Visualizer<'a> {
     tree: &'a BehaviorTree,
@@ -76,8 +76,8 @@ impl Visualizer<'_> {
     fn emit_action_node(&mut self, id: &usize, label: &str) {
         self.emit_node(id, label, ACTION_NODE_COLOR);
     }
-    fn emit_param_action_node(&mut self, id: &usize, label: &str) {
-        self.emit_node(id, label, PARAM_ACTION_NODE_COLOR);
+    fn emit_special_action_node(&mut self, id: &usize, label: &str) {
+        self.emit_node(id, label, SPECIAL_ACTION_NODE_COLOR);
     }
 
     // ===============
@@ -261,10 +261,25 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
         }
     }
 
+    fn visit_enter_package(&mut self, node: &TreeNode) -> () {
+        if let TreeNode::ActionWithChild { id, ty, parent, child } = node {
+            if let ActionWithChildType::EnterPackage { package_name } = ty {
+                self.emit_special_action_node(id, &format!("EnterPackage_{}", package_name.replace(":", "_")));
+                self.emit_edge(parent, id);
+
+                if let Some(node) = self.tree.get_node(child.clone()) {
+                    self.visit_node(node);
+                }
+            }
+        } else {
+            unreachable!()
+        }
+    }
+
     fn visit_emit_if_else(&mut self, node: &TreeNode) -> () {
         if let TreeNode::ParameterizedAction { id, parent, ty, .. } = node {
             if let ParamActionType::EmitIfElse { cond, conseq, alt } = ty {
-                self.emit_param_action_node(id, "EmitIfElse");
+                self.emit_special_action_node(id, "EmitIfElse");
                 self.emit_edge(parent, id);
 
                 self.is_param_action = true;
@@ -293,7 +308,7 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
     fn visit_emit_if(&mut self, node: &TreeNode) -> () {
         if let TreeNode::ParameterizedAction { id, parent, ty, .. } = node {
             if let ParamActionType::EmitIf { cond, conseq } = ty {
-                self.emit_param_action_node(id, "EmitIf");
+                self.emit_special_action_node(id, "EmitIf");
                 self.emit_edge(parent, id);
 
                 self.is_param_action = true;
