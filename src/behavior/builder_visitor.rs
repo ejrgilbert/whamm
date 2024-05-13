@@ -244,20 +244,23 @@ impl BehaviorTreeBuilder {
     }
 
     fn emit_bytecode_probe_alt_body(&mut self, _probe: &Probe) {
-        self.tree.parameterized_action(ParamActionType::EmitIfElse {
-            cond: 0,
-            conseq: 1,
-            alt: 2
-        })
-            .emit_pred()
-            .emit_body()
-            .sequence()
-                .decorator(HasParams)
-                    .emit_params()
-                    .exit_decorator()
-                .emit_orig()
-                .exit_sequence()
-            .exit_parameterized_action();
+        self.tree.sequence()
+            .remove_orig()
+            .parameterized_action(ParamActionType::EmitIfElse {
+                cond: 0,
+                conseq: 1,
+                alt: 2
+            })
+                .emit_pred()
+                .emit_body()
+                .sequence()
+                    .decorator(HasParams)
+                        .emit_params()
+                        .exit_decorator()
+                    .emit_orig()
+                    .exit_sequence()
+                .exit_parameterized_action()
+            .exit_sequence();
     }
 
     fn emit_bytecode_probe_after_body(&mut self, _probe: &Probe) {

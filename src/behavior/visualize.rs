@@ -446,6 +446,19 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
         }
     }
 
+    fn visit_remove_orig(&mut self, node: &TreeNode) -> () {
+        if let TreeNode::Action { id, ty, parent} = node {
+            if let ActionType::RemoveOrig = ty {
+                self.emit_action_node(id, "RemoveOrig");
+                self.emit_edge(parent, id);
+            } else {
+                unreachable!()
+            }
+        } else {
+            unreachable!()
+        }
+    }
+
     fn visit_emit_orig(&mut self, node: &TreeNode) -> () {
         if let TreeNode::Action { id, ty, parent} = node {
             if let ActionType::EmitOrig = ty {

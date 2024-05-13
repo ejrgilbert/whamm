@@ -224,6 +224,16 @@ impl BehaviorTree {
         self
     }
 
+    pub fn remove_orig(&mut self) -> &mut Self {
+        let id = self.nodes.len();
+        self.put_child(Node::Action {
+            id,
+            parent: self.curr,
+            ty: ActionType::RemoveOrig
+        });
+        self
+    }
+
     pub fn emit_orig(&mut self) -> &mut Self {
         let id = self.nodes.len();
         self.put_child(Node::Action {
@@ -453,6 +463,7 @@ pub enum ActionType {
     SaveParams,
     EmitParams,
     EmitBody,
+    RemoveOrig,
     EmitOrig,
     ForceSuccess
 }
@@ -557,6 +568,7 @@ pub trait BehaviorVisitor<T> {
                 ActionType::SaveParams {..} => self.visit_save_params(node),
                 ActionType::EmitParams {..} => self.visit_emit_params(node),
                 ActionType::EmitBody {..} => self.visit_emit_body(node),
+                ActionType::RemoveOrig {..} => self.visit_remove_orig(node),
                 ActionType::EmitOrig {..} => self.visit_emit_orig(node),
                 ActionType::ForceSuccess {..} => self.visit_force_success(node),
             }
@@ -573,6 +585,7 @@ pub trait BehaviorVisitor<T> {
     fn visit_save_params(&mut self, node: &Node) -> T;
     fn visit_emit_params(&mut self, node: &Node) -> T;
     fn visit_emit_body(&mut self, node: &Node) -> T;
+    fn visit_remove_orig(&mut self, node: &Node) -> T;
     fn visit_emit_orig(&mut self, node: &Node) -> T;
     fn visit_force_success(&mut self, node: &Node) -> T;
 }
