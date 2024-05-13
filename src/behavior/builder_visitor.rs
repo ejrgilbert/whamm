@@ -252,7 +252,10 @@ impl BehaviorTreeBuilder {
                 alt: 2
             })
                 .emit_pred()
-                .emit_body()
+                .sequence()
+                    .emit_body()
+                    .emit_alt_call() // TODO -- remove need for this
+                    .exit_sequence()
                 .sequence()
                     .decorator(HasParams)
                         .emit_params()

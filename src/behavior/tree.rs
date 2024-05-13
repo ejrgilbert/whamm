@@ -214,6 +214,16 @@ impl BehaviorTree {
         self
     }
 
+    pub fn emit_alt_call(&mut self) -> &mut Self {
+        let id = self.nodes.len();
+        self.put_child(Node::Action {
+            id,
+            parent: self.curr,
+            ty: ActionType::EmitAltCall
+        });
+        self
+    }
+
     pub fn emit_params(&mut self) -> &mut Self {
         let id = self.nodes.len();
         self.put_child(Node::Action {
@@ -463,6 +473,7 @@ pub enum ActionType {
     SaveParams,
     EmitParams,
     EmitBody,
+    EmitAltCall,
     RemoveOrig,
     EmitOrig,
     ForceSuccess
@@ -568,6 +579,7 @@ pub trait BehaviorVisitor<T> {
                 ActionType::SaveParams {..} => self.visit_save_params(node),
                 ActionType::EmitParams {..} => self.visit_emit_params(node),
                 ActionType::EmitBody {..} => self.visit_emit_body(node),
+                ActionType::EmitAltCall {..} => self.visit_emit_alt_call(node),
                 ActionType::RemoveOrig {..} => self.visit_remove_orig(node),
                 ActionType::EmitOrig {..} => self.visit_emit_orig(node),
                 ActionType::ForceSuccess {..} => self.visit_force_success(node),
@@ -585,6 +597,7 @@ pub trait BehaviorVisitor<T> {
     fn visit_save_params(&mut self, node: &Node) -> T;
     fn visit_emit_params(&mut self, node: &Node) -> T;
     fn visit_emit_body(&mut self, node: &Node) -> T;
+    fn visit_emit_alt_call(&mut self, node: &Node) -> T;
     fn visit_remove_orig(&mut self, node: &Node) -> T;
     fn visit_emit_orig(&mut self, node: &Node) -> T;
     fn visit_force_success(&mut self, node: &Node) -> T;
