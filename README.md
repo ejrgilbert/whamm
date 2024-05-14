@@ -9,7 +9,7 @@
 
 `whamm!` is a tool for "Wasm Application Monitoring and Manipulation"[^1], a DSL inspired by the D language.
 
-[^1]: The 'h' is silent.
+[^1] The 'h' is silent.
 
 ## Tutorials ##
 
@@ -27,10 +27,36 @@ cargo test -- --nocapture # With stdout tracing
 
 To run project (there are example Whammys in `tests/whammys` folder):
 ```shell
-cargo run -- --app <path_to_app_wasm> --whammy <path_to_whammy> <path_for_compiled_output>
+cargo run -- instr --app <path_to_app_wasm> --whammy <path_to_whammy> <path_for_compiled_output>
 ```
 
 To specify log level:
 ```shell
 RUST_LOG={ error | warn | info | debug | trace | off } cargo run -- --app <path_to_app_wasm> --whammy <path_to_whammy> <path_for_compiled_output>
 ```
+
+To visually debug the decision tree used during Wasm bytecode emission:
+```shell
+cargo run -- vis-tree --whammy <path_to_whammy>
+```
+
+## Available Packages ##
+
+Currently available: 
+- `wasm:bytecode`
+
+To be added:
+- `thread` operation events
+- `gc` operation events
+- `function` enter/exit/unwind events
+- `memory` access (read/write) events
+- `table` access (read/write) events
+- `component` operation events
+- `BEGIN`/`END` events
+- `traps`
+- `exception` throw/rethrow/catch events
+
+Example:
+`wasi:http:send_req:alt`
+`wasm:bytecode:call:alt`
+`wasm:fn:enter:before`

@@ -50,8 +50,8 @@ fn process_pair(whamm: &mut Whamm, whammy_count: usize, pair: Pair<Rule>) {
 
             // Get out the spec info
             let provider = spec_split.next().unwrap();
-            let module = spec_split.next().unwrap();
-            let function = spec_split.next().unwrap();
+            let package = spec_split.next().unwrap();
+            let event = spec_split.next().unwrap();
             let name = spec_split.next().unwrap();
 
             // Get out the probe predicate/body contents
@@ -91,7 +91,7 @@ fn process_pair(whamm: &mut Whamm, whammy_count: usize, pair: Pair<Rule>) {
 
             // Add probe definition to the whammy
             let whammy: &mut Whammy = whamm.whammys.get_mut(whammy_count).unwrap();
-            whammy.add_probe(&whamm.provided_probes, provider, module, function, name, this_predicate, this_body);
+            whammy.add_probe(&whamm.provided_probes, provider, package, event, name, this_predicate, this_body);
 
             trace!("Exiting probe_def");
         },
@@ -356,7 +356,9 @@ pub fn parse_script(script: String) -> Result<Whamm, String> {
             // debug!("Parsed: {:#?}", res);
 
             match res {
-                Ok(ast) => Ok(ast),
+                Ok(ast) => {
+                    Ok(ast)
+                },
                 Err(e) => Err(e.to_string()),
             }
         },

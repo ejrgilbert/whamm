@@ -39,8 +39,8 @@ fn get_rec<'a>(table: &'a mut SymbolTable, name: &str) -> Option<&'a mut Record>
 fn get_pred(whamm: &Whamm) -> &Expr {
     whamm.whammys.get(0).unwrap()
         .providers.get("wasm").unwrap()
-        .modules.get("bytecode").unwrap()
-        .functions.get("call").unwrap()
+        .packages.get("bytecode").unwrap()
+        .events.get("call").unwrap()
         .probe_map.get("alt").unwrap()
         .get(0).unwrap().predicate.as_ref().unwrap()
 }
@@ -59,13 +59,13 @@ fn hardcode_compiler_constants(table: &mut SymbolTable) {
     }
     println!("Scope name: {}", table.get_curr_scope().unwrap().name);
     table.enter_scope(); // enter bytecode scope
-    while table.get_curr_scope().unwrap().ty != ScopeType::Module {
+    while table.get_curr_scope().unwrap().ty != ScopeType::Package {
         table.exit_scope();
         table.enter_scope()
     }
     println!("Scope name: {}", table.get_curr_scope().unwrap().name);
     table.enter_scope(); // enter call scope
-    while table.get_curr_scope().unwrap().ty != ScopeType::Function {
+    while table.get_curr_scope().unwrap().ty != ScopeType::Event {
         table.exit_scope();
         table.enter_scope()
     }
@@ -125,7 +125,7 @@ fn assert_simplified_predicate(pred: &Expr) {
 fn basic_run(script: &str) {
     match tests::get_ast(script) {
         Some(whamm) => {
-            let mut table = verifier::verify(&whamm, false);
+            let mut table = verifier::build_symbol_table(&whamm);
             table.reset();
 
             let pred = get_pred(&whamm);
@@ -210,7 +210,7 @@ wasm::call:alt /
 
     match tests::get_ast(script) {
         Some(whamm) => {
-            let mut table = verifier::verify(&whamm, false);
+            let mut table = verifier::build_symbol_table(&whamm);
             table.reset();
 
             let pred = get_pred(&whamm);

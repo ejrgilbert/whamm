@@ -57,7 +57,7 @@ impl SymbolTable {
         });
     }
 
-    pub fn enter_named_scope(&mut self, scope_name: &String) {
+    pub fn enter_named_scope(&mut self, scope_name: &String) -> bool {
         let curr = self.get_curr_scope_mut().unwrap();
         let children = curr.children.clone();
 
@@ -78,9 +78,10 @@ impl SymbolTable {
         if let (Some(new_curr), Some(new_next)) = (new_curr_scope, new_next) {
             curr.next = new_next;
             self.curr_scope = new_curr;
-        } else {
-            error!("Could not find the specified scope by name: `{}`", scope_name);
+            return true;
         }
+        error!("Could not find the specified scope by name: `{}`", scope_name);
+        return false;
     }
 
     pub fn enter_scope(&mut self) {
@@ -148,8 +149,8 @@ impl SymbolTable {
             Record::Whamm { .. } |
             Record::Whammy { .. } |
             Record::Provider { .. } |
-            Record::Module { .. } |
-            Record::Function { .. } |
+            Record::Package { .. } |
+            Record::Event { .. } |
             Record::Probe { .. } => {
                 self.curr_rec = new_rec_id.clone();
             }
@@ -279,15 +280,45 @@ pub enum ScopeType {
     Whamm,
     Whammy,
     Provider,
-    Module,
-    Function,
+    Package,
+    Event,
     Probe,
     Fn,
     Null
 }
+impl ScopeType {
+    pub fn to_string(&self) -> String {
+        return match self {
+            ScopeType::Whamm {..} => {
+                "Whamm".to_string()
+            },
+            ScopeType::Whammy {..} => {
+                "Whammy".to_string()
+            },
+            ScopeType::Provider {..} => {
+                "Provider".to_string()
+            },
+            ScopeType::Package {..} => {
+                "Package".to_string()
+            },
+            ScopeType::Event {..} => {
+                "Event".to_string()
+            },
+            ScopeType::Probe {..} => {
+                "Probe".to_string()
+            },
+            ScopeType::Fn {..} => {
+                "Fn".to_string()
+            },
+            ScopeType::Null {..} => {
+                "Null".to_string()
+            }
+        }
+    }
+}
 
 /// The usize values in the record fields index into the SymbolTable::records Vec.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Record {
     Whamm {
         name: String,
@@ -305,15 +336,15 @@ pub enum Record {
         name: String,
         fns: Vec<usize>,
         globals: Vec<usize>,
-        modules: Vec<usize>
+        packages: Vec<usize>
     },
-    Module {
+    Package {
         name: String,
         fns: Vec<usize>,
         globals: Vec<usize>,
-        functions: Vec<usize>
+        events: Vec<usize>
     },
-    Function {
+    Event {
         name: String,
         fns: Vec<usize>,
         globals: Vec<usize>,

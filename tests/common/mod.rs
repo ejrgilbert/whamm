@@ -1,9 +1,11 @@
 use whamm::parser::whamm_parser::*;
 use whamm::parser::types::Whamm;
-use whamm::verifier::verifier::verify;
+use whamm::verifier::verifier::build_symbol_table;
 
 use glob::{glob, glob_with};
 use log::{info, error, warn};
+use whamm::behavior::builder_visitor::{build_behavior_tree, SimpleAST};
+use whamm::behavior::tree::BehaviorTree;
 use whamm::verifier::types::SymbolTable;
 
 // =================
@@ -71,21 +73,26 @@ fn parse_all_scripts(scripts: Vec<String>) -> Vec<Whamm> {
     whammys
 }
 
-fn process_scripts(scripts: Vec<String>) -> Vec<(Whamm, SymbolTable)> {
+fn process_scripts(scripts: Vec<String>) -> Vec<(Whamm, SymbolTable, BehaviorTree, SimpleAST)> {
     let asts = parse_all_scripts(scripts);
 
     // Build the symbol table from the AST
     let mut result = vec![];
     for ast in asts {
-        let mut symbol_table = verify(&ast, false);
+        let mut symbol_table = build_symbol_table(&ast);
         symbol_table.reset();
-        result.push((ast, symbol_table));
+
+        // Build the behavior tree from the AST
+        let (mut behavior, simple_ast) = build_behavior_tree(&ast);
+        behavior.reset();
+
+        result.push((ast, symbol_table, behavior, simple_ast));
     }
 
     result
 }
 
-pub fn setup_fault_injection() -> Vec<(Whamm, SymbolTable)> {
+pub fn setup_fault_injection() -> Vec<(Whamm, SymbolTable, BehaviorTree, SimpleAST)> {
     setup_logger();
     let scripts = get_test_scripts("fault_injection");
     if scripts.len() == 0 {
@@ -95,7 +102,7 @@ pub fn setup_fault_injection() -> Vec<(Whamm, SymbolTable)> {
     process_scripts(scripts)
 }
 
-pub fn setup_wizard_monitors() -> Vec<(Whamm, SymbolTable)> {
+pub fn setup_wizard_monitors() -> Vec<(Whamm, SymbolTable, BehaviorTree, SimpleAST)> {
     setup_logger();
     let scripts = get_test_scripts("wizard_monitors");
     if scripts.len() == 0 {
@@ -105,7 +112,7 @@ pub fn setup_wizard_monitors() -> Vec<(Whamm, SymbolTable)> {
     process_scripts(scripts)
 }
 
-pub fn setup_replay() -> Vec<(Whamm, SymbolTable)> {
+pub fn setup_replay() -> Vec<(Whamm, SymbolTable, BehaviorTree, SimpleAST)> {
     setup_logger();
     let scripts = get_test_scripts("replay");
     if scripts.len() == 0 {

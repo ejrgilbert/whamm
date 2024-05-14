@@ -24,6 +24,11 @@ log = "0.4.20"
 pest = "2.7.7"
 pest_derive = "2.7.7"
 
+# Visualization
+graphviz-rust = "0.9.0"
+project-root = "0.2.2"
+opener = { version = "0.7.0", default-features = false }
+
 [dependencies.clap]
 optional = true
 version = "3.2.23"

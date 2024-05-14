@@ -1,13 +1,14 @@
 mod common;
 
-use whamm::generator::emitters::{WasmRewritingEmitter};
-use whamm::generator::code_generator::{CodeGenerator};
 
 use log::error;
 use std::fs;
 use std::process::{Command, Stdio};
 use std::path::Path;
 use walrus::Module;
+use whamm::generator::init_generator::InitGenerator;
+use whamm::generator::emitters::{Emitter, WasmRewritingEmitter};
+use whamm::generator::instr_generator::InstrGenerator;
 
 const APP_WASM_PATH: &str = "tests/apps/users.wasm";
 
@@ -27,16 +28,35 @@ fn instrument_with_fault_injection() {
     let processed_scripts = common::setup_fault_injection();
     assert!(processed_scripts.len() > 0);
 
-    for (mut whamm, symbol_table) in processed_scripts {
+    for (mut whamm, symbol_table, behavior, simple_ast) in processed_scripts {
         let app_wasm = get_wasm_module();
-        let emitter = WasmRewritingEmitter::new(
+        let mut emitter = WasmRewritingEmitter::new(
             app_wasm,
             symbol_table
         );
+        // Phase 0 of instrumentation (emit globals and provided fns)
+        let mut init = InitGenerator {
+            emitter: Box::new(&mut emitter),
+            context_name: "".to_string(),
+        };
+        assert!(init.run(&mut whamm));
 
-        let mut generator = CodeGenerator::new(Box::new(emitter));
-
-        assert!(generator.generate(&mut whamm));
+        // Phase 1 of instrumentation (actually emits the instrumentation code)
+        // This structure is necessary since we need to have the fns/globals injected (a single time)
+        // and ready to use in every body/predicate.
+        let mut instr = InstrGenerator {
+            tree: &behavior,
+            emitter: Box::new(&mut emitter),
+            ast: simple_ast,
+            context_name: "".to_string(),
+            curr_provider_name: "".to_string(),
+            curr_package_name: "".to_string(),
+            curr_event_name: "".to_string(),
+            curr_probe_name: "".to_string(),
+            curr_probe: None,
+        };
+        // TODO add assertions here once I have error logic in place to check that it worked!
+        instr.run(&behavior);
 
         if !Path::new(OUT_BASE_DIR).exists() {
             match fs::create_dir(OUT_BASE_DIR) {
@@ -49,7 +69,7 @@ fn instrument_with_fault_injection() {
         }
 
         let out_wasm_path = format!("{OUT_BASE_DIR}/{OUT_WASM_NAME}");
-        generator.dump_to_file(out_wasm_path.to_string());
+        emitter.dump_to_file(out_wasm_path.to_string());
 
         let mut wasm2wat = Command::new("wasm2wat");
         wasm2wat.stdout(Stdio::null())

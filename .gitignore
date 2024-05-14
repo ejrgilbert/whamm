@@ -19,3 +19,6 @@ Cargo.lock
 # Ignore the huge test files
 tests/apps/*.wat
 output/
+
+# Ignore mac files
+.DS_Store
