@@ -1,6 +1,5 @@
 extern crate core;
 
-use std::collections::HashMap;
 use std::path::PathBuf;
 use crate::parser::whamm_parser::*;
 use crate::behavior::builder_visitor::*;
@@ -23,7 +22,7 @@ use walrus::Module;
 
 use crate::behavior::tree::BehaviorTree;
 use crate::behavior::visualize::visualization_to_file;
-use crate::parser::types::{Probe, Whamm};
+use crate::parser::types::Whamm;
 use crate::verifier::types::SymbolTable;
 use crate::verifier::verifier::{build_symbol_table, verify};
 
@@ -285,7 +284,7 @@ fn get_whammy_ast(whammy_path: &String) -> Whamm {
     }
 }
 
-fn build_behavior(whamm: &Whamm) -> (BehaviorTree, HashMap<String, HashMap<String, HashMap<String, HashMap<String, Vec<Probe>>>>>) {
+fn build_behavior(whamm: &Whamm) -> (BehaviorTree, SimpleAST) {
     // Build the behavior tree from the AST
     let (mut behavior, simple_ast) = build_behavior_tree(&whamm);
     behavior.reset();

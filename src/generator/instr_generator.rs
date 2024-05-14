@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use log::{error, warn};
+use crate::behavior::builder_visitor::SimpleAST;
 use crate::behavior::tree::{ActionType, ActionWithChildType, BehaviorVisitor, DecoratorType, ParamActionType};
 use crate::behavior::tree::{BehaviorTree, Node};
 use crate::generator::emitters::Emitter;
@@ -16,7 +16,7 @@ use crate::parser::types::Probe;
 pub struct InstrGenerator<'a, 'b> {
     pub tree: &'a BehaviorTree,
     pub emitter: Box<&'b mut dyn Emitter>,
-    pub ast: HashMap<String, HashMap<String, HashMap<String, HashMap<String, Vec<Probe>>>>>,
+    pub ast: SimpleAST,
 
     pub context_name: String,
     pub curr_provider_name: String,
@@ -578,7 +578,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
 // = AST OPERATIONS =
 // ==================
 
-fn get_probes_from_ast<'a>(ast: &'a HashMap<String, HashMap<String, HashMap<String, HashMap<String, Vec<Probe>>>>>,
+fn get_probes_from_ast<'a>(ast: &'a SimpleAST,
                        curr_provider_name: &String, curr_package_name: &String, curr_event_name: &String,
                        name: &String) -> &'a Vec<Probe> {
     if let Some(provider) = ast.get(curr_provider_name) {
@@ -593,39 +593,9 @@ fn get_probes_from_ast<'a>(ast: &'a HashMap<String, HashMap<String, HashMap<Stri
     unreachable!()
 }
 
-// fn get_probes_from_ast_mut<'a>(ast: &'a mut HashMap<String, HashMap<String, HashMap<String, HashMap<String, Vec<Probe>>>>>,
-//                            curr_provider_name: &String, curr_package_name: &String, curr_event_name: &String,
-//                            name: &String) -> &'a mut Vec<Probe> {
-//     if let Some(provider) = ast.get_mut(curr_provider_name) {
-//         if let Some(package) = provider.get_mut(curr_package_name) {
-//             if let Some(event) = package.get_mut(curr_event_name) {
-//                 if let Some(probes) = event.get_mut(name) {
-//                     return probes;
-//                 }
-//             }
-//         }
-//     }
-//     unreachable!()
-// }
-
-fn get_probe_at_idx<'a>(ast: &'a HashMap<String, HashMap<String, HashMap<String, HashMap<String, Vec<Probe>>>>>,
+fn get_probe_at_idx<'a>(ast: &'a SimpleAST,
                          curr_provider_name: &String, curr_package_name: &String, curr_event_name: &String,
                          name: &String, idx: &usize) -> Option<&'a Probe> {
     get_probes_from_ast(ast, curr_provider_name, curr_package_name, curr_event_name, name)
         .get(*idx)
 }
-
-// fn get_probe_at_idx_mut<'a>(ast: &'a mut HashMap<String, HashMap<String, HashMap<String, HashMap<String, Vec<Probe>>>>>,
-//                       curr_provider_name: &String, curr_package_name: &String, curr_event_name: &String,
-//                       name: &String, idx: &usize) -> Option<&'a mut Probe> {
-//     get_probes_from_ast_mut(ast, curr_provider_name, curr_package_name, curr_event_name, name)
-//         .get_mut(*idx)
-// }
-
-// fn fold_expr(emitter: &mut Box<&mut dyn Emitter>, expr: &mut Expr) -> bool {
-//     emitter.fold_expr(expr)
-// }
-//
-// fn emit_body(emitter: &mut Box<&mut dyn Emitter>, body: &mut Vec<Statement>) -> bool{
-//     emitter.emit_body(body)
-// }

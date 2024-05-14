@@ -8,6 +8,7 @@ use std::path::Path;
 use walrus::Module;
 use whamm::generator::init_generator::InitGenerator;
 use whamm::generator::emitters::{Emitter, WasmRewritingEmitter};
+use whamm::generator::instr_generator::InstrGenerator;
 
 const APP_WASM_PATH: &str = "tests/apps/users.wasm";
 
@@ -27,17 +28,34 @@ fn instrument_with_fault_injection() {
     let processed_scripts = common::setup_fault_injection();
     assert!(processed_scripts.len() > 0);
 
-    for (mut whamm, symbol_table) in processed_scripts {
+    for (mut whamm, symbol_table, behavior, simple_ast) in processed_scripts {
         let app_wasm = get_wasm_module();
         let mut emitter = WasmRewritingEmitter::new(
             app_wasm,
             symbol_table
         );
+        // Phase 0 of instrumentation (emit globals and provided fns)
         let mut init = InitGenerator {
             emitter: Box::new(&mut emitter),
             context_name: "".to_string(),
         };
         assert!(init.run(&mut whamm));
+
+        // Phase 1 of instrumentation (actually emits the instrumentation code)
+        // This structure is necessary since we need to have the fns/globals injected (a single time)
+        // and ready to use in every body/predicate.
+        let mut instr = InstrGenerator {
+            tree: &behavior,
+            emitter: Box::new(&mut emitter),
+            ast: simple_ast,
+            context_name: "".to_string(),
+            curr_provider_name: "".to_string(),
+            curr_package_name: "".to_string(),
+            curr_event_name: "".to_string(),
+            curr_probe_name: "".to_string(),
+            curr_probe: None,
+        };
+        assert!(instr.run(&behavior));
 
         if !Path::new(OUT_BASE_DIR).exists() {
             match fs::create_dir(OUT_BASE_DIR) {

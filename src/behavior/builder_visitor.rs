@@ -10,7 +10,9 @@ use crate::behavior::tree::ParamActionType;
 use crate::behavior::tree::DecoratorType::{HasAltCall, HasParams, PredIs};
 use crate::parser::types::Global;
 
-pub fn build_behavior_tree(ast: &Whamm) -> (BehaviorTree, HashMap<String, HashMap<String, HashMap<String, HashMap<String, Vec<Probe>>>>>) {
+pub type SimpleAST = HashMap<String, HashMap<String, HashMap<String, HashMap<String, Vec<Probe>>>>>;
+
+pub fn build_behavior_tree(ast: &Whamm) -> (BehaviorTree, SimpleAST) {
     let mut visitor = BehaviorTreeBuilder::new();
     visitor.visit_whamm(ast);
 
@@ -20,15 +22,7 @@ pub fn build_behavior_tree(ast: &Whamm) -> (BehaviorTree, HashMap<String, HashMa
 
 pub struct BehaviorTreeBuilder {
     pub tree: BehaviorTree,
-    pub ast: HashMap<String, //     <-- provider
-                     HashMap<String, //     <-- package
-                             HashMap<String, //     <-- event
-                                     HashMap<String, //     <-- probe name
-                                         Vec<Probe>
-                                     >
-                             >
-                     >
-             >,
+    pub ast: SimpleAST,
     pub context_name: String,
     curr_provider_name: String,
     curr_package_name: String,
