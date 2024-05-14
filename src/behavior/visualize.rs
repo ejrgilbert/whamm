@@ -358,6 +358,19 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
         }
     }
 
+    fn visit_enter_scope_of(&mut self, node: &TreeNode) -> () {
+        if let TreeNode::Action { id, ty, parent} = node {
+            if let ActionType::EnterScopeOf{ scope_ty, .. } = ty {
+                self.emit_action_node(id, &format!("EnterScopeOf_{}", scope_ty.to_string()));
+                self.emit_edge(parent, id);
+            } else {
+                unreachable!()
+            }
+        } else {
+            unreachable!()
+        }
+    }
+
     fn visit_exit_scope(&mut self, node: &TreeNode) -> () {
         if let TreeNode::Action { id, ty, parent} = node {
             if let ActionType::ExitScope = ty {

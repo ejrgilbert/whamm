@@ -9,6 +9,7 @@ use regex::Regex;
 use crate::behavior::tree::ParamActionType;
 use crate::behavior::tree::DecoratorType::{HasAltCall, HasParams, PredIs};
 use crate::parser::types::Global;
+use crate::verifier::types::ScopeType;
 
 pub type SimpleAST = HashMap<String, HashMap<String, HashMap<String, HashMap<String, Vec<Probe>>>>>;
 
@@ -145,7 +146,7 @@ impl BehaviorTreeBuilder {
 
     fn visit_bytecode_event(&mut self, event: &Event) {
         self.tree.sequence()
-            .enter_scope(self.context_name.clone(), event.name.clone());
+            .enter_scope_of(self.context_name.clone(), ScopeType::Event);
 
         // Define globals
         self.visit_globals(&event.globals);

@@ -1,4 +1,5 @@
 use log::error;
+use crate::verifier::types::ScopeType;
 
 #[derive(Debug)]
 pub struct BehaviorTree {
@@ -273,6 +274,19 @@ impl BehaviorTree {
         self
     }
 
+    pub fn enter_scope_of(&mut self, context_name: String, scope_ty: ScopeType) -> &mut Self {
+        let id = self.nodes.len();
+        self.put_child(Node::Action {
+            id,
+            parent: self.curr,
+            ty: ActionType::EnterScopeOf {
+                context: context_name,
+                scope_ty
+            }
+        });
+        self
+    }
+
     pub fn enter_scope(&mut self, context_name: String, scope_name: String) -> &mut Self {
         let id = self.nodes.len();
         self.put_child(Node::Action {
@@ -474,6 +488,10 @@ pub enum ActionType {
         context: String,
         scope_name: String
     },
+    EnterScopeOf {
+        context: String,
+        scope_ty: ScopeType
+    },
     ExitScope,
     Define {
         context: String,
@@ -585,6 +603,7 @@ pub trait BehaviorVisitor<T> {
         if let Node::Action { ty, ..} = node {
             match ty {
                 ActionType::EnterScope {..} => self.visit_enter_scope(node),
+                ActionType::EnterScopeOf {..} => self.visit_enter_scope_of(node),
                 ActionType::ExitScope {..} => self.visit_exit_scope(node),
                 ActionType::Define {..} => self.visit_define(node),
                 ActionType::EmitPred {..} => self.visit_emit_pred(node),
@@ -603,6 +622,7 @@ pub trait BehaviorVisitor<T> {
         }
     }
     fn visit_enter_scope(&mut self, node: &Node) -> T;
+    fn visit_enter_scope_of(&mut self, node: &Node) -> T;
     fn visit_exit_scope(&mut self, node: &Node) -> T;
     fn visit_define(&mut self, node: &Node) -> T;
     fn visit_emit_pred(&mut self, node: &Node) -> T;

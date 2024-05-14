@@ -5,6 +5,7 @@ use crate::behavior::tree::{BehaviorTree, Node};
 use crate::generator::emitters::Emitter;
 use crate::generator::types::ExprFolder;
 use crate::parser::types::Probe;
+use crate::verifier::types::ScopeType;
 
 /// The second phase of instrumenting a Wasm module by actually emitting the
 /// instrumentation code.
@@ -385,6 +386,43 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                             }
                         }
                     }
+                }
+            } else {
+                unreachable!()
+            }
+        } else {
+            unreachable!()
+        }
+        is_success
+    }
+
+    fn visit_enter_scope_of(&mut self, node: &Node) -> bool {
+        let mut is_success = true;
+        if let Node::Action { ty, ..} = node {
+            if let ActionType::EnterScopeOf { context, scope_ty } = ty {
+                match scope_ty {
+                    ScopeType::Event => {
+                        let instr_name = self.emitter.curr_instr_type();
+                        is_success &= self.emitter.enter_named_scope(&instr_name);
+                        if is_success {
+                            // Set the current context info for probe lookup
+                            self.context_name = context.clone();
+
+                            let mut spec_split = context.split(":");
+                            if let Some(_whamm) = spec_split.next() {
+                                if let Some(_whammy) = spec_split.next() {
+                                    if let Some(provider) = spec_split.next() {
+                                        self.curr_provider_name = provider.to_string();
+                                        if let Some(package) = spec_split.next() {
+                                            self.curr_package_name = package.to_string();
+                                            self.curr_event_name = instr_name;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    _ => unimplemented!()
                 }
             } else {
                 unreachable!()

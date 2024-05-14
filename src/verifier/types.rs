@@ -286,6 +286,36 @@ pub enum ScopeType {
     Fn,
     Null
 }
+impl ScopeType {
+    pub fn to_string(&self) -> String {
+        return match self {
+            ScopeType::Whamm {..} => {
+                "Whamm".to_string()
+            },
+            ScopeType::Whammy {..} => {
+                "Whammy".to_string()
+            },
+            ScopeType::Provider {..} => {
+                "Provider".to_string()
+            },
+            ScopeType::Package {..} => {
+                "Package".to_string()
+            },
+            ScopeType::Event {..} => {
+                "Event".to_string()
+            },
+            ScopeType::Probe {..} => {
+                "Probe".to_string()
+            },
+            ScopeType::Fn {..} => {
+                "Fn".to_string()
+            },
+            ScopeType::Null {..} => {
+                "Null".to_string()
+            }
+        }
+    }
+}
 
 /// The usize values in the record fields index into the SymbolTable::records Vec.
 #[derive(Clone, Debug)]

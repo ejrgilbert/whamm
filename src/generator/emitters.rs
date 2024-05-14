@@ -21,6 +21,7 @@ pub trait Emitter {
     fn has_next_instr(&self) -> bool;
     fn next_instr(&mut self) -> bool;
     fn curr_instr_is_of_type(&mut self, instr_names: &Vec<String>) -> bool;
+    fn curr_instr_type(&mut self) -> String;
     fn has_params(&mut self) -> bool;
     fn save_params(&mut self) -> bool;
     fn emit_params(&mut self) -> bool;
@@ -972,6 +973,14 @@ impl Emitter for WasmRewritingEmitter {
             return instr_names.contains(&instr.instr_name);
         }
         false
+    }
+
+    /// bool -> whether the current instruction is one of the passed list of types
+    fn curr_instr_type(&mut self) -> String {
+        if let Some(instr) = self.instr_iter.curr() {
+            return instr.instr_name.clone();
+        }
+        unreachable!()
     }
 
     fn has_params(&mut self) -> bool {
