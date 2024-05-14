@@ -1,5 +1,5 @@
 use std::process::exit;
-use log::{error, info};
+use log::{debug, error, info};
 use regex::Regex;
 use walrus::{ActiveData, ActiveDataLocation, DataKind, FunctionBuilder, FunctionId, FunctionKind,
              ImportedFunction, InstrSeqBuilder, LocalFunction, MemoryId, ModuleData, ValType};
@@ -527,10 +527,6 @@ impl InstrIter {
                 if name.starts_with("instr_") {
                     continue;
                 }
-
-                if name.contains("CallFuture$LT") {
-                    println!("reached it!");
-                }
             }
 
             if let FunctionKind::Local(local_func) = &func.kind {
@@ -539,6 +535,7 @@ impl InstrIter {
                                            local_func.entry_block());
             }
         }
+        debug!("Finished creating list of instructions to visit");
         Self {
             instr_locs,
             curr_loc: 0
@@ -587,7 +584,7 @@ impl InstrIter {
             });
     }
     fn has_next(&self) -> bool {
-        self.curr_loc + 1 >= self.instr_locs.len()
+        self.curr_loc + 1 < self.instr_locs.len()
     }
     fn next(&mut self) -> Option<&ProbeLoc> {
         self.curr_loc += 1;
@@ -682,6 +679,16 @@ impl WasmRewritingEmitter {
         }
     }
 
+    fn override_var_val(&mut self, rec_id: &usize, val: Option<Value>) {
+        let mut rec = self.table.get_record_mut(&rec_id);
+        match &mut rec {
+            Some(Record::Var { value, .. }) => {
+                *value = val;
+            }
+            _ => {}
+        }
+    }
+
     fn define_new_target_fn_name(&mut self) -> bool {
         // TODO -- change this to be an inline call() instead of setting a var
         true
@@ -694,7 +701,7 @@ impl WasmRewritingEmitter {
             if let Instr::Call(func) = &curr_instr.instr {
                 let func = self.app_wasm.funcs.get(func.func);
                 let func_info = get_func_info(&self.app_wasm, func);
-                if func.name.as_ref().unwrap().contains("ZN87") {
+                if func.name.as_ref().unwrap().contains("call_perform") {
                     println!("{}", func.name.as_ref().unwrap());
                 }
 
@@ -705,20 +712,11 @@ impl WasmRewritingEmitter {
                         return false;
                     }
                 };
-                let rec = self.table.get_record_mut(&rec_id);
-                if let Some(Record::Var {..}) = rec {
-                    let mut new_rec = rec.unwrap().clone();
-                    match &mut new_rec {
-                        Record::Var { value, .. } => {
-                            *value = Some(Value::Str {
-                                ty: DataType::Str,
-                                val: func_info.name.clone(),
-                                addr: None
-                            });
-                        }
-                        _ => {}
-                    }
-                }
+                self.override_var_val(&rec_id, Some(Value::Str {
+                    ty: DataType::Str,
+                    val: func_info.name.to_string(),
+                    addr: None
+                }));
             }
         }
         true
@@ -731,7 +729,7 @@ impl WasmRewritingEmitter {
             if let Instr::Call(func) = &curr_instr.instr {
                 let func = self.app_wasm.funcs.get(func.func);
                 let func_info = get_func_info(&self.app_wasm, func);
-                // if func.name.as_ref().unwrap().contains("ZN87") {
+                // if func.name.as_ref().unwrap().contains("call_perform") {
                 //     println!("{}", func.name.as_ref().unwrap());
                 // }
                 let rec_id = match self.table.lookup(&var_name) {
@@ -741,20 +739,11 @@ impl WasmRewritingEmitter {
                         return false;
                     }
                 };
-                let rec = self.table.get_record_mut(&rec_id);
-                if let Some(Record::Var {..}) = rec {
-                    let mut new_rec = rec.unwrap().clone();
-                    match &mut new_rec {
-                        Record::Var { value, .. } => {
-                            *value = Some(Value::Str {
-                                ty: DataType::Str,
-                                val: func_info.func_kind.to_string(),
-                                addr: None
-                            });
-                        }
-                        _ => {}
-                    }
-                }
+                self.override_var_val(&rec_id, Some(Value::Str {
+                    ty: DataType::Str,
+                    val: func_info.func_kind.to_string(),
+                    addr: None
+                }));
             }
         }
         true
@@ -766,7 +755,7 @@ impl WasmRewritingEmitter {
             if let Instr::Call(func) = &curr_instr.instr {
                 let func = self.app_wasm.funcs.get(func.func);
                 let func_info = get_func_info(&self.app_wasm, func);
-                // if func.name.as_ref().unwrap().contains("ZN87") {
+                // if func.name.as_ref().unwrap().contains("call_perform") {
                 //     println!("{}", func.name.as_ref().unwrap());
                 // }
                 let rec_id = match self.table.lookup(&var_name) {
@@ -776,20 +765,11 @@ impl WasmRewritingEmitter {
                         return false;
                     }
                 };
-                let rec = self.table.get_record_mut(&rec_id);
-                if let Some(Record::Var {..}) = rec {
-                    let mut new_rec = rec.unwrap().clone();
-                    match &mut new_rec {
-                        Record::Var { value, .. } => {
-                            *value = Some(Value::Str {
-                                ty: DataType::Str,
-                                val: func_info.module.clone(),
-                                addr: None
-                            });
-                        }
-                        _ => {}
-                    }
-                }
+                self.override_var_val(&rec_id, Some(Value::Str {
+                    ty: DataType::Str,
+                    val: func_info.module.to_string(),
+                    addr: None
+                }));
             }
         }
         true
@@ -1003,7 +983,7 @@ impl Emitter for WasmRewritingEmitter {
             if let Instr::Call(func) = &curr_instr.instr {
                 let func = self.app_wasm.funcs.get(func.func);
                 let func_info = get_func_info(&self.app_wasm, func);
-                // if func.name.as_ref().unwrap().contains("ZN87") {
+                // if func.name.as_ref().unwrap().contains("call_perform") {
                 //     println!("{}", func.name.as_ref().unwrap());
                 // }
 

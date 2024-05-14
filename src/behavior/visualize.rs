@@ -347,7 +347,7 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
 
     fn visit_enter_scope(&mut self, node: &TreeNode) -> () {
         if let TreeNode::Action { id, ty, parent} = node {
-            if let ActionType::EnterScope{ scope_name } = ty {
+            if let ActionType::EnterScope{ scope_name, .. } = ty {
                 self.emit_action_node(id, &format!("EnterScope_{}", scope_name.replace(":", "_")));
                 self.emit_edge(parent, id);
             } else {

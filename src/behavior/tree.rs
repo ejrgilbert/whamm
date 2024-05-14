@@ -264,12 +264,13 @@ impl BehaviorTree {
         self
     }
 
-    pub fn enter_scope(&mut self, scope_name: String) -> &mut Self {
+    pub fn enter_scope(&mut self, context_name: String, scope_name: String) -> &mut Self {
         let id = self.nodes.len();
         self.put_child(Node::Action {
             id,
             parent: self.curr,
             ty: ActionType::EnterScope {
+                context: context_name,
                 scope_name
             }
         });
@@ -461,6 +462,7 @@ pub enum DecoratorType {
 #[derive(Debug)]
 pub enum ActionType {
     EnterScope {
+        context: String,
         scope_name: String
     },
     ExitScope,

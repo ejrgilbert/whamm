@@ -27,7 +27,7 @@ cargo test -- --nocapture # With stdout tracing
 
 To run project (there are example Whammys in `tests/whammys` folder):
 ```shell
-cargo run -- --app <path_to_app_wasm> --whammy <path_to_whammy> <path_for_compiled_output>
+cargo run -- instr --app <path_to_app_wasm> --whammy <path_to_whammy> <path_for_compiled_output>
 ```
 
 To specify log level:

@@ -170,7 +170,7 @@ fn run_instr(app_wasm_path: String, whammy_path: String, output_wasm_path: Strin
         curr_package_name: "".to_string(),
         curr_event_name: "".to_string(),
         curr_probe_name: "".to_string(),
-        curr_probe: 0,
+        curr_probe: None,
     };
     instr.run(&behavior_tree);
 

@@ -23,7 +23,7 @@ pub struct InstrGenerator<'a, 'b> {
     pub curr_package_name: String,
     pub curr_event_name: String,
     pub curr_probe_name: String,
-    pub curr_probe: usize
+    pub curr_probe: Option<Probe>
 }
 impl InstrGenerator<'_, '_> {
     pub fn run(&mut self,
@@ -37,50 +37,6 @@ impl InstrGenerator<'_, '_> {
         }
         warn!("The behavior tree was empty! Nothing to emit!");
         false
-    }
-    // ==================
-    // = AST OPERATIONS =
-    // ==================
-
-    fn get_probes_from_ast(&self, name: &String) -> &Vec<Probe> {
-        if let Some(provider) = self.ast.get(&self.curr_provider_name) {
-            if let Some(package) = provider.get(&self.curr_package_name) {
-                if let Some(event) = package.get(&self.curr_event_name) {
-                    if let Some(probes) = event.get(name) {
-                        return probes;
-                    }
-                }
-            }
-        }
-        unreachable!()
-    }
-
-    fn get_probes_from_ast_mut(&mut self, name: &String) -> &mut Vec<Probe> {
-        // let provider_name = self.curr_provider_name.clone();
-        // let package_name = self.curr_package_name.clone();
-        // let event_name = self.curr_event_name.clone();
-        if let Some(provider) = self.ast.get_mut(&self.curr_provider_name) {
-            if let Some(package) = provider.get_mut(&self.curr_package_name) {
-                if let Some(event) = package.get_mut(&self.curr_event_name) {
-                    if let Some(probes) = event.get_mut(name) {
-                        return probes;
-                    }
-                }
-            }
-        }
-        unreachable!()
-    }
-
-    fn get_curr_probe(&self) -> Option<&Probe> {
-        self.get_probes_from_ast(&self.curr_probe_name)
-            .get(self.curr_probe)
-    }
-
-    fn get_curr_probe_mut(&mut self) -> Option<&mut Probe> {
-        let probe_name = self.curr_probe_name.clone();
-        let curr_probe_idx = self.curr_probe.clone();
-        self.get_probes_from_ast_mut(&probe_name)
-            .get_mut(curr_probe_idx)
     }
 
     fn emit_cond(&mut self, cond: &usize) -> bool {
@@ -133,17 +89,22 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
     }
 
     fn visit_sequence(&mut self, node: &Node) -> bool {
-        let mut is_success = true;
         if let Node::Sequence { children, .. } = node {
             for child in children {
+                let mut child_is_success = true;
                 if let Some(node) = self.tree.get_node(child.clone()) {
-                    is_success &= self.visit_node(node);
+                    child_is_success &= self.visit_node(node);
+                }
+                if !child_is_success {
+                    // If the child was unsuccessful, don't execute the following children
+                    // and return `false` (failure)
+                    return child_is_success;
                 }
             }
         } else {
             unreachable!()
         }
-        is_success
+        true
     }
 
     fn visit_fallback(&mut self, node: &Node) -> bool {
@@ -245,7 +206,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         let mut is_success = true;
         if let Node::Decorator {ty, child, ..} = node {
             if let DecoratorType::PredIs{ val } = ty {
-                if let Some(probe) = self.get_curr_probe() {
+                if let Some(probe) = &self.curr_probe {
                     if let Some(pred) = &probe.predicate {
                         if let Some(pred_as_bool) = ExprFolder::get_single_bool(&pred) {
                             // predicate has been reduced to a boolean value
@@ -254,7 +215,11 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                                 if let Some(node) = self.tree.get_node(child.clone()) {
                                     is_success &= self.visit_node(node);
                                 }
+                            } else {
+                                return false;
                             }
+                        } else {
+                            return false;
                         }
                     }
                 }
@@ -275,13 +240,29 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         if let Node::Decorator { ty, child, .. } = node {
             if let DecoratorType::ForEachProbe { target } = ty {
                 self.curr_probe_name = target.clone();
-                for i in Vec::from_iter(0..self.get_probes_from_ast(target).len()).iter() {
-                    self.curr_probe = i.clone();
+
+                // Must pull the probe by index due to Rust calling constraints...
+                let probe_list_len = get_probes_from_ast(&self.ast, &self.curr_provider_name, &self.curr_package_name,
+                                                     &self.curr_event_name, target).len();
+                for i in Vec::from_iter(0..probe_list_len).iter() {
+                    // make a clone of the current probe per instruction traversal
+                    // this will reset the clone pred/body for each instruction!
+
+                    if let Some(probe) = get_probe_at_idx(&self.ast, &self.curr_provider_name, &self.curr_package_name,
+                                                           &self.curr_event_name, target, i) {
+                        self.curr_probe = Some(probe.clone());
+                    }
 
                     if let Some(node) = self.tree.get_node(child.clone()) {
                         is_success &= self.visit_node(node);
                     }
                 }
+                // for probe in get_probes_from_ast(&self.ast, &self.curr_provider_name, &self.curr_package_name,
+                //                                      &self.curr_event_name, target) {
+                //     // make a clone of the current probe per instruction traversal
+                //     // this will reset the clone pred/body for each instruction!
+                //     self.curr_probe = probe.clone();
+                // }
             } else {
                 unreachable!()
             }
@@ -295,11 +276,17 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         let mut is_success = true;
         if let Node::Decorator {ty, child, .. } = node {
             if let DecoratorType::ForFirstProbe { target } = ty {
-                if self.get_probes_from_ast(target).len() > 1 {
+                let probe_list = get_probes_from_ast(&self.ast, &self.curr_provider_name, &self.curr_package_name,
+                                                     &self.curr_event_name, target);
+                if probe_list.len() > 1 {
                     warn!("There is more than one probe for probe type '{}'. So only emitting first probe, ignoring rest.", target)
                 }
                 self.curr_probe_name = target.clone();
-                self.curr_probe = 0;
+                // make a clone of the first probe per instruction traversal
+                // this will reset the clone pred/body for each instruction!
+                if let Some(probe) = probe_list.get(0) {
+                    self.curr_probe = Some(probe.clone());
+                }
 
                 // Process the instructions for this single probe!
                 if let Some(node) = self.tree.get_node(child.clone()) {
@@ -374,13 +361,13 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
     fn visit_enter_scope(&mut self, node: &Node) -> bool {
         let mut is_success = true;
         if let Node::Action { ty, ..} = node {
-            if let ActionType::EnterScope{ scope_name } = ty {
+            if let ActionType::EnterScope{ context, scope_name } = ty {
                 is_success &= self.emitter.enter_named_scope(scope_name);
                 if is_success {
                     // Set the current context info for probe lookup
-                    self.context_name = scope_name.clone();
+                    self.context_name = context.clone();
 
-                    let mut spec_split = scope_name.split(":");
+                    let mut spec_split = context.split(":");
                     if let Some(_whamm) = spec_split.next() {
                         if let Some(_whammy) = spec_split.next() {
                             if let Some(provider) = spec_split.next() {
@@ -439,10 +426,8 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         let mut is_success = true;
         if let Node::Action {ty, ..} = node {
             if let ActionType::EmitPred = ty {
-                if let Some(probe) = self.get_curr_probe() {
-                    // This clone is because of borrowing self as mutable AND immutable at the same time
-                    // TODO -- remove the need for this clone
-                    if let Some(pred) = &mut probe.predicate.clone() {
+                if let Some(probe) = &mut self.curr_probe {
+                    if let Some(pred) = &mut probe.predicate {
                         is_success &= self.emitter.emit_expr(pred);
                     }
                 }
@@ -459,10 +444,8 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         let mut is_success = true;
         if let Node::Action { ty, ..} = node {
             if let ActionType::FoldPred = ty {
-                if let Some(probe) = self.get_curr_probe_mut() {
-                    // This clone is because of borrowing self as mutable AND immutable at the same time
-                    // TODO -- remove the need for this clone
-                    if let Some(pred) = &mut probe.predicate.clone() {
+                if let Some(probe) = &mut self.curr_probe {
+                    if let Some(pred) = &mut probe.predicate {
                         is_success &= self.emitter.fold_expr(pred);
                     }
                 }
@@ -521,10 +504,8 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         let mut is_success = true;
         if let Node::Action {ty, ..} = node {
             if let ActionType::EmitBody = ty {
-                if let Some(probe) = self.get_curr_probe() {
-                    // This clone is because of borrowing self as mutable AND immutable at the same time
-                    // TODO -- remove the need for this clone
-                    if let Some(body) = &mut probe.body.clone() {
+                if let Some(probe) = &mut self.curr_probe {
+                    if let Some(body) = &mut probe.body {
                         is_success &= self.emitter.emit_body(body);
                     }
                 }
@@ -554,7 +535,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
     fn visit_remove_orig(&mut self, node: &Node) -> bool {
         let mut is_success = true;
         if let Node::Action {ty, ..} = node {
-            if let ActionType::EmitOrig = ty {
+            if let ActionType::RemoveOrig = ty {
                 is_success &= self.emitter.remove_orig();
             } else {
                 unreachable!()
@@ -591,3 +572,59 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         }
     }
 }
+
+// ==================
+// = AST OPERATIONS =
+// ==================
+
+fn get_probes_from_ast<'a>(ast: &'a HashMap<String, HashMap<String, HashMap<String, HashMap<String, Vec<Probe>>>>>,
+                       curr_provider_name: &String, curr_package_name: &String, curr_event_name: &String,
+                       name: &String) -> &'a Vec<Probe> {
+    if let Some(provider) = ast.get(curr_provider_name) {
+        if let Some(package) = provider.get(curr_package_name) {
+            if let Some(event) = package.get(curr_event_name) {
+                if let Some(probes) = event.get(name) {
+                    return probes;
+                }
+            }
+        }
+    }
+    unreachable!()
+}
+
+// fn get_probes_from_ast_mut<'a>(ast: &'a mut HashMap<String, HashMap<String, HashMap<String, HashMap<String, Vec<Probe>>>>>,
+//                            curr_provider_name: &String, curr_package_name: &String, curr_event_name: &String,
+//                            name: &String) -> &'a mut Vec<Probe> {
+//     if let Some(provider) = ast.get_mut(curr_provider_name) {
+//         if let Some(package) = provider.get_mut(curr_package_name) {
+//             if let Some(event) = package.get_mut(curr_event_name) {
+//                 if let Some(probes) = event.get_mut(name) {
+//                     return probes;
+//                 }
+//             }
+//         }
+//     }
+//     unreachable!()
+// }
+
+fn get_probe_at_idx<'a>(ast: &'a HashMap<String, HashMap<String, HashMap<String, HashMap<String, Vec<Probe>>>>>,
+                         curr_provider_name: &String, curr_package_name: &String, curr_event_name: &String,
+                         name: &String, idx: &usize) -> Option<&'a Probe> {
+    get_probes_from_ast(ast, curr_provider_name, curr_package_name, curr_event_name, name)
+        .get(*idx)
+}
+
+// fn get_probe_at_idx_mut<'a>(ast: &'a mut HashMap<String, HashMap<String, HashMap<String, HashMap<String, Vec<Probe>>>>>,
+//                       curr_provider_name: &String, curr_package_name: &String, curr_event_name: &String,
+//                       name: &String, idx: &usize) -> Option<&'a mut Probe> {
+//     get_probes_from_ast_mut(ast, curr_provider_name, curr_package_name, curr_event_name, name)
+//         .get_mut(*idx)
+// }
+
+// fn fold_expr(emitter: &mut Box<&mut dyn Emitter>, expr: &mut Expr) -> bool {
+//     emitter.fold_expr(expr)
+// }
+//
+// fn emit_body(emitter: &mut Box<&mut dyn Emitter>, body: &mut Vec<Statement>) -> bool{
+//     emitter.emit_body(body)
+// }

@@ -156,7 +156,7 @@ impl BehaviorTreeBuilder {
         //     }).sequence()
         //     .enter_scope(self.context_name.clone());
         self.tree.sequence()
-            .enter_scope(self.context_name.clone());
+            .enter_scope(self.context_name.clone(), event.name.clone());
 
         // Define globals
         self.visit_globals(&event.globals);
@@ -196,16 +196,21 @@ impl BehaviorTreeBuilder {
                             val: true
                         })
                             .sequence()
+                                .decorator(DecoratorType::IsProbeType {
+                                    probe_type: "alt".to_string()
+                                })
+                                    .remove_orig()
+                                    .exit_decorator()
                                 .emit_body()
-                                .fallback()
-                                    .decorator(HasParams)
-                                        .emit_params()
-                                        .exit_decorator()
-                                    .force_success()
-                                    .exit_fallback()
-                            .exit_sequence()
-                        .exit_decorator()
-                            .fallback()
+                                .decorator(HasParams)
+                                    .emit_params()
+                                    .exit_decorator()
+                                .decorator(HasAltCall)
+                                    .emit_alt_call()
+                                    .exit_decorator()
+                                .exit_sequence()
+                            .exit_decorator()
+                        .fallback()
                             // before behavior
                             .decorator(DecoratorType::IsProbeType {
                                 probe_type: "before".to_string()
@@ -288,8 +293,8 @@ impl WhammVisitor<()> for BehaviorTreeBuilder {
         trace!("Entering: BehaviorTreeBuilder::visit_whamm");
         self.context_name  = "whamm".to_string();
 
-        self.tree.sequence()
-            .enter_scope(self.context_name.clone());
+        self.tree.sequence();
+            // .enter_scope(self.context_name.clone());
 
         // visit globals
         self.visit_globals(&whamm.globals);
@@ -297,7 +302,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder {
         // visit whammys
         whamm.whammys.iter().for_each(| whammy | self.visit_whammy(whammy));
 
-        self.tree.exit_scope();
+        // self.tree.exit_scope();
 
         trace!("Exiting: BehaviorTreeBuilder::visit_whamm");
         self.tree.exit_sequence();
@@ -309,7 +314,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder {
         trace!("Entering: BehaviorTreeBuilder::visit_whammy");
         self.context_name += &format!(":{}", whammy.name.clone());
 
-        self.tree.enter_scope(self.context_name.clone());
+        self.tree.enter_scope(self.context_name.clone(), whammy.name.clone());
 
         // visit globals
         self.visit_globals(&whammy.globals);
@@ -330,7 +335,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder {
         self.context_name += &format!(":{}", provider.name.clone());
         self.add_provider_to_ast(provider.name.clone());
 
-        self.tree.enter_scope(self.context_name.clone());
+        self.tree.enter_scope(self.context_name.clone(), provider.name.clone());
 
         // visit globals
         self.visit_globals(&provider.globals);
@@ -351,7 +356,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder {
         self.context_name += &format!(":{}", package.name.clone());
         self.add_package_to_ast(package.name.clone());
 
-        self.tree.enter_scope(self.context_name.clone());
+        self.tree.enter_scope(self.context_name.clone(), package.name.clone());
 
         if self.is_in_context(r"whamm:whammy([0-9]+):wasm:bytecode") {
             self.visit_bytecode_package(package);
@@ -397,7 +402,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder {
             });
         }
         self.tree.sequence()
-                .enter_scope(self.context_name.clone());
+                .enter_scope(self.context_name.clone(), probe.name.clone());
 
         // visit globals
         self.visit_globals(&probe.globals);
