@@ -344,7 +344,7 @@ fn expr_from_pairs(pairs: Pairs<Rule>) -> Expr {
 // = Parser =
 // ==========
 
-pub fn parse_script(script: String, run_verifier: bool) -> Result<Whamm, String> {
+pub fn parse_script(script: String) -> Result<Whamm, String> {
     trace!("Entered parse_script");
 
     match WhammParser::parse(Rule::whammy, &*script) {
@@ -357,9 +357,6 @@ pub fn parse_script(script: String, run_verifier: bool) -> Result<Whamm, String>
 
             match res {
                 Ok(ast) => {
-                    if run_verifier {
-                        unimplemented!()
-                    }
                     Ok(ast)
                 },
                 Err(e) => Err(e.to_string()),

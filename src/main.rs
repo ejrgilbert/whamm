@@ -1,13 +1,12 @@
 extern crate core;
 
 use std::collections::HashMap;
-use std::io::Error;
 use std::path::PathBuf;
 use crate::parser::whamm_parser::*;
 use crate::behavior::builder_visitor::*;
-use crate::verifier::verifier::*;
-// use crate::generator::emitters::{Emitter, WasmRewritingEmitter};
-// use crate::generator::init_generator::{CodeGenerator};
+use crate::generator::emitters::{Emitter, WasmRewritingEmitter};
+use crate::generator::init_generator::{InitGenerator};
+use crate::generator::instr_generator::{InstrGenerator};
 
 pub mod parser;
 pub mod behavior;
@@ -21,11 +20,12 @@ use std::process::exit;
 use graphviz_rust::cmd::{CommandArg, Format};
 use project_root::get_project_root;
 use walrus::Module;
-// use whamm::generator::init_generator::InitGenerator;
-// use whamm::generator::instr_generator::InstrGenerator;
+
 use crate::behavior::tree::BehaviorTree;
 use crate::behavior::visualize::visualization_to_file;
 use crate::parser::types::{Probe, Whamm};
+use crate::verifier::types::SymbolTable;
+use crate::verifier::verifier::{build_symbol_table, verify};
 
 fn setup_logger() {
     env_logger::init();
@@ -133,53 +133,48 @@ fn try_main() -> Result<(), failure::Error> {
 }
 
 fn run_instr(app_wasm_path: String, whammy_path: String, output_wasm_path: String, emit_virgil: bool, run_verifier: bool) {
-    let mut whamm = get_whammy_ast(&whammy_path, run_verifier);
+    let mut whamm = get_whammy_ast(&whammy_path);
+    let symbol_table = get_symbol_table(&whamm, run_verifier);
     let (behavior_tree, simple_ast) = build_behavior(&whamm);
 
     // Read app Wasm into Walrus module
     let _config =  walrus::ModuleConfig::new();
     let app_wasm = Module::from_file(&app_wasm_path).unwrap();
 
-    // // Configure the emitter based on target instrumentation code format
-    // let mut emitter = if emit_virgil {
-    //     unimplemented!();
-    // } else {
-    //     WasmRewritingEmitter::new(
-    //         app_wasm,
-    //         symbol_table
-    //     )
-    // };
-    //
-    // // Phase 0 of instrumentation (emit globals and provided fns)
-    // let mut init = InitGenerator {
-    //     emitter: Box::new(&mut emitter),
-    //     context_name: "".to_string(),
-    // };
-    // init.run(&mut whamm);
-    //
-    // // Phase 1 of instrumentation (actually emits the instrumentation code)
-    // // This structure is necessary since we need to have the fns/globals injected (a single time)
-    // // and ready to use in every body/predicate.
-    // let mut instr = InstrumentationGenerator {
-    //     emitter: Box::new(&mut emitter),
-    //     ast: simple_ast,
-    //     context_name: "".to_string(),
-    // };
-    // instr.run(&behavior_tree);
-    //
-    // emitter.dump_to_file(output_wasm_path);
-}
+    // Configure the emitter based on target instrumentation code format
+    let mut emitter = if emit_virgil {
+        unimplemented!();
+    } else {
+        WasmRewritingEmitter::new(
+            app_wasm,
+            symbol_table
+        )
+    };
 
-fn dump_to_file(app_wasm: &mut Module, output_wasm_path: String) -> bool {
-    match app_wasm.emit_wasm_file(&output_wasm_path) {
-        Ok(_ok) => {
-            true
-        },
-        Err(err) => {
-            error!("Failed to dump instrumented wasm to {} from error: {}", &output_wasm_path, err);
-            false
-        },
-    }
+    // Phase 0 of instrumentation (emit globals and provided fns)
+    let mut init = InitGenerator {
+        emitter: Box::new(&mut emitter),
+        context_name: "".to_string(),
+    };
+    init.run(&mut whamm);
+
+    // Phase 1 of instrumentation (actually emits the instrumentation code)
+    // This structure is necessary since we need to have the fns/globals injected (a single time)
+    // and ready to use in every body/predicate.
+    let mut instr = InstrGenerator {
+        tree: &behavior_tree,
+        emitter: Box::new(&mut emitter),
+        ast: simple_ast,
+        context_name: "".to_string(),
+        curr_provider_name: "".to_string(),
+        curr_package_name: "".to_string(),
+        curr_event_name: "".to_string(),
+        curr_probe_name: "".to_string(),
+        curr_probe: 0,
+    };
+    instr.run(&behavior_tree);
+
+    emitter.dump_to_file(output_wasm_path);
 }
 
 fn run_vis_wasm(wasm_path: String, output_path: String) {
@@ -224,7 +219,8 @@ fn run_vis_wasm(wasm_path: String, output_path: String) {
 }
 
 fn run_vis_whammy(whammy_path: String, run_verifier: bool, output_path: String) {
-    let whamm = get_whammy_ast(&whammy_path, run_verifier);
+    let whamm = get_whammy_ast(&whammy_path);
+    verify_ast(&whamm, run_verifier);
     let (behavior_tree, ..) = build_behavior(&whamm);
 
     let path = match get_pb(&PathBuf::from(output_path.clone())) {
@@ -252,11 +248,26 @@ fn run_vis_whammy(whammy_path: String, run_verifier: bool, output_path: String) 
     exit(0);
 }
 
-fn get_whammy_ast(whammy_path: &String, run_verifier: bool) -> Whamm {
+fn get_symbol_table(ast: &Whamm, run_verifier: bool) -> SymbolTable {
+    let st = build_symbol_table(&ast);
+    verify_ast(ast, run_verifier);
+    st
+}
+
+fn verify_ast(ast: &Whamm, run_verifier: bool) {
+    if run_verifier {
+        if !verify(ast) {
+            error!("AST failed verification!");
+            exit(1);
+        }
+    }
+}
+
+fn get_whammy_ast(whammy_path: &String) -> Whamm {
     match std::fs::read_to_string(&whammy_path) {
         Ok(unparsed_str) => {
             // Parse the script and build the AST
-            match parse_script(unparsed_str, run_verifier) {
+            match parse_script(unparsed_str) {
                 Ok(ast) => {
                     info!("successfully parsed");
                     return ast;

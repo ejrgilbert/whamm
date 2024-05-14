@@ -41,7 +41,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
     fn visit_whamm(&mut self, whamm: &mut Whamm) -> bool {
         trace!("Entering: CodeGenerator::visit_whamm");
         self.context_name  = "whamm".to_string();
-        let mut is_success = self.emitter.emit_whamm(whamm);
+        let mut is_success = true;
 
         // visit fns
         whamm.fns.iter_mut().for_each(| f | {
@@ -64,7 +64,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         trace!("Entering: CodeGenerator::visit_whammy");
         self.emitter.enter_scope();
         self.context_name += &format!(":{}", whammy.name.clone());
-        let mut is_success = self.emitter.emit_whammy(whammy);
+        let mut is_success = true;
 
         // visit fns
         whammy.fns.iter_mut().for_each(| f | {

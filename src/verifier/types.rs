@@ -57,7 +57,7 @@ impl SymbolTable {
         });
     }
 
-    pub fn enter_named_scope(&mut self, scope_name: &String) {
+    pub fn enter_named_scope(&mut self, scope_name: &String) -> bool {
         let curr = self.get_curr_scope_mut().unwrap();
         let children = curr.children.clone();
 
@@ -78,9 +78,10 @@ impl SymbolTable {
         if let (Some(new_curr), Some(new_next)) = (new_curr_scope, new_next) {
             curr.next = new_next;
             self.curr_scope = new_curr;
-        } else {
-            error!("Could not find the specified scope by name: `{}`", scope_name);
+            return true;
         }
+        error!("Could not find the specified scope by name: `{}`", scope_name);
+        return false;
     }
 
     pub fn enter_scope(&mut self) {
