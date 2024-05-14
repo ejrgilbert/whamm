@@ -193,6 +193,23 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
         }
     }
 
+    fn visit_has_alt_call(&mut self, node: &TreeNode) -> () {
+        if let TreeNode::Decorator { id, ty, parent, child } = node {
+            if let DecoratorType::HasAltCall = ty {
+                self.emit_decorator_node(id, "HasAltCall");
+                self.emit_edge(parent, id);
+
+                if let Some(node) = self.tree.get_node(child.clone()) {
+                    self.visit_node(node);
+                }
+            } else {
+                unreachable!()
+            }
+        } else {
+            unreachable!()
+        }
+    }
+
     fn visit_has_params(&mut self, node: &TreeNode) -> () {
         if let TreeNode::Decorator { id, ty, parent, child } = node {
             if let DecoratorType::HasParams = ty {
@@ -263,13 +280,12 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
 
     fn visit_enter_package(&mut self, node: &TreeNode) -> () {
         if let TreeNode::ActionWithChild { id, ty, parent, child } = node {
-            if let ActionWithChildType::EnterPackage { package_name } = ty {
-                self.emit_special_action_node(id, &format!("EnterPackage_{}", package_name.replace(":", "_")));
-                self.emit_edge(parent, id);
+            let ActionWithChildType::EnterPackage { package_name } = ty;
+            self.emit_special_action_node(id, &format!("EnterPackage_{}", package_name.replace(":", "_")));
+            self.emit_edge(parent, id);
 
-                if let Some(node) = self.tree.get_node(child.clone()) {
-                    self.visit_node(node);
-                }
+            if let Some(node) = self.tree.get_node(child.clone()) {
+                self.visit_node(node);
             }
         } else {
             unreachable!()

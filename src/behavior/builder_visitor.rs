@@ -7,7 +7,7 @@ use parser_types::{DataType, Whammy, Whamm, WhammVisitor, Expr, Fn, Event, Packa
 use log::{debug, error, trace};
 use regex::Regex;
 use crate::behavior::tree::ParamActionType;
-use crate::behavior::tree::DecoratorType::{HasParams, PredIs};
+use crate::behavior::tree::DecoratorType::{HasAltCall, HasParams, PredIs};
 use crate::parser::types::Global;
 
 pub fn build_behavior_tree(ast: &Whamm) -> (BehaviorTree, HashMap<String, HashMap<String, HashMap<String, HashMap<String, Vec<Probe>>>>>) {
@@ -254,7 +254,14 @@ impl BehaviorTreeBuilder {
                 .emit_pred()
                 .sequence()
                     .emit_body()
-                    .emit_alt_call() // TODO -- remove need for this
+                    .decorator(HasAltCall)
+                        .sequence() // TODO -- remove need for this (just have normal lib::<fn_name>() call syntax)
+                            .decorator(HasParams)
+                                .emit_params()
+                                .exit_decorator()
+                            .emit_alt_call()
+                            .exit_sequence()
+                        .exit_decorator()
                     .exit_sequence()
                 .sequence()
                     .decorator(HasParams)

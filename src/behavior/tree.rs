@@ -444,6 +444,7 @@ pub enum DecoratorType {
         probe_type: String
     },
     HasParams,
+    HasAltCall,
     PredIs {
         val: bool
     },
@@ -521,6 +522,7 @@ pub trait BehaviorVisitor<T> {
             match ty {
                 DecoratorType::IsInstr {..} => self.visit_is_instr(node),
                 DecoratorType::IsProbeType {..} => self.visit_is_probe_type(node),
+                DecoratorType::HasAltCall {..} => self.visit_has_alt_call(node),
                 DecoratorType::HasParams {..} => self.visit_has_params(node),
                 DecoratorType::PredIs {..} => self.visit_pred_is(node),
                 DecoratorType::ForEachProbe {..} => self.visit_for_each_probe(node),
@@ -554,6 +556,7 @@ pub trait BehaviorVisitor<T> {
     // Decorator nodes
     fn visit_is_instr(&mut self, node: &Node) -> T;
     fn visit_is_probe_type(&mut self, node: &Node) -> T;
+    fn visit_has_alt_call(&mut self, node: &Node) -> T;
     fn visit_has_params(&mut self, node: &Node) -> T;
     fn visit_pred_is(&mut self, node: &Node) -> T;
     fn visit_for_each_probe(&mut self, node: &Node) -> T;
