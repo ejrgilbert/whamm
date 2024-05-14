@@ -1,14 +1,13 @@
 mod common;
 
-use whamm::generator::emitters_newer::{WasmRewritingEmitter};
-use whamm::generator::init_generator::{CodeGenerator, InitGenerator};
 
 use log::error;
 use std::fs;
 use std::process::{Command, Stdio};
 use std::path::Path;
 use walrus::Module;
-use whamm::generator::emitters::WasmRewritingEmitter;
+use whamm::generator::init_generator::InitGenerator;
+use whamm::generator::emitters::{Emitter, WasmRewritingEmitter};
 
 const APP_WASM_PATH: &str = "tests/apps/users.wasm";
 
@@ -51,7 +50,7 @@ fn instrument_with_fault_injection() {
         }
 
         let out_wasm_path = format!("{OUT_BASE_DIR}/{OUT_WASM_NAME}");
-        generator.dump_to_file(out_wasm_path.to_string());
+        emitter.dump_to_file(out_wasm_path.to_string());
 
         let mut wasm2wat = Command::new("wasm2wat");
         wasm2wat.stdout(Stdio::null())

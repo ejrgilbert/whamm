@@ -125,7 +125,7 @@ fn assert_simplified_predicate(pred: &Expr) {
 fn basic_run(script: &str) {
     match tests::get_ast(script) {
         Some(whamm) => {
-            let mut table = verifier::verify(&whamm, false);
+            let mut table = verifier::build_symbol_table(&whamm);
             table.reset();
 
             let pred = get_pred(&whamm);
@@ -210,7 +210,7 @@ wasm::call:alt /
 
     match tests::get_ast(script) {
         Some(whamm) => {
-            let mut table = verifier::verify(&whamm, false);
+            let mut table = verifier::build_symbol_table(&whamm);
             table.reset();
 
             let pred = get_pred(&whamm);

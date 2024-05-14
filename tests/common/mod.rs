@@ -1,6 +1,6 @@
 use whamm::parser::whamm_parser::*;
 use whamm::parser::types::Whamm;
-use whamm::verifier::verifier::verify;
+use whamm::verifier::verifier::build_symbol_table;
 
 use glob::{glob, glob_with};
 use log::{info, error, warn};
@@ -77,7 +77,7 @@ fn process_scripts(scripts: Vec<String>) -> Vec<(Whamm, SymbolTable)> {
     // Build the symbol table from the AST
     let mut result = vec![];
     for ast in asts {
-        let mut symbol_table = verify(&ast, false);
+        let mut symbol_table = build_symbol_table(&ast);
         symbol_table.reset();
         result.push((ast, symbol_table));
     }
