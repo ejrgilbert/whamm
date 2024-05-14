@@ -234,6 +234,15 @@ impl BehaviorTree {
         self
     }
 
+    pub fn emit_params_subtree(&mut self) -> &mut Self {
+        self.fallback()
+            .decorator(DecoratorType::HasParams)
+                .emit_params()
+                .exit_decorator()
+            .force_success()
+            .exit_fallback()
+    }
+
     pub fn remove_orig(&mut self) -> &mut Self {
         let id = self.nodes.len();
         self.put_child(Node::Action {

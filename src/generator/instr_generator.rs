@@ -136,6 +136,9 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                     if let Some(node) = self.tree.get_node(child.clone()) {
                         is_success &= self.visit_node(node);
                     }
+                } else {
+                    // If the decorator condition is false, return false
+                    return false;
                 }
             } else {
                 unreachable!()
@@ -154,6 +157,9 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                     if let Some(node) = self.tree.get_node(child.clone()) {
                         is_success &= self.visit_node(node);
                     }
+                } else {
+                    // If the decorator condition is false, return false
+                    return false;
                 }
             } else {
                 unreachable!()
@@ -173,6 +179,9 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                     if let Some(node) = self.tree.get_node(child.clone()) {
                         is_success &= self.visit_node(node);
                     }
+                } else {
+                    // If the decorator condition is false, return false
+                    return false;
                 }
             } else {
                 unreachable!()
@@ -192,6 +201,9 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                     if let Some(node) = self.tree.get_node(child.clone()) {
                         is_success &= self.visit_node(node);
                     }
+                } else {
+                    // If the decorator condition is false, return false
+                    return false;
                 }
             } else {
                 unreachable!()
@@ -203,7 +215,6 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
     }
 
     fn visit_pred_is(&mut self, node: &Node) -> bool {
-        let mut is_success = true;
         if let Node::Decorator {ty, child, ..} = node {
             if let DecoratorType::PredIs{ val } = ty {
                 if let Some(probe) = &self.curr_probe {
@@ -213,13 +224,9 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                             if pred_as_bool == *val {
                                 // predicate is reduced to desired value, execute child node
                                 if let Some(node) = self.tree.get_node(child.clone()) {
-                                    is_success &= self.visit_node(node);
+                                    return self.visit_node(node);
                                 }
-                            } else {
-                                return false;
                             }
-                        } else {
-                            return false;
                         }
                     }
                 }
@@ -229,7 +236,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         } else {
             unreachable!()
         }
-        is_success
+        false
     }
 
     fn visit_for_each_probe(&mut self, node: &Node) -> bool {
@@ -245,11 +252,11 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                 let probe_list_len = get_probes_from_ast(&self.ast, &self.curr_provider_name, &self.curr_package_name,
                                                      &self.curr_event_name, target).len();
                 for i in Vec::from_iter(0..probe_list_len).iter() {
-                    // make a clone of the current probe per instruction traversal
-                    // this will reset the clone pred/body for each instruction!
 
                     if let Some(probe) = get_probe_at_idx(&self.ast, &self.curr_provider_name, &self.curr_package_name,
                                                            &self.curr_event_name, target, i) {
+                        // make a clone of the current probe per instruction traversal
+                        // this will reset the clone pred/body for each instruction!
                         self.curr_probe = Some(probe.clone());
                     }
 
@@ -257,12 +264,6 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                         is_success &= self.visit_node(node);
                     }
                 }
-                // for probe in get_probes_from_ast(&self.ast, &self.curr_provider_name, &self.curr_package_name,
-                //                                      &self.curr_event_name, target) {
-                //     // make a clone of the current probe per instruction traversal
-                //     // this will reset the clone pred/body for each instruction!
-                //     self.curr_probe = probe.clone();
-                // }
             } else {
                 unreachable!()
             }

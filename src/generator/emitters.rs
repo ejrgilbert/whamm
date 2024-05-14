@@ -701,7 +701,8 @@ impl WasmRewritingEmitter {
             if let Instr::Call(func) = &curr_instr.instr {
                 let func = self.app_wasm.funcs.get(func.func);
                 let func_info = get_func_info(&self.app_wasm, func);
-                if func.name.as_ref().unwrap().contains("call_perform") {
+                if func.name.as_ref().unwrap().contains("call_new") {
+                    // For debugging, set breakpoint here!
                     println!("{}", func.name.as_ref().unwrap());
                 }
 

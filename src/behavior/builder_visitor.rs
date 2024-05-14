@@ -20,7 +20,6 @@ pub fn build_behavior_tree(ast: &Whamm) -> (BehaviorTree, HashMap<String, HashMa
 
 pub struct BehaviorTreeBuilder {
     pub tree: BehaviorTree,
-    // TODO -- should also generate a Consolidated AST:
     pub ast: HashMap<String, //     <-- provider
                      HashMap<String, //     <-- package
                              HashMap<String, //     <-- event
@@ -151,10 +150,6 @@ impl BehaviorTreeBuilder {
     }
 
     fn visit_bytecode_event(&mut self, event: &Event) {
-        // self.tree.decorator(DecoratorType::IsInstr {
-        //         instr_name: event.name.clone()
-        //     }).sequence()
-        //     .enter_scope(self.context_name.clone());
         self.tree.sequence()
             .enter_scope(self.context_name.clone(), event.name.clone());
 
@@ -188,26 +183,33 @@ impl BehaviorTreeBuilder {
                     .force_success()
                     .exit_decorator()
                 .sequence()
-                    .decorator(HasParams)
-                        .save_params()
-                    .exit_decorator()
+                    .fallback()
+                        .decorator(HasParams)
+                            .save_params()
+                            .exit_decorator()
+                        .force_success()
+                        .exit_fallback()
                     .fallback()
                         .decorator(PredIs {
                             val: true
                         })
                             .sequence()
-                                .decorator(DecoratorType::IsProbeType {
-                                    probe_type: "alt".to_string()
-                                })
-                                    .remove_orig()
-                                    .exit_decorator()
+                                .fallback()
+                                    .decorator(DecoratorType::IsProbeType {
+                                        probe_type: "alt".to_string()
+                                    })
+                                        .remove_orig()
+                                        .exit_decorator()
+                                    .force_success()
+                                    .exit_fallback()
                                 .emit_body()
-                                .decorator(HasParams)
-                                    .emit_params()
-                                    .exit_decorator()
-                                .decorator(HasAltCall)
-                                    .emit_alt_call()
-                                    .exit_decorator()
+                                .emit_params_subtree()
+                                .fallback()
+                                    .decorator(HasAltCall)
+                                        .emit_alt_call()
+                                        .exit_decorator()
+                                    .force_success()
+                                    .exit_fallback()
                                 .exit_sequence()
                             .exit_decorator()
                         .fallback()
@@ -234,7 +236,6 @@ impl BehaviorTreeBuilder {
             .exit_fallback()
             .exit_fallback()
             .exit_sequence()
-            .exit_scope()
             .exit_fallback();
     }
 
@@ -259,19 +260,18 @@ impl BehaviorTreeBuilder {
                 .emit_pred()
                 .sequence()
                     .emit_body()
-                    .decorator(HasAltCall)
-                        .sequence() // TODO -- remove need for this (just have normal lib::<fn_name>() call syntax)
-                            .decorator(HasParams)
-                                .emit_params()
-                                .exit_decorator()
-                            .emit_alt_call()
-                            .exit_sequence()
-                        .exit_decorator()
+                    .fallback()
+                        .decorator(HasAltCall)
+                            .sequence() // TODO -- remove need for this (just have normal lib::<fn_name>() call syntax)
+                                .emit_params_subtree()
+                                .emit_alt_call()
+                                .exit_sequence()
+                            .exit_decorator()
+                        .force_success()
+                        .exit_fallback()
                     .exit_sequence()
                 .sequence()
-                    .decorator(HasParams)
-                        .emit_params()
-                        .exit_decorator()
+                    .emit_params_subtree()
                     .emit_orig()
                     .exit_sequence()
                 .exit_parameterized_action()
