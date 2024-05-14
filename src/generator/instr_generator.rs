@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use log::warn;
+use log::{error, warn};
 use crate::behavior::tree::{ActionType, ActionWithChildType, BehaviorVisitor, DecoratorType, ParamActionType};
 use crate::behavior::tree::{BehaviorTree, Node};
 use crate::generator::emitters::Emitter;
@@ -83,6 +83,18 @@ impl InstrGenerator<'_, '_> {
             .get_mut(curr_probe_idx)
     }
 
+    fn emit_cond(&mut self, cond: &usize) -> bool {
+        let mut is_success = true;
+        if let Some(node) = self.tree.get_node(cond.clone()) {
+            // emit the branch conditional
+            self.emitter.emit_condition();
+            is_success &= self.visit_node(node);
+        } else {
+            error!("Node to define conditional logic node does not exist!");
+        }
+        is_success
+    }
+
     fn emit_conseq(&mut self, conseq: &usize) -> bool {
         let mut is_success = true;
         if let Some(node) = self.tree.get_node(conseq.clone()) {
@@ -90,7 +102,19 @@ impl InstrGenerator<'_, '_> {
             self.emitter.emit_consequent();
             is_success &= self.visit_node(node);
         } else {
-            unreachable!()
+            error!("Node to define consequent logic node does not exist!");
+        }
+        is_success
+    }
+
+    fn emit_alt(&mut self, alt: &usize) -> bool {
+        let mut is_success = true;
+        if let Some(node) = self.tree.get_node(alt.clone()) {
+            // emit the alternate logic
+            self.emitter.emit_alternate();
+            is_success &= self.visit_node(node);
+        } else {
+            error!("Node to define alternate logic node does not exist!");
         }
         is_success
     }
@@ -146,7 +170,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         let mut is_success = true;
         if let Node::Decorator {ty, child, ..} = node {
             if let DecoratorType::IsInstr {instr_names} = ty {
-                if self.emitter.is_instr(instr_names) {
+                if self.emitter.curr_instr_is_of_type(instr_names) {
                     // If the current instruction is of-interest, continue with the behavior tree logic
                     if let Some(node) = self.tree.get_node(child.clone()) {
                         is_success &= self.visit_node(node);
@@ -166,6 +190,25 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         if let Node::Decorator { ty, child, .. } = node {
             if let DecoratorType::IsProbeType {probe_type} = ty {
                 if self.curr_probe_name == *probe_type {
+                    if let Some(node) = self.tree.get_node(child.clone()) {
+                        is_success &= self.visit_node(node);
+                    }
+                }
+            } else {
+                unreachable!()
+            }
+        } else {
+            unreachable!()
+        }
+        is_success
+    }
+
+    fn visit_has_alt_call(&mut self, node: &Node) -> bool {
+        let mut is_success = true;
+        if let Node::Decorator { ty, child, .. } = node {
+            if let DecoratorType::HasAltCall = ty {
+                if self.emitter.has_alt_call() {
+                    // The current probe has a defined alt call, continue with behavior
                     if let Some(node) = self.tree.get_node(child.clone()) {
                         is_success &= self.visit_node(node);
                     }
@@ -296,50 +339,36 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
     }
 
     fn visit_emit_if_else(&mut self, node: &Node) -> bool {
-        let mut is_success = true;
         if let Node::ParameterizedAction {ty, .. } = node {
             if let ParamActionType::EmitIfElse { cond, conseq, alt } = ty {
-                if let Some(node) = self.tree.get_node(cond.clone()) {
-                    // emit the condition
-                    is_success &= self.visit_node(node);
-                }
                 self.emitter.emit_if_else();
+                self.emit_cond(cond);
                 self.emit_conseq(conseq);
-                if let Some(node) = self.tree.get_node(alt.clone()) {
-                    // emit the alternate logic
-                    self.emitter.emit_alternate();
-                    is_success &= self.visit_node(node);
-                } else {
-                    unreachable!()
-                }
+                self.emit_alt(alt);
                 self.emitter.finish_branch();
+                return true;
             } else {
                 unreachable!()
             }
         } else {
             unreachable!()
         }
-        is_success
     }
 
     fn visit_emit_if(&mut self, node: &Node) -> bool {
-        let mut is_success = true;
         if let Node::ParameterizedAction { ty, .. } = node {
             if let ParamActionType::EmitIf { cond, conseq } = ty {
-                if let Some(node) = self.tree.get_node(cond.clone()) {
-                    // emit the condition
-                    is_success &= self.visit_node(node);
-                }
                 self.emitter.emit_if();
+                self.emit_cond(cond);
                 self.emit_conseq(conseq);
                 self.emitter.finish_branch();
+                return true;
             } else {
                 unreachable!()
             }
         } else {
             unreachable!()
         }
-        is_success
     }
 
     fn visit_enter_scope(&mut self, node: &Node) -> bool {
@@ -413,7 +442,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                 if let Some(probe) = self.get_curr_probe() {
                     // This clone is because of borrowing self as mutable AND immutable at the same time
                     // TODO -- remove the need for this clone
-                    if let Some(pred) = &probe.predicate.clone() {
+                    if let Some(pred) = &mut probe.predicate.clone() {
                         is_success &= self.emitter.emit_expr(pred);
                     }
                 }
@@ -495,7 +524,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                 if let Some(probe) = self.get_curr_probe() {
                     // This clone is because of borrowing self as mutable AND immutable at the same time
                     // TODO -- remove the need for this clone
-                    if let Some(body) = &probe.body.clone() {
+                    if let Some(body) = &mut probe.body.clone() {
                         is_success &= self.emitter.emit_body(body);
                     }
                 }
