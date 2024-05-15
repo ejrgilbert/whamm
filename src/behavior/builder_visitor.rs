@@ -149,13 +149,18 @@ impl BehaviorTreeBuilder {
     }
 
     fn visit_bytecode_event(&mut self, event: &Event) {
-        self.tree.sequence();
+        // Only create a sequence if there are multiple probes we're emitting
+        if event.probe_map.len() > 1 {
+            self.tree.sequence();
+        }
 
         self.visit_probe_ty(event, "before");
         self.visit_probe_ty(event, "alt");
         self.visit_probe_ty(event, "after");
 
-        self.tree.exit_sequence();
+        if event.probe_map.len() > 1 {
+            self.tree.exit_sequence();
+        }
     }
 
     fn visit_probe_ty(&mut self, event: &Event, ty: &str) {
@@ -169,42 +174,36 @@ impl BehaviorTreeBuilder {
     }
 
     fn visit_bytecode_probe(&mut self, probe: &Probe) {
-        self.tree.fallback()
+        self.tree.sequence()
+            .save_params(true)
+            .fallback()
                 .decorator(PredIs {
-                    val: false
+                    val: true
                 })
-                    .force_success()
-                    .exit_decorator()
-                .sequence()
-                    .save_params(true)
-                    .fallback()
-                        .decorator(PredIs {
-                            val: true
-                        })
-                            .sequence()
-                                .fallback()
-                                    .decorator(DecoratorType::IsProbeType {
-                                        probe_type: "alt".to_string()
-                                    })
-                                        .remove_orig()
-                                        .exit_decorator()
-                                    .force_success()
-                                    .exit_fallback()
-                                .emit_body()
-                                .emit_params(true)
-                                .fallback()
-                                    .decorator(HasAltCall)
-                                        .emit_alt_call()
-                                        .exit_decorator()
-                                    .force_success()
-                                    .exit_fallback()
-                                .exit_sequence()
-                            .exit_decorator()
+                    .sequence()
                         .fallback()
-                            // before behavior
                             .decorator(DecoratorType::IsProbeType {
-                                probe_type: "before".to_string()
-                            });
+                                probe_type: "alt".to_string()
+                            })
+                                .remove_orig()
+                                .exit_decorator()
+                            .force_success()
+                            .exit_fallback()
+                        .emit_body()
+                        .emit_params(true)
+                        .fallback()
+                            .decorator(HasAltCall)
+                                .emit_alt_call()
+                                .exit_decorator()
+                            .force_success()
+                            .exit_fallback()
+                        .exit_sequence()
+                    .exit_decorator()
+                .fallback()
+                    // before behavior
+                    .decorator(DecoratorType::IsProbeType {
+                        probe_type: "before".to_string()
+                    });
 
         self.emit_bytecode_probe_before_body(probe);
         self.tree.exit_decorator()
@@ -223,8 +222,7 @@ impl BehaviorTreeBuilder {
             // exit
             .exit_fallback()
             .exit_fallback()
-            .exit_sequence()
-            .exit_fallback();
+            .exit_sequence();
     }
 
     fn emit_bytecode_probe_before_body(&mut self, _probe: &Probe) {

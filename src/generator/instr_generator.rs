@@ -264,6 +264,12 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
             if let ActionWithChildType::EnterPackage { context, package_name, events } = ty {
                 if package_name == "bytecode" {
                     // Perform 'bytecode' package logic
+
+                    // Initialize the instr visitor
+                    let instrs_of_interest: Vec<String> = events.keys().cloned().collect();
+                    self.emitter.init_instr_iter(&instrs_of_interest);
+
+                    // enter 'bytecode' scope
                     is_success &= self.emitter.enter_named_scope(package_name);
                     if is_success {
                         self.set_context_info(context);
@@ -336,6 +342,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                                 // Fold predicate
                                 is_success &= self.emitter.fold_expr(pred);
                             }
+
                             self.curr_probe = Some(probe_cloned);
                         }
 
@@ -358,6 +365,16 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                         if let Some(pred) = &mut probe_cloned.predicate {
                             // Fold predicate
                             is_success &= self.emitter.fold_expr(pred);
+
+                            // If the predicate evaluates to false, short-circuit!
+                            if let Some(pred_as_bool) = ExprFolder::get_single_bool(&pred) {
+                                // predicate has been reduced to a boolean value
+                                if !pred_as_bool {
+                                    // predicate is reduced to `false` short-circuit!
+                                    self.emitter.exit_scope();
+                                    return true;
+                                }
+                            }
                         }
                         self.curr_probe = Some(probe_cloned);
                     }

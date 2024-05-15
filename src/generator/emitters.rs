@@ -18,6 +18,7 @@ pub trait Emitter {
     fn exit_scope(&mut self);
     fn reset_children(&mut self);
 
+    fn init_instr_iter(&mut self, instrs_of_interest: &Vec<String>) -> bool;
     fn has_next_instr(&self) -> bool;
     fn next_instr(&mut self) -> bool;
     fn curr_instr_is_of_type(&mut self, instr_names: &Vec<String>) -> bool;
@@ -517,9 +518,14 @@ struct InstrIter {
 impl InstrIter {
     /// Build out a list of all local functions and their blocks/instruction indexes
     /// to visit while doing instrumentation.
-    fn new(app_wasm: &walrus::Module) -> Self {
+    fn new() -> Self {
+        Self {
+            instr_locs: vec![],
+            curr_loc: 0
+        }
+    }
+    fn init(&mut self, app_wasm: &walrus::Module, instrs_of_interest: &Vec<String>) {
         // Figure out which functions to visit
-        let mut instr_locs = vec![];
         for func in app_wasm.funcs.iter() {
             let func_id = func.id();
             if let Some(name) = func.name.as_ref() {
@@ -532,17 +538,14 @@ impl InstrIter {
 
             if let FunctionKind::Local(local_func) = &func.kind {
                 // TODO -- make sure that the id is not any of the injected function IDs (strcmp)
-                Self::init_instr_locs(&mut instr_locs, local_func, &func_id, func.name.clone(),
-                                           local_func.entry_block());
+                self.init_instr_locs(instrs_of_interest, app_wasm, local_func, &func_id, func.name.clone(),
+                                      local_func.entry_block());
             }
         }
         debug!("Finished creating list of instructions to visit");
-        Self {
-            instr_locs,
-            curr_loc: 0
-        }
+
     }
-    fn init_instr_locs(locs: &mut Vec<ProbeLoc>, func: &LocalFunction, func_id: &FunctionId,
+    fn init_instr_locs(&mut self, instrs_of_interest: &Vec<String>, app_wasm: &walrus::Module, func: &LocalFunction, func_id: &FunctionId,
                        func_name: Option<String>, instr_seq_id: InstrSeqId) {
         func.block(instr_seq_id)
             .iter()
@@ -551,32 +554,44 @@ impl InstrIter {
                 let instr_as_str = &format!("{:?}", instr);
                 let instr_name = instr_as_str.split("(").next().unwrap().to_lowercase();
 
-                // add current instr
-                locs.push( ProbeLoc {
-                    // wasm_func_name: func_name.clone(),
-                    wasm_func_id: func_id.clone(),
-                    instr_seq_id,
-                    index,
-                    instr_name: instr_name.clone(),
-                    instr: instr.clone(),
-                    instr_params: None,
-                    instr_created_args: vec![],
-                    instr_alt_call: None,
-                    // instr_symbols: HashMap::new()
-                });
+                if instrs_of_interest.contains(&instr_name) {
+
+                    let func_info = if let Instr::Call(func) = instr {
+                        let func = app_wasm.funcs.get(func.func);
+                        // get information about the function call
+                        Some(get_func_info(app_wasm, func))
+                    } else {
+                        None
+                    };
+
+                    // add current instr
+                    self.instr_locs.push( ProbeLoc {
+                        // wasm_func_name: func_name.clone(),
+                        wasm_func_id: func_id.clone(),
+                        instr_seq_id,
+                        index,
+                        instr_name: instr_name.clone(),
+                        instr: instr.clone(),
+                        instr_params: None,
+                        instr_created_args: vec![],
+                        instr_alt_call: None,
+                        // instr_symbols: HashMap::new()
+                        func_info
+                    });
+                }
 
                 // visit nested blocks
                 match instr {
                     Instr::Block(block) => {
-                        Self::init_instr_locs(locs, func, func_id, func_name.clone(), block.seq);
+                        self.init_instr_locs(instrs_of_interest, app_wasm, func, func_id, func_name.clone(), block.seq);
                     }
                     Instr::Loop(_loop) => {
-                        Self::init_instr_locs(locs, func, func_id, func_name.clone(), _loop.seq);
+                        self.init_instr_locs(instrs_of_interest, app_wasm, func, func_id, func_name.clone(), _loop.seq);
                     }
                     Instr::IfElse(if_else, ..) => {
                         println!("IfElse: {:#?}", if_else);
-                        Self::init_instr_locs(locs, func, func_id, func_name.clone(), if_else.consequent);
-                        Self::init_instr_locs(locs, func, func_id, func_name.clone(), if_else.alternative);
+                        self.init_instr_locs(instrs_of_interest, app_wasm, func, func_id, func_name.clone(), if_else.consequent);
+                        self.init_instr_locs(instrs_of_interest, app_wasm, func, func_id, func_name.clone(), if_else.alternative);
                     }
                     _ => {
                         // do nothing extra for other instructions
@@ -610,6 +625,7 @@ struct ProbeLoc {
 
     instr_name: String,
     instr: Instr,
+    func_info: Option<FuncInfo>,
     instr_params: Option<Vec<ValType>>,
     instr_created_args: Vec<(String, usize)>,
 
@@ -617,6 +633,7 @@ struct ProbeLoc {
     // instr_symbols: HashMap<String, Record>,
     instr_alt_call: Option<FunctionId>
 }
+#[derive(Debug)]
 struct FuncInfo {
     func_kind: String,
     module: String,
@@ -664,7 +681,6 @@ impl WasmRewritingEmitter {
         let mem_id = app_wasm.memories.iter().next()
             .expect("only single memory is supported")
             .id();
-        let instr_iter = InstrIter::new(&app_wasm);
 
         Self {
             app_wasm,
@@ -674,7 +690,7 @@ impl WasmRewritingEmitter {
                 mem_id,
                 curr_mem_offset: 1_052_576, // Set default memory base address to DEFAULT + 4KB = 1048576 bytes + 4000 bytes = 1052576 bytes
             },
-            instr_iter,
+            instr_iter: InstrIter::new(),
             emitting_instr: None,
             fn_providing_contexts: vec![ "whamm".to_string() ]
         }
@@ -699,12 +715,10 @@ impl WasmRewritingEmitter {
         let var_name = "target_imp_name".to_string();
 
         if let Some(curr_instr) = self.instr_iter.curr() {
-            if let Instr::Call(func) = &curr_instr.instr {
-                let func = self.app_wasm.funcs.get(func.func);
-                let func_info = get_func_info(&self.app_wasm, func);
-                if func.name.as_ref().unwrap().contains("call_new") {
+            if let Some(func_info) = &curr_instr.func_info {
+                if func_info.name.contains("call_new") {
                     // For debugging, set breakpoint here!
-                    println!("{}", func.name.as_ref().unwrap());
+                    println!("{}", func_info.name);
                 }
 
                 let rec_id = match self.table.lookup(&var_name) {
@@ -728,11 +742,10 @@ impl WasmRewritingEmitter {
         let var_name = "target_fn_type".to_string();
 
         if let Some(curr_instr) = self.instr_iter.curr() {
-            if let Instr::Call(func) = &curr_instr.instr {
-                let func = self.app_wasm.funcs.get(func.func);
-                let func_info = get_func_info(&self.app_wasm, func);
-                // if func.name.as_ref().unwrap().contains("call_perform") {
-                //     println!("{}", func.name.as_ref().unwrap());
+            if let Some(func_info) = &curr_instr.func_info {
+                // if func_info.name.contains("call_new") {
+                //     // For debugging, set breakpoint here!
+                //     println!("{}", func_info.name);
                 // }
                 let rec_id = match self.table.lookup(&var_name) {
                     Some(rec_id) => rec_id.clone(),
@@ -754,11 +767,10 @@ impl WasmRewritingEmitter {
     fn define_target_imp_module(&mut self) -> bool {
         let var_name = "target_imp_module".to_string();
         if let Some(curr_instr) = self.instr_iter.curr() {
-            if let Instr::Call(func) = &curr_instr.instr {
-                let func = self.app_wasm.funcs.get(func.func);
-                let func_info = get_func_info(&self.app_wasm, func);
-                // if func.name.as_ref().unwrap().contains("call_perform") {
-                //     println!("{}", func.name.as_ref().unwrap());
+            if let Some(func_info) = &curr_instr.func_info {
+                // if func_info.name.contains("call_new") {
+                //     // For debugging, set breakpoint here!
+                //     println!("{}", func_info.name);
                 // }
                 let rec_id = match self.table.lookup(&var_name) {
                     Some(rec_id) => rec_id.clone(),
@@ -938,6 +950,11 @@ impl Emitter for WasmRewritingEmitter {
     }
     fn reset_children(&mut self) {
         self.table.reset_children();
+    }
+
+    fn init_instr_iter(&mut self, instrs_of_interest: &Vec<String>) -> bool {
+        self.instr_iter.init(&self.app_wasm, instrs_of_interest);
+        true
     }
 
     /// bool -> whether there is a next instruction to process
