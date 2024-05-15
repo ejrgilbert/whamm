@@ -1,5 +1,5 @@
+use std::collections::HashMap;
 use log::error;
-use crate::verifier::types::ScopeType;
 
 #[derive(Debug)]
 pub struct BehaviorTree {
@@ -137,7 +137,7 @@ impl BehaviorTree {
 
     pub fn parameterized_action(&mut self, ty: ParamActionType) -> &mut Self {
         let id = self.nodes.len();
-        self.put_child_and_enter(Node::ParameterizedAction {
+        self.put_child_and_enter(Node::ActionWithParams {
             id,
             parent: self.curr,
             ty,
@@ -148,7 +148,7 @@ impl BehaviorTree {
 
     pub fn exit_parameterized_action(&mut self) -> &mut Self {
         match self.get_curr_mut() {
-            Some(Node::ParameterizedAction {parent, ..}) => {
+            Some(Node::ActionWithParams {parent, ..}) => {
                 self.curr = parent.clone()
             },
             other => {
@@ -164,7 +164,7 @@ impl BehaviorTree {
 
     fn add_action_as_param(&mut self, idx: usize, id: usize) {
         match self.get_curr_mut() {
-            Some(Node::ParameterizedAction {ty, ..}) => {
+            Some(Node::ActionWithParams {ty, ..}) => {
                 match ty {
                     ParamActionType::EmitIf { cond, conseq } => {
                         if idx == 0 {
@@ -225,23 +225,26 @@ impl BehaviorTree {
         self
     }
 
-    pub fn emit_params(&mut self) -> &mut Self {
+    pub fn emit_params(&mut self, force_success: bool) -> &mut Self {
         let id = self.nodes.len();
-        self.put_child(Node::Action {
+        self.put_child(Node::ArgAction {
             id,
             parent: self.curr,
-            ty: ActionType::EmitParams
+            ty: ArgActionType::EmitParams,
+            force_success,
         });
         self
     }
 
-    pub fn emit_params_subtree(&mut self) -> &mut Self {
-        self.fallback()
-            .decorator(DecoratorType::HasParams)
-                .emit_params()
-                .exit_decorator()
-            .force_success()
-            .exit_fallback()
+    pub fn save_params(&mut self, force_success: bool) -> &mut Self {
+        let id = self.nodes.len();
+        self.put_child(Node::ArgAction {
+            id,
+            parent: self.curr,
+            ty: ArgActionType::SaveParams,
+            force_success,
+        });
+        self
     }
 
     pub fn remove_orig(&mut self) -> &mut Self {
@@ -274,19 +277,6 @@ impl BehaviorTree {
         self
     }
 
-    pub fn enter_scope_of(&mut self, context_name: String, scope_ty: ScopeType) -> &mut Self {
-        let id = self.nodes.len();
-        self.put_child(Node::Action {
-            id,
-            parent: self.curr,
-            ty: ActionType::EnterScopeOf {
-                context: context_name,
-                scope_ty
-            }
-        });
-        self
-    }
-
     pub fn enter_scope(&mut self, context_name: String, scope_name: String) -> &mut Self {
         let id = self.nodes.len();
         self.put_child(Node::Action {
@@ -310,32 +300,12 @@ impl BehaviorTree {
         self
     }
 
-    pub fn fold_pred(&mut self) -> &mut Self {
-        let id = self.nodes.len();
-        self.put_child(Node::Action {
-            id,
-            parent: self.curr,
-            ty: ActionType::FoldPred
-        });
-        self
-    }
-
     pub fn force_success(&mut self) -> &mut Self {
         let id = self.nodes.len();
         self.put_child(Node::Action {
             id,
             parent: self.curr,
             ty: ActionType::ForceSuccess
-        });
-        self
-    }
-
-    pub fn save_params(&mut self) -> &mut Self {
-        let id = self.nodes.len();
-        self.put_child(Node::Action {
-            id,
-            parent: self.curr,
-            ty: ActionType::SaveParams
         });
         self
     }
@@ -370,7 +340,7 @@ impl BehaviorTree {
                     *child = new_id;
                     assigned_id = Some(new_id);
                 }
-                Node::ParameterizedAction { children, .. } => {
+                Node::ActionWithParams { children, .. } => {
                     let idx = children.len();
                     children.push(new_id);
 
@@ -440,13 +410,20 @@ pub enum Node {
         parent: usize,
         children: Vec<usize>
     },
+    /// An action to perform on arguments to some Wasm function
+    ArgAction {
+        id: usize,
+        ty: ArgActionType,
+        parent: usize,
+        force_success: bool
+    },
     ActionWithChild {
         id: usize,
         ty: ActionWithChildType,
         parent: usize,
         child: usize
     },
-    ParameterizedAction {
+    ActionWithParams {
         id: usize,
         parent: usize,
         ty: ParamActionType,
@@ -461,24 +438,12 @@ pub enum Node {
 
 #[derive(Debug)]
 pub enum DecoratorType {
-    IsInstr {
-        instr_names: Vec<String>
-    },
     IsProbeType {
         probe_type: String
     },
-    HasParams,
     HasAltCall,
     PredIs {
         val: bool
-    },
-    /// Iterates over all probes of the specified name in the list.
-    ForEachProbe {
-        target: String
-    },
-    /// Only pulls the first probe of the specified name from the list.
-    ForFirstProbe {
-        target: String
     }
 }
 
@@ -488,20 +453,13 @@ pub enum ActionType {
         context: String,
         scope_name: String
     },
-    EnterScopeOf {
-        context: String,
-        scope_ty: ScopeType
-    },
     ExitScope,
     Define {
         context: String,
         var_name: String
     },
     EmitPred,
-    FoldPred,
     Reset,
-    SaveParams,
-    EmitParams,
     EmitBody,
     EmitAltCall,
     RemoveOrig,
@@ -510,10 +468,24 @@ pub enum ActionType {
 }
 
 #[derive(Debug)]
+pub enum ArgActionType {
+    SaveParams,
+    EmitParams
+}
+
+#[derive(Debug)]
 pub enum ActionWithChildType {
     EnterPackage {
-        package_name: String
+        context: String,
+        package_name: String,
+        /// The events and the corresponding compiler-defined globals
+        events: HashMap<String, Vec<String>>
     },
+    EnterProbe {
+        context: String,
+        probe_name: String,
+        global_names: Vec<String>
+    }
 }
 
 #[derive(Debug)]
@@ -537,9 +509,10 @@ pub trait BehaviorVisitor<T> {
             Node::Sequence { .. } => self.visit_sequence(node),
             Node::Decorator { .. } => self.visit_decorator(node),
             Node::Fallback { .. } => self.visit_fallback(node),
+            Node::ArgAction { .. } => self.visit_arg_action(node),
             Node::ActionWithChild { .. } => self.visit_action_with_child(node),
-            Node::ParameterizedAction { .. } => self.visit_parameterized_action(node),
-            Node::Action { .. } => self.visit_action(node),
+            Node::ActionWithParams { .. } => self.visit_action_with_params(node),
+            Node::Action { .. } => self.visit_action(node)
         }
     }
     fn visit_root(&mut self, node: &Node) -> T;
@@ -549,30 +522,37 @@ pub trait BehaviorVisitor<T> {
     fn visit_decorator(&mut self, node: &Node) -> T {
         if let Node::Decorator { ty, ..} = node {
             match ty {
-                DecoratorType::IsInstr {..} => self.visit_is_instr(node),
                 DecoratorType::IsProbeType {..} => self.visit_is_probe_type(node),
                 DecoratorType::HasAltCall {..} => self.visit_has_alt_call(node),
-                DecoratorType::HasParams {..} => self.visit_has_params(node),
-                DecoratorType::PredIs {..} => self.visit_pred_is(node),
-                DecoratorType::ForEachProbe {..} => self.visit_for_each_probe(node),
-                DecoratorType::ForFirstProbe {..} => self.visit_for_first_probe(node),
+                DecoratorType::PredIs {..} => self.visit_pred_is(node)
             }
         } else {
             unreachable!()
         }
     }
     fn visit_fallback(&mut self, node: &Node) -> T;
-    fn visit_action_with_child(&mut self, node: &Node) -> T {
-        if let Node::ActionWithChild { ty, ..} = node {
+    fn visit_arg_action(&mut self, node: &Node) -> T {
+        if let Node::ArgAction { ty, ..} = node {
             match ty {
-                ActionWithChildType::EnterPackage {..} => self.visit_enter_package(node),
+                ArgActionType::SaveParams {..} => self.visit_save_params(node),
+                ArgActionType::EmitParams {..} => self.visit_emit_params(node),
             }
         } else {
             unreachable!()
         }
     }
-    fn visit_parameterized_action(&mut self, node: &Node) -> T {
-        if let Node::ParameterizedAction { ty, ..} = node {
+    fn visit_action_with_child(&mut self, node: &Node) -> T {
+        if let Node::ActionWithChild { ty, ..} = node {
+            match ty {
+                ActionWithChildType::EnterPackage {..} => self.visit_enter_package(node),
+                ActionWithChildType::EnterProbe {..} => self.visit_enter_probe(node),
+            }
+        } else {
+            unreachable!()
+        }
+    }
+    fn visit_action_with_params(&mut self, node: &Node) -> T {
+        if let Node::ActionWithParams { ty, ..} = node {
             match ty {
                 ParamActionType::EmitIfElse {..} => self.visit_emit_if_else(node),
                 ParamActionType::EmitIf {..} => self.visit_emit_if(node)
@@ -583,16 +563,17 @@ pub trait BehaviorVisitor<T> {
     }
 
     // Decorator nodes
-    fn visit_is_instr(&mut self, node: &Node) -> T;
     fn visit_is_probe_type(&mut self, node: &Node) -> T;
     fn visit_has_alt_call(&mut self, node: &Node) -> T;
-    fn visit_has_params(&mut self, node: &Node) -> T;
     fn visit_pred_is(&mut self, node: &Node) -> T;
-    fn visit_for_each_probe(&mut self, node: &Node) -> T;
-    fn visit_for_first_probe(&mut self, node: &Node) -> T;
+
+    // Argument action nodes
+    fn visit_save_params(&mut self, node: &Node) -> T;
+    fn visit_emit_params(&mut self, node: &Node) -> T;
 
     // Action with child nodes
     fn visit_enter_package(&mut self, node: &Node) -> T;
+    fn visit_enter_probe(&mut self, node: &Node) -> T;
 
     // Parameterized action nodes
     fn visit_emit_if_else(&mut self, node: &Node) -> T;
@@ -603,14 +584,10 @@ pub trait BehaviorVisitor<T> {
         if let Node::Action { ty, ..} = node {
             match ty {
                 ActionType::EnterScope {..} => self.visit_enter_scope(node),
-                ActionType::EnterScopeOf {..} => self.visit_enter_scope_of(node),
                 ActionType::ExitScope {..} => self.visit_exit_scope(node),
                 ActionType::Define {..} => self.visit_define(node),
                 ActionType::EmitPred {..} => self.visit_emit_pred(node),
-                ActionType::FoldPred {..} => self.visit_fold_pred(node),
                 ActionType::Reset {..} => self.visit_reset(node),
-                ActionType::SaveParams {..} => self.visit_save_params(node),
-                ActionType::EmitParams {..} => self.visit_emit_params(node),
                 ActionType::EmitBody {..} => self.visit_emit_body(node),
                 ActionType::EmitAltCall {..} => self.visit_emit_alt_call(node),
                 ActionType::RemoveOrig {..} => self.visit_remove_orig(node),
@@ -622,14 +599,10 @@ pub trait BehaviorVisitor<T> {
         }
     }
     fn visit_enter_scope(&mut self, node: &Node) -> T;
-    fn visit_enter_scope_of(&mut self, node: &Node) -> T;
     fn visit_exit_scope(&mut self, node: &Node) -> T;
     fn visit_define(&mut self, node: &Node) -> T;
     fn visit_emit_pred(&mut self, node: &Node) -> T;
-    fn visit_fold_pred(&mut self, node: &Node) -> T;
     fn visit_reset(&mut self, node: &Node) -> T;
-    fn visit_save_params(&mut self, node: &Node) -> T;
-    fn visit_emit_params(&mut self, node: &Node) -> T;
     fn visit_emit_body(&mut self, node: &Node) -> T;
     fn visit_emit_alt_call(&mut self, node: &Node) -> T;
     fn visit_remove_orig(&mut self, node: &Node) -> T;

@@ -7,9 +7,8 @@ use parser_types::{DataType, Whammy, Whamm, WhammVisitor, Expr, Fn, Event, Packa
 use log::{debug, error, trace};
 use regex::Regex;
 use crate::behavior::tree::ParamActionType;
-use crate::behavior::tree::DecoratorType::{HasAltCall, HasParams, PredIs};
+use crate::behavior::tree::DecoratorType::{HasAltCall, PredIs};
 use crate::parser::types::Global;
-use crate::verifier::types::ScopeType;
 
 pub type SimpleAST = HashMap<String, HashMap<String, HashMap<String, HashMap<String, Vec<Probe>>>>>;
 
@@ -127,35 +126,35 @@ impl BehaviorTreeBuilder {
 
     fn visit_bytecode_package(&mut self, package: &Package) {
         if package.events.len() > 0 {
+            // Build events->globals HashMap
+            let mut events = HashMap::new();
+            for (event_name, event) in package.events.iter() {
+                let globals: Vec<String> = event.globals.keys().cloned().collect();
+                events.insert(event_name.clone(), globals);
+            }
+
             self.tree.action_with_child(ActionWithChildType::EnterPackage {
-                    package_name: package.name.clone()
-                })
-                .decorator(DecoratorType::IsInstr {
-                    instr_names: package.events.keys().cloned().collect(),
-                });
+                context: self.context_name.clone(),
+                package_name: package.name.clone(),
+                events,
+            });
             for (_name, event) in package.events.iter() {
                 // just grab the first one and emit behavior (the decorator above is what
                 // makes this apply to all events)
                 self.visit_event(event);
                 break;
             }
-            self.tree.exit_decorator();
             self.tree.exit_action_with_child();
         }
     }
 
     fn visit_bytecode_event(&mut self, event: &Event) {
-        self.tree.sequence()
-            .enter_scope_of(self.context_name.clone(), ScopeType::Event);
-
-        // Define globals
-        self.visit_globals(&event.globals);
+        self.tree.sequence();
 
         self.visit_probe_ty(event, "before");
         self.visit_probe_ty(event, "alt");
         self.visit_probe_ty(event, "after");
 
-        self.tree.exit_scope();
         self.tree.exit_sequence();
     }
 
@@ -170,20 +169,14 @@ impl BehaviorTreeBuilder {
     }
 
     fn visit_bytecode_probe(&mut self, probe: &Probe) {
-        self.tree.fold_pred()
-            .fallback()
+        self.tree.fallback()
                 .decorator(PredIs {
                     val: false
                 })
                     .force_success()
                     .exit_decorator()
                 .sequence()
-                    .fallback()
-                        .decorator(HasParams)
-                            .save_params()
-                            .exit_decorator()
-                        .force_success()
-                        .exit_fallback()
+                    .save_params(true)
                     .fallback()
                         .decorator(PredIs {
                             val: true
@@ -198,7 +191,7 @@ impl BehaviorTreeBuilder {
                                     .force_success()
                                     .exit_fallback()
                                 .emit_body()
-                                .emit_params_subtree()
+                                .emit_params(true)
                                 .fallback()
                                     .decorator(HasAltCall)
                                         .emit_alt_call()
@@ -258,7 +251,7 @@ impl BehaviorTreeBuilder {
                     .fallback()
                         .decorator(HasAltCall)
                             .sequence() // TODO -- remove need for this (just have normal lib::<fn_name>() call syntax)
-                                .emit_params_subtree()
+                                .emit_params(true)
                                 .emit_alt_call()
                                 .exit_sequence()
                             .exit_decorator()
@@ -266,7 +259,7 @@ impl BehaviorTreeBuilder {
                         .exit_fallback()
                     .exit_sequence()
                 .sequence()
-                    .emit_params_subtree()
+                    .emit_params(true)
                     .emit_orig()
                     .exit_sequence()
                 .exit_parameterized_action()
@@ -351,15 +344,11 @@ impl WhammVisitor<()> for BehaviorTreeBuilder {
         self.context_name += &format!(":{}", package.name.clone());
         self.add_package_to_ast(package.name.clone());
 
-        self.tree.enter_scope(self.context_name.clone(), package.name.clone());
-
         if self.is_in_context(r"whamm:whammy([0-9]+):wasm:bytecode") {
             self.visit_bytecode_package(package);
         } else {
             error!("Unsupported package: {}", package.name);
         };
-
-        self.tree.exit_scope();
 
         trace!("Exiting: BehaviorTreeBuilder::visit_package");
         // Remove this package from `context_name`
@@ -387,20 +376,11 @@ impl WhammVisitor<()> for BehaviorTreeBuilder {
         self.context_name += &format!(":{}", probe.name.clone());
         self.add_probe_to_ast(probe);
 
-        if probe.name == "alt" {
-            self.tree.decorator(DecoratorType::ForFirstProbe {
-                target: probe.name.clone()
-            });
-        } else {
-            self.tree.decorator(DecoratorType::ForEachProbe {
-                target: probe.name.clone()
-            });
-        }
-        self.tree.sequence()
-                .enter_scope(self.context_name.clone(), probe.name.clone());
-
-        // visit globals
-        self.visit_globals(&probe.globals);
+        self.tree.action_with_child(ActionWithChildType::EnterProbe {
+            context: self.context_name.clone(),
+            probe_name: probe.name.clone(),
+            global_names: probe.globals.keys().cloned().collect(),
+        });
 
         if self.is_in_context(r"whamm:whammy([0-9]+):wasm:bytecode:(.*)") {
             self.visit_bytecode_probe(probe);
@@ -408,11 +388,8 @@ impl WhammVisitor<()> for BehaviorTreeBuilder {
             error!("Unsupported probe: {}", self.context_name);
         };
 
-        self.tree.exit_scope();
-
         trace!("Exiting: BehaviorTreeBuilder::visit_probe");
-        self.tree.exit_sequence()
-            .exit_decorator();
+        self.tree.exit_action_with_child();
         // Remove this probe from `context_name`
         self.context_name = self.context_name[..self.context_name.rfind(":").unwrap()].to_string();
     }

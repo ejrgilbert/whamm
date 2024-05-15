@@ -1043,6 +1043,7 @@ impl Emitter for WasmRewritingEmitter {
                     });
                 }
                 curr_loc.instr_created_args = arg_recs;
+                return true;
             }
         }
         false
@@ -1067,6 +1068,7 @@ impl Emitter for WasmRewritingEmitter {
                         exit(1);
                     }
                 }
+                return true;
             }
         }
         false

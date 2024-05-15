@@ -1,11 +1,10 @@
 use log::{error, warn};
 use crate::behavior::builder_visitor::SimpleAST;
-use crate::behavior::tree::{ActionType, ActionWithChildType, BehaviorVisitor, DecoratorType, ParamActionType};
+use crate::behavior::tree::{ActionType, ActionWithChildType, ArgActionType, BehaviorVisitor, DecoratorType, ParamActionType};
 use crate::behavior::tree::{BehaviorTree, Node};
 use crate::generator::emitters::Emitter;
 use crate::generator::types::ExprFolder;
 use crate::parser::types::Probe;
-use crate::verifier::types::ScopeType;
 
 /// The second phase of instrumenting a Wasm module by actually emitting the
 /// instrumentation code.
@@ -38,6 +37,29 @@ impl InstrGenerator<'_, '_> {
         }
         warn!("The behavior tree was empty! Nothing to emit!");
         false
+    }
+
+    fn set_context_info(&mut self, context: &String) {
+        // Set the current context info for probe lookup
+        self.context_name = context.clone();
+
+        let mut spec_split = context.split(":");
+        if let Some(_whamm) = spec_split.next() {
+            if let Some(_whammy) = spec_split.next() {
+                if let Some(provider) = spec_split.next() {
+                    self.curr_provider_name = provider.to_string();
+                    if let Some(package) = spec_split.next() {
+                        self.curr_package_name = package.to_string();
+                        if let Some(event) = spec_split.next() {
+                            self.curr_event_name = event.to_string();
+                            if let Some(probe) = spec_split.next() {
+                                self.curr_probe_name = probe.to_string()
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     fn emit_cond(&mut self, cond: &usize) -> bool {
@@ -128,28 +150,6 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         false
     }
 
-    fn visit_is_instr(&mut self, node: &Node) -> bool {
-        let mut is_success = true;
-        if let Node::Decorator {ty, child, ..} = node {
-            if let DecoratorType::IsInstr {instr_names} = ty {
-                if self.emitter.curr_instr_is_of_type(instr_names) {
-                    // If the current instruction is of-interest, continue with the behavior tree logic
-                    if let Some(node) = self.tree.get_node(child.clone()) {
-                        is_success &= self.visit_node(node);
-                    }
-                } else {
-                    // If the decorator condition is false, return false
-                    return false;
-                }
-            } else {
-                unreachable!()
-            }
-        } else {
-            unreachable!()
-        }
-        is_success
-    }
-
     fn visit_is_probe_type(&mut self, node: &Node) -> bool {
         let mut is_success = true;
         if let Node::Decorator { ty, child, .. } = node {
@@ -193,28 +193,6 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         is_success
     }
 
-    fn visit_has_params(&mut self, node: &Node) -> bool {
-        let mut is_success = true;
-        if let Node::Decorator { ty, child, .. } = node {
-            if let DecoratorType::HasParams = ty {
-                if self.emitter.has_params() {
-                    // The current instruction has parameters, continue with behavior
-                    if let Some(node) = self.tree.get_node(child.clone()) {
-                        is_success &= self.visit_node(node);
-                    }
-                } else {
-                    // If the decorator condition is false, return false
-                    return false;
-                }
-            } else {
-                unreachable!()
-            }
-        } else {
-            unreachable!()
-        }
-        is_success
-    }
-
     fn visit_pred_is(&mut self, node: &Node) -> bool {
         if let Node::Decorator {ty, child, ..} = node {
             if let DecoratorType::PredIs{ val } = ty {
@@ -240,30 +218,16 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         false
     }
 
-    fn visit_for_each_probe(&mut self, node: &Node) -> bool {
+    fn visit_save_params(&mut self, node: &Node) -> bool {
         let mut is_success = true;
-        // Assumption: before probes push/pop from stack so it is equivalent to what it was originally
-        // Assumption: after probes push/pop from stack so it is equivalent to what it was originally
-
-        if let Node::Decorator { ty, child, .. } = node {
-            if let DecoratorType::ForEachProbe { target } = ty {
-                self.curr_probe_name = target.clone();
-
-                // Must pull the probe by index due to Rust calling constraints...
-                let probe_list_len = get_probes_from_ast(&self.ast, &self.curr_provider_name, &self.curr_package_name,
-                                                     &self.curr_event_name, target).len();
-                for i in Vec::from_iter(0..probe_list_len).iter() {
-
-                    if let Some(probe) = get_probe_at_idx(&self.ast, &self.curr_provider_name, &self.curr_package_name,
-                                                           &self.curr_event_name, target, i) {
-                        // make a clone of the current probe per instruction traversal
-                        // this will reset the clone pred/body for each instruction!
-                        self.curr_probe = Some(probe.clone());
-                    }
-
-                    if let Some(node) = self.tree.get_node(child.clone()) {
-                        is_success &= self.visit_node(node);
-                    }
+        if let Node::ArgAction {ty, force_success, ..} = node {
+            if let ArgActionType::SaveParams = ty {
+                if self.emitter.has_params() {
+                    // The current instruction has parameters, save them
+                    is_success &= self.emitter.save_params();
+                } else {
+                    // If no params, return whatever was configured to do
+                    return force_success.clone();
                 }
             } else {
                 unreachable!()
@@ -274,25 +238,16 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         is_success
     }
 
-    fn visit_for_first_probe(&mut self, node: &Node) -> bool {
+    fn visit_emit_params(&mut self, node: &Node) -> bool {
         let mut is_success = true;
-        if let Node::Decorator {ty, child, .. } = node {
-            if let DecoratorType::ForFirstProbe { target } = ty {
-                let probe_list = get_probes_from_ast(&self.ast, &self.curr_provider_name, &self.curr_package_name,
-                                                     &self.curr_event_name, target);
-                if probe_list.len() > 1 {
-                    warn!("There is more than one probe for probe type '{}'. So only emitting first probe, ignoring rest.", target)
-                }
-                self.curr_probe_name = target.clone();
-                // make a clone of the first probe per instruction traversal
-                // this will reset the clone pred/body for each instruction!
-                if let Some(probe) = probe_list.get(0) {
-                    self.curr_probe = Some(probe.clone());
-                }
-
-                // Process the instructions for this single probe!
-                if let Some(node) = self.tree.get_node(child.clone()) {
-                    is_success &= self.visit_node(node);
+        if let Node::ArgAction { ty, force_success, ..} = node {
+            if let ArgActionType::EmitParams = ty {
+                if self.emitter.has_params() {
+                    // The current instruction has parameters, emit them
+                    is_success &= self.emitter.emit_params();
+                } else {
+                    // If no params, return whatever was configured to do
+                    return force_success.clone();
                 }
             } else {
                 unreachable!()
@@ -306,19 +261,44 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
     fn visit_enter_package(&mut self, node: &Node) -> bool {
         let mut is_success = true;
         if let Node::ActionWithChild { ty, child, .. } = node {
-            let ActionWithChildType::EnterPackage { package_name } = ty;
-            if package_name == "bytecode" {
-                // Process first instruction!
-                if let Some(node) = self.tree.get_node(child.clone()) {
-                    is_success &= self.visit_node(node);
-                }
-
-                // Process the rest of the instructions
-                while self.emitter.has_next_instr() {
-                    self.emitter.next_instr();
-                    if let Some(node) = self.tree.get_node(child.clone()) {
-                        is_success &= self.visit_node(node);
+            if let ActionWithChildType::EnterPackage { context, package_name, events } = ty {
+                if package_name == "bytecode" {
+                    // Perform 'bytecode' package logic
+                    is_success &= self.emitter.enter_named_scope(package_name);
+                    if is_success {
+                        self.set_context_info(context);
                     }
+
+                    let mut first_instr = true;
+                    while first_instr || self.emitter.has_next_instr() {
+                        if !first_instr {
+                            self.emitter.next_instr();
+                        }
+
+                        let instr_ty = self.emitter.curr_instr_type();
+                        // is this an instruction of-interest?
+                        if let Some(globals) = events.get(&instr_ty) {
+                            // enter this event's scope
+                            self.emitter.enter_named_scope(&instr_ty);
+                            self.curr_event_name = instr_ty.clone();
+
+                            // define this instruction type's compiler variables
+                            for global in globals {
+                                is_success &= self.emitter.define_compiler_var(&self.context_name, global);
+                            }
+
+                            // continue with logic
+                            if let Some(node) = self.tree.get_node(child.clone()) {
+                                is_success &= self.visit_node(node);
+                            }
+
+                            // exit this event's scope
+                            self.emitter.exit_scope();
+                        }
+                        first_instr = false;
+                    }
+
+                    self.emitter.exit_scope();
                 }
             }
         } else {
@@ -327,8 +307,76 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         is_success
     }
 
+    fn visit_enter_probe(&mut self, node: &Node) -> bool {
+        let mut is_success = true;
+        if let Node::ActionWithChild { ty, child, .. } = node {
+            if let ActionWithChildType::EnterProbe { probe_name, global_names, .. } = ty {
+                // enter probe's scope
+                is_success &= self.emitter.enter_named_scope(probe_name);
+                if is_success {
+                    self.curr_probe_name = probe_name.clone();
+                }
+                // define this probe's compiler variables
+                for global in global_names {
+                    is_success &= self.emitter.define_compiler_var(&self.context_name, global);
+                }
+                if probe_name == "before" || probe_name == "after" {
+                    // Perform 'before' and 'after' probe logic
+                    // Must pull the probe by index due to Rust calling constraints...
+                    let probe_list_len = get_probes_from_ast(&self.ast, &self.curr_provider_name, &self.curr_package_name,
+                                                             &self.curr_event_name, probe_name).len();
+                    for i in Vec::from_iter(0..probe_list_len).iter() {
+
+                        if let Some(probe) = get_probe_at_idx(&self.ast, &self.curr_provider_name, &self.curr_package_name,
+                                                              &self.curr_event_name, probe_name, i) {
+                            // make a clone of the current probe per instruction traversal
+                            // this will reset the clone pred/body for each instruction!
+                            let mut probe_cloned = probe.clone();
+                            if let Some(pred) = &mut probe_cloned.predicate {
+                                // Fold predicate
+                                is_success &= self.emitter.fold_expr(pred);
+                            }
+                            self.curr_probe = Some(probe_cloned);
+                        }
+
+                        // Process the instructions for this probe!
+                        if let Some(node) = self.tree.get_node(child.clone()) {
+                            is_success &= self.visit_node(node);
+                        }
+                    }
+                } else if probe_name == "alt" {
+                    // Perform 'alt' probe logic
+                    let probe_list = get_probes_from_ast(&self.ast, &self.curr_provider_name, &self.curr_package_name,
+                                                         &self.curr_event_name, probe_name);
+                    if probe_list.len() > 1 {
+                        warn!("There is more than one probe for probe type '{}'. So only emitting first probe, ignoring rest.", probe_name)
+                    }
+                    // make a clone of the first probe per instruction traversal
+                    // this will reset the clone pred/body for each instruction!
+                    if let Some(probe) = probe_list.get(0) {
+                        let mut probe_cloned = probe.clone();
+                        if let Some(pred) = &mut probe_cloned.predicate {
+                            // Fold predicate
+                            is_success &= self.emitter.fold_expr(pred);
+                        }
+                        self.curr_probe = Some(probe_cloned);
+                    }
+
+                    // Process the instructions for this single probe!
+                    if let Some(node) = self.tree.get_node(child.clone()) {
+                        is_success &= self.visit_node(node);
+                    }
+                } else {
+                    unreachable!()
+                }
+                self.emitter.exit_scope();
+            }
+        }
+        is_success
+    }
+
     fn visit_emit_if_else(&mut self, node: &Node) -> bool {
-        if let Node::ParameterizedAction {ty, .. } = node {
+        if let Node::ActionWithParams {ty, .. } = node {
             if let ParamActionType::EmitIfElse { cond, conseq, alt } = ty {
                 self.emitter.emit_if_else();
                 self.emit_cond(cond);
@@ -345,7 +393,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
     }
 
     fn visit_emit_if(&mut self, node: &Node) -> bool {
-        if let Node::ParameterizedAction { ty, .. } = node {
+        if let Node::ActionWithParams { ty, .. } = node {
             if let ParamActionType::EmitIf { cond, conseq } = ty {
                 self.emitter.emit_if();
                 self.emit_cond(cond);
@@ -366,63 +414,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
             if let ActionType::EnterScope{ context, scope_name } = ty {
                 is_success &= self.emitter.enter_named_scope(scope_name);
                 if is_success {
-                    // Set the current context info for probe lookup
-                    self.context_name = context.clone();
-
-                    let mut spec_split = context.split(":");
-                    if let Some(_whamm) = spec_split.next() {
-                        if let Some(_whammy) = spec_split.next() {
-                            if let Some(provider) = spec_split.next() {
-                                self.curr_provider_name = provider.to_string();
-                                if let Some(package) = spec_split.next() {
-                                    self.curr_package_name = package.to_string();
-                                    if let Some(event) = spec_split.next() {
-                                        self.curr_event_name = event.to_string();
-                                        if let Some(probe) = spec_split.next() {
-                                            self.curr_probe_name = probe.to_string()
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
-                unreachable!()
-            }
-        } else {
-            unreachable!()
-        }
-        is_success
-    }
-
-    fn visit_enter_scope_of(&mut self, node: &Node) -> bool {
-        let mut is_success = true;
-        if let Node::Action { ty, ..} = node {
-            if let ActionType::EnterScopeOf { context, scope_ty } = ty {
-                match scope_ty {
-                    ScopeType::Event => {
-                        let instr_name = self.emitter.curr_instr_type();
-                        is_success &= self.emitter.enter_named_scope(&instr_name);
-                        if is_success {
-                            // Set the current context info for probe lookup
-                            self.context_name = context.clone();
-
-                            let mut spec_split = context.split(":");
-                            if let Some(_whamm) = spec_split.next() {
-                                if let Some(_whammy) = spec_split.next() {
-                                    if let Some(provider) = spec_split.next() {
-                                        self.curr_provider_name = provider.to_string();
-                                        if let Some(package) = spec_split.next() {
-                                            self.curr_package_name = package.to_string();
-                                            self.curr_event_name = instr_name;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    _ => unimplemented!()
+                    self.set_context_info(context);
                 }
             } else {
                 unreachable!()
@@ -479,57 +471,11 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         is_success
     }
 
-    fn visit_fold_pred(&mut self, node: &Node) -> bool {
-        let mut is_success = true;
-        if let Node::Action { ty, ..} = node {
-            if let ActionType::FoldPred = ty {
-                if let Some(probe) = &mut self.curr_probe {
-                    if let Some(pred) = &mut probe.predicate {
-                        is_success &= self.emitter.fold_expr(pred);
-                    }
-                }
-            } else {
-                unreachable!()
-            }
-        } else {
-            unreachable!()
-        }
-        is_success
-    }
-
     fn visit_reset(&mut self, node: &Node) -> bool {
         let is_success = true;
         if let Node::Action {ty, ..} = node {
             if let ActionType::Reset = ty {
                 self.emitter.reset_children();
-            } else {
-                unreachable!()
-            }
-        } else {
-            unreachable!()
-        }
-        is_success
-    }
-
-    fn visit_save_params(&mut self, node: &Node) -> bool {
-        let mut is_success = true;
-        if let Node::Action {ty, ..} = node {
-            if let ActionType::SaveParams = ty {
-                is_success &= self.emitter.save_params();
-            } else {
-                unreachable!()
-            }
-        } else {
-            unreachable!()
-        }
-        is_success
-    }
-
-    fn visit_emit_params(&mut self, node: &Node) -> bool {
-        let mut is_success = true;
-        if let Node::Action { ty, ..} = node {
-            if let ActionType::EmitParams = ty {
-                is_success &= self.emitter.emit_params();
             } else {
                 unreachable!()
             }

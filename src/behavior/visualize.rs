@@ -5,7 +5,7 @@ use graphviz_rust::exec;
 use graphviz_rust::dot_structures::{Attribute, Edge, EdgeTy, Graph, Id, Node, NodeId, Stmt, Vertex};
 use graphviz_rust::dot_generator::{attr, edge, graph, id, node, node_id, stmt};
 use graphviz_rust::printer::PrinterContext;
-use crate::behavior::tree::{ActionType, ActionWithChildType, BehaviorTree, BehaviorVisitor, DecoratorType, Node as TreeNode, ParamActionType};
+use crate::behavior::tree::{ActionType, ActionWithChildType, ArgActionType, BehaviorTree, BehaviorVisitor, DecoratorType, Node as TreeNode, ParamActionType};
 
 pub fn visualization_to_file(tree: &BehaviorTree, path: PathBuf) -> Result<Vec<u8>> {
     let graph = visualize(tree);
@@ -151,31 +151,6 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
         }
     }
 
-    fn visit_is_instr(&mut self, node: &TreeNode) -> () {
-        if let TreeNode::Decorator { id, ty, parent, child } = node {
-            if let DecoratorType::IsInstr {instr_names} = ty {
-                let mut names = "".to_string();
-                for name in instr_names {
-                    if names.is_empty() {
-                        names.push_str(name);
-                    } else {
-                        names.push_str(&format!("OR{name}"));
-                    }
-                }
-                self.emit_decorator_node(id, &format!("IsInstr_{}", names));
-                self.emit_edge(parent, id);
-
-                if let Some(node) = self.tree.get_node(child.clone()) {
-                    self.visit_node(node);
-                }
-            } else {
-                unreachable!()
-            }
-        } else {
-            unreachable!()
-        }
-    }
-
     fn visit_is_probe_type(&mut self, node: &TreeNode) -> () {
         if let TreeNode::Decorator { id, ty, parent, child } = node {
             if let DecoratorType::IsProbeType {probe_type} = ty {
@@ -210,23 +185,6 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
         }
     }
 
-    fn visit_has_params(&mut self, node: &TreeNode) -> () {
-        if let TreeNode::Decorator { id, ty, parent, child } = node {
-            if let DecoratorType::HasParams = ty {
-                self.emit_decorator_node(id, "HasParams");
-                self.emit_edge(parent, id);
-
-                if let Some(node) = self.tree.get_node(child.clone()) {
-                    self.visit_node(node);
-                }
-            } else {
-                unreachable!()
-            }
-        } else {
-            unreachable!()
-        }
-    }
-
     fn visit_pred_is(&mut self, node: &TreeNode) -> () {
         if let TreeNode::Decorator { id, ty, parent, child } = node {
             if let DecoratorType::PredIs{ val } = ty {
@@ -244,15 +202,11 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
         }
     }
 
-    fn visit_for_each_probe(&mut self, node: &TreeNode) -> () {
-        if let TreeNode::Decorator { id, ty, parent, child } = node {
-            if let DecoratorType::ForEachProbe { target } = ty {
-                self.emit_decorator_node(id, &format!("ForEachProbe_{}", target.replace(":", "_")));
+    fn visit_save_params(&mut self, node: &TreeNode) -> () {
+        if let TreeNode::ArgAction {id, ty, parent, ..} = node {
+            if let ArgActionType::SaveParams = ty {
+                self.emit_special_action_node(id, "SaveParams");
                 self.emit_edge(parent, id);
-
-                if let Some(node) = self.tree.get_node(child.clone()) {
-                    self.visit_node(node);
-                }
             } else {
                 unreachable!()
             }
@@ -261,15 +215,11 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
         }
     }
 
-    fn visit_for_first_probe(&mut self, node: &TreeNode) -> () {
-        if let TreeNode::Decorator { id, ty, parent, child } = node {
-            if let DecoratorType::ForFirstProbe { target } = ty {
-                self.emit_decorator_node(id, &format!("ForFirstProbe_{}", target.replace(":", "_")));
+    fn visit_emit_params(&mut self, node: &TreeNode) -> () {
+        if let TreeNode::ArgAction { id, ty, parent, ..} = node {
+            if let ArgActionType::EmitParams = ty {
+                self.emit_special_action_node(id, "EmitParams");
                 self.emit_edge(parent, id);
-
-                if let Some(node) = self.tree.get_node(child.clone()) {
-                    self.visit_node(node);
-                }
             } else {
                 unreachable!()
             }
@@ -280,12 +230,36 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
 
     fn visit_enter_package(&mut self, node: &TreeNode) -> () {
         if let TreeNode::ActionWithChild { id, ty, parent, child } = node {
-            let ActionWithChildType::EnterPackage { package_name } = ty;
-            self.emit_special_action_node(id, &format!("EnterPackage_{}", package_name.replace(":", "_")));
-            self.emit_edge(parent, id);
+            if let ActionWithChildType::EnterPackage { package_name, events, .. } = ty {
+                let mut event_names = "".to_string();
+                events.keys().for_each(|event_name| {
+                    if event_names.is_empty() {
+                        event_names.push_str(event_name);
+                    } else {
+                        event_names.push_str(&format!("OR{event_name}"));
+                    }
+                });
+                self.emit_special_action_node(id, &format!("EnterPackage_{}_{}", package_name.replace(":", "_"), event_names));
+                self.emit_edge(parent, id);
 
-            if let Some(node) = self.tree.get_node(child.clone()) {
-                self.visit_node(node);
+                if let Some(node) = self.tree.get_node(child.clone()) {
+                    self.visit_node(node);
+                }
+            }
+        } else {
+            unreachable!()
+        }
+    }
+
+    fn visit_enter_probe(&mut self, node: &TreeNode) -> () {
+        if let TreeNode::ActionWithChild { id, ty, parent, child } = node {
+            if let ActionWithChildType::EnterProbe { probe_name, .. } = ty {
+                self.emit_special_action_node(id, &format!("EnterProbe_{}", probe_name.replace(":", "_")));
+                self.emit_edge(parent, id);
+
+                if let Some(node) = self.tree.get_node(child.clone()) {
+                    self.visit_node(node);
+                }
             }
         } else {
             unreachable!()
@@ -293,7 +267,7 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
     }
 
     fn visit_emit_if_else(&mut self, node: &TreeNode) -> () {
-        if let TreeNode::ParameterizedAction { id, parent, ty, .. } = node {
+        if let TreeNode::ActionWithParams { id, parent, ty, .. } = node {
             if let ParamActionType::EmitIfElse { cond, conseq, alt } = ty {
                 self.emit_special_action_node(id, "EmitIfElse");
                 self.emit_edge(parent, id);
@@ -322,7 +296,7 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
     }
 
     fn visit_emit_if(&mut self, node: &TreeNode) -> () {
-        if let TreeNode::ParameterizedAction { id, parent, ty, .. } = node {
+        if let TreeNode::ActionWithParams { id, parent, ty, .. } = node {
             if let ParamActionType::EmitIf { cond, conseq } = ty {
                 self.emit_special_action_node(id, "EmitIf");
                 self.emit_edge(parent, id);
@@ -349,19 +323,6 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
         if let TreeNode::Action { id, ty, parent} = node {
             if let ActionType::EnterScope{ scope_name, .. } = ty {
                 self.emit_action_node(id, &format!("EnterScope_{}", scope_name.replace(":", "_")));
-                self.emit_edge(parent, id);
-            } else {
-                unreachable!()
-            }
-        } else {
-            unreachable!()
-        }
-    }
-
-    fn visit_enter_scope_of(&mut self, node: &TreeNode) -> () {
-        if let TreeNode::Action { id, ty, parent} = node {
-            if let ActionType::EnterScopeOf{ scope_ty, .. } = ty {
-                self.emit_action_node(id, &format!("EnterScopeOf_{}", scope_ty.to_string()));
                 self.emit_edge(parent, id);
             } else {
                 unreachable!()
@@ -410,49 +371,10 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
         }
     }
 
-    fn visit_fold_pred(&mut self, node: &TreeNode) -> () {
-        if let TreeNode::Action { id, ty, parent} = node {
-            if let ActionType::FoldPred = ty {
-                self.emit_action_node(id, "FoldPred");
-                self.emit_edge(parent, id);
-            } else {
-                unreachable!()
-            }
-        } else {
-            unreachable!()
-        }
-    }
-
     fn visit_reset(&mut self, node: &TreeNode) -> () {
         if let TreeNode::Action { id, ty, parent} = node {
             if let ActionType::Reset = ty {
                 self.emit_action_node(id, "Reset");
-                self.emit_edge(parent, id);
-            } else {
-                unreachable!()
-            }
-        } else {
-            unreachable!()
-        }
-    }
-
-    fn visit_save_params(&mut self, node: &TreeNode) -> () {
-        if let TreeNode::Action { id, ty, parent} = node {
-            if let ActionType::SaveParams = ty {
-                self.emit_action_node(id, "SaveParams");
-                self.emit_edge(parent, id);
-            } else {
-                unreachable!()
-            }
-        } else {
-            unreachable!()
-        }
-    }
-
-    fn visit_emit_params(&mut self, node: &TreeNode) -> () {
-        if let TreeNode::Action { id, ty, parent} = node {
-            if let ActionType::EmitParams = ty {
-                self.emit_action_node(id, "EmitParams");
                 self.emit_edge(parent, id);
             } else {
                 unreachable!()
