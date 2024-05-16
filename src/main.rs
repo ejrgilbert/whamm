@@ -36,7 +36,7 @@ struct Args {
     virgil: bool,
 
     /// Whether to run the verifier on the specified whammy
-    #[clap(long, short, action, default_value = "true")]
+    #[clap(long, short, action, default_value = "false")]
     run_verifier: bool
 }
 
