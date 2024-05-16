@@ -6,11 +6,13 @@ use crate::behavior::builder_visitor::*;
 use crate::generator::emitters::{Emitter, WasmRewritingEmitter};
 use crate::generator::init_generator::{InitGenerator};
 use crate::generator::instr_generator::{InstrGenerator};
+// use crate::common::error;
 
 pub mod parser;
 pub mod behavior;
 pub mod verifier;
 pub mod generator;
+pub mod common;
 
 use clap::{Args, Parser, Subcommand};
 use graphviz_rust::exec_dot;
@@ -266,13 +268,13 @@ fn get_whammy_ast(whammy_path: &String) -> Whamm {
     match std::fs::read_to_string(&whammy_path) {
         Ok(unparsed_str) => {
             // Parse the script and build the AST
-            match parse_script(unparsed_str) {
+            match parse_script(whammy_path, unparsed_str) {
                 Ok(ast) => {
                     info!("successfully parsed");
                     return ast;
                 },
-                Err(error) => {
-                    error!("Parse failed: {}", error);
+                Err(err) => {
+                    err.report();
                     exit(1);
                 }
             };

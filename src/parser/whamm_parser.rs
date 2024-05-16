@@ -6,6 +6,7 @@ use pest::Parser;
 use pest::iterators::{Pair, Pairs};
 
 use log::{trace};
+use crate::common::error::WhammError;
 use crate::parser::types::{DataType, Whammy, Whamm, Expr, Statement, Value};
 
 // ====================
@@ -23,7 +24,10 @@ pub fn to_ast(pair: Pair<Rule>) -> Result<Whamm, Error<Rule>> {
         Rule::whammy => {
             process_pair(&mut whamm, whammy_count, pair);
         }
-        rule => unreachable!("Expected whammy, found {:?}", rule)
+        rule => {
+            // TODO -- WhammyError
+            unreachable!("Expected whammy, found {:?}", rule)
+        }
     }
 
     Ok(whamm)
@@ -96,7 +100,10 @@ fn process_pair(whamm: &mut Whamm, whammy_count: usize, pair: Pair<Rule>) {
             trace!("Exiting probe_def");
         },
         Rule::EOI => {},
-        rule => unreachable!("Unexpected rule in process_pair, found {:?}", rule)
+        rule => {
+            // TODO -- WhammyError
+            unreachable!("Unexpected rule in process_pair, found {:?}", rule)
+        }
     }
 }
 
@@ -171,7 +178,10 @@ fn stmt_from_rule(pair: Pair<Rule>) -> Statement {
                 expr: call
             };
         },
-        rule => unreachable!("Expected statement, assignment, or fn_call, found {:?}", rule)
+        rule => {
+            // TODO -- WhammyError
+            unreachable!("Expected statement, assignment, or fn_call, found {:?}", rule)
+        }
     }
 }
 
@@ -227,13 +237,18 @@ fn probe_spec_from_rule(pair: Pair<Rule>) -> String {
 
             return contents.join(":")
         },
-        rule => unreachable!("Expected spec, PROBE_SPEC, or PROBE_ID, found {:?}", rule)
+        rule => {
+            // TODO -- WhammyError
+            unreachable!("Expected spec, PROBE_SPEC, or PROBE_ID, found {:?}", rule)
+        }
     }
 }
 
 fn expr_primary(pair: Pair<Rule>) -> Expr {
     match pair.as_rule() {
         Rule::fn_call => {
+            // pair.l
+
             let call = fn_call_from_rule(pair);
             return call;
         },
@@ -329,7 +344,10 @@ fn expr_from_pairs(pairs: Pairs<Rule>) -> Expr {
                 Rule::multiply => Op::Multiply,
                 Rule::divide => Op::Divide,
                 Rule::modulo => Op::Modulo,
-                rule => unreachable!("Expr::parse expected infix operation, found {:?}", rule),
+                rule => {
+                    // TODO -- WhammyError
+                    unreachable!("Expr::parse expected infix operation, found {:?}", rule)
+                },
             };
             return Expr::BinOp {
                 lhs: Box::new(lhs),
@@ -344,27 +362,28 @@ fn expr_from_pairs(pairs: Pairs<Rule>) -> Expr {
 // = Parser =
 // ==========
 
-pub fn parse_script(script: String) -> Result<Whamm, String> {
+pub fn parse_script(whammy_path: &String, script: String) -> Result<Whamm, WhammError<Rule>> {
     trace!("Entered parse_script");
 
-    match WhammParser::parse(Rule::whammy, &*script) {
+    let res = WhammParser::parse(Rule::whammy, &*script);
+    match res {
         Ok(mut pairs) => {
             let res = to_ast(
                 // inner of script
                 pairs.next().unwrap()
             );
-            // debug!("Parsed: {:#?}", res);
 
             match res {
                 Ok(ast) => {
                     Ok(ast)
                 },
-                Err(e) => Err(e.to_string()),
+                Err(e) => {
+                    Err(WhammError::from_pest_err(e, whammy_path))
+                },
             }
         },
         Err(e) => {
-            Err(e.to_string())
+            Err(WhammError::from_pest_err(e, whammy_path))
         },
     }
 }
-
