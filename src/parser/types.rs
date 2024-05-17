@@ -116,6 +116,20 @@ pub enum Statement {
         loc: Option<Location>
     }
 }
+impl Statement {
+    pub fn dummy() -> Self {
+        Self::Expr {
+            expr: Expr::Primitive {
+                val: Value::Integer {
+                    ty: DataType::Integer,
+                    val: 0,
+                },
+                loc: None
+            },
+            loc: None
+        }
+    }
+}
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Expr {

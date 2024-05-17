@@ -120,25 +120,26 @@ fn try_main() -> Result<(), failure::Error> {
     // Get information from user command line args
     let cli = WhammCli::parse();
 
-    // Set up error reporting mechanism
-    let mut err = ErrorGen::new(whammy_path, "".to_string(), MAX_ERRORS);
     match cli.command {
         Command::Instr(args) => {
-            run_instr(args.app, args.whammy, args.output_path, args.virgil, args.run_verifier, &mut err);
+            run_instr(args.app, args.whammy, args.output_path, args.virgil, args.run_verifier);
         }
         Command::VisWasm {wasm, output_path} => {
             run_vis_wasm(wasm, output_path);
         }
         Command::VisWhammy {whammy, run_verifier, output_path} => {
-            run_vis_whammy(whammy, run_verifier, output_path, &mut err);
+            run_vis_whammy(whammy, run_verifier, output_path);
         }
     }
 
     Ok(())
 }
 
-fn run_instr(app_wasm_path: String, whammy_path: String, output_wasm_path: String, emit_virgil: bool, run_verifier: bool, err: &mut ErrorGen<R>) {
-    let mut whamm = get_whammy_ast(&whammy_path, err);
+fn run_instr(app_wasm_path: String, whammy_path: String, output_wasm_path: String, emit_virgil: bool, run_verifier: bool) {
+    // Set up error reporting mechanism
+    let mut err = ErrorGen::new(whammy_path.clone(), "".to_string(), MAX_ERRORS);
+
+    let mut whamm = get_whammy_ast(&whammy_path, &mut err);
 
     let symbol_table = get_symbol_table(&whamm, run_verifier);
     let (behavior_tree, simple_ast) = build_behavior(&whamm);
@@ -223,8 +224,11 @@ fn run_vis_wasm(wasm_path: String, output_path: String) {
     }
 }
 
-fn run_vis_whammy(whammy_path: String, run_verifier: bool, output_path: String, err: &mut ErrorGen<R>) {
-    let whamm = get_whammy_ast(&whammy_path, err);
+fn run_vis_whammy(whammy_path: String, run_verifier: bool, output_path: String) {
+    // Set up error reporting mechanism
+    let mut err = ErrorGen::new(whammy_path.clone(), "".to_string(), MAX_ERRORS);
+
+    let whamm = get_whammy_ast(&whammy_path, &mut err);
     verify_ast(&whamm, run_verifier);
     let (behavior_tree, ..) = build_behavior(&whamm);
 
@@ -267,18 +271,17 @@ fn verify_ast(ast: &Whamm, run_verifier: bool) {
     }
 }
 
-fn get_whammy_ast(whammy_path: &String, err: &mut ErrorGen<R>) -> Whamm {
+fn get_whammy_ast(whammy_path: &String, err: &mut ErrorGen) -> Whamm {
     match std::fs::read_to_string(&whammy_path) {
         Ok(unparsed_str) => {
-            err.set_script_text(unparsed_str);
             // Parse the script and build the AST
-            match parse_script(whammy_path, &unparsed_str, err) {
-                Ok(ast) => {
+            match parse_script(&unparsed_str, err) {
+                Some(ast) => {
                     info!("successfully parsed");
                     return ast;
                 },
-                Err(mut err) => {
-                    err.report(&unparsed_str, whammy_path);
+                None => {
+                    err.report();
                     exit(1);
                 }
             };

@@ -30,13 +30,31 @@ impl ErrorGen {
         }
     }
 
+    pub fn add_error(&mut self, error: WhammError) {
+        let fatal = error.fatal;
+        self.errors.push(error);
+        self.inc_errors();
+
+        if fatal {
+            self.fatal_report("Fatal");
+        }
+    }
+
+    pub fn add_errors(&mut self, errors: Vec<WhammError>) {
+        for error in errors {
+            self.add_error(error);
+        }
+
+        self.check_too_many();
+    }
+
     pub fn set_script_text(&mut self, script_text: String) {
         self.script_text = script_text;
     }
 
     pub fn report(&mut self) {
         // Report the most-recent error first
-        self.errors.iter().for_each(|mut error| {
+        self.errors.iter_mut().for_each(|error| {
             error.report(&self.script_text, &self.whammy_path);
         });
         self.errors.clear();
@@ -49,6 +67,13 @@ impl ErrorGen {
         self.report();
         error!("{context}: Expected no errors.");
         exit(1);
+    }
+
+    pub fn check_too_many(&mut self) {
+        if self.too_many {
+            self.report();
+            exit(1);
+        }
     }
 
     // ======================
@@ -66,15 +91,11 @@ impl ErrorGen {
             line2: None
         };
         self.add_error(err);
-
-        if fatal {
-            self.fatal_report("Fatal");
-        }
     }
 
-    pub fn parse_error(&mut self, fatal: bool, message: Option<String>, line_col: LineColLocation,
-                       positives: Vec<Rule>, negatives: Vec<Rule>) {
-        let err = WhammError {
+    pub fn get_parse_error(fatal: bool, message: Option<String>, line_col: LineColLocation,
+                           positives: Vec<Rule>, negatives: Vec<Rule>) -> WhammError {
+        WhammError {
             fatal,
             ty: ErrorType::ParsingError {
                 positives,
@@ -84,12 +105,13 @@ impl ErrorGen {
             line_col: Some(line_col),
             line: None,
             line2: None
-        };
-        self.add_error(err);
-
-        if fatal {
-            self.fatal_report("Fatal");
         }
+    }
+
+    pub fn parse_error(&mut self, fatal: bool, message: Option<String>, line_col: LineColLocation,
+                       positives: Vec<Rule>, negatives: Vec<Rule>) {
+        let err = Self::get_parse_error(fatal, message, line_col, positives, negatives);
+        self.add_error(err);
     }
 
     pub fn type_check_error(&mut self, fatal: bool, message: String, line_col: LineColLocation) {
@@ -103,10 +125,6 @@ impl ErrorGen {
             line2: None
         };
         self.add_error(err);
-
-        if fatal {
-            self.fatal_report("Fatal");
-        }
     }
 
     pub fn pest_err(&mut self, e: Error<Rule>) {
@@ -157,11 +175,6 @@ impl ErrorGen {
         self.add_error(error);
     }
 
-    fn add_error(&mut self, error: WhammError) {
-        self.errors.push(error);
-        self.inc_errors();
-    }
-
     fn inc_errors(&mut self) {
         self.num_errors += 1;
         self.no_errors = false;
@@ -184,6 +197,9 @@ pub struct WhammError {
     // error: String,
 }
 impl WhammError {
+    pub fn is_fatal(&self) -> bool {
+        self.fatal
+    }
 
     // report this error to the console, including color highlighting
     pub fn report(&mut self, script: &String, whammy_path: &String) {
@@ -256,6 +272,7 @@ impl WhammError {
                     self.line = Some(script_line.to_string());
                 }
             }
+            _ => {}
         }
     }
 
