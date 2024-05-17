@@ -68,11 +68,11 @@ fn emit_stmt(table: &mut SymbolTable, module_data: &mut ModuleData, stmt: &mut S
              instr_builder: &mut InstrSeqBuilder, metadata: &mut InsertionMetadata, index: &mut usize) -> bool {
     let mut is_success = true;
     match stmt {
-        Statement::Assign { var_id, expr } => {
+        Statement::Assign { var_id, expr, ..} => {
             let folded_expr = ExprFolder::fold_expr(expr, table);
-            return if let Expr::Primitive { val } = folded_expr {
+            return if let Expr::Primitive { val, ..} = folded_expr {
                 // This is a constant, just save the value to the symbol table for later use
-                if let Expr::VarId { name } = var_id {
+                if let Expr::VarId { name, ..} = var_id {
                     let var_rec_id = match table.lookup(name) {
                         Some(rec_id) => rec_id.clone(),
                         _ => {
@@ -101,7 +101,7 @@ fn emit_stmt(table: &mut SymbolTable, module_data: &mut ModuleData, stmt: &mut S
             } else {
                 is_success &= emit_expr(table, module_data, expr, instr_builder, metadata, index);
 
-                return if let Expr::VarId { name } = var_id {
+                return if let Expr::VarId { name, ..} = var_id {
                     let var_rec_id = match table.lookup(name) {
                         Some(rec_id) => rec_id.clone(),
                         _ => {
@@ -153,7 +153,7 @@ fn emit_stmt(table: &mut SymbolTable, module_data: &mut ModuleData, stmt: &mut S
                 }
             }
         }
-        Statement::Expr { expr } => {
+        Statement::Expr { expr, ..} => {
             is_success &= emit_expr(table, module_data, expr, instr_builder, metadata, index);
         }
     }
@@ -164,14 +164,14 @@ fn emit_expr(table: &mut SymbolTable, module_data: &mut ModuleData, expr: &mut E
              metadata: &mut InsertionMetadata, index: &mut usize) -> bool {
     let mut is_success = true;
     match expr {
-        Expr::BinOp {lhs, op, rhs} => {
+        Expr::BinOp {lhs, op, rhs, ..} => {
             is_success &= emit_expr(table, module_data, lhs, instr_builder, metadata, index);
             is_success &= emit_expr(table, module_data, rhs, instr_builder, metadata, index);
             is_success &= emit_op(op, instr_builder, index);
         }
-        Expr::Call { fn_target, args } => {
+        Expr::Call { fn_target, args, ..} => {
             let fn_name = match &**fn_target {
-                Expr::VarId{ name } => name.clone(),
+                Expr::VarId{ name, ..} => name.clone(),
                 _ => return false
             };
 
@@ -217,7 +217,7 @@ fn emit_expr(table: &mut SymbolTable, module_data: &mut ModuleData, expr: &mut E
                 }
             }
         }
-        Expr::VarId { name } => {
+        Expr::VarId { name, ..} => {
             // TODO -- support string vars (unimplemented)
             let var_rec_id = match table.lookup(&name) {
                 Some(rec_id) => rec_id.clone(),
@@ -261,7 +261,7 @@ fn emit_expr(table: &mut SymbolTable, module_data: &mut ModuleData, expr: &mut E
                 }
             }
         }
-        Expr::Primitive { val } => {
+        Expr::Primitive { val, ..} => {
             is_success &= emit_value(table, module_data, val, instr_builder, metadata, index);
         }
     }

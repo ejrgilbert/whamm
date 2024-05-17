@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 use glob::Pattern;
+use pest::error::LineColLocation;
 
 use pest_derive::Parser;
 use pest::pratt_parser::PrattParser;
+use pest::Span;
 use walrus::DataId;
 
 #[derive(Parser)]
@@ -31,6 +33,31 @@ lazy_static::lazy_static! {
 // ===============
 // ==== Types ====
 // ===============
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct Location {
+    /// Line/column within the input string
+    pub line_col: LineColLocation,
+    pub path: Option<String>,
+}
+impl Location {
+    pub fn from(loc0: &LineColLocation, loc1: &LineColLocation, path: Option<String>) -> Self {
+        let pos0 = match loc0 {
+            LineColLocation::Pos(pos0) => pos0,
+            LineColLocation::Span(span0, ..) => span0
+        };
+
+        let pos1 = match loc1 {
+            LineColLocation::Pos(pos0) => pos0,
+            LineColLocation::Span(.., span1) => span1
+        };
+
+        Location {
+            line_col: LineColLocation::Span(pos0.clone(), pos1.clone()),
+            path
+        }
+    }
+}
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum DataType {
@@ -76,7 +103,8 @@ pub enum Value {
 pub enum Statement {
     Assign {
         var_id: Expr, // Should be VarId
-        expr: Expr
+        expr: Expr,
+        loc: Option<Location>
     },
 
     /// Standalone `Expr` statement, which means we can write programs like this:
@@ -85,7 +113,8 @@ pub enum Statement {
     ///   return 0;
     /// }
     Expr {
-        expr: Expr
+        expr: Expr,
+        loc: Option<Location>
     }
 }
 
@@ -95,39 +124,35 @@ pub enum Expr {
         lhs: Box<Expr>,
         op: Op,
         rhs: Box<Expr>,
+        loc: Option<Location>
     },
     Call {      // Type is fn_target.return_ty, should be VarId
         fn_target: Box<Expr>,
-        args: Option<Vec<Box<Expr>>>
+        args: Option<Vec<Box<Expr>>>,
+        loc: Option<Location>
     },
     VarId {
         // is_comp_provided: bool, // TODO -- do I need this?
-        name: String
+        name: String,
+        loc: Option<Location>
     },
     Primitive { // Type is val.ty
-        val: Value
+        val: Value,
+        loc: Option<Location>
     }
 }
-
-// impl Expr {
-//     pub fn ty(&self) {
-//         match self {
-//             Expr::BinOp {..} => {
-//                 println!("BinOp");
-//             },
-//             Expr::Call {..} => {
-//                 println!("Call");
-//             },
-//             Expr::VarId {..} => {
-//                 println!("VarId");
-//             },
-//             Expr::Primitive {..} => {
-//                 println!("Primitive");
-//             }
-//             _ => {}
-//         }
-//     }
-// }
+impl Expr {
+    pub fn loc(&self) -> &Option<Location> {
+        match self {
+            Expr::BinOp {loc, ..} |
+            Expr::Call {loc, ..} |
+            Expr::VarId {loc, ..} |
+            Expr::Primitive {loc, ..} => {
+                loc
+            }
+        }
+    }
+}
 
 // Functions
 #[derive(Clone, Debug)]
@@ -172,7 +197,8 @@ impl Whamm {
         let params = vec![
             (
                 Expr::VarId {
-                    name: "str_addr".to_string()
+                    name: "str_addr".to_string(),
+                    loc: None
                 },
                 DataType::Tuple {
                     ty_info: Some(vec![
@@ -183,7 +209,8 @@ impl Whamm {
             ),
             (
                 Expr::VarId {
-                    name: "value".to_string()
+                    name: "value".to_string(),
+                    loc: None
                 },
                 DataType::Str
             )
@@ -482,6 +509,7 @@ impl Event {
                 ty: DataType::Str,
                 var_name: Expr::VarId {
                     name: "target_fn_type".to_string(),
+                    loc: None
                 },
                 value: None
             });
@@ -490,6 +518,7 @@ impl Event {
                 ty: DataType::Str,
                 var_name: Expr::VarId {
                     name: "target_imp_module".to_string(),
+                    loc: None
                 },
                 value: None
             });
@@ -498,6 +527,7 @@ impl Event {
                 ty: DataType::Str,
                 var_name: Expr::VarId {
                     name: "target_imp_name".to_string(),
+                    loc: None
                 },
                 value: None
             });
@@ -506,6 +536,7 @@ impl Event {
                 ty: DataType::Str,
                 var_name: Expr::VarId {
                     name: "new_target_fn_name".to_string(),
+                    loc: None
                 },
                 value: None
             });

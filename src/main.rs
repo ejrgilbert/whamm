@@ -268,13 +268,13 @@ fn get_whammy_ast(whammy_path: &String) -> Whamm {
     match std::fs::read_to_string(&whammy_path) {
         Ok(unparsed_str) => {
             // Parse the script and build the AST
-            match parse_script(whammy_path, unparsed_str) {
+            match parse_script(whammy_path, &unparsed_str) {
                 Ok(ast) => {
                     info!("successfully parsed");
                     return ast;
                 },
-                Err(err) => {
-                    err.report();
+                Err(mut err) => {
+                    err.report(&unparsed_str);
                     exit(1);
                 }
             };

@@ -1,13 +1,14 @@
+use std::process::exit;
 use crate::parser::types;
 use types::{WhammParser, Op, PRATT_PARSER, Rule};
 
-use pest::error::Error;
+use pest::error::{Error, LineColLocation};
 use pest::Parser;
 use pest::iterators::{Pair, Pairs};
 
 use log::{trace};
 use crate::common::error::WhammError;
-use crate::parser::types::{DataType, Whammy, Whamm, Expr, Statement, Value};
+use crate::parser::types::{DataType, Whammy, Whamm, Expr, Statement, Value, Location};
 
 // ====================
 // = AST Constructors =
@@ -25,8 +26,12 @@ pub fn to_ast(pair: Pair<Rule>) -> Result<Whamm, Error<Rule>> {
             process_pair(&mut whamm, whammy_count, pair);
         }
         rule => {
-            // TODO -- WhammyError
-            unreachable!("Expected whammy, found {:?}", rule)
+            WhammError::parse_error(true,
+                Some("Looks like you've found a bug...please report this behavior! Exiting now...".to_string()),
+                LineColLocation::Pos(pair.line_col()),
+                vec![Rule::whammy], vec![rule], None);
+            // should have exited above (since it's a fatal error)
+            unreachable!()
         }
     }
 
@@ -101,8 +106,12 @@ fn process_pair(whamm: &mut Whamm, whammy_count: usize, pair: Pair<Rule>) {
         },
         Rule::EOI => {},
         rule => {
-            // TODO -- WhammyError
-            unreachable!("Unexpected rule in process_pair, found {:?}", rule)
+            WhammError::parse_error(true,
+                Some("Looks like you've found a bug...please report this behavior! Exiting now...".to_string()),
+                LineColLocation::Pos(pair.line_col()),
+                vec![Rule::whammy, Rule::probe_def, Rule::EOI], vec![rule], None);
+            // should have exited above (since it's a fatal error)
+            unreachable!()
         }
     }
 }
@@ -114,8 +123,14 @@ fn fn_call_from_rule(pair: Pair<Rule>) -> Expr {
 
     // handle fn target
     let fn_rule = pair.next().unwrap();
+
+    let fn_target_line_col = LineColLocation::Pos(fn_rule.line_col());
     let fn_target = Expr::VarId {
-        name: fn_rule.as_str().parse().unwrap()
+        name: fn_rule.as_str().parse().unwrap(),
+        loc: Some(Location {
+            line_col: fn_target_line_col.clone(),
+            path: None
+        })
     };
 
     // handle args
@@ -134,11 +149,37 @@ fn fn_call_from_rule(pair: Pair<Rule>) -> Expr {
     };
 
     trace!("Exiting fn_call");
+    let last_arg_loc = if let Some(args) = &args {
+        if let Some(last_arg) = args.last() {
+            if let Some(last_arg_loc) = last_arg.loc() {
+                Some(LineColLocation::from(last_arg_loc.line_col.clone()))
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    } else {
+        None
+    };
 
-    Expr::Call {
-        fn_target: Box::new(fn_target),
-        args
+    if let Some(last_arg_loc) = last_arg_loc {
+        Expr::Call {
+            fn_target: Box::new(fn_target),
+            args,
+            loc: Some(Location::from(&fn_target_line_col, &last_arg_loc, None))
+        }
+    } else {
+        Expr::Call {
+            fn_target: Box::new(fn_target),
+            args,
+            loc: Some(Location {
+                line_col: fn_target_line_col.clone(),
+                path: None
+            })
+        }
     }
+
 }
 
 fn stmt_from_rule(pair: Pair<Rule>) -> Statement {
@@ -158,29 +199,48 @@ fn stmt_from_rule(pair: Pair<Rule>) -> Statement {
             let var_id_rule = pair.next().unwrap();
             let expr_rule = pair.next().unwrap().into_inner();
 
+            let var_id_line_col = LineColLocation::Pos(var_id_rule.line_col());
+
             let var_id = Expr::VarId {
-                name: var_id_rule.as_str().parse().unwrap()
+                name: var_id_rule.as_str().parse().unwrap(),
+                loc: Some(Location {
+                    line_col: var_id_line_col.clone(),
+                    path: None
+                })
             };
             let expr = expr_from_pairs(expr_rule);
             trace!("Exiting assignment");
             trace!("Exiting stmt_from_rule");
 
+            let expr_line_col = if let Some(expr_loc) = expr.loc() {
+                LineColLocation::from(expr_loc.line_col.clone())
+            } else {
+                exit(1);
+            };
+
             return Statement::Assign {
                 var_id,
                 expr,
+                loc: Some(Location::from(&var_id_line_col, &expr_line_col, None))
             };
         },
         Rule::fn_call => {
             let call = fn_call_from_rule(pair);
+            let call_loc = call.loc().clone();
             trace!("Exiting stmt_from_rule");
 
             return Statement::Expr {
-                expr: call
+                expr: call,
+                loc: call_loc
             };
         },
         rule => {
-            // TODO -- WhammyError
-            unreachable!("Expected statement, assignment, or fn_call, found {:?}", rule)
+            WhammError::parse_error(true,
+                Some("Looks like you've found a bug...please report this behavior! Exiting now...".to_string()),
+                LineColLocation::Pos(pair.line_col()),
+                vec![Rule::statement, Rule::assignment, Rule::fn_call], vec![rule], None);
+            // should have exited above (since it's a fatal error)
+            unreachable!();
         }
     }
 }
@@ -238,8 +298,12 @@ fn probe_spec_from_rule(pair: Pair<Rule>) -> String {
             return contents.join(":")
         },
         rule => {
-            // TODO -- WhammyError
-            unreachable!("Expected spec, PROBE_SPEC, or PROBE_ID, found {:?}", rule)
+            WhammError::parse_error(true,
+                Some("Looks like you've found a bug...please report this behavior! Exiting now...".to_string()),
+                LineColLocation::Pos(pair.line_col()),
+                vec![Rule::PROBE_ID, Rule::PROBE_ID], vec![rule], None);
+            // should have exited above (since it's a fatal error)
+            unreachable!();
         }
     }
 }
@@ -247,19 +311,24 @@ fn probe_spec_from_rule(pair: Pair<Rule>) -> String {
 fn expr_primary(pair: Pair<Rule>) -> Expr {
     match pair.as_rule() {
         Rule::fn_call => {
-            // pair.l
+
 
             let call = fn_call_from_rule(pair);
             return call;
         },
         Rule::ID => {
             return Expr::VarId {
-                name: pair.as_str().parse().unwrap()
+                name: pair.as_str().parse().unwrap(),
+                loc: Some(Location {
+                    line_col: LineColLocation::Pos(pair.line_col()),
+                    path: None
+                })
             };
         },
         Rule::tuple => {
             trace!("Entering tuple");
             // handle contents
+            let pair_line_col = pair.line_col();
             let vals = pair.into_inner().map(expr_primary).collect();
 
             trace!("Exiting tuple");
@@ -267,7 +336,11 @@ fn expr_primary(pair: Pair<Rule>) -> Expr {
                 val: Value::Tuple {
                     ty: DataType::Tuple {ty_info: None},
                     vals
-                }
+                },
+                loc: Some(Location {
+                    line_col: LineColLocation::Pos(pair_line_col),
+                    path: None
+                })
             };
         },
         Rule::INT => {
@@ -279,7 +352,11 @@ fn expr_primary(pair: Pair<Rule>) -> Expr {
                 val: Value::Integer {
                     ty: DataType::Integer,
                     val
-                }
+                },
+                loc: Some(Location {
+                    line_col: LineColLocation::Pos(pair.line_col()),
+                    path: None
+                })
             };
         },
         Rule::BOOL => {
@@ -291,7 +368,11 @@ fn expr_primary(pair: Pair<Rule>) -> Expr {
                 val: Value::Boolean {
                     ty: DataType::Boolean,
                     val
-                }
+                },
+                loc: Some(Location {
+                    line_col: LineColLocation::Pos(pair.line_col()),
+                    path: None
+                })
             };
         },
         Rule::STRING => {
@@ -310,7 +391,11 @@ fn expr_primary(pair: Pair<Rule>) -> Expr {
                     ty: DataType::Str,
                     val,
                     addr: None
-                }
+                },
+                loc: Some(Location {
+                    line_col: LineColLocation::Pos(pair.line_col()),
+                    path: None
+                })
             };
         },
         _ => expr_from_pairs(pair.into_inner())
@@ -345,14 +430,34 @@ fn expr_from_pairs(pairs: Pairs<Rule>) -> Expr {
                 Rule::divide => Op::Divide,
                 Rule::modulo => Op::Modulo,
                 rule => {
-                    // TODO -- WhammyError
-                    unreachable!("Expr::parse expected infix operation, found {:?}", rule)
+                    WhammError::parse_error(true,
+                        Some("Looks like you've found a bug...please report this behavior! Exiting now...".to_string()),
+                        LineColLocation::Pos(op.line_col()),
+                        vec![Rule::and, Rule::or, Rule::eq, Rule::ne, Rule::ge, Rule::gt, Rule::le, Rule::lt,
+                                      Rule::add, Rule::subtract, Rule::multiply, Rule::divide, Rule::modulo],
+                        vec![rule], None);
+                    // should have exited above (since it's a fatal error)
+                    unreachable!();
                 },
             };
+
+            let lhs_line_col = if let Some(lhs_loc) = lhs.loc() {
+                LineColLocation::from(lhs_loc.line_col.clone())
+            } else {
+                exit(1);
+            };
+
+            let rhs_line_col = if let Some(rhs_loc) = rhs.loc() {
+                LineColLocation::from(rhs_loc.line_col.clone())
+            } else {
+                exit(1);
+            };
+
             return Expr::BinOp {
                 lhs: Box::new(lhs),
                 op,
                 rhs: Box::new(rhs),
+                loc: Some(Location::from(&lhs_line_col, &rhs_line_col, None))
             };
         })
         .parse(pairs)
@@ -362,7 +467,7 @@ fn expr_from_pairs(pairs: Pairs<Rule>) -> Expr {
 // = Parser =
 // ==========
 
-pub fn parse_script(whammy_path: &String, script: String) -> Result<Whamm, WhammError<Rule>> {
+pub fn parse_script(whammy_path: &String, script: &String) -> Result<Whamm, WhammError<Rule>> {
     trace!("Entered parse_script");
 
     let res = WhammParser::parse(Rule::whammy, &*script);

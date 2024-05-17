@@ -332,10 +332,10 @@ impl WhammVisitor<String> for AsStrVisitor {
 
     fn visit_stmt(&mut self, stmt: &Statement) -> String {
         match stmt {
-            Statement::Assign {var_id, expr} => {
+            Statement::Assign {var_id, expr, ..} => {
                 format!("{} = {}", self.visit_expr(var_id), self.visit_expr(expr))
             },
-            Statement::Expr {expr} => {
+            Statement::Expr {expr, ..} => {
                 self.visit_expr(expr)
             }
         }
@@ -343,7 +343,7 @@ impl WhammVisitor<String> for AsStrVisitor {
 
     fn visit_expr(&mut self, expr: &Expr) -> String {
         match expr {
-            Expr::BinOp {lhs, op, rhs} => {
+            Expr::BinOp {lhs, op, rhs, ..} => {
                 let mut s = "".to_string();
                 s += &format!("{} {} {}",
                     self.visit_expr(lhs),
@@ -352,7 +352,7 @@ impl WhammVisitor<String> for AsStrVisitor {
                 );
                 s
             },
-            Expr::Call {fn_target, args} => {
+            Expr::Call {fn_target, args, ..} => {
                 let mut s = "".to_string();
                 s += &format!("{}(", self.visit_expr(fn_target));
                 match args {
@@ -366,10 +366,10 @@ impl WhammVisitor<String> for AsStrVisitor {
                 s += &format!(")");
                 s
             },
-            Expr::VarId {name} => {
+            Expr::VarId {name, ..} => {
                 format!("{}", name)
             }
-            Expr::Primitive {val} => {
+            Expr::Primitive {val, ..} => {
                 self.visit_value(val)
             }
         }

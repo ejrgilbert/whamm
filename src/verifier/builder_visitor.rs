@@ -250,7 +250,7 @@ impl SymbolTableBuilder {
 
     fn add_param(&mut self, var_id: &Expr, ty: &DataType) {
         let name = match var_id {
-            Expr::VarId {name} => name,
+            Expr::VarId {name, ..} => name,
             _ => {
                 unreachable!();
             }

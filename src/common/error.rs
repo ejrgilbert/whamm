@@ -1,9 +1,10 @@
 use std::{cmp, mem};
+use std::borrow::Cow;
 use std::io::Write;
-use pest::error::{Error, ErrorVariant, InputLocation, LineColLocation};
+use pest::error::{Error, LineColLocation};
 use pest::RuleType;
+use pest::error::ErrorVariant::ParsingError;
 use termcolor::{Buffer, BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
-use crate::parser::types::Rule;
 
 // struct ErrorGen {
 //     errors: Vec<Error>,
@@ -66,14 +67,6 @@ use crate::parser::types::Rule;
 // if (numErrors >= maxErrors) notTooMany = false;
 // }
 // }
-// Black,
-// Blue,
-// Green,
-// Red,
-// Cyan,
-// Magenta,
-// Yellow,
-// White,
 
 fn color(s: String, buffer: &mut Buffer, c: Color) {
     let write_err = "Uh oh, something went wrong while printing to terminal";
@@ -81,6 +74,9 @@ fn color(s: String, buffer: &mut Buffer, c: Color) {
     write!(buffer, "{}", s.as_str()).expect(write_err);
 }
 
+fn black(s: String, buffer: &mut Buffer) {
+    color(s, buffer, Color::Black)
+}
 fn blue(s: String, buffer: &mut Buffer) {
     color(s, buffer, Color::Blue)
 }
@@ -104,18 +100,52 @@ fn yellow(s: String, buffer: &mut Buffer) {
 }
 
 pub struct WhammError<R> {
-    // range: FileRange,
-    pub variant: ErrorVariant<R>,
-    // /// Location within the input string
-    // pub location: InputLocation,
+    pub fatal: bool,
     /// Line/column within the input string
     pub line_col: LineColLocation,
     pub path: Option<String>,
-    pub continued_line: Option<String>,
-    pub line: String,
+    // range: FileRange,
+    pub ty: ErrorType<R>,
+    // /// Location within the input string
+    // pub location: InputLocation,
+    pub line: Option<String>,
+    pub line2: Option<String>,
     // error: String,
 }
 impl<R: RuleType> WhammError<R> {
+    pub fn parse_error(fatal: bool, message: Option<String>, line_col: LineColLocation,
+                       positives: Vec<R>, negatives: Vec<R>,
+                       whammy_path: Option<String>) -> Self {
+        // TODO -- move to ErrorGen and exit if fatal (can also save whammy_path as field)
+        WhammError {
+            fatal,
+            ty: ErrorType::ParsingError {
+                positives,
+                negatives,
+                message
+            },
+            line_col,
+            path: whammy_path,
+            line: None,
+            line2: None
+        }
+    }
+
+    pub fn type_check_error(fatal: bool, message: String, line_col: LineColLocation,
+                            whammy_path: Option<String>) -> Self {
+        // TODO -- move to ErrorGen and exit if fatal (can also save whammy_path as field)
+        WhammError {
+            fatal,
+            ty: ErrorType::TypeCheckError {
+                message
+            },
+            line_col,
+            path: whammy_path,
+            line: None,
+            line2: None
+        }
+    }
+
     pub fn from_pest_err(e: Error<R>, whammy_path: &String) -> Self {
         let path = if let Some(p) = e.path() {
             Some(p.to_string())
@@ -124,99 +154,145 @@ impl<R: RuleType> WhammError<R> {
         };
         let line = e.line().to_string();
 
-        WhammError {
-            variant: e.variant,
-            // location: e.location.clone(),
-            line_col: e.line_col.clone(),
-            path,
-            continued_line: None,
-            line
+        // calculate `line2`
+        let line2 = if let LineColLocation::Span(..) = &e.line_col {
+            // pull out the `line2` from the error msg
+            let orig_msg = e.to_string();
+            // get last line that starts with a number
+            // See code the following code for why we can do this:
+            // https://github.com/pest-parser/pest/blob/master/pest/src/error.rs#L612
+            let mut lines = orig_msg.lines();
+            if let Some(line) = lines.rfind(|line| {
+                line.as_bytes()[0].is_ascii_digit()
+            }) {
+                Some(line.to_string())
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        if let ParsingError {positives, negatives} = &e.variant {
+            WhammError {
+                fatal: false,
+                ty: ErrorType::ParsingError {
+                    positives: positives.clone(),
+                    negatives: negatives.clone(),
+                    message: None
+                },
+                line_col: e.line_col.clone(),
+                path,
+                line: Some(line),
+                line2
+            }
+        } else {
+            // TODO error -- unsupported Pest error
+            todo!()
         }
     }
 
-    // report this error to the console, including color highlighting
-    pub fn report(&self) {
-        let spacing = self.spacing();
-        let path = self
-            .path
-            .as_ref()
-            .map(|path| format!("{}:", path))
-            .unwrap_or_default();
-
-        let pair = (self.line_col.clone(), &self.continued_line);
-        let writer = BufferWriter::stderr(ColorChoice::Always);
-        let mut buffer = writer.buffer();
-        if let (LineColLocation::Span(_, end), Some(ref continued_line)) = pair {
-            let has_line_gap = end.0 - self.start().0 > 1;
-            if has_line_gap {
-                format!(
-                    "{s    }--> {p}{ls}:{c}\n\
-                     {s    } |\n\
-                     {ls:w$} | {line}\n\
-                     {s    } | ...\n\
-                     {le:w$} | {continued_line}\n\
-                     {s    } | {underline}\n\
-                     {s    } |\n\
-                     {s    } = {message}",
-                    s = spacing,
-                    w = spacing.len(),
-                    p = path,
-                    ls = self.start().0,
-                    le = end.0,
-                    c = self.start().1,
-                    line = self.line(),
-                    continued_line = continued_line,
-                    underline = self.underline(),
-                    message = self.variant.message()
-                );
-            } else {
-                format!(
-                    "{s    }--> {p}{ls}:{c}\n\
-                     {s    } |\n\
-                     {ls:w$} | {line}\n\
-                     {le:w$} | {continued_line}\n\
-                     {s    } | {underline}\n\
-                     {s    } |\n\
-                     {s    } = {message}",
-                    s = spacing,
-                    w = spacing.len(),
-                    p = path,
-                    ls = self.start().0,
-                    le = end.0,
-                    c = self.start().1,
-                    line = self.line,
-                    continued_line = continued_line,
-                    underline = self.underline(),
-                    message = self.variant.message()
-                );
+    fn define_lines(&mut self, script: &String) {
+        match self.line_col {
+            LineColLocation::Pos((line_no, ..)) => {
+                if let Some(script_line) = script.lines().nth(line_no) {
+                    self.line = Some(script_line.to_string());
+                }
             }
-        } else {
-            let s = spacing;
-            let l = self.start().0;
-            let c = self.start().1;
-            let line = &self.line;
-            let underline = self.underline();
-            let message = self.variant.message();
-            blue(format!("{s}--> "), &mut buffer);
-            if let Some(path) = &self.path {
-                blue(format!("{path}:"), &mut buffer);
+            LineColLocation::Span((s0_line, ..), (s1_line, ..)) => {
+                if let Some(script_line) = script.lines().nth(s0_line) {
+                    self.line = Some(script_line.to_string());
+                }
+                if let Some(script_line) = script.lines().nth(s1_line) {
+                    self.line = Some(script_line.to_string());
+                }
             }
-            blue(format!("{l}:{c}\n"), &mut buffer);
-            blue(format!("{s} |\n"), &mut buffer);
-            blue(format!("{l} | "), &mut buffer);
-            white(format!("{line}\n"), &mut buffer);
-            blue(format!("{s} | "), &mut buffer);
-            red(format!("{underline} "), &mut buffer);
-            red(format!("{message}\n"), &mut buffer);
-            blue(format!("{s} |\n"), &mut buffer);
-        };
-        writer.print(&buffer).expect("uh oh");
-        buffer.reset().expect("uh oh");
+        }
     }
 
-    /// Returns the line that the error is on.
-    fn line(&self) -> &str {
-        self.line.as_str()
+    fn print_preamble(&self, extra_spaces: usize, buffer: &mut Buffer) {
+        let s = self.spacing();
+        let ls = self.start().0;
+        let c = self.start().1;
+        let spaces = " ".repeat(extra_spaces);
+
+        blue(format!("{s}{spaces}--> "), buffer);
+        if let Some(path) = &self.path {
+            blue(format!("{path}:"), buffer);
+        }
+        blue(format!("{ls}:{c}\n"), buffer);
+    }
+
+    fn print_numbered_line(&self, l: usize, line: &String, buffer: &mut Buffer) {
+        let s = self.spacing();
+        let w = s.len();
+        blue(format!("{l:w$} | "), buffer);
+        white(format!("{line}\n"), buffer);
+    }
+
+    fn print_line(&self, line: &str, is_err: bool, extra_spaces: usize, buffer: &mut Buffer) {
+        let s = self.spacing();
+        let spaces = " ".repeat(extra_spaces);
+        blue(format!("{s}{spaces} | "), buffer);
+        if is_err {
+            red(format!("{line}\n"), buffer);
+        } else {
+            white(format!("{line}\n"), buffer);
+        }
+    }
+
+    fn print_empty(&self, extra_spaces: usize, buffer: &mut Buffer) {
+        self.print_line("", false, extra_spaces, buffer);
+    }
+
+    // report this error to the console, including color highlighting
+    pub fn report(&mut self, script: &String) {
+        if self.line.is_none() {
+            self.define_lines(script);
+        }
+
+        if let Some(line) = &self.line {
+            let pair = (self.line_col.clone(), &self.line2);
+            let writer = BufferWriter::stderr(ColorChoice::Always);
+            let mut buffer = writer.buffer();
+
+            // define common vars for printing
+            let ls = self.start().0;
+            let underline = self.underline();
+            let message = self.ty.message();
+            if let (LineColLocation::Span(_, end), Some(ref line2)) = pair {
+                let has_line_gap = end.0 - self.start().0 > 1;
+
+                // define common vars for printing
+                let le = end.0;
+                if has_line_gap {
+                    self.print_preamble(4, &mut buffer);
+                    self.print_empty(4, &mut buffer);
+                    self.print_numbered_line(ls, line, &mut buffer);
+                    self.print_line("...", false, 4, &mut buffer);
+                    self.print_numbered_line(le, line2, &mut buffer);
+                    self.print_line(&format!("{underline} {message}"), true, 4, &mut buffer);
+                    self.print_empty(4, &mut buffer);
+                } else {
+                    self.print_preamble(4, &mut buffer);
+                    self.print_empty(4, &mut buffer);
+                    self.print_numbered_line(ls, line, &mut buffer);
+                    self.print_numbered_line(le, line2, &mut buffer);
+                    self.print_line(&format!("{underline} {message}"), true, 4, &mut buffer);
+                    self.print_empty(4, &mut buffer);
+                }
+            } else {
+                self.print_preamble(0, &mut buffer);
+                self.print_empty(0, &mut buffer);
+                self.print_numbered_line(ls, line, &mut buffer);
+                self.print_line(&format!("{underline} {message}"), true, 0, &mut buffer);
+                self.print_empty(0, &mut buffer);
+            };
+            writer.print(&buffer).expect("uh oh");
+            buffer.reset().expect("uh oh");
+        } else {
+            // TODO -- report issue
+        }
     }
 
     fn spacing(&self) -> String {
@@ -255,12 +331,15 @@ impl<R: RuleType> WhammError<R> {
             _ => None,
         };
         let offset = start - 1;
-        let line_chars = self.line.chars();
 
-        for c in line_chars.take(offset) {
-            match c {
-                '\t' => underline.push('\t'),
-                _ => underline.push(' '),
+        if let Some(line) = &self.line {
+            let line_chars = line.chars();
+
+            for c in line_chars.take(offset) {
+                match c {
+                    '\t' => underline.push('\t'),
+                    _ => underline.push(' '),
+                }
             }
         }
 
@@ -287,6 +366,78 @@ impl<R: RuleType> WhammError<R> {
     }
 }
 
-// enum ErrorType {
-//
-// }
+pub enum ErrorType<R> {
+    /// Generated parsing error with expected and unexpected `Rule`s
+    ParsingError {
+        /// Positive attempts
+        positives: Vec<R>,
+        /// Negative attempts
+        negatives: Vec<R>,
+        message: Option<String>
+    },
+    /// Error during type checking
+    TypeCheckError {
+        message: String
+    }
+}
+impl<R: RuleType> ErrorType<R> {
+    pub fn message(&self) -> Cow<'_, str> {
+        match self {
+            ErrorType::ParsingError {
+                ref positives,
+                ref negatives,
+                ref message
+            } => Cow::Owned(Self::parsing_error_message(message, positives, negatives, |r| {
+                format!("{:?}", r)
+            })),
+            ErrorType::TypeCheckError { ref message } => Cow::Borrowed(message),
+        }
+    }
+
+    fn parsing_error_message<F>(message: &Option<String>, positives: &[R], negatives: &[R], mut f: F) -> String
+        where F: FnMut(&R) -> String,
+    {
+        let preamble = if let Some(msg) = message {
+            format!("{msg} -- ")
+        } else {
+            "".to_string()
+        };
+        match (negatives.is_empty(), positives.is_empty()) {
+            (false, false) => format!(
+                "{}unexpected {}; expected {}",
+                preamble,
+                ErrorType::enumerate(negatives, &mut f),
+                ErrorType::enumerate(positives, &mut f)
+            ),
+            (false, true) => format!("{}unexpected {}", preamble, ErrorType::enumerate(negatives, &mut f)),
+            (true, false) => format!("{}expected {}", preamble, ErrorType::enumerate(positives, &mut f)),
+            (true, true) => {
+                if preamble.is_empty() {
+                    "unknown parsing error".to_owned()
+                } else {
+                    preamble
+                }
+            },
+        }
+    }
+
+    fn enumerate<F>(rules: &[R], f: &mut F) -> String
+        where
+            F: FnMut(&R) -> String,
+    {
+        match rules.len() {
+            1 => f(&rules[0]),
+            2 => format!("{} or {}", f(&rules[0]), f(&rules[1])),
+            l => {
+                let non_separated = f(&rules[l - 1]);
+                let separated = rules
+                    .iter()
+                    .take(l - 1)
+                    .map(f)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("{}, or {}", separated, non_separated)
+            }
+        }
+    }
+}

@@ -105,7 +105,7 @@ impl BehaviorTreeBuilder {
             // visit globals
             for (_name, global) in globals.iter() {
                 if global.is_comp_provided {
-                    if let Expr::VarId { name } = &global.var_name {
+                    if let Expr::VarId { name, ..} = &global.var_name {
                         self.tree.define(self.context_name.clone(),
                                          name.clone());
                     }
