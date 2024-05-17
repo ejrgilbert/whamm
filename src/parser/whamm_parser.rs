@@ -10,6 +10,8 @@ use log::{trace};
 use crate::common::error::{ErrorGen, WhammError};
 use crate::parser::types::{DataType, Whammy, Whamm, Expr, Statement, Value, Location};
 
+const UNEXPECTED_ERR_MSG: &str = "WhammParser: Looks like you've found a bug...please report this behavior! Exiting now...";
+
 pub fn parse_script(script: &String, err: &mut ErrorGen) -> Option<Whamm> {
     trace!("Entered parse_script");
     err.set_script_text(script.to_owned());
@@ -57,7 +59,7 @@ pub fn to_ast(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Whamm, Error<Rule>
         }
         rule => {
             err.parse_error(true,
-                Some("Looks like you've found a bug...please report this behavior! Exiting now...".to_string()),
+                Some(UNEXPECTED_ERR_MSG.to_string()),
                 LineColLocation::Pos(pair.line_col()),
                             vec![Rule::whammy], vec![rule]);
             // should have exited above (since it's a fatal error)
@@ -151,7 +153,7 @@ pub fn process_pair(whamm: &mut Whamm, whammy_count: usize, pair: Pair<Rule>, er
         Rule::EOI => {},
         rule => {
             err.parse_error(true,
-                            Some("Looks like you've found a bug...please report this behavior! Exiting now...".to_string()),
+                            Some(UNEXPECTED_ERR_MSG.to_string()),
                             LineColLocation::Pos(pair.line_col()),
                             vec![Rule::whammy, Rule::probe_def, Rule::EOI], vec![rule]);
             // should have exited above (since it's a fatal error)
@@ -306,7 +308,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Statement {
         },
         rule => {
             err.parse_error(true,
-                            Some("Looks like you've found a bug...please report this behavior! Exiting now...".to_string()),
+                            Some(UNEXPECTED_ERR_MSG.to_string()),
                             LineColLocation::Pos(pair.line_col()),
                             vec![Rule::statement, Rule::assignment, Rule::fn_call], vec![rule]);
             // should have exited above (since it's a fatal error)
@@ -369,7 +371,7 @@ fn probe_spec_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> String {
         },
         rule => {
             err.parse_error(true,
-                            Some("Looks like you've found a bug...please report this behavior! Exiting now...".to_string()),
+                            Some(UNEXPECTED_ERR_MSG.to_string()),
                             LineColLocation::Pos(pair.line_col()),
                             vec![Rule::PROBE_ID, Rule::PROBE_ID], vec![rule]);
             // should have exited above (since it's a fatal error)
@@ -509,12 +511,13 @@ fn expr_from_pairs(pairs: Pairs<Rule>) -> Result<Expr, Vec<WhammError>> {
                         Rule::divide => Op::Divide,
                         Rule::modulo => Op::Modulo,
                         rule => {
-                            return Err(vec![ErrorGen::get_parse_error(true,
-                                                                      Some("Looks like you've found a bug...please report this behavior! Exiting now...".to_string()),
-                                                                      LineColLocation::Pos(op.line_col()),
-                                                                      vec![Rule::and, Rule::or, Rule::eq, Rule::ne, Rule::ge, Rule::gt, Rule::le, Rule::lt,
-                                                                           Rule::add, Rule::subtract, Rule::multiply, Rule::divide, Rule::modulo],
-                                                                      vec![rule])]);
+                            return Err(vec![ErrorGen::get_parse_error(
+                                true,
+                                Some(UNEXPECTED_ERR_MSG.to_string()),
+                                LineColLocation::Pos(op.line_col()),
+                                vec![Rule::and, Rule::or, Rule::eq, Rule::ne, Rule::ge, Rule::gt, Rule::le, Rule::lt,
+                                        Rule::add, Rule::subtract, Rule::multiply, Rule::divide, Rule::modulo],
+                                vec![rule])]);
                         },
                     };
 

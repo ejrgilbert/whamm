@@ -87,19 +87,6 @@ impl ErrorGen {
     // == Error Generators ==
     // ======================
 
-    pub fn unexpected_error(&mut self, fatal: bool, message: Option<String>) {
-        let err = WhammError {
-            fatal,
-            ty: ErrorType::Error {
-                message
-            },
-            line_col: None,
-            line: None,
-            line2: None
-        };
-        self.add_error(err);
-    }
-
     pub fn get_parse_error(fatal: bool, message: Option<String>, line_col: LineColLocation,
                            positives: Vec<Rule>, negatives: Vec<Rule>) -> WhammError {
         WhammError {
@@ -109,9 +96,12 @@ impl ErrorGen {
                 negatives,
                 message
             },
-            line_col: Some(line_col),
+            err_line_col: Some(line_col),
             line: None,
-            line2: None
+            line2: None,
+            info_line_col: None,
+            info_line: None,
+            info_line2: None
         }
     }
 
@@ -121,15 +111,50 @@ impl ErrorGen {
         self.add_error(err);
     }
 
+    pub fn duplicate_identifier_error(&mut self, fatal: bool, duplicated_id: String, err_line_col: LineColLocation, info_line_col: LineColLocation) {
+        let err = WhammError {
+            fatal,
+            ty: ErrorType::DuplicateIdentifierError {
+                duplicated_id
+            },
+            err_line_col: Some(err_line_col),
+            line: None,
+            line2: None,
+            info_line_col: Some(info_line_col),
+            info_line: None,
+            info_line2: None
+        };
+        self.add_error(err);
+    }
+
     pub fn type_check_error(&mut self, fatal: bool, message: String, line_col: LineColLocation) {
         let err = WhammError {
             fatal,
             ty: ErrorType::TypeCheckError {
                 message
             },
-            line_col: Some(line_col),
+            err_line_col: Some(line_col),
             line: None,
-            line2: None
+            line2: None,
+            info_line_col: None,
+            info_line: None,
+            info_line2: None
+        };
+        self.add_error(err);
+    }
+
+    pub fn unexpected_error(&mut self, fatal: bool, message: Option<String>) {
+        let err = WhammError {
+            fatal,
+            ty: ErrorType::Error {
+                message
+            },
+            err_line_col: None,
+            line: None,
+            line2: None,
+            info_line_col: None,
+            info_line: None,
+            info_line2: None
         };
         self.add_error(err);
     }
@@ -164,9 +189,12 @@ impl ErrorGen {
                     negatives: negatives.clone(),
                     message: None
                 },
-                line_col: Some(e.line_col.clone()),
+                err_line_col: Some(e.line_col.clone()),
                 line: Some(line),
-                line2
+                line2,
+                info_line_col: None,
+                info_line: None,
+                info_line2: None
             }
         } else {
             WhammError {
@@ -174,9 +202,12 @@ impl ErrorGen {
                 ty: ErrorType::Error {
                     message: None
                 },
-                line_col: Some(e.line_col.clone()),
+                err_line_col: Some(e.line_col.clone()),
                 line: Some(line),
-                line2
+                line2,
+                info_line_col: None,
+                info_line: None,
+                info_line2: None
             }
         };
         self.add_error(error);
@@ -193,15 +224,16 @@ impl ErrorGen {
 
 pub struct WhammError {
     pub fatal: bool,
-    /// Line/column within the input string
-    pub line_col: Option<LineColLocation>,
-    // range: FileRange,
-    pub ty: ErrorType,
-    // /// Location within the input string
-    // pub location: InputLocation,
+    /// The problematic line/column within the input string
+    pub err_line_col: Option<LineColLocation>,
     pub line: Option<String>,
     pub line2: Option<String>,
-    // error: String,
+    /// A line/column within the input string that can add context to the error
+    pub info_line_col: Option<LineColLocation>,
+    pub info_line: Option<String>,
+    pub info_line2: Option<String>,
+    // range: FileRange,
+    pub ty: ErrorType,
 }
 impl WhammError {
     pub fn is_fatal(&self) -> bool {
@@ -211,11 +243,25 @@ impl WhammError {
     // report this error to the console, including color highlighting
     pub fn report(&mut self, script: &String, whammy_path: &String) {
         if self.line.is_none() {
-            self.define_lines(script);
+            self.define_all_lines(script);
         }
 
         let writer = BufferWriter::stderr(ColorChoice::Always);
         let mut buffer = writer.buffer();
+
+        // TODO:
+        // - change this to check for an info_line_col existing, print that first
+        // Have it look like the following:
+        //
+        // error[E0592]: duplicate definitions with name `duplicate_id_error_message`
+        //    --> src/common/error.rs:471:5
+        //     |
+        // 467 |     fn duplicate_id_error_message() {
+        //     |     ------------------------------- other definition for `duplicate_id_error_message` (THIS IS BLUE)
+        // ...
+        // 471 |     fn duplicate_id_error_message(message: &Option<String>, id0_loc: &LineColLocation, id1_loc: &LineColLocation) -> String {
+        //     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ duplicate definitions for `duplicate_id_error_message` (THIS IS RED)
+
         if let Some(line_col) = self.line_col.clone() {
             if let Some(line) = &self.line {
 
@@ -264,29 +310,34 @@ impl WhammError {
         writer.print(&buffer).expect("Uh oh, something went wrong while printing to terminal");
         buffer.reset().expect("Uh oh, something went wrong while printing to terminal");
     }
-    fn define_lines(&mut self, script: &String) {
-        match self.line_col {
+
+    fn define_lines(&mut self, line_col: &Option<LineColLocation>, script: &String) {
+        match line_col {
             Some(LineColLocation::Pos((line_no, ..))) => {
-                if let Some(script_line) = script.lines().nth(line_no) {
+                if let Some(script_line) = script.lines().nth(*line_no) {
                     self.line = Some(script_line.to_string());
                 }
             }
             Some(LineColLocation::Span((s0_line, ..), (s1_line, ..))) => {
-                if let Some(script_line) = script.lines().nth(s0_line) {
+                if let Some(script_line) = script.lines().nth(*s0_line) {
                     self.line = Some(script_line.to_string());
                 }
-                if let Some(script_line) = script.lines().nth(s1_line) {
-                    self.line = Some(script_line.to_string());
+                if let Some(script_line) = script.lines().nth(*s1_line) {
+                    self.line2 = Some(script_line.to_string());
                 }
             }
             _ => {}
         }
     }
 
+    fn define_all_lines(&mut self, script: &String) {
+        self.define_lines(&self.err_line_col, script);
+        self.define_lines(&self.info_line_col, script);
+    }
+
     fn print_preamble(&self, whammy_path: &String, extra_spaces: usize, buffer: &mut Buffer) {
         let s = self.spacing();
-        let ls = self.start().0;
-        let c = self.start().1;
+        let (ls, c) = self.start(&self.err_line_col);
         let spaces = " ".repeat(extra_spaces);
 
         blue(format!("{s}{spaces}--> "), buffer);
@@ -317,17 +368,31 @@ impl WhammError {
     }
 
     fn spacing(&self) -> String {
-        let line = match self.line_col {
+        let largest_err_line_no = match self.err_line_col {
             Some(LineColLocation::Pos((line, _))) => line,
             Some(LineColLocation::Span((start_line, _), (end_line, _))) => {
                 cmp::max(start_line, end_line)
             }
             _ => {
+                // No err_line, return empty string
                 return "".to_string();
             }
         };
+        let largest_info_line_no = match self.info_line_col {
+            Some(LineColLocation::Pos((line, _))) => line,
+            Some(LineColLocation::Span((start_line, _), (end_line, _))) => {
+                cmp::max(start_line, end_line)
+            }
+            _ => {
+                // Assuming if we get here, there IS an err_line_no set; just
+                // return a "short" number
+                0
+            }
+        };
+        let largest_line_no = cmp::max(largest_err_line_no, largest_info_line_no);
 
-        let line_str_len = format!("{}", line).len();
+        // calculate the length of the longest line number (in chars)
+        let line_str_len = format!("{}", largest_line_no).len();
 
         let mut spacing = String::new();
         for _ in 0..line_str_len {
@@ -337,11 +402,11 @@ impl WhammError {
         spacing
     }
 
-    fn underline(&self) -> String {
+    fn underline(&self, line_col: &Option<LineColLocation>, line: &Option<String>) -> String {
         let mut underline = String::new();
 
-        let mut start = self.start().1;
-        let end = match self.line_col {
+        let mut start = self.start(line_col).1;
+        let end = match line_col {
             Some(LineColLocation::Span(_, (_, mut end))) => {
                 let inverted_cols = start > end;
                 if inverted_cols {
@@ -356,7 +421,7 @@ impl WhammError {
         };
         let offset = start - 1;
 
-        if let Some(line) = &self.line {
+        if let Some(line) = line {
             let line_chars = line.chars();
 
             for c in line_chars.take(offset) {
@@ -382,8 +447,8 @@ impl WhammError {
         underline
     }
 
-    fn start(&self) -> (usize, usize) {
-        match self.line_col {
+    fn start(&self, line_col: &Option<LineColLocation>) -> &(usize, usize) {
+        match line_col {
             Some(LineColLocation::Pos(line_col)) => line_col,
             Some(LineColLocation::Span(start_line_col, _)) => start_line_col,
             _ => {
@@ -394,6 +459,9 @@ impl WhammError {
 }
 
 pub enum ErrorType {
+    DuplicateIdentifierError {
+        duplicated_id: String
+    },
     /// Generated parsing error with expected and unexpected `Rule`s
     ParsingError {
         /// Positive attempts
@@ -413,6 +481,7 @@ pub enum ErrorType {
 impl ErrorType {
     pub fn name(&self) -> &str {
         match self {
+            ErrorType::DuplicateIdentifierError {..} => "DuplicateIdentifierError",
             ErrorType::ParsingError {..} => "ParsingError",
             ErrorType::TypeCheckError {..} => "TypeCheckError",
             ErrorType::Error {..} => "GeneralError"
@@ -428,6 +497,9 @@ impl ErrorType {
                 format!("{:?}", r)
             })),
             ErrorType::TypeCheckError { ref message } => Cow::Borrowed(message),
+            ErrorType::DuplicateIdentifierError { ref duplicated_id } => {
+                Cow::Borrowed(&format!("duplicate definitions with name `{duplicated_id}`"))
+            },
             ErrorType::Error { ref message } => {
                 if let Some(msg) = message {
                     Cow::Borrowed(msg)
@@ -442,7 +514,11 @@ impl ErrorType {
         where F: FnMut(&Rule) -> String,
     {
         let preamble = if let Some(msg) = message {
-            format!("{msg} -- ")
+            let mut s = format!("{msg}");
+            if !negatives.is_empty() && !positives.is_empty() {
+                s += " -- ";
+            }
+            s
         } else {
             "".to_string()
         };

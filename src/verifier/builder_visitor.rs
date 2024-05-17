@@ -4,12 +4,15 @@ use parser_types::{DataType, Whammy, Whamm, WhammVisitor, Expr, Fn, Event, Packa
 use crate::verifier::types::{Record, ScopeType, SymbolTable};
 
 use log::{error, trace};
+use crate::common::error::ErrorGen;
 use crate::parser::types::Global;
 
-pub struct SymbolTableBuilder {
-    pub table: SymbolTable,
+const UNEXPECTED_ERR_MSG: &str = "SymbolTableBuilder: Looks like you've found a bug...please report this behavior! Exiting now...";
 
-    // TODO -- these should be updated as they are entered/exited
+pub struct SymbolTableBuilder<'a> {
+    pub table: SymbolTable,
+    err: &'a ErrorGen,
+
     curr_whamm: Option<usize>,   // indexes into this::table::records
     curr_whammy: Option<usize>,  // indexes into this::table::records
     curr_provider: Option<usize>, // indexes into this::table::records
@@ -19,10 +22,11 @@ pub struct SymbolTableBuilder {
 
     curr_fn: Option<usize>,       // indexes into this::table::records
 }
-impl SymbolTableBuilder {
-    pub fn new() -> Self {
+impl SymbolTableBuilder<'_> {
+    pub fn new(err: &mut ErrorGen) -> Self {
         SymbolTableBuilder {
             table: SymbolTable::new(),
+            err,
             curr_whamm: None,
             curr_whammy: None,
             curr_provider: None,
@@ -35,7 +39,8 @@ impl SymbolTableBuilder {
 
     fn add_whammy(&mut self, whammy: &Whammy) {
         if self.table.lookup(&whammy.name).is_some() {
-            error!("duplicated whammy [ {} ]", &whammy.name);
+            // This should never be the case since it's controlled by the compiler!
+            self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
         }
 
         // create record
@@ -55,7 +60,7 @@ impl SymbolTableBuilder {
                 whammys.push(id.clone());
             }
             _ => {
-                unreachable!()
+                self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
             }
         }
 
@@ -70,7 +75,8 @@ impl SymbolTableBuilder {
 
     fn add_provider(&mut self, provider: &Provider) {
         if self.table.lookup(&provider.name).is_some() {
-            error!("duplicated provider [ {} ]", &provider.name);
+            // This should never be the case since it's controlled by the compiler!
+            self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
         }
 
         // create record
@@ -90,7 +96,7 @@ impl SymbolTableBuilder {
                 providers.push(id.clone());
             }
             _ => {
-                unreachable!()
+                self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
             }
         }
 
@@ -104,7 +110,8 @@ impl SymbolTableBuilder {
 
     fn add_package(&mut self, package: &Package) {
         if self.table.lookup(&package.name).is_some() {
-            error!("duplicated package [ {} ]", &package.name);
+            // This should never be the case since it's controlled by the compiler!
+            self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
         }
 
         // create record
@@ -124,7 +131,7 @@ impl SymbolTableBuilder {
                 packages.push(id.clone());
             }
             _ => {
-                unreachable!()
+                self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
             }
         }
 
@@ -138,7 +145,8 @@ impl SymbolTableBuilder {
 
     fn add_event(&mut self, event: &Event) {
         if self.table.lookup(&event.name).is_some() {
-            error!("duplicated event [ {} ]", &event.name);
+            // This should never be the case since it's controlled by the compiler!
+            self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
         }
 
         // create record
@@ -158,7 +166,7 @@ impl SymbolTableBuilder {
                 events.push(id.clone());
             }
             _ => {
-                unreachable!()
+                self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
             }
         }
 
@@ -172,7 +180,8 @@ impl SymbolTableBuilder {
 
     fn add_probe(&mut self, probe: &Probe) {
         if self.table.lookup(&probe.name).is_some() {
-            error!("duplicated probe [ {} ]", &probe.name);
+            // This should never be the case since it's controlled by the compiler!
+            self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
         }
 
         // create record
@@ -191,7 +200,7 @@ impl SymbolTableBuilder {
                 probes.push(id.clone());
             }
             _ => {
-                unreachable!()
+                self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
             }
         }
 
@@ -205,6 +214,7 @@ impl SymbolTableBuilder {
 
     fn add_fn(&mut self, f: &Fn) {
         if self.table.lookup(&f.name).is_some() {
+            // TODO -- add new error type (DuplicateIdentifier?)
             error!("duplicated fn [ {} ]", &f.name);
         }
 
@@ -243,7 +253,7 @@ impl SymbolTableBuilder {
                 fns.push(id.clone());
             }
             _ => {
-                unreachable!()
+                self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
             }
         }
     }
@@ -252,7 +262,9 @@ impl SymbolTableBuilder {
         let name = match var_id {
             Expr::VarId {name, ..} => name,
             _ => {
-                unreachable!();
+                self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
+                // should have exited above (since it's a fatal error)
+                unreachable!()
             }
         };
 
@@ -273,7 +285,7 @@ impl SymbolTableBuilder {
                 params.push(id.clone());
             }
             _ => {
-                unreachable!()
+                self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
             }
         }
     }
@@ -281,6 +293,7 @@ impl SymbolTableBuilder {
     /// Insert `global` record into scope
     fn add_global(&mut self, ty: DataType, name: String) {
         if self.table.lookup(&name).is_some() {
+            // TODO -- add new error type (DuplicateIdentifier?)
             error!("duplicated identifier [ {} ]", name);
         }
 
@@ -303,7 +316,7 @@ impl SymbolTableBuilder {
     }
 }
 
-impl WhammVisitor<()> for SymbolTableBuilder {
+impl WhammVisitor<()> for SymbolTableBuilder<'_> {
     fn visit_whamm(&mut self, whamm: &Whamm) -> () {
         trace!("Entering: visit_whamm");
         let name: String = "whamm".to_string();
@@ -413,10 +426,6 @@ impl WhammVisitor<()> for SymbolTableBuilder {
         self.curr_probe = None;
     }
 
-    // fn visit_predicate(&mut self, _predicate: &Expr) -> () {
-    //     unimplemented!()
-    // }
-
     fn visit_fn(&mut self, f: &Fn) -> () {
         trace!("Entering: visit_fn");
 
@@ -441,26 +450,26 @@ impl WhammVisitor<()> for SymbolTableBuilder {
 
     fn visit_stmt(&mut self, _assign: &Statement) -> () {
         // Not visiting event/probe bodies
-        unreachable!()
+        self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
     }
 
     fn visit_expr(&mut self, _call: &Expr) -> () {
         // Not visiting predicates/statements
-        unreachable!()
+        self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
     }
 
     fn visit_op(&mut self, _op: &Op) -> () {
         // Not visiting predicates/statements
-        unreachable!()
+        self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
     }
 
     fn visit_datatype(&mut self, _datatype: &DataType) -> () {
         // Not visiting predicates/statements
-        unreachable!()
+        self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
     }
 
     fn visit_value(&mut self, _val: &Value) -> () {
         // Not visiting predicates/statements
-        unreachable!()
+        self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
     }
 }
