@@ -15,7 +15,7 @@ pub struct ErrorGen {
     errors: Vec<WhammError>,
     num_errors: i32,
     pub too_many: bool,
-    no_errors: bool
+    pub has_errors: bool
 }
 impl ErrorGen {
     pub fn new(whammy_path: String, script_text: String, max_errors: i32) -> Self {
@@ -26,7 +26,7 @@ impl ErrorGen {
             errors: vec![],
             num_errors: 0,
             too_many: false,
-            no_errors: true
+            has_errors: true
         }
     }
 
@@ -61,12 +61,19 @@ impl ErrorGen {
     }
 
     pub fn fatal_report(&mut self, context: &str) {
-        if self.no_errors {
+        if !self.has_errors {
             return;
         }
         self.report();
         error!("{context}: Expected no errors.");
         exit(1);
+    }
+
+    pub fn check_has_errors(&mut self) {
+        if self.has_errors {
+            self.report();
+            exit(1);
+        }
     }
 
     pub fn check_too_many(&mut self) {
@@ -177,7 +184,7 @@ impl ErrorGen {
 
     fn inc_errors(&mut self) {
         self.num_errors += 1;
-        self.no_errors = false;
+        self.has_errors = true;
         if self.num_errors >= self.max_errors {
             self.too_many = true;
         }

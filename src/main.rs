@@ -139,10 +139,13 @@ fn run_instr(app_wasm_path: String, whammy_path: String, output_wasm_path: Strin
     // Set up error reporting mechanism
     let mut err = ErrorGen::new(whammy_path.clone(), "".to_string(), MAX_ERRORS);
 
+    // Process the script
     let mut whamm = get_whammy_ast(&whammy_path, &mut err);
+    let symbol_table = get_symbol_table(&whamm, run_verifier, &mut err);
+    let (behavior_tree, simple_ast) = build_behavior(&whamm, &mut err);
 
-    let symbol_table = get_symbol_table(&whamm, run_verifier);
-    let (behavior_tree, simple_ast) = build_behavior(&whamm);
+    // If there were any errors encountered, report and exit!
+    err.check_has_errors();
 
     // Read app Wasm into Walrus module
     let _config =  walrus::ModuleConfig::new();
@@ -229,8 +232,11 @@ fn run_vis_whammy(whammy_path: String, run_verifier: bool, output_path: String) 
     let mut err = ErrorGen::new(whammy_path.clone(), "".to_string(), MAX_ERRORS);
 
     let whamm = get_whammy_ast(&whammy_path, &mut err);
-    verify_ast(&whamm, run_verifier);
-    let (behavior_tree, ..) = build_behavior(&whamm);
+    verify_ast(&whamm, run_verifier, &mut err);
+    let (behavior_tree, ..) = build_behavior(&whamm, &mut err);
+
+    // if has any errors, should report and exit!
+    err.check_has_errors();
 
     let path = match get_pb(&PathBuf::from(output_path.clone())) {
         Ok(pb) => {
@@ -256,19 +262,21 @@ fn run_vis_whammy(whammy_path: String, run_verifier: bool, output_path: String) 
     exit(0);
 }
 
-fn get_symbol_table(ast: &Whamm, run_verifier: bool) -> SymbolTable {
+fn get_symbol_table(ast: &Whamm, run_verifier: bool, err: &mut ErrorGen) -> SymbolTable {
     let st = build_symbol_table(&ast);
-    verify_ast(ast, run_verifier);
+    err.check_too_many();
+    verify_ast(ast, run_verifier, err);
     st
 }
 
-fn verify_ast(ast: &Whamm, run_verifier: bool) {
+fn verify_ast(ast: &Whamm, run_verifier: bool, err: &mut ErrorGen) {
     if run_verifier {
         if !verify(ast) {
             error!("AST failed verification!");
             exit(1);
         }
     }
+    err.check_too_many();
 }
 
 fn get_whammy_ast(whammy_path: &String, err: &mut ErrorGen) -> Whamm {
@@ -278,6 +286,7 @@ fn get_whammy_ast(whammy_path: &String, err: &mut ErrorGen) -> Whamm {
             match parse_script(&unparsed_str, err) {
                 Some(ast) => {
                     info!("successfully parsed");
+                    err.check_too_many();
                     return ast;
                 },
                 None => {
@@ -293,9 +302,10 @@ fn get_whammy_ast(whammy_path: &String, err: &mut ErrorGen) -> Whamm {
     }
 }
 
-fn build_behavior(whamm: &Whamm) -> (BehaviorTree, SimpleAST) {
+fn build_behavior(whamm: &Whamm, err: &mut ErrorGen) -> (BehaviorTree, SimpleAST) {
     // Build the behavior tree from the AST
     let (mut behavior, simple_ast) = build_behavior_tree(&whamm);
+    err.check_too_many();
     behavior.reset();
 
     (behavior, simple_ast)
