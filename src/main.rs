@@ -6,7 +6,7 @@ use crate::behavior::builder_visitor::*;
 use crate::generator::emitters::{Emitter, WasmRewritingEmitter};
 use crate::generator::init_generator::{InitGenerator};
 use crate::generator::instr_generator::{InstrGenerator};
-// use crate::common::error;
+use crate::common::error::ErrorGen;
 
 pub mod parser;
 pub mod behavior;
@@ -27,6 +27,8 @@ use crate::behavior::visualize::visualization_to_file;
 use crate::parser::types::Whamm;
 use crate::verifier::types::SymbolTable;
 use crate::verifier::verifier::{build_symbol_table, verify};
+
+const MAX_ERRORS: i32 = 15;
 
 fn setup_logger() {
     env_logger::init();
@@ -118,23 +120,26 @@ fn try_main() -> Result<(), failure::Error> {
     // Get information from user command line args
     let cli = WhammCli::parse();
 
+    // Set up error reporting mechanism
+    let mut err = ErrorGen::new(whammy_path, "".to_string(), MAX_ERRORS);
     match cli.command {
         Command::Instr(args) => {
-            run_instr(args.app, args.whammy, args.output_path, args.virgil, args.run_verifier);
+            run_instr(args.app, args.whammy, args.output_path, args.virgil, args.run_verifier, &mut err);
         }
         Command::VisWasm {wasm, output_path} => {
             run_vis_wasm(wasm, output_path);
         }
         Command::VisWhammy {whammy, run_verifier, output_path} => {
-            run_vis_whammy(whammy, run_verifier, output_path);
+            run_vis_whammy(whammy, run_verifier, output_path, &mut err);
         }
     }
 
     Ok(())
 }
 
-fn run_instr(app_wasm_path: String, whammy_path: String, output_wasm_path: String, emit_virgil: bool, run_verifier: bool) {
-    let mut whamm = get_whammy_ast(&whammy_path);
+fn run_instr(app_wasm_path: String, whammy_path: String, output_wasm_path: String, emit_virgil: bool, run_verifier: bool, err: &mut ErrorGen<R>) {
+    let mut whamm = get_whammy_ast(&whammy_path, err);
+
     let symbol_table = get_symbol_table(&whamm, run_verifier);
     let (behavior_tree, simple_ast) = build_behavior(&whamm);
 
@@ -216,11 +221,10 @@ fn run_vis_wasm(wasm_path: String, output_path: String) {
         }
         Err(_) => {}
     }
-    exit(0);
 }
 
-fn run_vis_whammy(whammy_path: String, run_verifier: bool, output_path: String) {
-    let whamm = get_whammy_ast(&whammy_path);
+fn run_vis_whammy(whammy_path: String, run_verifier: bool, output_path: String, err: &mut ErrorGen<R>) {
+    let whamm = get_whammy_ast(&whammy_path, err);
     verify_ast(&whamm, run_verifier);
     let (behavior_tree, ..) = build_behavior(&whamm);
 
@@ -233,7 +237,6 @@ fn run_vis_whammy(whammy_path: String, run_verifier: bool, output_path: String) 
         }
     };
 
-    // visualization_to_file(&behavior_tree, path)
     match visualization_to_file(&behavior_tree, path) {
         Ok(_) => {
             match opener::open(output_path.clone()) {
@@ -264,17 +267,18 @@ fn verify_ast(ast: &Whamm, run_verifier: bool) {
     }
 }
 
-fn get_whammy_ast(whammy_path: &String) -> Whamm {
+fn get_whammy_ast(whammy_path: &String, err: &mut ErrorGen<R>) -> Whamm {
     match std::fs::read_to_string(&whammy_path) {
         Ok(unparsed_str) => {
+            err.set_script_text(unparsed_str);
             // Parse the script and build the AST
-            match parse_script(whammy_path, &unparsed_str) {
+            match parse_script(whammy_path, &unparsed_str, err) {
                 Ok(ast) => {
                     info!("successfully parsed");
                     return ast;
                 },
                 Err(mut err) => {
-                    err.report(&unparsed_str);
+                    err.report(&unparsed_str, whammy_path);
                     exit(1);
                 }
             };

@@ -3,18 +3,18 @@ use crate::parser::types;
 use types::{WhammParser, Op, PRATT_PARSER, Rule};
 
 use pest::error::{Error, LineColLocation};
-use pest::Parser;
+use pest::{Parser, RuleType};
 use pest::iterators::{Pair, Pairs};
 
 use log::{trace};
-use crate::common::error::WhammError;
+use crate::common::error::ErrorGen;
 use crate::parser::types::{DataType, Whammy, Whamm, Expr, Statement, Value, Location};
 
 // ====================
 // = AST Constructors =
 // ====================
 
-pub fn to_ast(pair: Pair<Rule>) -> Result<Whamm, Error<Rule>> {
+pub fn to_ast(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Whamm, Error<Rule>> {
     trace!("Entered to_ast");
 
     // Create initial AST with Whamm node
@@ -23,13 +23,13 @@ pub fn to_ast(pair: Pair<Rule>) -> Result<Whamm, Error<Rule>> {
 
     match pair.as_rule() {
         Rule::whammy => {
-            process_pair(&mut whamm, whammy_count, pair);
+            process_pair(&mut whamm, whammy_count, pair, err);
         }
         rule => {
-            WhammError::parse_error(true,
+            err.parse_error(true,
                 Some("Looks like you've found a bug...please report this behavior! Exiting now...".to_string()),
                 LineColLocation::Pos(pair.line_col()),
-                vec![Rule::whammy], vec![rule], None);
+                            vec![Rule::whammy], vec![rule]);
             // should have exited above (since it's a fatal error)
             unreachable!()
         }
@@ -38,7 +38,12 @@ pub fn to_ast(pair: Pair<Rule>) -> Result<Whamm, Error<Rule>> {
     Ok(whamm)
 }
 
-fn process_pair(whamm: &mut Whamm, whammy_count: usize, pair: Pair<Rule>) {
+// struct Parse;
+// impl Parse {
+//
+// }
+
+fn process_pair(whamm: &mut Whamm, whammy_count: usize, pair: Pair<Rule>, err: &mut ErrorGen) {
     trace!("Entered process_pair");
     match pair.as_rule() {
         Rule::whammy => {
@@ -46,7 +51,7 @@ fn process_pair(whamm: &mut Whamm, whammy_count: usize, pair: Pair<Rule>) {
             let base_whammy = Whammy::new();
             let id = whamm.add_whammy(base_whammy);
             pair.into_inner().for_each(| p | {
-                process_pair(whamm, id, p);
+                process_pair(whamm, id, p, err);
             });
             trace!("Exiting whammy");
         }
@@ -54,7 +59,7 @@ fn process_pair(whamm: &mut Whamm, whammy_count: usize, pair: Pair<Rule>) {
             trace!("Entering probe_def");
             let mut pair = pair.into_inner();
             let spec_rule = pair.next().unwrap();
-            let spec = probe_spec_from_rule(spec_rule);
+            let spec = probe_spec_from_rule(spec_rule, err);
             let mut spec_split = spec.split(":");
 
             // Get out the spec info
@@ -68,11 +73,11 @@ fn process_pair(whamm: &mut Whamm, whammy_count: usize, pair: Pair<Rule>) {
             let (this_predicate, this_body) = match next {
                 Some(n) => {
                     let (this_predicate, mut this_body) = match n.as_rule() {
-                        Rule::predicate => (Some(expr_from_pairs(n.into_inner())), None),
+                        Rule::predicate => (Some(expr_from_pairs(n.into_inner(), err)), None),
                         Rule::statement => {
                             let mut stmts = vec![];
                             n.into_inner().for_each(|p| {
-                                stmts.push(stmt_from_rule(p));
+                                stmts.push(stmt_from_rule(p, err));
                             });
                             (None, Some(stmts))
                         },
@@ -85,7 +90,7 @@ fn process_pair(whamm: &mut Whamm, whammy_count: usize, pair: Pair<Rule>) {
                                 let mut stmts = vec![];
 
                                 b.into_inner().for_each(|p| {
-                                    stmts.push(stmt_from_rule(p));
+                                    stmts.push(stmt_from_rule(p, err));
                                 });
                                 Some(stmts)
                             },
@@ -106,17 +111,17 @@ fn process_pair(whamm: &mut Whamm, whammy_count: usize, pair: Pair<Rule>) {
         },
         Rule::EOI => {},
         rule => {
-            WhammError::parse_error(true,
-                Some("Looks like you've found a bug...please report this behavior! Exiting now...".to_string()),
-                LineColLocation::Pos(pair.line_col()),
-                vec![Rule::whammy, Rule::probe_def, Rule::EOI], vec![rule], None);
+            err.parse_error(true,
+                            Some("Looks like you've found a bug...please report this behavior! Exiting now...".to_string()),
+                            LineColLocation::Pos(pair.line_col()),
+                            vec![Rule::whammy, Rule::probe_def, Rule::EOI], vec![rule]);
             // should have exited above (since it's a fatal error)
             unreachable!()
         }
     }
 }
 
-fn fn_call_from_rule(pair: Pair<Rule>) -> Expr {
+fn fn_call_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Expr {
     trace!("Entering fn_call");
     // This has to be duplicated due to the Expression/Statement masking as the function return type
     let mut pair = pair.into_inner();
@@ -138,7 +143,7 @@ fn fn_call_from_rule(pair: Pair<Rule>) -> Expr {
     let mut init = vec!();
     while next.is_some() {
         let mut others = vec!();
-        others.push(Box::new(expr_from_pairs(next.unwrap().into_inner())));
+        others.push(Box::new(expr_from_pairs(next.unwrap().into_inner(), err)));
         init.append(&mut others);
         next = pair.next();
     };
@@ -182,12 +187,12 @@ fn fn_call_from_rule(pair: Pair<Rule>) -> Expr {
 
 }
 
-fn stmt_from_rule(pair: Pair<Rule>) -> Statement {
+fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Statement {
     trace!("Entered stmt_from_rule");
     match pair.as_rule() {
         Rule::statement => {
             trace!("Entering statement");
-            let res = stmt_from_rule(pair);
+            let res = stmt_from_rule(pair, err);
 
             trace!("Exiting statement");
             trace!("Exiting stmt_from_rule");
@@ -208,7 +213,7 @@ fn stmt_from_rule(pair: Pair<Rule>) -> Statement {
                     path: None
                 })
             };
-            let expr = expr_from_pairs(expr_rule);
+            let expr = expr_from_pairs(expr_rule, err);
             trace!("Exiting assignment");
             trace!("Exiting stmt_from_rule");
 
@@ -225,7 +230,7 @@ fn stmt_from_rule(pair: Pair<Rule>) -> Statement {
             };
         },
         Rule::fn_call => {
-            let call = fn_call_from_rule(pair);
+            let call = fn_call_from_rule(pair, err);
             let call_loc = call.loc().clone();
             trace!("Exiting stmt_from_rule");
 
@@ -235,17 +240,17 @@ fn stmt_from_rule(pair: Pair<Rule>) -> Statement {
             };
         },
         rule => {
-            WhammError::parse_error(true,
-                Some("Looks like you've found a bug...please report this behavior! Exiting now...".to_string()),
-                LineColLocation::Pos(pair.line_col()),
-                vec![Rule::statement, Rule::assignment, Rule::fn_call], vec![rule], None);
+            err.parse_error(true,
+                            Some("Looks like you've found a bug...please report this behavior! Exiting now...".to_string()),
+                            LineColLocation::Pos(pair.line_col()),
+                            vec![Rule::statement, Rule::assignment, Rule::fn_call], vec![rule]);
             // should have exited above (since it's a fatal error)
             unreachable!();
         }
     }
 }
 
-fn probe_spec_from_rule(pair: Pair<Rule>) -> String {
+fn probe_spec_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> String {
     trace!("Entered probe_spec_from_rule");
     match pair.as_rule() {
         Rule::PROBE_ID => {
@@ -275,7 +280,7 @@ fn probe_spec_from_rule(pair: Pair<Rule>) -> String {
                     Some(part) => {
                         match part.as_rule() {
                             Rule::PROBE_ID => {
-                                probe_spec_from_rule(part)
+                                probe_spec_from_rule(part, err)
                             },
                             _ => "*".to_string()
                         }
@@ -298,22 +303,22 @@ fn probe_spec_from_rule(pair: Pair<Rule>) -> String {
             return contents.join(":")
         },
         rule => {
-            WhammError::parse_error(true,
-                Some("Looks like you've found a bug...please report this behavior! Exiting now...".to_string()),
-                LineColLocation::Pos(pair.line_col()),
-                vec![Rule::PROBE_ID, Rule::PROBE_ID], vec![rule], None);
+            err.parse_error(true,
+                            Some("Looks like you've found a bug...please report this behavior! Exiting now...".to_string()),
+                            LineColLocation::Pos(pair.line_col()),
+                            vec![Rule::PROBE_ID, Rule::PROBE_ID], vec![rule]);
             // should have exited above (since it's a fatal error)
             unreachable!();
         }
     }
 }
 
-fn expr_primary(pair: Pair<Rule>) -> Expr {
+fn expr_primary(pair: Pair<Rule>, err: &mut ErrorGen) -> Expr {
     match pair.as_rule() {
         Rule::fn_call => {
 
 
-            let call = fn_call_from_rule(pair);
+            let call = fn_call_from_rule(pair, err);
             return call;
         },
         Rule::ID => {
@@ -329,7 +334,9 @@ fn expr_primary(pair: Pair<Rule>) -> Expr {
             trace!("Entering tuple");
             // handle contents
             let pair_line_col = pair.line_col();
-            let vals = pair.into_inner().map(expr_primary).collect();
+            let vals = pair.into_inner().map(|p| {
+                expr_primary(p, err)
+            }).collect();
 
             trace!("Exiting tuple");
             return Expr::Primitive {
@@ -398,14 +405,14 @@ fn expr_primary(pair: Pair<Rule>) -> Expr {
                 })
             };
         },
-        _ => expr_from_pairs(pair.into_inner())
+        _ => expr_from_pairs(pair.into_inner(), err)
     }
 }
 
-fn expr_from_pairs(pairs: Pairs<Rule>) -> Expr {
+fn expr_from_pairs(pairs: Pairs<Rule>, err: &mut ErrorGen) -> Expr {
     PRATT_PARSER
         .map_primary(|primary| -> Expr {
-            expr_primary(primary)
+            expr_primary(primary, err)
         })
         .map_infix(|lhs, op, rhs| {
             let op = match op.as_rule() {
@@ -430,12 +437,12 @@ fn expr_from_pairs(pairs: Pairs<Rule>) -> Expr {
                 Rule::divide => Op::Divide,
                 Rule::modulo => Op::Modulo,
                 rule => {
-                    WhammError::parse_error(true,
-                        Some("Looks like you've found a bug...please report this behavior! Exiting now...".to_string()),
-                        LineColLocation::Pos(op.line_col()),
-                        vec![Rule::and, Rule::or, Rule::eq, Rule::ne, Rule::ge, Rule::gt, Rule::le, Rule::lt,
-                                      Rule::add, Rule::subtract, Rule::multiply, Rule::divide, Rule::modulo],
-                        vec![rule], None);
+                    err.parse_error(true,
+                                    Some("Looks like you've found a bug...please report this behavior! Exiting now...".to_string()),
+                                    LineColLocation::Pos(op.line_col()),
+                                    vec![Rule::and, Rule::or, Rule::eq, Rule::ne, Rule::ge, Rule::gt, Rule::le, Rule::lt,
+                                         Rule::add, Rule::subtract, Rule::multiply, Rule::divide, Rule::modulo],
+                                    vec![rule]);
                     // should have exited above (since it's a fatal error)
                     unreachable!();
                 },
@@ -467,7 +474,7 @@ fn expr_from_pairs(pairs: Pairs<Rule>) -> Expr {
 // = Parser =
 // ==========
 
-pub fn parse_script(whammy_path: &String, script: &String) -> Result<Whamm, WhammError<Rule>> {
+pub fn parse_script(script: &String, err: &mut ErrorGen) -> Option<Whamm> {
     trace!("Entered parse_script");
 
     let res = WhammParser::parse(Rule::whammy, &*script);
@@ -475,20 +482,23 @@ pub fn parse_script(whammy_path: &String, script: &String) -> Result<Whamm, Wham
         Ok(mut pairs) => {
             let res = to_ast(
                 // inner of script
-                pairs.next().unwrap()
+                pairs.next().unwrap(),
+                err
             );
 
             match res {
                 Ok(ast) => {
-                    Ok(ast)
+                    Some(ast)
                 },
                 Err(e) => {
-                    Err(WhammError::from_pest_err(e, whammy_path))
+                    err.pest_err(e);
+                    None
                 },
             }
         },
         Err(e) => {
-            Err(WhammError::from_pest_err(e, whammy_path))
+            err.pest_err(e);
+            None
         },
     }
 }

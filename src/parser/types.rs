@@ -4,7 +4,6 @@ use pest::error::LineColLocation;
 
 use pest_derive::Parser;
 use pest::pratt_parser::PrattParser;
-use pest::Span;
 use walrus::DataId;
 
 #[derive(Parser)]
