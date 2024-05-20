@@ -5,6 +5,7 @@ use pest::error::LineColLocation;
 use pest_derive::Parser;
 use pest::pratt_parser::PrattParser;
 use walrus::DataId;
+use crate::common::error::{ErrorGen, WhammError};
 
 #[derive(Parser)]
 #[grammar = "./parser/whamm.pest"] // Path relative to base `src` dir
@@ -28,6 +29,8 @@ lazy_static::lazy_static! {
             .op(Op::infix(multiply, Left) | Op::infix(divide, Left) | Op::infix(modulo, Left)) // MULOP
     };
 }
+
+const UNEXPECTED_ERR_MSG: &str = "WhammParser: Looks like you've found a bug...please report this behavior! Exiting now...";
 
 // ===============
 // ==== Types ====
@@ -55,6 +58,20 @@ impl Location {
             line_col: LineColLocation::Span(pos0.clone(), pos1.clone()),
             path
         }
+    }
+
+    pub fn span_between(loc0: &Location, loc1: &Location) -> LineColLocation {
+        let pos0 = match loc0.line_col {
+            LineColLocation::Pos(pos0) |
+            LineColLocation::Span(pos0, ..) => pos0
+        };
+
+        let pos1 = match loc1.line_col {
+            LineColLocation::Pos(end1) |
+            LineColLocation::Span(.., end1) => end1
+        };
+
+        return LineColLocation::Span(pos0, pos1);
     }
 }
 
@@ -117,6 +134,20 @@ pub enum Statement {
     }
 }
 impl Statement {
+    pub fn loc(&self) -> &Option<Location> {
+        match self {
+            Statement::Assign {loc, ..} |
+            Statement::Expr {loc, ..} => {
+                loc
+            }
+        }
+    }
+    pub fn line_col(&self) -> Option<LineColLocation> {
+        return match self.loc() {
+            Some(loc) => Some(loc.line_col.clone()),
+            None => None
+        }
+    }
     pub fn dummy() -> Self {
         Self::Expr {
             expr: Expr::Primitive {
@@ -168,10 +199,17 @@ impl Expr {
 }
 
 // Functions
+
+#[derive(Clone, Debug)]
+pub struct FnId {
+    pub name: String,
+    pub loc: Option<Location>
+}
+
 #[derive(Clone, Debug)]
 pub struct Fn {
     pub(crate) is_comp_provided: bool,
-    pub(crate) name: String,
+    pub(crate) name: FnId,
     pub(crate) params: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
     pub(crate) return_ty: Option<DataType>,
     pub(crate) body: Option<Vec<Statement>>
@@ -230,7 +268,10 @@ impl Whamm {
         ];
         let strcmp_fn = Fn {
             is_comp_provided: true,
-            name: "strcmp".to_string(),
+            name: FnId {
+                name: "strcmp".to_string(),
+                loc: None
+            },
             params,
             return_ty: Some(DataType::Boolean),
             body: None
@@ -338,6 +379,46 @@ impl Whamm {
     }
 }
 
+pub struct SpecPart {
+    pub name: String,
+    pub loc: Option<Location>
+}
+
+pub struct ProbeSpec {
+    pub provider: Option<SpecPart>,
+    pub package: Option<SpecPart>,
+    pub event: Option<SpecPart>,
+    pub mode: Option<SpecPart>
+}
+impl ProbeSpec {
+    pub fn new() -> Self {
+        Self {
+            provider: None,
+            package: None,
+            event: None,
+            mode: None
+        }
+    }
+    pub fn add_spec_def(&mut self, part: SpecPart) {
+        if self.provider.is_none() {
+            self.provider = Some(part);
+            return;
+        }
+        if self.package.is_none() {
+            self.package = Some(part);
+            return;
+        }
+        if self.event.is_none() {
+            self.event = Some(part);
+            return;
+        }
+        if self.mode.is_none() {
+            self.mode = Some(part);
+            return;
+        }
+    }
+}
+
 pub struct Whammy {
     pub name: String,
     /// The providers of the probes that have been used in the Whammy.
@@ -358,47 +439,111 @@ impl Whammy {
     /// Iterates over all of the matched providers, packages, events, and probe names
     /// to add a copy of the user-defined Probe for each of them.
     pub fn add_probe(&mut self, provided_probes: &HashMap<String, HashMap<String, HashMap<String, Vec<String>>>>,
-                     prov_patt: &str, mod_patt: &str, func_patt: &str, nm_patt: &str,
-                     predicate: Option<Expr>, body: Option<Vec<Statement>>) {
-        for provider_str in Provider::get_matches(provided_probes, prov_patt).iter() {
-            // Does provider exist yet?
-            let provider = match self.providers.get_mut(provider_str) {
-                Some(prov) => prov,
-                None => {
-                    // add the provider!
-                    let new_prov = Provider::new(provider_str.to_lowercase().to_string());
-                    self.providers.insert(provider_str.to_lowercase().to_string(), new_prov);
-                    self.providers.get_mut(&provider_str.to_lowercase()).unwrap()
-                }
-            };
-            for package_str in Package::get_matches(provided_probes,provider_str, mod_patt).iter() {
-                // Does package exist yet?
-                let package = match provider.packages.get_mut(package_str) {
-                    Some(m) => m,
+                     probe_spec: &ProbeSpec, predicate: Option<Expr>, body: Option<Vec<Statement>>) -> Result<(), WhammError> {
+        if let Some(prov_patt) = &probe_spec.provider {
+            // if prov_patt.name.to_uppercase() == "CORE" || prov_patt.name.to_uppercase() == "CORE" {
+            //     return Err(ErrorGen::get_unexpected_error(true,
+            //          Some(format!("Probe type not supported YET, but is coming soon: {}", prov_patt.name))));
+            // }
+
+            let matches = Provider::get_matches(provided_probes, &prov_patt.name);
+            if matches.is_empty() {
+                return Err(ErrorGen::get_parse_error(true,
+                    Some(format!("Could not find any matches for the specified provider pattern: {}", prov_patt.name)),
+                    prov_patt.loc.as_ref().unwrap().line_col.clone(), vec![], vec![]));
+            }
+
+            for provider_str in matches.iter() {
+                let mut is_empty = true;
+                // Does provider exist yet?
+                let provider = match self.providers.get_mut(provider_str) {
+                    Some(prov) => prov,
                     None => {
-                        // add the package!
-                        let new_mod = Package::new(package_str.to_lowercase().to_string());
-                        provider.packages.insert(package_str.to_lowercase().to_string(), new_mod);
-                        provider.packages.get_mut(&package_str.to_lowercase()).unwrap()
+                        // add the provider!
+                        let new_prov = Provider::new(provider_str.to_lowercase().to_string(), prov_patt.loc.clone());
+                        self.providers.insert(provider_str.to_lowercase().to_string(), new_prov);
+                        self.providers.get_mut(&provider_str.to_lowercase()).unwrap()
                     }
                 };
-                for event_str in Event::get_matches(provided_probes, provider_str, package_str, func_patt).iter() {
-                    // Does event exist yet?
-                    let event = match package.events.get_mut(event_str) {
-                        Some(f) => f,
-                        None => {
-                            // add the package!
-                            let new_fn = Event::new(event_str.to_lowercase().to_string());
-                            package.events.insert(event_str.to_lowercase().to_string(), new_fn);
-                            package.events.get_mut(&event_str.to_lowercase()).unwrap()
+                if let Some(package_patt) = &probe_spec.package {
+                    let matches = Package::get_matches(provided_probes, provider_str, &package_patt.name);
+                    // if matches.is_empty() {
+                    //     return Err(ErrorGen::get_parse_error(true,
+                    //          Some(format!("Could not find any matches for the specified package pattern: {}", package_patt.name)),
+                    //          package_patt.loc.as_ref().unwrap().line_col.clone(), vec![], vec![]));
+                    // }
+                    for package_str in matches.iter() {
+                        // Does package exist yet?
+                        let package = match provider.packages.get_mut(package_str) {
+                            Some(m) => m,
+                            None => {
+                                // add the package!
+                                let new_mod = Package::new(package_str.to_lowercase().to_string(), package_patt.loc.clone());
+                                provider.packages.insert(package_str.to_lowercase().to_string(), new_mod);
+                                provider.packages.get_mut(&package_str.to_lowercase()).unwrap()
+                            }
+                        };
+                        if let Some(event_patt) = &probe_spec.event {
+                            let matches = Event::get_matches(provided_probes, provider_str, package_str, &event_patt.name);
+                            // if matches.is_empty() {
+                            //     return Err(ErrorGen::get_parse_error(true,
+                            //          Some(format!("Could not find any matches for the specified event pattern: {}", event_patt.name)),
+                            //          event_patt.loc.as_ref().unwrap().line_col.clone(), vec![], vec![]));
+                            // }
+                            for event_str in matches.iter() {
+                                // Does event exist yet?
+                                let event = match package.events.get_mut(event_str) {
+                                    Some(f) => f,
+                                    None => {
+                                        // add the package!
+                                        let new_fn = Event::new(event_str.to_lowercase().to_string(), event_patt.loc.clone());
+                                        package.events.insert(event_str.to_lowercase().to_string(), new_fn);
+                                        package.events.get_mut(&event_str.to_lowercase()).unwrap()
+                                    }
+                                };
+                                if let Some(mode_patt) = &probe_spec.mode {
+                                    let matches = Probe::get_matches(provided_probes, provider_str, package_str, event_str, &mode_patt.name);
+
+                                    for name_str in matches.iter() {
+                                        event.insert_probe(name_str.to_string(), Probe::new(mode_patt.name.to_string(), mode_patt.loc.clone(), predicate.clone(), body.clone()));
+                                        is_empty = false;
+                                    }
+                                }
+                            }
+                        } else {
+                            return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} Could not find an event matching pattern!")), None));
                         }
-                    };
-                    for name_str in Probe::get_matches(provided_probes, provider_str, package_str, event_str, nm_patt).iter() {
-                        event.insert_probe(name_str.to_string(), Probe::new(nm_patt.to_string(), predicate.clone(), body.clone()));
+                    }
+                } else {
+                    return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} Could not find a package matching pattern!")), None));
+                }
+                if is_empty {
+                    // Never found a match under this provider, removing
+                    self.providers.remove(provider_str);
+                }
+            }
+        } else {
+            return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} Could not find a provider matching pattern!")), None));
+        }
+        if self.providers.is_empty() {
+            if let Some(prov) = &probe_spec.provider {
+                if let Some(prov_loc) = &prov.loc {
+                    if let Some(mode) = &probe_spec.mode {
+                        if let Some(mode_loc) = &mode.loc {
+                            let loc = Location::span_between(prov_loc, mode_loc);
+
+                            return Err(ErrorGen::get_parse_error(true,
+                             Some(format!("Could not find any matches for the specified probe specification")),
+                             loc, vec![], vec![]));
+                        }
                     }
                 }
             }
+            return Err(ErrorGen::get_parse_error(true,
+             Some(format!("Could not find any matches for the specified probe specification")),
+             probe_spec.provider.as_ref().unwrap().loc.as_ref().unwrap().line_col.clone(), vec![], vec![]));
         }
+        return Ok(());
     }
 }
 
@@ -409,17 +554,19 @@ pub struct Provider {
 
     /// The packages of the probes that have been used in the Whammy.
     /// These will be sub-packages of this Provider.
-    pub packages: HashMap<String, Package>
+    pub packages: HashMap<String, Package>,
+    pub loc: Option<Location>
 }
 impl Provider {
-    pub fn new(name: String) -> Self {
+    pub fn new(name: String, loc: Option<Location>) -> Self {
         let fns = Provider::get_provided_fns(&name);
         let globals = Provider::get_provided_globals(&name);
         Provider {
             name,
             fns,
             globals,
-            packages: HashMap::new()
+            packages: HashMap::new(),
+            loc
         }
     }
 
@@ -453,17 +600,19 @@ pub struct Package {
 
     /// The events of the probes that have been used in the Whammy.
     /// These will be sub-events of this Package.
-    pub events: HashMap<String, Event>
+    pub events: HashMap<String, Event>,
+    pub loc: Option<Location>
 }
 impl Package {
-    pub fn new(name: String) -> Self {
+    pub fn new(name: String, loc: Option<Location>) -> Self {
         let fns = Package::get_provided_fns(&name);
         let globals = Package::get_provided_globals(&name);
         Package {
             name,
             fns,
             globals,
-            events: HashMap::new()
+            events: HashMap::new(),
+            loc
         }
     }
 
@@ -495,17 +644,19 @@ pub struct Event {
     pub name: String,
     pub fns: Vec<Fn>,                     // Comp-provided
     pub globals: HashMap<String, Global>, // Comp-provided
-    pub probe_map: HashMap<String, Vec<Probe>>
+    pub probe_map: HashMap<String, Vec<Probe>>,
+    pub loc: Option<Location>
 }
 impl Event {
-    pub fn new(name: String) -> Self {
+    pub fn new(name: String, loc: Option<Location>) -> Self {
         let fns = Event::get_provided_fns(&name);
         let globals = Event::get_provided_globals(&name);
         Event {
             name,
             fns,
             globals,
-            probe_map: HashMap::new()
+            probe_map: HashMap::new(),
+            loc
         }
     }
 
@@ -590,6 +741,7 @@ impl Event {
 #[derive(Clone, Debug)]
 pub struct Probe {
     pub name: String,
+    pub loc: Option<Location>,
     pub fns: Vec<Fn>,                     // Comp-provided
     pub globals: HashMap<String, Global>, // Comp-provided
 
@@ -597,11 +749,12 @@ pub struct Probe {
     pub body: Option<Vec<Statement>>
 }
 impl Probe {
-    pub fn new(name: String, predicate: Option<Expr>, body: Option<Vec<Statement>>) -> Self {
+    pub fn new(name: String, loc: Option<Location>, predicate: Option<Expr>, body: Option<Vec<Statement>>) -> Self {
         let fns = Probe::get_provided_fns(&name);
         let globals = Probe::get_provided_globals(&name);
         Probe {
             name,
+            loc,
             fns,
             globals,
 

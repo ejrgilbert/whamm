@@ -1,7 +1,10 @@
 use std::collections::HashMap;
-use log::{ error };
 use walrus::{FunctionId, GlobalId, LocalId};
-use crate::parser::types::{DataType, Value};
+use crate::common::error::{ErrorGen, WhammError};
+use crate::parser::types::{DataType, FnId, Location, Value};
+
+const UNEXPECTED_ERR_MSG: &str = "SymbolTable: Looks like you've found a bug...please report this behavior!";
+
 
 #[derive(Debug)]
 pub struct SymbolTable {
@@ -80,17 +83,24 @@ impl SymbolTable {
             self.curr_scope = new_curr;
             return true;
         }
-        error!("Could not find the specified scope by name: `{}`", scope_name);
+
         return false;
     }
 
-    pub fn enter_scope(&mut self) {
+    pub fn enter_scope(&mut self) -> Result<(), WhammError> {
         let new_id = self.scopes.len();
 
         let curr_scope = self.get_curr_scope_mut().unwrap();
         if curr_scope.has_next() {
-            self.curr_scope = curr_scope.next_child().clone();
-            return;
+            return match curr_scope.next_child() {
+                Err(e) => {
+                    Err(e)
+                },
+                Ok(n) => {
+                    self.curr_scope = n.clone();
+                    Ok(())
+                }
+            }
         }
         // Will need to create a new next scope
         // Store new scope in the current scope's children
@@ -110,15 +120,19 @@ impl SymbolTable {
         // Add new scope
         self.scopes.push(new_scope);
         self.curr_scope = new_id.clone();
+        return Ok(());
     }
 
-    pub fn exit_scope(&mut self) {
+    pub fn exit_scope(&mut self) -> Result<(), WhammError> {
         match self.get_curr_scope().unwrap().parent {
             Some(parent) => self.curr_scope = parent.clone(),
             None => {
-                error!("Attempted to exit current scope, but there was no parent to exit into.")
+                return Err(ErrorGen::get_unexpected_error(true,
+                    Some(format!("{} Attempted to exit current scope, but there was no parent to exit into.", UNEXPECTED_ERR_MSG)),
+                    None));
             }
         }
+        Ok(())
     }
 
     // Record operations
@@ -249,14 +263,16 @@ impl Scope {
         self.next < self.children.len()
     }
 
-    pub fn next_child(&mut self) -> &usize {
+    pub fn next_child(&mut self) -> Result<&usize, WhammError> {
         if !self.has_next() {
-            error!("Scope::next_child() should never be called without first checking that there is one.")
+            return Err(ErrorGen::get_unexpected_error(true,
+              Some(format!("{} Scope::next_child() should never be called without first checking that there is one.", UNEXPECTED_ERR_MSG)),
+              None));
         }
 
         let next_child = self.children.get(self.next).unwrap();
         self.next += 1;
-        next_child
+        Ok(next_child)
     }
 
     pub fn reset(&mut self) {
@@ -356,7 +372,7 @@ pub enum Record {
         globals: Vec<usize>
     },
     Fn {
-        name: String,
+        name: FnId,
         params: Vec<usize>,
 
         /// The address of this function post-injection
@@ -371,7 +387,21 @@ pub enum Record {
         value: Option<Value>,
 
         /// The address of this var post-injection
-        addr: Option<VarAddr>
+        addr: Option<VarAddr>,
+        loc: Option<Location>
+    }
+}
+impl Record {
+    pub fn loc(&self) -> &Option<Location> {
+        match self {
+            Record::Fn {name, ..} => {
+                &name.loc
+            }
+            Record::Var {loc, ..} => {
+                loc
+            }
+            _ => &None
+        }
     }
 }
 

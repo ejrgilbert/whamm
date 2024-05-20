@@ -3,7 +3,7 @@ use crate::parser::types as parser_types;
 use parser_types::{DataType, Whammy, Whamm, WhammVisitor, Expr, Fn, Event, Package, Op, Probe, Provider, Statement, Value};
 use crate::verifier::types::{Record, ScopeType, SymbolTable};
 
-use log::{error, trace};
+use log::trace;
 use crate::common::error::ErrorGen;
 use crate::parser::types::Global;
 
@@ -11,36 +11,22 @@ const UNEXPECTED_ERR_MSG: &str = "SymbolTableBuilder: Looks like you've found a 
 
 pub struct SymbolTableBuilder<'a> {
     pub table: SymbolTable,
-    err: &'a ErrorGen,
+    pub err: &'a mut ErrorGen,
 
-    curr_whamm: Option<usize>,   // indexes into this::table::records
-    curr_whammy: Option<usize>,  // indexes into this::table::records
-    curr_provider: Option<usize>, // indexes into this::table::records
-    curr_package: Option<usize>,   // indexes into this::table::records
-    curr_event: Option<usize>, // indexes into this::table::records
-    curr_probe: Option<usize>,    // indexes into this::table::records
+    pub curr_whamm: Option<usize>,   // indexes into this::table::records
+    pub curr_whammy: Option<usize>,  // indexes into this::table::records
+    pub curr_provider: Option<usize>, // indexes into this::table::records
+    pub curr_package: Option<usize>,   // indexes into this::table::records
+    pub curr_event: Option<usize>, // indexes into this::table::records
+    pub curr_probe: Option<usize>,    // indexes into this::table::records
 
-    curr_fn: Option<usize>,       // indexes into this::table::records
+    pub curr_fn: Option<usize>,       // indexes into this::table::records
 }
 impl SymbolTableBuilder<'_> {
-    pub fn new(err: &mut ErrorGen) -> Self {
-        SymbolTableBuilder {
-            table: SymbolTable::new(),
-            err,
-            curr_whamm: None,
-            curr_whammy: None,
-            curr_provider: None,
-            curr_package: None,
-            curr_event: None,
-            curr_probe: None,
-            curr_fn: None,
-        }
-    }
-
     fn add_whammy(&mut self, whammy: &Whammy) {
         if self.table.lookup(&whammy.name).is_some() {
             // This should never be the case since it's controlled by the compiler!
-            self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
+            self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
         }
 
         // create record
@@ -60,12 +46,15 @@ impl SymbolTableBuilder<'_> {
                 whammys.push(id.clone());
             }
             _ => {
-                self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
+                self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
             }
         }
 
         // enter whammy scope
-        self.table.enter_scope();
+        match self.table.enter_scope() {
+            Err(e) => self.err.add_error(e),
+            _ => {}
+        }
         self.curr_whammy = Some(id.clone());
 
         // set scope name and type
@@ -76,7 +65,7 @@ impl SymbolTableBuilder<'_> {
     fn add_provider(&mut self, provider: &Provider) {
         if self.table.lookup(&provider.name).is_some() {
             // This should never be the case since it's controlled by the compiler!
-            self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
+            self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
         }
 
         // create record
@@ -96,12 +85,15 @@ impl SymbolTableBuilder<'_> {
                 providers.push(id.clone());
             }
             _ => {
-                self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
+                self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
             }
         }
 
         // enter provider scope
-        self.table.enter_scope();
+        match self.table.enter_scope() {
+            Err(e) => self.err.add_error(e),
+            _ => {}
+        }
         self.curr_provider = Some(id.clone());
 
         // set scope name and type
@@ -111,7 +103,7 @@ impl SymbolTableBuilder<'_> {
     fn add_package(&mut self, package: &Package) {
         if self.table.lookup(&package.name).is_some() {
             // This should never be the case since it's controlled by the compiler!
-            self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
+            self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
         }
 
         // create record
@@ -131,12 +123,15 @@ impl SymbolTableBuilder<'_> {
                 packages.push(id.clone());
             }
             _ => {
-                self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
+                self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
             }
         }
 
         // enter package scope
-        self.table.enter_scope();
+        match self.table.enter_scope() {
+            Err(e) => self.err.add_error(e),
+            _ => {}
+        }
         self.curr_package = Some(id.clone());
 
         // set scope name and type
@@ -146,7 +141,7 @@ impl SymbolTableBuilder<'_> {
     fn add_event(&mut self, event: &Event) {
         if self.table.lookup(&event.name).is_some() {
             // This should never be the case since it's controlled by the compiler!
-            self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
+            self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
         }
 
         // create record
@@ -166,12 +161,15 @@ impl SymbolTableBuilder<'_> {
                 events.push(id.clone());
             }
             _ => {
-                self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
+                self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
             }
         }
 
         // enter event scope
-        self.table.enter_scope();
+        match self.table.enter_scope() {
+            Err(e) => self.err.add_error(e),
+            _ => {}
+        }
         self.curr_event = Some(id.clone());
 
         // set scope name and type
@@ -181,7 +179,7 @@ impl SymbolTableBuilder<'_> {
     fn add_probe(&mut self, probe: &Probe) {
         if self.table.lookup(&probe.name).is_some() {
             // This should never be the case since it's controlled by the compiler!
-            self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
+            self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
         }
 
         // create record
@@ -200,12 +198,15 @@ impl SymbolTableBuilder<'_> {
                 probes.push(id.clone());
             }
             _ => {
-                self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
+                self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
             }
         }
 
         // enter probe scope
-        self.table.enter_scope();
+        match self.table.enter_scope() {
+            Err(e) => self.err.add_error(e),
+            _ => {}
+        }
         self.curr_probe = Some(id.clone());
 
         // set scope name and type
@@ -213,9 +214,21 @@ impl SymbolTableBuilder<'_> {
     }
 
     fn add_fn(&mut self, f: &Fn) {
-        if self.table.lookup(&f.name).is_some() {
-            // TODO -- add new error type (DuplicateIdentifier?)
-            error!("duplicated fn [ {} ]", &f.name);
+        let f_name = &f.name;
+        if let Some(other_fn_id) = self.table.lookup(&f_name.name) {
+            if let Some(other_rec) = self.table.get_record(other_fn_id) {
+                if let (Some(curr_loc), Some(other_loc))= (&f_name.loc, other_rec.loc()) {
+                    self.err.duplicate_identifier_error(false, f_name.name.clone(), curr_loc.line_col.clone(), other_loc.line_col.clone());
+                } else {
+                    // This should never be the case since it's controlled by the compiler!
+                    self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+                    unreachable!()
+                }
+            } else {
+                // This should never be the case since it's controlled by the compiler!
+                self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+                unreachable!()
+            };
         }
 
         // create record
@@ -226,17 +239,20 @@ impl SymbolTableBuilder<'_> {
         };
 
         // Add fn to scope
-        let id = self.table.put(f.name.clone(), fn_rec);
+        let id = self.table.put(f.name.name.clone(), fn_rec);
 
         // add fn record to the current record
         self.add_fn_id_to_curr_rec(id);
 
         // enter fn scope
-        self.table.enter_scope();
+        match self.table.enter_scope() {
+            Err(e) => self.err.add_error(e),
+            _ => {}
+        }
         self.curr_fn = Some(id.clone());
 
         // set scope name and type
-        self.table.set_curr_scope_info(f.name.clone(), ScopeType::Fn);
+        self.table.set_curr_scope_info(f.name.name.clone(), ScopeType::Fn);
 
         // visit parameters
         f.params.iter().for_each(| param | self.visit_formal_param(param));
@@ -253,7 +269,7 @@ impl SymbolTableBuilder<'_> {
                 fns.push(id.clone());
             }
             _ => {
-                self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
+                self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
             }
         }
     }
@@ -262,7 +278,7 @@ impl SymbolTableBuilder<'_> {
         let name = match var_id {
             Expr::VarId {name, ..} => name,
             _ => {
-                self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
+                self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
                 // should have exited above (since it's a fatal error)
                 unreachable!()
             }
@@ -273,7 +289,8 @@ impl SymbolTableBuilder<'_> {
             name: name.clone(),
             ty: ty.clone(),
             value: None,
-            addr: None
+            addr: None,
+            loc: var_id.loc().clone()
         };
 
         // add var to scope
@@ -285,7 +302,7 @@ impl SymbolTableBuilder<'_> {
                 params.push(id.clone());
             }
             _ => {
-                self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
+                self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
             }
         }
     }
@@ -293,8 +310,9 @@ impl SymbolTableBuilder<'_> {
     /// Insert `global` record into scope
     fn add_global(&mut self, ty: DataType, name: String) {
         if self.table.lookup(&name).is_some() {
-            // TODO -- add new error type (DuplicateIdentifier?)
-            error!("duplicated identifier [ {} ]", name);
+            // This should never be the case since it's controlled by the compiler!
+            self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+            unreachable!()
         }
 
         // Add global to scope
@@ -302,7 +320,8 @@ impl SymbolTableBuilder<'_> {
             ty,
             name,
             value: None,
-            addr: None
+            addr: None,
+            loc: None
         });
 
         // add global record to the current record
@@ -359,7 +378,10 @@ impl WhammVisitor<()> for SymbolTableBuilder<'_> {
         });
 
         trace!("Exiting: visit_whammy");
-        self.table.exit_scope();
+        match self.table.exit_scope() {
+            Err(e) => self.err.add_error(e),
+            _ => {}
+        }
         self.curr_whammy = None;
     }
 
@@ -374,7 +396,10 @@ impl WhammVisitor<()> for SymbolTableBuilder<'_> {
         });
 
         trace!("Exiting: visit_provider");
-        self.table.exit_scope();
+        match self.table.exit_scope() {
+            Err(e) => self.err.add_error(e),
+            _ => {}
+        }
         self.curr_provider = None;
     }
 
@@ -389,7 +414,10 @@ impl WhammVisitor<()> for SymbolTableBuilder<'_> {
         });
 
         trace!("Exiting: visit_package");
-        self.table.exit_scope();
+        match self.table.exit_scope() {
+            Err(e) => self.err.add_error(e),
+            _ => {}
+        }
         self.curr_package = None;
     }
 
@@ -408,7 +436,10 @@ impl WhammVisitor<()> for SymbolTableBuilder<'_> {
         });
 
         trace!("Exiting: visit_event");
-        self.table.exit_scope();
+        match self.table.exit_scope() {
+            Err(e) => self.err.add_error(e),
+            _ => {}
+        }
         self.curr_event = None;
     }
 
@@ -422,7 +453,10 @@ impl WhammVisitor<()> for SymbolTableBuilder<'_> {
         // Will not visit predicate/body at this stage
 
         trace!("Exiting: visit_probe");
-        self.table.exit_scope();
+        match self.table.exit_scope() {
+            Err(e) => self.err.add_error(e),
+            _ => {}
+        }
         self.curr_probe = None;
     }
 
@@ -435,7 +469,10 @@ impl WhammVisitor<()> for SymbolTableBuilder<'_> {
         // Will not visit predicate/body at this stage
 
         trace!("Exiting: visit_fn");
-        self.table.exit_scope();
+        match self.table.exit_scope() {
+            Err(e) => self.err.add_error(e),
+            _ => {}
+        }
         self.curr_fn = None;
     }
 
@@ -450,26 +487,26 @@ impl WhammVisitor<()> for SymbolTableBuilder<'_> {
 
     fn visit_stmt(&mut self, _assign: &Statement) -> () {
         // Not visiting event/probe bodies
-        self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
+        self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
     }
 
     fn visit_expr(&mut self, _call: &Expr) -> () {
         // Not visiting predicates/statements
-        self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
+        self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
     }
 
     fn visit_op(&mut self, _op: &Op) -> () {
         // Not visiting predicates/statements
-        self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
+        self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
     }
 
     fn visit_datatype(&mut self, _datatype: &DataType) -> () {
         // Not visiting predicates/statements
-        self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
+        self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
     }
 
     fn visit_value(&mut self, _val: &Value) -> () {
         // Not visiting predicates/statements
-        self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()));
+        self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
     }
 }

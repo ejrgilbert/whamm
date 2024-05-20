@@ -1,1 +1,1 @@
-wasm:bytecode:call:alt: { }
+wasm:bytecode:call:altm { }

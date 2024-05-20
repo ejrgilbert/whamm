@@ -293,7 +293,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         let mut s = "".to_string();
 
         // print name
-        s += &format!("{} {} (", self.get_indent(), f.name);
+        s += &format!("{} {} (", self.get_indent(), f.name.name);
 
         // print params
         for param in f.params.iter() {

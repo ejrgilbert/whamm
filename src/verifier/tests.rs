@@ -2,6 +2,7 @@ use crate::parser::tests;
 use crate::verifier::verifier;
 
 use log::{error};
+use crate::common::error::ErrorGen;
 
 // =================
 // = Setup Logging =
@@ -26,15 +27,17 @@ const VALID_SCRIPTS: &'static [&'static str] = &[
 #[test]
 pub fn test_build_table() {
     setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
 
     for script in VALID_SCRIPTS {
-        match tests::get_ast(script) {
+        match tests::get_ast(script, &mut err) {
             Some(ast) => {
-                let table = verifier::build_symbol_table(&ast);
+                let table = verifier::build_symbol_table(&ast, &mut err);
                 println!("{:#?}", table);
             },
             None => {
                 error!("Could not get ast from script: {}", script);
+                err.report();
                 assert!(false);
             }
         };
@@ -54,10 +57,11 @@ wasm::call:alt /
     new_target_fn_name = "redirect_to_fault_injector";
 }
     "#;
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
 
-    match tests::get_ast(script) {
+    match tests::get_ast(script, &mut err) {
         Some(ast) => {
-            let table = verifier::build_symbol_table(&ast);
+            let table = verifier::build_symbol_table(&ast, &mut err);
             println!("{:#?}", table);
 
             // 7 scopes: whamm, strcmp, whammy, wasm, bytecode, call, alt

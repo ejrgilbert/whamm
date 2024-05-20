@@ -8,7 +8,7 @@ use pest::iterators::{Pair, Pairs};
 
 use log::{trace};
 use crate::common::error::{ErrorGen, WhammError};
-use crate::parser::types::{DataType, Whammy, Whamm, Expr, Statement, Value, Location};
+use crate::parser::types::{DataType, Whammy, Whamm, Expr, Statement, Value, Location, ProbeSpec, SpecPart};
 
 const UNEXPECTED_ERR_MSG: &str = "WhammParser: Looks like you've found a bug...please report this behavior! Exiting now...";
 
@@ -60,8 +60,8 @@ pub fn to_ast(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Whamm, Error<Rule>
         rule => {
             err.parse_error(true,
                 Some(UNEXPECTED_ERR_MSG.to_string()),
-                LineColLocation::Pos(pair.line_col()),
-                            vec![Rule::whammy], vec![rule]);
+                LineColLocation::from(pair.as_span()),
+                vec![Rule::whammy], vec![rule]);
             // should have exited above (since it's a fatal error)
             unreachable!()
         }
@@ -91,14 +91,8 @@ pub fn process_pair(whamm: &mut Whamm, whammy_count: usize, pair: Pair<Rule>, er
             trace!("Entering probe_def");
             let mut pair = pair.into_inner();
             let spec_rule = pair.next().unwrap();
-            let spec = probe_spec_from_rule(spec_rule, err);
-            let mut spec_split = spec.split(":");
-
             // Get out the spec info
-            let provider = spec_split.next().unwrap();
-            let package = spec_split.next().unwrap();
-            let event = spec_split.next().unwrap();
-            let name = spec_split.next().unwrap();
+            let probe_spec = probe_spec_from_rule(spec_rule, err);
 
             // Get out the probe predicate/body contents
             let next = pair.next();
@@ -146,7 +140,12 @@ pub fn process_pair(whamm: &mut Whamm, whammy_count: usize, pair: Pair<Rule>, er
 
             // Add probe definition to the whammy
             let whammy: &mut Whammy = whamm.whammys.get_mut(whammy_count).unwrap();
-            whammy.add_probe(&whamm.provided_probes, provider, package, event, name, this_predicate, this_body);
+            match whammy.add_probe(&whamm.provided_probes, &probe_spec, this_predicate, this_body) {
+                Err(e) => {
+                    err.add_error(e);
+                },
+                _ => {}
+            }
 
             trace!("Exiting probe_def");
         },
@@ -154,7 +153,7 @@ pub fn process_pair(whamm: &mut Whamm, whammy_count: usize, pair: Pair<Rule>, er
         rule => {
             err.parse_error(true,
                             Some(UNEXPECTED_ERR_MSG.to_string()),
-                            LineColLocation::Pos(pair.line_col()),
+                            LineColLocation::from(pair.as_span()),
                             vec![Rule::whammy, Rule::probe_def, Rule::EOI], vec![rule]);
             // should have exited above (since it's a fatal error)
             unreachable!()
@@ -170,7 +169,7 @@ fn fn_call_from_rule(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     // handle fn target
     let fn_rule = pair.next().unwrap();
 
-    let fn_target_line_col = LineColLocation::Pos(fn_rule.line_col());
+    let fn_target_line_col = LineColLocation::from(fn_rule.as_span());
     let fn_target = Expr::VarId {
         name: fn_rule.as_str().parse().unwrap(),
         loc: Some(Location {
@@ -256,7 +255,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Statement {
             let var_id_rule = pair.next().unwrap();
             let expr_rule = pair.next().unwrap().into_inner();
 
-            let var_id_line_col = LineColLocation::Pos(var_id_rule.line_col());
+            let var_id_line_col = LineColLocation::from(var_id_rule.as_span());
 
             let var_id = Expr::VarId {
                 name: var_id_rule.as_str().parse().unwrap(),
@@ -309,7 +308,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Statement {
         rule => {
             err.parse_error(true,
                             Some(UNEXPECTED_ERR_MSG.to_string()),
-                            LineColLocation::Pos(pair.line_col()),
+                            LineColLocation::from(pair.as_span()),
                             vec![Rule::statement, Rule::assignment, Rule::fn_call], vec![rule]);
             // should have exited above (since it's a fatal error)
             unreachable!();
@@ -317,63 +316,123 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Statement {
     }
 }
 
-fn probe_spec_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> String {
-    trace!("Entered probe_spec_from_rule");
+fn probe_spec_part_from_rule(pair: Pair<Rule>, err: &mut ErrorGen)  -> SpecPart {
+    trace!("Entered probe_spec_part_from_rule");
     match pair.as_rule() {
         Rule::PROBE_ID => {
             trace!("Entering PROBE_ID");
             let name: String = pair.as_str().parse().unwrap();
+            let id_line_col =  LineColLocation::from(pair.as_span());
+
+            let part = SpecPart {
+                name,
+                loc: Some(Location {
+                    line_col: id_line_col,
+                    path: None
+                })
+            };
             trace!("Exiting PROBE_ID");
 
-            trace!("Exiting probe_spec_from_rule");
-            return name
+            trace!("Exiting probe_spec_part_from_rule");
+            return part
         },
+        rule => {
+            err.parse_error(true,
+                            Some(UNEXPECTED_ERR_MSG.to_string()),
+                            LineColLocation::from(pair.as_span()),
+                            vec![Rule::PROBE_ID, Rule::PROBE_ID], vec![rule]);
+            // should have exited above (since it's a fatal error)
+            unreachable!();
+        }
+    }
+}
+
+fn probe_spec_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeSpec {
+    trace!("Entered probe_spec_from_rule");
+    match pair.as_rule() {
         Rule::PROBE_SPEC => {
             trace!("Entering PROBE_SPEC");
             let spec_as_str = pair.as_str();
             let mut parts = pair.into_inner();
 
+            if spec_as_str.to_uppercase() == "BEGIN" || spec_as_str.to_uppercase() == "END" {
+                // This is a BEGIN or END probe! Special case
+                let loc = if let Some(rule) = parts.next() {
+                    let id_line_col = LineColLocation::from(rule.as_span());
+                    Some(Location {
+                        line_col: id_line_col,
+                        path: None
+                    })
+                } else {
+                    None
+                };
+
+                return ProbeSpec {
+                    provider: Some(SpecPart {
+                        name: "core".to_string(),
+                        loc: loc.clone()
+                    }),
+                    package: Some(SpecPart {
+                        name: "*".to_string(),
+                        loc: loc.clone()
+                    }),
+                    event: Some(SpecPart {
+                        name: "*".to_string(),
+                        loc: loc.clone()
+                    }),
+                    mode: Some(SpecPart {
+                        name: "BEGIN".to_string(),
+                        loc
+                    }),
+                }
+            }
+
             let str_parts = spec_as_str.split(":");
 
+            let mut probe_spec = ProbeSpec::new();
             let mut contents: Vec<String> = vec![];
             for s in str_parts {
                 if s == "" {
+                    probe_spec.add_spec_def(SpecPart {
+                        name: "*".to_string(),
+                        loc: None
+                    });
                     contents.push("*".to_string());
                     continue;
                 }
                 let next = parts.next();
 
-                let res = match next {
+                match next {
                     Some(part) => {
                         match part.as_rule() {
                             Rule::PROBE_ID => {
-                                probe_spec_from_rule(part, err)
+                                let n = probe_spec_part_from_rule(part, err);
+                                probe_spec.add_spec_def(n);
+
                             },
-                            _ => "*".to_string()
+                            _ => {
+                                probe_spec.add_spec_def(SpecPart {
+                                    name: "*".to_string(),
+                                    loc: None
+                                });
+                            }
                         }
                     }
                     None => {
                         break;
                     }
                 };
-                contents.push(res);
             }
             trace!("Exiting PROBE_SPEC");
             trace!("Exiting probe_spec_from_rule");
-            if contents.len() == 1 {
-                // This is a BEGIN or END probe! Special case
-                contents.insert(0, "*".to_string());
-                contents.insert(0, "*".to_string());
-                contents.insert(0, "core".to_string());
-            }
 
-            return contents.join(":")
+            return probe_spec
         },
         rule => {
             err.parse_error(true,
                             Some(UNEXPECTED_ERR_MSG.to_string()),
-                            LineColLocation::Pos(pair.line_col()),
-                            vec![Rule::PROBE_ID, Rule::PROBE_ID], vec![rule]);
+                            LineColLocation::from(pair.as_span()),
+                            vec![Rule::PROBE_SPEC], vec![rule]);
             // should have exited above (since it's a fatal error)
             unreachable!();
         }
@@ -390,7 +449,7 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
             return Ok(Expr::VarId {
                 name: pair.as_str().parse().unwrap(),
                 loc: Some(Location {
-                    line_col: LineColLocation::Pos(pair.line_col()),
+                    line_col: LineColLocation::from(pair.as_span()),
                     path: None
                 })
             });
@@ -398,7 +457,7 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
         Rule::tuple => {
             trace!("Entering tuple");
             // handle contents
-            let pair_line_col = pair.line_col();
+            let pair_line_col = LineColLocation::from(pair.as_span());
             let mut vals = vec![];
 
             for inner in pair.into_inner() {
@@ -417,7 +476,7 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                     vals
                 },
                 loc: Some(Location {
-                    line_col: LineColLocation::Pos(pair_line_col),
+                    line_col: pair_line_col,
                     path: None
                 })
             });
@@ -433,7 +492,7 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                     val
                 },
                 loc: Some(Location {
-                    line_col: LineColLocation::Pos(pair.line_col()),
+                    line_col: LineColLocation::from(pair.as_span()),
                     path: None
                 })
             });
@@ -449,7 +508,7 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                     val
                 },
                 loc: Some(Location {
-                    line_col: LineColLocation::Pos(pair.line_col()),
+                    line_col: LineColLocation::from(pair.as_span()),
                     path: None
                 })
             });
@@ -472,7 +531,7 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                     addr: None
                 },
                 loc: Some(Location {
-                    line_col: LineColLocation::Pos(pair.line_col()),
+                    line_col: LineColLocation::from(pair.as_span()),
                     path: None
                 })
             });
@@ -514,7 +573,7 @@ fn expr_from_pairs(pairs: Pairs<Rule>) -> Result<Expr, Vec<WhammError>> {
                             return Err(vec![ErrorGen::get_parse_error(
                                 true,
                                 Some(UNEXPECTED_ERR_MSG.to_string()),
-                                LineColLocation::Pos(op.line_col()),
+                                LineColLocation::from(op.as_span()),
                                 vec![Rule::and, Rule::or, Rule::eq, Rule::ne, Rule::ge, Rule::gt, Rule::le, Rule::lt,
                                         Rule::add, Rule::subtract, Rule::multiply, Rule::divide, Rule::modulo],
                                 vec![rule])]);

@@ -4,6 +4,7 @@
 
 use std::collections::HashMap;
 use log::{trace, warn};
+use crate::common::error::ErrorGen;
 use crate::generator::emitters::Emitter;
 use crate::parser::types::{DataType, Whammy, Whamm, WhammVisitorMut, Expr, Event, Package, Op, Probe, Provider, Statement, Value, Global};
 
@@ -16,10 +17,11 @@ use crate::parser::types::{DataType, Whammy, Whamm, WhammVisitorMut, Expr, Event
 /// instrumentation technique by the Emitter field.
 pub struct InitGenerator<'a> {
     pub emitter: Box<&'a mut dyn Emitter>,
-    pub context_name: String
+    pub context_name: String,
+    pub err: &'a mut ErrorGen
 }
 impl InitGenerator<'_> {
-    pub fn run(&mut self, whamm: &mut Whamm) -> bool {
+    pub fn run(&mut self, whamm: &mut Whamm) -> bool  {
         // Generate globals and fns defined by `whamm` (this should modify the app_wasm)
         self.visit_whamm(whamm)
     }
@@ -30,7 +32,12 @@ impl InitGenerator<'_> {
         for (name, global) in globals.iter() {
             // do not inject globals into Wasm that are used/defined by the compiler
             if !global.is_comp_provided {
-                is_success &= self.emitter.emit_global(name.clone(), global.ty.clone(), &global.value);
+                match self.emitter.emit_global(name.clone(), global.ty.clone(), &global.value) {
+                    Err(e) => self.err.add_error(e),
+                    Ok(res) => {
+                        is_success &= res
+                    }
+                }
             }
         }
 
@@ -62,7 +69,10 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
 
     fn visit_whammy(&mut self, whammy: &mut Whammy) -> bool {
         trace!("Entering: CodeGenerator::visit_whammy");
-        self.emitter.enter_scope();
+        match self.emitter.enter_scope() {
+            Err(e) => self.err.add_error(e),
+            _ => {}
+        }
         self.context_name += &format!(":{}", whammy.name.clone());
         let mut is_success = true;
 
@@ -78,7 +88,10 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         });
 
         trace!("Exiting: CodeGenerator::visit_whammy");
-        self.emitter.exit_scope();
+        match self.emitter.exit_scope() {
+            Err(e) => self.err.add_error(e),
+            _ => {}
+        }
         // Remove from `context_name`
         self.context_name = self.context_name[..self.context_name.rfind(":").unwrap()].to_string();
         is_success
@@ -86,7 +99,10 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
 
     fn visit_provider(&mut self, provider: &mut Provider) -> bool {
         trace!("Entering: CodeGenerator::visit_provider");
-        self.emitter.enter_scope();
+        match self.emitter.enter_scope() {
+            Err(e) => self.err.add_error(e),
+            _ => {}
+        }
         self.context_name += &format!(":{}", provider.name.clone());
         let mut is_success = true;
 
@@ -102,7 +118,10 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         });
 
         trace!("Exiting: CodeGenerator::visit_provider");
-        self.emitter.exit_scope();
+        match self.emitter.exit_scope() {
+            Err(e) => self.err.add_error(e),
+            _ => {}
+        }
         // Remove this package from `context_name`
         self.context_name = self.context_name[..self.context_name.rfind(":").unwrap()].to_string();
         is_success
@@ -110,7 +129,10 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
 
     fn visit_package(&mut self, package: &mut Package) -> bool {
         trace!("Entering: CodeGenerator::visit_package");
-        self.emitter.enter_scope();
+        match self.emitter.enter_scope() {
+            Err(e) => self.err.add_error(e),
+            _ => {}
+        }
         let mut is_success = true;
         self.context_name += &format!(":{}", package.name.clone());
 
@@ -126,7 +148,10 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         });
 
         trace!("Exiting: CodeGenerator::visit_package");
-        self.emitter.exit_scope();
+        match self.emitter.exit_scope() {
+            Err(e) => self.err.add_error(e),
+            _ => {}
+        }
         // Remove this package from `context_name`
         self.context_name = self.context_name[..self.context_name.rfind(":").unwrap()].to_string();
         is_success
@@ -134,7 +159,10 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
 
     fn visit_event(&mut self, event: &mut Event) -> bool {
         trace!("Entering: CodeGenerator::visit_event");
-        self.emitter.enter_scope();
+        match self.emitter.enter_scope() {
+            Err(e) => self.err.add_error(e),
+            _ => {}
+        }
         // let mut is_success = self.emitter.emit_event(event);
         self.context_name += &format!(":{}", event.name.clone());
         let mut is_success = true;
@@ -171,7 +199,10 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         }
 
         trace!("Exiting: CodeGenerator::visit_event");
-        self.emitter.exit_scope();
+        match self.emitter.exit_scope() {
+            Err(e) => self.err.add_error(e),
+            _ => {}
+        }
         // Remove this event from `context_name`
         self.context_name = self.context_name[..self.context_name.rfind(":").unwrap()].to_string();
         is_success
@@ -179,7 +210,10 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
 
     fn visit_probe(&mut self, probe: &mut Probe) -> bool {
         trace!("Entering: CodeGenerator::visit_probe");
-        self.emitter.enter_scope();
+        match self.emitter.enter_scope() {
+            Err(e) => self.err.add_error(e),
+            _ => {}
+        }
         // let mut is_success = self.emitter.emit_probe(probe);
         self.context_name += &format!(":{}", probe.name.clone());
         let mut is_success = true;
@@ -192,7 +226,10 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         is_success &= self.visit_globals(&probe.globals);
 
         trace!("Exiting: CodeGenerator::visit_probe");
-        self.emitter.exit_scope();
+        match self.emitter.exit_scope() {
+            Err(e) => self.err.add_error(e),
+            _ => {}
+        }
         // Remove this probe from `context_name`
         self.context_name = self.context_name[..self.context_name.rfind(":").unwrap()].to_string();
         is_success
@@ -200,13 +237,22 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
 
     fn visit_fn(&mut self, f: &mut crate::parser::types::Fn) -> bool {
         trace!("Entering: CodeGenerator::visit_fn");
-        self.emitter.enter_scope();
+        match self.emitter.enter_scope() {
+            Err(e) => self.err.add_error(e),
+            _ => {}
+        }
         let mut is_success = true;
         if f.is_comp_provided {
-            is_success = self.emitter.emit_fn(&self.context_name, f);
+            match self.emitter.emit_fn(&self.context_name, f) {
+                Err(e) => self.err.add_error(e),
+                Ok(res) => is_success = res
+            }
         }
         trace!("Exiting: CodeGenerator::visit_fn");
-        self.emitter.exit_scope();
+        match self.emitter.exit_scope() {
+            Err(e) => self.err.add_error(e),
+            _ => {}
+        }
         is_success
     }
 

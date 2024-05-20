@@ -165,8 +165,11 @@ fn run_instr(app_wasm_path: String, whammy_path: String, output_wasm_path: Strin
     let mut init = InitGenerator {
         emitter: Box::new(&mut emitter),
         context_name: "".to_string(),
+        err: &mut err
     };
     init.run(&mut whamm);
+    // If there were any errors encountered, report and exit!
+    err.check_has_errors();
 
     // Phase 1 of instrumentation (actually emits the instrumentation code)
     // This structure is necessary since we need to have the fns/globals injected (a single time)
@@ -175,6 +178,7 @@ fn run_instr(app_wasm_path: String, whammy_path: String, output_wasm_path: Strin
         tree: &behavior_tree,
         emitter: Box::new(&mut emitter),
         ast: simple_ast,
+        err: &mut err,
         context_name: "".to_string(),
         curr_provider_name: "".to_string(),
         curr_package_name: "".to_string(),
@@ -183,8 +187,15 @@ fn run_instr(app_wasm_path: String, whammy_path: String, output_wasm_path: Strin
         curr_probe: None,
     };
     instr.run(&behavior_tree);
+    // If there were any errors encountered, report and exit!
+    err.check_has_errors();
 
-    emitter.dump_to_file(output_wasm_path);
+    match emitter.dump_to_file(output_wasm_path) {
+        Err(e) => err.add_error(e),
+        _ => {}
+    }
+    // If there were any errors encountered, report and exit!
+    err.check_has_errors();
 }
 
 fn run_vis_wasm(wasm_path: String, output_path: String) {
@@ -263,7 +274,7 @@ fn run_vis_whammy(whammy_path: String, run_verifier: bool, output_path: String) 
 }
 
 fn get_symbol_table(ast: &Whamm, run_verifier: bool, err: &mut ErrorGen) -> SymbolTable {
-    let st = build_symbol_table(&ast);
+    let st = build_symbol_table(&ast, err);
     err.check_too_many();
     verify_ast(ast, run_verifier, err);
     st
@@ -304,7 +315,7 @@ fn get_whammy_ast(whammy_path: &String, err: &mut ErrorGen) -> Whamm {
 
 fn build_behavior(whamm: &Whamm, err: &mut ErrorGen) -> (BehaviorTree, SimpleAST) {
     // Build the behavior tree from the AST
-    let (mut behavior, simple_ast) = build_behavior_tree(&whamm);
+    let (mut behavior, simple_ast) = build_behavior_tree(&whamm, err);
     err.check_too_many();
     behavior.reset();
 
