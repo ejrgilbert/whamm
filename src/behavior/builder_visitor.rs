@@ -4,43 +4,42 @@ use std::collections::HashMap;
 use crate::parser::types as parser_types;
 use parser_types::{DataType, Whammy, Whamm, WhammVisitor, Expr, Fn, Event, Package, Op, Probe, Provider, Statement, Value};
 
-use log::{debug, error, trace};
+use log::{debug, trace};
 use regex::Regex;
 use crate::behavior::tree::ParamActionType;
 use crate::behavior::tree::DecoratorType::{HasAltCall, PredIs};
+use crate::common::error::ErrorGen;
 use crate::parser::types::Global;
 
 pub type SimpleAST = HashMap<String, HashMap<String, HashMap<String, HashMap<String, Vec<Probe>>>>>;
 
-pub fn build_behavior_tree(ast: &Whamm) -> (BehaviorTree, SimpleAST) {
-    let mut visitor = BehaviorTreeBuilder::new();
+pub fn build_behavior_tree(ast: &Whamm, err: &mut ErrorGen) -> (BehaviorTree, SimpleAST) {
+    let mut visitor = BehaviorTreeBuilder {
+        tree: BehaviorTree::new(),
+        ast: HashMap::new(),
+        err,
+        context_name: "".to_string(),
+        curr_provider_name: "".to_string(),
+        curr_package_name: "".to_string(),
+        curr_event_name: "".to_string()
+    };
     visitor.visit_whamm(ast);
 
     debug!("{:#?}", visitor.ast);
     (visitor.tree, visitor.ast)
 }
 
-pub struct BehaviorTreeBuilder {
+pub struct BehaviorTreeBuilder<'a> {
     pub tree: BehaviorTree,
     pub ast: SimpleAST,
+    pub err: &'a mut ErrorGen,
+
     pub context_name: String,
     curr_provider_name: String,
     curr_package_name: String,
     curr_event_name: String
 }
-impl BehaviorTreeBuilder {
-    pub fn new() -> Self {
-        Self {
-            tree: BehaviorTree::new(),
-            ast: HashMap::new(),
-            context_name: "".to_string(),
-            curr_provider_name: "".to_string(),
-            curr_package_name: "".to_string(),
-            curr_event_name: "".to_string()
-        }
-    }
-}
-impl BehaviorTreeBuilder {
+impl BehaviorTreeBuilder<'_> {
     // =======
     // = AST =
     // =======
@@ -100,18 +99,18 @@ impl BehaviorTreeBuilder {
 
     fn visit_globals(&mut self, globals: &HashMap<String, Global>) {
         if globals.len() > 0 {
-            self.tree.sequence();
+            self.tree.sequence(self.err);
 
             // visit globals
             for (_name, global) in globals.iter() {
                 if global.is_comp_provided {
-                    if let Expr::VarId { name } = &global.var_name {
+                    if let Expr::VarId { name, ..} = &global.var_name {
                         self.tree.define(self.context_name.clone(),
-                                         name.clone());
+                                         name.clone(), self.err);
                     }
                 }
             }
-            self.tree.exit_sequence();
+            self.tree.exit_sequence(self.err);
         }
     }
 
@@ -137,21 +136,21 @@ impl BehaviorTreeBuilder {
                 context: self.context_name.clone(),
                 package_name: package.name.clone(),
                 events,
-            });
+            }, self.err);
             for (_name, event) in package.events.iter() {
                 // just grab the first one and emit behavior (the decorator above is what
                 // makes this apply to all events)
                 self.visit_event(event);
                 break;
             }
-            self.tree.exit_action_with_child();
+            self.tree.exit_action_with_child(self.err);
         }
     }
 
     fn visit_bytecode_event(&mut self, event: &Event) {
         // Only create a sequence if there are multiple probes we're emitting
         if event.probe_map.len() > 1 {
-            self.tree.sequence();
+            self.tree.sequence(self.err);
         }
 
         self.visit_probe_ty(event, "before");
@@ -159,7 +158,7 @@ impl BehaviorTreeBuilder {
         self.visit_probe_ty(event, "after");
 
         if event.probe_map.len() > 1 {
-            self.tree.exit_sequence();
+            self.tree.exit_sequence(self.err);
         }
     }
 
@@ -174,112 +173,112 @@ impl BehaviorTreeBuilder {
     }
 
     fn visit_bytecode_probe(&mut self, probe: &Probe) {
-        self.tree.sequence()
-            .save_params(true)
-            .fallback()
+        self.tree.sequence(self.err)
+            .save_params(true, self.err)
+            .fallback(self.err)
                 .decorator(PredIs {
                     val: true
-                })
-                    .sequence()
-                        .fallback()
+                }, self.err)
+                    .sequence(self.err)
+                        .fallback(self.err)
                             .decorator(DecoratorType::IsProbeType {
                                 probe_type: "alt".to_string()
-                            })
-                                .remove_orig()
-                                .exit_decorator()
-                            .force_success()
-                            .exit_fallback()
-                        .emit_body()
-                        .emit_params(true)
-                        .fallback()
-                            .decorator(HasAltCall)
-                                .emit_alt_call()
-                                .exit_decorator()
-                            .force_success()
-                            .exit_fallback()
-                        .exit_sequence()
-                    .exit_decorator()
-                .fallback()
+                            }, self.err)
+                                .remove_orig(self.err)
+                                .exit_decorator(self.err)
+                            .force_success(self.err)
+                            .exit_fallback(self.err)
+                        .emit_body(self.err)
+                        .emit_params(true, self.err)
+                        .fallback(self.err)
+                            .decorator(HasAltCall, self.err)
+                                .emit_alt_call(self.err)
+                                .exit_decorator(self.err)
+                            .force_success(self.err)
+                            .exit_fallback(self.err)
+                        .exit_sequence(self.err)
+                    .exit_decorator(self.err)
+                .fallback(self.err)
                     // before behavior
                     .decorator(DecoratorType::IsProbeType {
                         probe_type: "before".to_string()
-                    });
+                    }, self.err);
 
         self.emit_bytecode_probe_before_body(probe);
-        self.tree.exit_decorator()
+        self.tree.exit_decorator(self.err)
             // alt behavior
             .decorator(DecoratorType::IsProbeType {
                 probe_type: "alt".to_string()
-            });
+            }, self.err);
         self.emit_bytecode_probe_alt_body(probe);
-        self.tree.exit_decorator()
+        self.tree.exit_decorator(self.err)
             // after behavior
             .decorator(DecoratorType::IsProbeType {
                 probe_type: "after".to_string()
-            });
+            }, self.err);
         self.emit_bytecode_probe_after_body(probe);
-        self.tree.exit_decorator()
+        self.tree.exit_decorator(self.err)
             // exit
-            .exit_fallback()
-            .exit_fallback()
-            .exit_sequence();
+            .exit_fallback(self.err)
+            .exit_fallback(self.err)
+            .exit_sequence(self.err);
     }
 
     fn emit_bytecode_probe_before_body(&mut self, _probe: &Probe) {
         self.tree.parameterized_action(ParamActionType::EmitIf {
             cond: 0,
             conseq: 1
-        })
-            .emit_pred()
-            .emit_body()
-            .exit_parameterized_action();
+        }, self.err)
+            .emit_pred(self.err)
+            .emit_body(self.err)
+            .exit_parameterized_action(self.err);
     }
 
     fn emit_bytecode_probe_alt_body(&mut self, _probe: &Probe) {
-        self.tree.sequence()
-            .remove_orig()
+        self.tree.sequence(self.err)
+            .remove_orig(self.err)
             .parameterized_action(ParamActionType::EmitIfElse {
                 cond: 0,
                 conseq: 1,
                 alt: 2
-            })
-                .emit_pred()
-                .sequence()
-                    .emit_body()
-                    .fallback()
-                        .decorator(HasAltCall)
-                            .sequence() // TODO -- remove need for this (just have normal lib::<fn_name>() call syntax)
-                                .emit_params(true)
-                                .emit_alt_call()
-                                .exit_sequence()
-                            .exit_decorator()
-                        .force_success()
-                        .exit_fallback()
-                    .exit_sequence()
-                .sequence()
-                    .emit_params(true)
-                    .emit_orig()
-                    .exit_sequence()
-                .exit_parameterized_action()
-            .exit_sequence();
+            }, self.err)
+                .emit_pred(self.err)
+                .sequence(self.err)
+                    .emit_body(self.err)
+                    .fallback(self.err)
+                        .decorator(HasAltCall, self.err)
+                            .sequence(self.err) // TODO -- remove need for this (just have normal lib::<fn_name>() call syntax)
+                                .emit_params(true, self.err)
+                                .emit_alt_call(self.err)
+                                .exit_sequence(self.err)
+                            .exit_decorator(self.err)
+                        .force_success(self.err)
+                        .exit_fallback(self.err)
+                    .exit_sequence(self.err)
+                .sequence(self.err)
+                    .emit_params(true, self.err)
+                    .emit_orig(self.err)
+                    .exit_sequence(self.err)
+                .exit_parameterized_action(self.err)
+            .exit_sequence(self.err);
     }
 
     fn emit_bytecode_probe_after_body(&mut self, _probe: &Probe) {
         self.tree.parameterized_action(ParamActionType::EmitIf {
             cond: 0,
             conseq: 1
-        })
-            .emit_pred()
-            .emit_body()
-            .exit_parameterized_action();
+        }, self.err)
+            .emit_pred(self.err)
+            .emit_body(self.err)
+            .exit_parameterized_action(self.err);
     }
 }
-impl WhammVisitor<()> for BehaviorTreeBuilder {
+impl WhammVisitor<()> for BehaviorTreeBuilder<'_> {
     fn visit_whamm(&mut self, whamm: &Whamm) -> () {
         trace!("Entering: BehaviorTreeBuilder::visit_whamm");
         self.context_name  = "whamm".to_string();
 
-        self.tree.sequence();
+        self.tree.sequence(self.err);
             // .enter_scope(self.context_name.clone());
 
         // visit globals
@@ -291,7 +290,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder {
         // self.tree.exit_scope();
 
         trace!("Exiting: BehaviorTreeBuilder::visit_whamm");
-        self.tree.exit_sequence();
+        self.tree.exit_sequence(self.err);
         // Remove from `context_name`
         self.context_name = "".to_string();
     }
@@ -300,7 +299,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder {
         trace!("Entering: BehaviorTreeBuilder::visit_whammy");
         self.context_name += &format!(":{}", whammy.name.clone());
 
-        self.tree.enter_scope(self.context_name.clone(), whammy.name.clone());
+        self.tree.enter_scope(self.context_name.clone(), whammy.name.clone(), self.err);
 
         // visit globals
         self.visit_globals(&whammy.globals);
@@ -309,7 +308,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder {
             self.visit_provider(provider)
         });
 
-        self.tree.exit_scope();
+        self.tree.exit_scope(self.err);
 
         trace!("Exiting: BehaviorTreeBuilder::visit_whammy");
         // Remove from `context_name`
@@ -321,7 +320,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder {
         self.context_name += &format!(":{}", provider.name.clone());
         self.add_provider_to_ast(provider.name.clone());
 
-        self.tree.enter_scope(self.context_name.clone(), provider.name.clone());
+        self.tree.enter_scope(self.context_name.clone(), provider.name.clone(), self.err);
 
         // visit globals
         self.visit_globals(&provider.globals);
@@ -330,7 +329,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder {
             self.visit_package(package)
         });
 
-        self.tree.exit_scope();
+        self.tree.exit_scope(self.err);
 
         trace!("Exiting: BehaviorTreeBuilder::visit_provider");
         // Remove this package from `context_name`
@@ -345,7 +344,11 @@ impl WhammVisitor<()> for BehaviorTreeBuilder {
         if self.is_in_context(r"whamm:whammy([0-9]+):wasm:bytecode") {
             self.visit_bytecode_package(package);
         } else {
-            error!("Unsupported package: {}", package.name);
+            if let Some(loc) = &package.loc {
+                self.err.unexpected_error(true, Some(format!("Package not supported! {}", package.name)), Some(loc.line_col.clone()))
+            } else {
+                self.err.unexpected_error(true, Some(format!("Package not supported! {}", package.name)), None)
+            }
         };
 
         trace!("Exiting: BehaviorTreeBuilder::visit_package");
@@ -361,7 +364,11 @@ impl WhammVisitor<()> for BehaviorTreeBuilder {
         if self.is_in_context(r"whamm:whammy([0-9]+):wasm:bytecode:(.*)") {
             self.visit_bytecode_event(event);
         } else {
-            error!("Unsupported event: {}", event.name);
+            if let Some(loc) = &event.loc {
+                self.err.unexpected_error(true, Some(format!("Event not supported! {}", event.name)), Some(loc.line_col.clone()))
+            } else {
+                self.err.unexpected_error(true, Some(format!("Event not supported! {}", event.name)), None)
+            }
         };
 
         trace!("Exiting: BehaviorTreeBuilder::visit_event");
@@ -378,16 +385,16 @@ impl WhammVisitor<()> for BehaviorTreeBuilder {
             context: self.context_name.clone(),
             probe_name: probe.name.clone(),
             global_names: probe.globals.keys().cloned().collect(),
-        });
+        }, self.err);
 
         if self.is_in_context(r"whamm:whammy([0-9]+):wasm:bytecode:(.*)") {
             self.visit_bytecode_probe(probe);
         } else {
-            error!("Unsupported probe: {}", self.context_name);
+            self.err.unexpected_error(true, Some(format!("Probe not supported! {}", self.context_name)), None);
         };
 
         trace!("Exiting: BehaviorTreeBuilder::visit_probe");
-        self.tree.exit_action_with_child();
+        self.tree.exit_action_with_child(self.err);
         // Remove this probe from `context_name`
         self.context_name = self.context_name[..self.context_name.rfind(":").unwrap()].to_string();
     }

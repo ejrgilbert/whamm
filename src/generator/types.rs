@@ -26,7 +26,7 @@ impl ExprFolder {
     }
     fn fold_binop(binop: &Expr, table: &SymbolTable) -> Expr {
         match &binop {
-            Expr::BinOp {lhs, op, rhs} => {
+            Expr::BinOp {lhs, op, rhs, ..} => {
                 let lhs = ExprFolder::fold_expr(&lhs, table);
                 let rhs = ExprFolder::fold_expr(&rhs, table);
                 match op {
@@ -39,7 +39,8 @@ impl ExprFolder {
                                     val: Value::Boolean {
                                         ty: DataType::Boolean,
                                         val: lhs_bool && rhs_bool,
-                                    }
+                                    },
+                                    loc: None
                                 };
                             }
                             // only lhs is boolean primitive
@@ -52,7 +53,8 @@ impl ExprFolder {
                                     val: Value::Boolean {
                                         ty: DataType::Boolean,
                                         val: false,
-                                    }
+                                    },
+                                    loc: None
                                 }
                             }
                         } else {
@@ -68,7 +70,8 @@ impl ExprFolder {
                                         val: Value::Boolean {
                                             ty: DataType::Boolean,
                                             val: false,
-                                        }
+                                        },
+                                        loc: None
                                     }
                                 }
                             } else {
@@ -78,6 +81,7 @@ impl ExprFolder {
                                     lhs: Box::new(lhs),
                                     op: Op::And,
                                     rhs: Box::new(rhs),
+                                    loc: None
                                 }
                             }
                         }
@@ -91,7 +95,8 @@ impl ExprFolder {
                                     val: Value::Boolean {
                                         ty: DataType::Boolean,
                                         val: lhs_bool || rhs_bool,
-                                    }
+                                    },
+                                    loc: None
                                 };
                             }
                             // only lhs is boolean primitive
@@ -102,7 +107,8 @@ impl ExprFolder {
                                     val: Value::Boolean {
                                         ty: DataType::Boolean,
                                         val: true,
-                                    }
+                                    },
+                                    loc: None
                                 }
                             } else {
                                 rhs
@@ -118,7 +124,8 @@ impl ExprFolder {
                                         val: Value::Boolean {
                                             ty: DataType::Boolean,
                                             val: true,
-                                        }
+                                        },
+                                        loc: None
                                     }
                                 } else {
                                     lhs
@@ -130,6 +137,7 @@ impl ExprFolder {
                                     lhs: Box::new(lhs),
                                     op: Op::Or,
                                     rhs: Box::new(rhs),
+                                    loc: None
                                 }
                             }
                         }
@@ -196,13 +204,15 @@ impl ExprFolder {
                         val: Value::Boolean {
                             ty: DataType::Boolean,
                             val: lhs_bool == rhs_bool,
-                        }
+                        },
+                        loc: None
                     }),
                     Op::NE => Some(Expr::Primitive {
                         val: Value::Boolean {
                             ty: DataType::Boolean,
                             val: lhs_bool != rhs_bool,
-                        }
+                        },
+                        loc: None
                     }),
                     _ => None
                 }
@@ -219,67 +229,78 @@ impl ExprFolder {
                         val: Value::Boolean {
                             ty: DataType::Boolean,
                             val: lhs_int == rhs_int,
-                        }
+                        },
+                        loc: None
                     }),
                     Op::NE => Some(Expr::Primitive {
                         val: Value::Boolean {
                             ty: DataType::Boolean,
                             val: lhs_int != rhs_int,
-                        }
+                        },
+                        loc: None
                     }),
                     Op::GE => Some(Expr::Primitive {
                         val: Value::Boolean {
                             ty: DataType::Boolean,
                             val: lhs_int >= rhs_int,
-                        }
+                        },
+                        loc: None
                     }),
                     Op::GT => Some(Expr::Primitive {
                         val: Value::Boolean {
                             ty: DataType::Boolean,
                             val: lhs_int > rhs_int,
-                        }
+                        },
+                        loc: None
                     }),
                     Op::LE => Some(Expr::Primitive {
                         val: Value::Boolean {
                             ty: DataType::Boolean,
                             val: lhs_int <= rhs_int,
-                        }
+                        },
+                        loc: None
                     }),
                     Op::LT => Some(Expr::Primitive {
                         val: Value::Boolean {
                             ty: DataType::Boolean,
                             val: lhs_int < rhs_int,
-                        }
+                        },
+                        loc: None
                     }),
                     Op::Add => Some(Expr::Primitive {
                         val: Value::Integer {
                             ty: DataType::Integer,
                             val: lhs_int + rhs_int,
-                        }
+                        },
+                        loc: None
                     }),
                     Op::Subtract => Some(Expr::Primitive {
                         val: Value::Integer {
                             ty: DataType::Integer,
                             val: lhs_int - rhs_int,
-                        }
+                        },
+                        loc: None
                     }),
                     Op::Multiply => Some(Expr::Primitive {
                         val: Value::Integer {
                             ty: DataType::Integer,
                             val: lhs_int * rhs_int,
-                        }
+                        },
+                        loc: None
                     }),
                     Op::Divide => Some(Expr::Primitive {
                         val: Value::Integer {
                             ty: DataType::Integer,
                             val: lhs_int / rhs_int,
-                        }
+                        },
+                        loc: None
                     }),
                     Op::Modulo => Some(Expr::Primitive {
                         val: Value::Integer {
                             ty: DataType::Integer,
                             val: lhs_int % rhs_int,
-                        }
+                        },
+                        loc: None
                     }),
                     _ => None
                 }
@@ -296,13 +317,15 @@ impl ExprFolder {
                         val: Value::Boolean {
                             ty: DataType::Boolean,
                             val: lhs_str == rhs_str,
-                        }
+                        },
+                        loc: None
                     }),
                     Op::NE => Some(Expr::Primitive {
                         val: Value::Boolean {
                             ty: DataType::Boolean,
                             val: lhs_str != rhs_str,
-                        }
+                        },
+                        loc: None
                     }),
                     _ => None
                 }
@@ -316,7 +339,7 @@ impl ExprFolder {
     }
     fn fold_var_id(var_id: &Expr, table: &SymbolTable) -> Expr {
         match &var_id {
-            Expr::VarId {name} => {
+            Expr::VarId {name, ..} => {
                 let rec_id = match table.lookup(&name) {
                     Some(rec_id) => rec_id.clone(),
                     _ => {
@@ -329,6 +352,7 @@ impl ExprFolder {
                         if value.is_some() {
                             return Expr::Primitive {
                                 val: value.as_ref().unwrap().clone(),
+                                loc: None
                             };
                         }
                     }

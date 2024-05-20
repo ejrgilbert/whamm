@@ -1,10 +1,13 @@
-use log::{error, warn};
+use log::warn;
 use crate::behavior::builder_visitor::SimpleAST;
 use crate::behavior::tree::{ActionType, ActionWithChildType, ArgActionType, BehaviorVisitor, DecoratorType, ParamActionType};
 use crate::behavior::tree::{BehaviorTree, Node};
+use crate::common::error::ErrorGen;
 use crate::generator::emitters::Emitter;
 use crate::generator::types::ExprFolder;
 use crate::parser::types::Probe;
+
+const UNEXPECTED_ERR_MSG: &str = "InstrGenerator: Looks like you've found a bug...please report this behavior!";
 
 /// The second phase of instrumenting a Wasm module by actually emitting the
 /// instrumentation code.
@@ -17,6 +20,7 @@ pub struct InstrGenerator<'a, 'b> {
     pub tree: &'a BehaviorTree,
     pub emitter: Box<&'b mut dyn Emitter>,
     pub ast: SimpleAST,
+    pub err: &'a mut ErrorGen,
 
     pub context_name: String,
     pub curr_provider_name: String,
@@ -69,7 +73,7 @@ impl InstrGenerator<'_, '_> {
             self.emitter.emit_condition();
             is_success &= self.visit_node(node);
         } else {
-            error!("Node to define conditional logic node does not exist!");
+            self.err.unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} Node to define conditional logic node does not exist!")), None);
         }
         is_success
     }
@@ -81,7 +85,7 @@ impl InstrGenerator<'_, '_> {
             self.emitter.emit_consequent();
             is_success &= self.visit_node(node);
         } else {
-            error!("Node to define consequent logic node does not exist!");
+            self.err.unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} Node to define consequent logic node does not exist!")), None);
         }
         is_success
     }
@@ -93,7 +97,7 @@ impl InstrGenerator<'_, '_> {
             self.emitter.emit_alternate();
             is_success &= self.visit_node(node);
         } else {
-            error!("Node to define alternate logic node does not exist!");
+            self.err.unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} Node to define alternate logic node does not exist!")), None);
         }
         is_success
     }
@@ -222,12 +226,17 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         let mut is_success = true;
         if let Node::ArgAction {ty, force_success, ..} = node {
             if let ArgActionType::SaveParams = ty {
-                if self.emitter.has_params() {
-                    // The current instruction has parameters, save them
-                    is_success &= self.emitter.save_params();
-                } else {
-                    // If no params, return whatever was configured to do
-                    return force_success.clone();
+                match self.emitter.has_params() {
+                    Err(e) => self.err.add_error(e),
+                    Ok(res) => {
+                        if res {
+                            // The current instruction has parameters, save them
+                            is_success &= self.emitter.save_params();
+                        } else {
+                            // If no params, return whatever was configured to do
+                            return force_success.clone();
+                        }
+                    }
                 }
             } else {
                 unreachable!()
@@ -242,12 +251,20 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         let mut is_success = true;
         if let Node::ArgAction { ty, force_success, ..} = node {
             if let ArgActionType::EmitParams = ty {
-                if self.emitter.has_params() {
-                    // The current instruction has parameters, emit them
-                    is_success &= self.emitter.emit_params();
-                } else {
-                    // If no params, return whatever was configured to do
-                    return force_success.clone();
+                match self.emitter.has_params() {
+                    Err(e) => self.err.add_error(e),
+                    Ok(res) => {
+                        if res {
+                            // The current instruction has parameters, emit them
+                            match self.emitter.emit_params() {
+                                Err(e) => self.err.add_error(e),
+                                Ok(res) => is_success &= res,
+                            }
+                        } else {
+                            // If no params, return whatever was configured to do
+                            return force_success.clone();
+                        }
+                    }
                 }
             } else {
                 unreachable!()
@@ -267,13 +284,16 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
 
                     // Initialize the instr visitor
                     let instrs_of_interest: Vec<String> = events.keys().cloned().collect();
-                    self.emitter.init_instr_iter(&instrs_of_interest);
+                    match self.emitter.init_instr_iter(&instrs_of_interest) {
+                        Err(e) => self.err.add_error(e),
+                        _ => {}
+                    }
 
                     // enter 'bytecode' scope
-                    is_success &= self.emitter.enter_named_scope(package_name);
-                    if is_success {
-                        self.set_context_info(context);
+                    if !self.emitter.enter_named_scope(package_name) {
+                        self.err.unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} Could not find the specified scope by name: `{}`", package_name)), None);
                     }
+                    self.set_context_info(context);
 
                     let mut first_instr = true;
                     while first_instr || self.emitter.has_next_instr() {
@@ -285,12 +305,17 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                         // is this an instruction of-interest?
                         if let Some(globals) = events.get(&instr_ty) {
                             // enter this event's scope
-                            self.emitter.enter_named_scope(&instr_ty);
+                            if !self.emitter.enter_named_scope(&instr_ty) {
+                                self.err.unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} Could not find the specified scope by name: `{}`", instr_ty)), None);
+                            }
                             self.curr_event_name = instr_ty.clone();
 
                             // define this instruction type's compiler variables
                             for global in globals {
-                                is_success &= self.emitter.define_compiler_var(&self.context_name, global);
+                                match self.emitter.define_compiler_var(&self.context_name, global) {
+                                    Err(e) => self.err.add_error(e),
+                                    Ok(res) => is_success &= res,
+                                }
                             }
 
                             // continue with logic
@@ -299,12 +324,18 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                             }
 
                             // exit this event's scope
-                            self.emitter.exit_scope();
+                            match self.emitter.exit_scope() {
+                                Err(e) => self.err.add_error(e),
+                                _ => {}
+                            }
                         }
                         first_instr = false;
                     }
 
-                    self.emitter.exit_scope();
+                    match self.emitter.exit_scope() {
+                        Err(e) => self.err.add_error(e),
+                        _ => {}
+                    }
                 }
             }
         } else {
@@ -318,13 +349,17 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         if let Node::ActionWithChild { ty, child, .. } = node {
             if let ActionWithChildType::EnterProbe { probe_name, global_names, .. } = ty {
                 // enter probe's scope
-                is_success &= self.emitter.enter_named_scope(probe_name);
-                if is_success {
-                    self.curr_probe_name = probe_name.clone();
+                if !self.emitter.enter_named_scope(probe_name) {
+                    self.err.unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} Could not find the specified scope by name: `{}`", probe_name)), None);
                 }
+                self.curr_probe_name = probe_name.clone();
+
                 // define this probe's compiler variables
                 for global in global_names {
-                    is_success &= self.emitter.define_compiler_var(&self.context_name, global);
+                    match self.emitter.define_compiler_var(&self.context_name, global) {
+                        Err(e) => self.err.add_error(e),
+                        Ok(res) => is_success &= res,
+                    }
                 }
                 if probe_name == "before" || probe_name == "after" {
                     // Perform 'before' and 'after' probe logic
@@ -371,7 +406,10 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                                 // predicate has been reduced to a boolean value
                                 if !pred_as_bool {
                                     // predicate is reduced to `false` short-circuit!
-                                    self.emitter.exit_scope();
+                                    match self.emitter.exit_scope() {
+                                        Err(e) => self.err.add_error(e),
+                                        _ => {}
+                                    }
                                     return true;
                                 }
                             }
@@ -386,7 +424,10 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                 } else {
                     unreachable!()
                 }
-                self.emitter.exit_scope();
+                match self.emitter.exit_scope() {
+                    Err(e) => self.err.add_error(e),
+                    _ => {}
+                }
             }
         }
         is_success
@@ -426,27 +467,29 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
     }
 
     fn visit_enter_scope(&mut self, node: &Node) -> bool {
-        let mut is_success = true;
         if let Node::Action { ty, ..} = node {
             if let ActionType::EnterScope{ context, scope_name } = ty {
-                is_success &= self.emitter.enter_named_scope(scope_name);
-                if is_success {
-                    self.set_context_info(context);
+                if !self.emitter.enter_named_scope(scope_name) {
+                    self.err.unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} Could not find the specified scope by name: `{}`", scope_name)), None);
                 }
+                self.set_context_info(context);
             } else {
                 unreachable!()
             }
         } else {
             unreachable!()
         }
-        is_success
+        true
     }
 
     fn visit_exit_scope(&mut self, node: &Node) -> bool {
         let is_success = true;
         if let Node::Action {ty, ..} = node {
             if let ActionType::ExitScope = ty {
-                self.emitter.exit_scope();
+                match self.emitter.exit_scope() {
+                    Err(e) => self.err.add_error(e),
+                    _ => {}
+                }
             } else {
                 unreachable!()
             }
@@ -460,7 +503,10 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         let mut is_success = true;
         if let Node::Action {ty, ..} = node {
             if let ActionType::Define {var_name, ..} = ty {
-                is_success &= self.emitter.define_compiler_var(&self.context_name, var_name);
+                match self.emitter.define_compiler_var(&self.context_name, var_name) {
+                    Err(e) => self.err.add_error(e),
+                    Ok(res) => is_success &= res,
+                }
             } else {
                 unreachable!()
             }
@@ -476,7 +522,10 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
             if let ActionType::EmitPred = ty {
                 if let Some(probe) = &mut self.curr_probe {
                     if let Some(pred) = &mut probe.predicate {
-                        is_success &= self.emitter.emit_expr(pred);
+                        match self.emitter.emit_expr(pred) {
+                            Err(e) => self.err.add_error(e),
+                            Ok(res) => is_success &= res,
+                        }
                     }
                 }
             } else {
@@ -508,7 +557,10 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
             if let ActionType::EmitBody = ty {
                 if let Some(probe) = &mut self.curr_probe {
                     if let Some(body) = &mut probe.body {
-                        is_success &= self.emitter.emit_body(body);
+                        match self.emitter.emit_body(body) {
+                            Err(e) => self.err.add_error(e),
+                            Ok(res) => is_success &= res,
+                        }
                     }
                 }
             } else {
@@ -524,7 +576,10 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         let mut is_success = true;
         if let Node::Action {ty, ..} = node {
             if let ActionType::EmitAltCall = ty {
-                is_success &= self.emitter.emit_alt_call();
+                match self.emitter.emit_alt_call() {
+                    Err(e) => self.err.add_error(e),
+                    Ok(res) => is_success &= res,
+                }
             } else {
                 unreachable!()
             }

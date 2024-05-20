@@ -4,6 +4,7 @@ use crate::parser::types::{Whamm, WhammVisitor};
 use glob::{glob, glob_with};
 
 use log::{info, error, warn};
+use crate::common::error::ErrorGen;
 use crate::parser::print_visitor::AsStrVisitor;
 
 // =================
@@ -140,21 +141,20 @@ pub fn get_test_scripts(subdir: &str) -> Vec<String> {
     scripts
 }
 
-pub fn get_ast(script: &str) -> Option<Whamm> {
+pub fn get_ast(script: &str, err: &mut ErrorGen) -> Option<Whamm> {
     info!("Getting the AST");
-    match parse_script(script.to_string()) {
-        Ok(ast) => {
+    match parse_script(&script.to_string(), err) {
+        Some(ast) => {
             Some(ast)
         },
-        Err(e) => {
-            error!("Parse failed {}", e);
+        None => {
             None
         }
     }
 }
 
-fn is_valid_script(script: &str) -> bool {
-    match get_ast(script) {
+fn is_valid_script(script: &str, err: &mut ErrorGen) -> bool {
+    match get_ast(script, err) {
         Some(_ast) => {
             true
         },
@@ -164,14 +164,19 @@ fn is_valid_script(script: &str) -> bool {
     }
 }
 
-pub fn run_test_on_valid_list(scripts: Vec<String>) {
+pub fn run_test_on_valid_list(scripts: Vec<String>, err: &mut ErrorGen) {
     for script in scripts {
         info!("Parsing: {}", script);
-        assert!(
-            is_valid_script(&script),
-            "script = '{}' is not recognized as valid, but it should be",
-            &script
-        );
+
+        let res = is_valid_script(&script, err);
+        if !res || err.has_errors {
+            error!("script = '{}' is not recognized as valid, but it should be", script)
+        }
+        if err.has_errors {
+            err.report();
+        }
+        assert!(!err.has_errors);
+        assert!(res);
     }
 }
 
@@ -182,26 +187,30 @@ pub fn run_test_on_valid_list(scripts: Vec<String>) {
 #[test]
 pub fn test_parse_valid_scripts() {
     setup_logger();
-    run_test_on_valid_list(VALID_SCRIPTS.iter().map(|s| s.to_string()).collect());
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    run_test_on_valid_list(VALID_SCRIPTS.iter().map(|s| s.to_string()).collect(), &mut err);
 }
 
 #[test]
 pub fn test_parse_invalid_scripts() {
     setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     for script in INVALID_SCRIPTS {
         info!("Parsing: {}", script);
-        assert!(
-            !is_valid_script(script),
-            "string = '{}' is recognized as valid, but it should not",
-            script
-        );
+        let res = is_valid_script(script, &mut err);
+        if res || !err.has_errors {
+            error!("string = '{}' is recognized as valid, but it should not", script)
+        }
+        assert!(err.has_errors);
+        assert!(!res);
     }
 }
 
 #[test]
 pub fn test_ast_special_cases() {
     setup_logger();
-    run_test_on_valid_list(SPECIAL.iter().map(|s| s.to_string()).collect());
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    run_test_on_valid_list(SPECIAL.iter().map(|s| s.to_string()).collect(), &mut err);
 }
 
 fn print_ast(ast: &Whamm ) {
@@ -225,8 +234,9 @@ wasm::call:alt /
     new_target_fn_name = "redirect_to_fault_injector";
 }
     "#;
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
 
-    match get_ast(script) {
+    match get_ast(script, &mut err) {
         Some(ast) => {
             // whammy
             assert_eq!(1, ast.whammys.len()); // a single whammy
@@ -267,9 +277,15 @@ wasm::call:alt /
             assert_eq!(1, probe.body.as_ref().unwrap().len());
 
             print_ast(&ast);
+
+            if err.has_errors {
+                err.report()
+            }
+            assert!(!err.has_errors);
         },
         None => {
             error!("Could not get ast from script: {}", script);
+            err.report();
             assert!(false);
         }
     };
@@ -278,15 +294,19 @@ wasm::call:alt /
 #[test]
 pub fn test_implicit_probe_defs_dumper() {
     setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = "wasm:::alt / (i == \"1\") && (b == \"2\") / { i = 0; }";
 
-    match get_ast(script) {
+    match get_ast(script, &mut err) {
         Some(ast) => {
             print_ast(&ast);
         },
         None => {
             error!("Could not get ast from script: {}", script);
-            assert!(false);
+            if err.has_errors {
+                err.report();
+            }
+            assert!(!err.has_errors);
         }
     };
 }
@@ -302,7 +322,8 @@ pub fn fault_injection() {
     if scripts.len() == 0 {
         warn!("No test scripts found for `fault_injection` test.");
     }
-    run_test_on_valid_list(scripts);
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    run_test_on_valid_list(scripts, &mut err);
 }
 
 #[test]
@@ -312,7 +333,8 @@ pub fn wizard_monitors() {
     if scripts.len() == 0 {
         warn!("No test scripts found for `wizard_monitors` test.");
     }
-    run_test_on_valid_list(scripts);
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    run_test_on_valid_list(scripts, &mut err);
 }
 
 #[test]
@@ -322,5 +344,6 @@ pub fn replay() {
     if scripts.len() == 0 {
         warn!("No test scripts found for `replay` test.");
     }
-    run_test_on_valid_list(scripts);
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    run_test_on_valid_list(scripts, &mut err);
 }

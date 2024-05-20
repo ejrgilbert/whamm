@@ -4,6 +4,7 @@
 
 use std::process::exit;
 use log::error;
+use crate::common::error::ErrorGen;
 use crate::generator::types::ExprFolder;
 use crate::parser::tests;
 use crate::parser::types::Expr::{BinOp, VarId};
@@ -45,29 +46,78 @@ fn get_pred(whamm: &Whamm) -> &Expr {
         .get(0).unwrap().predicate.as_ref().unwrap()
 }
 
-fn hardcode_compiler_constants(table: &mut SymbolTable) {
-    table.enter_scope();
-    while table.get_curr_scope().unwrap().ty != ScopeType::Whammy {
-        table.exit_scope();
-        table.enter_scope()
+fn move_through_scopes_til_match(desired_ty: ScopeType, table: &mut SymbolTable, err: &mut ErrorGen) {
+    while table.get_curr_scope().unwrap().ty != desired_ty {
+        match table.exit_scope() {
+            Err(e) => {
+                err.add_error(e);
+                err.report();
+            },
+            _ => {}
+        }
+        match table.enter_scope() {
+            Err(e) => {
+                err.add_error(e);
+                err.report();
+            },
+            _ => {}
+        }
     }
-    println!("Scope name: {}", table.get_curr_scope().unwrap().name);
-    table.enter_scope(); // enter wasm scope
-    while table.get_curr_scope().unwrap().ty != ScopeType::Provider {
-        table.exit_scope();
-        table.enter_scope()
+}
+
+fn hardcode_compiler_constants(table: &mut SymbolTable, err: &mut ErrorGen) {
+    match table.enter_scope() {
+        Err(e) => {
+            err.add_error(e);
+            err.report();
+        },
+        _ => {}
     }
+    move_through_scopes_til_match(ScopeType::Whammy, table, err);
     println!("Scope name: {}", table.get_curr_scope().unwrap().name);
-    table.enter_scope(); // enter bytecode scope
-    while table.get_curr_scope().unwrap().ty != ScopeType::Package {
-        table.exit_scope();
-        table.enter_scope()
+    // enter wasm scope
+    match table.enter_scope() {
+        Err(e) => {
+            err.add_error(e);
+            err.report();
+        },
+        _ => {}
     }
+    move_through_scopes_til_match(ScopeType::Provider, table, err);
     println!("Scope name: {}", table.get_curr_scope().unwrap().name);
-    table.enter_scope(); // enter call scope
+    // enter bytecode scope
+    match table.enter_scope() {
+        Err(e) => {
+            err.add_error(e);
+            err.report();
+        },
+        _ => {}
+    }
+    move_through_scopes_til_match(ScopeType::Package, table, err);
+    println!("Scope name: {}", table.get_curr_scope().unwrap().name);
+    // enter call scope
+    match table.enter_scope() {
+        Err(e) => {
+            err.add_error(e);
+            err.report();
+        },
+        _ => {}
+    }
     while table.get_curr_scope().unwrap().ty != ScopeType::Event {
-        table.exit_scope();
-        table.enter_scope()
+        match table.exit_scope() {
+            Err(e) => {
+                err.add_error(e);
+                err.report();
+            },
+            _ => {}
+        }
+        match table.enter_scope() {
+            Err(e) => {
+                err.add_error(e);
+                err.report();
+            },
+            _ => {}
+        }
     }
 
     // define target_fn_type
@@ -112,7 +162,7 @@ fn hardcode_compiler_constants(table: &mut SymbolTable) {
 
 fn assert_simplified_predicate(pred: &Expr) {
     // ExprFolder should not be able to simplify the expression at all.
-    if let VarId{ name } = pred {
+    if let VarId{ name, .. } = pred {
         assert_eq!("i", name);
     } else {
         // failed!
@@ -122,20 +172,21 @@ fn assert_simplified_predicate(pred: &Expr) {
     }
 }
 
-fn basic_run(script: &str) {
-    match tests::get_ast(script) {
+fn basic_run(script: &str, err: &mut ErrorGen) {
+    match tests::get_ast(script, err) {
         Some(whamm) => {
-            let mut table = verifier::build_symbol_table(&whamm);
+            let mut table = verifier::build_symbol_table(&whamm, err);
             table.reset();
 
             let pred = get_pred(&whamm);
-            hardcode_compiler_constants(&mut table);
+            hardcode_compiler_constants(&mut table, err);
 
             let folded_expr = ExprFolder::fold_expr(pred, &table);
             assert_simplified_predicate(&folded_expr);
         },
         None => {
             error!("Could not get ast from script: {}", script);
+            err.report();
             assert!(false);
         }
     };
@@ -144,22 +195,25 @@ fn basic_run(script: &str) {
 #[test]
 pub fn basic_test() {
     setup_logger();
-    basic_run("wasm::call:alt / i / {}");
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    basic_run("wasm::call:alt / i / {}", &mut err);
 }
 
 #[test]
 pub fn single_prim() {
     setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     basic_run(r#"
 wasm::call:alt /
     true && i
 / {}
-    "#);
+    "#, &mut err);
 }
 
 #[test]
 pub fn basic_with_compiler_vars() {
     setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     basic_run(r#"
 wasm::call:alt /
     target_fn_type == "import" &&
@@ -167,15 +221,16 @@ wasm::call:alt /
     target_imp_name == "call_new" &&
     i
 / {}
-    "#);
+    "#, &mut err);
 }
 
 fn asserts_on_call(call: &Expr) {
     if let Expr::Call {
         fn_target,
-        args
+        args,
+        ..
     } = call {
-        if let VarId { name } = &**fn_target {
+        if let VarId { name , ..} = &**fn_target {
             assert_eq!("strcmp", name);
         } else {
             error!("ExprFolder did not fold correctly...");
@@ -186,7 +241,7 @@ fn asserts_on_call(call: &Expr) {
         assert_eq!(2, args.len());
 
         let tuple = &**args.get(0).unwrap();
-        if let Expr::Primitive { val: Value::Tuple {vals, ..}} = tuple {
+        if let Expr::Primitive { val: Value::Tuple {vals, ..}, ..} = tuple {
             assert_eq!(2, vals.len());
         } else {
             error!("ExprFolder did not fold correctly...");
@@ -207,14 +262,15 @@ wasm::call:alt /
     strcmp((arg2, arg3), "record")
 / {}
     "#;
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
 
-    match tests::get_ast(script) {
+    match tests::get_ast(script, &mut err) {
         Some(whamm) => {
-            let mut table = verifier::build_symbol_table(&whamm);
+            let mut table = verifier::build_symbol_table(&whamm, &mut err);
             table.reset();
 
             let pred = get_pred(&whamm);
-            hardcode_compiler_constants(&mut table);
+            hardcode_compiler_constants(&mut table, &mut err);
 
             let folded_expr = ExprFolder::fold_expr(pred, &table);
             println!("{:#?}", folded_expr);
@@ -223,7 +279,8 @@ wasm::call:alt /
             if let BinOp{
                 lhs,
                 op,
-                rhs
+                rhs,
+                ..
             } = pred {
                 assert_eq!(*op, Op::And);
                 asserts_on_call(&**lhs);

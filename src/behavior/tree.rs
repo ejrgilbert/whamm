@@ -1,5 +1,8 @@
 use std::collections::HashMap;
-use log::error;
+use crate::common::error::ErrorGen;
+
+const UNEXPECTED_ERR_MSG: &str = "BehaviorTree: Looks like you've found a bug...please report this behavior!";
+
 
 #[derive(Debug)]
 pub struct BehaviorTree {
@@ -45,114 +48,114 @@ impl BehaviorTree {
     // ==== Control =====
     // ==================
 
-    pub fn sequence(&mut self) -> &mut Self {
+    pub fn sequence(&mut self, err: &mut ErrorGen) -> &mut Self {
         let id = self.nodes.len();
         self.put_child_and_enter(Node::Sequence {
             id,
             parent: self.curr,
             children: vec![],
-        });
+        }, err);
         self
     }
 
-    pub fn exit_sequence(&mut self) -> &mut Self {
+    pub fn exit_sequence(&mut self, err: &mut ErrorGen) -> &mut Self {
         match self.get_curr_mut() {
             Some(Node::Sequence {parent, ..}) => {
                 self.curr = parent.clone()
             },
             other => {
-                error!("Something went wrong, expected Sequence, but was: {:?}", other)
+                err.unexpected_error(false, Some(format!("{UNEXPECTED_ERR_MSG} Something went wrong, expected Sequence, but was: {:?}.", other)), None);
             }
         };
         self
     }
 
-    pub fn fallback(&mut self) -> &mut Self {
+    pub fn fallback(&mut self, err: &mut ErrorGen) -> &mut Self {
         let id = self.nodes.len();
         self.put_child_and_enter(Node::Fallback {
             id,
             parent: self.curr,
             children: vec![],
-        });
+        }, err);
         self
     }
 
-    pub fn exit_fallback(&mut self) -> &mut Self {
+    pub fn exit_fallback(&mut self, err: &mut ErrorGen) -> &mut Self {
         match self.get_curr_mut() {
             Some(Node::Fallback {parent, ..}) => {
                 self.curr = parent.clone()
             },
             other => {
-                error!("Something went wrong, expected Fallback, but was: {:?}", other)
+                err.unexpected_error(false, Some(format!("{UNEXPECTED_ERR_MSG} Something went wrong, expected Fallback, but was: {:?}.", other)), None);
             }
         };
         self
     }
 
-    pub fn decorator(&mut self, ty: DecoratorType) -> &mut Self {
+    pub fn decorator(&mut self, ty: DecoratorType, err: &mut ErrorGen) -> &mut Self {
         let id = self.nodes.len();
         self.put_child_and_enter(Node::Decorator {
             id,
             ty,
             parent: self.curr,
             child: 0,
-        });
+        }, err);
         self
     }
 
-    pub fn exit_decorator(&mut self) -> &mut Self {
+    pub fn exit_decorator(&mut self, err: &mut ErrorGen) -> &mut Self {
         match self.get_curr_mut() {
             Some(Node::Decorator {parent, ..}) => {
                 self.curr = parent.clone()
             },
             other => {
-                error!("Something went wrong, expected Decorator, but was: {:?}", other)
+                err.unexpected_error(false, Some(format!("{UNEXPECTED_ERR_MSG} Something went wrong, expected Decorator, but was: {:?}.", other)), None);
             }
         };
         self
     }
 
-    pub fn action_with_child(&mut self, ty: ActionWithChildType) -> &mut Self {
+    pub fn action_with_child(&mut self, ty: ActionWithChildType, err: &mut ErrorGen) -> &mut Self {
         let id = self.nodes.len();
         self.put_child_and_enter(Node::ActionWithChild {
             id,
             parent: self.curr,
             ty,
             child: 0,
-        });
+        }, err);
         self
     }
 
-    pub fn exit_action_with_child(&mut self) -> &mut Self {
+    pub fn exit_action_with_child(&mut self, err: &mut ErrorGen) -> &mut Self {
         match self.get_curr_mut() {
             Some(Node::ActionWithChild {parent, ..}) => {
                 self.curr = parent.clone()
             },
             other => {
-                error!("Something went wrong, expected ActionWithChild, but was: {:?}", other)
+                err.unexpected_error(false, Some(format!("{UNEXPECTED_ERR_MSG} Something went wrong, expected ActionWithChild, but was: {:?}.", other)), None);
             }
         };
         self
     }
 
-    pub fn parameterized_action(&mut self, ty: ParamActionType) -> &mut Self {
+    pub fn parameterized_action(&mut self, ty: ParamActionType, err: &mut ErrorGen) -> &mut Self {
         let id = self.nodes.len();
         self.put_child_and_enter(Node::ActionWithParams {
             id,
             parent: self.curr,
             ty,
-            children: vec![],
-        });
+            children: vec![]
+        }, err);
         self
     }
 
-    pub fn exit_parameterized_action(&mut self) -> &mut Self {
+    pub fn exit_parameterized_action(&mut self, err: &mut ErrorGen) -> &mut Self {
         match self.get_curr_mut() {
             Some(Node::ActionWithParams {parent, ..}) => {
                 self.curr = parent.clone()
             },
             other => {
-                error!("Something went wrong, expected ParameterizedAction, but was: {:?}", other)
+                err.unexpected_error(false, Some(format!("{UNEXPECTED_ERR_MSG} Something went wrong, expected ParameterizedAction, but was: {:?}.", other)), None);
             }
         };
         self
@@ -162,7 +165,7 @@ impl BehaviorTree {
     // ==== Actions =====
     // ==================
 
-    fn add_action_as_param(&mut self, idx: usize, id: usize) {
+    fn add_action_as_param(&mut self, idx: usize, id: usize, err: &mut ErrorGen) {
         match self.get_curr_mut() {
             Some(Node::ActionWithParams {ty, ..}) => {
                 match ty {
@@ -172,7 +175,7 @@ impl BehaviorTree {
                         } else if idx == 1 {
                             *conseq = id;
                         } else {
-                            error!("Unexpected index for parameterized action (EmitIf): {}", idx);
+                            err.unexpected_error(false, Some(format!("{UNEXPECTED_ERR_MSG} Unexpected index for parameterized action (EmitIf):  {:?}.", idx)), None);
                         }
                     },
                     ParamActionType::EmitIfElse { cond, conseq, alt } => {
@@ -183,7 +186,7 @@ impl BehaviorTree {
                         }else if idx == 2 {
                             *alt = id;
                         } else {
-                            error!("Unexpected index for parameterized action (EmitIfElse): {}", idx);
+                            err.unexpected_error(false, Some(format!("{UNEXPECTED_ERR_MSG} Unexpected index for parameterized action (EmitIfElse):  {:?}.", idx)), None);
                         }
                     }
                 }
@@ -192,7 +195,7 @@ impl BehaviorTree {
         };
     }
 
-    pub fn define(&mut self, context: String, var_name: String) -> &mut Self {
+    pub fn define(&mut self, context: String, var_name: String, err: &mut ErrorGen) -> &mut Self {
         let id = self.nodes.len();
         self.put_child(Node::Action {
             id,
@@ -201,83 +204,83 @@ impl BehaviorTree {
                 context,
                 var_name
             }
-        });
+        }, err);
         self
     }
 
-    pub fn emit_body(&mut self) -> &mut Self {
+    pub fn emit_body(&mut self, err: &mut ErrorGen) -> &mut Self {
         let id = self.nodes.len();
         self.put_child(Node::Action {
             id,
             parent: self.curr,
             ty: ActionType::EmitBody
-        });
+        }, err);
         self
     }
 
-    pub fn emit_alt_call(&mut self) -> &mut Self {
+    pub fn emit_alt_call(&mut self, err: &mut ErrorGen) -> &mut Self {
         let id = self.nodes.len();
         self.put_child(Node::Action {
             id,
             parent: self.curr,
             ty: ActionType::EmitAltCall
-        });
+        }, err);
         self
     }
 
-    pub fn emit_params(&mut self, force_success: bool) -> &mut Self {
+    pub fn emit_params(&mut self, force_success: bool, err: &mut ErrorGen) -> &mut Self {
         let id = self.nodes.len();
         self.put_child(Node::ArgAction {
             id,
             parent: self.curr,
             ty: ArgActionType::EmitParams,
             force_success,
-        });
+        }, err);
         self
     }
 
-    pub fn save_params(&mut self, force_success: bool) -> &mut Self {
+    pub fn save_params(&mut self, force_success: bool, err: &mut ErrorGen) -> &mut Self {
         let id = self.nodes.len();
         self.put_child(Node::ArgAction {
             id,
             parent: self.curr,
             ty: ArgActionType::SaveParams,
             force_success,
-        });
+        }, err);
         self
     }
 
-    pub fn remove_orig(&mut self) -> &mut Self {
+    pub fn remove_orig(&mut self, err: &mut ErrorGen) -> &mut Self {
         let id = self.nodes.len();
         self.put_child(Node::Action {
             id,
             parent: self.curr,
             ty: ActionType::RemoveOrig
-        });
+        }, err);
         self
     }
 
-    pub fn emit_orig(&mut self) -> &mut Self {
+    pub fn emit_orig(&mut self, err: &mut ErrorGen) -> &mut Self {
         let id = self.nodes.len();
         self.put_child(Node::Action {
             id,
             parent: self.curr,
             ty: ActionType::EmitOrig
-        });
+        }, err);
         self
     }
 
-    pub fn emit_pred(&mut self) -> &mut Self {
+    pub fn emit_pred(&mut self, err: &mut ErrorGen) -> &mut Self {
         let id = self.nodes.len();
         self.put_child(Node::Action {
             id,
             parent: self.curr,
             ty: ActionType::EmitPred
-        });
+        }, err);
         self
     }
 
-    pub fn enter_scope(&mut self, context_name: String, scope_name: String) -> &mut Self {
+    pub fn enter_scope(&mut self, context_name: String, scope_name: String, err: &mut ErrorGen) -> &mut Self {
         let id = self.nodes.len();
         self.put_child(Node::Action {
             id,
@@ -286,27 +289,27 @@ impl BehaviorTree {
                 context: context_name,
                 scope_name
             }
-        });
+        }, err);
         self
     }
 
-    pub fn exit_scope(&mut self) -> &mut Self {
+    pub fn exit_scope(&mut self, err: &mut ErrorGen) -> &mut Self {
         let id = self.nodes.len();
         self.put_child(Node::Action {
             id,
             parent: self.curr,
             ty: ActionType::ExitScope
-        });
+        }, err);
         self
     }
 
-    pub fn force_success(&mut self) -> &mut Self {
+    pub fn force_success(&mut self, err: &mut ErrorGen) -> &mut Self {
         let id = self.nodes.len();
         self.put_child(Node::Action {
             id,
             parent: self.curr,
             ty: ActionType::ForceSuccess
-        });
+        }, err);
         self
     }
 
@@ -314,7 +317,7 @@ impl BehaviorTree {
     // ==== Base Fns ====
     // ==================
 
-    pub fn put_child(&mut self, node: Node) -> Option<usize> {
+    pub fn put_child(&mut self, node: Node, err: &mut ErrorGen) -> Option<usize> {
         let mut assigned_id = None;
         let new_id = self.nodes.len();
 
@@ -344,11 +347,11 @@ impl BehaviorTree {
                     let idx = children.len();
                     children.push(new_id);
 
-                    self.add_action_as_param(idx, new_id);
+                    self.add_action_as_param(idx, new_id, err);
                     assigned_id = Some(new_id);
                 }
                 _ => {
-                    error!("Cannot add child to this Tree node type");
+                    err.unexpected_error(false, Some(format!("{UNEXPECTED_ERR_MSG} Cannot add child to this Tree node type")), None);
                 }
             }
         }
@@ -358,8 +361,8 @@ impl BehaviorTree {
         assigned_id
     }
 
-    pub fn put_child_and_enter(&mut self, node: Node) -> bool {
-        if let Some(id) = self.put_child(node) {
+    pub fn put_child_and_enter(&mut self, node: Node, err: &mut ErrorGen) -> bool {
+        if let Some(id) = self.put_child(node, err) {
             self.curr = id;
         }
         false
@@ -372,7 +375,7 @@ impl BehaviorTree {
         new_id
     }
 
-    pub fn exit_child(&mut self) {
+    pub fn exit_child(&mut self, err: &mut ErrorGen) {
         match self.get_curr_mut() {
             Some(Node::Sequence {parent, ..}) |
             Some(Node::Fallback {parent, ..}) => {
@@ -382,7 +385,7 @@ impl BehaviorTree {
                 self.curr = parent.clone()
             }
             _ => {
-                error!("Attempted to exit current scope, but there was no parent to exit into.")
+                err.unexpected_error(false, Some(format!("{UNEXPECTED_ERR_MSG} Attempted to exit current scope, but there was no parent to exit into.")), None);
             }
         }
     }

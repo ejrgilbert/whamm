@@ -6,11 +6,13 @@ use crate::behavior::builder_visitor::*;
 use crate::generator::emitters::{Emitter, WasmRewritingEmitter};
 use crate::generator::init_generator::{InitGenerator};
 use crate::generator::instr_generator::{InstrGenerator};
+use crate::common::error::ErrorGen;
 
 pub mod parser;
 pub mod behavior;
 pub mod verifier;
 pub mod generator;
+pub mod common;
 
 use clap::{Args, Parser, Subcommand};
 use graphviz_rust::exec_dot;
@@ -25,6 +27,8 @@ use crate::behavior::visualize::visualization_to_file;
 use crate::parser::types::Whamm;
 use crate::verifier::types::SymbolTable;
 use crate::verifier::verifier::{build_symbol_table, verify};
+
+const MAX_ERRORS: i32 = 15;
 
 fn setup_logger() {
     env_logger::init();
@@ -132,9 +136,16 @@ fn try_main() -> Result<(), failure::Error> {
 }
 
 fn run_instr(app_wasm_path: String, whammy_path: String, output_wasm_path: String, emit_virgil: bool, run_verifier: bool) {
-    let mut whamm = get_whammy_ast(&whammy_path);
-    let symbol_table = get_symbol_table(&whamm, run_verifier);
-    let (behavior_tree, simple_ast) = build_behavior(&whamm);
+    // Set up error reporting mechanism
+    let mut err = ErrorGen::new(whammy_path.clone(), "".to_string(), MAX_ERRORS);
+
+    // Process the script
+    let mut whamm = get_whammy_ast(&whammy_path, &mut err);
+    let symbol_table = get_symbol_table(&whamm, run_verifier, &mut err);
+    let (behavior_tree, simple_ast) = build_behavior(&whamm, &mut err);
+
+    // If there were any errors encountered, report and exit!
+    err.check_has_errors();
 
     // Read app Wasm into Walrus module
     let _config =  walrus::ModuleConfig::new();
@@ -154,8 +165,11 @@ fn run_instr(app_wasm_path: String, whammy_path: String, output_wasm_path: Strin
     let mut init = InitGenerator {
         emitter: Box::new(&mut emitter),
         context_name: "".to_string(),
+        err: &mut err
     };
     init.run(&mut whamm);
+    // If there were any errors encountered, report and exit!
+    err.check_has_errors();
 
     // Phase 1 of instrumentation (actually emits the instrumentation code)
     // This structure is necessary since we need to have the fns/globals injected (a single time)
@@ -164,6 +178,7 @@ fn run_instr(app_wasm_path: String, whammy_path: String, output_wasm_path: Strin
         tree: &behavior_tree,
         emitter: Box::new(&mut emitter),
         ast: simple_ast,
+        err: &mut err,
         context_name: "".to_string(),
         curr_provider_name: "".to_string(),
         curr_package_name: "".to_string(),
@@ -172,8 +187,15 @@ fn run_instr(app_wasm_path: String, whammy_path: String, output_wasm_path: Strin
         curr_probe: None,
     };
     instr.run(&behavior_tree);
+    // If there were any errors encountered, report and exit!
+    err.check_has_errors();
 
-    emitter.dump_to_file(output_wasm_path);
+    match emitter.dump_to_file(output_wasm_path) {
+        Err(e) => err.add_error(e),
+        _ => {}
+    }
+    // If there were any errors encountered, report and exit!
+    err.check_has_errors();
 }
 
 fn run_vis_wasm(wasm_path: String, output_path: String) {
@@ -214,13 +236,18 @@ fn run_vis_wasm(wasm_path: String, output_path: String) {
         }
         Err(_) => {}
     }
-    exit(0);
 }
 
 fn run_vis_whammy(whammy_path: String, run_verifier: bool, output_path: String) {
-    let whamm = get_whammy_ast(&whammy_path);
-    verify_ast(&whamm, run_verifier);
-    let (behavior_tree, ..) = build_behavior(&whamm);
+    // Set up error reporting mechanism
+    let mut err = ErrorGen::new(whammy_path.clone(), "".to_string(), MAX_ERRORS);
+
+    let whamm = get_whammy_ast(&whammy_path, &mut err);
+    verify_ast(&whamm, run_verifier, &mut err);
+    let (behavior_tree, ..) = build_behavior(&whamm, &mut err);
+
+    // if has any errors, should report and exit!
+    err.check_has_errors();
 
     let path = match get_pb(&PathBuf::from(output_path.clone())) {
         Ok(pb) => {
@@ -231,7 +258,6 @@ fn run_vis_whammy(whammy_path: String, run_verifier: bool, output_path: String) 
         }
     };
 
-    // visualization_to_file(&behavior_tree, path)
     match visualization_to_file(&behavior_tree, path) {
         Ok(_) => {
             match opener::open(output_path.clone()) {
@@ -247,32 +273,35 @@ fn run_vis_whammy(whammy_path: String, run_verifier: bool, output_path: String) 
     exit(0);
 }
 
-fn get_symbol_table(ast: &Whamm, run_verifier: bool) -> SymbolTable {
-    let st = build_symbol_table(&ast);
-    verify_ast(ast, run_verifier);
+fn get_symbol_table(ast: &Whamm, run_verifier: bool, err: &mut ErrorGen) -> SymbolTable {
+    let st = build_symbol_table(&ast, err);
+    err.check_too_many();
+    verify_ast(ast, run_verifier, err);
     st
 }
 
-fn verify_ast(ast: &Whamm, run_verifier: bool) {
+fn verify_ast(ast: &Whamm, run_verifier: bool, err: &mut ErrorGen) {
     if run_verifier {
         if !verify(ast) {
             error!("AST failed verification!");
             exit(1);
         }
     }
+    err.check_too_many();
 }
 
-fn get_whammy_ast(whammy_path: &String) -> Whamm {
+fn get_whammy_ast(whammy_path: &String, err: &mut ErrorGen) -> Whamm {
     match std::fs::read_to_string(&whammy_path) {
         Ok(unparsed_str) => {
             // Parse the script and build the AST
-            match parse_script(unparsed_str) {
-                Ok(ast) => {
+            match parse_script(&unparsed_str, err) {
+                Some(ast) => {
                     info!("successfully parsed");
+                    err.check_too_many();
                     return ast;
                 },
-                Err(error) => {
-                    error!("Parse failed: {}", error);
+                None => {
+                    err.report();
                     exit(1);
                 }
             };
@@ -284,9 +313,10 @@ fn get_whammy_ast(whammy_path: &String) -> Whamm {
     }
 }
 
-fn build_behavior(whamm: &Whamm) -> (BehaviorTree, SimpleAST) {
+fn build_behavior(whamm: &Whamm, err: &mut ErrorGen) -> (BehaviorTree, SimpleAST) {
     // Build the behavior tree from the AST
-    let (mut behavior, simple_ast) = build_behavior_tree(&whamm);
+    let (mut behavior, simple_ast) = build_behavior_tree(&whamm, err);
+    err.check_too_many();
     behavior.reset();
 
     (behavior, simple_ast)

@@ -19,6 +19,7 @@ walrus = "0.20.3"
 # Logging
 env_logger = "0.10.2"
 log = "0.4.20"
+termcolor = "1.4.1"
 
 # Pest
 pest = "2.7.7"
