@@ -440,11 +440,8 @@ impl Whammy {
     /// to add a copy of the user-defined Probe for each of them.
     pub fn add_probe(&mut self, provided_probes: &HashMap<String, HashMap<String, HashMap<String, Vec<String>>>>,
                      probe_spec: &ProbeSpec, predicate: Option<Expr>, body: Option<Vec<Statement>>) -> Result<(), WhammError> {
+        let mut reason = &probe_spec.provider;
         if let Some(prov_patt) = &probe_spec.provider {
-            // if prov_patt.name.to_uppercase() == "CORE" || prov_patt.name.to_uppercase() == "CORE" {
-            //     return Err(ErrorGen::get_unexpected_error(true,
-            //          Some(format!("Probe type not supported YET, but is coming soon: {}", prov_patt.name))));
-            // }
 
             let matches = Provider::get_matches(provided_probes, &prov_patt.name);
             if matches.is_empty() {
@@ -467,11 +464,9 @@ impl Whammy {
                 };
                 if let Some(package_patt) = &probe_spec.package {
                     let matches = Package::get_matches(provided_probes, provider_str, &package_patt.name);
-                    // if matches.is_empty() {
-                    //     return Err(ErrorGen::get_parse_error(true,
-                    //          Some(format!("Could not find any matches for the specified package pattern: {}", package_patt.name)),
-                    //          package_patt.loc.as_ref().unwrap().line_col.clone(), vec![], vec![]));
-                    // }
+                    if matches.is_empty() {
+                        reason = &probe_spec.package;
+                    }
                     for package_str in matches.iter() {
                         // Does package exist yet?
                         let package = match provider.packages.get_mut(package_str) {
@@ -485,11 +480,9 @@ impl Whammy {
                         };
                         if let Some(event_patt) = &probe_spec.event {
                             let matches = Event::get_matches(provided_probes, provider_str, package_str, &event_patt.name);
-                            // if matches.is_empty() {
-                            //     return Err(ErrorGen::get_parse_error(true,
-                            //          Some(format!("Could not find any matches for the specified event pattern: {}", event_patt.name)),
-                            //          event_patt.loc.as_ref().unwrap().line_col.clone(), vec![], vec![]));
-                            // }
+                            if matches.is_empty() {
+                                reason = &probe_spec.event;
+                            }
                             for event_str in matches.iter() {
                                 // Does event exist yet?
                                 let event = match package.events.get_mut(event_str) {
@@ -503,6 +496,9 @@ impl Whammy {
                                 };
                                 if let Some(mode_patt) = &probe_spec.mode {
                                     let matches = Probe::get_matches(provided_probes, provider_str, package_str, event_str, &mode_patt.name);
+                                    if matches.is_empty() {
+                                        reason = &probe_spec.mode;
+                                    }
 
                                     for name_str in matches.iter() {
                                         event.insert_probe(name_str.to_string(), Probe::new(mode_patt.name.to_string(), mode_patt.loc.clone(), predicate.clone(), body.clone()));
@@ -526,22 +522,13 @@ impl Whammy {
             return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} Could not find a provider matching pattern!")), None));
         }
         if self.providers.is_empty() {
-            if let Some(prov) = &probe_spec.provider {
-                if let Some(prov_loc) = &prov.loc {
-                    if let Some(mode) = &probe_spec.mode {
-                        if let Some(mode_loc) = &mode.loc {
-                            let loc = Location::span_between(prov_loc, mode_loc);
-
-                            return Err(ErrorGen::get_parse_error(true,
-                             Some(format!("Could not find any matches for the specified probe specification")),
-                             loc, vec![], vec![]));
-                        }
-                    }
+            if let Some(r) = reason {
+                if let Some(mode_loc) = &r.loc {
+                    return Err(ErrorGen::get_parse_error(true,
+                         Some(format!("Could not find any matches for this pattern")),
+                         mode_loc.line_col.clone(), vec![], vec![]));
                 }
             }
-            return Err(ErrorGen::get_parse_error(true,
-             Some(format!("Could not find any matches for the specified probe specification")),
-             probe_spec.provider.as_ref().unwrap().loc.as_ref().unwrap().line_col.clone(), vec![], vec![]));
         }
         return Ok(());
     }
