@@ -1,6 +1,7 @@
 extern crate core;
 
-use std::path::PathBuf;
+use cli::{Cmd, WhammCli};
+
 use crate::parser::whamm_parser::*;
 use crate::behavior::builder_visitor::*;
 use crate::generator::emitters::{Emitter, WasmRewritingEmitter};
@@ -8,16 +9,18 @@ use crate::generator::init_generator::{InitGenerator};
 use crate::generator::instr_generator::{InstrGenerator};
 use crate::common::error::ErrorGen;
 
+mod cli;
 pub mod parser;
 pub mod behavior;
 pub mod verifier;
 pub mod generator;
 pub mod common;
 
-use clap::{Args, Parser, Subcommand};
+use clap::Parser;
 use graphviz_rust::exec_dot;
 use log::{info, error};
 use std::process::exit;
+use std::path::PathBuf;
 use graphviz_rust::cmd::{CommandArg, Format};
 use project_root::get_project_root;
 use walrus::Module;
@@ -34,76 +37,34 @@ fn setup_logger() {
     env_logger::init();
 }
 
-/// `whamm` instruments a Wasm application with the Probes defined in the specified Whammy.
-#[derive(Debug, Parser)]
-#[clap(author, version, about, long_about = None)]
-pub struct WhammCli {
-    // #[clap(flatten)]
-    // global_opts: GlobalOpts,
-
-    #[clap(subcommand)]
-    command: Command
-}
-
-#[derive(Debug, Subcommand)]
-enum Command {
-    /// To instrument a Wasm application.
-    Instr(InstrArgs),
-
-    /// To visualize the relationship between various structures in the module and its instructions
-    VisWasm {
-        /// The path to the Wasm module we want to visualize.
-        #[clap(short, long, value_parser)]
-        wasm: String,
-
-        /// The path to output the visualization to.
-        #[clap(short, long, value_parser, default_value = "output/wasm.dot")]
-        output_path: String,
-    },
-
-    /// To visualize the generated behavior tree from the specified `whammy`
-    VisWhammy {
-        /// The path to the `whammy` file we want to visualize.
-        #[clap(short, long, value_parser)]
-        whammy: String,
-
-        /// Whether to run the verifier on the specified whammy
-        #[clap(long, short, action, default_value = "false")] // TODO -- change this default value to true when I have this implemented
-        run_verifier: bool,
-
-        /// The path to output the visualization to.
-        #[clap(short, long, value_parser, default_value = "output/vis.svg")]
-        output_path: String,
-    }
-}
-
-// #[derive(Debug, Args)]
-// struct GlobalOpts {
-//     // (not needed yet)
+// fn build_man(out_dir: &Path) -> Result<(), Error> {
+//     let app = WhammCli::command();
+//
+//     let file = Path::new(&out_dir).join("example.1");
+//     let mut file = File::create(&file)?;
+//
+//     Man::new(app).render(&mut file)?;
+//
+//     Ok(())
 // }
 
-#[derive(Debug, Args)]
-struct InstrArgs {
-    /// The path to the application's Wasm module we want to instrument.
-    #[clap(short, long, value_parser)]
-    app: String,
-    /// The path to the Whammy containing the instrumentation Probe definitions.
-    #[clap(short, long, value_parser)]
-    whammy: String,
-    /// The path that the instrumented version of the Wasm app should be output to.
-    #[clap(short, long, value_parser, default_value = "./output/output.wasm")]
-    output_path: String,
-
-    /// Whether to emit Virgil code as the instrumentation code
-    #[clap(short, long, action, default_value = "false")]
-    virgil: bool,
-
-    /// Whether to run the verifier on the specified whammy
-    #[clap(long, short, action, default_value = "false")] // TODO -- change this default value to true when I have this implemented
-    run_verifier: bool
-}
-
 fn main() {
+
+    // Create `target/assets/` folder.
+    // let mut path = match get_pb(&PathBuf::from("target")) {
+    //     Ok(pb) => {
+    //         pb
+    //     }
+    //     Err(_) => {
+    //         exit(1)
+    //     }
+    // };
+    // path.push("assets");
+    // std::fs::create_dir_all(&path).unwrap();
+
+    // Automatically generate the man pages
+    // build_man(&path)?;
+
     if let Err(e) = try_main() {
         eprintln!("error: {}", e);
         for c in e.iter_chain().skip(1) {
@@ -121,13 +82,17 @@ fn try_main() -> Result<(), failure::Error> {
     let cli = WhammCli::parse();
 
     match cli.command {
-        Command::Instr(args) => {
+        Cmd::Info {spec, matches, globals, functions} => {
+            println!("{spec}: \n-matches: {matches}\n-globals: {globals}\n-functions: {functions}");
+            // TODO -- actually add in the logic here
+        }
+        Cmd::Instr(args) => {
             run_instr(args.app, args.whammy, args.output_path, args.virgil, args.run_verifier);
         }
-        Command::VisWasm {wasm, output_path} => {
+        Cmd::VisWasm {wasm, output_path} => {
             run_vis_wasm(wasm, output_path);
         }
-        Command::VisWhammy {whammy, run_verifier, output_path} => {
+        Cmd::VisWhammy {whammy, run_verifier, output_path} => {
             run_vis_whammy(whammy, run_verifier, output_path);
         }
     }

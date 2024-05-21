@@ -7,7 +7,7 @@ edition = "2021"
 doc = false
 name = "whamm"
 path = "src/main.rs"
-required-features = ["exe"]
+#required-features = ["exe"]
 
 [dependencies]
 failure = "0.1.5"
@@ -30,11 +30,12 @@ graphviz-rust = "0.9.0"
 project-root = "0.2.2"
 opener = { version = "0.7.0", default-features = false }
 
-[dependencies.clap]
-optional = true
-version = "3.2.23"
-features = ["derive"]
+# CLI
+clap = { version = "4.5.4", features = ["derive", "cargo", "env"] }
+clap_complete = "4.5.2"
 
-[features]
-default = ["exe"]
-exe = ["clap"]
+[build-dependencies]
+clap = { version = "4.5.4", features = ["derive", "cargo", "env"] }
+clap_complete = "4.5.2"
+clap_mangen = "0.2.20"
+project-root = "0.2.2"
