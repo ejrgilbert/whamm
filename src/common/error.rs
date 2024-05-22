@@ -1,11 +1,11 @@
 use std::{cmp, mem};
 use std::borrow::Cow;
-use std::io::Write;
+use termcolor::{Buffer, BufferWriter, ColorChoice, WriteColor};
 use std::process::exit;
+use crate::common::terminal::{blue, red, white};
 use log::error;
 use pest::error::{Error, LineColLocation};
 use pest::error::ErrorVariant::ParsingError;
-use termcolor::{Buffer, BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 use crate::parser::types::Rule;
 
 const ERR_UNDERLINE_CHAR: char = '^';
@@ -34,7 +34,7 @@ impl ErrorGen {
     }
 
     pub fn add_error(&mut self, error: WhammError) {
-        let fatal = error.fatal;
+        let fatal = error.fatal.clone();
         self.errors.push(error);
         self.inc_errors();
 
@@ -64,7 +64,7 @@ impl ErrorGen {
     }
 
     pub fn fatal_report(&mut self, context: &str) {
-        if !self.has_errors {
+        if !&self.has_errors {
             return;
         }
         self.report();
@@ -90,27 +90,40 @@ impl ErrorGen {
     // == Error Generators ==
     // ======================
 
-    pub fn get_parse_error(fatal: bool, message: Option<String>, line_col: LineColLocation,
+    pub fn get_parse_error(fatal: bool, message: Option<String>, line_col: Option<LineColLocation>,
                            positives: Vec<Rule>, negatives: Vec<Rule>) -> WhammError {
-        WhammError {
-            fatal,
-            ty: ErrorType::ParsingError {
-                positives,
-                negatives,
-                message: message.clone()
-            },
-            err_loc: Some(CodeLocation {
-                is_err: true,
-                message,
-                line_col,
-                line_str: None,
-                line2_str: None
-            }),
-            info_loc: None
+        if let Some(line_col) = line_col {
+            WhammError {
+                fatal,
+                ty: ErrorType::ParsingError {
+                    positives,
+                    negatives,
+                    message: message.clone()
+                },
+                err_loc: Some(CodeLocation {
+                    is_err: true,
+                    message,
+                    line_col,
+                    line_str: None,
+                    line2_str: None
+                }),
+                info_loc: None
+            }
+        } else {
+            WhammError {
+                fatal,
+                ty: ErrorType::ParsingError {
+                    positives,
+                    negatives,
+                    message: message.clone()
+                },
+                err_loc: None,
+                info_loc: None
+            }
         }
     }
 
-    pub fn parse_error(&mut self, fatal: bool, message: Option<String>, line_col: LineColLocation,
+    pub fn parse_error(&mut self, fatal: bool, message: Option<String>, line_col: Option<LineColLocation>,
                        positives: Vec<Rule>, negatives: Vec<Rule>) {
         let err = Self::get_parse_error(fatal, message, line_col, positives, negatives);
         self.add_error(err);
@@ -297,7 +310,7 @@ impl CodeLocation {
                 "".to_string()
             };
             if let (LineColLocation::Span(_, (le, _)), Some(ref line2)) = (&self.line_col, &self.line2_str) {
-                let has_line_gap = *le - *ls > 1;
+                let has_line_gap = le - ls > 1;
 
                 if has_line_gap {
                     self.print_numbered_line(ls, line, spacing, buffer);
@@ -323,16 +336,16 @@ impl CodeLocation {
     fn define_lines(&mut self, script: &String) {
         match &self.line_col {
             LineColLocation::Pos((line_no, ..)) => {
-                if let Some(script_line) = script.lines().nth(*line_no - 1) {
+                if let Some(script_line) = script.lines().nth(line_no - 1) {
                     self.line_str = Some(script_line.to_string());
                 }
             }
             LineColLocation::Span((s0_line, ..), (s1_line, ..)) => {
-                if let Some(script_line) = script.lines().nth(*s0_line - 1) {
+                if let Some(script_line) = script.lines().nth(s0_line - 1) {
                     self.line_str = Some(script_line.to_string());
                 }
                 if s0_line != s1_line {
-                    if let Some(script_line) = script.lines().nth(*s1_line - 1) {
+                    if let Some(script_line) = script.lines().nth(s1_line - 1) {
                         self.line2_str = Some(script_line.to_string());
                     }
                 }
@@ -342,34 +355,34 @@ impl CodeLocation {
 
     fn print_numbered_line(&self, l: &usize, line: &String, s: &String, buffer: &mut Buffer) {
         let w = s.len();
-        blue(format!("{l:w$} | "), buffer);
-        white(format!("{line}\n"), buffer);
+        blue(false, format!("{l:w$} | "), buffer);
+        white(false, format!("{line}\n"), buffer);
     }
 
     fn print_line_start(&self, s: &String, buffer: &mut Buffer) {
-        blue(format!("{s} | "), buffer);
+        blue(false, format!("{s} | "), buffer);
     }
 
     fn print_err(&self, line: &str, s: &String, buffer: &mut Buffer) {
         self.print_line_start(s, buffer);
-        red(format!("{line}\n"), buffer);
+        red(false, format!("{line}\n"), buffer);
     }
 
     fn print_info(&self, line: &str, s: &String, buffer: &mut Buffer) {
         self.print_line_start(s, buffer);
-        blue(format!("{line}\n"), buffer);
+        blue(false, format!("{line}\n"), buffer);
     }
 
     fn print_norm(&self, line: &str, s: &String, buffer: &mut Buffer) {
         self.print_line_start(s, buffer);
-        white(format!("{line}\n"), buffer);
+        white(false, format!("{line}\n"), buffer);
     }
 
     fn underline(&self, start_col: &usize) -> String {
         let mut underline = String::new();
 
         let mut start_col = start_col.clone();
-        let end = match self.line_col {
+        let end = match &self.line_col {
             LineColLocation::Span(_, (_, mut end)) => {
                 let inverted_cols = start_col > end;
                 if inverted_cols {
@@ -402,10 +415,10 @@ impl CodeLocation {
                 INFO_UNDERLINE_CHAR
             };
 
-            underline.push(u_char);
-            if end - start_col > 1 {
-                for _ in 2..(end - start_col) {
-                    underline.push(u_char);
+            underline.push(u_char.clone());
+            if end - &start_col > 1 {
+                for _ in 2..(&end - &start_col) {
+                    underline.push(u_char.clone());
                 }
                 underline.push(u_char);
             }
@@ -434,7 +447,7 @@ pub struct WhammError {
 }
 impl WhammError {
     pub fn is_fatal(&self) -> bool {
-        self.fatal
+        self.fatal.clone()
     }
 
     /// report this error to the console, including color highlighting
@@ -445,10 +458,8 @@ impl WhammError {
         let writer = BufferWriter::stderr(ColorChoice::Always);
         let mut buffer = writer.buffer();
 
-        set_bold(true, &mut buffer);
-        red(format!("error[{}]", self.ty.name()), &mut buffer);
-        white(format!(": {}\n", message), &mut buffer);
-        set_bold(false, &mut buffer);
+        red(true, format!("error[{}]", self.ty.name()), &mut buffer);
+        white(true, format!(": {}\n", message), &mut buffer);
 
         if let Some(err_loc) = &mut self.err_loc {
             if err_loc.message.is_none() {
@@ -457,14 +468,14 @@ impl WhammError {
 
             print_preamble(&err_loc.line_col, whammy_path, &spacing, &mut buffer);
             print_empty(&spacing, &mut buffer);
-            let err_start = match err_loc.line_col {
+            let err_start = match &err_loc.line_col {
                 LineColLocation::Pos((line, _)) => line,
                 LineColLocation::Span((start_line, _), ..) => {
                     start_line
                 }
             };
             if let Some(info_loc) = &mut self.info_loc {
-                let info_start = match info_loc.line_col {
+                let info_start = match &info_loc.line_col {
                     LineColLocation::Pos((line, _)) => line,
                     LineColLocation::Span((start_line, _), ..) => {
                         start_line
@@ -487,8 +498,8 @@ impl WhammError {
             print_empty(&spacing, &mut buffer);
         } else {
             // This error isn't tied to a specific code location
-            blue(format!(" --> "), &mut buffer);
-            blue(format!("{whammy_path}\n\n"), &mut buffer);
+            blue(false, format!(" --> "), &mut buffer);
+            blue(false, format!("{whammy_path}\n\n"), &mut buffer);
         }
         writer.print(&buffer).expect("Uh oh, something went wrong while printing to terminal");
         buffer.reset().expect("Uh oh, something went wrong while printing to terminal");
@@ -626,7 +637,7 @@ impl ErrorType {
                 let non_separated = f(&rules[l - 1]);
                 let separated = rules
                     .iter()
-                    .take(l - 1)
+                    .take(l.clone() - 1)
                     .map(f)
                     .collect::<Vec<_>>()
                     .join(", ");
@@ -636,46 +647,6 @@ impl ErrorType {
     }
 }
 
-// ===========================
-// = Terminal Printing Logic =
-// ===========================
-
-fn set_bold(yes: bool, buffer: &mut Buffer) {
-    let write_err = "Uh oh, something went wrong while printing to terminal";
-    buffer.set_color(ColorSpec::new().set_bold(yes)).expect(write_err);
-}
-
-fn color(s: String, buffer: &mut Buffer, c: Color) {
-    let write_err = "Uh oh, something went wrong while printing to terminal";
-    buffer.set_color(ColorSpec::new().set_fg(Some(c))).expect(write_err);
-    write!(buffer, "{}", s.as_str()).expect(write_err);
-}
-
-// fn black(s: String, buffer: &mut Buffer) {
-//     color(s, buffer, Color::Black)
-// }
-fn blue(s: String, buffer: &mut Buffer) {
-    color(s, buffer, Color::Blue)
-}
-// fn cyan(s: String, buffer: &mut Buffer) {
-//     color(s, buffer, Color::Cyan)
-// }
-// fn green(s: String, buffer: &mut Buffer) {
-//     color(s, buffer, Color::Green)
-// }
-// fn magenta(s: String, buffer: &mut Buffer) {
-//     color(s, buffer, Color::Magenta)
-// }
-fn red(s: String, buffer: &mut Buffer) {
-    color(s, buffer, Color::Red)
-}
-fn white(s: String, buffer: &mut Buffer) {
-    color(s, buffer, Color::Rgb(193,193,193))
-}
-// fn yellow(s: String, buffer: &mut Buffer) {
-//     color(s, buffer, Color::Yellow)
-// }
-
 
 fn print_preamble(line_col: &LineColLocation, whammy_path: &String, s: &String, buffer: &mut Buffer) {
     let (ls, c) = match line_col {
@@ -683,17 +654,17 @@ fn print_preamble(line_col: &LineColLocation, whammy_path: &String, s: &String, 
         LineColLocation::Span(start_line_col, _) => start_line_col
     };
 
-    blue(format!("{s}--> "), buffer);
-    blue(format!("{whammy_path}:"), buffer);
-    blue(format!("{ls}:{c}\n"), buffer);
+    blue(false, format!("{s}--> "), buffer);
+    blue(false, format!("{whammy_path}:"), buffer);
+    blue(false, format!("{ls}:{c}\n"), buffer);
 }
 
 fn print_line(line: &str, is_err: bool, s: &String, buffer: &mut Buffer) {
-    blue(format!("{s} | "), buffer);
+    blue(false, format!("{s} | "), buffer);
     if is_err {
-        red(format!("{line}\n"), buffer);
+        red(false, format!("{line}\n"), buffer);
     } else {
-        white(format!("{line}\n"), buffer);
+        white(false, format!("{line}\n"), buffer);
     }
 }
 
