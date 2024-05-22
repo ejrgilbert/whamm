@@ -300,7 +300,9 @@ fn print_global_vars(tabs: &mut usize, globals: &HashMap<String, (ProvidedFuncti
             white(false, format!("{}", " ".repeat(*tabs * 4)), buffer);
             global.print(buffer);
 
-            white(false, format!(" == {}\n", info.docs), buffer);
+            *tabs += 1;
+            white(false, format!("\n{}{}\n", " ".repeat(*tabs * 4), info.docs), buffer);
+            *tabs -= 1;
         }
         *tabs -= 1;
         white(false, format!("\n"), buffer);
@@ -389,7 +391,7 @@ impl Whamm {
         };
         let docs = ProvidedFunctionality {
             name: "strcmp".to_string(),
-            docs: "TODO".to_string()
+            docs: "Compare two wasm strings and return whether they are equivalent.".to_string()
         };
 
         vec![ (docs, strcmp_fn) ]
@@ -410,14 +412,14 @@ impl Whamm {
         self.provided_probes.insert("begin".to_string(), (
                 ProvidedFunctionality {
                     name: "begin".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "Run this logic on application startup.".to_string(),
                 },
                 HashMap::new()
             ));
         self.provided_probes.insert("end".to_string(), (
             ProvidedFunctionality {
                 name: "end".to_string(),
-                docs: "TODO".to_string(),
+                docs: "Run this logic when the application exits.".to_string(),
             },
             HashMap::new()
         ));
@@ -430,336 +432,344 @@ impl Whamm {
             (
                 ProvidedFunctionality {
                     name: "Block".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/block".to_string(),
                 },
                 "Block".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "Loop".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/loop".to_string(),
                 },
                 "Loop".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "Call".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call".to_string(),
                 },
                 "Call".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "CallIndirect".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call".to_string(),
                 },
                 "CallIndirect".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "LocalGet".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_get".to_string(),
                 },
                 "LocalGet".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "LocalSet".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_set".to_string(),
                 },
                 "LocalSet".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "LocalTee".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_tee".to_string(),
                 },
                 "LocalTee".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "GlobalGet".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Global_get".to_string(),
                 },
                 "GlobalGet".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "GlobalSet".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Global_set".to_string(),
                 },
                 "GlobalSet".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "Const".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Const".to_string(),
                 },
                 "Const".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "Binop".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "Consume two operands and produce one result of the respective type. \
+                    The types of binary operations available to instrument depend on the operands \
+                    of the respective instruction. \
+                    A list of such operations is available here: \
+                    https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric".to_string(),
                 },
                 "Binop".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "Unop".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "Consume one operand and produce one result of the respective type. \
+                    The types of unary operations available to instrument depend on the operands \
+                    of the respective instruction. \
+                    A list of such operations is available here: \
+                    https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric".to_string(),
                 },
                 "Unop".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "Select".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/Select".to_string(),
                 },
                 "Select".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "Unreachable".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/unreachable".to_string(),
                 },
                 "Unreachable".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "Br".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br".to_string(),
                 },
                 "Br".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "BrIf".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br".to_string(),
                 },
                 "BrIf".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "IfElse".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else".to_string(),
                 },
                 "IfElse".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "BrTable".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br".to_string(),
                 },
                 "BrTable".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "Drop".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/Drop".to_string(),
                 },
                 "Drop".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "Return".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/return".to_string(),
                 },
                 "Return".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "MemorySize".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Size".to_string(),
                 },
                 "MemorySize".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "MemoryGrow".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Grow".to_string(),
                 },
                 "MemoryGrow".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "MemoryInit".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-memory".to_string(),
                 },
                 "MemoryInit".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "DataDrop".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-memory".to_string(),
                 },
                 "DataDrop".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "MemoryCopy".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Copy".to_string(),
                 },
                 "MemoryCopy".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "MemoryFill".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Fill".to_string(),
                 },
                 "MemoryFill".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "Load".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load".to_string(),
                 },
                 "Load".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "Store".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store".to_string(),
                 },
                 "Store".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "AtomicRmw".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#read-modify-write".to_string(),
                 },
                 "AtomicRmw".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "Cmpxchg".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#compare-exchange".to_string(),
                 },
                 "Cmpxchg".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "AtomicNotify".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#wait-and-notify-operators".to_string(),
                 },
                 "AtomicNotify".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "AtomicWait".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#wait-and-notify-operators".to_string(),
                 },
                 "AtomicWait".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "AtomicFence".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#fence-operator".to_string(),
                 },
                 "AtomicFence".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "TableGet".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 },
                 "TableGet".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "TableSet".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 },
                 "TableSet".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "TableGrow".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 },
                 "TableGrow".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "TableSize".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 },
                 "TableSize".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "TableFill".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 },
                 "TableFill".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "RefNull".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-ref".to_string(),
                 },
                 "RefNull".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "RefIsNull".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-ref".to_string(),
                 },
                 "RefIsNull".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "RefFunc".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-ref".to_string(),
                 },
                 "RefFunc".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "V128Bitselect".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-vec".to_string(),
                 },
                 "V128Bitselect".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "I8x16Swizzle".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-vec".to_string(),
                 },
                 "I8x16Swizzle".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "I8x16Shuffle".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-vec".to_string(),
                 },
                 "I8x16Shuffle".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "LoadSimd".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-vec".to_string(),
                 },
                 "LoadSimd".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "TableInit".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 },
                 "TableInit".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "ElemDrop".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 },
                 "ElemDrop".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "TableCopy".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 },
                 "TableCopy".to_string()
             ),
@@ -768,21 +778,24 @@ impl Whamm {
             (
                 ProvidedFunctionality {
                     name: "before".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "This mode will cause the instrumentation logic to run *before* the \
+                    probed event (if the predicate evaluates to `true`).".to_string(),
                 },
                 "before".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "after".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "This mode will cause the instrumentation logic to run *after* the \
+                    probed event (if the predicate evaluates to `true`).".to_string(),
                 },
                 "after".to_string()
             ),
             (
                 ProvidedFunctionality {
                     name: "alt".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "This mode will cause the instrumentation logic to run *instead of* the \
+                    probed event (if the predicate evaluates to `true`).".to_string(),
                 },
                 "alt".to_string()
             )
@@ -797,12 +810,14 @@ impl Whamm {
         self.provided_probes.insert("wasm".to_string(), (
             ProvidedFunctionality {
                 name: "wasm".to_string(),
-                docs: "TODO".to_string(),
+                docs: "This provides various events to instrument that are specific \
+                to WebAssembly.".to_string(),
             },
             HashMap::from([("bytecode".to_string(), (
                 ProvidedFunctionality {
                     name: "bytecode".to_string(),
-                    docs: "TODO".to_string(),
+                    docs: "This package within the wasm provider contains enables the \
+                    instrumentation of WebAssembly bytecode instructions.".to_string(),
                 },
                 wasm_bytecode_map
             ))])));
@@ -1057,7 +1072,6 @@ impl Whammy {
             // Print the provider description
             tabs += 1;
             white(false, format!("{}{}\n\n", " ".repeat(tabs * 4), provider_info.docs), &mut buffer);
-            tabs -= 1;
 
             // Print the globals
             if print_globals {
@@ -1070,6 +1084,7 @@ impl Whammy {
                 let functions = Provider::get_provided_fns(&provider_str);
                 print_fns(&mut tabs, &functions, &mut buffer);
             }
+            tabs -= 1;
         }
         long_line(&mut buffer);
         white(true, "\n\n".to_string(), &mut buffer);
@@ -1095,10 +1110,9 @@ impl Whammy {
                 magenta_italics(true, package_str.clone(), &mut buffer);
                 white(true, format!(" package\n"), &mut buffer);
 
-                // Print the provider description
+                // Print the package description
                 tabs += 1;
                 white(false, format!("{}{}\n\n", " ".repeat(tabs * 4), package_info.docs), &mut buffer);
-                tabs -= 1;
 
                 // Print the globals
                 if print_globals {
@@ -1111,6 +1125,7 @@ impl Whammy {
                     let functions = Package::get_provided_fns(&package_str);
                     print_fns(&mut tabs, &functions, &mut buffer);
                 }
+                tabs -= 1;
             }
         }
         long_line(&mut buffer);
@@ -1127,7 +1142,7 @@ impl Whammy {
             white_italics(true, "matches the following events:\n\n".to_string(), &mut buffer);
         }
 
-        // Print the matched package information
+        // Print the matched event information
         let mut tabs = 0;
         for (_prov_str, package_map) in event_info.iter() {
             for (_package_str, event_list) in package_map {
@@ -1135,10 +1150,9 @@ impl Whammy {
                     magenta_italics(true, event_str.clone(), &mut buffer);
                     white(true, format!(" event\n"), &mut buffer);
 
-                    // Print the provider description
+                    // Print the event description
                     tabs += 1;
                     white(false, format!("{}{}\n\n", " ".repeat(tabs * 4), event_info.docs), &mut buffer);
-                    tabs -= 1;
 
                     // Print the globals
                     if print_globals {
@@ -1151,6 +1165,7 @@ impl Whammy {
                         let functions = Event::get_provided_fns(&event_str);
                         print_fns(&mut tabs, &functions, &mut buffer);
                     }
+                    tabs -= 1;
                 }
             }
         }
@@ -1175,10 +1190,9 @@ impl Whammy {
                         magenta_italics(true, mode_str.clone(), &mut buffer);
                         white(true, format!(" mode\n"), &mut buffer);
 
-                        // Print the provider description
+                        // Print the mode description
                         tabs += 1;
                         white(false, format!("{}{}\n\n", " ".repeat(tabs * 4), mode_info.docs), &mut buffer);
-                        tabs -= 1;
 
                         // Print the globals
                         if print_globals {
@@ -1191,6 +1205,7 @@ impl Whammy {
                             let functions = Probe::get_provided_fns(&mode_str);
                             print_fns(&mut tabs, &functions, &mut buffer);
                         }
+                        tabs -= 1;
                     }
                 }
             }
@@ -1436,7 +1451,8 @@ impl Event {
             globals.insert("target_fn_type".to_string(),(
                 ProvidedFunctionality {
                     name: "target_fn_type".to_string(),
-                    docs: "TODO".to_string()
+                    docs: "The type of function being called at this call site. This constant will \
+                    evaluate to either `local` or `import`.".to_string()
                 },
                 Global {
                     is_comp_provided: true,
@@ -1450,7 +1466,9 @@ impl Event {
             globals.insert("target_imp_module".to_string(),(
                 ProvidedFunctionality {
                     name: "target_imp_module".to_string(),
-                    docs: "TODO".to_string()
+                    docs: "The name of the module that the imported function comes from. \
+                    To improve performance, pair with `target_fn_type == \"import\"` \
+                    for faster short-circuiting.".to_string()
                 },
                 Global {
                     is_comp_provided: true,
@@ -1464,7 +1482,9 @@ impl Event {
             globals.insert("target_imp_name".to_string(),(
                 ProvidedFunctionality {
                     name: "target_imp_name".to_string(),
-                    docs: "TODO".to_string()
+                    docs: "The name of the imported function. \
+                    To improve performance, pair with `target_fn_type == \"import\"` \
+                    for faster short-circuiting.".to_string()
                 },
                 Global {
                     is_comp_provided: true,
@@ -1478,7 +1498,7 @@ impl Event {
             globals.insert("new_target_fn_name".to_string(),(
                 ProvidedFunctionality {
                     name: "new_target_fn_name".to_string(),
-                    docs: "TODO".to_string()
+                    docs: "(DEPRECATED) The name of the target function to call instead of the original.".to_string()
                 },
                 Global {
                     is_comp_provided: true,
