@@ -175,7 +175,7 @@ pub fn run_test_on_valid_list(scripts: Vec<String>, err: &mut ErrorGen) {
         if err.has_errors {
             err.report();
         }
-        assert!(!err.has_errors);
+        assert!(!&err.has_errors);
         assert!(res);
     }
 }
@@ -202,7 +202,7 @@ pub fn test_parse_invalid_scripts() {
             error!("string = '{}' is recognized as valid, but it should not", script)
         }
         assert!(err.has_errors);
-        assert!(!res);
+        assert!(!&res);
     }
 }
 

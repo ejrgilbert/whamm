@@ -431,347 +431,347 @@ impl Whamm {
         let wasm_bytecode_events = vec![
             (
                 ProvidedFunctionality {
-                    name: "Block".to_string(),
+                    name: "block".to_string(),
                     docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/block".to_string(),
                 },
-                "Block".to_string()
+                "block".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "Loop".to_string(),
+                    name: "loop".to_string(),
                     docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/loop".to_string(),
                 },
-                "Loop".to_string()
+                "loop".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "Call".to_string(),
+                    name: "call".to_string(),
                     docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call".to_string(),
                 },
-                "Call".to_string()
+                "call".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "CallIndirect".to_string(),
+                    name: "call_indirect".to_string(),
                     docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call".to_string(),
                 },
-                "CallIndirect".to_string()
+                "call_indirect".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "LocalGet".to_string(),
+                    name: "local_get".to_string(),
                     docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_get".to_string(),
                 },
-                "LocalGet".to_string()
+                "local_get".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "LocalSet".to_string(),
+                    name: "local_set".to_string(),
                     docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_set".to_string(),
                 },
-                "LocalSet".to_string()
+                "local_set".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "LocalTee".to_string(),
+                    name: "local_tee".to_string(),
                     docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_tee".to_string(),
                 },
-                "LocalTee".to_string()
+                "local_tee".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "GlobalGet".to_string(),
+                    name: "global_get".to_string(),
                     docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Global_get".to_string(),
                 },
-                "GlobalGet".to_string()
+                "global_get".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "GlobalSet".to_string(),
+                    name: "global_set".to_string(),
                     docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Global_set".to_string(),
                 },
-                "GlobalSet".to_string()
+                "global_set".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "Const".to_string(),
+                    name: "const".to_string(),
                     docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Const".to_string(),
                 },
-                "Const".to_string()
+                "const".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "Binop".to_string(),
+                    name: "binop".to_string(),
                     docs: "Consume two operands and produce one result of the respective type. \
                     The types of binary operations available to instrument depend on the operands \
                     of the respective instruction. \
                     A list of such operations is available here: \
                     https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric".to_string(),
                 },
-                "Binop".to_string()
+                "binop".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "Unop".to_string(),
+                    name: "unop".to_string(),
                     docs: "Consume one operand and produce one result of the respective type. \
                     The types of unary operations available to instrument depend on the operands \
                     of the respective instruction. \
                     A list of such operations is available here: \
                     https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric".to_string(),
                 },
-                "Unop".to_string()
+                "unop".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "Select".to_string(),
+                    name: "select".to_string(),
                     docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/Select".to_string(),
                 },
-                "Select".to_string()
+                "select".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "Unreachable".to_string(),
+                    name: "unreachable".to_string(),
                     docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/unreachable".to_string(),
                 },
-                "Unreachable".to_string()
+                "unreachable".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "Br".to_string(),
+                    name: "br".to_string(),
                     docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br".to_string(),
                 },
-                "Br".to_string()
+                "br".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "BrIf".to_string(),
+                    name: "br_if".to_string(),
                     docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br".to_string(),
                 },
-                "BrIf".to_string()
+                "br_if".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "IfElse".to_string(),
+                    name: "if_else".to_string(),
                     docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else".to_string(),
                 },
-                "IfElse".to_string()
+                "if_else".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "BrTable".to_string(),
+                    name: "br_table".to_string(),
                     docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br".to_string(),
                 },
-                "BrTable".to_string()
+                "br_table".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "Drop".to_string(),
+                    name: "drop".to_string(),
                     docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/Drop".to_string(),
                 },
-                "Drop".to_string()
+                "drop".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "Return".to_string(),
+                    name: "return".to_string(),
                     docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/return".to_string(),
                 },
-                "Return".to_string()
+                "return".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "MemorySize".to_string(),
+                    name: "memory_size".to_string(),
                     docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Size".to_string(),
                 },
-                "MemorySize".to_string()
+                "memory_size".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "MemoryGrow".to_string(),
+                    name: "memory_grow".to_string(),
                     docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Grow".to_string(),
                 },
-                "MemoryGrow".to_string()
+                "memory_grow".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "MemoryInit".to_string(),
+                    name: "memory_init".to_string(),
                     docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-memory".to_string(),
                 },
-                "MemoryInit".to_string()
+                "memory_init".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "DataDrop".to_string(),
+                    name: "data_drop".to_string(),
                     docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-memory".to_string(),
                 },
-                "DataDrop".to_string()
+                "data_drop".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "MemoryCopy".to_string(),
+                    name: "memory_copy".to_string(),
                     docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Copy".to_string(),
                 },
-                "MemoryCopy".to_string()
+                "memory_copy".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "MemoryFill".to_string(),
+                    name: "memory_fill".to_string(),
                     docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Fill".to_string(),
                 },
-                "MemoryFill".to_string()
+                "memory_fill".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "Load".to_string(),
+                    name: "load".to_string(),
                     docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load".to_string(),
                 },
-                "Load".to_string()
+                "load".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "Store".to_string(),
+                    name: "store".to_string(),
                     docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store".to_string(),
                 },
-                "Store".to_string()
+                "store".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "AtomicRmw".to_string(),
+                    name: "atomic_rmw".to_string(),
                     docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#read-modify-write".to_string(),
                 },
-                "AtomicRmw".to_string()
+                "atomic_rmw".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "Cmpxchg".to_string(),
+                    name: "cmpxchg".to_string(),
                     docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#compare-exchange".to_string(),
                 },
-                "Cmpxchg".to_string()
+                "cmpxchg".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "AtomicNotify".to_string(),
+                    name: "atomic_notify".to_string(),
                     docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#wait-and-notify-operators".to_string(),
                 },
-                "AtomicNotify".to_string()
+                "atomic_notify".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "AtomicWait".to_string(),
+                    name: "atomic_wait".to_string(),
                     docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#wait-and-notify-operators".to_string(),
                 },
-                "AtomicWait".to_string()
+                "atomic_wait".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "AtomicFence".to_string(),
+                    name: "atomic_fence".to_string(),
                     docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#fence-operator".to_string(),
                 },
-                "AtomicFence".to_string()
+                "atomic_fence".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "TableGet".to_string(),
+                    name: "table_get".to_string(),
                     docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 },
-                "TableGet".to_string()
+                "table_get".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "TableSet".to_string(),
+                    name: "table_set".to_string(),
                     docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 },
-                "TableSet".to_string()
+                "table_set".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "TableGrow".to_string(),
+                    name: "table_grow".to_string(),
                     docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 },
-                "TableGrow".to_string()
+                "table_grow".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "TableSize".to_string(),
+                    name: "table_size".to_string(),
                     docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 },
-                "TableSize".to_string()
+                "table_size".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "TableFill".to_string(),
+                    name: "table_fill".to_string(),
                     docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 },
-                "TableFill".to_string()
+                "table_fill".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "RefNull".to_string(),
+                    name: "ref_null".to_string(),
                     docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-ref".to_string(),
                 },
-                "RefNull".to_string()
+                "ref_null".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "RefIsNull".to_string(),
+                    name: "ref_is_null".to_string(),
                     docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-ref".to_string(),
                 },
-                "RefIsNull".to_string()
+                "ref_is_null".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "RefFunc".to_string(),
+                    name: "ref_func".to_string(),
                     docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-ref".to_string(),
                 },
-                "RefFunc".to_string()
+                "ref_func".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "V128Bitselect".to_string(),
+                    name: "v128_bitselect".to_string(),
                     docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-vec".to_string(),
                 },
-                "V128Bitselect".to_string()
+                "v128_bitselect".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "I8x16Swizzle".to_string(),
+                    name: "i8x16_swizzle".to_string(),
                     docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-vec".to_string(),
                 },
-                "I8x16Swizzle".to_string()
+                "i8x16_swizzle".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "I8x16Shuffle".to_string(),
+                    name: "i8x16_shuffle".to_string(),
                     docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-vec".to_string(),
                 },
-                "I8x16Shuffle".to_string()
+                "i8x16_shuffle".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "LoadSimd".to_string(),
+                    name: "load_simd".to_string(),
                     docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-vec".to_string(),
                 },
-                "LoadSimd".to_string()
+                "load_simd".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "TableInit".to_string(),
+                    name: "table_init".to_string(),
                     docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 },
-                "TableInit".to_string()
+                "table_init".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "ElemDrop".to_string(),
+                    name: "elem_drop".to_string(),
                     docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 },
-                "ElemDrop".to_string()
+                "elem_drop".to_string()
             ),
             (
                 ProvidedFunctionality {
-                    name: "TableCopy".to_string(),
+                    name: "table_copy".to_string(),
                     docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 },
-                "TableCopy".to_string()
+                "table_copy".to_string()
             ),
         ];
         let wasm_bytecode_probe_types = vec![
