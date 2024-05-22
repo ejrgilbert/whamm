@@ -20,5 +20,8 @@ Cargo.lock
 tests/apps/*.wat
 output/
 
+# Ignore the wasm playground files
+wasm_playground/*.wasm
+
 # Ignore mac files
 .DS_Store
