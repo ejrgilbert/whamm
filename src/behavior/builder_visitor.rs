@@ -9,7 +9,7 @@ use regex::Regex;
 use crate::behavior::tree::ParamActionType;
 use crate::behavior::tree::DecoratorType::{HasAltCall, PredIs};
 use crate::common::error::ErrorGen;
-use crate::parser::types::Global;
+use crate::parser::types::{Global, ProvidedFunctionality};
 
 pub type SimpleAST = HashMap<String, HashMap<String, HashMap<String, HashMap<String, Vec<Probe>>>>>;
 
@@ -103,6 +103,23 @@ impl BehaviorTreeBuilder<'_> {
 
             // visit globals
             for (_name, global) in globals.iter() {
+                if global.is_comp_provided {
+                    if let Expr::VarId { name, ..} = &global.var_name {
+                        self.tree.define(self.context_name.clone(),
+                                         name.clone(), self.err);
+                    }
+                }
+            }
+            self.tree.exit_sequence(self.err);
+        }
+    }
+
+    fn visit_provided_globals(&mut self, globals: &HashMap<String, (ProvidedFunctionality, Global)>) {
+        if globals.len() > 0 {
+            self.tree.sequence(self.err);
+
+            // visit globals
+            for (_name, (.., global)) in globals.iter() {
                 if global.is_comp_provided {
                     if let Expr::VarId { name, ..} = &global.var_name {
                         self.tree.define(self.context_name.clone(),
@@ -282,7 +299,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_> {
             // .enter_scope(self.context_name.clone());
 
         // visit globals
-        self.visit_globals(&whamm.globals);
+        self.visit_provided_globals(&whamm.globals);
 
         // visit whammys
         whamm.whammys.iter().for_each(| whammy | self.visit_whammy(whammy));
@@ -323,7 +340,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_> {
         self.tree.enter_scope(self.context_name.clone(), provider.name.clone(), self.err);
 
         // visit globals
-        self.visit_globals(&provider.globals);
+        self.visit_provided_globals(&provider.globals);
 
         provider.packages.iter().for_each(| (_name, package) | {
             self.visit_package(package)

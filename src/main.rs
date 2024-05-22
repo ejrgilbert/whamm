@@ -37,34 +37,7 @@ fn setup_logger() {
     env_logger::init();
 }
 
-// fn build_man(out_dir: &Path) -> Result<(), Error> {
-//     let app = WhammCli::command();
-//
-//     let file = Path::new(&out_dir).join("example.1");
-//     let mut file = File::create(&file)?;
-//
-//     Man::new(app).render(&mut file)?;
-//
-//     Ok(())
-// }
-
 fn main() {
-
-    // Create `target/assets/` folder.
-    // let mut path = match get_pb(&PathBuf::from("target")) {
-    //     Ok(pb) => {
-    //         pb
-    //     }
-    //     Err(_) => {
-    //         exit(1)
-    //     }
-    // };
-    // path.push("assets");
-    // std::fs::create_dir_all(&path).unwrap();
-
-    // Automatically generate the man pages
-    // build_man(&path)?;
-
     if let Err(e) = try_main() {
         eprintln!("error: {}", e);
         for c in e.iter_chain().skip(1) {
@@ -82,9 +55,8 @@ fn try_main() -> Result<(), failure::Error> {
     let cli = WhammCli::parse();
 
     match cli.command {
-        Cmd::Info {spec, matches, globals, functions} => {
-            println!("{spec}: \n-matches: {matches}\n-globals: {globals}\n-functions: {functions}");
-            // TODO -- actually add in the logic here
+        Cmd::Info {spec, globals, functions} => {
+            run_info(spec, globals, functions);
         }
         Cmd::Instr(args) => {
             run_instr(args.app, args.whammy, args.output_path, args.virgil, args.run_verifier);
@@ -98,6 +70,14 @@ fn try_main() -> Result<(), failure::Error> {
     }
 
     Ok(())
+}
+
+fn run_info(spec: String, print_globals: bool, print_functions: bool) {
+    // Parse the script and generate the information
+    let mut err = ErrorGen::new("".to_string(), spec.clone(), MAX_ERRORS);
+    print_info(spec, print_globals, print_functions, &mut err);
+
+    err.fatal_report("PrintInfo");
 }
 
 fn run_instr(app_wasm_path: String, whammy_path: String, output_wasm_path: String, emit_virgil: bool, run_verifier: bool) {

@@ -12,6 +12,37 @@ use crate::parser::types::{DataType, Whammy, Whamm, Expr, Statement, Value, Loca
 
 const UNEXPECTED_ERR_MSG: &str = "WhammParser: Looks like you've found a bug...please report this behavior! Exiting now...";
 
+pub fn print_info(spec: String, print_globals: bool, print_functions: bool, err: &mut ErrorGen) {
+    trace!("Entered print_info");
+    err.set_script_text(spec.to_owned());
+
+    let res = WhammParser::parse(Rule::PROBE_SPEC, &*spec);
+    match res {
+        Ok(mut pairs) => {
+            // Create the probe specification from the input string
+            let probe_spec = probe_spec_from_rule(
+                // inner of script
+                pairs.next().unwrap(),
+                err
+            );
+
+            // Print the information for the passed probe specification
+            let mut whamm = Whamm::new();
+            let id = whamm.add_whammy(Whammy::new());
+            let whammy: &mut Whammy = whamm.whammys.get_mut(id).unwrap();
+            match whammy.print_info(&whamm.provided_probes, &probe_spec, print_globals, print_functions) {
+                Err(e) => {
+                    err.add_error(e);
+                },
+                _ => {}
+            }
+        },
+        Err(e) => {
+            err.pest_err(e);
+        },
+    }
+}
+
 pub fn parse_script(script: &String, err: &mut ErrorGen) -> Option<Whamm> {
     trace!("Entered parse_script");
     err.set_script_text(script.to_owned());
@@ -60,7 +91,7 @@ pub fn to_ast(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Whamm, Error<Rule>
         rule => {
             err.parse_error(true,
                 Some(UNEXPECTED_ERR_MSG.to_string()),
-                LineColLocation::from(pair.as_span()),
+                Some(LineColLocation::from(pair.as_span())),
                 vec![Rule::whammy], vec![rule]);
             // should have exited above (since it's a fatal error)
             unreachable!()
@@ -153,7 +184,7 @@ pub fn process_pair(whamm: &mut Whamm, whammy_count: usize, pair: Pair<Rule>, er
         rule => {
             err.parse_error(true,
                             Some(UNEXPECTED_ERR_MSG.to_string()),
-                            LineColLocation::from(pair.as_span()),
+                            Some(LineColLocation::from(pair.as_span())),
                             vec![Rule::whammy, Rule::probe_def, Rule::EOI], vec![rule]);
             // should have exited above (since it's a fatal error)
             unreachable!()
@@ -308,7 +339,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Statement {
         rule => {
             err.parse_error(true,
                             Some(UNEXPECTED_ERR_MSG.to_string()),
-                            LineColLocation::from(pair.as_span()),
+                            Some(LineColLocation::from(pair.as_span())),
                             vec![Rule::statement, Rule::assignment, Rule::fn_call], vec![rule]);
             // should have exited above (since it's a fatal error)
             unreachable!();
@@ -339,7 +370,7 @@ fn probe_spec_part_from_rule(pair: Pair<Rule>, err: &mut ErrorGen)  -> SpecPart 
         rule => {
             err.parse_error(true,
                             Some(UNEXPECTED_ERR_MSG.to_string()),
-                            LineColLocation::from(pair.as_span()),
+                            Some(LineColLocation::from(pair.as_span())),
                             vec![Rule::PROBE_ID, Rule::PROBE_ID], vec![rule]);
             // should have exited above (since it's a fatal error)
             unreachable!();
@@ -369,21 +400,12 @@ fn probe_spec_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeSpec {
 
                 return ProbeSpec {
                     provider: Some(SpecPart {
-                        name: "core".to_string(),
+                        name: spec_as_str.to_uppercase(),
                         loc: loc.clone()
                     }),
-                    package: Some(SpecPart {
-                        name: "*".to_string(),
-                        loc: loc.clone()
-                    }),
-                    event: Some(SpecPart {
-                        name: "*".to_string(),
-                        loc: loc.clone()
-                    }),
-                    mode: Some(SpecPart {
-                        name: "BEGIN".to_string(),
-                        loc
-                    }),
+                    package: None,
+                    event: None,
+                    mode: None,
                 }
             }
 
@@ -431,7 +453,7 @@ fn probe_spec_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeSpec {
         rule => {
             err.parse_error(true,
                             Some(UNEXPECTED_ERR_MSG.to_string()),
-                            LineColLocation::from(pair.as_span()),
+                            Some(LineColLocation::from(pair.as_span())),
                             vec![Rule::PROBE_SPEC], vec![rule]);
             // should have exited above (since it's a fatal error)
             unreachable!();
@@ -573,7 +595,7 @@ fn expr_from_pairs(pairs: Pairs<Rule>) -> Result<Expr, Vec<WhammError>> {
                             return Err(vec![ErrorGen::get_parse_error(
                                 true,
                                 Some(UNEXPECTED_ERR_MSG.to_string()),
-                                LineColLocation::from(op.as_span()),
+                                Some(LineColLocation::from(op.as_span())),
                                 vec![Rule::and, Rule::or, Rule::eq, Rule::ne, Rule::ge, Rule::gt, Rule::le, Rule::lt,
                                         Rule::add, Rule::subtract, Rule::multiply, Rule::divide, Rule::modulo],
                                 vec![rule])]);

@@ -36,6 +36,9 @@ pub fn red(bold: bool, s: String, buffer: &mut Buffer) {
 pub fn white(bold: bool, s: String, buffer: &mut Buffer) {
     color(s, buffer, bold, false, Color::Rgb(193,193,193))
 }
+pub fn white_italics(bold: bool, s: String, buffer: &mut Buffer) {
+    color(s, buffer, bold, true, Color::White)
+}
 pub fn yellow(bold: bool, s: String, buffer: &mut Buffer) {
     color(s, buffer, bold, false, Color::Yellow)
 }

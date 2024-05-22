@@ -5,7 +5,7 @@ use crate::verifier::types::{Record, ScopeType, SymbolTable};
 
 use log::trace;
 use crate::common::error::ErrorGen;
-use crate::parser::types::Global;
+use crate::parser::types::{Global, ProvidedFunctionality};
 
 const UNEXPECTED_ERR_MSG: &str = "SymbolTableBuilder: Looks like you've found a bug...please report this behavior! Exiting now...";
 
@@ -328,6 +328,12 @@ impl SymbolTableBuilder<'_> {
         self.add_fn_id_to_curr_rec(id);
     }
 
+    fn visit_provided_globals(&mut self, globals: &HashMap<String, (ProvidedFunctionality, Global)>) {
+        for (name, (.., global)) in globals.iter() {
+            self.add_global(global.ty.clone(), name.clone());
+        }
+    }
+
     fn visit_globals(&mut self, globals: &HashMap<String, Global>) {
         for (name, global) in globals.iter() {
             self.add_global(global.ty.clone(), name.clone());
@@ -355,10 +361,10 @@ impl WhammVisitor<()> for SymbolTableBuilder<'_> {
         self.curr_whamm = Some(id);
 
         // visit fns
-        whamm.fns.iter().for_each(| f | self.visit_fn(f) );
+        whamm.fns.iter().for_each(| (.., f) | self.visit_fn(f) );
 
         // visit globals
-        self.visit_globals(&whamm.globals);
+        self.visit_provided_globals(&whamm.globals);
 
         // visit whammys
         whamm.whammys.iter().for_each(| whammy | self.visit_whammy(whammy));
@@ -389,8 +395,8 @@ impl WhammVisitor<()> for SymbolTableBuilder<'_> {
         trace!("Entering: visit_provider");
 
         self.add_provider(provider);
-        provider.fns.iter().for_each(| f | self.visit_fn(f) );
-        self.visit_globals(&provider.globals);
+        provider.fns.iter().for_each(| (.., f) | self.visit_fn(f) );
+        self.visit_provided_globals(&provider.globals);
         provider.packages.iter().for_each(| (_name, package) | {
             self.visit_package(package)
         });
@@ -407,8 +413,8 @@ impl WhammVisitor<()> for SymbolTableBuilder<'_> {
         trace!("Entering: visit_package");
 
         self.add_package(package);
-        package.fns.iter().for_each(| f | self.visit_fn(f) );
-        self.visit_globals(&package.globals);
+        package.fns.iter().for_each(| (.., f) | self.visit_fn(f) );
+        self.visit_provided_globals(&package.globals);
         package.events.iter().for_each(| (_name, event) | {
             self.visit_event(event)
         });
@@ -425,8 +431,8 @@ impl WhammVisitor<()> for SymbolTableBuilder<'_> {
         trace!("Entering: visit_event");
 
         self.add_event(event);
-        event.fns.iter().for_each(| f | self.visit_fn(f) );
-        self.visit_globals(&event.globals);
+        event.fns.iter().for_each(| (.., f) | self.visit_fn(f) );
+        self.visit_provided_globals(&event.globals);
 
         // visit probe_map
         event.probe_map.iter().for_each(| probes | {
@@ -447,8 +453,8 @@ impl WhammVisitor<()> for SymbolTableBuilder<'_> {
         trace!("Entering: visit_probe");
 
         self.add_probe(probe);
-        probe.fns.iter().for_each(| f | self.visit_fn(f) );
-        self.visit_globals(&probe.globals);
+        probe.fns.iter().for_each(| (.., f) | self.visit_fn(f) );
+        self.visit_provided_globals(&probe.globals);
 
         // Will not visit predicate/body at this stage
 

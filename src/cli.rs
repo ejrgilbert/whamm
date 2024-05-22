@@ -26,10 +26,6 @@ pub(crate) enum Cmd {
         #[arg(short, long, value_parser)]
         spec: String,
 
-        /// Show what would be matched by performing pattern matching on the specification.
-        #[arg(long, short, action, default_value = "false")]
-        matches: bool,
-
         /// Show the globals in-scope when using the probe specification.
         #[arg(long, short, action, default_value = "false")]
         globals: bool,
