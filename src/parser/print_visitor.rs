@@ -3,7 +3,7 @@ use parser_types::{WhammVisitor};
 
 use std::cmp;
 use std::collections::HashMap;
-use crate::parser::types::{DataType, Whammy, Whamm, Expr, Event, Package, Op, Probe, Provider, Statement, Value, Global};
+use crate::parser::types::{DataType, Whammy, Whamm, Expr, Event, Package, Op, Probe, Provider, Statement, Value, Global, ProvidedFunctionality};
 
 const NL: &str = "\n";
 
@@ -20,12 +20,24 @@ impl AsStrVisitor {
     }
 
     fn get_indent(&self) -> String {
-        "--".repeat(cmp::max(0, self.indent as usize))
+        "--".repeat(cmp::max(0, self.indent.clone() as usize))
     }
 
     fn visit_globals(&mut self, globals: &HashMap<String, Global>) -> String {
         let mut s = "".to_string();
         for (name, global) in globals.iter() {
+            s += &format!("{}{} := ", self.get_indent(), name);
+            match &global.value {
+                Some(v) => s += &format!("{}{}", self.visit_value(v), NL),
+                None => s += &format!("None{}", NL)
+            }
+        }
+        s
+    }
+
+    fn visit_provided_globals(&mut self, globals: &HashMap<String, (ProvidedFunctionality, Global)>) -> String {
+        let mut s = "".to_string();
+        for (name, (.., global)) in globals.iter() {
             s += &format!("{}{} := ", self.get_indent(), name);
             match &global.value {
                 Some(v) => s += &format!("{}{}", self.visit_value(v), NL),
@@ -44,7 +56,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         if whamm.fns.len() > 0 {
             s += &format!("Whamm events:{}", NL);
             self.increase_indent();
-            for f in whamm.fns.iter() {
+            for (.., f) in whamm.fns.iter() {
                 s += &format!("{}{}", self.visit_fn(f), NL);
             }
             self.decrease_indent();
@@ -54,7 +66,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         if whamm.globals.len() > 0 {
             s += &format!("Whamm globals:{}", NL);
             self.increase_indent();
-            for (name, global) in whamm.globals.iter() {
+            for (name, (.., global)) in whamm.globals.iter() {
                 s += &format!("{}{} := ", self.get_indent(), name);
                 match &global.value {
                     Some(v) => s += &format!("{}{}", self.visit_value(v), NL),
@@ -122,7 +134,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         if provider.fns.len() > 0 {
             s += &format!("{} events:{}", self.get_indent(), NL);
             self.increase_indent();
-            for f in provider.fns.iter() {
+            for (.., f) in provider.fns.iter() {
                 s += &format!("{}{}{}", self.get_indent(), self.visit_fn(f), NL);
             }
             self.decrease_indent();
@@ -132,7 +144,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         if provider.globals.len() > 0 {
             s += &format!("{} globals:{}", self.get_indent(), NL);
             self.increase_indent();
-            self.visit_globals(&provider.globals);
+            self.visit_provided_globals(&provider.globals);
             self.decrease_indent();
         }
 
@@ -162,7 +174,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         if package.fns.len() > 0 {
             s += &format!("{} package fns:{}", self.get_indent(), NL);
             self.increase_indent();
-            for f in package.fns.iter() {
+            for (.., f) in package.fns.iter() {
                 s += &format!("{}{}{}", self.get_indent(), self.visit_fn(f), NL);
             }
             self.decrease_indent();
@@ -172,7 +184,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         if package.globals.len() > 0 {
             s += &format!("{} package globals:{}", self.get_indent(), NL);
             self.increase_indent();
-            self.visit_globals(&package.globals);
+            self.visit_provided_globals(&package.globals);
             self.decrease_indent();
         }
 
@@ -200,7 +212,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         if event.fns.len() > 0 {
             s += &format!("{} event fns:{}", self.get_indent(), NL);
             self.increase_indent();
-            for f in event.fns.iter() {
+            for (.., f) in event.fns.iter() {
                 s += &format!("{}{}{}", self.get_indent(), self.visit_fn(f), NL);
             }
             self.decrease_indent();
@@ -210,7 +222,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         if event.globals.len() > 0 {
             s += &format!("{} event globals:{}", self.get_indent(), NL);
             self.increase_indent();
-            self.visit_globals(&event.globals);
+            self.visit_provided_globals(&event.globals);
             self.decrease_indent();
         }
 
@@ -243,7 +255,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         if probe.fns.len() > 0 {
             s += &format!("{} probe fns:{}", self.get_indent(), NL);
             self.increase_indent();
-            for f in probe.fns.iter() {
+            for (.., f) in probe.fns.iter() {
                 s += &format!("{}{}{}", self.get_indent(), self.visit_fn(f), NL);
             }
             self.decrease_indent();
@@ -253,7 +265,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         if probe.globals.len() > 0 {
             s += &format!("{} probe globals:{}", self.get_indent(), NL);
             self.increase_indent();
-            self.visit_globals(&probe.globals);
+            self.visit_provided_globals(&probe.globals);
             self.decrease_indent();
         }
 

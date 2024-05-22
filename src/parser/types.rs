@@ -1,10 +1,13 @@
 use std::collections::HashMap;
+use termcolor::{Buffer, ColorChoice, WriteColor};
 use glob::Pattern;
 use pest::error::LineColLocation;
 
 use pest_derive::Parser;
 use pest::pratt_parser::PrattParser;
+use termcolor::BufferWriter;
 use walrus::DataId;
+use crate::common::terminal::{green, long_line, magenta, magenta_italics, white, white_italics, yellow};
 use crate::common::error::{ErrorGen, WhammError};
 
 #[derive(Parser)]
@@ -61,14 +64,14 @@ impl Location {
     }
 
     pub fn span_between(loc0: &Location, loc1: &Location) -> LineColLocation {
-        let pos0 = match loc0.line_col {
+        let pos0 = match &loc0.line_col {
             LineColLocation::Pos(pos0) |
-            LineColLocation::Span(pos0, ..) => pos0
+            LineColLocation::Span(pos0, ..) => pos0.clone()
         };
 
-        let pos1 = match loc1.line_col {
+        let pos1 = match &loc1.line_col {
             LineColLocation::Pos(end1) |
-            LineColLocation::Span(.., end1) => end1
+            LineColLocation::Span(.., end1) => end1.clone()
         };
 
         return LineColLocation::Span(pos0, pos1);
@@ -83,6 +86,38 @@ pub enum DataType {
     Str,
     Tuple {
         ty_info: Option<Vec<Box<DataType>>>
+    }
+}
+impl DataType {
+    pub fn print(&self, buffer: &mut Buffer) {
+        match self {
+            DataType::Integer => {
+                yellow(true, "int".to_string(), buffer);
+            },
+            DataType::Boolean => {
+                yellow(true, "bool".to_string(), buffer);
+            },
+            DataType::Null => {
+                yellow(true, "null".to_string(), buffer);
+            },
+            DataType::Str => {
+                yellow(true, "str".to_string(), buffer);
+            },
+            DataType::Tuple {ty_info} => {
+                white(true, "(".to_string(), buffer);
+                let mut is_first = true;
+                if let Some(types) = ty_info {
+                    for ty in types {
+                        if !is_first {
+                            white(true, ", ".to_string(), buffer);
+                        }
+                        ty.print(buffer);
+                        is_first = false;
+                    }
+                }
+                white(true, ")".to_string(), buffer);
+            }
+        }
     }
 }
 
@@ -214,6 +249,30 @@ pub struct Fn {
     pub(crate) return_ty: Option<DataType>,
     pub(crate) body: Option<Vec<Statement>>
 }
+impl Fn {
+    pub fn print(&self, buffer: &mut Buffer) {
+        green(true, format!("{}", self.name.name), buffer);
+        white(true, "(".to_string(), buffer);
+        let mut is_first = true;
+        for (param_name, param_ty) in self.params.iter() {
+            if !is_first {
+                white(true, ", ".to_string(), buffer);
+            }
+            if let Expr::VarId {name, ..} = param_name {
+                green(true, format!("{name}"), buffer);
+                white(true, ": ".to_string(), buffer);
+                param_ty.print(buffer);
+            }
+            is_first = false;
+        }
+        white(true, ")".to_string(), buffer);
+
+        if let Some(return_ty) = &self.return_ty {
+            white(true, " -> ".to_string(), buffer);
+            return_ty.print(buffer);
+        }
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct Global {
@@ -223,11 +282,65 @@ pub struct Global {
     pub var_name: Expr, // Should be VarId
     pub value: Option<Value>
 }
+impl Global {
+    pub fn print(&self, buffer: &mut Buffer) {
+        if let Expr::VarId {name, ..} = &self.var_name {
+            green(true, format!("{name}"), buffer);
+        }
+        white(true, ": ".to_string(), buffer);
+        self.ty.print(buffer);
+    }
+}
+
+fn print_global_vars(tabs: &mut usize, globals: &HashMap<String, (ProvidedFunctionality, Global)>, buffer: &mut Buffer) {
+    if !globals.is_empty() {
+        white(true, format!("{}GLOBALS:\n", " ".repeat(*tabs * 4)), buffer);
+        *tabs += 1;
+        for (.., (info, global)) in globals.iter() {
+            white(false, format!("{}", " ".repeat(*tabs * 4)), buffer);
+            global.print(buffer);
+
+            *tabs += 1;
+            white(false, format!("\n{}{}\n", " ".repeat(*tabs * 4), info.docs), buffer);
+            *tabs -= 1;
+        }
+        *tabs -= 1;
+        white(false, format!("\n"), buffer);
+    }
+}
+
+fn print_fns(tabs: &mut usize, functions: &Vec<(ProvidedFunctionality, Fn)>, buffer: &mut Buffer) {
+    if !functions.is_empty() {
+        white(true, format!("{}FUNCTIONS:\n", " ".repeat(*tabs * 4)), buffer);
+        *tabs += 1;
+        for (info, f) in functions.iter() {
+            green(true, format!("{}", " ".repeat(*tabs * 4)), buffer);
+            f.print(buffer);
+            green(true, format!("\n"), buffer);
+            *tabs += 1;
+            white(false, format!("{}{}\n", " ".repeat(*tabs * 4), info.docs), buffer);
+            *tabs -= 1;
+        }
+        *tabs -= 1;
+        white(false, format!("\n"), buffer);
+    }
+}
+
+pub type ProvidedProbes = HashMap<String, (
+    ProvidedFunctionality,
+    HashMap<String, (
+        ProvidedFunctionality,
+        HashMap<String, (
+            ProvidedFunctionality,
+            Vec<(ProvidedFunctionality, String)>
+        )>
+    )>
+)>;
 
 pub struct Whamm {
-    pub provided_probes: HashMap<String, HashMap<String, HashMap<String, Vec<String>>>>,
-    pub(crate) fns: Vec<Fn>,              // Comp-provided
-    pub globals: HashMap<String, Global>, // Comp-provided
+    pub provided_probes: ProvidedProbes,
+    pub fns: Vec<(ProvidedFunctionality, Fn)>,                     // Comp-provided
+    pub globals: HashMap<String, (ProvidedFunctionality, Global)>, // Comp-provided
 
     pub whammys: Vec<Whammy>
 }
@@ -244,7 +357,7 @@ impl Whamm {
         whamm
     }
 
-    fn get_provided_fns() -> Vec<Fn> {
+    fn get_provided_fns() -> Vec<(ProvidedFunctionality, Fn)> {
         let params = vec![
             (
                 Expr::VarId {
@@ -276,10 +389,15 @@ impl Whamm {
             return_ty: Some(DataType::Boolean),
             body: None
         };
-        vec![ strcmp_fn ]
+        let docs = ProvidedFunctionality {
+            name: "strcmp".to_string(),
+            docs: "Compare two wasm strings and return whether they are equivalent.".to_string()
+        };
+
+        vec![ (docs, strcmp_fn) ]
     }
 
-    fn get_provided_globals() -> HashMap<String, Global> {
+    fn get_provided_globals() -> HashMap<String, (ProvidedFunctionality, Global)> {
         HashMap::new()
     }
 
@@ -291,84 +409,418 @@ impl Whamm {
 
     fn init_core_probes(&mut self) {
         // Not really any packages or events for a core probe...just two types!
-        self.provided_probes.insert("core".to_string(), HashMap::from([
-            ("".to_string(), HashMap::from([
-                ("".to_string(), vec![
-                    "begin".to_string(),
-                    "end".to_string()
-                ])
-            ]))
-        ]));
+        self.provided_probes.insert("begin".to_string(), (
+                ProvidedFunctionality {
+                    name: "begin".to_string(),
+                    docs: "Run this logic on application startup.".to_string(),
+                },
+                HashMap::new()
+            ));
+        self.provided_probes.insert("end".to_string(), (
+            ProvidedFunctionality {
+                name: "end".to_string(),
+                docs: "Run this logic when the application exits.".to_string(),
+            },
+            HashMap::new()
+        ));
     }
 
     fn init_wasm_probes(&mut self) {
         // This list of events matches up with bytecodes supported by Walrus.
         // See: https://docs.rs/walrus/latest/walrus/ir/
         let wasm_bytecode_events = vec![
-            "Block".to_string(),
-            "Loop".to_string(),
-            "Call".to_string(),
-            "CallIndirect".to_string(),
-            "LocalGet".to_string(),
-            "LocalSet".to_string(),
-            "LocalTee".to_string(),
-            "GlobalGet".to_string(),
-            "GlobalSet".to_string(),
-            "Const".to_string(),
-            "Binop".to_string(),
-            "Unop".to_string(),
-            "Select".to_string(),
-            "Unreachable".to_string(),
-            "Br".to_string(),
-            "BrIf".to_string(),
-            "IfElse".to_string(),
-            "BrTable".to_string(),
-            "Drop".to_string(),
-            "Return".to_string(),
-            "MemorySize".to_string(),
-            "MemoryGrow".to_string(),
-            "MemoryInit".to_string(),
-            "DataDrop".to_string(),
-            "MemoryCopy".to_string(),
-            "MemoryFill".to_string(),
-            "Load".to_string(),
-            "Store".to_string(),
-            "AtomicRmw".to_string(),
-            "Cmpxchg".to_string(),
-            "AtomicNotify".to_string(),
-            "AtomicWait".to_string(),
-            "AtomicFence".to_string(),
-            "TableGet".to_string(),
-            "TableSet".to_string(),
-            "TableGrow".to_string(),
-            "TableSize".to_string(),
-            "TableFill".to_string(),
-            "RefNull".to_string(),
-            "RefIsNull".to_string(),
-            "RefFunc".to_string(),
-            "V128Bitselect".to_string(),
-            "I8x16Swizzle".to_string(),
-            "I8x16Shuffle".to_string(),
-            "LoadSimd".to_string(),
-            "TableInit".to_string(),
-            "ElemDrop".to_string(),
-            "TableCopy".to_string()
+            (
+                ProvidedFunctionality {
+                    name: "block".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/block".to_string(),
+                },
+                "block".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "loop".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/loop".to_string(),
+                },
+                "loop".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "call".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call".to_string(),
+                },
+                "call".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "call_indirect".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call".to_string(),
+                },
+                "call_indirect".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "local_get".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_get".to_string(),
+                },
+                "local_get".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "local_set".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_set".to_string(),
+                },
+                "local_set".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "local_tee".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_tee".to_string(),
+                },
+                "local_tee".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "global_get".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Global_get".to_string(),
+                },
+                "global_get".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "global_set".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Global_set".to_string(),
+                },
+                "global_set".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "const".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Const".to_string(),
+                },
+                "const".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "binop".to_string(),
+                    docs: "Consume two operands and produce one result of the respective type. \
+                    The types of binary operations available to instrument depend on the operands \
+                    of the respective instruction. \
+                    A list of such operations is available here: \
+                    https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric".to_string(),
+                },
+                "binop".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "unop".to_string(),
+                    docs: "Consume one operand and produce one result of the respective type. \
+                    The types of unary operations available to instrument depend on the operands \
+                    of the respective instruction. \
+                    A list of such operations is available here: \
+                    https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric".to_string(),
+                },
+                "unop".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "select".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/Select".to_string(),
+                },
+                "select".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "unreachable".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/unreachable".to_string(),
+                },
+                "unreachable".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "br".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br".to_string(),
+                },
+                "br".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "br_if".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br".to_string(),
+                },
+                "br_if".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "if_else".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else".to_string(),
+                },
+                "if_else".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "br_table".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br".to_string(),
+                },
+                "br_table".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "drop".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/Drop".to_string(),
+                },
+                "drop".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "return".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/return".to_string(),
+                },
+                "return".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "memory_size".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Size".to_string(),
+                },
+                "memory_size".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "memory_grow".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Grow".to_string(),
+                },
+                "memory_grow".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "memory_init".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-memory".to_string(),
+                },
+                "memory_init".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "data_drop".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-memory".to_string(),
+                },
+                "data_drop".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "memory_copy".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Copy".to_string(),
+                },
+                "memory_copy".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "memory_fill".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Fill".to_string(),
+                },
+                "memory_fill".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "load".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load".to_string(),
+                },
+                "load".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "store".to_string(),
+                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store".to_string(),
+                },
+                "store".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "atomic_rmw".to_string(),
+                    docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#read-modify-write".to_string(),
+                },
+                "atomic_rmw".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "cmpxchg".to_string(),
+                    docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#compare-exchange".to_string(),
+                },
+                "cmpxchg".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "atomic_notify".to_string(),
+                    docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#wait-and-notify-operators".to_string(),
+                },
+                "atomic_notify".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "atomic_wait".to_string(),
+                    docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#wait-and-notify-operators".to_string(),
+                },
+                "atomic_wait".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "atomic_fence".to_string(),
+                    docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#fence-operator".to_string(),
+                },
+                "atomic_fence".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "table_get".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
+                },
+                "table_get".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "table_set".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
+                },
+                "table_set".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "table_grow".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
+                },
+                "table_grow".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "table_size".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
+                },
+                "table_size".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "table_fill".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
+                },
+                "table_fill".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "ref_null".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-ref".to_string(),
+                },
+                "ref_null".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "ref_is_null".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-ref".to_string(),
+                },
+                "ref_is_null".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "ref_func".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-ref".to_string(),
+                },
+                "ref_func".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "v128_bitselect".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-vec".to_string(),
+                },
+                "v128_bitselect".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "i8x16_swizzle".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-vec".to_string(),
+                },
+                "i8x16_swizzle".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "i8x16_shuffle".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-vec".to_string(),
+                },
+                "i8x16_shuffle".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "load_simd".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-vec".to_string(),
+                },
+                "load_simd".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "table_init".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
+                },
+                "table_init".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "elem_drop".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
+                },
+                "elem_drop".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "table_copy".to_string(),
+                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
+                },
+                "table_copy".to_string()
+            ),
         ];
         let wasm_bytecode_probe_types = vec![
-            "before".to_string(),
-            "after".to_string(),
-            "alt".to_string()
+            (
+                ProvidedFunctionality {
+                    name: "before".to_string(),
+                    docs: "This mode will cause the instrumentation logic to run *before* the \
+                    probed event (if the predicate evaluates to `true`).".to_string(),
+                },
+                "before".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "after".to_string(),
+                    docs: "This mode will cause the instrumentation logic to run *after* the \
+                    probed event (if the predicate evaluates to `true`).".to_string(),
+                },
+                "after".to_string()
+            ),
+            (
+                ProvidedFunctionality {
+                    name: "alt".to_string(),
+                    docs: "This mode will cause the instrumentation logic to run *instead of* the \
+                    probed event (if the predicate evaluates to `true`).".to_string(),
+                },
+                "alt".to_string()
+            )
         ];
         let mut wasm_bytecode_map = HashMap::new();
 
         // Build out the wasm_bytecode_map
-        for event in wasm_bytecode_events {
-            wasm_bytecode_map.insert(event, wasm_bytecode_probe_types.clone());
+        for (info, name) in wasm_bytecode_events {
+            wasm_bytecode_map.insert(name, (info.clone(), wasm_bytecode_probe_types.clone()));
         }
 
-        self.provided_probes.insert("wasm".to_string(), HashMap::from([
-            ("bytecode".to_string(), wasm_bytecode_map)
-        ]));
+        self.provided_probes.insert("wasm".to_string(), (
+            ProvidedFunctionality {
+                name: "wasm".to_string(),
+                docs: "This provides various events to instrument that are specific \
+                to WebAssembly.".to_string(),
+            },
+            HashMap::from([("bytecode".to_string(), (
+                ProvidedFunctionality {
+                    name: "bytecode".to_string(),
+                    docs: "This package within the wasm provider contains enables the \
+                    instrumentation of WebAssembly bytecode instructions.".to_string(),
+                },
+                wasm_bytecode_map
+            ))])));
     }
     pub fn add_whammy(&mut self, mut whammy: Whammy) -> usize {
         let id = self.whammys.len();
@@ -436,9 +888,338 @@ impl Whammy {
         }
     }
 
+    fn get_provider_info(provided_probes: &ProvidedProbes, probe_spec: &ProbeSpec) -> Result<Vec<(ProvidedFunctionality, String)>, WhammError> {
+        let (prov_matches, prov_loc) = if let Some(prov_patt) = &probe_spec.provider {
+            (Provider::get_matches(provided_probes, &prov_patt.name), prov_patt.loc.clone())
+        } else {
+            (vec![], None)
+        };
+
+        if prov_matches.is_empty() {
+            let loc = if let Some(loc) = &prov_loc {
+                Some(loc.line_col.clone())
+            } else {
+                None
+            };
+            return Err(ErrorGen::get_parse_error(true,
+                 Some(format!("Could not find any matches for the provider pattern")),
+                 loc, vec![], vec![]));
+        }
+
+        Ok(prov_matches)
+    }
+
+    fn get_package_info(provided_probes: &ProvidedProbes, provider_matches: &Vec<(ProvidedFunctionality, String)>, probe_spec: &ProbeSpec) -> Result<HashMap<String, Vec<(ProvidedFunctionality, String)>>, WhammError> {
+        let (package_matches, package_loc) = if let Some(package_patt) = &probe_spec.package {
+            let mut matches = HashMap::new();
+            for (.., provider) in provider_matches.iter() {
+                let next = Package::get_matches(provided_probes, provider, &package_patt.name);
+                matches.insert(provider.clone(),next);
+            }
+
+            (matches, package_patt.loc.clone())
+        } else {
+            (HashMap::new(), None)
+        };
+
+        if package_matches.is_empty() {
+            let loc = if let Some(loc) = &package_loc {
+                Some(loc.line_col.clone())
+            } else {
+                None
+            };
+            return Err(ErrorGen::get_parse_error(true,
+             Some(format!("Could not find any matches for the package pattern")),
+             loc, vec![], vec![]));
+        }
+        Ok(package_matches)
+    }
+
+    fn get_event_info(provided_probes: &ProvidedProbes, package_matches: &HashMap<String, Vec<(ProvidedFunctionality, String)>>, probe_spec: &ProbeSpec) -> Result<HashMap<String, HashMap<String, Vec<(ProvidedFunctionality, String)>>>, WhammError> {
+        let (event_matches, event_loc) = if let Some(event_patt) = &probe_spec.event {
+            let mut event_matches = HashMap::new();
+            for (provider_name, packages) in package_matches.iter() {
+                let mut package = HashMap::new();
+                for (.., package_name) in packages.iter() {
+                    let next = Event::get_matches(provided_probes, provider_name, package_name, &event_patt.name);
+                    package.insert(package_name.clone(), next);
+                }
+                event_matches.insert(provider_name.clone(), package);
+            }
+
+            (event_matches, event_patt.loc.clone())
+        } else {
+            (HashMap::new(), None)
+        };
+
+        if package_matches.is_empty() {
+            let loc = if let Some(loc) = &event_loc {
+                Some(loc.line_col.clone())
+            } else {
+                None
+            };
+            return Err(ErrorGen::get_parse_error(true,
+                                                 Some(format!("Could not find any matches for the event pattern")),
+                                                 loc, vec![], vec![]));
+        }
+        Ok(event_matches)
+    }
+
+    fn get_mode_info(provided_probes: &ProvidedProbes, matches: &HashMap<String, HashMap<String, Vec<(ProvidedFunctionality, String)>>>, probe_spec: &ProbeSpec) -> Result<HashMap<String, HashMap<String, HashMap<String, Vec<(ProvidedFunctionality, String)>>>>, WhammError> {
+        let (mode_matches, mode_loc) = if let Some(mode_patt) = &probe_spec.mode {
+            let mut mode_matches = HashMap::new();
+            for (provider_name, package_matches) in matches.iter() {
+                let mut package = HashMap::new();
+                for (package_name, event_matches) in package_matches.iter() {
+                    let mut modes = HashMap::new();
+                    for (.., event_name) in event_matches.iter() {
+                        let next = Probe::get_matches(provided_probes, provider_name, package_name, event_name, &mode_patt.name);
+                        modes.insert(package_name.clone(), next);
+                    }
+                    package.insert(package_name.clone(), modes);
+                }
+                mode_matches.insert(provider_name.clone(), package);
+            }
+
+            (mode_matches, mode_patt.loc.clone())
+        } else {
+            (HashMap::new(), None)
+        };
+
+        if mode_matches.is_empty() {
+            let loc = if let Some(loc) = &mode_loc {
+                Some(loc.line_col.clone())
+            } else {
+                None
+            };
+            return Err(ErrorGen::get_parse_error(true,
+                                                 Some(format!("Could not find any matches for the mode pattern")),
+                                                 loc, vec![], vec![]));
+        }
+        Ok(mode_matches)
+    }
+
+    pub fn print_info(&mut self, provided_probes: &ProvidedProbes, probe_spec: &ProbeSpec,
+                      print_globals: bool, print_functions: bool) -> Result<(), WhammError> {
+        let writer = BufferWriter::stderr(ColorChoice::Always);
+        let mut buffer = writer.buffer();
+
+        // Print `whamm` info
+        let mut tabs = 0;
+        if print_globals || print_functions {
+            white(true, "\nCORE ".to_string(), &mut buffer);
+            magenta(true, "`whamm`".to_string(), &mut buffer);
+            white(true, " FUNCTIONALITY\n\n".to_string(), &mut buffer);
+
+            // Print the globals
+            if print_globals {
+                let globals = Whamm::get_provided_globals();
+                print_global_vars(&mut tabs, &globals, &mut buffer);
+            }
+
+            // Print the functions
+            if print_functions {
+                let functions = Whamm::get_provided_fns();
+                print_fns(&mut tabs, &functions, &mut buffer);
+            }
+        }
+
+        long_line(&mut buffer);
+        white(true, "\n\n".to_string(), &mut buffer);
+
+        let prov_info = if probe_spec.provider.is_some() {
+            Self::get_provider_info(provided_probes, probe_spec)?
+        } else {
+            vec![]
+        };
+        let pkg_info = if probe_spec.package.is_some() {
+            Self::get_package_info(provided_probes, &prov_info, probe_spec)?
+        } else {
+            HashMap::new()
+        };
+        let event_info = if probe_spec.event.is_some() {
+            Self::get_event_info(provided_probes, &pkg_info, probe_spec)?
+        } else {
+            HashMap::new()
+        };
+        let mode_info = if probe_spec.mode.is_some() {
+            Self::get_mode_info(provided_probes, &event_info, probe_spec)?
+        } else {
+            HashMap::new()
+        };
+
+        // Print matched provider introduction
+        if !prov_info.is_empty() {
+            magenta(true, format!("{}", &probe_spec.provider.as_ref().unwrap().name), &mut buffer);
+            if let Some(package_patt) = &probe_spec.package {
+                white(true, format!(":{}", &package_patt.name), &mut buffer);
+                if let Some(event_patt) = &probe_spec.event {
+                    white(true, format!(":{}", &event_patt.name), &mut buffer);
+                    if let Some(mode_patt) = &probe_spec.mode {
+                        white(true, format!(":{}", &mode_patt.name), &mut buffer);
+                    }
+                }
+            }
+            white(true, "\n".to_string(), &mut buffer);
+            white_italics(true, "matches the following providers:\n\n".to_string(), &mut buffer);
+        }
+
+        // Print the matched provider information
+        for (provider_info, provider_str) in prov_info.iter() {
+            magenta_italics(true, provider_str.clone(), &mut buffer);
+            white(true, format!(" provider\n"), &mut buffer);
+
+            // Print the provider description
+            tabs += 1;
+            white(false, format!("{}{}\n\n", " ".repeat(tabs * 4), provider_info.docs), &mut buffer);
+
+            // Print the globals
+            if print_globals {
+                let globals = Provider::get_provided_globals(&provider_str);
+                print_global_vars(&mut tabs, &globals, &mut buffer);
+            }
+
+            // Print the functions
+            if print_functions {
+                let functions = Provider::get_provided_fns(&provider_str);
+                print_fns(&mut tabs, &functions, &mut buffer);
+            }
+            tabs -= 1;
+        }
+        long_line(&mut buffer);
+        white(true, "\n\n".to_string(), &mut buffer);
+
+        // Print matched package introduction
+        if !pkg_info.is_empty() {
+            white(true, format!("{}:", &probe_spec.provider.as_ref().unwrap().name), &mut buffer);
+            magenta(true, format!("{}", &probe_spec.package.as_ref().unwrap().name), &mut buffer);
+            if let Some(event_patt) = &probe_spec.event {
+                white(true, format!(":{}", &event_patt.name), &mut buffer);
+                if let Some(mode_patt) = &probe_spec.mode {
+                    white(true, format!(":{}", &mode_patt.name), &mut buffer);
+                }
+            }
+            white(true, "\n".to_string(), &mut buffer);
+            white_italics(true, "matches the following packages:\n\n".to_string(), &mut buffer);
+        }
+
+        // Print the matched package information
+        let mut tabs = 0;
+        for (_prov_str, package_list) in pkg_info.iter() {
+            for (package_info, package_str) in package_list {
+                magenta_italics(true, package_str.clone(), &mut buffer);
+                white(true, format!(" package\n"), &mut buffer);
+
+                // Print the package description
+                tabs += 1;
+                white(false, format!("{}{}\n\n", " ".repeat(tabs * 4), package_info.docs), &mut buffer);
+
+                // Print the globals
+                if print_globals {
+                    let globals = Package::get_provided_globals(&package_str);
+                    print_global_vars(&mut tabs, &globals, &mut buffer);
+                }
+
+                // Print the functions
+                if print_functions {
+                    let functions = Package::get_provided_fns(&package_str);
+                    print_fns(&mut tabs, &functions, &mut buffer);
+                }
+                tabs -= 1;
+            }
+        }
+        long_line(&mut buffer);
+        white(true, "\n\n".to_string(), &mut buffer);
+
+        // Print matched event introduction
+        if !pkg_info.is_empty() {
+            white(true, format!("{}:{}:", &probe_spec.provider.as_ref().unwrap().name, &probe_spec.package.as_ref().unwrap().name), &mut buffer);
+            magenta(true, format!("{}", &probe_spec.event.as_ref().unwrap().name), &mut buffer);
+            if let Some(mode_patt) = &probe_spec.mode {
+                white(true, format!(":{}", &mode_patt.name), &mut buffer);
+            }
+            white(true, "\n".to_string(), &mut buffer);
+            white_italics(true, "matches the following events:\n\n".to_string(), &mut buffer);
+        }
+
+        // Print the matched event information
+        let mut tabs = 0;
+        for (_prov_str, package_map) in event_info.iter() {
+            for (_package_str, event_list) in package_map {
+                for (event_info, event_str) in event_list {
+                    magenta_italics(true, event_str.clone(), &mut buffer);
+                    white(true, format!(" event\n"), &mut buffer);
+
+                    // Print the event description
+                    tabs += 1;
+                    white(false, format!("{}{}\n\n", " ".repeat(tabs * 4), event_info.docs), &mut buffer);
+
+                    // Print the globals
+                    if print_globals {
+                        let globals = Event::get_provided_globals(&event_str);
+                        print_global_vars(&mut tabs, &globals, &mut buffer);
+                    }
+
+                    // Print the functions
+                    if print_functions {
+                        let functions = Event::get_provided_fns(&event_str);
+                        print_fns(&mut tabs, &functions, &mut buffer);
+                    }
+                    tabs -= 1;
+                }
+            }
+        }
+        long_line(&mut buffer);
+        white(true, "\n\n".to_string(), &mut buffer);
+
+        // Print matched mode introduction
+        if !mode_info.is_empty() {
+            white(true, format!("{}:{}:{}:", &probe_spec.provider.as_ref().unwrap().name,
+                                &probe_spec.package.as_ref().unwrap().name,
+                                &probe_spec.event.as_ref().unwrap().name), &mut buffer);
+            magenta(true, format!("{}\n", &probe_spec.mode.as_ref().unwrap().name), &mut buffer);
+            white_italics(true, "matches the following modes:\n\n".to_string(), &mut buffer);
+        }
+
+        // Print the matched mode information
+        let mut tabs = 0;
+        for (_prov_str, package_map) in mode_info.iter() {
+            for (_package_str, event_list) in package_map {
+                for (_event_str, mode_list) in event_list {
+                    for (mode_info, mode_str) in mode_list {
+                        magenta_italics(true, mode_str.clone(), &mut buffer);
+                        white(true, format!(" mode\n"), &mut buffer);
+
+                        // Print the mode description
+                        tabs += 1;
+                        white(false, format!("{}{}\n\n", " ".repeat(tabs * 4), mode_info.docs), &mut buffer);
+
+                        // Print the globals
+                        if print_globals {
+                            let globals = Probe::get_provided_globals(&mode_str);
+                            print_global_vars(&mut tabs, &globals, &mut buffer);
+                        }
+
+                        // Print the functions
+                        if print_functions {
+                            let functions = Probe::get_provided_fns(&mode_str);
+                            print_fns(&mut tabs, &functions, &mut buffer);
+                        }
+                        tabs -= 1;
+                    }
+                }
+            }
+        }
+
+        writer.print(&buffer).expect("Uh oh, something went wrong while printing to terminal");
+        buffer.reset().expect("Uh oh, something went wrong while printing to terminal");
+
+        return Ok(());
+    }
+
     /// Iterates over all of the matched providers, packages, events, and probe names
     /// to add a copy of the user-defined Probe for each of them.
-    pub fn add_probe(&mut self, provided_probes: &HashMap<String, HashMap<String, HashMap<String, Vec<String>>>>,
+    pub fn add_probe(&mut self, provided_probes: &ProvidedProbes,
                      probe_spec: &ProbeSpec, predicate: Option<Expr>, body: Option<Vec<Statement>>) -> Result<(), WhammError> {
         let mut reason = &probe_spec.provider;
         if let Some(prov_patt) = &probe_spec.provider {
@@ -447,10 +1228,10 @@ impl Whammy {
             if matches.is_empty() {
                 return Err(ErrorGen::get_parse_error(true,
                     Some(format!("Could not find any matches for the specified provider pattern: {}", prov_patt.name)),
-                    prov_patt.loc.as_ref().unwrap().line_col.clone(), vec![], vec![]));
+                    Some(prov_patt.loc.as_ref().unwrap().line_col.clone()), vec![], vec![]));
             }
 
-            for provider_str in matches.iter() {
+            for (.., provider_str) in matches.iter() {
                 let mut is_empty = true;
                 // Does provider exist yet?
                 let provider = match self.providers.get_mut(provider_str) {
@@ -462,12 +1243,18 @@ impl Whammy {
                         self.providers.get_mut(&provider_str.to_lowercase()).unwrap()
                     }
                 };
+
+                if provider_str.to_uppercase() == "BEGIN" || provider_str.to_uppercase() == "END" {
+                    // special case, just stop here
+                    return Ok(());
+                }
+
                 if let Some(package_patt) = &probe_spec.package {
                     let matches = Package::get_matches(provided_probes, provider_str, &package_patt.name);
                     if matches.is_empty() {
                         reason = &probe_spec.package;
                     }
-                    for package_str in matches.iter() {
+                    for (.., package_str) in matches.iter() {
                         // Does package exist yet?
                         let package = match provider.packages.get_mut(package_str) {
                             Some(m) => m,
@@ -483,7 +1270,7 @@ impl Whammy {
                             if matches.is_empty() {
                                 reason = &probe_spec.event;
                             }
-                            for event_str in matches.iter() {
+                            for (.., event_str) in matches.iter() {
                                 // Does event exist yet?
                                 let event = match package.events.get_mut(event_str) {
                                     Some(f) => f,
@@ -500,7 +1287,7 @@ impl Whammy {
                                         reason = &probe_spec.mode;
                                     }
 
-                                    for name_str in matches.iter() {
+                                    for (.., name_str) in matches.iter() {
                                         event.insert_probe(name_str.to_string(), Probe::new(mode_patt.name.to_string(), mode_patt.loc.clone(), predicate.clone(), body.clone()));
                                         is_empty = false;
                                     }
@@ -526,7 +1313,7 @@ impl Whammy {
                 if let Some(mode_loc) = &r.loc {
                     return Err(ErrorGen::get_parse_error(true,
                          Some(format!("Could not find any matches for this pattern")),
-                         mode_loc.line_col.clone(), vec![], vec![]));
+                         Some(mode_loc.line_col.clone()), vec![], vec![]));
                 }
             }
         }
@@ -534,10 +1321,16 @@ impl Whammy {
     }
 }
 
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct ProvidedFunctionality {
+    pub name: String,
+    pub docs: String
+}
+
 pub struct Provider {
     pub name: String,
-    pub fns: Vec<Fn>,                     // Comp-provided
-    pub globals: HashMap<String, Global>, // Comp-provided
+    pub fns: Vec<(ProvidedFunctionality, Fn)>,                     // Comp-provided
+    pub globals: HashMap<String, (ProvidedFunctionality, Global)>, // Comp-provided
 
     /// The packages of the probes that have been used in the Whammy.
     /// These will be sub-packages of this Provider.
@@ -557,22 +1350,22 @@ impl Provider {
         }
     }
 
-    fn get_provided_fns(_name: &String) -> Vec<Fn> {
+    fn get_provided_fns(_name: &String) -> Vec<(ProvidedFunctionality, Fn)> {
         vec![]
     }
 
-    fn get_provided_globals(_name: &String) -> HashMap<String, Global> {
+    fn get_provided_globals(_name: &String) -> HashMap<String, (ProvidedFunctionality, Global)> {
         HashMap::new()
     }
 
     /// Get the provider names that match the passed glob pattern
-    pub fn get_matches(provided_probes: &HashMap<String, HashMap<String, HashMap<String, Vec<String>>>>, prov_patt: &str) -> Vec<String> {
+    pub fn get_matches(provided_probes: &ProvidedProbes, prov_patt: &str) -> Vec<(ProvidedFunctionality, String)> {
         let glob = Pattern::new(&prov_patt.to_lowercase()).unwrap();
 
         let mut matches = vec![];
-        for (provider_name, _provider) in provided_probes.into_iter() {
+        for (provider_name, (info, _provider)) in provided_probes.into_iter() {
             if glob.matches(&provider_name.to_lowercase()) {
-                matches.push(provider_name.clone());
+                matches.push((info.clone(), provider_name.clone()));
             }
         }
 
@@ -582,8 +1375,8 @@ impl Provider {
 
 pub struct Package {
     pub name: String,
-    pub fns: Vec<Fn>,                     // Comp-provided
-    pub globals: HashMap<String, Global>, // Comp-provided
+    pub fns: Vec<(ProvidedFunctionality, Fn)>,                     // Comp-provided
+    pub globals: HashMap<String, (ProvidedFunctionality, Global)>, // Comp-provided
 
     /// The events of the probes that have been used in the Whammy.
     /// These will be sub-events of this Package.
@@ -603,23 +1396,23 @@ impl Package {
         }
     }
 
-    fn get_provided_fns(_name: &String) -> Vec<Fn> {
+    fn get_provided_fns(_name: &String) -> Vec<(ProvidedFunctionality, Fn)> {
         vec![]
     }
 
-    fn get_provided_globals(_name: &String) -> HashMap<String, Global> {
+    fn get_provided_globals(_name: &String) -> HashMap<String, (ProvidedFunctionality, Global)> {
         HashMap::new()
     }
 
     /// Get the Package names that match the passed glob pattern
-    pub fn get_matches(provided_probes: &HashMap<String, HashMap<String, HashMap<String, Vec<String>>>>, provider: &str, mod_patt: &str) -> Vec<String> {
+    pub fn get_matches(provided_probes: &ProvidedProbes, provider: &str, mod_patt: &str) -> Vec<(ProvidedFunctionality, String)> {
         let glob = Pattern::new(&mod_patt.to_lowercase()).unwrap();
 
         let mut matches = vec![];
 
-        for (mod_name, _package) in provided_probes.get(provider).unwrap().into_iter() {
+        for (mod_name, (info, _package)) in provided_probes.get(provider).unwrap().1.iter() {
             if glob.matches(&mod_name.to_lowercase()) {
-                matches.push(mod_name.clone());
+                matches.push((info.clone(), mod_name.clone()));
             }
         }
 
@@ -629,8 +1422,8 @@ impl Package {
 
 pub struct Event {
     pub name: String,
-    pub fns: Vec<Fn>,                     // Comp-provided
-    pub globals: HashMap<String, Global>, // Comp-provided
+    pub fns: Vec<(ProvidedFunctionality, Fn)>,                     // Comp-provided
+    pub globals: HashMap<String, (ProvidedFunctionality, Global)>, // Comp-provided
     pub probe_map: HashMap<String, Vec<Probe>>,
     pub loc: Option<Location>
 }
@@ -647,64 +1440,89 @@ impl Event {
         }
     }
 
-    fn get_provided_fns(_name: &String) -> Vec<Fn> {
+    fn get_provided_fns(_name: &String) -> Vec<(ProvidedFunctionality, Fn)> {
         vec![]
     }
 
-    fn get_provided_globals(name: &String) -> HashMap<String, Global> {
+    fn get_provided_globals(name: &String) -> HashMap<String, (ProvidedFunctionality, Global)> {
         let mut globals = HashMap::new();
         if name.to_lowercase() == "call" {
             // Add in provided globals for the "call" event
-            globals.insert("target_fn_type".to_string(),Global {
-                is_comp_provided: true,
-                ty: DataType::Str,
-                var_name: Expr::VarId {
+            globals.insert("target_fn_type".to_string(),(
+                ProvidedFunctionality {
                     name: "target_fn_type".to_string(),
-                    loc: None
+                    docs: "The type of function being called at this call site. This constant will \
+                    evaluate to either `local` or `import`.".to_string()
                 },
-                value: None
-            });
-            globals.insert("target_imp_module".to_string(),Global {
-                is_comp_provided: true,
-                ty: DataType::Str,
-                var_name: Expr::VarId {
+                Global {
+                    is_comp_provided: true,
+                    ty: DataType::Str,
+                    var_name: Expr::VarId {
+                        name: "target_fn_type".to_string(),
+                        loc: None
+                    },
+                    value: None
+                }));
+            globals.insert("target_imp_module".to_string(),(
+                ProvidedFunctionality {
                     name: "target_imp_module".to_string(),
-                    loc: None
+                    docs: "The name of the module that the imported function comes from. \
+                    To improve performance, pair with `target_fn_type == \"import\"` \
+                    for faster short-circuiting.".to_string()
                 },
-                value: None
-            });
-            globals.insert("target_imp_name".to_string(),Global {
-                is_comp_provided: true,
-                ty: DataType::Str,
-                var_name: Expr::VarId {
+                Global {
+                    is_comp_provided: true,
+                    ty: DataType::Str,
+                    var_name: Expr::VarId {
+                        name: "target_imp_module".to_string(),
+                        loc: None
+                    },
+                    value: None
+                }));
+            globals.insert("target_imp_name".to_string(),(
+                ProvidedFunctionality {
                     name: "target_imp_name".to_string(),
-                    loc: None
+                    docs: "The name of the imported function. \
+                    To improve performance, pair with `target_fn_type == \"import\"` \
+                    for faster short-circuiting.".to_string()
                 },
-                value: None
-            });
-            globals.insert("new_target_fn_name".to_string(),Global {
-                is_comp_provided: true,
-                ty: DataType::Str,
-                var_name: Expr::VarId {
+                Global {
+                    is_comp_provided: true,
+                    ty: DataType::Str,
+                    var_name: Expr::VarId {
+                        name: "target_imp_name".to_string(),
+                        loc: None
+                    },
+                    value: None
+                }));
+            globals.insert("new_target_fn_name".to_string(),(
+                ProvidedFunctionality {
                     name: "new_target_fn_name".to_string(),
-                    loc: None
+                    docs: "(DEPRECATED) The name of the target function to call instead of the original.".to_string()
                 },
-                value: None
-            });
+                Global {
+                    is_comp_provided: true,
+                    ty: DataType::Str,
+                    var_name: Expr::VarId {
+                        name: "new_target_fn_name".to_string(),
+                        loc: None
+                    },
+                    value: None
+                }));
         }
 
         globals
     }
 
     /// Get the Event names that match the passed glob pattern
-    pub fn get_matches(provided_probes: &HashMap<String, HashMap<String, HashMap<String, Vec<String>>>>, provider: &str, package: &str, func_patt: &str) -> Vec<String> {
+    pub fn get_matches(provided_probes: &ProvidedProbes, provider: &str, package: &str, func_patt: &str) -> Vec<(ProvidedFunctionality, String)> {
         let glob = Pattern::new(&func_patt.to_lowercase()).unwrap();
 
         let mut matches = vec![];
 
-        for (fn_name, _package) in provided_probes.get(provider).unwrap().get(package).unwrap().into_iter() {
+        for (fn_name, (info, _package)) in provided_probes.get(provider).unwrap().1.get(package).unwrap().1.iter() {
             if glob.matches(&fn_name.to_lowercase()) {
-                matches.push(fn_name.clone());
+                matches.push((info.clone(), fn_name.clone()));
             }
         }
 
@@ -729,8 +1547,8 @@ impl Event {
 pub struct Probe {
     pub name: String,
     pub loc: Option<Location>,
-    pub fns: Vec<Fn>,                     // Comp-provided
-    pub globals: HashMap<String, Global>, // Comp-provided
+    pub fns: Vec<(ProvidedFunctionality, Fn)>,                     // Comp-provided
+    pub globals: HashMap<String, (ProvidedFunctionality, Global)>, // Comp-provided
 
     pub predicate: Option<Expr>,
     pub body: Option<Vec<Statement>>
@@ -750,23 +1568,23 @@ impl Probe {
         }
     }
 
-    fn get_provided_fns(_name: &String) -> Vec<Fn> {
+    fn get_provided_fns(_name: &String) -> Vec<(ProvidedFunctionality, Fn)> {
         vec![]
     }
 
-    fn get_provided_globals(_name: &String) -> HashMap<String, Global> {
+    fn get_provided_globals(_name: &String) -> HashMap<String, (ProvidedFunctionality, Global)> {
         HashMap::new()
     }
 
     /// Get the Probe names that match the passed glob pattern
-    pub fn get_matches(provided_probes: &HashMap<String, HashMap<String, HashMap<String, Vec<String>>>>, provider: &str, package: &str, event: &str, probe_patt: &str) -> Vec<String> {
+    pub fn get_matches(provided_probes: &ProvidedProbes, provider: &str, package: &str, event: &str, probe_patt: &str) -> Vec<(ProvidedFunctionality, String)> {
         let glob = Pattern::new(&probe_patt.to_lowercase()).unwrap();
 
         let mut matches = vec![];
 
-        for p_name in provided_probes.get(provider).unwrap().get(package).unwrap().get(event).unwrap().iter() {
+        for (info, p_name) in provided_probes.get(provider).unwrap().1.get(package).unwrap().1.get(event).unwrap().1.iter() {
             if glob.matches(&p_name.to_lowercase()) {
-                matches.push(p_name.clone());
+                matches.push((info.clone(), p_name.clone()));
             }
         }
 

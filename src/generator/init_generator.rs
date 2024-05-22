@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use log::{trace, warn};
 use crate::common::error::ErrorGen;
 use crate::generator::emitters::Emitter;
-use crate::parser::types::{DataType, Whammy, Whamm, WhammVisitorMut, Expr, Event, Package, Op, Probe, Provider, Statement, Value, Global};
+use crate::parser::types::{DataType, Whammy, Whamm, WhammVisitorMut, Expr, Event, Package, Op, Probe, Provider, Statement, Value, Global, ProvidedFunctionality};
 
 /// Serves as the first phase of instrumenting a module by setting up
 /// the groundwork.
@@ -31,7 +31,23 @@ impl InitGenerator<'_> {
         let mut is_success = true;
         for (name, global) in globals.iter() {
             // do not inject globals into Wasm that are used/defined by the compiler
-            if !global.is_comp_provided {
+            if !&global.is_comp_provided {
+                match self.emitter.emit_global(name.clone(), global.ty.clone(), &global.value) {
+                    Err(e) => self.err.add_error(e),
+                    Ok(res) => {
+                        is_success &= res
+                    }
+                }
+            }
+        }
+
+        is_success
+    }
+    fn visit_provided_globals(&mut self, globals: &HashMap<String, (ProvidedFunctionality, Global)>) -> bool {
+        let mut is_success = true;
+        for (name, (.., global)) in globals.iter() {
+            // do not inject globals into Wasm that are used/defined by the compiler
+            if !&global.is_comp_provided {
                 match self.emitter.emit_global(name.clone(), global.ty.clone(), &global.value) {
                     Err(e) => self.err.add_error(e),
                     Ok(res) => {
@@ -51,11 +67,11 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         let mut is_success = true;
 
         // visit fns
-        whamm.fns.iter_mut().for_each(| f | {
+        whamm.fns.iter_mut().for_each(| (.., f) | {
             is_success &= self.visit_fn(f);
         });
         // inject globals
-        is_success &= self.visit_globals(&whamm.globals);
+        is_success &= self.visit_provided_globals(&whamm.globals);
         // visit whammys
         whamm.whammys.iter_mut().for_each(|whammy| {
             is_success &= self.visit_whammy(whammy);
@@ -107,11 +123,11 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         let mut is_success = true;
 
         // visit fns
-        provider.fns.iter_mut().for_each(| f | {
+        provider.fns.iter_mut().for_each(| (.., f) | {
             is_success &= self.visit_fn(f);
         });
         // inject globals
-        is_success &= self.visit_globals(&provider.globals);
+        is_success &= self.visit_provided_globals(&provider.globals);
         // visit the packages
         provider.packages.iter_mut().for_each(|(_name, package)| {
             is_success &= self.visit_package(package);
@@ -137,11 +153,11 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         self.context_name += &format!(":{}", package.name.clone());
 
         // visit fns
-        package.fns.iter_mut().for_each(| f | {
+        package.fns.iter_mut().for_each(| (.., f) | {
             is_success &= self.visit_fn(f);
         });
         // inject globals
-        is_success &= self.visit_globals(&package.globals);
+        is_success &= self.visit_provided_globals(&package.globals);
         // visit the events
         package.events.iter_mut().for_each(|(_name, event)| {
             is_success &= self.visit_event(event);
@@ -168,11 +184,11 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         let mut is_success = true;
 
         // visit fns
-        event.fns.iter_mut().for_each(| f | {
+        event.fns.iter_mut().for_each(| (.., f) | {
             is_success &= self.visit_fn(f);
         });
         // inject globals
-        is_success &= self.visit_globals(&event.globals);
+        is_success &= self.visit_provided_globals(&event.globals);
 
         // 1. visit the BEFORE probes
         if let Some(probes) = event.probe_map.get_mut(&"before".to_string()) {
@@ -219,11 +235,11 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         let mut is_success = true;
 
         // visit fns
-        probe.fns.iter_mut().for_each(| f | {
+        probe.fns.iter_mut().for_each(| (.., f) | {
             is_success &= self.visit_fn(f);
         });
         // inject globals
-        is_success &= self.visit_globals(&probe.globals);
+        is_success &= self.visit_provided_globals(&probe.globals);
 
         trace!("Exiting: CodeGenerator::visit_probe");
         match self.emitter.exit_scope() {

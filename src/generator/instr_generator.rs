@@ -1,3 +1,4 @@
+use convert_case::{Case, Casing};
 use log::warn;
 use crate::behavior::builder_visitor::SimpleAST;
 use crate::behavior::tree::{ActionType, ActionWithChildType, ArgActionType, BehaviorVisitor, DecoratorType, ParamActionType};
@@ -122,7 +123,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                 if let Some(node) = self.tree.get_node(child.clone()) {
                     child_is_success &= self.visit_node(node);
                 }
-                if !child_is_success {
+                if !&child_is_success {
                     // If the child was unsuccessful, don't execute the following children
                     // and return `false` (failure)
                     return child_is_success;
@@ -297,11 +298,18 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
 
                     let mut first_instr = true;
                     while first_instr || self.emitter.has_next_instr() {
-                        if !first_instr {
+                        if !&first_instr {
                             self.emitter.next_instr();
                         }
 
-                        let instr_ty = self.emitter.curr_instr_type();
+                        let instr_ty = match self.emitter.curr_instr_type().as_str() {
+                            // Handle some special-cases
+                            "V128Bitselect" => "v128_bitselect".to_string(),
+                            "I8x16Swizzle" => "i8x16_swizzle".to_string(),
+                            "I8x16Shuffle" => "i8x16_shuffle".to_string(),
+                            other => other.to_case(Case::Snake)
+                        };
+
                         // is this an instruction of-interest?
                         if let Some(globals) = events.get(&instr_ty) {
                             // enter this event's scope
