@@ -11,7 +11,7 @@ env:
 
 jobs:
   build_and_test:
-    name: build_and_test
+    name: Build project and run all unit AND integration tests
 
     runs-on: ubuntu-latest
 
