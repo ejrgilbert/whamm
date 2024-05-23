@@ -5,7 +5,7 @@ use crate::verifier::types::{Record, ScopeType, SymbolTable};
 
 use log::trace;
 use crate::common::error::ErrorGen;
-use crate::parser::types::{Global, ProvidedFunctionality};
+use crate::parser::types::{Global, ProvidedFunctionality, WhammVisitorMut};
 
 const UNEXPECTED_ERR_MSG: &str = "SymbolTableBuilder: Looks like you've found a bug...please report this behavior! Exiting now...";
 
@@ -213,7 +213,7 @@ impl SymbolTableBuilder<'_> {
         self.table.set_curr_scope_info(probe.mode.clone(), ScopeType::Probe);
     }
 
-    fn add_fn(&mut self, f: &Fn) {
+    fn add_fn(&mut self, f: &mut Fn) {
         let f_name = &f.name;
         if let Some(other_fn_id) = self.table.lookup(&f_name.name) {
             if let Some(other_rec) = self.table.get_record(other_fn_id) {
@@ -255,7 +255,23 @@ impl SymbolTableBuilder<'_> {
         self.table.set_curr_scope_info(f.name.name.clone(), ScopeType::Fn);
 
         // visit parameters
-        f.params.iter().for_each(| param | self.visit_formal_param(param));
+        f.params.iter_mut().for_each(| param | self.visit_formal_param(param));
+    }
+
+    fn add_global_id_to_curr_rec(&mut self, id: usize) {
+        match self.table.get_curr_rec_mut() {
+            Some(Record::Whamm { globals, .. }) |
+            Some(Record::Whammy { globals, .. }) |
+            Some(Record::Provider { globals, .. }) |
+            Some(Record::Package { globals, .. }) |
+            Some(Record::Event { globals, .. }) |
+            Some(Record::Probe { globals, .. }) => {
+                globals.push(id.clone());
+            }
+            _ => {
+                self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+            }
+        }
     }
 
     fn add_fn_id_to_curr_rec(&mut self, id: usize) {
@@ -325,7 +341,7 @@ impl SymbolTableBuilder<'_> {
         });
 
         // add global record to the current record
-        self.add_fn_id_to_curr_rec(id);
+        self.add_global_id_to_curr_rec(id);
     }
 
     fn visit_provided_globals(&mut self, globals: &HashMap<String, (ProvidedFunctionality, Global)>) {
@@ -341,8 +357,8 @@ impl SymbolTableBuilder<'_> {
     }
 }
 
-impl WhammVisitor<()> for SymbolTableBuilder<'_> {
-    fn visit_whamm(&mut self, whamm: &Whamm) -> () {
+impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
+    fn visit_whamm(&mut self, whamm: &mut Whamm) -> () {
         trace!("Entering: visit_whamm");
         let name: String = "whamm".to_string();
         self.table.set_curr_scope_info(name.clone(), ScopeType::Whamm);
@@ -361,28 +377,47 @@ impl WhammVisitor<()> for SymbolTableBuilder<'_> {
         self.curr_whamm = Some(id);
 
         // visit fns
-        whamm.fns.iter().for_each(| (.., f) | self.visit_fn(f) );
+        whamm.fns.iter_mut().for_each(| (.., f) | self.visit_fn(f) );
 
         // visit globals
         self.visit_provided_globals(&whamm.globals);
 
         // visit scripts
-        whamm.scripts.iter().for_each(| script | self.visit_script(script));
+        whamm.scripts.iter_mut().for_each(| script | self.visit_script(script));
 
         trace!("Exiting: visit_whamm");
         self.curr_whamm = None;
     }
 
-    fn visit_script(&mut self, script: &Script) -> () {
+    fn visit_script(&mut self, script: &mut Script) -> () {
         trace!("Entering: visit_script");
 
         self.add_script(script);
 
-        // TODO -- visit global_stmts
+        script.fns.iter_mut().for_each(| f | self.visit_fn(f) );
+        script.global_stmts.iter_mut().for_each(|stmt| {
+            match stmt {
+                Statement::Decl {ty, var_id, ..} => {
+                    if let Expr::VarId {name, ..} = &var_id {
+                        // Add global variable to whammy globals (triggers the init_generator to emit them!)
+                        script.globals.insert(name.clone(), Global {
+                            is_comp_provided: false,
+                            ty: ty.clone(),
+                            var_name: var_id.clone(),
+                            value: None,
+                        });
+                    } else {
+                        self.err.unexpected_error(true, Some(format!("{} \
+                    Variable declaration var_id is not the correct Expr variant!!", UNEXPECTED_ERR_MSG.to_string())), None);
+                    }
+                },
+                // We only care about building the symbols right now, not actual operations
+                _ => {}
+            }
 
-        script.fns.iter().for_each(| f | self.visit_fn(f) );
-        self.visit_globals(&script.globals);
-        script.providers.iter().for_each(| (_name, provider) | {
+            self.visit_stmt(stmt)
+        });
+            script.providers.iter_mut().for_each(| (_name, provider) | {
             self.visit_provider(provider)
         });
 
@@ -394,13 +429,13 @@ impl WhammVisitor<()> for SymbolTableBuilder<'_> {
         self.curr_script = None;
     }
 
-    fn visit_provider(&mut self, provider: &Provider) -> () {
+    fn visit_provider(&mut self, provider: &mut Provider) -> () {
         trace!("Entering: visit_provider");
 
         self.add_provider(provider);
-        provider.fns.iter().for_each(| (.., f) | self.visit_fn(f) );
+        provider.fns.iter_mut().for_each(| (.., f) | self.visit_fn(f) );
         self.visit_provided_globals(&provider.globals);
-        provider.packages.iter().for_each(| (_name, package) | {
+        provider.packages.iter_mut().for_each(| (_name, package) | {
             self.visit_package(package)
         });
 
@@ -412,13 +447,13 @@ impl WhammVisitor<()> for SymbolTableBuilder<'_> {
         self.curr_provider = None;
     }
 
-    fn visit_package(&mut self, package: &Package) -> () {
+    fn visit_package(&mut self, package: &mut Package) -> () {
         trace!("Entering: visit_package");
 
         self.add_package(package);
-        package.fns.iter().for_each(| (.., f) | self.visit_fn(f) );
+        package.fns.iter_mut().for_each(| (.., f) | self.visit_fn(f) );
         self.visit_provided_globals(&package.globals);
-        package.events.iter().for_each(| (_name, event) | {
+        package.events.iter_mut().for_each(| (_name, event) | {
             self.visit_event(event)
         });
 
@@ -430,16 +465,16 @@ impl WhammVisitor<()> for SymbolTableBuilder<'_> {
         self.curr_package = None;
     }
 
-    fn visit_event(&mut self, event: &Event) -> () {
+    fn visit_event(&mut self, event: &mut Event) -> () {
         trace!("Entering: visit_event");
 
         self.add_event(event);
-        event.fns.iter().for_each(| (.., f) | self.visit_fn(f) );
+        event.fns.iter_mut().for_each(| (.., f) | self.visit_fn(f) );
         self.visit_provided_globals(&event.globals);
 
         // visit probe_map
-        event.probe_map.iter().for_each(| probes | {
-            probes.1.iter().for_each(| probe | {
+        event.probe_map.iter_mut().for_each(| probes | {
+            probes.1.iter_mut().for_each(| probe | {
                 self.visit_probe(probe);
             });
         });
@@ -452,11 +487,11 @@ impl WhammVisitor<()> for SymbolTableBuilder<'_> {
         self.curr_event = None;
     }
 
-    fn visit_probe(&mut self, probe: &Probe) -> () {
+    fn visit_probe(&mut self, probe: &mut Probe) -> () {
         trace!("Entering: visit_probe");
 
         self.add_probe(probe);
-        probe.fns.iter().for_each(| (.., f) | self.visit_fn(f) );
+        probe.fns.iter_mut().for_each(| (.., f) | self.visit_fn(f) );
         self.visit_provided_globals(&probe.globals);
 
         // Will not visit predicate/body at this stage
@@ -469,7 +504,7 @@ impl WhammVisitor<()> for SymbolTableBuilder<'_> {
         self.curr_probe = None;
     }
 
-    fn visit_fn(&mut self, f: &Fn) -> () {
+    fn visit_fn(&mut self, f: &mut Fn) -> () {
         trace!("Entering: visit_fn");
 
         // add fn
@@ -485,7 +520,7 @@ impl WhammVisitor<()> for SymbolTableBuilder<'_> {
         self.curr_fn = None;
     }
 
-    fn visit_formal_param(&mut self, param: &(Expr, DataType)) -> () {
+    fn visit_formal_param(&mut self, param: &mut (Expr, DataType)) -> () {
         trace!("Entering: visit_formal_param");
 
         // add param
@@ -494,12 +529,28 @@ impl WhammVisitor<()> for SymbolTableBuilder<'_> {
         trace!("Exiting: visit_formal_param");
     }
 
-    fn visit_stmt(&mut self, _assign: &Statement) -> () {
-        // Not visiting event/probe bodies
-        self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+    fn visit_stmt(&mut self, stmt: &mut Statement) -> () {
+        if self.curr_provider.is_some() || self.curr_package.is_some() || self.curr_event.is_some() || self.curr_probe.is_some() {
+            self.err.unexpected_error(true, Some(format!("{} \
+            Only global whammy statements should be visited!", UNEXPECTED_ERR_MSG.to_string())), None);
+        }
+
+        match stmt {
+            Statement::Decl {ty, var_id, ..} => {
+                if let Expr::VarId {name, ..} = &var_id {
+                    // Add symbol to table
+                    self.add_global(ty.clone(), name.clone());
+                } else {
+                    self.err.unexpected_error(true, Some(format!("{} \
+                    Variable declaration var_id is not the correct Expr variant!!", UNEXPECTED_ERR_MSG.to_string())), None);
+                }
+            },
+            // We only care about building the symbols right now, not actual operations
+            _ => {}
+        }
     }
 
-    fn visit_expr(&mut self, _call: &Expr) -> () {
+    fn visit_expr(&mut self, _call: &mut Expr) -> () {
         // Not visiting predicates/statements
         self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
     }
@@ -514,12 +565,12 @@ impl WhammVisitor<()> for SymbolTableBuilder<'_> {
         self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
     }
 
-    fn visit_datatype(&mut self, _datatype: &DataType) -> () {
+    fn visit_datatype(&mut self, _datatype: &mut DataType) -> () {
         // Not visiting predicates/statements
         self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
     }
 
-    fn visit_value(&mut self, _val: &Value) -> () {
+    fn visit_value(&mut self, _val: &mut Value) -> () {
         // Not visiting predicates/statements
         self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
     }

@@ -99,18 +99,23 @@ impl BehaviorTreeBuilder<'_> {
 
     fn visit_globals(&mut self, globals: &HashMap<String, Global>) {
         if globals.len() > 0 {
-            self.tree.sequence(self.err);
-
             // visit globals
+            let mut is_first = true;
             for (_name, global) in globals.iter() {
                 if global.is_comp_provided {
+                    if is_first {
+                        self.tree.sequence(self.err);
+                        is_first = false;
+                    }
                     if let Expr::VarId { name, ..} = &global.var_name {
                         self.tree.define(self.context_name.clone(),
                                          name.clone(), self.err);
                     }
                 }
             }
-            self.tree.exit_sequence(self.err);
+            if !is_first {
+                self.tree.exit_sequence(self.err);
+            }
         }
     }
 
