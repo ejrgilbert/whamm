@@ -408,14 +408,38 @@ impl Whamm {
     }
 
     fn init_core_probes(&mut self) {
-        // Not really any packages or events for a core probe...just two types!
-        self.provided_probes.insert("begin".to_string(), (
+        // Not really any packages or events for a whamm core probe...just two types!
+        self.provided_probes.insert("whamm".to_string(), (
+            ProvidedFunctionality {
+                name: "whamm".to_string(),
+                docs: "Provides the core probe definitions of `whamm`.".to_string(),
+            },
+            HashMap::from([("".to_string(), (
                 ProvidedFunctionality {
-                    name: "begin".to_string(),
-                    docs: "Run this logic on application startup.".to_string(),
+                    name: "".to_string(),
+                    docs: "".to_string(),
                 },
-                HashMap::new()
-            ));
+                HashMap::from([("".to_string(), (
+                    ProvidedFunctionality {
+                        name: "".to_string(),
+                        docs: "".to_string(),
+                    },
+                    vec![(
+                        ProvidedFunctionality {
+                            name: "begin".to_string(),
+                            docs: "Run this logic on application startup.".to_string()
+                        },
+                        "begin".to_string()
+                    ), (
+                        ProvidedFunctionality {
+                            name: "end".to_string(),
+                            docs: "Run this logic when the application exits.".to_string()
+                        },
+                        "end".to_string()
+                    )]
+                ))])
+            ))])
+        ));
         self.provided_probes.insert("end".to_string(), (
             ProvidedFunctionality {
                 name: "end".to_string(),
@@ -1066,6 +1090,9 @@ impl Whammy {
 
         // Print the matched provider information
         for (provider_info, provider_str) in prov_info.iter() {
+            if provider_str.is_empty() {
+                continue;
+            }
             magenta_italics(true, provider_str.clone(), &mut buffer);
             white(true, format!(" provider\n"), &mut buffer);
 
@@ -1107,6 +1134,9 @@ impl Whammy {
         let mut tabs = 0;
         for (_prov_str, package_list) in pkg_info.iter() {
             for (package_info, package_str) in package_list {
+                if package_str.is_empty() {
+                    continue;
+                }
                 magenta_italics(true, package_str.clone(), &mut buffer);
                 white(true, format!(" package\n"), &mut buffer);
 
@@ -1147,6 +1177,9 @@ impl Whammy {
         for (_prov_str, package_map) in event_info.iter() {
             for (_package_str, event_list) in package_map {
                 for (event_info, event_str) in event_list {
+                    if event_str.is_empty() {
+                        continue;
+                    }
                     magenta_italics(true, event_str.clone(), &mut buffer);
                     white(true, format!(" event\n"), &mut buffer);
 
@@ -1187,6 +1220,9 @@ impl Whammy {
             for (_package_str, event_list) in package_map {
                 for (_event_str, mode_list) in event_list {
                     for (mode_info, mode_str) in mode_list {
+                        if mode_str.is_empty() {
+                            continue;
+                        }
                         magenta_italics(true, mode_str.clone(), &mut buffer);
                         white(true, format!(" mode\n"), &mut buffer);
 

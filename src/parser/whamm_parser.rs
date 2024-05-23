@@ -400,12 +400,21 @@ fn probe_spec_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeSpec {
 
                 return ProbeSpec {
                     provider: Some(SpecPart {
-                        name: spec_as_str.to_uppercase(),
+                        name: "whamm".to_string(),
                         loc: loc.clone()
                     }),
-                    package: None,
-                    event: None,
-                    mode: None,
+                    package: Some(SpecPart {
+                        name: "*".to_string(),
+                        loc: loc.clone()
+                    }),
+                    event: Some(SpecPart {
+                        name: "*".to_string(),
+                        loc: loc.clone()
+                    }),
+                    mode: Some(SpecPart {
+                        name: "BEGIN".to_string(),
+                        loc
+                    }),
                 }
             }
 
