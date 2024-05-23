@@ -1,9 +1,9 @@
 use crate::common::error::ErrorGen;
-use crate::parser::types::{Whamm, WhammVisitor};
+use crate::parser::types::{Whamm, WhammVisitorMut};
 use crate::verifier::builder_visitor::SymbolTableBuilder;
 use crate::verifier::types::SymbolTable;
 
-pub fn build_symbol_table(ast: &Whamm, err: &mut ErrorGen) -> SymbolTable {
+pub fn build_symbol_table(ast: &mut Whamm, err: &mut ErrorGen) -> SymbolTable {
     let mut visitor = SymbolTableBuilder {
         table: SymbolTable::new(),
         err,
