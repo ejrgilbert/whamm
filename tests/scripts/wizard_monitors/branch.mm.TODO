@@ -11,7 +11,7 @@
 */
 
 // matches "if" and "br_if" bytecodes
-wasm:::[br_]if {
+wasm:::br|br_if {
   // "tos" is defined as the top-of-stack
   int index = tos != 0 ? 1 : 0;
   // count stores an array of counters
