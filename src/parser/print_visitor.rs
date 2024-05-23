@@ -344,6 +344,9 @@ impl WhammVisitor<String> for AsStrVisitor {
 
     fn visit_stmt(&mut self, stmt: &Statement) -> String {
         match stmt {
+            Statement::Decl {ty, var_id, ..} => {
+                format!("{} {}", self.visit_datatype(ty), self.visit_expr(var_id))
+            }
             Statement::Assign {var_id, expr, ..} => {
                 format!("{} = {}", self.visit_expr(var_id), self.visit_expr(expr))
             },
@@ -355,6 +358,15 @@ impl WhammVisitor<String> for AsStrVisitor {
 
     fn visit_expr(&mut self, expr: &Expr) -> String {
         match expr {
+            Expr::Ternary {cond, conseq, alt, ..} => {
+                let mut s = "".to_string();
+                s += &format!("{} ? {} : {}",
+                      self.visit_expr(cond),
+                      self.visit_expr(conseq),
+                      self.visit_expr(alt)
+                );
+                s
+            }
             Expr::BinOp {lhs, op, rhs, ..} => {
                 let mut s = "".to_string();
                 s += &format!("{} {} {}",
@@ -421,6 +433,9 @@ impl WhammVisitor<String> for AsStrVisitor {
             },
             DataType::Tuple {..} => {
                 "tuple".to_string()
+            },
+            DataType::Map {..} => {
+                "map".to_string()
             },
         }
     }

@@ -7,7 +7,7 @@ use pest_derive::Parser;
 use pest::pratt_parser::PrattParser;
 use termcolor::BufferWriter;
 use walrus::DataId;
-use crate::common::terminal::{green, long_line, magenta, magenta_italics, white, white_italics, yellow};
+use crate::common::terminal::{green, long_line, magenta, magenta_italics, white, grey_italics, yellow, grey};
 use crate::common::error::{ErrorGen, WhammError};
 
 #[derive(Parser)]
@@ -86,6 +86,10 @@ pub enum DataType {
     Str,
     Tuple {
         ty_info: Option<Vec<Box<DataType>>>
+    },
+    Map {
+        key_ty: Box<DataType>,
+        val_ty: Box<DataType>
     }
 }
 impl DataType {
@@ -116,6 +120,14 @@ impl DataType {
                     }
                 }
                 white(true, ")".to_string(), buffer);
+            },
+            DataType::Map {key_ty, val_ty} => {
+                yellow(true, "map".to_string(), buffer);
+                white(true, "<".to_string(), buffer);
+                key_ty.print(buffer);
+                white(true, ", ".to_string(), buffer);
+                val_ty.print(buffer);
+                white(true, ">".to_string(), buffer);
             }
         }
     }
@@ -152,6 +164,12 @@ pub enum Value {
 // Statements
 #[derive(Clone, Debug)]
 pub enum Statement {
+    Decl {
+        ty: DataType,
+        var_id: Expr,  // should be VarId
+        loc: Option<Location>
+    },
+
     Assign {
         var_id: Expr, // Should be VarId
         expr: Expr,
@@ -171,6 +189,7 @@ pub enum Statement {
 impl Statement {
     pub fn loc(&self) -> &Option<Location> {
         match self {
+            Statement::Decl {loc, ..} |
             Statement::Assign {loc, ..} |
             Statement::Expr {loc, ..} => {
                 loc
@@ -199,6 +218,12 @@ impl Statement {
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Expr {
+    Ternary {
+        cond: Box<Expr>,
+        conseq: Box<Expr>,
+        alt: Box<Expr>,
+        loc: Option<Location>
+    },
     BinOp {     // Type is based on the outermost `op` (if arithmetic op, also based on types of lhs/rhs due to doubles)
         lhs: Box<Expr>,
         op: Op,
@@ -223,6 +248,7 @@ pub enum Expr {
 impl Expr {
     pub fn loc(&self) -> &Option<Location> {
         match self {
+            Expr::Ternary {loc, ..} |
             Expr::BinOp {loc, ..} |
             Expr::Call {loc, ..} |
             Expr::VarId {loc, ..} |
@@ -901,6 +927,7 @@ pub struct Script {
     pub providers: HashMap<String, Provider>,
     pub fns: Vec<Fn>,                     // User-provided
     pub globals: HashMap<String, Global>, // User-provided, should be VarId
+    pub global_stmts: Vec<Statement>
 }
 impl Script {
     pub fn new() -> Self {
@@ -908,7 +935,8 @@ impl Script {
             name: "".to_string(),
             providers: HashMap::new(),
             fns: vec![],
-            globals: HashMap::new()
+            globals: HashMap::new(),
+            global_stmts: vec![],
         }
     }
 
@@ -1085,7 +1113,7 @@ impl Script {
                 }
             }
             white(true, "\n".to_string(), &mut buffer);
-            white_italics(true, "matches the following providers:\n\n".to_string(), &mut buffer);
+            grey_italics(true, "matches the following providers:\n\n".to_string(), &mut buffer);
         }
 
         // Print the matched provider information
@@ -1127,7 +1155,7 @@ impl Script {
                 }
             }
             white(true, "\n".to_string(), &mut buffer);
-            white_italics(true, "matches the following packages:\n\n".to_string(), &mut buffer);
+            grey_italics(true, "matches the following packages:\n\n".to_string(), &mut buffer);
         }
 
         // Print the matched package information
@@ -1162,14 +1190,14 @@ impl Script {
         white(true, "\n\n".to_string(), &mut buffer);
 
         // Print matched event introduction
-        if !pkg_info.is_empty() {
+        if !event_info.is_empty() {
             white(true, format!("{}:{}:", &probe_spec.provider.as_ref().unwrap().name, &probe_spec.package.as_ref().unwrap().name), &mut buffer);
             magenta(true, format!("{}", &probe_spec.event.as_ref().unwrap().name), &mut buffer);
             if let Some(mode_patt) = &probe_spec.mode {
                 white(true, format!(":{}", &mode_patt.name), &mut buffer);
             }
             white(true, "\n".to_string(), &mut buffer);
-            white_italics(true, "matches the following events:\n\n".to_string(), &mut buffer);
+            grey_italics(true, "matches the following events:\n\n".to_string(), &mut buffer);
         }
 
         // Print the matched event information
@@ -1211,7 +1239,7 @@ impl Script {
                                 &probe_spec.package.as_ref().unwrap().name,
                                 &probe_spec.event.as_ref().unwrap().name), &mut buffer);
             magenta(true, format!("{}\n", &probe_spec.mode.as_ref().unwrap().name), &mut buffer);
-            white_italics(true, "matches the following modes:\n\n".to_string(), &mut buffer);
+            grey_italics(true, "matches the following modes:\n\n".to_string(), &mut buffer);
         }
 
         // Print the matched mode information
@@ -1251,6 +1279,10 @@ impl Script {
         buffer.reset().expect("Uh oh, something went wrong while printing to terminal");
 
         return Ok(());
+    }
+
+    pub fn add_global_stmts(&mut self, global_statements: Vec<Statement>) {
+        self.global_stmts = global_statements;
     }
 
     /// Iterates over all of the matched providers, packages, events, and probe mode names
@@ -1454,8 +1486,41 @@ impl Package {
         vec![]
     }
 
-    fn get_provided_globals(_name: &String) -> HashMap<String, (ProvidedFunctionality, Global)> {
-        HashMap::new()
+    fn get_provided_globals(name: &String) -> HashMap<String, (ProvidedFunctionality, Global)> {
+        let mut globals = HashMap::new();
+        if name.to_lowercase() == "bytecode" {
+            // Add in provided globals for the "call" event
+            globals.insert("tos".to_string(),(
+                ProvidedFunctionality {
+                    name: "tos".to_string(),
+                    docs: "To get the value on top of the Wasm stack.".to_string()
+                },
+                Global {
+                    is_comp_provided: true,
+                    ty: DataType::Str,
+                    var_name: Expr::VarId {
+                        name: "tos".to_string(),
+                        loc: None
+                    },
+                    value: None
+                }));
+            globals.insert("wasm_bytecode_loc".to_string(),(
+                ProvidedFunctionality {
+                    name: "wasm_bytecode_loc".to_string(),
+                    docs: "A unique identifier tied to the probe's location in the Wasm bytecode.".to_string()
+                },
+                Global {
+                    is_comp_provided: true,
+                    ty: DataType::Str,
+                    var_name: Expr::VarId {
+                        name: "wasm_bytecode_loc".to_string(),
+                        loc: None
+                    },
+                    value: None
+                }));
+        }
+
+        globals
     }
 
     /// Get the Package names that match the passed glob pattern

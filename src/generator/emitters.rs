@@ -70,6 +70,9 @@ fn emit_stmt(table: &mut SymbolTable, module_data: &mut ModuleData, stmt: &mut S
              instr_builder: &mut InstrSeqBuilder, metadata: &mut InsertionMetadata, index: &mut usize) -> Result<bool, WhammError> {
     let is_success = true;
     return match stmt {
+        Statement::Decl {ty: _ty, var_id: _var_id, .. } => {
+            todo!()
+        },
         Statement::Assign { var_id, expr, .. } => {
             let folded_expr = ExprFolder::fold_expr(expr, table);
             if let Expr::Primitive { val, .. } = folded_expr {
@@ -156,6 +159,9 @@ fn emit_expr(table: &mut SymbolTable, module_data: &mut ModuleData, expr: &mut E
              metadata: &mut InsertionMetadata, index: &mut usize) -> Result<bool, WhammError> {
     let mut is_success = true;
     match expr {
+        Expr::Ternary { cond: _cond, conseq: _conseq, alt: _alt, ..} => {
+            todo!()
+        }
         Expr::BinOp {lhs, op, rhs, ..} => {
             is_success &= emit_expr(table, module_data, lhs, instr_builder, metadata, index)?;
             is_success &= emit_expr(table, module_data, rhs, instr_builder, metadata, index)?;

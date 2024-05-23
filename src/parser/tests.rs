@@ -16,6 +16,13 @@ pub fn setup_logger() {
 }
 
 const VALID_SCRIPTS: &'static [&'static str] = &[
+    // Ternary
+    r#"
+wasm:bytecode:br:before {
+    index = i ? 1 : 0;
+}
+    "#,
+
     // Variations of PROBE_SPEC
     "BEGIN { }",
     "END { }",
@@ -63,11 +70,22 @@ wasm::call:alt /
 }
     "#,
 
+    // globals
+    r#"
+map<i32, i32> count;
+BEGIN { }
+    "#,
+    r#"
+map<i32, i32> count;
+count = 0;
+BEGIN { }
+    "#,
+
     // Statements
     r#"
-    wasm:bytecode:br:before {
-        i = 0;
-    }
+wasm:bytecode:br:before {
+    i = 0;
+}
     "#,
 
     // Comments
@@ -88,6 +106,11 @@ wasm:bytecode:br:before {
 ];
 
 const INVALID_SCRIPTS: &'static [&'static str] = &[
+    // globals
+    r#"
+map<i32, i32> count;
+    "#,
+
     // Variations of PROBE_SPEC
     "wasm:bytecode:call:alt: { }",
     "wasm:bytecode:call:alt",

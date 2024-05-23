@@ -10,6 +10,9 @@ pub struct ExprFolder;
 impl ExprFolder {
     pub fn fold_expr(expr: &Expr, table: &SymbolTable) -> Expr {
         match *expr {
+            Expr::Ternary { .. } => {
+                ExprFolder::fold_ternary(expr, table)
+            }
             Expr::BinOp { .. } => {
                 ExprFolder::fold_binop(expr, table)
             }
@@ -332,6 +335,10 @@ impl ExprFolder {
             }
         }
         None
+    }
+
+    fn fold_ternary(_ternary: &Expr, _table: &SymbolTable) -> Expr {
+        todo!()
     }
 
     fn fold_call(call: &Expr, _table: &SymbolTable) -> Expr {
