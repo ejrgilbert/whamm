@@ -394,10 +394,10 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
 
 fn type_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> DataType {
     trace!("Entering type_from_rule");
-    // TYPE = _{ TY_INT | TY_BOOL | TY_STRING | TY_TUPLE | TY_MAP }
+    // TYPE = _{ TY_I32 | TY_BOOL | TY_STRING | TY_TUPLE | TY_MAP }
     return match pair.as_rule() {
-        Rule::TY_INT => {
-            DataType::Integer
+        Rule::TY_I32 => {
+            DataType::I32
         },
         Rule::TY_BOOL => {
             DataType::Boolean
@@ -437,7 +437,7 @@ fn type_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> DataType {
             err.parse_error(true,
                             Some(UNEXPECTED_ERR_MSG.to_string()),
                             Some(LineColLocation::from(pair.as_span())),
-                            vec![Rule::TY_INT, Rule::TY_BOOL, Rule::TY_STRING, Rule::TY_TUPLE, Rule::TY_MAP], vec![rule]);
+                            vec![Rule::TY_I32, Rule::TY_BOOL, Rule::TY_STRING, Rule::TY_TUPLE, Rule::TY_MAP], vec![rule]);
             // should have exited above (since it's a fatal error)
             unreachable!();
         }
@@ -608,14 +608,14 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                 })
             })
         },
-        Rule::INT => {
-            trace!("Entering INT");
+        Rule::I32 => {
+            trace!("Entering I32");
             let val = pair.as_str().parse::<i32>().unwrap();
 
-            trace!("Exiting INT");
+            trace!("Exiting I32");
             return Ok(Expr::Primitive {
                 val: Value::Integer {
-                    ty: DataType::Integer,
+                    ty: DataType::I32,
                     val
                 },
                 loc: Some(Location {
@@ -670,8 +670,6 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
 fn expr_from_pair(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     return match pair.as_rule() {
         Rule::ternary => {
-            // i ? 1 : 0;
-
             // handle contents
             let pair_loc = LineColLocation::from(pair.as_span());
             let mut pairs = pair.into_inner();

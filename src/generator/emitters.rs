@@ -1051,7 +1051,7 @@ impl Emitter for WasmRewritingEmitter {
                         // place in symbol table with var addr for future reference
                         let arg_name = format!("arg{}", num);
                         let id = self.table.put(arg_name.clone(), Record::Var {
-                            ty: DataType::Integer, // we only support integers right now.
+                            ty: DataType::I32, // we only support integers right now.
                             name: arg_name.clone(),
                             value: None,
                             addr: Some(VarAddr::Local {

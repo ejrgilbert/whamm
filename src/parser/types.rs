@@ -7,7 +7,7 @@ use pest_derive::Parser;
 use pest::pratt_parser::PrattParser;
 use termcolor::BufferWriter;
 use walrus::DataId;
-use crate::common::terminal::{green, long_line, magenta, magenta_italics, white, grey_italics, yellow, grey};
+use crate::common::terminal::{green, long_line, magenta, magenta_italics, white, grey_italics, yellow};
 use crate::common::error::{ErrorGen, WhammError};
 
 #[derive(Parser)]
@@ -81,7 +81,7 @@ impl Location {
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum DataType {
-    Integer,
+    I32,
     Boolean,
     Null,
     Str,
@@ -96,7 +96,7 @@ pub enum DataType {
 impl DataType {
     pub fn print(&self, buffer: &mut Buffer) {
         match self {
-            DataType::Integer => {
+            DataType::I32 => {
                 yellow(true, "int".to_string(), buffer);
             },
             DataType::Boolean => {
@@ -204,7 +204,7 @@ impl Statement {
         Self::Expr {
             expr: Expr::Primitive {
                 val: Value::Integer {
-                    ty: DataType::Integer,
+                    ty: DataType::I32,
                     val: 0,
                 },
                 loc: None
@@ -396,8 +396,8 @@ impl Whamm {
                 },
                 DataType::Tuple {
                     ty_info: Some(vec![
-                        Box::new(DataType::Integer),
-                        Box::new(DataType::Integer)
+                        Box::new(DataType::I32),
+                        Box::new(DataType::I32)
                     ]),
                 }
             ),
@@ -1484,7 +1484,7 @@ impl Package {
                 },
                 Global {
                     is_comp_provided: true,
-                    ty: DataType::Str,
+                    ty: DataType::I32,
                     var_name: Expr::VarId {
                         name: "tos".to_string(),
                         loc: None
@@ -1498,7 +1498,7 @@ impl Package {
                 },
                 Global {
                     is_comp_provided: true,
-                    ty: DataType::Str,
+                    ty: DataType::I32,
                     var_name: Expr::VarId {
                         name: "wasm_bytecode_loc".to_string(),
                         loc: None

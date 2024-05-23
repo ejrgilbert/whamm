@@ -308,35 +308,35 @@ impl ExprFolder {
                     }),
                     BinOp::Add => Some(Expr::Primitive {
                         val: Value::Integer {
-                            ty: DataType::Integer,
+                            ty: DataType::I32,
                             val: lhs_int + rhs_int,
                         },
                         loc: None
                     }),
                     BinOp::Subtract => Some(Expr::Primitive {
                         val: Value::Integer {
-                            ty: DataType::Integer,
+                            ty: DataType::I32,
                             val: lhs_int - rhs_int,
                         },
                         loc: None
                     }),
                     BinOp::Multiply => Some(Expr::Primitive {
                         val: Value::Integer {
-                            ty: DataType::Integer,
+                            ty: DataType::I32,
                             val: lhs_int * rhs_int,
                         },
                         loc: None
                     }),
                     BinOp::Divide => Some(Expr::Primitive {
                         val: Value::Integer {
-                            ty: DataType::Integer,
+                            ty: DataType::I32,
                             val: lhs_int / rhs_int,
                         },
                         loc: None
                     }),
                     BinOp::Modulo => Some(Expr::Primitive {
                         val: Value::Integer {
-                            ty: DataType::Integer,
+                            ty: DataType::I32,
                             val: lhs_int % rhs_int,
                         },
                         loc: None

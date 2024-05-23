@@ -42,7 +42,7 @@ ID = @{ (ASCII_ALPHA | "_")+ ~ ( ASCII_DIGIT | (ASCII_ALPHA | "_")+ )* }
 // ---- Types ----
 // ===============
 
-TY_INT = @{ "i32" }
+TY_I32 = @{ "i32" }
 TY_BOOL = @{ "bool" }
 TY_STRING = @{ "str" }
 
@@ -51,7 +51,7 @@ TY_TUPLE = { "(" ~ TYPE ~ ( "," ~ TYPE )* ~ ")" }
 // first TYPE is the type of the key, second TYPE is the type of the value
 TY_MAP = { "map<" ~ TYPE ~ "," ~ TYPE ~ ">" }
 
-TYPE = _{ TY_INT | TY_BOOL | TY_STRING | TY_TUPLE | TY_MAP }
+TYPE = _{ TY_I32 | TY_BOOL | TY_STRING | TY_TUPLE | TY_MAP }
 
 // ====================
 // ---- Statements ----
@@ -77,7 +77,7 @@ prefix = _{ UNOP }
 UNOP = _{ neg }
     neg = { "!" }
 
-val = _{ BOOL | ID | INT | STRING }
+val = _{ BOOL | ID | I32 | STRING }
 operand = _{ fn_call | "(" ~ expr ~ ")" | val }
 
 tuple = { "(" ~ (val) ~ ( "," ~ val )* ~ ")" }
@@ -114,7 +114,7 @@ BINOP = _{ LOGOP | RELOP | SUMOP | MULOP }
 
 // TODO -- make sure that the binary/octal/hexadecimal formats are parsed correctly
 // TODO -- add support for negative numbers (see calc-pest tutorial)
-INT = @{
+I32 = @{
     "0x" ~ ASCII_HEX_DIGIT+ // Hexadecimal digit
     | "0b" ~ ASCII_BIN_DIGIT+ // Binary digit
     | "0" ~ ASCII_OCT_DIGIT+ // Octal digit

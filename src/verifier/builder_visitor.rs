@@ -377,6 +377,9 @@ impl WhammVisitor<()> for SymbolTableBuilder<'_> {
         trace!("Entering: visit_script");
 
         self.add_script(script);
+
+        // TODO -- visit global_stmts
+
         script.fns.iter().for_each(| f | self.visit_fn(f) );
         self.visit_globals(&script.globals);
         script.providers.iter().for_each(| (_name, provider) | {
