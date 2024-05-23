@@ -7,9 +7,7 @@
 
 ## Debugging Wasm? Put some `whamm!` on it! ##
 
-`whamm!` is a tool for "Wasm Application Monitoring and Manipulation"[^1], a DSL inspired by the D language.
-
-[^1] The 'h' is silent.
+`whamm!` is a tool for "Wasm Application Monitoring and Manipulation"<sup>[1](#silent_h)</sup>, a DSL inspired by the D language.
 
 ## Tutorials ##
 
@@ -67,3 +65,5 @@ Example:
 `wasi:http:send_req:alt`
 `wasm:bytecode:call:alt`
 `wasm:fn:enter:before`
+
+<a name="silent_h">1</a>: The 'h' is silent.
