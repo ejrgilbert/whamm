@@ -16,6 +16,9 @@ impl ExprFolder {
             Expr::BinOp { .. } => {
                 ExprFolder::fold_binop(expr, table)
             }
+            Expr::Ternary { .. } => {
+                ExprFolder::fold_ternary(expr, table)
+            }
             Expr::Call { .. } => {
                 ExprFolder::fold_call(expr, table)
             }
@@ -368,6 +371,10 @@ impl ExprFolder {
             }
         }
         None
+    }
+
+    fn fold_ternary(_ternary: &Expr, _table: &SymbolTable) -> Expr {
+        todo!()
     }
 
     fn fold_call(call: &Expr, _table: &SymbolTable) -> Expr {

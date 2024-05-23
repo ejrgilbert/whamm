@@ -3,7 +3,7 @@ use types::{WhammParser, UnOp, BinOp, PRATT_PARSER, Rule};
 
 use pest::error::{Error, LineColLocation};
 use pest::Parser;
-use pest::iterators::{Pair, Pairs};
+use pest::iterators::Pair;
 
 use log::trace;
 use crate::common::error::{ErrorGen, WhammError};
@@ -113,6 +113,23 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
                 process_pair(whamm, id, p, err);
             });
             trace!("Exiting script");
+        },
+        Rule::statement => {
+            trace!("Entering statement");
+
+            // let mut pair = pair.into_inner();
+            // let stmt_rules = pair.next().unwrap();
+
+            let mut global_stmts = vec![];
+            pair.into_inner().for_each(|p| {
+                global_stmts.push(stmt_from_rule(p, err));
+            });
+
+            // Add global statements to the script
+            let script: &mut Script = whamm.scripts.get_mut(script_count).unwrap();
+            script.add_global_stmts(global_stmts);
+
+            trace!("Exiting statement");
         }
         Rule::probe_def => {
             trace!("Entering probe_def");
@@ -127,7 +144,7 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
                 Some(n) => {
                     let (this_predicate, mut this_body) = match n.as_rule() {
                         Rule::predicate => {
-                            match expr_from_pairs(n.into_inner()) {
+                            match expr_from_pair(n.into_inner().next().unwrap()) {
                                 Ok(res) => (Some(res), None),
                                 Err(errors) => {
                                     err.add_errors(errors);
@@ -219,7 +236,7 @@ fn fn_call_from_rule(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     let mut errors = vec![];
     while next.is_some() {
         let mut others = vec!();
-        match expr_from_pairs(next.unwrap().into_inner()) {
+        match expr_from_pair(next.unwrap()) {
             Ok(expr) => {
                 others.push(Box::new(expr));
                 init.append(&mut others);
@@ -266,7 +283,6 @@ fn fn_call_from_rule(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
             })
         })
     }
-
 }
 
 fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec<WhammError>> {
@@ -275,16 +291,41 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
         Rule::statement => {
             trace!("Entering statement");
             let res = stmt_from_rule(pair, err);
-
             trace!("Exiting statement");
+
             trace!("Exiting stmt_from_rule");
             res
+        },
+        Rule::declaration => {
+            trace!("Entering declaration");
+            // declaration = { TYPE ~ ID }
+            let mut pair = pair.into_inner();
+            let type_rule = pair.next().unwrap();
+            let type_line_col = LineColLocation::from(type_rule.as_span());
+            let ty = type_from_rule(type_rule, err);
+
+            let var_id_rule = pair.next().unwrap();
+            let var_id_line_col = LineColLocation::from(var_id_rule.as_span());
+            let var_id = Expr::VarId {
+                name: var_id_rule.as_str().parse().unwrap(),
+                loc: Some(Location {
+                    line_col: var_id_line_col.clone(),
+                    path: None
+                })
+            };
+            trace!("Exiting declaration");
+
+            Statement::Decl {
+                ty,
+                var_id,
+                loc: Some(Location::from(&type_line_col, &var_id_line_col, None))
+            }
         },
         Rule::assignment => {
             trace!("Entering assignment");
             let mut pair = pair.into_inner();
             let var_id_rule = pair.next().unwrap();
-            let expr_rule = pair.next().unwrap().into_inner();
+            let expr_rule = pair.next().unwrap();
 
             let var_id_line_col = LineColLocation::from(var_id_rule.as_span());
 
@@ -296,7 +337,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
                 })
             };
 
-            return match expr_from_pairs(expr_rule) {
+            return match expr_from_pair(expr_rule) {
                 Err(errors) => {
                     err.add_errors(errors);
                     Ok(Statement::dummy())
@@ -351,7 +392,59 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
     }
 }
 
-fn probe_spec_part_from_rule(pair: Pair<Rule>, err: &mut ErrorGen)  -> SpecPart {
+fn type_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> DataType {
+    trace!("Entering type_from_rule");
+    // TYPE = _{ TY_INT | TY_BOOL | TY_STRING | TY_TUPLE | TY_MAP }
+    return match pair.as_rule() {
+        Rule::TY_INT => {
+            DataType::Integer
+        },
+        Rule::TY_BOOL => {
+            DataType::Boolean
+        },
+        Rule::TY_STRING => {
+            DataType::Str
+        },
+        Rule::TY_TUPLE => {
+            let mut tuple_content_types = vec![];
+            pair.into_inner().for_each(|p| {
+                tuple_content_types.push(Box::new(type_from_rule(p, err)));
+            });
+            return if tuple_content_types.is_empty() {
+                DataType::Tuple {
+                    ty_info: None
+                }
+            } else {
+                DataType::Tuple {
+                    ty_info: Some(tuple_content_types)
+                }
+            }
+        },
+        Rule::TY_MAP => {
+            let mut pair = pair.into_inner();
+            let key_ty_rule = pair.next().unwrap();
+            let val_ty_rule = pair.next().unwrap();
+
+            let key_ty = type_from_rule(key_ty_rule, err);
+            let val_ty = type_from_rule(val_ty_rule, err);
+
+            return DataType::Map {
+                key_ty: Box::new(key_ty),
+                val_ty: Box::new(val_ty)
+            }
+        },
+        rule => {
+            err.parse_error(true,
+                            Some(UNEXPECTED_ERR_MSG.to_string()),
+                            Some(LineColLocation::from(pair.as_span())),
+                            vec![Rule::TY_INT, Rule::TY_BOOL, Rule::TY_STRING, Rule::TY_TUPLE, Rule::TY_MAP], vec![rule]);
+            // should have exited above (since it's a fatal error)
+            unreachable!();
+        }
+    };
+}
+
+fn probe_spec_part_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> SpecPart {
     trace!("Entered probe_spec_part_from_rule");
     match pair.as_rule() {
         Rule::PROBE_ID => {
@@ -570,123 +663,185 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                 })
             });
         },
-        _ => expr_from_pairs(pair.into_inner())
+        _ => expr_from_pair(pair)
     }
 }
 
-fn expr_from_pairs(pairs: Pairs<Rule>) -> Result<Expr, Vec<WhammError>> {
-    PRATT_PARSER
-        .map_primary(|primary| -> Result<Expr, Vec<WhammError>> {
-            expr_primary(primary)
-        })
-        .map_prefix(|op, rhs|  -> Result<Expr, Vec<WhammError>> {
-            return match rhs {
-                Ok(rhs) => {
-                    let op = match op.as_rule() {
-                        Rule::neg => UnOp::Not,
-                        rule => {
-                            return Err(vec![ErrorGen::get_parse_error(
-                                true,
-                                Some(UNEXPECTED_ERR_MSG.to_string()),
-                                Some(LineColLocation::from(op.as_span())),
-                                vec![Rule::prefix],
-                                vec![rule])]);
-                        },
-                    };
+fn expr_from_pair(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
+    return match pair.as_rule() {
+        Rule::ternary => {
+            // i ? 1 : 0;
 
-                    let rhs_line_col = if let Some(rhs_loc) = rhs.loc() {
-                        rhs_loc.line_col.clone()
-                    } else {
-                        return Err(vec![ErrorGen::get_unexpected_error(
-                            true,
-                            Some(format!("{}{}", UNEXPECTED_ERR_MSG, "could not get location")),
-                            None)
-                            ]);
-                    };
+            // handle contents
+            let pair_loc = LineColLocation::from(pair.as_span());
+            let mut pairs = pair.into_inner();
 
-                    Ok(Expr::UnOp {
-                        op,
-                        expr: Box::new(rhs),
-                        loc: Some(Location::from(&rhs_line_col, &rhs_line_col, None))
-                    })
-                },
-                Err(errors) => Err(errors)
-            };
-        })
-        .map_infix(|lhs, op, rhs| -> Result<Expr, Vec<WhammError>> {
-            return match (lhs, rhs) {
-                (Ok(lhs), Ok(rhs)) => {
-                    let op = match op.as_rule() {
-                        // Logical operators
-                        Rule::and => BinOp::And,
-                        Rule::or => BinOp::Or,
-
-                        // Relational operators
-                        Rule::eq => BinOp::EQ,
-                        Rule::ne => BinOp::NE,
-                        Rule::ge => BinOp::GE,
-                        Rule::gt => BinOp::GT,
-                        Rule::le => BinOp::LE,
-                        Rule::lt => BinOp::LT,
-
-                        // Highest precedence arithmetic operators
-                        Rule::add => BinOp::Add,
-                        Rule::subtract => BinOp::Subtract,
-
-                        // Next highest precedence arithmetic operators
-                        Rule::multiply => BinOp::Multiply,
-                        Rule::divide => BinOp::Divide,
-                        Rule::modulo => BinOp::Modulo,
-                        rule => {
-                            return Err(vec![ErrorGen::get_parse_error(
-                                true,
-                                Some(UNEXPECTED_ERR_MSG.to_string()),
-                                Some(LineColLocation::from(op.as_span())),
-                                vec![Rule::and, Rule::or, Rule::eq, Rule::ne, Rule::ge, Rule::gt, Rule::le, Rule::lt,
-                                        Rule::add, Rule::subtract, Rule::multiply, Rule::divide, Rule::modulo],
-                                vec![rule])]);
-                        },
-                    };
-
-                    let lhs_line_col = if let Some(lhs_loc) = lhs.loc() {
-                        LineColLocation::from(lhs_loc.line_col.clone())
-                    } else {
-                        return Err(vec![ErrorGen::get_unexpected_error(
-                            true,
-                            Some(format!("{}{}", UNEXPECTED_ERR_MSG, "could not get location")),
-                            None)
-                            ]);
-                    };
-
-                    let rhs_line_col = if let Some(rhs_loc) = rhs.loc() {
-                        LineColLocation::from(rhs_loc.line_col.clone())
-                    } else {
-                        return Err(vec![ErrorGen::get_unexpected_error(
-                            true,
-                            Some(format!("{}{}", UNEXPECTED_ERR_MSG, "could not get location")),
-                            None)
-                            ]);
-                    };
-
-                    Ok(Expr::BinOp {
-                        lhs: Box::new(lhs),
-                        op,
-                        rhs: Box::new(rhs),
-                        loc: Some(Location::from(&lhs_line_col, &rhs_line_col, None))
-                    })
-                },
-                (lhs, rhs) => {
-                    let mut errors = vec![];
-                    if let Err(lhs_err) = lhs {
-                        errors.extend(lhs_err);
-                    }
-                    if let Err(rhs_err) = rhs {
-                        errors.extend(rhs_err);
-                    }
-
-                    Err(errors)
+            let cond_rule = pairs.next().unwrap();
+            let cond = match expr_from_pair(cond_rule) {
+                Ok(expr) => expr,
+                other => {
+                    return other;
                 }
             };
-        })
-        .parse(pairs)
+
+            let conseq_rule = pairs.next().unwrap();
+            let conseq = match expr_from_pair(conseq_rule) {
+                Ok(expr) => expr,
+                other => {
+                    return other;
+                }
+            };
+
+            let alt_rule = pairs.next().unwrap();
+            let alt = match expr_from_pair(alt_rule) {
+                Ok(expr) => expr,
+                other => {
+                    return other;
+                }
+            };
+
+            Ok(Expr::Ternary {
+                cond: Box::new(cond),
+                conseq: Box::new(conseq),
+                alt: Box::new(alt),
+                loc: Some(Location {
+                    line_col: pair_loc,
+                    path: None
+                })
+            })
+        },
+        Rule::arg => {
+            let mut pairs = pair.into_inner();
+            let arg = pairs.next().unwrap();
+            match arg.as_rule() {
+                Rule::expr => expr_from_pair(arg),
+                _ => expr_primary(arg)
+            }
+        },
+        Rule::expr => {
+            let pairs = pair.into_inner();
+            PRATT_PARSER
+                .map_primary(|primary| -> Result<Expr, Vec<WhammError>> {
+                    expr_primary(primary)
+                })
+                .map_prefix(|op, rhs|  -> Result<Expr, Vec<WhammError>> {
+                    return match rhs {
+                        Ok(rhs) => {
+                            let op = match op.as_rule() {
+                                Rule::neg => UnOp::Not,
+                                rule => {
+                                    return Err(vec![ErrorGen::get_parse_error(
+                                        true,
+                                        Some(UNEXPECTED_ERR_MSG.to_string()),
+                                        Some(LineColLocation::from(op.as_span())),
+                                        vec![Rule::prefix],
+                                        vec![rule])]);
+                                },
+                            };
+
+                            let rhs_line_col = if let Some(rhs_loc) = rhs.loc() {
+                                rhs_loc.line_col.clone()
+                            } else {
+                                return Err(vec![ErrorGen::get_unexpected_error(
+                                    true,
+                                    Some(format!("{}{}", UNEXPECTED_ERR_MSG, "could not get location")),
+                                    None)
+                                ]);
+                            };
+
+                            Ok(Expr::UnOp {
+                                op,
+                                expr: Box::new(rhs),
+                                loc: Some(Location::from(&rhs_line_col, &rhs_line_col, None))
+                            })
+                        },
+                        Err(errors) => Err(errors)
+                    };
+                })
+                .map_infix(|lhs, op, rhs| -> Result<Expr, Vec<WhammError>> {
+                    return match (lhs, rhs) {
+                        (Ok(lhs), Ok(rhs)) => {
+                            let op = match op.as_rule() {
+                                // Logical operators
+                                Rule::and => BinOp::And,
+                                Rule::or => BinOp::Or,
+
+                                // Relational operators
+                                Rule::eq => BinOp::EQ,
+                                Rule::ne => BinOp::NE,
+                                Rule::ge => BinOp::GE,
+                                Rule::gt => BinOp::GT,
+                                Rule::le => BinOp::LE,
+                                Rule::lt => BinOp::LT,
+
+                                // Highest precedence arithmetic operators
+                                Rule::add => BinOp::Add,
+                                Rule::subtract => BinOp::Subtract,
+
+                                // Next highest precedence arithmetic operators
+                                Rule::multiply => BinOp::Multiply,
+                                Rule::divide => BinOp::Divide,
+                                Rule::modulo => BinOp::Modulo,
+                                rule => {
+                                    return Err(vec![ErrorGen::get_parse_error(
+                                        true,
+                                        Some(UNEXPECTED_ERR_MSG.to_string()),
+                                        Some(LineColLocation::from(op.as_span())),
+                                        vec![Rule::and, Rule::or, Rule::eq, Rule::ne, Rule::ge, Rule::gt, Rule::le, Rule::lt,
+                                             Rule::add, Rule::subtract, Rule::multiply, Rule::divide, Rule::modulo],
+                                        vec![rule])]);
+                                },
+                            };
+
+                            let lhs_line_col = if let Some(lhs_loc) = lhs.loc() {
+                                LineColLocation::from(lhs_loc.line_col.clone())
+                            } else {
+                                return Err(vec![ErrorGen::get_unexpected_error(
+                                    true,
+                                    Some(format!("{}{}", UNEXPECTED_ERR_MSG, "could not get location")),
+                                    None)
+                                ]);
+                            };
+
+                            let rhs_line_col = if let Some(rhs_loc) = rhs.loc() {
+                                LineColLocation::from(rhs_loc.line_col.clone())
+                            } else {
+                                return Err(vec![ErrorGen::get_unexpected_error(
+                                    true,
+                                    Some(format!("{}{}", UNEXPECTED_ERR_MSG, "could not get location")),
+                                    None)
+                                ]);
+                            };
+
+                            Ok(Expr::BinOp {
+                                lhs: Box::new(lhs),
+                                op,
+                                rhs: Box::new(rhs),
+                                loc: Some(Location::from(&lhs_line_col, &rhs_line_col, None))
+                            })
+                        },
+                        (lhs, rhs) => {
+                            let mut errors = vec![];
+                            if let Err(lhs_err) = lhs {
+                                errors.extend(lhs_err);
+                            }
+                            if let Err(rhs_err) = rhs {
+                                errors.extend(rhs_err);
+                            }
+
+                            Err(errors)
+                        }
+                    };
+                })
+                .parse(pairs)
+        },
+        rule => {
+            Err(vec![ErrorGen::get_parse_error(
+                true,
+                Some(UNEXPECTED_ERR_MSG.to_string()),
+                Some(LineColLocation::from(pair.as_span())),
+                vec![Rule::expr, Rule::ternary],
+                vec![rule])])
+        }
+    }
 }
