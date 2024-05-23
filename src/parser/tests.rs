@@ -275,7 +275,7 @@ wasm::call:alt /
             assert_eq!(1, provider.packages.len());
             let package = provider.packages.get("bytecode").unwrap();
             assert_eq!("bytecode", package.name);
-            assert_eq!(0, package.globals.len());
+            assert_eq!(2, package.globals.len());
             assert_eq!(0, package.fns.len());
 
             assert_eq!(1, package.events.len());
