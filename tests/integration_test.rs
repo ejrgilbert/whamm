@@ -58,7 +58,7 @@ fn instrument_with_fault_injection() {
             curr_provider_name: "".to_string(),
             curr_package_name: "".to_string(),
             curr_event_name: "".to_string(),
-            curr_probe_name: "".to_string(),
+            curr_probe_mode: "".to_string(),
             curr_probe: None,
             err: &mut err
         };
