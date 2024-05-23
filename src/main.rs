@@ -128,7 +128,7 @@ fn run_instr(app_wasm_path: String, whammy_path: String, output_wasm_path: Strin
         curr_provider_name: "".to_string(),
         curr_package_name: "".to_string(),
         curr_event_name: "".to_string(),
-        curr_probe_name: "".to_string(),
+        curr_probe_mode: "".to_string(),
         curr_probe: None,
     };
     instr.run(&behavior_tree);

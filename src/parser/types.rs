@@ -774,7 +774,7 @@ impl Whamm {
                 "table_copy".to_string()
             ),
         ];
-        let wasm_bytecode_probe_types = vec![
+        let wasm_bytecode_probe_modes = vec![
             (
                 ProvidedFunctionality {
                     name: "before".to_string(),
@@ -804,7 +804,7 @@ impl Whamm {
 
         // Build out the wasm_bytecode_map
         for (info, name) in wasm_bytecode_events {
-            wasm_bytecode_map.insert(name, (info.clone(), wasm_bytecode_probe_types.clone()));
+            wasm_bytecode_map.insert(name, (info.clone(), wasm_bytecode_probe_modes.clone()));
         }
 
         self.provided_probes.insert("wasm".to_string(), (
@@ -1217,7 +1217,7 @@ impl Whammy {
         return Ok(());
     }
 
-    /// Iterates over all of the matched providers, packages, events, and probe names
+    /// Iterates over all of the matched providers, packages, events, and probe mode names
     /// to add a copy of the user-defined Probe for each of them.
     pub fn add_probe(&mut self, provided_probes: &ProvidedProbes,
                      probe_spec: &ProbeSpec, predicate: Option<Expr>, body: Option<Vec<Statement>>) -> Result<(), WhammError> {
@@ -1545,7 +1545,7 @@ impl Event {
 
 #[derive(Clone, Debug)]
 pub struct Probe {
-    pub name: String,
+    pub mode: String,
     pub loc: Option<Location>,
     pub fns: Vec<(ProvidedFunctionality, Fn)>,                     // Comp-provided
     pub globals: HashMap<String, (ProvidedFunctionality, Global)>, // Comp-provided
@@ -1554,11 +1554,11 @@ pub struct Probe {
     pub body: Option<Vec<Statement>>
 }
 impl Probe {
-    pub fn new(name: String, loc: Option<Location>, predicate: Option<Expr>, body: Option<Vec<Statement>>) -> Self {
-        let fns = Probe::get_provided_fns(&name);
-        let globals = Probe::get_provided_globals(&name);
+    pub fn new(mode: String, loc: Option<Location>, predicate: Option<Expr>, body: Option<Vec<Statement>>) -> Self {
+        let fns = Probe::get_provided_fns(&mode);
+        let globals = Probe::get_provided_globals(&mode);
         Probe {
-            name,
+            mode,
             loc,
             fns,
             globals,
@@ -1568,23 +1568,23 @@ impl Probe {
         }
     }
 
-    fn get_provided_fns(_name: &String) -> Vec<(ProvidedFunctionality, Fn)> {
+    fn get_provided_fns(_mode: &String) -> Vec<(ProvidedFunctionality, Fn)> {
         vec![]
     }
 
-    fn get_provided_globals(_name: &String) -> HashMap<String, (ProvidedFunctionality, Global)> {
+    fn get_provided_globals(_mode: &String) -> HashMap<String, (ProvidedFunctionality, Global)> {
         HashMap::new()
     }
 
-    /// Get the Probe names that match the passed glob pattern
-    pub fn get_matches(provided_probes: &ProvidedProbes, provider: &str, package: &str, event: &str, probe_patt: &str) -> Vec<(ProvidedFunctionality, String)> {
-        let glob = Pattern::new(&probe_patt.to_lowercase()).unwrap();
+    /// Get the Probe modes that match the passed glob pattern
+    pub fn get_matches(provided_probes: &ProvidedProbes, provider: &str, package: &str, event: &str, mode_patt: &str) -> Vec<(ProvidedFunctionality, String)> {
+        let glob = Pattern::new(&mode_patt.to_lowercase()).unwrap();
 
         let mut matches = vec![];
 
-        for (info, p_name) in provided_probes.get(provider).unwrap().1.get(package).unwrap().1.get(event).unwrap().1.iter() {
-            if glob.matches(&p_name.to_lowercase()) {
-                matches.push((info.clone(), p_name.clone()));
+        for (info, m_name) in provided_probes.get(provider).unwrap().1.get(package).unwrap().1.get(event).unwrap().1.iter() {
+            if glob.matches(&m_name.to_lowercase()) {
+                matches.push((info.clone(), m_name.clone()));
             }
         }
 

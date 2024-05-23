@@ -367,7 +367,7 @@ pub enum Record {
         probes: Vec<usize>
     },
     Probe {
-        name: String,
+        mode: String,
         fns: Vec<usize>,
         globals: Vec<usize>
     },

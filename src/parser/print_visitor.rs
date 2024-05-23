@@ -248,7 +248,7 @@ impl WhammVisitor<String> for AsStrVisitor {
     fn visit_probe(&mut self, probe: &Probe) -> String {
         let mut s = "".to_string();
 
-        s += &format!("{} `{}` probe {{{}", self.get_indent(), probe.name, NL);
+        s += &format!("{} `{}` probe {{{}", self.get_indent(), probe.mode, NL);
         self.increase_indent();
 
         // print fns

@@ -177,20 +177,20 @@ impl SymbolTableBuilder<'_> {
     }
 
     fn add_probe(&mut self, probe: &Probe) {
-        if self.table.lookup(&probe.name).is_some() {
+        if self.table.lookup(&probe.mode).is_some() {
             // This should never be the case since it's controlled by the compiler!
             self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
         }
 
         // create record
         let probe_rec = Record::Probe {
-            name: probe.name.clone(),
+            mode: probe.mode.clone(),
             fns: vec![],
             globals: vec![],
         };
 
         // Add probe to scope
-        let id = self.table.put(probe.name.clone(), probe_rec);
+        let id = self.table.put(probe.mode.clone(), probe_rec);
 
         // Add probe to current event record
         match self.table.get_record_mut(&self.curr_event.unwrap()) {
@@ -210,7 +210,7 @@ impl SymbolTableBuilder<'_> {
         self.curr_probe = Some(id.clone());
 
         // set scope name and type
-        self.table.set_curr_scope_info(probe.name.clone(), ScopeType::Probe);
+        self.table.set_curr_scope_info(probe.mode.clone(), ScopeType::Probe);
     }
 
     fn add_fn(&mut self, f: &Fn) {
