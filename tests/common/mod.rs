@@ -82,15 +82,15 @@ fn process_scripts(scripts: Vec<(PathBuf, String)>, err: &mut ErrorGen) -> Vec<(
 
     // Build the symbol table from the AST
     let mut result = vec![];
-    for (path, script_str, ast) in asts {
-        let mut symbol_table = build_symbol_table(&ast, err);
+    for (path, script_str, mut ast) in asts {
+        let mut symbol_table = build_symbol_table(&mut ast, err);
         symbol_table.reset();
 
         // Build the behavior tree from the AST
         let (mut behavior, simple_ast) = build_behavior_tree(&ast, err);
         behavior.reset();
 
-        result.push((path.into_os_string().into_string().unwrap(), script_str, ast, symbol_table, behavior, simple_ast));
+        result.push((path.into_os_string().into_string().unwrap(), script_str.clone(), ast, symbol_table, behavior, simple_ast));
     }
 
     result

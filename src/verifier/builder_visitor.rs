@@ -349,12 +349,6 @@ impl SymbolTableBuilder<'_> {
             self.add_global(global.ty.clone(), name.clone());
         }
     }
-
-    fn visit_globals(&mut self, globals: &HashMap<String, Global>) {
-        for (name, global) in globals.iter() {
-            self.add_global(global.ty.clone(), name.clone());
-        }
-    }
 }
 
 impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
