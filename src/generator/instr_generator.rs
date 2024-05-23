@@ -27,7 +27,7 @@ pub struct InstrGenerator<'a, 'b> {
     pub curr_provider_name: String,
     pub curr_package_name: String,
     pub curr_event_name: String,
-    pub curr_probe_name: String,
+    pub curr_probe_mode: String,
     pub curr_probe: Option<Probe>
 }
 impl InstrGenerator<'_, '_> {
@@ -57,8 +57,8 @@ impl InstrGenerator<'_, '_> {
                         self.curr_package_name = package.to_string();
                         if let Some(event) = spec_split.next() {
                             self.curr_event_name = event.to_string();
-                            if let Some(probe) = spec_split.next() {
-                                self.curr_probe_name = probe.to_string()
+                            if let Some(mode) = spec_split.next() {
+                                self.curr_probe_mode = mode.to_string()
                             }
                         }
                     }
@@ -155,11 +155,11 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         false
     }
 
-    fn visit_is_probe_type(&mut self, node: &Node) -> bool {
+    fn visit_is_probe_mode(&mut self, node: &Node) -> bool {
         let mut is_success = true;
         if let Node::Decorator { ty, child, .. } = node {
-            if let DecoratorType::IsProbeType {probe_type} = ty {
-                if self.curr_probe_name == *probe_type {
+            if let DecoratorType::IsProbeMode {probe_mode} = ty {
+                if self.curr_probe_mode == *probe_mode {
                     if let Some(node) = self.tree.get_node(child.clone()) {
                         is_success &= self.visit_node(node);
                     }
@@ -355,12 +355,12 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
     fn visit_enter_probe(&mut self, node: &Node) -> bool {
         let mut is_success = true;
         if let Node::ActionWithChild { ty, child, .. } = node {
-            if let ActionWithChildType::EnterProbe { probe_name, global_names, .. } = ty {
+            if let ActionWithChildType::EnterProbe { probe_mode, global_names, .. } = ty {
                 // enter probe's scope
-                if !self.emitter.enter_named_scope(probe_name) {
-                    self.err.unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} Could not find the specified scope by name: `{}`", probe_name)), None);
+                if !self.emitter.enter_named_scope(probe_mode) {
+                    self.err.unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} Could not find the specified scope by name: `{}`", probe_mode)), None);
                 }
-                self.curr_probe_name = probe_name.clone();
+                self.curr_probe_mode = probe_mode.clone();
 
                 // define this probe's compiler variables
                 for global in global_names {
@@ -369,15 +369,15 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                         Ok(res) => is_success &= res,
                     }
                 }
-                if probe_name == "before" || probe_name == "after" {
+                if probe_mode == "before" || probe_mode == "after" {
                     // Perform 'before' and 'after' probe logic
                     // Must pull the probe by index due to Rust calling constraints...
                     let probe_list_len = get_probes_from_ast(&self.ast, &self.curr_provider_name, &self.curr_package_name,
-                                                             &self.curr_event_name, probe_name).len();
+                                                             &self.curr_event_name, probe_mode).len();
                     for i in Vec::from_iter(0..probe_list_len).iter() {
 
                         if let Some(probe) = get_probe_at_idx(&self.ast, &self.curr_provider_name, &self.curr_package_name,
-                                                              &self.curr_event_name, probe_name, i) {
+                                                              &self.curr_event_name, probe_mode, i) {
                             // make a clone of the current probe per instruction traversal
                             // this will reset the clone pred/body for each instruction!
                             let mut probe_cloned = probe.clone();
@@ -394,12 +394,12 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                             is_success &= self.visit_node(node);
                         }
                     }
-                } else if probe_name == "alt" {
+                } else if probe_mode == "alt" {
                     // Perform 'alt' probe logic
                     let probe_list = get_probes_from_ast(&self.ast, &self.curr_provider_name, &self.curr_package_name,
-                                                         &self.curr_event_name, probe_name);
+                                                         &self.curr_event_name, probe_mode);
                     if probe_list.len() > 1 {
-                        warn!("There is more than one probe for probe type '{}'. So only emitting first probe, ignoring rest.", probe_name)
+                        warn!("There is more than one probe for probe type '{}'. So only emitting first probe, ignoring rest.", probe_mode)
                     }
                     // make a clone of the first probe per instruction traversal
                     // this will reset the clone pred/body for each instruction!

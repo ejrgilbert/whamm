@@ -151,10 +151,10 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
         }
     }
 
-    fn visit_is_probe_type(&mut self, node: &TreeNode) -> () {
+    fn visit_is_probe_mode(&mut self, node: &TreeNode) -> () {
         if let TreeNode::Decorator { id, ty, parent, child } = node {
-            if let DecoratorType::IsProbeType {probe_type} = ty {
-                self.emit_decorator_node(id, &format!("IsProbeType_{}", probe_type.replace(":", "_")));
+            if let DecoratorType::IsProbeMode {probe_mode} = ty {
+                self.emit_decorator_node(id, &format!("IsProbeMode_{}", probe_mode.replace(":", "_")));
                 self.emit_edge(parent, id);
 
                 if let Some(node) = self.tree.get_node(child.clone()) {
@@ -253,8 +253,8 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
 
     fn visit_enter_probe(&mut self, node: &TreeNode) -> () {
         if let TreeNode::ActionWithChild { id, ty, parent, child } = node {
-            if let ActionWithChildType::EnterProbe { probe_name, .. } = ty {
-                self.emit_special_action_node(id, &format!("EnterProbe_{}", probe_name.replace(":", "_")));
+            if let ActionWithChildType::EnterProbe { probe_mode, .. } = ty {
+                self.emit_special_action_node(id, &format!("EnterProbe_{}", probe_mode.replace(":", "_")));
                 self.emit_edge(parent, id);
 
                 if let Some(node) = self.tree.get_node(child.clone()) {

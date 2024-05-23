@@ -441,8 +441,8 @@ pub enum Node {
 
 #[derive(Debug)]
 pub enum DecoratorType {
-    IsProbeType {
-        probe_type: String
+    IsProbeMode {
+        probe_mode: String
     },
     HasAltCall,
     PredIs {
@@ -486,7 +486,7 @@ pub enum ActionWithChildType {
     },
     EnterProbe {
         context: String,
-        probe_name: String,
+        probe_mode: String,
         global_names: Vec<String>
     }
 }
@@ -525,7 +525,7 @@ pub trait BehaviorVisitor<T> {
     fn visit_decorator(&mut self, node: &Node) -> T {
         if let Node::Decorator { ty, ..} = node {
             match ty {
-                DecoratorType::IsProbeType {..} => self.visit_is_probe_type(node),
+                DecoratorType::IsProbeMode {..} => self.visit_is_probe_mode(node),
                 DecoratorType::HasAltCall {..} => self.visit_has_alt_call(node),
                 DecoratorType::PredIs {..} => self.visit_pred_is(node)
             }
@@ -566,7 +566,7 @@ pub trait BehaviorVisitor<T> {
     }
 
     // Decorator nodes
-    fn visit_is_probe_type(&mut self, node: &Node) -> T;
+    fn visit_is_probe_mode(&mut self, node: &Node) -> T;
     fn visit_has_alt_call(&mut self, node: &Node) -> T;
     fn visit_pred_is(&mut self, node: &Node) -> T;
 

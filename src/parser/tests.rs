@@ -267,7 +267,7 @@ wasm::call:alt /
             let probe = event.probe_map.get("alt").unwrap().get(0).unwrap();
             assert_eq!(0, probe.globals.len());
             assert_eq!(0, probe.fns.len());
-            assert_eq!("alt", probe.name);
+            assert_eq!("alt", probe.mode);
 
             // probe predicate
             assert!(probe.predicate.is_some());

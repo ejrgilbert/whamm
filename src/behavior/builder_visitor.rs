@@ -79,10 +79,10 @@ impl BehaviorTreeBuilder<'_> {
         if let Some(provider) = self.ast.get_mut(&self.curr_provider_name) {
             if let Some(package) = provider.get_mut(&self.curr_package_name) {
                 if let Some(event) = package.get_mut(&self.curr_event_name) {
-                    if let Some(probes) = event.get_mut(&probe.name) {
+                    if let Some(probes) = event.get_mut(&probe.mode) {
                         probes.push((*probe).clone());
                     } else {
-                        event.insert(probe.name.clone(), vec![(*probe).clone()]);
+                        event.insert(probe.mode.clone(), vec![(*probe).clone()]);
                     }
                 }
 
@@ -170,16 +170,16 @@ impl BehaviorTreeBuilder<'_> {
             self.tree.sequence(self.err);
         }
 
-        self.visit_probe_ty(event, "before");
-        self.visit_probe_ty(event, "alt");
-        self.visit_probe_ty(event, "after");
+        self.visit_probe_mode(event, "before");
+        self.visit_probe_mode(event, "alt");
+        self.visit_probe_mode(event, "after");
 
         if event.probe_map.len() > 1 {
             self.tree.exit_sequence(self.err);
         }
     }
 
-    fn visit_probe_ty(&mut self, event: &Event, ty: &str) {
+    fn visit_probe_mode(&mut self, event: &Event, ty: &str) {
         if let Some(probes) = event.probe_map.get(ty) {
             if let Some(probe) = probes.get(0) {
                 // just grab the first one and emit behavior (the behavior includes a loop
@@ -198,8 +198,8 @@ impl BehaviorTreeBuilder<'_> {
                 }, self.err)
                     .sequence(self.err)
                         .fallback(self.err)
-                            .decorator(DecoratorType::IsProbeType {
-                                probe_type: "alt".to_string()
+                            .decorator(DecoratorType::IsProbeMode {
+                                probe_mode: "alt".to_string()
                             }, self.err)
                                 .remove_orig(self.err)
                                 .exit_decorator(self.err)
@@ -217,21 +217,21 @@ impl BehaviorTreeBuilder<'_> {
                     .exit_decorator(self.err)
                 .fallback(self.err)
                     // before behavior
-                    .decorator(DecoratorType::IsProbeType {
-                        probe_type: "before".to_string()
+                    .decorator(DecoratorType::IsProbeMode {
+                        probe_mode: "before".to_string()
                     }, self.err);
 
         self.emit_bytecode_probe_before_body(probe);
         self.tree.exit_decorator(self.err)
             // alt behavior
-            .decorator(DecoratorType::IsProbeType {
-                probe_type: "alt".to_string()
+            .decorator(DecoratorType::IsProbeMode {
+                probe_mode: "alt".to_string()
             }, self.err);
         self.emit_bytecode_probe_alt_body(probe);
         self.tree.exit_decorator(self.err)
             // after behavior
-            .decorator(DecoratorType::IsProbeType {
-                probe_type: "after".to_string()
+            .decorator(DecoratorType::IsProbeMode {
+                probe_mode: "after".to_string()
             }, self.err);
         self.emit_bytecode_probe_after_body(probe);
         self.tree.exit_decorator(self.err)
@@ -395,12 +395,12 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_> {
 
     fn visit_probe(&mut self, probe: &Probe) -> () {
         trace!("Entering: BehaviorTreeBuilder::visit_probe");
-        self.context_name += &format!(":{}", probe.name.clone());
+        self.context_name += &format!(":{}", probe.mode.clone());
         self.add_probe_to_ast(probe);
 
         self.tree.action_with_child(ActionWithChildType::EnterProbe {
             context: self.context_name.clone(),
-            probe_name: probe.name.clone(),
+            probe_mode: probe.mode.clone(),
             global_names: probe.globals.keys().cloned().collect(),
         }, self.err);
 
