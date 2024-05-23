@@ -272,35 +272,35 @@ impl ExprFolder {
                     }),
                     Op::Add => Some(Expr::Primitive {
                         val: Value::Integer {
-                            ty: DataType::Integer,
+                            ty: DataType::I32,
                             val: lhs_int + rhs_int,
                         },
                         loc: None
                     }),
                     Op::Subtract => Some(Expr::Primitive {
                         val: Value::Integer {
-                            ty: DataType::Integer,
+                            ty: DataType::I32,
                             val: lhs_int - rhs_int,
                         },
                         loc: None
                     }),
                     Op::Multiply => Some(Expr::Primitive {
                         val: Value::Integer {
-                            ty: DataType::Integer,
+                            ty: DataType::I32,
                             val: lhs_int * rhs_int,
                         },
                         loc: None
                     }),
                     Op::Divide => Some(Expr::Primitive {
                         val: Value::Integer {
-                            ty: DataType::Integer,
+                            ty: DataType::I32,
                             val: lhs_int / rhs_int,
                         },
                         loc: None
                     }),
                     Op::Modulo => Some(Expr::Primitive {
                         val: Value::Integer {
-                            ty: DataType::Integer,
+                            ty: DataType::I32,
                             val: lhs_int % rhs_int,
                         },
                         loc: None

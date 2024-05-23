@@ -419,9 +419,9 @@ impl WhammVisitor<String> for AsStrVisitor {
 
     fn visit_datatype(&mut self, datatype: &DataType) -> String {
         match datatype {
-            DataType::Integer => {
+            DataType::I32 => {
                 "int".to_string()
-            },
+            }
             DataType::Boolean => {
                 "bool".to_string()
             },
