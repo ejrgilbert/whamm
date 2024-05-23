@@ -1357,6 +1357,24 @@ impl Script {
     }
 }
 
+fn matches_globs(s: &String, globs: &Vec<Pattern>) -> bool {
+    for glob in globs.iter() {
+        if glob.matches(s) {
+            return true;
+        }
+    }
+    false
+}
+
+fn get_globs(patt: &String) -> Vec<Pattern> {
+    let mut globs = vec![];
+    for p in patt.split("|") {
+        globs.push(Pattern::new(p).unwrap());
+    }
+
+    globs
+}
+
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct ProvidedFunctionality {
     pub name: String,
@@ -1396,11 +1414,11 @@ impl Provider {
 
     /// Get the provider names that match the passed glob pattern
     pub fn get_matches(provided_probes: &ProvidedProbes, prov_patt: &str) -> Vec<(ProvidedFunctionality, String)> {
-        let glob = Pattern::new(&prov_patt.to_lowercase()).unwrap();
+        let globs = get_globs(&prov_patt.to_lowercase());
 
         let mut matches = vec![];
         for (provider_name, (info, _provider)) in provided_probes.into_iter() {
-            if glob.matches(&provider_name.to_lowercase()) {
+            if matches_globs(&provider_name.to_lowercase(), &globs) {
                 matches.push((info.clone(), provider_name.clone()));
             }
         }
@@ -1442,12 +1460,12 @@ impl Package {
 
     /// Get the Package names that match the passed glob pattern
     pub fn get_matches(provided_probes: &ProvidedProbes, provider: &str, mod_patt: &str) -> Vec<(ProvidedFunctionality, String)> {
-        let glob = Pattern::new(&mod_patt.to_lowercase()).unwrap();
+        let globs = get_globs(&mod_patt.to_lowercase());
 
         let mut matches = vec![];
 
         for (mod_name, (info, _package)) in provided_probes.get(provider).unwrap().1.iter() {
-            if glob.matches(&mod_name.to_lowercase()) {
+            if matches_globs(&mod_name.to_lowercase(), &globs) {
                 matches.push((info.clone(), mod_name.clone()));
             }
         }
@@ -1552,12 +1570,12 @@ impl Event {
 
     /// Get the Event names that match the passed glob pattern
     pub fn get_matches(provided_probes: &ProvidedProbes, provider: &str, package: &str, func_patt: &str) -> Vec<(ProvidedFunctionality, String)> {
-        let glob = Pattern::new(&func_patt.to_lowercase()).unwrap();
+        let globs = get_globs(&func_patt.to_lowercase());
 
         let mut matches = vec![];
 
         for (fn_name, (info, _package)) in provided_probes.get(provider).unwrap().1.get(package).unwrap().1.iter() {
-            if glob.matches(&fn_name.to_lowercase()) {
+            if matches_globs(&fn_name.to_lowercase(), &globs) {
                 matches.push((info.clone(), fn_name.clone()));
             }
         }
@@ -1614,12 +1632,12 @@ impl Probe {
 
     /// Get the Probe modes that match the passed glob pattern
     pub fn get_matches(provided_probes: &ProvidedProbes, provider: &str, package: &str, event: &str, mode_patt: &str) -> Vec<(ProvidedFunctionality, String)> {
-        let glob = Pattern::new(&mode_patt.to_lowercase()).unwrap();
+        let globs = get_globs(&mode_patt.to_lowercase());
 
         let mut matches = vec![];
 
         for (info, m_name) in provided_probes.get(provider).unwrap().1.get(package).unwrap().1.get(event).unwrap().1.iter() {
-            if glob.matches(&m_name.to_lowercase()) {
+            if matches_globs(&m_name.to_lowercase(), &globs) {
                 matches.push((info.clone(), m_name.clone()));
             }
         }
