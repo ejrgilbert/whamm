@@ -193,7 +193,7 @@ fn run_vis_script(script_path: String, run_verifier: bool, output_path: String) 
     let _symbol_table = get_symbol_table(&mut whamm, run_verifier, &mut err);
     let (behavior_tree, ..) = build_behavior(&whamm, &mut err);
 
-    // if has any errors, should report and exit!
+    // if there are any errors, should report and exit!
     err.check_has_errors();
 
     let path = match get_pb(&PathBuf::from(output_path.clone())) {

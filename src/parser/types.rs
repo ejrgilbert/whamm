@@ -331,7 +331,7 @@ fn print_global_vars(tabs: &mut usize, globals: &HashMap<String, (ProvidedFuncti
             *tabs -= 1;
         }
         *tabs -= 1;
-        white(false, format!("\n"), buffer);
+        white(false, "\n".to_string(), buffer);
     }
 }
 
@@ -342,13 +342,13 @@ fn print_fns(tabs: &mut usize, functions: &Vec<(ProvidedFunctionality, Fn)>, buf
         for (info, f) in functions.iter() {
             green(true, format!("{}", " ".repeat(*tabs * 4)), buffer);
             f.print(buffer);
-            green(true, format!("\n"), buffer);
+            green(true, "\n".to_string(), buffer);
             *tabs += 1;
             white(false, format!("{}{}\n", " ".repeat(*tabs * 4), info.docs), buffer);
             *tabs -= 1;
         }
         *tabs -= 1;
-        white(false, format!("\n"), buffer);
+        white(false, "\n".to_string(), buffer);
     }
 }
 
@@ -954,7 +954,7 @@ impl Script {
                 None
             };
             return Err(ErrorGen::get_parse_error(true,
-                 Some(format!("Could not find any matches for the provider pattern")),
+                 Some("Could not find any matches for the provider pattern".to_string()),
                  loc, vec![], vec![]));
         }
 
@@ -981,7 +981,7 @@ impl Script {
                 None
             };
             return Err(ErrorGen::get_parse_error(true,
-             Some(format!("Could not find any matches for the package pattern")),
+             Some("Could not find any matches for the package pattern".to_string()),
              loc, vec![], vec![]));
         }
         Ok(package_matches)
@@ -1011,7 +1011,7 @@ impl Script {
                 None
             };
             return Err(ErrorGen::get_parse_error(true,
-                                                 Some(format!("Could not find any matches for the event pattern")),
+                                                 Some("Could not find any matches for the event pattern".to_string()),
                                                  loc, vec![], vec![]));
         }
         Ok(event_matches)
@@ -1045,7 +1045,7 @@ impl Script {
                 None
             };
             return Err(ErrorGen::get_parse_error(true,
-                                                 Some(format!("Could not find any matches for the mode pattern")),
+                                                 Some("Could not find any matches for the mode pattern".to_string()),
                                                  loc, vec![], vec![]));
         }
         Ok(mode_matches)
@@ -1122,7 +1122,7 @@ impl Script {
                 continue;
             }
             magenta_italics(true, provider_str.clone(), &mut buffer);
-            white(true, format!(" provider\n"), &mut buffer);
+            white(true, " provider\n".to_string(), &mut buffer);
 
             // Print the provider description
             tabs += 1;
@@ -1166,7 +1166,7 @@ impl Script {
                     continue;
                 }
                 magenta_italics(true, package_str.clone(), &mut buffer);
-                white(true, format!(" package\n"), &mut buffer);
+                white(true, " package\n".to_string(), &mut buffer);
 
                 // Print the package description
                 tabs += 1;
@@ -1209,7 +1209,7 @@ impl Script {
                         continue;
                     }
                     magenta_italics(true, event_str.clone(), &mut buffer);
-                    white(true, format!(" event\n"), &mut buffer);
+                    white(true, " event\n".to_string(), &mut buffer);
 
                     // Print the event description
                     tabs += 1;
@@ -1252,7 +1252,7 @@ impl Script {
                             continue;
                         }
                         magenta_italics(true, mode_str.clone(), &mut buffer);
-                        white(true, format!(" mode\n"), &mut buffer);
+                        white(true, " mode\n".to_string(), &mut buffer);
 
                         // Print the mode description
                         tabs += 1;
@@ -1285,7 +1285,7 @@ impl Script {
         self.global_stmts = global_statements;
     }
 
-    /// Iterates over all of the matched providers, packages, events, and probe mode names
+    /// Iterates over all the matched providers, packages, events, and probe mode names
     /// to add a copy of the user-defined Probe for each of them.
     pub fn add_probe(&mut self, provided_probes: &ProvidedProbes,
                      probe_spec: &ProbeSpec, predicate: Option<Expr>, body: Option<Vec<Statement>>) -> Result<(), WhammError> {
@@ -1380,7 +1380,7 @@ impl Script {
             if let Some(r) = reason {
                 if let Some(mode_loc) = &r.loc {
                     return Err(ErrorGen::get_parse_error(true,
-                         Some(format!("Could not find any matches for this pattern")),
+                         Some("Could not find any matches for this pattern".to_string()),
                          Some(mode_loc.line_col.clone()), vec![], vec![]));
                 }
             }
