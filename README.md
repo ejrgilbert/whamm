@@ -35,7 +35,7 @@ RUST_LOG={ error | warn | info | debug | trace | off } cargo run -- --app <path_
 
 To visually debug the decision tree used during Wasm bytecode emission:
 ```shell
-cargo run -- vis-tree --whammy <path_to_whammy>
+cargo run -- vis-whammy --whammy <path_to_whammy>
 ```
 
 ## Available Packages ##
