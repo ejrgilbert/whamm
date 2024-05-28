@@ -925,11 +925,16 @@ impl WasmRewritingEmitter {
                 let mut addr = if let Expr::VarId { name, .. } = var_id {
                     let var_rec_id = match self.table.lookup(name) {
                         Some(rec_id) => rec_id.clone(),
-                        _ => {
+                        None => {
                             // TODO -- add variables from body into symbol table
                             //         (at this point, the verifier should have run to catch variable initialization without declaration)
-                            return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                            VarId '{name}' does not exist in this scope!")), None));
+                            self.table.put(name.clone(), Record::Var {
+                                ty: ty.clone(),
+                                name: name.clone(),
+                                value: None,
+                                addr: None,
+                                loc: None
+                            })
                         }
                     };
                     match self.table.get_record_mut(&var_rec_id) {
