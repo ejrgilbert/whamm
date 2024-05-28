@@ -358,6 +358,19 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
         }
     }
 
+    fn visit_emit_global_stmts(&mut self, node: &TreeNode) -> () {
+        if let TreeNode::Action { id, ty, parent} = node {
+            if let ActionType::EmitGlobalStmts = ty {
+                self.emit_special_action_node(id, "EmitGlobalStmts");
+                self.emit_edge(parent, id);
+            } else {
+                unreachable!()
+            }
+        } else {
+            unreachable!()
+        }
+    }
+
     fn visit_emit_pred(&mut self, node: &TreeNode) -> () {
         if let TreeNode::Action { id, ty, parent} = node {
             if let ActionType::EmitPred = ty {
