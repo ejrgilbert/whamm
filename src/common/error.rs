@@ -6,7 +6,7 @@ use crate::common::terminal::{blue, red, white};
 use log::error;
 use pest::error::{Error, LineColLocation};
 use pest::error::ErrorVariant::ParsingError;
-use crate::parser::types::Rule;
+use crate::parser::types::{Location, Rule};
 
 const ERR_UNDERLINE_CHAR: char = '^';
 const INFO_UNDERLINE_CHAR: char = '-';
@@ -129,45 +129,98 @@ impl ErrorGen {
         self.add_error(err);
     }
 
-    pub fn duplicate_identifier_error(&mut self, fatal: bool, duplicated_id: String, err_line_col: LineColLocation, info_line_col: LineColLocation) {
-        let err = WhammError {
-            fatal,
-            ty: ErrorType::DuplicateIdentifierError {
-                duplicated_id: duplicated_id.clone()
-            },
-            err_loc: Some(CodeLocation {
+    pub fn get_duplicate_identifier_error(fatal: bool, duplicated_id: String, err_line_col: Option<LineColLocation>, info_line_col: Option<LineColLocation>) -> WhammError {
+        let err_loc = if let Some(err_line_col) = err_line_col {
+            Some(CodeLocation {
                 is_err: true,
                 message: Some(format!("duplicate definitions for `{}`", duplicated_id)),
                 line_col: err_line_col,
                 line_str: None,
                 line2_str: None
-            }),
-            info_loc: Some(CodeLocation {
-                is_err: true,
+            })
+        } else {
+            None
+        };
+        let info_loc = if let Some(info_line_col) = info_line_col {
+            Some(CodeLocation {
+                is_err: false,
                 message: Some(format!("other definition for `{}`", duplicated_id)),
                 line_col: info_line_col,
                 line_str: None,
                 line2_str: None
-            }),
+            })
+        } else {
+            None
         };
+
+        WhammError {
+            fatal,
+            ty: ErrorType::DuplicateIdentifierError {
+                duplicated_id: duplicated_id.clone()
+            },
+            err_loc,
+            info_loc,
+        }
+    }
+
+    pub fn get_duplicate_identifier_error_from_loc(fatal: bool, duplicated_id: String, err_loc: &Option<Location>, info_loc: &Option<Location>) -> WhammError {
+        let err_loc = if let Some(err_loc) = err_loc {
+            Some(err_loc.line_col.clone())
+        } else {
+            None
+        };
+        let info_loc = if let Some(info_loc) = info_loc {
+            Some(info_loc.line_col.clone())
+        } else {
+            None
+        };
+        Self::get_duplicate_identifier_error(fatal, duplicated_id, err_loc, info_loc)
+    }
+
+    pub fn duplicate_identifier_error(&mut self, fatal: bool, duplicated_id: String, err_line_col: Option<LineColLocation>, info_line_col: Option<LineColLocation>) {
+        let err = Self::get_duplicate_identifier_error(fatal, duplicated_id, err_line_col, info_line_col);
         self.add_error(err);
     }
 
-    pub fn type_check_error(&mut self, fatal: bool, message: String, line_col: LineColLocation) {
-        let err = WhammError {
+    pub fn get_type_check_error(fatal: bool, message: String, loc: &Option<LineColLocation>) -> WhammError {
+        let loc = if let Some(loc) = loc {
+            Some(CodeLocation {
+                is_err: false,
+                message: Some(message.clone()),
+                line_col: loc.clone(),
+                line_str: None,
+                line2_str: None
+            })
+        } else {
+            None
+        };
+
+        WhammError {
             fatal,
             ty: ErrorType::TypeCheckError {
                 message: message.clone()
             },
-            err_loc: Some(CodeLocation {
-                is_err: true,
-                message: Some(message),
-                line_col,
-                line_str: None,
-                line2_str: None
-            }),
+            err_loc: loc,
             info_loc: None
+        }
+    }
+
+    pub fn get_type_check_error_from_loc(fatal: bool, message: String, line_col: &Option<Location>) -> WhammError {
+        let loc = if let Some(loc) = line_col {
+            Some(loc.line_col.clone())
+        } else {
+            None
         };
+        Self::get_type_check_error(fatal, message, &loc)
+    }
+
+    pub fn type_check_error(&mut self, fatal: bool, message: String, line_col: &Option<LineColLocation>) {
+        let err = Self::get_type_check_error(fatal, message, line_col);
+        self.add_error(err);
+    }
+
+    pub fn type_check_error_from_loc(&mut self, fatal: bool, message: String, loc: &Option<Location>) {
+        let err = Self::get_type_check_error_from_loc(fatal, message, loc);
         self.add_error(err);
     }
 
@@ -498,7 +551,7 @@ impl WhammError {
             print_empty(&spacing, &mut buffer);
         } else {
             // This error isn't tied to a specific code location
-            blue(false, format!(" --> "), &mut buffer);
+            blue(false, " --> ".to_string(), &mut buffer);
             blue(false, format!("{script_path}\n\n"), &mut buffer);
         }
         writer.print(&buffer).expect("Uh oh, something went wrong while printing to terminal");
