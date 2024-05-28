@@ -199,7 +199,7 @@ impl ExprFolder {
             _ => {}
         }
 
-        // Cannot fold any more
+        // Cannot fold anymore
         binop.clone()
     }
 
