@@ -11,12 +11,18 @@ use crate::behavior::tree::DecoratorType::{HasAltCall, PredIs};
 use crate::common::error::ErrorGen;
 use crate::parser::types::{Global, ProvidedFunctionality};
 
-pub type SimpleAST = HashMap<String, HashMap<String, HashMap<String, HashMap<String, Vec<Probe>>>>>;
+pub struct SimpleAST {
+    pub global_stmts: Vec<Statement>,
+    pub probes: HashMap<String, HashMap<String, HashMap<String, HashMap<String, Vec<Probe>>>>>,
+}
 
 pub fn build_behavior_tree(ast: &Whamm, err: &mut ErrorGen) -> (BehaviorTree, SimpleAST) {
     let mut visitor = BehaviorTreeBuilder {
         tree: BehaviorTree::new(),
-        ast: HashMap::new(),
+        ast: SimpleAST {
+            global_stmts: vec![],
+            probes: HashMap::new()
+        },
         err,
         context_name: "".to_string(),
         curr_provider_name: "".to_string(),
@@ -25,7 +31,7 @@ pub fn build_behavior_tree(ast: &Whamm, err: &mut ErrorGen) -> (BehaviorTree, Si
     };
     visitor.visit_whamm(ast);
 
-    debug!("{:#?}", visitor.ast);
+    debug!("{:#?}", visitor.ast.probes);
     (visitor.tree, visitor.ast)
 }
 
@@ -45,14 +51,14 @@ impl BehaviorTreeBuilder<'_> {
     // =======
 
     fn add_provider_to_ast(&mut self, provider_name: String) {
-        if !self.ast.contains_key(&provider_name) {
-            self.ast.insert(provider_name.clone(), HashMap::new());
+        if !self.ast.probes.contains_key(&provider_name) {
+            self.ast.probes.insert(provider_name.clone(), HashMap::new());
         }
         self.curr_provider_name = provider_name;
     }
 
     fn add_package_to_ast(&mut self, package_name: String) {
-        if let Some(provider) = self.ast.get_mut(&self.curr_provider_name) {
+        if let Some(provider) = self.ast.probes.get_mut(&self.curr_provider_name) {
             if !provider.contains_key(&package_name) {
                 provider.insert(package_name.clone(), HashMap::new());
             }
@@ -63,7 +69,7 @@ impl BehaviorTreeBuilder<'_> {
     }
 
     fn add_event_to_ast(&mut self, event_name: String) {
-        if let Some(provider) = self.ast.get_mut(&self.curr_provider_name) {
+        if let Some(provider) = self.ast.probes.get_mut(&self.curr_provider_name) {
             if let Some(package) = provider.get_mut(&self.curr_package_name) {
                 if !package.contains_key(&event_name) {
                     package.insert(event_name.clone(), HashMap::new());
@@ -76,7 +82,7 @@ impl BehaviorTreeBuilder<'_> {
     }
 
     fn add_probe_to_ast(&mut self, probe: &Probe) {
-        if let Some(provider) = self.ast.get_mut(&self.curr_provider_name) {
+        if let Some(provider) = self.ast.probes.get_mut(&self.curr_provider_name) {
             if let Some(package) = provider.get_mut(&self.curr_package_name) {
                 if let Some(event) = package.get_mut(&self.curr_event_name) {
                     if let Some(probes) = event.get_mut(&probe.mode) {
@@ -96,28 +102,6 @@ impl BehaviorTreeBuilder<'_> {
     // ================
     // = BehaviorTree =
     // ================
-
-    fn visit_globals(&mut self, globals: &HashMap<String, Global>) {
-        if globals.len() > 0 {
-            // visit globals
-            let mut is_first = true;
-            for (_name, global) in globals.iter() {
-                if global.is_comp_provided {
-                    if is_first {
-                        self.tree.sequence(self.err);
-                        is_first = false;
-                    }
-                    if let Expr::VarId { name, ..} = &global.var_name {
-                        self.tree.define(self.context_name.clone(),
-                                         name.clone(), self.err);
-                    }
-                }
-            }
-            if !is_first {
-                self.tree.exit_sequence(self.err);
-            }
-        }
-    }
 
     fn visit_provided_globals(&mut self, globals: &HashMap<String, (ProvidedFunctionality, Global)>) {
         if globals.len() > 0 {
@@ -323,8 +307,12 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_> {
 
         self.tree.enter_scope(self.context_name.clone(), script.name.clone(), self.err);
 
-        // visit globals
-        self.visit_globals(&script.globals);
+        // NOTE: visit_globals() is no longer needed since initializing user-defined globals is done
+        // in the init_generator (which doesn't traverse the behavior tree)
+        // RATHER, we process and emit the statements that do anything with the global vars
+        // (including declarations since that is an initialization action)
+        self.ast.global_stmts = script.global_stmts.to_owned();
+        self.tree.emit_global_stmts(self.err);
 
         script.providers.iter().for_each(| (_name, provider) | {
             self.visit_provider(provider)
@@ -361,7 +349,6 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_> {
     fn visit_package(&mut self, package: &Package) -> () {
         trace!("Entering: BehaviorTreeBuilder::visit_package");
         self.context_name += &format!(":{}", package.name.clone());
-        self.add_package_to_ast(package.name.clone());
 
         if self.is_in_context(r"whamm:script([0-9]+):wasm:bytecode") {
             self.visit_bytecode_package(package);
@@ -372,6 +359,17 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_> {
                 self.err.unexpected_error(true, Some(format!("Package not supported! {}", package.name)), None)
             }
         };
+
+        // Handle AST separately since we don't visit every package
+        self.add_package_to_ast(package.name.clone());
+        package.events.iter().for_each(| (_name, event) | {
+            self.add_event_to_ast(event.name.clone());
+
+            // Handle AST separately since we don't visit every probe
+            event.probe_map.iter().for_each(| (_mode, probe_list) | {
+                probe_list.iter().for_each(|probe| self.add_probe_to_ast(probe));
+            });
+        });
 
         trace!("Exiting: BehaviorTreeBuilder::visit_package");
         // Remove this package from `context_name`
