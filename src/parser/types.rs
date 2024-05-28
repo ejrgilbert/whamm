@@ -1343,9 +1343,9 @@ impl Script {
                                 let event = match package.events.get_mut(event_str) {
                                     Some(f) => f,
                                     None => {
-                                        // add the package!
-                                        let new_fn = Event::new(event_str.to_lowercase().to_string(), event_patt.loc.clone());
-                                        package.events.insert(event_str.to_lowercase().to_string(), new_fn);
+                                        // add the event!
+                                        let new_event = Event::new(event_str.to_lowercase().to_string(), event_patt.loc.clone());
+                                        package.events.insert(event_str.to_lowercase().to_string(), new_event);
                                         package.events.get_mut(&event_str.to_lowercase()).unwrap()
                                     }
                                 };

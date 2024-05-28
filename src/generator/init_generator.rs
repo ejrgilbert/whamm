@@ -22,6 +22,8 @@ pub struct InitGenerator<'a> {
 }
 impl InitGenerator<'_> {
     pub fn run(&mut self, whamm: &mut Whamm) -> bool  {
+        // Reset the symbol table in the emitter just in case
+        self.emitter.reset_children();
         // Generate globals and fns defined by `whamm` (this should modify the app_wasm)
         self.visit_whamm(whamm)
     }

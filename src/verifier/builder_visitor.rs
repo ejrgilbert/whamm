@@ -218,7 +218,7 @@ impl SymbolTableBuilder<'_> {
         if let Some(other_fn_id) = self.table.lookup(&f_name.name) {
             if let Some(other_rec) = self.table.get_record(other_fn_id) {
                 if let (Some(curr_loc), Some(other_loc))= (&f_name.loc, other_rec.loc()) {
-                    self.err.duplicate_identifier_error(false, f_name.name.clone(), curr_loc.line_col.clone(), other_loc.line_col.clone());
+                    self.err.duplicate_identifier_error(false, f_name.name.clone(), Some(curr_loc.line_col.clone()), Some(other_loc.line_col.clone()));
                 } else {
                     // This should never be the case since it's controlled by the compiler!
                     self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
