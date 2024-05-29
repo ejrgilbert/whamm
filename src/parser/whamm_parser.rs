@@ -8,7 +8,7 @@ use pest::iterators::{Pair, Pairs};
 
 use log::{trace};
 use crate::common::error::{ErrorGen, WhammError};
-use crate::parser::types::{DataType, Whammy, Whamm, Expr, Statement, Value, Location, ProbeSpec, SpecPart};
+use crate::parser::types::{DataType, Script, Whamm, Expr, Statement, Value, Location, ProbeSpec, SpecPart};
 
 const UNEXPECTED_ERR_MSG: &str = "WhammParser: Looks like you've found a bug...please report this behavior! Exiting now...";
 
@@ -28,9 +28,9 @@ pub fn print_info(spec: String, print_globals: bool, print_functions: bool, err:
 
             // Print the information for the passed probe specification
             let mut whamm = Whamm::new();
-            let id = whamm.add_whammy(Whammy::new());
-            let whammy: &mut Whammy = whamm.whammys.get_mut(id).unwrap();
-            match whammy.print_info(&whamm.provided_probes, &probe_spec, print_globals, print_functions) {
+            let id = whamm.add_script(Script::new());
+            let script: &mut Script = whamm.scripts.get_mut(id).unwrap();
+            match script.print_info(&whamm.provided_probes, &probe_spec, print_globals, print_functions) {
                 Err(e) => {
                     err.add_error(e);
                 },
@@ -47,7 +47,7 @@ pub fn parse_script(script: &String, err: &mut ErrorGen) -> Option<Whamm> {
     trace!("Entered parse_script");
     err.set_script_text(script.to_owned());
 
-    let res = WhammParser::parse(Rule::whammy, &*script);
+    let res = WhammParser::parse(Rule::script, &*script);
     match res {
         Ok(mut pairs) => {
             let res = to_ast(
@@ -82,17 +82,17 @@ pub fn to_ast(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Whamm, Error<Rule>
 
     // Create initial AST with Whamm node
     let mut whamm = Whamm::new();
-    let whammy_count = 0;
+    let script_count = 0;
 
     match pair.as_rule() {
-        Rule::whammy => {
-            process_pair(&mut whamm, whammy_count, pair, err);
+        Rule::script => {
+            process_pair(&mut whamm, script_count, pair, err);
         }
         rule => {
             err.parse_error(true,
                 Some(UNEXPECTED_ERR_MSG.to_string()),
                 Some(LineColLocation::from(pair.as_span())),
-                vec![Rule::whammy], vec![rule]);
+                vec![Rule::script], vec![rule]);
             // should have exited above (since it's a fatal error)
             unreachable!()
         }
@@ -106,17 +106,17 @@ pub fn to_ast(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Whamm, Error<Rule>
 // = Parser Logic =
 // ================
 
-pub fn process_pair(whamm: &mut Whamm, whammy_count: usize, pair: Pair<Rule>, err: &mut ErrorGen) {
+pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, err: &mut ErrorGen) {
     trace!("Entered process_pair");
     match pair.as_rule() {
-        Rule::whammy => {
-            trace!("Entering whammy");
-            let base_whammy = Whammy::new();
-            let id = whamm.add_whammy(base_whammy);
+        Rule::script => {
+            trace!("Entering script");
+            let base_script = Script::new();
+            let id = whamm.add_script(base_script);
             pair.into_inner().for_each(| p | {
                 process_pair(whamm, id, p, err);
             });
-            trace!("Exiting whammy");
+            trace!("Exiting script");
         }
         Rule::probe_def => {
             trace!("Entering probe_def");
@@ -169,9 +169,9 @@ pub fn process_pair(whamm: &mut Whamm, whammy_count: usize, pair: Pair<Rule>, er
                 None => (None, None)
             };
 
-            // Add probe definition to the whammy
-            let whammy: &mut Whammy = whamm.whammys.get_mut(whammy_count).unwrap();
-            match whammy.add_probe(&whamm.provided_probes, &probe_spec, this_predicate, this_body) {
+            // Add probe definition to the script
+            let script: &mut Script = whamm.scripts.get_mut(script_count).unwrap();
+            match script.add_probe(&whamm.provided_probes, &probe_spec, this_predicate, this_body) {
                 Err(e) => {
                     err.add_error(e);
                 },
@@ -185,7 +185,7 @@ pub fn process_pair(whamm: &mut Whamm, whammy_count: usize, pair: Pair<Rule>, er
             err.parse_error(true,
                             Some(UNEXPECTED_ERR_MSG.to_string()),
                             Some(LineColLocation::from(pair.as_span())),
-                            vec![Rule::whammy, Rule::probe_def, Rule::EOI], vec![rule]);
+                            vec![Rule::script, Rule::probe_def, Rule::EOI], vec![rule]);
             // should have exited above (since it's a fatal error)
             unreachable!()
         }

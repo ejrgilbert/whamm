@@ -342,7 +342,7 @@ pub struct Whamm {
     pub fns: Vec<(ProvidedFunctionality, Fn)>,                     // Comp-provided
     pub globals: HashMap<String, (ProvidedFunctionality, Global)>, // Comp-provided
 
-    pub whammys: Vec<Whammy>
+    pub scripts: Vec<Script>
 }
 impl Whamm {
     pub fn new() -> Self {
@@ -351,7 +351,7 @@ impl Whamm {
             fns: Whamm::get_provided_fns(),
             globals: Whamm::get_provided_globals(),
 
-            whammys: vec![]
+            scripts: vec![]
         };
         whamm.init_provided_probes();
         whamm
@@ -846,10 +846,10 @@ impl Whamm {
                 wasm_bytecode_map
             ))])));
     }
-    pub fn add_whammy(&mut self, mut whammy: Whammy) -> usize {
-        let id = self.whammys.len();
-        whammy.name = format!("whammy{}", id);
-        self.whammys.push(whammy);
+    pub fn add_script(&mut self, mut script: Script) -> usize {
+        let id = self.scripts.len();
+        script.name = format!("script{}", id);
+        self.scripts.push(script);
 
         id
     }
@@ -895,16 +895,16 @@ impl ProbeSpec {
     }
 }
 
-pub struct Whammy {
+pub struct Script {
     pub name: String,
-    /// The providers of the probes that have been used in the Whammy.
+    /// The providers of the probes that have been used in the Script.
     pub providers: HashMap<String, Provider>,
     pub fns: Vec<Fn>,                     // User-provided
     pub globals: HashMap<String, Global>, // User-provided, should be VarId
 }
-impl Whammy {
+impl Script {
     pub fn new() -> Self {
-        Whammy {
+        Script {
             name: "".to_string(),
             providers: HashMap::new(),
             fns: vec![],
@@ -1368,7 +1368,7 @@ pub struct Provider {
     pub fns: Vec<(ProvidedFunctionality, Fn)>,                     // Comp-provided
     pub globals: HashMap<String, (ProvidedFunctionality, Global)>, // Comp-provided
 
-    /// The packages of the probes that have been used in the Whammy.
+    /// The packages of the probes that have been used in the Script.
     /// These will be sub-packages of this Provider.
     pub packages: HashMap<String, Package>,
     pub loc: Option<Location>
@@ -1414,7 +1414,7 @@ pub struct Package {
     pub fns: Vec<(ProvidedFunctionality, Fn)>,                     // Comp-provided
     pub globals: HashMap<String, (ProvidedFunctionality, Global)>, // Comp-provided
 
-    /// The events of the probes that have been used in the Whammy.
+    /// The events of the probes that have been used in the Script.
     /// These will be sub-events of this Package.
     pub events: HashMap<String, Event>,
     pub loc: Option<Location>
@@ -1662,7 +1662,7 @@ pub enum Op {
 
 pub trait WhammVisitor<T> {
     fn visit_whamm(&mut self, whamm: &Whamm) -> T;
-    fn visit_whammy(&mut self, whammy: &Whammy) -> T;
+    fn visit_script(&mut self, script: &Script) -> T;
     fn visit_provider(&mut self, provider: &Provider) -> T;
     fn visit_package(&mut self, package: &Package) -> T;
     fn visit_event(&mut self, event: &Event) -> T;
@@ -1680,7 +1680,7 @@ pub trait WhammVisitor<T> {
 /// To support setting constant-provided global vars
 pub trait WhammVisitorMut<T> {
     fn visit_whamm(&mut self, whamm: &mut Whamm) -> T;
-    fn visit_whammy(&mut self, whammy: &mut Whammy) -> T;
+    fn visit_script(&mut self, script: &mut Script) -> T;
     fn visit_provider(&mut self, provider: &mut Provider) -> T;
     fn visit_package(&mut self, package: &mut Package) -> T;
     fn visit_event(&mut self, event: &mut Event) -> T;

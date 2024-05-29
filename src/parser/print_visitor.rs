@@ -3,7 +3,7 @@ use parser_types::{WhammVisitor};
 
 use std::cmp;
 use std::collections::HashMap;
-use crate::parser::types::{DataType, Whammy, Whamm, Expr, Event, Package, Op, Probe, Provider, Statement, Value, Global, ProvidedFunctionality};
+use crate::parser::types::{DataType, Script, Whamm, Expr, Event, Package, Op, Probe, Provider, Statement, Value, Global, ProvidedFunctionality};
 
 const NL: &str = "\n";
 
@@ -76,12 +76,12 @@ impl WhammVisitor<String> for AsStrVisitor {
             self.decrease_indent();
         }
 
-        s += &format!("Whammys:{}", NL);
+        s += &format!("Scripts:{}", NL);
         self.increase_indent();
-        for whammy in whamm.whammys.iter() {
-            s += &format!("{} `{}`:{}", self.get_indent(), whammy.name, NL);
+        for script in whamm.scripts.iter() {
+            s += &format!("{} `{}`:{}", self.get_indent(), script.name, NL);
             self.increase_indent();
-            s += &format!("{}", self.visit_whammy(whammy));
+            s += &format!("{}", self.visit_script(script));
             self.decrease_indent();
         }
         self.decrease_indent();
@@ -89,30 +89,30 @@ impl WhammVisitor<String> for AsStrVisitor {
         s
     }
 
-    fn visit_whammy(&mut self, whammy: &Whammy) -> String {
+    fn visit_script(&mut self, script: &Script) -> String {
         let mut s = "".to_string();
 
         // print fns
-        if whammy.fns.len() > 0 {
-            s += &format!("{} whammy events:{}", self.get_indent(), NL);
+        if script.fns.len() > 0 {
+            s += &format!("{} script events:{}", self.get_indent(), NL);
             self.increase_indent();
-            for f in whammy.fns.iter() {
+            for f in script.fns.iter() {
                 s += &format!("{}{}{}", self.get_indent(), self.visit_fn(f), NL);
             }
             self.decrease_indent();
         }
 
         // print globals
-        if whammy.globals.len() > 0 {
-            s += &format!("{} whammy globals:{}", self.get_indent(), NL);
+        if script.globals.len() > 0 {
+            s += &format!("{} script globals:{}", self.get_indent(), NL);
             self.increase_indent();
-            self.visit_globals(&whammy.globals);
+            self.visit_globals(&script.globals);
             self.decrease_indent();
         }
 
         // print providers
-        s += &format!("{} whammy providers:{}", self.get_indent(), NL);
-        for (name, provider) in whammy.providers.iter() {
+        s += &format!("{} script providers:{}", self.get_indent(), NL);
+        for (name, provider) in script.providers.iter() {
             self.increase_indent();
             s += &format!("{} `{}` {{{}", self.get_indent(), name, NL);
 

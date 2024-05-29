@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use crate::parser::types as parser_types;
-use parser_types::{DataType, Whammy, Whamm, WhammVisitor, Expr, Fn, Event, Package, Op, Probe, Provider, Statement, Value};
+use parser_types::{DataType, Script, Whamm, WhammVisitor, Expr, Fn, Event, Package, Op, Probe, Provider, Statement, Value};
 use crate::verifier::types::{Record, ScopeType, SymbolTable};
 
 use log::trace;
@@ -14,7 +14,7 @@ pub struct SymbolTableBuilder<'a> {
     pub err: &'a mut ErrorGen,
 
     pub curr_whamm: Option<usize>,   // indexes into this::table::records
-    pub curr_whammy: Option<usize>,  // indexes into this::table::records
+    pub curr_script: Option<usize>,  // indexes into this::table::records
     pub curr_provider: Option<usize>, // indexes into this::table::records
     pub curr_package: Option<usize>,   // indexes into this::table::records
     pub curr_event: Option<usize>, // indexes into this::table::records
@@ -23,43 +23,43 @@ pub struct SymbolTableBuilder<'a> {
     pub curr_fn: Option<usize>,       // indexes into this::table::records
 }
 impl SymbolTableBuilder<'_> {
-    fn add_whammy(&mut self, whammy: &Whammy) {
-        if self.table.lookup(&whammy.name).is_some() {
+    fn add_script(&mut self, script: &Script) {
+        if self.table.lookup(&script.name).is_some() {
             // This should never be the case since it's controlled by the compiler!
             self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
         }
 
         // create record
-        let whammy_rec = Record::Whammy {
-            name: whammy.name.clone(),
+        let script_rec = Record::Script {
+            name: script.name.clone(),
             fns: vec![],
             globals: vec![],
             providers: vec![],
         };
 
-        // Add whammy to scope
-        let id = self.table.put(whammy.name.clone(), whammy_rec);
+        // Add script to scope
+        let id = self.table.put(script.name.clone(), script_rec);
 
-        // Add whammy to current whamm record
+        // Add script to current whamm record
         match self.table.get_record_mut(&self.curr_whamm.unwrap()).unwrap() {
-            Record::Whamm { whammys, .. } => {
-                whammys.push(id.clone());
+            Record::Whamm { scripts, .. } => {
+                scripts.push(id.clone());
             }
             _ => {
                 self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
             }
         }
 
-        // enter whammy scope
+        // enter script scope
         match self.table.enter_scope() {
             Err(e) => self.err.add_error(e),
             _ => {}
         }
-        self.curr_whammy = Some(id.clone());
+        self.curr_script = Some(id.clone());
 
         // set scope name and type
-        self.table.set_curr_scope_info(whammy.name.clone(), ScopeType::Whammy);
-        self.table.set_curr_whammy(id.clone());
+        self.table.set_curr_scope_info(script.name.clone(), ScopeType::Script);
+        self.table.set_curr_script(id.clone());
     }
 
     fn add_provider(&mut self, provider: &Provider) {
@@ -79,9 +79,9 @@ impl SymbolTableBuilder<'_> {
         // Add provider to scope
         let id = self.table.put(provider.name.clone(), provider_rec);
 
-        // Add provider to current whammy record
-        match self.table.get_record_mut(&self.curr_whammy.unwrap()).unwrap() {
-            Record::Whammy { providers, .. } => {
+        // Add provider to current script record
+        match self.table.get_record_mut(&self.curr_script.unwrap()).unwrap() {
+            Record::Script { providers, .. } => {
                 providers.push(id.clone());
             }
             _ => {
@@ -261,7 +261,7 @@ impl SymbolTableBuilder<'_> {
     fn add_fn_id_to_curr_rec(&mut self, id: usize) {
         match self.table.get_curr_rec_mut() {
             Some(Record::Whamm { fns, .. }) |
-            Some(Record::Whammy { fns, .. }) |
+            Some(Record::Script { fns, .. }) |
             Some(Record::Provider { fns, .. }) |
             Some(Record::Package { fns, .. }) |
             Some(Record::Event { fns, .. }) |
@@ -352,7 +352,7 @@ impl WhammVisitor<()> for SymbolTableBuilder<'_> {
             name: name.clone(),
             fns: vec![],
             globals: vec![],
-            whammys: vec![],
+            scripts: vec![],
         };
 
         // Add whamm to scope
@@ -366,29 +366,29 @@ impl WhammVisitor<()> for SymbolTableBuilder<'_> {
         // visit globals
         self.visit_provided_globals(&whamm.globals);
 
-        // visit whammys
-        whamm.whammys.iter().for_each(| whammy | self.visit_whammy(whammy));
+        // visit scripts
+        whamm.scripts.iter().for_each(| script | self.visit_script(script));
 
         trace!("Exiting: visit_whamm");
         self.curr_whamm = None;
     }
 
-    fn visit_whammy(&mut self, whammy: &Whammy) -> () {
-        trace!("Entering: visit_whammy");
+    fn visit_script(&mut self, script: &Script) -> () {
+        trace!("Entering: visit_script");
 
-        self.add_whammy(whammy);
-        whammy.fns.iter().for_each(| f | self.visit_fn(f) );
-        self.visit_globals(&whammy.globals);
-        whammy.providers.iter().for_each(| (_name, provider) | {
+        self.add_script(script);
+        script.fns.iter().for_each(| f | self.visit_fn(f) );
+        self.visit_globals(&script.globals);
+        script.providers.iter().for_each(| (_name, provider) | {
             self.visit_provider(provider)
         });
 
-        trace!("Exiting: visit_whammy");
+        trace!("Exiting: visit_script");
         match self.table.exit_scope() {
             Err(e) => self.err.add_error(e),
             _ => {}
         }
-        self.curr_whammy = None;
+        self.curr_script = None;
     }
 
     fn visit_provider(&mut self, provider: &Provider) -> () {

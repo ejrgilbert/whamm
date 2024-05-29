@@ -1,4 +1,4 @@
-# Example Whammys for Testing #
+# Example Scripts for Testing #
 
 ## Fault Injection ##
 

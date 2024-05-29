@@ -50,7 +50,7 @@ impl InstrGenerator<'_, '_> {
 
         let mut spec_split = context.split(":");
         if let Some(_whamm) = spec_split.next() {
-            if let Some(_whammy) = spec_split.next() {
+            if let Some(_script) = spec_split.next() {
                 if let Some(provider) = spec_split.next() {
                     self.curr_provider_name = provider.to_string();
                     if let Some(package) = spec_split.next() {

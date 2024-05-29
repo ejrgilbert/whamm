@@ -116,7 +116,7 @@ const SPECIAL: &'static [&'static str] = &[
 // = Helper Functions =
 // ====================
 
-const TEST_RSC_DIR: &str = "tests/whammys/";
+const TEST_RSC_DIR: &str = "tests/scripts/";
 const PATTERN: &str = "*.mm";
 const TODO: &str = "*.TODO";
 
@@ -238,13 +238,13 @@ wasm::call:alt /
 
     match get_ast(script, &mut err) {
         Some(ast) => {
-            // whammy
-            assert_eq!(1, ast.whammys.len()); // a single whammy
-            let whammy = ast.whammys.get(0).unwrap();
+            // script
+            assert_eq!(1, ast.scripts.len()); // a single script
+            let script = ast.scripts.get(0).unwrap();
 
             // provider
-            assert_eq!(1, whammy.providers.len());
-            let provider = whammy.providers.get("wasm").unwrap();
+            assert_eq!(1, script.providers.len());
+            let provider = script.providers.get("wasm").unwrap();
             assert_eq!("wasm", provider.name);
             assert_eq!(0, provider.globals.len());
             assert_eq!(0, provider.fns.len());
