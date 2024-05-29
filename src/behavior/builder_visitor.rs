@@ -2,7 +2,7 @@ use crate::behavior::tree::{ActionWithChildType, BehaviorTree, DecoratorType};
 
 use std::collections::HashMap;
 use crate::parser::types as parser_types;
-use parser_types::{DataType, Whammy, Whamm, WhammVisitor, Expr, Fn, Event, Package, Op, Probe, Provider, Statement, Value};
+use parser_types::{DataType, Script, Whamm, WhammVisitor, Expr, Fn, Event, Package, Op, Probe, Provider, Statement, Value};
 
 use log::{debug, trace};
 use regex::Regex;
@@ -301,8 +301,8 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_> {
         // visit globals
         self.visit_provided_globals(&whamm.globals);
 
-        // visit whammys
-        whamm.whammys.iter().for_each(| whammy | self.visit_whammy(whammy));
+        // visit scripts
+        whamm.scripts.iter().for_each(| script | self.visit_script(script));
 
         // self.tree.exit_scope();
 
@@ -312,22 +312,22 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_> {
         self.context_name = "".to_string();
     }
 
-    fn visit_whammy(&mut self, whammy: &Whammy) -> () {
-        trace!("Entering: BehaviorTreeBuilder::visit_whammy");
-        self.context_name += &format!(":{}", whammy.name.clone());
+    fn visit_script(&mut self, script: &Script) -> () {
+        trace!("Entering: BehaviorTreeBuilder::visit_script");
+        self.context_name += &format!(":{}", script.name.clone());
 
-        self.tree.enter_scope(self.context_name.clone(), whammy.name.clone(), self.err);
+        self.tree.enter_scope(self.context_name.clone(), script.name.clone(), self.err);
 
         // visit globals
-        self.visit_globals(&whammy.globals);
+        self.visit_globals(&script.globals);
 
-        whammy.providers.iter().for_each(| (_name, provider) | {
+        script.providers.iter().for_each(| (_name, provider) | {
             self.visit_provider(provider)
         });
 
         self.tree.exit_scope(self.err);
 
-        trace!("Exiting: BehaviorTreeBuilder::visit_whammy");
+        trace!("Exiting: BehaviorTreeBuilder::visit_script");
         // Remove from `context_name`
         self.context_name = self.context_name[..self.context_name.rfind(":").unwrap()].to_string();
     }
@@ -358,7 +358,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_> {
         self.context_name += &format!(":{}", package.name.clone());
         self.add_package_to_ast(package.name.clone());
 
-        if self.is_in_context(r"whamm:whammy([0-9]+):wasm:bytecode") {
+        if self.is_in_context(r"whamm:script([0-9]+):wasm:bytecode") {
             self.visit_bytecode_package(package);
         } else {
             if let Some(loc) = &package.loc {
@@ -378,7 +378,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_> {
         self.context_name += &format!(":{}", event.name.clone());
         self.add_event_to_ast(event.name.clone());
 
-        if self.is_in_context(r"whamm:whammy([0-9]+):wasm:bytecode:(.*)") {
+        if self.is_in_context(r"whamm:script([0-9]+):wasm:bytecode:(.*)") {
             self.visit_bytecode_event(event);
         } else {
             if let Some(loc) = &event.loc {
@@ -404,7 +404,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_> {
             global_names: probe.globals.keys().cloned().collect(),
         }, self.err);
 
-        if self.is_in_context(r"whamm:whammy([0-9]+):wasm:bytecode:(.*)") {
+        if self.is_in_context(r"whamm:script([0-9]+):wasm:bytecode:(.*)") {
             self.visit_bytecode_probe(probe);
         } else {
             self.err.unexpected_error(true, Some(format!("Probe not supported! {}", self.context_name)), None);

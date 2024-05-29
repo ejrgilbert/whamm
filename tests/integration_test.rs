@@ -23,7 +23,7 @@ fn get_wasm_module() -> Module {
 }
 
 /// This test just confirms that a wasm module can be instrumented with the preconfigured
-/// whammys without errors occurring.
+/// scripts without errors occurring.
 #[test]
 fn instrument_with_fault_injection() {
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
@@ -31,9 +31,9 @@ fn instrument_with_fault_injection() {
     assert!(processed_scripts.len() > 0);
     err.fatal_report("Integration Test");
 
-    for (whammy_path, script_text, mut whamm, symbol_table, behavior, simple_ast) in processed_scripts {
+    for (script_path, script_text, mut whamm, symbol_table, behavior, simple_ast) in processed_scripts {
         let app_wasm = get_wasm_module();
-        let mut err = ErrorGen::new(whammy_path.clone(), script_text, 0);
+        let mut err = ErrorGen::new(script_path.clone(), script_text, 0);
         let mut emitter = WasmRewritingEmitter::new(
             app_wasm,
             symbol_table

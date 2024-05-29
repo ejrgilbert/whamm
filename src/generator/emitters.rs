@@ -1071,7 +1071,7 @@ impl Emitter for WasmRewritingEmitter {
     }
 
     fn define_compiler_var(&mut self, context: &String, var_name: &String) -> Result<bool, WhammError> {
-        let regex = Regex::new(r"whamm:whammy([0-9]+):wasm:bytecode").unwrap();
+        let regex = Regex::new(r"whamm:script([0-9]+):wasm:bytecode").unwrap();
         return if let Some(_caps) = regex.captures(context) {
             match var_name.as_str() {
                 "new_target_fn_name" => {
@@ -1127,12 +1127,12 @@ impl Emitter for WasmRewritingEmitter {
         }
 
         // emit non-provided fn
-        // only when we're supporting user-defined fns in whammy...
+        // only when we're supporting user-defined fns in script...
         unimplemented!();
     }
 
     fn emit_formal_param(&mut self, _param: &(Expr, DataType)) -> bool {
-        // only when we're supporting user-defined fns in whammy...
+        // only when we're supporting user-defined fns in script...
         unimplemented!();
     }
 
@@ -1148,7 +1148,7 @@ impl Emitter for WasmRewritingEmitter {
         return match rec {
             Some(Record::Var { addr: _addr, .. }) => {
                 // emit global variable and set addr in symbol table
-                // only when we're supporting user-defined globals in whammy...
+                // only when we're supporting user-defined globals in script...
                 unimplemented!();
             },
             Some(ty) => {

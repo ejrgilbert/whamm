@@ -12,7 +12,7 @@ const ERR_UNDERLINE_CHAR: char = '^';
 const INFO_UNDERLINE_CHAR: char = '-';
 
 pub struct ErrorGen {
-    whammy_path: String,
+    script_path: String,
     script_text: String,
     max_errors: i32,
     errors: Vec<WhammError>,
@@ -21,9 +21,9 @@ pub struct ErrorGen {
     pub has_errors: bool
 }
 impl ErrorGen {
-    pub fn new(whammy_path: String, script_text: String, max_errors: i32) -> Self {
+    pub fn new(script_path: String, script_text: String, max_errors: i32) -> Self {
         Self {
-            whammy_path,
+            script_path,
             script_text,
             max_errors,
             errors: vec![],
@@ -58,7 +58,7 @@ impl ErrorGen {
     pub fn report(&mut self) {
         // Report the most-recent error first
         self.errors.iter_mut().for_each(|error| {
-            error.report(&self.script_text, &self.whammy_path);
+            error.report(&self.script_text, &self.script_path);
         });
         self.errors.clear();
     }
@@ -451,7 +451,7 @@ impl WhammError {
     }
 
     /// report this error to the console, including color highlighting
-    pub fn report(&mut self, script: &String, whammy_path: &String) {
+    pub fn report(&mut self, script: &String, script_path: &String) {
         let spacing = self.spacing();
         let message = self.ty.message();
 
@@ -466,7 +466,7 @@ impl WhammError {
                 err_loc.message = Some(message.clone().to_string());
             }
 
-            print_preamble(&err_loc.line_col, whammy_path, &spacing, &mut buffer);
+            print_preamble(&err_loc.line_col, script_path, &spacing, &mut buffer);
             print_empty(&spacing, &mut buffer);
             let err_start = match &err_loc.line_col {
                 LineColLocation::Pos((line, _)) => line,
@@ -499,7 +499,7 @@ impl WhammError {
         } else {
             // This error isn't tied to a specific code location
             blue(false, format!(" --> "), &mut buffer);
-            blue(false, format!("{whammy_path}\n\n"), &mut buffer);
+            blue(false, format!("{script_path}\n\n"), &mut buffer);
         }
         writer.print(&buffer).expect("Uh oh, something went wrong while printing to terminal");
         buffer.reset().expect("Uh oh, something went wrong while printing to terminal");
@@ -648,14 +648,14 @@ impl ErrorType {
 }
 
 
-fn print_preamble(line_col: &LineColLocation, whammy_path: &String, s: &String, buffer: &mut Buffer) {
+fn print_preamble(line_col: &LineColLocation, script_path: &String, s: &String, buffer: &mut Buffer) {
     let (ls, c) = match line_col {
         LineColLocation::Pos(line_col) => line_col,
         LineColLocation::Span(start_line_col, _) => start_line_col
     };
 
     blue(false, format!("{s}--> "), buffer);
-    blue(false, format!("{whammy_path}:"), buffer);
+    blue(false, format!("{script_path}:"), buffer);
     blue(false, format!("{ls}:{c}\n"), buffer);
 }
 

@@ -8,7 +8,7 @@ pub fn build_symbol_table(ast: &Whamm, err: &mut ErrorGen) -> SymbolTable {
         table: SymbolTable::new(),
         err,
         curr_whamm: None,
-        curr_whammy: None,
+        curr_script: None,
         curr_provider: None,
         curr_package: None,
         curr_event: None,

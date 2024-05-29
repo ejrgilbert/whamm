@@ -23,19 +23,19 @@ cargo test parser # Only run the tests for the `parser` module
 cargo test -- --nocapture # With stdout tracing
 ```
 
-To run project (there are example Whammys in `tests/whammys` folder):
+To run project (there are example Scripts in `tests/scripts` folder):
 ```shell
-cargo run -- instr --app <path_to_app_wasm> --whammy <path_to_whammy> <path_for_compiled_output>
+cargo run -- instr --app <path_to_app_wasm> --script <path_to_script> <path_for_compiled_output>
 ```
 
 To specify log level:
 ```shell
-RUST_LOG={ error | warn | info | debug | trace | off } cargo run -- --app <path_to_app_wasm> --whammy <path_to_whammy> <path_for_compiled_output>
+RUST_LOG={ error | warn | info | debug | trace | off } cargo run -- --app <path_to_app_wasm> --script <path_to_script> <path_for_compiled_output>
 ```
 
 To visually debug the decision tree used during Wasm bytecode emission:
 ```shell
-cargo run -- vis-whammy --whammy <path_to_whammy>
+cargo run -- vis-script --script <path_to_script>
 ```
 
 ## Available Packages ##

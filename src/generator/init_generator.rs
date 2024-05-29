@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use log::{trace, warn};
 use crate::common::error::ErrorGen;
 use crate::generator::emitters::Emitter;
-use crate::parser::types::{DataType, Whammy, Whamm, WhammVisitorMut, Expr, Event, Package, Op, Probe, Provider, Statement, Value, Global, ProvidedFunctionality};
+use crate::parser::types::{DataType, Script, Whamm, WhammVisitorMut, Expr, Event, Package, Op, Probe, Provider, Statement, Value, Global, ProvidedFunctionality};
 
 /// Serves as the first phase of instrumenting a module by setting up
 /// the groundwork.
@@ -72,9 +72,9 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         });
         // inject globals
         is_success &= self.visit_provided_globals(&whamm.globals);
-        // visit whammys
-        whamm.whammys.iter_mut().for_each(|whammy| {
-            is_success &= self.visit_whammy(whammy);
+        // visit scripts
+        whamm.scripts.iter_mut().for_each(|script| {
+            is_success &= self.visit_script(script);
         });
 
         trace!("Exiting: CodeGenerator::visit_whamm");
@@ -83,27 +83,27 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         is_success
     }
 
-    fn visit_whammy(&mut self, whammy: &mut Whammy) -> bool {
-        trace!("Entering: CodeGenerator::visit_whammy");
+    fn visit_script(&mut self, script: &mut Script) -> bool {
+        trace!("Entering: CodeGenerator::visit_script");
         match self.emitter.enter_scope() {
             Err(e) => self.err.add_error(e),
             _ => {}
         }
-        self.context_name += &format!(":{}", whammy.name.clone());
+        self.context_name += &format!(":{}", script.name.clone());
         let mut is_success = true;
 
         // visit fns
-        whammy.fns.iter_mut().for_each(| f | {
+        script.fns.iter_mut().for_each(| f | {
             is_success &= self.visit_fn(f);
         });
         // inject globals
-        is_success &= self.visit_globals(&whammy.globals);
+        is_success &= self.visit_globals(&script.globals);
         // visit providers
-        whammy.providers.iter_mut().for_each(|(_name, provider)| {
+        script.providers.iter_mut().for_each(|(_name, provider)| {
             is_success &= self.visit_provider(provider);
         });
 
-        trace!("Exiting: CodeGenerator::visit_whammy");
+        trace!("Exiting: CodeGenerator::visit_script");
         match self.emitter.exit_scope() {
             Err(e) => self.err.add_error(e),
             _ => {}

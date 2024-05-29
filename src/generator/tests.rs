@@ -38,7 +38,7 @@ fn get_rec<'a>(table: &'a mut SymbolTable, name: &str) -> Option<&'a mut Record>
 }
 
 fn get_pred(whamm: &Whamm) -> &Expr {
-    whamm.whammys.get(0).unwrap()
+    whamm.scripts.get(0).unwrap()
         .providers.get("wasm").unwrap()
         .packages.get("bytecode").unwrap()
         .events.get("call").unwrap()
@@ -73,7 +73,7 @@ fn hardcode_compiler_constants(table: &mut SymbolTable, err: &mut ErrorGen) {
         },
         _ => {}
     }
-    move_through_scopes_til_match(ScopeType::Whammy, table, err);
+    move_through_scopes_til_match(ScopeType::Script, table, err);
     println!("Scope name: {}", table.get_curr_scope().unwrap().name);
     // enter wasm scope
     match table.enter_scope() {

@@ -1,6 +1,6 @@
 use clap::{Args, Parser, Subcommand};
 
-/// `whamm` instruments a Wasm application with the Probes defined in the specified Whammy.
+/// `whamm` instruments a Wasm application with the Probes defined in the specified Script.
 #[derive(Debug, Parser)]
 #[clap(author, version, about, long_about = None)]
 pub struct WhammCli {
@@ -49,13 +49,13 @@ pub(crate) enum Cmd {
         output_path: String,
     },
 
-    /// To visualize the generated behavior tree from the specified `whammy`
-    VisWhammy {
-        /// The path to the `whammy` file we want to visualize.
+    /// To visualize the generated behavior tree from the specified `script`
+    VisScript {
+        /// The path to the `script` file we want to visualize.
         #[clap(short, long, value_parser)]
-        whammy: String,
+        script: String,
 
-        /// Whether to run the verifier on the specified whammy
+        /// Whether to run the verifier on the specified script
         #[clap(long, short, action, default_value = "false")] // TODO -- change this default value to true when I have this implemented
         run_verifier: bool,
 
@@ -75,9 +75,9 @@ pub struct InstrArgs {
     /// The path to the application's Wasm module we want to instrument.
     #[arg(short, long, value_parser)]
     pub app: String,
-    /// The path to the Whammy containing the instrumentation Probe definitions.
+    /// The path to the Script containing the instrumentation Probe definitions.
     #[arg(short, long, value_parser)]
-    pub whammy: String,
+    pub script: String,
     /// The path that the instrumented version of the Wasm app should be output to.
     #[arg(short, long, value_parser, default_value = "./output/output.wasm")]
     pub output_path: String,
@@ -86,7 +86,7 @@ pub struct InstrArgs {
     #[arg(short, long, action, default_value = "false")]
     pub virgil: bool,
 
-    /// Whether to run the verifier on the specified whammy
+    /// Whether to run the verifier on the specified script
     #[arg(long, short, action, default_value = "false")] // TODO -- change this default value to true when I have this implemented
     pub run_verifier: bool
 }

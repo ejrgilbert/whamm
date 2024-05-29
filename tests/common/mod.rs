@@ -22,7 +22,7 @@ fn setup_logger() {
 // = Helper Functions =
 // ====================
 
-const TEST_RSC_DIR: &str = "tests/whammys/";
+const TEST_RSC_DIR: &str = "tests/scripts/";
 const PATTERN: &str = "*.mm";
 const TODO: &str = "*.TODO";
 
@@ -63,7 +63,7 @@ fn get_ast(script: &str, err: &mut ErrorGen) -> Option<Whamm> {
 }
 
 fn parse_all_scripts(scripts: Vec<(PathBuf, String)>, err: &mut ErrorGen) -> Vec<(PathBuf, String, Whamm)> {
-    let mut whammys = vec![];
+    let mut mm_scripts = vec![];
     for (path, script) in scripts {
         info!("Parsing: {}", script);
         let ast_res = get_ast(&script, err);
@@ -72,9 +72,9 @@ fn parse_all_scripts(scripts: Vec<(PathBuf, String)>, err: &mut ErrorGen) -> Vec
             "script = '{}' is not recognized as valid, but it should be",
             &script
         );
-        whammys.push((path, script, ast_res.unwrap()));
+        mm_scripts.push((path, script, ast_res.unwrap()));
     }
-    whammys
+    mm_scripts
 }
 
 fn process_scripts(scripts: Vec<(PathBuf, String)>, err: &mut ErrorGen) -> Vec<(String, String, Whamm, SymbolTable, BehaviorTree, SimpleAST)> {

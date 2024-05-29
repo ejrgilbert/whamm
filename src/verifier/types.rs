@@ -137,8 +137,8 @@ impl SymbolTable {
 
     // Record operations
 
-    pub fn set_curr_whammy(&mut self, id: usize) {
-        self.get_curr_scope_mut().unwrap().containing_whammy = Some(id);
+    pub fn set_curr_script(&mut self, id: usize) {
+        self.get_curr_scope_mut().unwrap().containing_script = Some(id);
     }
 
     pub fn get_record(&self, rec_id: &usize) -> Option<&Record> {
@@ -161,7 +161,7 @@ impl SymbolTable {
         let new_rec_id = self.records.len();
         match rec {
             Record::Whamm { .. } |
-            Record::Whammy { .. } |
+            Record::Script { .. } |
             Record::Provider { .. } |
             Record::Package { .. } |
             Record::Event { .. } |
@@ -229,7 +229,7 @@ pub struct Scope {
     children: Vec<usize>,              // indexes into SymbolTable::scopes
     next: usize,                       // indexes into this::children
 
-    pub containing_whammy: Option<usize>, // indexes into SymbolTable::records
+    pub containing_script: Option<usize>, // indexes into SymbolTable::records
     records: HashMap<String, usize>,   // indexes into SymbolTable::records
 }
 impl Scope {
@@ -239,7 +239,7 @@ impl Scope {
             name,
             ty,
 
-            containing_whammy: None,
+            containing_script: None,
             next: 0,
             parent,
             children: vec![],
@@ -294,7 +294,7 @@ impl Scope {
 #[derive(Debug, Eq, PartialEq)]
 pub enum ScopeType {
     Whamm,
-    Whammy,
+    Script,
     Provider,
     Package,
     Event,
@@ -308,8 +308,8 @@ impl ScopeType {
             ScopeType::Whamm {..} => {
                 "Whamm".to_string()
             },
-            ScopeType::Whammy {..} => {
-                "Whammy".to_string()
+            ScopeType::Script {..} => {
+                "Script".to_string()
             },
             ScopeType::Provider {..} => {
                 "Provider".to_string()
@@ -340,9 +340,9 @@ pub enum Record {
         name: String,
         fns: Vec<usize>,
         globals: Vec<usize>,
-        whammys: Vec<usize>
+        scripts: Vec<usize>
     },
-    Whammy {
+    Script {
         name: String,
         fns: Vec<usize>,
         globals: Vec<usize>,
