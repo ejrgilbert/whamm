@@ -718,6 +718,7 @@ fn expr_from_pair(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
         },
         Rule::expr => {
             let pairs = pair.into_inner();
+            // TODO -- try boxing ErrorGen so you can put it in both closures?
             PRATT_PARSER
                 .map_primary(|primary| -> Result<Expr, Vec<WhammError>> {
                     expr_primary(primary)
