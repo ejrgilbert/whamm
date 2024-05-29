@@ -189,7 +189,7 @@ fn run_vis_script(script_path: String, run_verifier: bool, output_path: String) 
 
     let mut whamm = get_script_ast(&script_path, &mut err);
     // building the symbol table is necessary since it does some minor manipulations of the AST
-    // (adds declared globals to the whammy AST node)
+    // (adds declared globals to the script AST node)
     let _symbol_table = get_symbol_table(&mut whamm, run_verifier, &mut err);
     let (behavior_tree, ..) = build_behavior(&whamm, &mut err);
 

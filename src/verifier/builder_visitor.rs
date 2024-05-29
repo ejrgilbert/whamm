@@ -261,7 +261,7 @@ impl SymbolTableBuilder<'_> {
     fn add_global_id_to_curr_rec(&mut self, id: usize) {
         match self.table.get_curr_rec_mut() {
             Some(Record::Whamm { globals, .. }) |
-            Some(Record::Whammy { globals, .. }) |
+            Some(Record::Script { globals, .. }) |
             Some(Record::Provider { globals, .. }) |
             Some(Record::Package { globals, .. }) |
             Some(Record::Event { globals, .. }) |
@@ -393,7 +393,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
             match stmt {
                 Statement::Decl {ty, var_id, ..} => {
                     if let Expr::VarId {name, ..} = &var_id {
-                        // Add global variable to whammy globals (triggers the init_generator to emit them!)
+                        // Add global variable to script globals (triggers the init_generator to emit them!)
                         script.globals.insert(name.clone(), Global {
                             is_comp_provided: false,
                             ty: ty.clone(),
@@ -526,7 +526,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
     fn visit_stmt(&mut self, stmt: &mut Statement) -> () {
         if self.curr_provider.is_some() || self.curr_package.is_some() || self.curr_event.is_some() || self.curr_probe.is_some() {
             self.err.unexpected_error(true, Some(format!("{} \
-            Only global whammy statements should be visited!", UNEXPECTED_ERR_MSG.to_string())), None);
+            Only global script statements should be visited!", UNEXPECTED_ERR_MSG.to_string())), None);
         }
 
         match stmt {
