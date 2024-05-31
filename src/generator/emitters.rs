@@ -156,6 +156,10 @@ fn emit_expr(table: &mut SymbolTable, module_data: &mut ModuleData, expr: &mut E
              metadata: &mut InsertionMetadata, index: &mut usize) -> Result<bool, WhammError> {
     let mut is_success = true;
     match expr {
+        Expr::UnOp{op, expr, ..} => {
+            is_success &= emit_expr(table, module_data, expr, instr_builder, metadata, index)?;
+            is_success &= emit_op(op, instr_builder, index);
+        }
         Expr::BinOp {lhs, op, rhs, ..} => {
             is_success &= emit_expr(table, module_data, lhs, instr_builder, metadata, index)?;
             is_success &= emit_expr(table, module_data, rhs, instr_builder, metadata, index)?;
@@ -369,6 +373,14 @@ fn emit_op(op: &Op, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> b
             // we only support i32's at the moment (assumes signed)
             instr_builder.instr_at( *index,walrus::ir::Binop {
                 op: BinaryOp::I32RemS
+            });
+            // update index to point to what follows our insertions
+            *index += 1;
+            true
+        }
+        Op::Neg => {
+            instr_builder.instr_at( *index,walrus::ir::Unop {
+                op: walrus::ir::UnaryOp::I32Eqz // return 1 if 0, return 0 otherwise
             });
             // update index to point to what follows our insertions
             *index += 1;

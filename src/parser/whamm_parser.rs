@@ -16,7 +16,7 @@ pub fn print_info(spec: String, print_globals: bool, print_functions: bool, err:
     trace!("Entered print_info");
     err.set_script_text(spec.to_owned());
 
-    let res = WhammParser::parse(Rule::PROBE_SPEC, &*spec);
+    let res = WhammParser::parse(Rule::PROBE_SPEC, &spec);
     match res {
         Ok(mut pairs) => {
             // Create the probe specification from the input string
@@ -30,11 +30,8 @@ pub fn print_info(spec: String, print_globals: bool, print_functions: bool, err:
             let mut whamm = Whamm::new();
             let id = whamm.add_script(Script::new());
             let script: &mut Script = whamm.scripts.get_mut(id).unwrap();
-            match script.print_info(&whamm.provided_probes, &probe_spec, print_globals, print_functions) {
-                Err(e) => {
-                    err.add_error(e);
-                },
-                _ => {}
+            if let Err(e) = script.print_info(&whamm.provided_probes, &probe_spec, print_globals, print_functions) {
+                err.add_error(e);
             }
         },
         Err(e) => {
@@ -47,7 +44,7 @@ pub fn parse_script(script: &String, err: &mut ErrorGen) -> Option<Whamm> {
     trace!("Entered parse_script");
     err.set_script_text(script.to_owned());
 
-    let res = WhammParser::parse(Rule::script, &*script);
+    let res = WhammParser::parse(Rule::script, &script);
     match res {
         Ok(mut pairs) => {
             let res = to_ast(
@@ -171,11 +168,8 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
 
             // Add probe definition to the script
             let script: &mut Script = whamm.scripts.get_mut(script_count).unwrap();
-            match script.add_probe(&whamm.provided_probes, &probe_spec, this_predicate, this_body) {
-                Err(e) => {
-                    err.add_error(e);
-                },
-                _ => {}
+            if let Err(e) = script.add_probe(&whamm.provided_probes, &probe_spec, this_predicate, this_body) {
+                err.add_error(e);
             }
 
             trace!("Exiting probe_def");
@@ -225,7 +219,7 @@ fn fn_call_from_rule(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
 
         next = pair.next();
     };
-    let args = if init.len() > 0 {
+    let args = if !init.is_empty() {
         Some(init)
     } else {
         None
@@ -238,11 +232,7 @@ fn fn_call_from_rule(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
 
     let last_arg_loc = if let Some(args) = &args {
         if let Some(last_arg) = args.last() {
-            if let Some(last_arg_loc) = last_arg.loc() {
-                Some(LineColLocation::from(last_arg_loc.line_col.clone()))
-            } else {
-                None
-            }
+            last_arg.loc().as_ref().map(|last_arg_loc| LineColLocation::from(last_arg_loc.line_col.clone()))
         } else {
             None
         }
@@ -278,7 +268,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Statement {
 
             trace!("Exiting statement");
             trace!("Exiting stmt_from_rule");
-            return res;
+            res
         },
         Rule::assignment => {
             trace!("Entering assignment");
@@ -365,7 +355,7 @@ fn probe_spec_part_from_rule(pair: Pair<Rule>, err: &mut ErrorGen)  -> SpecPart 
             trace!("Exiting PROBE_ID");
 
             trace!("Exiting probe_spec_part_from_rule");
-            return part
+            part
         },
         rule => {
             err.parse_error(true,
@@ -457,7 +447,7 @@ fn probe_spec_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeSpec {
             trace!("Exiting PROBE_SPEC");
             trace!("Exiting probe_spec_from_rule");
 
-            return probe_spec
+            probe_spec
         },
         rule => {
             err.parse_error(true,
@@ -474,7 +464,7 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     match pair.as_rule() {
         Rule::fn_call => {
             let call = fn_call_from_rule(pair);
-            return call;
+            call
         },
         Rule::ID => {
             return Ok(Expr::VarId {
@@ -501,7 +491,7 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
             }
 
             trace!("Exiting tuple");
-            return Ok(Expr::Primitive {
+            Ok(Expr::Primitive {
                 val: Value::Tuple {
                     ty: DataType::Tuple {ty_info: None},
                     vals
@@ -510,7 +500,7 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                     line_col: pair_line_col,
                     path: None
                 })
-            });
+            })
         },
         Rule::INT => {
             trace!("Entering INT");
@@ -547,11 +537,11 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
         Rule::STRING => {
             trace!("Entering STRING");
             let mut val: String = pair.as_str().parse().unwrap();
-            if val.starts_with("\"") {
-                val = val.strip_prefix("\"").expect("Should never get here...").to_string();
+            if val.starts_with('\"') {
+                val = val.strip_prefix('\"').expect("Should never get here...").to_string();
             }
-            if val.ends_with("\"") {
-                val = val.strip_suffix("\"").expect("Should never get here...").to_string();
+            if val.ends_with('\"') {
+                val = val.strip_suffix('\"').expect("Should never get here...").to_string();
             }
 
             trace!("Exiting STRING");
@@ -575,6 +565,36 @@ fn expr_from_pairs(pairs: Pairs<Rule>) -> Result<Expr, Vec<WhammError>> {
     PRATT_PARSER
         .map_primary(|primary| -> Result<Expr, Vec<WhammError>> {
             expr_primary(primary)
+        })
+        .map_prefix(|op, rhs|  -> Result<Expr, Vec<WhammError>> {
+            return match rhs {
+                Ok(rhs) => {
+                    let op = match op.as_rule() {
+                        Rule::neg => Op::Neg,
+                        rule => {
+                            return Err(vec![ErrorGen::get_parse_error(
+                                true,
+                                Some(UNEXPECTED_ERR_MSG.to_string()),
+                                Some(LineColLocation::from(op.as_span())),
+                                vec![Rule::prefix],
+                                vec![rule])]);
+                        },
+                    };
+
+                    let rhs_line_col = if let Some(rhs_loc) = rhs.loc() {
+                        rhs_loc.line_col.clone()
+                    } else {
+                        exit(1);
+                    };
+
+                    Ok(Expr::UnOp {
+                        op,
+                        expr: Box::new(rhs),
+                        loc: Some(Location::from(&rhs_line_col, &rhs_line_col, None))
+                    })
+                },
+                Err(errors) => Err(errors)
+            };
         })
         .map_infix(|lhs, op, rhs| -> Result<Expr, Vec<WhammError>> {
             return match (lhs, rhs) {

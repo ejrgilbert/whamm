@@ -10,6 +10,9 @@ pub struct ExprFolder;
 impl ExprFolder {
     pub fn fold_expr(expr: &Expr, table: &SymbolTable) -> Expr {
         match *expr {
+            Expr::UnOp { .. } => {
+                ExprFolder::fold_unop(expr, table)
+            }
             Expr::BinOp { .. } => {
                 ExprFolder::fold_binop(expr, table)
             }
@@ -24,6 +27,7 @@ impl ExprFolder {
             }
         }
     }
+
     fn fold_binop(binop: &Expr, table: &SymbolTable) -> Expr {
         match &binop {
             Expr::BinOp {lhs, op, rhs, ..} => {
@@ -187,6 +191,7 @@ impl ExprFolder {
                             return res;
                         }
                     }
+                    _ => {}
                 }
             },
             _ => {}
@@ -194,6 +199,39 @@ impl ExprFolder {
 
         // Cannot fold any more
         binop.clone()
+    }
+
+    // similar to the logic of fold_binop
+    fn fold_unop(unop: &Expr, table: &SymbolTable) -> Expr {
+        match &unop {
+            Expr::UnOp {op, expr, ..} => {
+                let expr = ExprFolder::fold_expr(&expr, table);
+                match op {
+                    Op::Neg => {
+                        let expr_val = ExprFolder::get_single_bool(&expr);
+                        return if let Some(expr_bool) = expr_val {
+                            Expr::Primitive {
+                                val: Value::Boolean {
+                                    ty: DataType::Boolean,
+                                    val: !expr_bool,
+                                },
+                                loc: None
+                            }
+                        } else {
+                            Expr::UnOp {
+                                op: Op::Neg,
+                                expr: Box::new(expr),
+                                loc: None
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            },
+            _ => {}
+        }
+
+        unop.clone()
     }
 
     fn fold_bools(lhs_val: &Option<bool>, rhs_val: &Option<bool>, op: &Op) -> Option<Expr> {

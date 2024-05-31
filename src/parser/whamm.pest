@@ -52,14 +52,15 @@ statement = { ( ( fn_call | assignment ) ~ ";" )+ }
 // ---- Expressions ----
 // =====================
 
-expr = { operand ~ (BINOP ~ operand)* }
+expr = { prefix? ~ operand ~ (BINOP ~ prefix? ~ operand)* }
 
+neg = { "!" }
+prefix = _{ neg }
 val = _{ BOOL | ID | INT | STRING }
 operand = { fn_call | "(" ~ expr ~ ")" | val }
 
 tuple = { "(" ~ (val) ~ ( "," ~ val )* ~ ")" }
 
-// TODO -- add support for NOT (e.g. !(a == b)
 BINOP = _{ LOGOP | RELOP | SUMOP | MULOP }
     // Logical operators
     and = { "&&" }

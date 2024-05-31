@@ -30,6 +30,7 @@ lazy_static::lazy_static! {
                 | Op::infix(lt, Left)
             ).op(Op::infix(add, Left) | Op::infix(subtract, Left)) // SUMOP
             .op(Op::infix(multiply, Left) | Op::infix(divide, Left) | Op::infix(modulo, Left)) // MULOP
+            .op(Op::prefix(neg))
     };
 }
 
@@ -66,15 +67,15 @@ impl Location {
     pub fn span_between(loc0: &Location, loc1: &Location) -> LineColLocation {
         let pos0 = match &loc0.line_col {
             LineColLocation::Pos(pos0) |
-            LineColLocation::Span(pos0, ..) => pos0.clone()
+            LineColLocation::Span(pos0, ..) => *pos0
         };
 
         let pos1 = match &loc1.line_col {
             LineColLocation::Pos(end1) |
-            LineColLocation::Span(.., end1) => end1.clone()
+            LineColLocation::Span(.., end1) => *end1.clone()
         };
 
-        return LineColLocation::Span(pos0, pos1);
+        LineColLocation::Span(pos0, pos1)
     }
 }
 
@@ -178,10 +179,7 @@ impl Statement {
         }
     }
     pub fn line_col(&self) -> Option<LineColLocation> {
-        return match self.loc() {
-            Some(loc) => Some(loc.line_col.clone()),
-            None => None
-        }
+        self.loc().as_ref().map(|loc| loc.line_col.clone())
     }
     pub fn dummy() -> Self {
         Self::Expr {
@@ -199,6 +197,11 @@ impl Statement {
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Expr {
+    UnOp {      // Type is based on the outermost `op`
+        op: Op,
+        expr: Box<Expr>,
+        loc: Option<Location>
+    },
     BinOp {     // Type is based on the outermost `op` (if arithmetic op, also based on types of lhs/rhs due to doubles)
         lhs: Box<Expr>,
         op: Op,
@@ -223,6 +226,7 @@ pub enum Expr {
 impl Expr {
     pub fn loc(&self) -> &Option<Location> {
         match self {
+            Expr::UnOp {loc, ..} |
             Expr::BinOp {loc, ..} |
             Expr::Call {loc, ..} |
             Expr::VarId {loc, ..} |
@@ -1637,6 +1641,7 @@ pub enum Op {
     // Logical operators
     And,
     Or,
+    Neg,
 
     // Relational operators
     EQ,

@@ -384,6 +384,11 @@ impl WhammVisitor<String> for AsStrVisitor {
             Expr::Primitive {val, ..} => {
                 self.visit_value(val)
             }
+            Expr::UnOp {op, expr, ..} => {
+                let mut s = "".to_string();
+                s += &format!("{}{}", self.visit_op(op), self.visit_expr(expr));
+                s
+            }
         }
     }
 
@@ -402,6 +407,7 @@ impl WhammVisitor<String> for AsStrVisitor {
             Op::Multiply => "*",
             Op::Divide => "/",
             Op::Modulo => "%",
+            Op::Neg => "!",
         }.parse().unwrap()
     }
 
