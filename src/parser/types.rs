@@ -72,7 +72,7 @@ impl Location {
 
         let pos1 = match &loc1.line_col {
             LineColLocation::Pos(end1) |
-            LineColLocation::Span(.., end1) => *end1.clone()
+            LineColLocation::Span(.., end1) => *end1
         };
 
         LineColLocation::Span(pos0, pos1)
