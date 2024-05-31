@@ -37,7 +37,7 @@ const VALID_SCRIPTS: &'static [&'static str] = &[
 
     // Predicates
     "wasm:bytecode:br:before / i / { }",
-    r#"wasm:bytecode:br:before / "i" <= 1 / { }"#,  // Alex How is this a valid script
+    r#"wasm:bytecode:br:before / "i" <= 1 / { }"#,  // TODO make invalid in type checking
     "wasm:bytecode:br:before / i54 < r77 / { }",
     "wasm:bytecode:br:before / i54 < r77 / { }",
     "wasm:bytecode:br:before / i != 7 / { }",

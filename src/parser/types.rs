@@ -59,7 +59,7 @@ impl Location {
         };
 
         Location {
-            line_col: LineColLocation::Span(pos0.clone(), pos1.clone()),
+            line_col: LineColLocation::Span(*pos0, *pos1),
             path
         }
     }
@@ -198,13 +198,13 @@ impl Statement {
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Expr {
     UnOp {      // Type is based on the outermost `op`
-        op: Op,
+        op: UnOp,
         expr: Box<Expr>,
         loc: Option<Location>
     },
     BinOp {     // Type is based on the outermost `op` (if arithmetic op, also based on types of lhs/rhs due to doubles)
         lhs: Box<Expr>,
-        op: Op,
+        op: BinOp,
         rhs: Box<Expr>,
         loc: Option<Location>
     },
@@ -255,7 +255,7 @@ pub struct Fn {
 }
 impl Fn {
     pub fn print(&self, buffer: &mut Buffer) {
-        green(true, format!("{}", self.name.name), buffer);
+        green(true, self.name.name.to_string(), buffer);
         white(true, "(".to_string(), buffer);
         let mut is_first = true;
         for (param_name, param_ty) in self.params.iter() {
@@ -263,7 +263,7 @@ impl Fn {
                 white(true, ", ".to_string(), buffer);
             }
             if let Expr::VarId {name, ..} = param_name {
-                green(true, format!("{name}"), buffer);
+                green(true, name.to_string(), buffer);
                 white(true, ": ".to_string(), buffer);
                 param_ty.print(buffer);
             }
@@ -289,7 +289,7 @@ pub struct Global {
 impl Global {
     pub fn print(&self, buffer: &mut Buffer) {
         if let Expr::VarId {name, ..} = &self.var_name {
-            green(true, format!("{name}"), buffer);
+            green(true, name.to_string(), buffer);
         }
         white(true, ": ".to_string(), buffer);
         self.ty.print(buffer);
@@ -301,7 +301,7 @@ fn print_global_vars(tabs: &mut usize, globals: &HashMap<String, (ProvidedFuncti
         white(true, format!("{}GLOBALS:\n", " ".repeat(*tabs * 4)), buffer);
         *tabs += 1;
         for (.., (info, global)) in globals.iter() {
-            white(false, format!("{}", " ".repeat(*tabs * 4)), buffer);
+            white(false, " ".repeat(*tabs * 4).to_string(), buffer);
             global.print(buffer);
 
             *tabs += 1;
@@ -309,24 +309,24 @@ fn print_global_vars(tabs: &mut usize, globals: &HashMap<String, (ProvidedFuncti
             *tabs -= 1;
         }
         *tabs -= 1;
-        white(false, format!("\n"), buffer);
+        white(false, "\n".to_string(), buffer);
     }
 }
 
-fn print_fns(tabs: &mut usize, functions: &Vec<(ProvidedFunctionality, Fn)>, buffer: &mut Buffer) {
+fn print_fns(tabs: &mut usize, functions: &[(ProvidedFunctionality, Fn)], buffer: &mut Buffer) {
     if !functions.is_empty() {
         white(true, format!("{}FUNCTIONS:\n", " ".repeat(*tabs * 4)), buffer);
         *tabs += 1;
         for (info, f) in functions.iter() {
-            green(true, format!("{}", " ".repeat(*tabs * 4)), buffer);
+            green(true, " ".repeat(*tabs * 4).to_string(), buffer);
             f.print(buffer);
-            green(true, format!("\n"), buffer);
+            green(true, "\n".to_string(), buffer);
             *tabs += 1;
             white(false, format!("{}{}\n", " ".repeat(*tabs * 4), info.docs), buffer);
             *tabs -= 1;
         }
         *tabs -= 1;
-        white(false, format!("\n"), buffer);
+        white(false, "\n".to_string(), buffer);
     }
 }
 
@@ -894,7 +894,6 @@ impl ProbeSpec {
         }
         if self.mode.is_none() {
             self.mode = Some(part);
-            return;
         }
     }
 }
@@ -924,20 +923,16 @@ impl Script {
         };
 
         if prov_matches.is_empty() {
-            let loc = if let Some(loc) = &prov_loc {
-                Some(loc.line_col.clone())
-            } else {
-                None
-            };
+            let loc = prov_loc.as_ref().map(|loc| loc.line_col.clone());
             return Err(ErrorGen::get_parse_error(true,
-                 Some(format!("Could not find any matches for the provider pattern")),
+                 Some("Could not find any matches for the provider pattern".to_string()),
                  loc, vec![], vec![]));
         }
 
         Ok(prov_matches)
     }
 
-    fn get_package_info(provided_probes: &ProvidedProbes, provider_matches: &Vec<(ProvidedFunctionality, String)>, probe_spec: &ProbeSpec) -> Result<HashMap<String, Vec<(ProvidedFunctionality, String)>>, WhammError> {
+    fn get_package_info(provided_probes: &ProvidedProbes, provider_matches: &[(ProvidedFunctionality, String)], probe_spec: &ProbeSpec) -> Result<HashMap<String, Vec<(ProvidedFunctionality, String)>>, WhammError> {
         let (package_matches, package_loc) = if let Some(package_patt) = &probe_spec.package {
             let mut matches = HashMap::new();
             for (.., provider) in provider_matches.iter() {
@@ -951,13 +946,9 @@ impl Script {
         };
 
         if package_matches.is_empty() {
-            let loc = if let Some(loc) = &package_loc {
-                Some(loc.line_col.clone())
-            } else {
-                None
-            };
+            let loc = package_loc.as_ref().map(|loc| loc.line_col.clone());
             return Err(ErrorGen::get_parse_error(true,
-             Some(format!("Could not find any matches for the package pattern")),
+             Some("Could not find any matches for the package pattern".to_string()),
              loc, vec![], vec![]));
         }
         Ok(package_matches)
@@ -981,13 +972,9 @@ impl Script {
         };
 
         if package_matches.is_empty() {
-            let loc = if let Some(loc) = &event_loc {
-                Some(loc.line_col.clone())
-            } else {
-                None
-            };
+            let loc = event_loc.as_ref().map(|loc| loc.line_col.clone());
             return Err(ErrorGen::get_parse_error(true,
-                                                 Some(format!("Could not find any matches for the event pattern")),
+                                                 Some("Could not find any matches for the event pattern".to_string()),
                                                  loc, vec![], vec![]));
         }
         Ok(event_matches)
@@ -1015,13 +1002,9 @@ impl Script {
         };
 
         if mode_matches.is_empty() {
-            let loc = if let Some(loc) = &mode_loc {
-                Some(loc.line_col.clone())
-            } else {
-                None
-            };
+            let loc = mode_loc.as_ref().map(|loc| loc.line_col.clone());
             return Err(ErrorGen::get_parse_error(true,
-                                                 Some(format!("Could not find any matches for the mode pattern")),
+                                                 Some("Could not find any matches for the mode pattern".to_string()),
                                                  loc, vec![], vec![]));
         }
         Ok(mode_matches)
@@ -1106,13 +1089,13 @@ impl Script {
 
             // Print the globals
             if print_globals {
-                let globals = Provider::get_provided_globals(&provider_str);
+                let globals = Provider::get_provided_globals(provider_str);
                 print_global_vars(&mut tabs, &globals, &mut buffer);
             }
 
             // Print the functions
             if print_functions {
-                let functions = Provider::get_provided_fns(&provider_str);
+                let functions = Provider::get_provided_fns(provider_str);
                 print_fns(&mut tabs, &functions, &mut buffer);
             }
             tabs -= 1;
@@ -1150,13 +1133,13 @@ impl Script {
 
                 // Print the globals
                 if print_globals {
-                    let globals = Package::get_provided_globals(&package_str);
+                    let globals = Package::get_provided_globals(package_str);
                     print_global_vars(&mut tabs, &globals, &mut buffer);
                 }
 
                 // Print the functions
                 if print_functions {
-                    let functions = Package::get_provided_fns(&package_str);
+                    let functions = Package::get_provided_fns(package_str);
                     print_fns(&mut tabs, &functions, &mut buffer);
                 }
                 tabs -= 1;
@@ -1193,13 +1176,13 @@ impl Script {
 
                     // Print the globals
                     if print_globals {
-                        let globals = Event::get_provided_globals(&event_str);
+                        let globals = Event::get_provided_globals(event_str);
                         print_global_vars(&mut tabs, &globals, &mut buffer);
                     }
 
                     // Print the functions
                     if print_functions {
-                        let functions = Event::get_provided_fns(&event_str);
+                        let functions = Event::get_provided_fns(event_str);
                         print_fns(&mut tabs, &functions, &mut buffer);
                     }
                     tabs -= 1;
@@ -1221,8 +1204,8 @@ impl Script {
         // Print the matched mode information
         let mut tabs = 0;
         for (_prov_str, package_map) in mode_info.iter() {
-            for (_package_str, event_list) in package_map {
-                for (_event_str, mode_list) in event_list {
+            for event_list in package_map.values() {
+                for mode_list in event_list.values() {
                     for (mode_info, mode_str) in mode_list {
                         if mode_str.is_empty() {
                             continue;
@@ -1254,7 +1237,7 @@ impl Script {
         writer.print(&buffer).expect("Uh oh, something went wrong while printing to terminal");
         buffer.reset().expect("Uh oh, something went wrong while printing to terminal");
 
-        return Ok(());
+        Ok(())
     }
 
     /// Iterates over all of the matched providers, packages, events, and probe mode names
@@ -1357,7 +1340,7 @@ impl Script {
                 }
             }
         }
-        return Ok(());
+        Ok(())
     }
 }
 
@@ -1390,11 +1373,11 @@ impl Provider {
         }
     }
 
-    fn get_provided_fns(_name: &String) -> Vec<(ProvidedFunctionality, Fn)> {
+    fn get_provided_fns(_name: &str) -> Vec<(ProvidedFunctionality, Fn)> {
         vec![]
     }
 
-    fn get_provided_globals(_name: &String) -> HashMap<String, (ProvidedFunctionality, Global)> {
+    fn get_provided_globals(_name: &str) -> HashMap<String, (ProvidedFunctionality, Global)> {
         HashMap::new()
     }
 
@@ -1403,7 +1386,7 @@ impl Provider {
         let glob = Pattern::new(&prov_patt.to_lowercase()).unwrap();
 
         let mut matches = vec![];
-        for (provider_name, (info, _provider)) in provided_probes.into_iter() {
+        for (provider_name, (info, _provider)) in provided_probes.iter() {
             if glob.matches(&provider_name.to_lowercase()) {
                 matches.push((info.clone(), provider_name.clone()));
             }
@@ -1436,11 +1419,11 @@ impl Package {
         }
     }
 
-    fn get_provided_fns(_name: &String) -> Vec<(ProvidedFunctionality, Fn)> {
+    fn get_provided_fns(_name: &str) -> Vec<(ProvidedFunctionality, Fn)> {
         vec![]
     }
 
-    fn get_provided_globals(_name: &String) -> HashMap<String, (ProvidedFunctionality, Global)> {
+    fn get_provided_globals(_name: &str) -> HashMap<String, (ProvidedFunctionality, Global)> {
         HashMap::new()
     }
 
@@ -1480,11 +1463,11 @@ impl Event {
         }
     }
 
-    fn get_provided_fns(_name: &String) -> Vec<(ProvidedFunctionality, Fn)> {
+    fn get_provided_fns(_name: &str) -> Vec<(ProvidedFunctionality, Fn)> {
         vec![]
     }
 
-    fn get_provided_globals(name: &String) -> HashMap<String, (ProvidedFunctionality, Global)> {
+    fn get_provided_globals(name: &str) -> HashMap<String, (ProvidedFunctionality, Global)> {
         let mut globals = HashMap::new();
         if name.to_lowercase() == "call" {
             // Add in provided globals for the "call" event
@@ -1637,11 +1620,15 @@ impl Probe {
 // =====================
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub enum Op {
+pub enum UnOp {
+    Not
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub enum BinOp {
     // Logical operators
     And,
     Or,
-    Neg,
 
     // Relational operators
     EQ,
@@ -1677,7 +1664,8 @@ pub trait WhammVisitor<T> {
     fn visit_formal_param(&mut self, param: &(Expr, DataType)) -> T;
     fn visit_stmt(&mut self, stmt: &Statement) -> T;
     fn visit_expr(&mut self, expr: &Expr) -> T;
-    fn visit_op(&mut self, op: &Op) -> T;
+    fn visit_unop(&mut self, unop: &UnOp) -> T;
+    fn visit_op(&mut self, op: &BinOp) -> T;
     fn visit_datatype(&mut self, datatype: &DataType) -> T;
     fn visit_value(&mut self, val: &Value) -> T;
 }
@@ -1695,7 +1683,7 @@ pub trait WhammVisitorMut<T> {
     fn visit_formal_param(&mut self, param: &mut (Expr, DataType)) -> T;
     fn visit_stmt(&mut self, stmt: &mut Statement) -> T;
     fn visit_expr(&mut self, expr: &mut Expr) -> T;
-    fn visit_op(&mut self, op: &mut Op) -> T;
+    fn visit_op(&mut self, op: &mut BinOp) -> T;
     fn visit_datatype(&mut self, datatype: &mut DataType) -> T;
     fn visit_value(&mut self, val: &mut Value) -> T;
 }

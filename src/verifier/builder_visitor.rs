@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use crate::parser::types as parser_types;
-use parser_types::{DataType, Script, Whamm, WhammVisitor, Expr, Fn, Event, Package, Op, Probe, Provider, Statement, Value};
+use parser_types::{DataType, Script, Whamm, WhammVisitor, Expr, Fn, Event, Package, UnOp, BinOp, Probe, Provider, Statement, Value};
 use crate::verifier::types::{Record, ScopeType, SymbolTable};
 
 use log::trace;
@@ -501,7 +501,12 @@ impl WhammVisitor<()> for SymbolTableBuilder<'_> {
         self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
     }
 
-    fn visit_op(&mut self, _op: &Op) -> () {
+    fn visit_unop(&mut self, _unop: &UnOp) -> () {
+        // Not visiting predicates/statements
+        self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+    }
+
+    fn visit_op(&mut self, _op: &BinOp) -> () {
         // Not visiting predicates/statements
         self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
     }

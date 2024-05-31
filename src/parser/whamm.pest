@@ -55,7 +55,8 @@ statement = { ( ( fn_call | assignment ) ~ ";" )+ }
 expr = { prefix? ~ operand ~ (BINOP ~ prefix? ~ operand)* }
 
 neg = { "!" }
-prefix = _{ neg }
+UNOP = _{ neg }
+prefix = _{ UNOP }
 val = _{ BOOL | ID | INT | STRING }
 operand = { fn_call | "(" ~ expr ~ ")" | val }
 
