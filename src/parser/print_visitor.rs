@@ -52,6 +52,7 @@ impl WhammVisitor<String> for AsStrVisitor {
     fn visit_whamm(&mut self, whamm: &Whamm) -> String {
         let mut s = "".to_string();
 
+        // Alex: arne't these fn? why call them events
         // print fns
         if whamm.fns.len() > 0 {
             s += &format!("Whamm events:{}", NL);
@@ -222,7 +223,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         if event.globals.len() > 0 {
             s += &format!("{} event globals:{}", self.get_indent(), NL);
             self.increase_indent();
-            self.visit_provided_globals(&event.globals);
+            s += &self.visit_provided_globals(&event.globals);
             self.decrease_indent();
         }
 

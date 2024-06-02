@@ -80,3 +80,28 @@ wasm::call:alt /
         }
     };
 }
+
+#[test]
+pub fn test_type_checker() {
+    setup_logger();
+    let script = r#"
+    wasm::call:alt /
+    1 == "str" &&
+    target_fn_type == "import"
+/ {
+
+}
+    "#;
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+
+
+    match tests::get_ast(script, &mut err) {
+        Some(ast) => {
+            verifier::verify(&ast);
+        },
+        None => {
+            error!("Could not get ast from script: {}", script);
+            assert!(false);
+        }
+    };
+}

@@ -855,11 +855,13 @@ impl Whamm {
     }
 }
 
+/// SpecPart defines?
 pub struct SpecPart {
     pub name: String,
     pub loc: Option<Location>
 }
 
+/// 
 pub struct ProbeSpec {
     pub provider: Option<SpecPart>,
     pub package: Option<SpecPart>,
@@ -895,6 +897,7 @@ impl ProbeSpec {
     }
 }
 
+/// 
 pub struct Script {
     pub name: String,
     /// The providers of the probes that have been used in the Script.
