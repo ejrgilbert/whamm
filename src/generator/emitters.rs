@@ -1040,7 +1040,7 @@ impl WasmRewritingEmitter {
                             Expected VarId.")), None));
                         }
                     }
-                    Expr::VarId {..} | Expr::BinOp {..} | Expr::Call {..} | Expr::Ternary {..} => {
+                    Expr::VarId {..} | Expr::UnOp {..} | Expr::BinOp {..} | Expr::Call {..} | Expr::Ternary {..} => {
                         // Anything else can be emitted as normal
                         return match self.emit_expr(expr) {
                             Err(e) => Err(e),
@@ -1273,7 +1273,7 @@ impl Emitter for WasmRewritingEmitter {
                 is_success &= self.emit_expr(alt)?;
                 is_success &= self.finish_branch();
             },
-            Expr::VarId {..} | Expr::BinOp {..} | Expr::Primitive {..} | Expr::Call {..} => {
+            Expr::VarId {..} | Expr::UnOp {..} | Expr::BinOp {..} | Expr::Primitive {..} | Expr::Call {..} => {
                 // Anything else can be emitted as normal
                 if let Some(curr_loc) = self.instr_iter.curr_mut() {
                     if let Some(tracker) = &mut self.emitting_instr {

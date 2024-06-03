@@ -122,7 +122,10 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
 
             let mut global_stmts = vec![];
             pair.into_inner().for_each(|p| {
-                global_stmts.push(stmt_from_rule(p, err));
+                match stmt_from_rule(p, err) {
+                    Ok(s) => global_stmts.push(s),
+                    Err(errors) => err.add_errors(errors)
+                }
             });
 
             // Add global statements to the script
@@ -315,11 +318,11 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
             };
             trace!("Exiting declaration");
 
-            Statement::Decl {
+            Ok(Statement::Decl {
                 ty,
                 var_id,
                 loc: Some(Location::from(&type_line_col, &var_id_line_col, None))
-            }
+            })
         },
         Rule::assignment => {
             trace!("Entering assignment");
