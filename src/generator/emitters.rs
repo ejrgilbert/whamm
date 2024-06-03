@@ -5,7 +5,7 @@ use walrus::{ActiveData, ActiveDataLocation, DataKind, FunctionBuilder, Function
 use walrus::ir::{BinaryOp, ExtendedLoad, Instr, InstrSeqId, LoadKind, MemArg};
 use crate::common::error::{ErrorGen, WhammError};
 use crate::generator::types::ExprFolder;
-use crate::parser::types::{DataType, Expr, Fn, Op, Statement, Value};
+use crate::parser::types::{DataType, Expr, Fn, BinOp, UnOp, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 
 // =================================================
@@ -156,10 +156,14 @@ fn emit_expr(table: &mut SymbolTable, module_data: &mut ModuleData, expr: &mut E
              metadata: &mut InsertionMetadata, index: &mut usize) -> Result<bool, WhammError> {
     let mut is_success = true;
     match expr {
+        Expr::UnOp{op, expr, ..} => {
+            is_success &= emit_expr(table, module_data, expr, instr_builder, metadata, index)?;
+            is_success &= emit_unop(op, instr_builder, index);
+        }
         Expr::BinOp {lhs, op, rhs, ..} => {
             is_success &= emit_expr(table, module_data, lhs, instr_builder, metadata, index)?;
             is_success &= emit_expr(table, module_data, rhs, instr_builder, metadata, index)?;
-            is_success &= emit_op(op, instr_builder, index);
+            is_success &= emit_binop(op, instr_builder, index);
         }
         Expr::Call { fn_target, args, ..} => {
             let fn_name = match &**fn_target {
@@ -255,9 +259,9 @@ fn emit_expr(table: &mut SymbolTable, module_data: &mut ModuleData, expr: &mut E
     Ok(is_success)
 }
 
-fn emit_op(op: &Op, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> bool {
+fn emit_binop(op: &BinOp, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> bool {
     match op {
-        Op::And => {
+        BinOp::And => {
             // we only support i32's at the moment
             instr_builder.instr_at( *index,walrus::ir::Binop {
                 op: BinaryOp::I32And
@@ -266,7 +270,7 @@ fn emit_op(op: &Op, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> b
             *index += 1;
             true
         }
-        Op::Or => {
+        BinOp::Or => {
             // we only support i32's at the moment
             instr_builder.instr_at( *index,walrus::ir::Binop {
                 op: BinaryOp::I32Or
@@ -275,7 +279,7 @@ fn emit_op(op: &Op, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> b
             *index += 1;
             true
         }
-        Op::EQ => {
+        BinOp::EQ => {
             // we only support i32's at the moment
             instr_builder.instr_at( *index,walrus::ir::Binop {
                 op: BinaryOp::I32Eq
@@ -284,7 +288,7 @@ fn emit_op(op: &Op, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> b
             *index += 1;
             true
         }
-        Op::NE => {
+        BinOp::NE => {
             // we only support i32's at the moment
             instr_builder.instr_at( *index,walrus::ir::Binop {
                 op: BinaryOp::I32Ne
@@ -293,7 +297,7 @@ fn emit_op(op: &Op, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> b
             *index += 1;
             true
         }
-        Op::GE => {
+        BinOp::GE => {
             // we only support i32's at the moment (assumes signed)
             instr_builder.instr_at( *index,walrus::ir::Binop {
                 op: BinaryOp::I32GeS
@@ -302,7 +306,7 @@ fn emit_op(op: &Op, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> b
             *index += 1;
             true
         }
-        Op::GT => {
+        BinOp::GT => {
             // we only support i32's at the moment (assumes signed)
             instr_builder.instr_at( *index,walrus::ir::Binop {
                 op: BinaryOp::I32GtS
@@ -311,7 +315,7 @@ fn emit_op(op: &Op, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> b
             *index += 1;
             true
         }
-        Op::LE => {
+        BinOp::LE => {
             // we only support i32's at the moment (assumes signed)
             instr_builder.instr_at( *index,walrus::ir::Binop {
                 op: BinaryOp::I32LeS
@@ -320,7 +324,7 @@ fn emit_op(op: &Op, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> b
             *index += 1;
             true
         }
-        Op::LT => {
+        BinOp::LT => {
             // we only support i32's at the moment (assumes signed)
             instr_builder.instr_at( *index,walrus::ir::Binop {
                 op: BinaryOp::I32LtS
@@ -329,7 +333,7 @@ fn emit_op(op: &Op, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> b
             *index += 1;
             true
         }
-        Op::Add => {
+        BinOp::Add => {
             // we only support i32's at the moment (assumes signed)
             instr_builder.instr_at( *index,walrus::ir::Binop {
                 op: BinaryOp::I32Add
@@ -338,7 +342,7 @@ fn emit_op(op: &Op, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> b
             *index += 1;
             true
         }
-        Op::Subtract => {
+        BinOp::Subtract => {
             // we only support i32's at the moment (assumes signed)
             instr_builder.instr_at( *index,walrus::ir::Binop {
                 op: BinaryOp::I32Sub
@@ -347,7 +351,7 @@ fn emit_op(op: &Op, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> b
             *index += 1;
             true
         }
-        Op::Multiply => {
+        BinOp::Multiply => {
             // we only support i32's at the moment (assumes signed)
             instr_builder.instr_at( *index,walrus::ir::Binop {
                 op: BinaryOp::I32Mul
@@ -356,7 +360,7 @@ fn emit_op(op: &Op, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> b
             *index += 1;
             true
         }
-        Op::Divide => {
+        BinOp::Divide => {
             // we only support i32's at the moment (assumes signed)
             instr_builder.instr_at( *index,walrus::ir::Binop {
                 op: BinaryOp::I32DivS
@@ -365,10 +369,23 @@ fn emit_op(op: &Op, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> b
             *index += 1;
             true
         }
-        Op::Modulo => {
+        BinOp::Modulo => {
             // we only support i32's at the moment (assumes signed)
             instr_builder.instr_at( *index,walrus::ir::Binop {
                 op: BinaryOp::I32RemS
+            });
+            // update index to point to what follows our insertions
+            *index += 1;
+            true
+        }
+    }
+}
+
+fn emit_unop(op: &UnOp, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> bool {
+    match op {
+        UnOp::Not => {
+            instr_builder.instr_at( *index,walrus::ir::Unop {
+                op: walrus::ir::UnaryOp::I32Eqz // return 1 if 0, return 0 otherwise
             });
             // update index to point to what follows our insertions
             *index += 1;

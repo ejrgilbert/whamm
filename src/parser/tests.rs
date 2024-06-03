@@ -37,13 +37,15 @@ const VALID_SCRIPTS: &'static [&'static str] = &[
 
     // Predicates
     "wasm:bytecode:br:before / i / { }",
-    "wasm:bytecode:br:before / \"i\" <= 1 / { }",
+    r#"wasm:bytecode:br:before / "i" <= 1 / { }"#,  // TODO make invalid in type checking
     "wasm:bytecode:br:before / i54 < r77 / { }",
     "wasm:bytecode:br:before / i54 < r77 / { }",
     "wasm:bytecode:br:before / i != 7 / { }",
-    "wasm:bytecode:br:before / (i == \"1\") && (b == \"2\") / { }",
-    "wasm:bytecode:br:before / i == \"1\" && b == \"2\" / { }",
+    r#"wasm:bytecode:br:before / (i == "1") && (b == "2") / { }"#,
+    r#"wasm:bytecode:br:before / i == "1" && b == "2" / { }"#,
     "wasm:bytecode:br:before / i == (1 + 3) / { count = 0; }",
+    "wasm:bytecode:br:before / !(a && b) / { count = 0; }",
+    "wasm:bytecode:br:before / !a / { count = 0; }",
 
     // Function calls
     r#"
@@ -62,7 +64,7 @@ wasm::call:alt /
     new_target_fn_name = "redirect_to_fault_injector";
 }
     "#,
-
+  
     // Statements (either assignment or function call)
     r#"
     wasm:bytecode:br:before {
@@ -96,7 +98,6 @@ const INVALID_SCRIPTS: &'static [&'static str] = &[
     // Variations of PROBE_SPEC
     "wasm:bytecode:call:alt: { }",
     "wasm:bytecode:call:alt",
-    "wasm:bytecode:call:alt: { }",
     "wasm:bytecode:call:dne",
 
     // Empty predicate
@@ -104,7 +105,7 @@ const INVALID_SCRIPTS: &'static [&'static str] = &[
     "wasm:bytecode:call:alt / 5i < r77 / { }",
     //            "wasm:bytecode:call:alt / i < 1 < 2 / { }", // TODO -- make invalid on semantic pass
     //            "wasm:bytecode:call:alt / (1 + 3) / { i }", // TODO -- make invalid on type check
-    "wasm:bytecode:call:alt  / i == \"\"\"\" / { }",
+    r#"wasm:bytecode:call:alt  / i == """" / { }"#,
 
     // bad statement
     "wasm:bytecode:call:alt / i == 1 / { i; }",
@@ -148,25 +149,11 @@ pub fn get_test_scripts(subdir: &str) -> Vec<String> {
 
 pub fn get_ast(script: &str, err: &mut ErrorGen) -> Option<Whamm> {
     info!("Getting the AST");
-    match parse_script(&script.to_string(), err) {
-        Some(ast) => {
-            Some(ast)
-        },
-        None => {
-            None
-        }
-    }
+    parse_script(&script.to_string(), err)
 }
 
 fn is_valid_script(script: &str, err: &mut ErrorGen) -> bool {
-    match get_ast(script, err) {
-        Some(_ast) => {
-            true
-        },
-        None => {
-            false
-        }
-    }
+    get_ast(script, err).is_some()
 }
 
 pub fn run_test_on_valid_list(scripts: Vec<String>, err: &mut ErrorGen) {
@@ -300,7 +287,7 @@ wasm::call:alt /
 pub fn test_implicit_probe_defs_dumper() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-    let script = "wasm:::alt / (i == \"1\") && (b == \"2\") / { i = 0; }";
+    let script = r#"wasm:::alt / (i == "1") && (b == "2") / { i = 0; }"#;
 
     match get_ast(script, &mut err) {
         Some(ast) => {

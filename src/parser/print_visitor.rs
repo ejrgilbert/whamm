@@ -1,9 +1,9 @@
 use crate::parser::types as parser_types;
-use parser_types::{WhammVisitor};
+use parser_types::WhammVisitor;
 
 use std::cmp;
 use std::collections::HashMap;
-use crate::parser::types::{DataType, Script, Whamm, Expr, Event, Package, Op, Probe, Provider, Statement, Value, Global, ProvidedFunctionality};
+use crate::parser::types::{DataType, Script, Whamm, Expr, Event, Package, BinOp, UnOp, Probe, Provider, Statement, Value, Global, ProvidedFunctionality};
 
 const NL: &str = "\n";
 
@@ -20,7 +20,7 @@ impl AsStrVisitor {
     }
 
     fn get_indent(&self) -> String {
-        "--".repeat(cmp::max(0, self.indent.clone() as usize))
+        "--".repeat(cmp::max(0, self.indent as usize))
     }
 
     fn visit_globals(&mut self, globals: &HashMap<String, Global>) -> String {
@@ -317,23 +317,17 @@ impl WhammVisitor<String> for AsStrVisitor {
         s += &format!(")");
 
         // print return type
-        match &f.return_ty {
-            Some(ty) => {
-                s += &format!(" -> {}", self.visit_datatype(ty));
-            },
-            _ => {}
+        if let Some(ty) = &f.return_ty {
+            s += &format!(" -> {}", self.visit_datatype(ty));
         }
         s += &format!(" {{{}", NL);
 
         // print body
         self.increase_indent();
-        match &f.body {
-            Some(stmts) => {
-                for stmt in stmts.iter() {
-                    s += &format!("{}{}{}", self.get_indent(), self.visit_stmt(stmt), NL);
-                }
-            },
-            _ => {}
+        if let Some(stmts) = &f.body {
+            for stmt in stmts.iter() {
+                s += &format!("{}{}{}", self.get_indent(), self.visit_stmt(stmt), NL);
+            }
         }
         self.decrease_indent();
         s += &format!("{} }}{}", self.get_indent(), NL);
@@ -362,7 +356,7 @@ impl WhammVisitor<String> for AsStrVisitor {
                 let mut s = "".to_string();
                 s += &format!("{} {} {}",
                     self.visit_expr(lhs),
-                    self.visit_op(op),
+                    self.visit_binop(op),
                     self.visit_expr(rhs)
                 );
                 s
@@ -385,24 +379,35 @@ impl WhammVisitor<String> for AsStrVisitor {
             Expr::Primitive {val, ..} => {
                 self.visit_value(val)
             }
+            Expr::UnOp {op, expr, ..} => {
+                let mut s = "".to_string();
+                s += &format!("{}{}", self.visit_unop(op), self.visit_expr(expr));
+                s
+            }
         }
     }
 
-    fn visit_op(&mut self, op: &Op) -> String {
+    fn visit_unop(&mut self, op: &UnOp) -> String {
         match op {
-            Op::And => "&&",
-            Op::Or => "||",
-            Op::EQ => "==",
-            Op::NE => "!=",
-            Op::GE => ">=",
-            Op::GT => ">",
-            Op::LE => "<=",
-            Op::LT => "<",
-            Op::Add => "+",
-            Op::Subtract => "-",
-            Op::Multiply => "*",
-            Op::Divide => "/",
-            Op::Modulo => "%",
+            UnOp::Not => "!"
+        }.parse().unwrap()
+    }
+
+    fn visit_binop(&mut self, op: &BinOp) -> String {
+        match op {
+            BinOp::And => "&&",
+            BinOp::Or => "||",
+            BinOp::EQ => "==",
+            BinOp::NE => "!=",
+            BinOp::GE => ">=",
+            BinOp::GT => ">",
+            BinOp::LE => "<=",
+            BinOp::LT => "<",
+            BinOp::Add => "+",
+            BinOp::Subtract => "-",
+            BinOp::Multiply => "*",
+            BinOp::Divide => "/",
+            BinOp::Modulo => "%",
         }.parse().unwrap()
     }
 
