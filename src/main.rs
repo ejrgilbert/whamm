@@ -5,8 +5,8 @@ use cli::{Cmd, WhammCli};
 use crate::parser::whamm_parser::*;
 use crate::behavior::builder_visitor::*;
 use crate::generator::emitters::{Emitter, WasmRewritingEmitter};
-use crate::generator::init_generator::{InitGenerator};
-use crate::generator::instr_generator::{InstrGenerator};
+use crate::generator::init_generator::InitGenerator;
+use crate::generator::instr_generator::InstrGenerator;
 use crate::common::error::ErrorGen;
 
 mod cli;

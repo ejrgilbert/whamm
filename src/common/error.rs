@@ -34,7 +34,7 @@ impl ErrorGen {
     }
 
     pub fn add_error(&mut self, error: WhammError) {
-        let fatal = error.fatal.clone();
+        let fatal = error.fatal;
         self.errors.push(error);
         self.inc_errors();
 
@@ -215,13 +215,9 @@ impl ErrorGen {
             // See code the following code for why we can do this:
             // https://github.com/pest-parser/pest/blob/master/pest/src/error.rs#L612
             let mut lines = orig_msg.lines();
-            if let Some(line) = lines.rfind(|line| {
+            lines.rfind(|line| {
                 line.as_bytes()[0].is_ascii_digit()
-            }) {
-                Some(line.to_string())
-            } else {
-                None
-            }
+            }).map(|line| line.to_string())
         } else {
             None
         };
@@ -285,13 +281,10 @@ pub struct CodeLocation {
 }
 impl CodeLocation {
     pub fn is_span(&self) -> bool {
-        match self.line_col {
-            LineColLocation::Span(..) => true,
-            _ => false
-        }
+        matches!(self.line_col, LineColLocation::Span(..))
     }
     pub fn lines_are_defined(&self) -> bool {
-        !self.line_str.is_none()
+        self.line_str.is_some()
     }
 
     // report this error to the console, including color highlighting
@@ -333,7 +326,7 @@ impl CodeLocation {
         }
     }
 
-    fn define_lines(&mut self, script: &String) {
+    fn define_lines(&mut self, script: &str) {
         match &self.line_col {
             LineColLocation::Pos((line_no, ..)) => {
                 if let Some(script_line) = script.lines().nth(line_no - 1) {
@@ -353,7 +346,7 @@ impl CodeLocation {
         }
     }
 
-    fn print_numbered_line(&self, l: &usize, line: &String, s: &String, buffer: &mut Buffer) {
+    fn print_numbered_line(&self, l: &usize, line: &String, s: &str, buffer: &mut Buffer) {
         let w = s.len();
         blue(false, format!("{l:w$} | "), buffer);
         white(false, format!("{line}\n"), buffer);
@@ -381,7 +374,7 @@ impl CodeLocation {
     fn underline(&self, start_col: &usize) -> String {
         let mut underline = String::new();
 
-        let mut start_col = start_col.clone();
+        let mut start_col = *start_col;
         let end = match &self.line_col {
             LineColLocation::Span(_, (_, mut end)) => {
                 let inverted_cols = start_col > end;
@@ -415,10 +408,10 @@ impl CodeLocation {
                 INFO_UNDERLINE_CHAR
             };
 
-            underline.push(u_char.clone());
-            if end - &start_col > 1 {
-                for _ in 2..(&end - &start_col) {
-                    underline.push(u_char.clone());
+            underline.push(u_char);
+            if end - start_col > 1 {
+                for _ in 2..(end - start_col) {
+                    underline.push(u_char);
                 }
                 underline.push(u_char);
             }
@@ -447,7 +440,7 @@ pub struct WhammError {
 }
 impl WhammError {
     pub fn is_fatal(&self) -> bool {
-        self.fatal.clone()
+        self.fatal
     }
 
     /// report this error to the console, including color highlighting
@@ -637,7 +630,7 @@ impl ErrorType {
                 let non_separated = f(&rules[l - 1]);
                 let separated = rules
                     .iter()
-                    .take(l.clone() - 1)
+                    .take(l - 1)
                     .map(f)
                     .collect::<Vec<_>>()
                     .join(", ");
