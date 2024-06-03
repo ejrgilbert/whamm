@@ -6,7 +6,7 @@ use pest::error::{Error, LineColLocation};
 use pest::Parser;
 use pest::iterators::{Pair, Pairs};
 
-use log::{trace};
+use log::trace;
 use crate::common::error::{ErrorGen, WhammError};
 use crate::parser::types::{DataType, Script, Whamm, Expr, Statement, Value, Location, ProbeSpec, SpecPart};
 

@@ -233,10 +233,8 @@ impl WhammVisitor<String> for AsStrVisitor {
                 self.increase_indent();
                 s += &format!("{} {}: ", self.get_indent(), name);
 
-                s += &format!("(");
-                for probe in probes.iter() {
-                    self.visit_probe(probe);
-                }
+                s += &format!("({}", NL);
+                s += &probes.iter().map(|probe| self.visit_probe(probe)).collect::<String>();
                 s += &format!("){}", NL);
                 self.decrease_indent();
             }
@@ -273,7 +271,12 @@ impl WhammVisitor<String> for AsStrVisitor {
         s += &format!("{} `predicate`:{}", self.get_indent(), NL);
         self.increase_indent();
         match &probe.predicate {
-            Some(pred) => s += &format!("{} / {} /{}", self.get_indent(), self.visit_expr(pred), NL),
+            Some(pred) => {
+                let expr = self.visit_expr(pred);
+                expr.split("&&").for_each(|line| {
+                    s += &format!("{}&& {}{}", self.get_indent(), line, NL)
+                });
+            },
             None => s += &format!("{} / None /{}", self.get_indent(), NL)
         }
         self.decrease_indent();
@@ -369,9 +372,7 @@ impl WhammVisitor<String> for AsStrVisitor {
                 s += &format!("{}(", self.visit_expr(fn_target));
                 match args {
                     Some(args) => {
-                        for arg in args {
-                            s += &format!("{}, ", self.visit_expr(arg));
-                        }
+                        s += &args.iter().map(|arg| self.visit_expr(arg)).collect::<Vec<String>>().join(", ");
                     },
                     _ => {}
                 }
@@ -445,9 +446,7 @@ impl WhammVisitor<String> for AsStrVisitor {
             Value::Tuple {ty: _ty, vals} => {
                 let mut s = "".to_string();
                 s += &format!("(");
-                for v in vals.iter() {
-                    s += &format!("{}, ", self.visit_expr(v));
-                }
+                s += &vals.iter().map(|v| self.visit_expr(v)).collect::<Vec<String>>().join(", ");
                 s += &format!(")");
                 s
             }
