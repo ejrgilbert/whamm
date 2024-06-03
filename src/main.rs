@@ -86,7 +86,7 @@ fn run_instr(app_wasm_path: String, script_path: String, output_wasm_path: Strin
 
     // Process the script
     let mut whamm = get_script_ast(&script_path, &mut err);
-    let symbol_table = get_symbol_table(&whamm, run_verifier, &mut err);
+    let symbol_table = get_symbol_table(&mut whamm, run_verifier, &mut err);
     let (behavior_tree, simple_ast) = build_behavior(&whamm, &mut err);
 
     // If there were any errors encountered, report and exit!
@@ -187,11 +187,13 @@ fn run_vis_script(script_path: String, run_verifier: bool, output_path: String) 
     // Set up error reporting mechanism
     let mut err = ErrorGen::new(script_path.clone(), "".to_string(), MAX_ERRORS);
 
-    let whamm = get_script_ast(&script_path, &mut err);
-    verify_ast(&whamm, run_verifier, &mut err);
+    let mut whamm = get_script_ast(&script_path, &mut err);
+    // building the symbol table is necessary since it does some minor manipulations of the AST
+    // (adds declared globals to the script AST node)
+    let _symbol_table = get_symbol_table(&mut whamm, run_verifier, &mut err);
     let (behavior_tree, ..) = build_behavior(&whamm, &mut err);
 
-    // if has any errors, should report and exit!
+    // if there are any errors, should report and exit!
     err.check_has_errors();
 
     let path = match get_pb(&PathBuf::from(output_path.clone())) {
@@ -218,8 +220,8 @@ fn run_vis_script(script_path: String, run_verifier: bool, output_path: String) 
     exit(0);
 }
 
-fn get_symbol_table(ast: &Whamm, run_verifier: bool, err: &mut ErrorGen) -> SymbolTable {
-    let st = build_symbol_table(&ast, err);
+fn get_symbol_table(ast: &mut Whamm, run_verifier: bool, err: &mut ErrorGen) -> SymbolTable {
+    let st = build_symbol_table(ast, err);
     err.check_too_many();
     verify_ast(ast, run_verifier, err);
     st

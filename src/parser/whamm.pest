@@ -2,20 +2,17 @@
 // ---- High-Level Structure ----
 // ==============================
 
-script = { SOI ~ probe_def+ ~ EOI }
+// supports top-level global declarations/initial assignments and probe definitions
+script = { SOI ~ statement* ~ probe_def+ ~ EOI }
 
 // TODO -- support comma separated list of specs: https://docs.oracle.com/cd/E23824_01/html/E22973/glghi.html#scrolltoc
 probe_def = { PROBE_SPEC ~ PUSH(predicate?) ~ "{" ~ statement* ~ "}" }
 
 predicate = { "/" ~ expr ~ "/" }
 
-// spec = { PROBE_SPEC | PROBE_ID }
-
 // =====================
 // ---- Identifiers ----
 // =====================
-
-ID = @{ (ASCII_ALPHA | "_")+ ~ ( ASCII_DIGIT | (ASCII_ALPHA | "_")+ )* }
 
 PROBE_ID = @{
     (ASCII_ALPHA
@@ -25,6 +22,7 @@ PROBE_ID = @{
     | "+"
     | "\\"
     | "?"
+    | "|"
     | "!"
     | "["
     | "]")+
@@ -38,6 +36,23 @@ PROBE_SPEC = ${
     | PROBE_ID
 }
 
+ID = @{ (ASCII_ALPHA | "_")+ ~ ( ASCII_DIGIT | (ASCII_ALPHA | "_")+ )* }
+
+// ===============
+// ---- Types ----
+// ===============
+
+TY_I32 = @{ "i32" }
+TY_BOOL = @{ "bool" }
+TY_STRING = @{ "str" }
+
+// a tuple that's used as a type declaration
+TY_TUPLE = { "(" ~ TYPE ~ ( "," ~ TYPE )* ~ ")" }
+// first TYPE is the type of the key, second TYPE is the type of the value
+TY_MAP = { "map<" ~ TYPE ~ "," ~ TYPE ~ ">" }
+
+TYPE = _{ TY_I32 | TY_BOOL | TY_STRING | TY_TUPLE | TY_MAP }
+
 // ====================
 // ---- Statements ----
 // ====================
@@ -45,20 +60,25 @@ PROBE_SPEC = ${
 arg = { tuple | expr | val }
 fn_call = { ID ~ "(" ~ ( arg )? ~ ( "," ~ arg )* ~ ")" }
 
-assignment = { ID ~ "=" ~ expr }
-statement = { ( ( fn_call | assignment ) ~ ";" )+ }
+// var ops
+declaration = { TYPE ~ ID }
+assignment = { ID ~ "=" ~ (ternary | expr) }
+statement = { ( ( declaration | assignment | fn_call ) ~ ";" )+ }
 
 // =====================
 // ---- Expressions ----
 // =====================
 
+ternary = { expr ~ "?" ~ expr ~ ":" ~ expr }
+
 expr = { prefix? ~ operand ~ (BINOP ~ prefix? ~ operand)* }
 
-neg = { "!" }
-UNOP = _{ neg }
 prefix = _{ UNOP }
-val = _{ BOOL | ID | INT | STRING }
-operand = { fn_call | "(" ~ expr ~ ")" | val }
+UNOP = _{ neg }
+    neg = { "!" }
+
+val = _{ BOOL | ID | I32 | STRING }
+operand = _{ fn_call | "(" ~ expr ~ ")" | val }
 
 tuple = { "(" ~ (val) ~ ( "," ~ val )* ~ ")" }
 
@@ -94,7 +114,7 @@ BINOP = _{ LOGOP | RELOP | SUMOP | MULOP }
 
 // TODO -- make sure that the binary/octal/hexadecimal formats are parsed correctly
 // TODO -- add support for negative numbers (see calc-pest tutorial)
-INT = @{
+I32 = @{
     "0x" ~ ASCII_HEX_DIGIT+ // Hexadecimal digit
     | "0b" ~ ASCII_BIN_DIGIT+ // Binary digit
     | "0" ~ ASCII_OCT_DIGIT+ // Octal digit

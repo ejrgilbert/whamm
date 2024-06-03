@@ -174,8 +174,8 @@ fn assert_simplified_predicate(pred: &Expr) {
 
 fn basic_run(script: &str, err: &mut ErrorGen) {
     match tests::get_ast(script, err) {
-        Some(whamm) => {
-            let mut table = verifier::build_symbol_table(&whamm, err);
+        Some(mut whamm) => {
+            let mut table = verifier::build_symbol_table(&mut whamm, err);
             table.reset();
 
             let pred = get_pred(&whamm);
@@ -265,8 +265,8 @@ wasm::call:alt /
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
 
     match tests::get_ast(script, &mut err) {
-        Some(whamm) => {
-            let mut table = verifier::build_symbol_table(&whamm, &mut err);
+        Some(mut whamm) => {
+            let mut table = verifier::build_symbol_table(&mut whamm, &mut err);
             table.reset();
 
             let pred = get_pred(&whamm);

@@ -16,6 +16,9 @@ impl ExprFolder {
             Expr::BinOp { .. } => {
                 ExprFolder::fold_binop(expr, table)
             }
+            Expr::Ternary { .. } => {
+                ExprFolder::fold_ternary(expr, table)
+            }
             Expr::Call { .. } => {
                 ExprFolder::fold_call(expr, table)
             }
@@ -196,7 +199,7 @@ impl ExprFolder {
             _ => {}
         }
 
-        // Cannot fold any more
+        // Cannot fold anymore
         binop.clone()
     }
 
@@ -305,35 +308,35 @@ impl ExprFolder {
                     }),
                     BinOp::Add => Some(Expr::Primitive {
                         val: Value::Integer {
-                            ty: DataType::Integer,
+                            ty: DataType::I32,
                             val: lhs_int + rhs_int,
                         },
                         loc: None
                     }),
                     BinOp::Subtract => Some(Expr::Primitive {
                         val: Value::Integer {
-                            ty: DataType::Integer,
+                            ty: DataType::I32,
                             val: lhs_int - rhs_int,
                         },
                         loc: None
                     }),
                     BinOp::Multiply => Some(Expr::Primitive {
                         val: Value::Integer {
-                            ty: DataType::Integer,
+                            ty: DataType::I32,
                             val: lhs_int * rhs_int,
                         },
                         loc: None
                     }),
                     BinOp::Divide => Some(Expr::Primitive {
                         val: Value::Integer {
-                            ty: DataType::Integer,
+                            ty: DataType::I32,
                             val: lhs_int / rhs_int,
                         },
                         loc: None
                     }),
                     BinOp::Modulo => Some(Expr::Primitive {
                         val: Value::Integer {
-                            ty: DataType::Integer,
+                            ty: DataType::I32,
                             val: lhs_int % rhs_int,
                         },
                         loc: None
@@ -368,6 +371,10 @@ impl ExprFolder {
             }
         }
         None
+    }
+
+    fn fold_ternary(_ternary: &Expr, _table: &SymbolTable) -> Expr {
+        todo!()
     }
 
     fn fold_call(call: &Expr, _table: &SymbolTable) -> Expr {

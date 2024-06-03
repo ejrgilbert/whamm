@@ -16,6 +16,13 @@ pub fn setup_logger() {
 }
 
 const VALID_SCRIPTS: &'static [&'static str] = &[
+    // Ternary
+    r#"
+wasm:bytecode:br:before {
+    index = i ? 1 : 0;
+}
+    "#,
+
     // Variations of PROBE_SPEC
     "BEGIN { }",
     "END { }",
@@ -64,12 +71,23 @@ wasm::call:alt /
     new_target_fn_name = "redirect_to_fault_injector";
 }
     "#,
-  
+
+    // globals
+    r#"
+map<i32, i32> count;
+BEGIN { }
+    "#,
+    r#"
+map<i32, i32> count;
+count = 0;
+BEGIN { }
+    "#,
+
     // Statements (either assignment or function call)
     r#"
-    wasm:bytecode:br:before {
-        i = 0;
-    }
+wasm:bytecode:br:before {
+    i = 0;
+}
     "#,
     r#"
     wasm:bytecode:br:before {
@@ -95,6 +113,11 @@ wasm:bytecode:br:before {
 ];
 
 const INVALID_SCRIPTS: &'static [&'static str] = &[
+    // globals
+    r#"
+map<i32, i32> count;
+    "#,
+
     // Variations of PROBE_SPEC
     "wasm:bytecode:call:alt: { }",
     "wasm:bytecode:call:alt",
@@ -244,7 +267,7 @@ wasm::call:alt /
             assert_eq!(1, provider.packages.len());
             let package = provider.packages.get("bytecode").unwrap();
             assert_eq!("bytecode", package.name);
-            assert_eq!(0, package.globals.len());
+            assert_eq!(2, package.globals.len());
             assert_eq!(0, package.fns.len());
 
             assert_eq!(1, package.events.len());
