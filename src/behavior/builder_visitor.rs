@@ -439,7 +439,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_> {
         unreachable!()
     }
 
-    fn visit_op(&mut self, _op: &BinOp) -> () {
+    fn visit_binop(&mut self, _binop: &BinOp) -> () {
         // Not visiting predicates/statements
         unreachable!()
     }

@@ -1665,7 +1665,7 @@ pub trait WhammVisitor<T> {
     fn visit_stmt(&mut self, stmt: &Statement) -> T;
     fn visit_expr(&mut self, expr: &Expr) -> T;
     fn visit_unop(&mut self, unop: &UnOp) -> T;
-    fn visit_op(&mut self, op: &BinOp) -> T;
+    fn visit_binop(&mut self, binop: &BinOp) -> T;
     fn visit_datatype(&mut self, datatype: &DataType) -> T;
     fn visit_value(&mut self, val: &Value) -> T;
 }
@@ -1683,7 +1683,7 @@ pub trait WhammVisitorMut<T> {
     fn visit_formal_param(&mut self, param: &mut (Expr, DataType)) -> T;
     fn visit_stmt(&mut self, stmt: &mut Statement) -> T;
     fn visit_expr(&mut self, expr: &mut Expr) -> T;
-    fn visit_op(&mut self, op: &mut BinOp) -> T;
+    fn visit_binop(&mut self, op: &mut BinOp) -> T;
     fn visit_datatype(&mut self, datatype: &mut DataType) -> T;
     fn visit_value(&mut self, val: &mut Value) -> T;
 }

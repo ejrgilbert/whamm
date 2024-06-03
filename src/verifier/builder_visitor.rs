@@ -506,7 +506,7 @@ impl WhammVisitor<()> for SymbolTableBuilder<'_> {
         self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
     }
 
-    fn visit_op(&mut self, _op: &BinOp) -> () {
+    fn visit_binop(&mut self, _binop: &BinOp) -> () {
         // Not visiting predicates/statements
         self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
     }

@@ -356,7 +356,7 @@ impl WhammVisitor<String> for AsStrVisitor {
                 let mut s = "".to_string();
                 s += &format!("{} {} {}",
                     self.visit_expr(lhs),
-                    self.visit_op(op),
+                    self.visit_binop(op),
                     self.visit_expr(rhs)
                 );
                 s
@@ -393,7 +393,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         }.parse().unwrap()
     }
 
-    fn visit_op(&mut self, op: &BinOp) -> String {
+    fn visit_binop(&mut self, op: &BinOp) -> String {
         match op {
             BinOp::And => "&&",
             BinOp::Or => "||",

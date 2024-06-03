@@ -163,7 +163,7 @@ fn emit_expr(table: &mut SymbolTable, module_data: &mut ModuleData, expr: &mut E
         Expr::BinOp {lhs, op, rhs, ..} => {
             is_success &= emit_expr(table, module_data, lhs, instr_builder, metadata, index)?;
             is_success &= emit_expr(table, module_data, rhs, instr_builder, metadata, index)?;
-            is_success &= emit_op(op, instr_builder, index);
+            is_success &= emit_binop(op, instr_builder, index);
         }
         Expr::Call { fn_target, args, ..} => {
             let fn_name = match &**fn_target {
@@ -259,7 +259,7 @@ fn emit_expr(table: &mut SymbolTable, module_data: &mut ModuleData, expr: &mut E
     Ok(is_success)
 }
 
-fn emit_op(op: &BinOp, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> bool {
+fn emit_binop(op: &BinOp, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> bool {
     match op {
         BinOp::And => {
             // we only support i32's at the moment
