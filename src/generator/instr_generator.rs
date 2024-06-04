@@ -228,7 +228,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         if let Node::ArgAction {ty, force_success, ..} = node {
             if let ArgActionType::SaveParams = ty {
                 match self.emitter.has_params() {
-                    Err(e) => self.err.add_error(e),
+                    Err(e) => self.err.add_error(*e),
                     Ok(res) => {
                         if res {
                             // The current instruction has parameters, save them
@@ -253,12 +253,12 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         if let Node::ArgAction { ty, force_success, ..} = node {
             if let ArgActionType::EmitParams = ty {
                 match self.emitter.has_params() {
-                    Err(e) => self.err.add_error(e),
+                    Err(e) => self.err.add_error(*e),
                     Ok(res) => {
                         if res {
                             // The current instruction has parameters, emit them
                             match self.emitter.emit_params() {
-                                Err(e) => self.err.add_error(e),
+                                Err(e) => self.err.add_error(*e),
                                 Ok(res) => is_success &= res,
                             }
                         } else {
@@ -286,7 +286,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                     // Initialize the instr visitor
                     let instrs_of_interest: Vec<String> = events.keys().cloned().collect();
                     match self.emitter.init_instr_iter(&instrs_of_interest) {
-                        Err(e) => self.err.add_error(e),
+                        Err(e) => self.err.add_error(*e),
                         _ => {}
                     }
 
@@ -321,7 +321,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                             // define this instruction type's compiler variables
                             for global in globals {
                                 match self.emitter.define_compiler_var(&self.context_name, global) {
-                                    Err(e) => self.err.add_error(e),
+                                    Err(e) => self.err.add_error(*e),
                                     Ok(res) => is_success &= res,
                                 }
                             }
@@ -333,7 +333,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
 
                             // exit this event's scope
                             match self.emitter.exit_scope() {
-                                Err(e) => self.err.add_error(e),
+                                Err(e) => self.err.add_error(*e),
                                 _ => {}
                             }
                         }
@@ -341,7 +341,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                     }
 
                     match self.emitter.exit_scope() {
-                        Err(e) => self.err.add_error(e),
+                        Err(e) => self.err.add_error(*e),
                         _ => {}
                     }
                 }
@@ -365,7 +365,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                 // define this probe's compiler variables
                 for global in global_names {
                     match self.emitter.define_compiler_var(&self.context_name, global) {
-                        Err(e) => self.err.add_error(e),
+                        Err(e) => self.err.add_error(*e),
                         Ok(res) => is_success &= res,
                     }
                 }
@@ -415,7 +415,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                                 if !pred_as_bool {
                                     // predicate is reduced to `false` short-circuit!
                                     match self.emitter.exit_scope() {
-                                        Err(e) => self.err.add_error(e),
+                                        Err(e) => self.err.add_error(*e),
                                         _ => {}
                                     }
                                     return true;
@@ -433,7 +433,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                     unreachable!()
                 }
                 match self.emitter.exit_scope() {
-                    Err(e) => self.err.add_error(e),
+                    Err(e) => self.err.add_error(*e),
                     _ => {}
                 }
             }
@@ -495,7 +495,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         if let Node::Action {ty, ..} = node {
             if let ActionType::ExitScope = ty {
                 match self.emitter.exit_scope() {
-                    Err(e) => self.err.add_error(e),
+                    Err(e) => self.err.add_error(*e),
                     _ => {}
                 }
             } else {
@@ -512,7 +512,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         if let Node::Action {ty, ..} = node {
             if let ActionType::Define {var_name, ..} = ty {
                 match self.emitter.define_compiler_var(&self.context_name, var_name) {
-                    Err(e) => self.err.add_error(e),
+                    Err(e) => self.err.add_error(*e),
                     Ok(res) => is_success &= res,
                 }
             } else {
@@ -532,7 +532,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                 //     will need to instrument ALL entrypoints for that to work :/
                 if !self.ast.global_stmts.is_empty() {
                     match self.emitter.emit_global_stmts(&mut self.ast.global_stmts) {
-                        Err(e) => self.err.add_error(e),
+                        Err(e) => self.err.add_error(*e),
                         Ok(res) => is_success &= res,
                     }
                 }
@@ -552,7 +552,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                 if let Some(probe) = &mut self.curr_probe {
                     if let Some(pred) = &mut probe.predicate {
                         match self.emitter.emit_expr(pred) {
-                            Err(e) => self.err.add_error(e),
+                            Err(e) => self.err.add_error(*e),
                             Ok(res) => is_success &= res,
                         }
                     }
@@ -587,7 +587,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                 if let Some(probe) = &mut self.curr_probe {
                     if let Some(body) = &mut probe.body {
                         match self.emitter.emit_body(body) {
-                            Err(e) => self.err.add_error(e),
+                            Err(e) => self.err.add_error(*e),
                             Ok(res) => is_success &= res,
                         }
                     }
@@ -606,7 +606,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         if let Node::Action {ty, ..} = node {
             if let ActionType::EmitAltCall = ty {
                 match self.emitter.emit_alt_call() {
-                    Err(e) => self.err.add_error(e),
+                    Err(e) => self.err.add_error(*e),
                     Ok(res) => is_success &= res,
                 }
             } else {

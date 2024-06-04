@@ -52,7 +52,7 @@ impl SymbolTableBuilder<'_> {
 
         // enter script scope
         match self.table.enter_scope() {
-            Err(e) => self.err.add_error(e),
+            Err(e) => self.err.add_error(*e),
             _ => {}
         }
         self.curr_script = Some(id.clone());
@@ -91,7 +91,7 @@ impl SymbolTableBuilder<'_> {
 
         // enter provider scope
         match self.table.enter_scope() {
-            Err(e) => self.err.add_error(e),
+            Err(e) => self.err.add_error(*e),
             _ => {}
         }
         self.curr_provider = Some(id.clone());
@@ -129,7 +129,7 @@ impl SymbolTableBuilder<'_> {
 
         // enter package scope
         match self.table.enter_scope() {
-            Err(e) => self.err.add_error(e),
+            Err(e) => self.err.add_error(*e),
             _ => {}
         }
         self.curr_package = Some(id.clone());
@@ -167,7 +167,7 @@ impl SymbolTableBuilder<'_> {
 
         // enter event scope
         match self.table.enter_scope() {
-            Err(e) => self.err.add_error(e),
+            Err(e) => self.err.add_error(*e),
             _ => {}
         }
         self.curr_event = Some(id.clone());
@@ -204,7 +204,7 @@ impl SymbolTableBuilder<'_> {
 
         // enter probe scope
         match self.table.enter_scope() {
-            Err(e) => self.err.add_error(e),
+            Err(e) => self.err.add_error(*e),
             _ => {}
         }
         self.curr_probe = Some(id.clone());
@@ -246,7 +246,7 @@ impl SymbolTableBuilder<'_> {
 
         // enter fn scope
         match self.table.enter_scope() {
-            Err(e) => self.err.add_error(e),
+            Err(e) => self.err.add_error(*e),
             _ => {}
         }
         self.curr_fn = Some(id.clone());
@@ -417,7 +417,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
 
         trace!("Exiting: visit_script");
         match self.table.exit_scope() {
-            Err(e) => self.err.add_error(e),
+            Err(e) => self.err.add_error(*e),
             _ => {}
         }
         self.curr_script = None;
@@ -435,7 +435,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
 
         trace!("Exiting: visit_provider");
         match self.table.exit_scope() {
-            Err(e) => self.err.add_error(e),
+            Err(e) => self.err.add_error(*e),
             _ => {}
         }
         self.curr_provider = None;
@@ -453,7 +453,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
 
         trace!("Exiting: visit_package");
         match self.table.exit_scope() {
-            Err(e) => self.err.add_error(e),
+            Err(e) => self.err.add_error(*e),
             _ => {}
         }
         self.curr_package = None;
@@ -475,7 +475,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
 
         trace!("Exiting: visit_event");
         match self.table.exit_scope() {
-            Err(e) => self.err.add_error(e),
+            Err(e) => self.err.add_error(*e),
             _ => {}
         }
         self.curr_event = None;
@@ -492,7 +492,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
 
         trace!("Exiting: visit_probe");
         match self.table.exit_scope() {
-            Err(e) => self.err.add_error(e),
+            Err(e) => self.err.add_error(*e),
             _ => {}
         }
         self.curr_probe = None;
@@ -508,7 +508,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
 
         trace!("Exiting: visit_fn");
         match self.table.exit_scope() {
-            Err(e) => self.err.add_error(e),
+            Err(e) => self.err.add_error(*e),
             _ => {}
         }
         self.curr_fn = None;

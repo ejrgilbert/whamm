@@ -28,7 +28,7 @@ fn get_wasm_module() -> Module {
 fn instrument_with_fault_injection() {
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let processed_scripts = common::setup_fault_injection(&mut err);
-    assert!(processed_scripts.len() > 0);
+    assert!(!processed_scripts.is_empty());
     err.fatal_report("Integration Test");
 
     for (script_path, script_text, mut whamm, symbol_table, behavior, simple_ast) in processed_scripts {
@@ -67,20 +67,14 @@ fn instrument_with_fault_injection() {
         err.fatal_report("Integration Test");
 
         if !Path::new(OUT_BASE_DIR).exists() {
-            match fs::create_dir(OUT_BASE_DIR) {
-                Err(err) => {
-                    error!("{}", err.to_string());
-                    assert!(false, "Could not create base output path.");
-                },
-                _ => {}
+            if let Err(err) = fs::create_dir(OUT_BASE_DIR) {
+                error!("{}", err.to_string());
+                panic!("Could not create base output path.");
             }
         }
 
         let out_wasm_path = format!("{OUT_BASE_DIR}/{OUT_WASM_NAME}");
-        match emitter.dump_to_file(out_wasm_path.clone()) {
-            Err(e) => err.add_error(e),
-            _ => {}
-        }
+        if let Err(e) = emitter.dump_to_file(out_wasm_path.clone()) { err.add_error(*e) }
         err.fatal_report("Integration Test");
 
         let mut wasm2wat = Command::new("wasm2wat");
@@ -91,13 +85,12 @@ fn instrument_with_fault_injection() {
         match wasm2wat.status() {
             Ok(code) => {
                 if !code.success() {
-                    assert!(false, "`wasm2wat` verification check failed!");
+                    panic!("`wasm2wat` verification check failed!");
                 }
-                assert!(true);
             }
             Err(err) => {
                 error!("{}", err.to_string());
-                assert!(false, "`wasm2wat` verification check failed!");
+                panic!("`wasm2wat` verification check failed!");
             }
         };
     }

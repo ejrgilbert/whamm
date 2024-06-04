@@ -136,7 +136,7 @@ fn run_instr(app_wasm_path: String, script_path: String, output_wasm_path: Strin
     err.check_has_errors();
 
     match emitter.dump_to_file(output_wasm_path) {
-        Err(e) => err.add_error(e),
+        Err(e) => err.add_error(*e),
         _ => {}
     }
     // If there were any errors encountered, report and exit!

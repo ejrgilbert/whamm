@@ -87,7 +87,7 @@ impl SymbolTable {
         return false;
     }
 
-    pub fn enter_scope(&mut self) -> Result<(), WhammError> {
+    pub fn enter_scope(&mut self) -> Result<(), Box<WhammError>> {
         let new_id = self.scopes.len();
 
         let curr_scope = self.get_curr_scope_mut().unwrap();
@@ -123,13 +123,13 @@ impl SymbolTable {
         return Ok(());
     }
 
-    pub fn exit_scope(&mut self) -> Result<(), WhammError> {
+    pub fn exit_scope(&mut self) -> Result<(), Box<WhammError>> {
         match self.get_curr_scope().unwrap().parent {
             Some(parent) => self.curr_scope = parent.clone(),
             None => {
-                return Err(ErrorGen::get_unexpected_error(true,
+                return Err(Box::new(ErrorGen::get_unexpected_error(true,
                     Some(format!("{} Attempted to exit current scope, but there was no parent to exit into.", UNEXPECTED_ERR_MSG)),
-                    None));
+                    None)));
             }
         }
         Ok(())
@@ -263,11 +263,11 @@ impl Scope {
         self.next < self.children.len()
     }
 
-    pub fn next_child(&mut self) -> Result<&usize, WhammError> {
+    pub fn next_child(&mut self) -> Result<&usize, Box<WhammError>> {
         if !self.has_next() {
-            return Err(ErrorGen::get_unexpected_error(true,
+            return Err(Box::new(ErrorGen::get_unexpected_error(true,
               Some(format!("{} Scope::next_child() should never be called without first checking that there is one.", UNEXPECTED_ERR_MSG)),
-              None));
+              None)));
         }
 
         let next_child = self.children.get(self.next).unwrap();

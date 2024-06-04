@@ -50,14 +50,14 @@ fn move_through_scopes_til_match(desired_ty: ScopeType, table: &mut SymbolTable,
     while table.get_curr_scope().unwrap().ty != desired_ty {
         match table.exit_scope() {
             Err(e) => {
-                err.add_error(e);
+                err.add_error(*e);
                 err.report();
             },
             _ => {}
         }
         match table.enter_scope() {
             Err(e) => {
-                err.add_error(e);
+                err.add_error(*e);
                 err.report();
             },
             _ => {}
@@ -68,7 +68,7 @@ fn move_through_scopes_til_match(desired_ty: ScopeType, table: &mut SymbolTable,
 fn hardcode_compiler_constants(table: &mut SymbolTable, err: &mut ErrorGen) {
     match table.enter_scope() {
         Err(e) => {
-            err.add_error(e);
+            err.add_error(*e);
             err.report();
         },
         _ => {}
@@ -78,7 +78,7 @@ fn hardcode_compiler_constants(table: &mut SymbolTable, err: &mut ErrorGen) {
     // enter wasm scope
     match table.enter_scope() {
         Err(e) => {
-            err.add_error(e);
+            err.add_error(*e);
             err.report();
         },
         _ => {}
@@ -88,7 +88,7 @@ fn hardcode_compiler_constants(table: &mut SymbolTable, err: &mut ErrorGen) {
     // enter bytecode scope
     match table.enter_scope() {
         Err(e) => {
-            err.add_error(e);
+            err.add_error(*e);
             err.report();
         },
         _ => {}
@@ -98,7 +98,7 @@ fn hardcode_compiler_constants(table: &mut SymbolTable, err: &mut ErrorGen) {
     // enter call scope
     match table.enter_scope() {
         Err(e) => {
-            err.add_error(e);
+            err.add_error(*e);
             err.report();
         },
         _ => {}
@@ -106,14 +106,14 @@ fn hardcode_compiler_constants(table: &mut SymbolTable, err: &mut ErrorGen) {
     while table.get_curr_scope().unwrap().ty != ScopeType::Event {
         match table.exit_scope() {
             Err(e) => {
-                err.add_error(e);
+                err.add_error(*e);
                 err.report();
             },
             _ => {}
         }
         match table.enter_scope() {
             Err(e) => {
-                err.add_error(e);
+                err.add_error(*e);
                 err.report();
             },
             _ => {}

@@ -14,27 +14,27 @@ use crate::verifier::types::{Record, SymbolTable, VarAddr};
 // =================================================
 
 pub trait Emitter {
-    fn enter_scope(&mut self) -> Result<(), WhammError>;
+    fn enter_scope(&mut self) -> Result<(), Box<WhammError>>;
     fn enter_named_scope(&mut self, scope_name: &String) -> bool;
-    fn exit_scope(&mut self) -> Result<(), WhammError>;
+    fn exit_scope(&mut self) -> Result<(), Box<WhammError>>;
     fn reset_children(&mut self);
 
-    fn init_instr_iter(&mut self, instrs_of_interest: &Vec<String>) -> Result<(), WhammError>;
+    fn init_instr_iter(&mut self, instrs_of_interest: &Vec<String>) -> Result<(), Box<WhammError>>;
     fn has_next_instr(&self) -> bool;
     fn next_instr(&mut self) -> bool;
     fn curr_instr_is_of_type(&mut self, instr_names: &Vec<String>) -> bool;
     fn curr_instr_type(&mut self) -> String;
-    fn has_params(&mut self) -> Result<bool, WhammError>;
+    fn has_params(&mut self) -> Result<bool, Box<WhammError>>;
     fn save_params(&mut self) -> bool;
-    fn emit_params(&mut self) -> Result<bool, WhammError>;
-    fn define_compiler_var(&mut self, context: &String, var_name: &String) -> Result<bool, WhammError>;
+    fn emit_params(&mut self) -> Result<bool, Box<WhammError>>;
+    fn define_compiler_var(&mut self, context: &String, var_name: &String) -> Result<bool, Box<WhammError>>;
     // fn emit_event(&mut self, context: &str, event: &mut Event) -> bool;
     fn fold_expr(&mut self, expr: &mut Expr) -> bool;
-    fn emit_expr(&mut self, expr: &mut Expr) -> Result<bool, WhammError>;
+    fn emit_expr(&mut self, expr: &mut Expr) -> Result<bool, Box<WhammError>>;
 
-    fn emit_fn(&mut self, context_name: &str, f: &Fn) -> Result<bool, WhammError>;
+    fn emit_fn(&mut self, context_name: &str, f: &Fn) -> Result<bool, Box<WhammError>>;
     fn emit_formal_param(&mut self, param: &(Expr, DataType)) -> bool;
-    fn emit_global(&mut self, name: String, ty: DataType, val: &Option<Value>) -> Result<bool, WhammError>;
+    fn emit_global(&mut self, name: String, ty: DataType, val: &Option<Value>) -> Result<bool, Box<WhammError>>;
     fn remove_orig(&mut self) -> bool;
     fn emit_orig(&mut self) -> bool;
     fn emit_if(&mut self) -> bool;
@@ -47,13 +47,13 @@ pub trait Emitter {
     fn emit_alternate(&mut self) -> bool;
     /// Will configure the emitter to emit subsequent statements in the outer block of some branching logic
     fn finish_branch(&mut self) -> bool;
-    fn emit_global_stmts(&mut self, stmts: &mut Vec<Statement>) -> Result<bool, WhammError>;
-    fn emit_body(&mut self, body: &mut Vec<Statement>) -> Result<bool, WhammError>;
+    fn emit_global_stmts(&mut self, stmts: &mut Vec<Statement>) -> Result<bool, Box<WhammError>>;
+    fn emit_body(&mut self, body: &mut Vec<Statement>) -> Result<bool, Box<WhammError>>;
     fn has_alt_call(&mut self) -> bool; // TODO -- remove need for this
-    fn emit_alt_call(&mut self) -> Result<bool, WhammError>; // TODO -- remove need for this
-    fn emit_stmt(&mut self, stmt: &mut Statement) -> Result<bool, WhammError>;
+    fn emit_alt_call(&mut self) -> Result<bool, Box<WhammError>>; // TODO -- remove need for this
+    fn emit_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>>;
 
-    fn dump_to_file(&mut self, output_wasm_path: String) -> Result<bool, WhammError>;
+    fn dump_to_file(&mut self, output_wasm_path: String) -> Result<bool, Box<WhammError>>;
 }
 
 // =================================================================================
@@ -80,13 +80,13 @@ fn data_type_to_val_type(ty: &DataType) -> ValType {
     }
 }
 
-fn emit_set(table: &mut SymbolTable, var_id: &mut Expr, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> Result<bool, WhammError> {
+fn emit_set(table: &mut SymbolTable, var_id: &mut Expr, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> Result<bool, Box<WhammError>> {
     if let Expr::VarId { name, .. } = var_id {
         let var_rec_id = match table.lookup(name) {
             Some(rec_id) => rec_id.clone(),
             _ => {
-                return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                                                VarId '{name}' does not exist in this scope!")), None));
+                return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                                                VarId '{name}' does not exist in this scope!")), None)));
             }
         };
         match table.get_record_mut(&var_rec_id) {
@@ -108,29 +108,29 @@ fn emit_set(table: &mut SymbolTable, var_id: &mut Expr, instr_builder: &mut Inst
                         *index += 1;
                     },
                     None => {
-                        return Err(ErrorGen::get_type_check_error_from_loc(false,
-                           format!("Variable assigned before declared: {}", name), loc));
+                        return Err(Box::new(ErrorGen::get_type_check_error_from_loc(false,
+                           format!("Variable assigned before declared: {}", name), loc)));
                     }
                 }
                 Ok(true)
             },
             Some(ty) => {
-                return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                                                Incorrect variable record, expected Record::Var, found: {:?}", ty)), None));
+                return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                                                Incorrect variable record, expected Record::Var, found: {:?}", ty)), None)));
             },
             None => {
-                return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                                                Variable symbol does not exist!")), None));
+                return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                                                Variable symbol does not exist!")), None)));
             }
         }
     } else {
-        return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                                        Expected VarId.")), None));
+        return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                                        Expected VarId.")), None)));
     }
 }
 
 fn emit_expr(table: &mut SymbolTable, module_data: &mut ModuleData, expr: &mut Expr, instr_builder: &mut InstrSeqBuilder,
-             metadata: &mut InsertionMetadata, index: &mut usize) -> Result<bool, WhammError> {
+             metadata: &mut InsertionMetadata, index: &mut usize) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
     match expr {
         Expr::UnOp{op, expr, ..} => {
@@ -143,8 +143,8 @@ fn emit_expr(table: &mut SymbolTable, module_data: &mut ModuleData, expr: &mut E
             is_success &= emit_binop(op, instr_builder, index);
         }
         Expr::Ternary { cond: _cond, conseq: _conseq, alt: _alt, ..} => {
-            return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                            Ternary expressions should be handled before this point!")), None));
+            return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                            Ternary expressions should be handled before this point!")), None)));
         }
         Expr::Call { fn_target, args, ..} => {
             let fn_name = match &**fn_target {
@@ -179,13 +179,13 @@ fn emit_expr(table: &mut SymbolTable, module_data: &mut ModuleData, expr: &mut E
                                 // update index to point to what follows our insertions
                                 *index += 1;
                             } else {
-                                return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                                fn_target address not in symbol table, not emitted yet...")), None));
+                                return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                                fn_target address not in symbol table, not emitted yet...")), None)));
                             }
                         }
                         _ => {
-                            return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                            fn_target not defined in symbol table!")), None));
+                            return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                            fn_target not defined in symbol table!")), None)));
                         }
                     }
                 },
@@ -200,8 +200,8 @@ fn emit_expr(table: &mut SymbolTable, module_data: &mut ModuleData, expr: &mut E
             let var_rec_id = match table.lookup(&name) {
                 Some(rec_id) => rec_id.clone(),
                 _ => {
-                    return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                    VarId '{}' does not exist in this scope!", name)), None));
+                    return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                    VarId '{}' does not exist in this scope!", name)), None)));
                 }
             };
             return match table.get_record_mut(&var_rec_id) {
@@ -223,19 +223,19 @@ fn emit_expr(table: &mut SymbolTable, module_data: &mut ModuleData, expr: &mut E
                             *index += 1;
                         },
                         None => {
-                            return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                            Variable does not exist in scope: {}", name)), None));
+                            return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                            Variable does not exist in scope: {}", name)), None)));
                         }
                     }
                     Ok(true)
                 },
                 Some(ty) => {
-                    Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                    Incorrect variable record, expected Record::Var, found: {:?}", ty)), None))
+                    Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                    Incorrect variable record, expected Record::Var, found: {:?}", ty)), None)))
                 },
                 None => {
-                    Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                    Variable symbol does not exist!")), None))
+                    Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                    Variable symbol does not exist!")), None)))
                 }
             }
         }
@@ -383,7 +383,7 @@ fn emit_unop(op: &UnOp, instr_builder: &mut InstrSeqBuilder, index: &mut usize) 
 
 fn emit_value(table: &mut SymbolTable, module_data: &mut ModuleData, val: &mut Value,
               instr_builder: &mut InstrSeqBuilder, metadata: &mut InsertionMetadata,
-              index: &mut usize) -> Result<bool, WhammError> {
+              index: &mut usize) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
     match val {
         Value::Integer { val, .. } => {
@@ -561,7 +561,7 @@ impl InstrIter {
                     // add current instr
                     self.instr_locs.push( ProbeLoc {
                         // wasm_func_name: func_name.clone(),
-                        wasm_func_id: func_id.clone(),
+                        wasm_func_id: *func_id,
                         instr_seq_id,
                         index,
                         instr_name: instr_name.clone(),
@@ -704,12 +704,12 @@ impl WasmRewritingEmitter {
         }
     }
 
-    fn define_new_target_fn_name(&mut self) -> Result<bool, WhammError> {
+    fn define_new_target_fn_name(&mut self) -> Result<bool, Box<WhammError>> {
         // TODO -- change this to be an inline call() instead of setting a var
         Ok(true)
     }
 
-    fn define_target_imp_name(&mut self) -> Result<bool, WhammError> {
+    fn define_target_imp_name(&mut self) -> Result<bool, Box<WhammError>> {
         let var_name = "target_imp_name".to_string();
 
         if let Some(curr_instr) = self.instr_iter.curr() {
@@ -722,8 +722,8 @@ impl WasmRewritingEmitter {
                 let rec_id = match self.table.lookup(&var_name) {
                     Some(rec_id) => rec_id.clone(),
                     _ => {
-                        return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                        `{var_name}` symbol does not exist in this scope!")), None));
+                        return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                        `{var_name}` symbol does not exist in this scope!")), None)));
                     }
                 };
                 self.override_var_val(&rec_id, Some(Value::Str {
@@ -736,7 +736,7 @@ impl WasmRewritingEmitter {
         Ok(true)
     }
 
-    fn define_target_fn_type(&mut self) -> Result<bool, WhammError> {
+    fn define_target_fn_type(&mut self) -> Result<bool, Box<WhammError>> {
         let var_name = "target_fn_type".to_string();
 
         if let Some(curr_instr) = self.instr_iter.curr() {
@@ -748,8 +748,8 @@ impl WasmRewritingEmitter {
                 let rec_id = match self.table.lookup(&var_name) {
                     Some(rec_id) => rec_id.clone(),
                     _ => {
-                        return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                        `{var_name}` symbol does not exist in this scope!")), None));
+                        return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                        `{var_name}` symbol does not exist in this scope!")), None)));
                     }
                 };
                 self.override_var_val(&rec_id, Some(Value::Str {
@@ -762,7 +762,7 @@ impl WasmRewritingEmitter {
         Ok(true)
     }
 
-    fn define_target_imp_module(&mut self) -> Result<bool, WhammError> {
+    fn define_target_imp_module(&mut self) -> Result<bool, Box<WhammError>> {
         let var_name = "target_imp_module".to_string();
         if let Some(curr_instr) = self.instr_iter.curr() {
             if let Some(func_info) = &curr_instr.func_info {
@@ -773,8 +773,8 @@ impl WasmRewritingEmitter {
                 let rec_id = match self.table.lookup(&var_name) {
                     Some(rec_id) => rec_id.clone(),
                     _ => {
-                        return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                        `{var_name}` symbol does not exist in this scope!")), None));
+                        return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                        `{var_name}` symbol does not exist in this scope!")), None)));
                     }
                 };
                 self.override_var_val(&rec_id, Some(Value::Str {
@@ -787,16 +787,16 @@ impl WasmRewritingEmitter {
         Ok(true)
     }
 
-    fn emit_provided_fn(&mut self, context: &str, f: &Fn) -> Result<bool, WhammError> {
+    fn emit_provided_fn(&mut self, context: &str, f: &Fn) -> Result<bool, Box<WhammError>> {
         return if context == "whamm" && f.name.name == "strcmp" {
             self.emit_whamm_strcmp_fn(f)
         } else {
-            return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-            Provided function, but could not find a context to provide the definition, context: {}", context)), None));
+            return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+            Provided function, but could not find a context to provide the definition, context: {}", context)), None)));
         }
     }
 
-    fn emit_whamm_strcmp_fn(&mut self, f: &Fn) -> Result<bool, WhammError> {
+    fn emit_whamm_strcmp_fn(&mut self, f: &Fn) -> Result<bool, Box<WhammError>> {
         let strcmp_params = vec![ValType::I32, ValType::I32, ValType::I32, ValType::I32];
         let strcmp_result = vec![ValType::I32];
 
@@ -916,8 +916,8 @@ impl WasmRewritingEmitter {
         let rec_id = match self.table.lookup(&f.name.name) {
             Some(rec_id) => *rec_id,
             _ => {
-                return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                `strcmp` fn symbol does not exist in this scope!")), None));
+                return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                `strcmp` fn symbol does not exist in this scope!")), None)));
             }
         };
 
@@ -926,16 +926,16 @@ impl WasmRewritingEmitter {
                 *addr = Some(strcmp_id);
                 Ok(true)
             } else {
-                return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                Incorrect global variable record, expected Record::Var, found: {:?}", rec)), None));
+                return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                Incorrect global variable record, expected Record::Var, found: {:?}", rec)), None)));
             }
         } else {
-            return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-            Global variable symbol does not exist!")), None));
+            return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+            Global variable symbol does not exist!")), None)));
         };
     }
 
-    fn emit_decl_stmt(&mut self, stmt: &mut Statement) -> Result<bool, WhammError> {
+    fn emit_decl_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>> {
         match stmt {
             Statement::Decl {ty, var_id, ..} => {
                 // look up in symbol table
@@ -959,17 +959,17 @@ impl WasmRewritingEmitter {
                             addr
                         },
                         Some(ty) => {
-                            return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                            Incorrect variable record, expected Record::Var, found: {:?}", ty)), None));
+                            return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                            Incorrect variable record, expected Record::Var, found: {:?}", ty)), None)));
                         },
                         None => {
-                            return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                            Variable symbol does not exist!")), None));
+                            return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                            Variable symbol does not exist!")), None)));
                         }
                     }
                 } else {
-                    return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                    Expected VarId.")), None));
+                    return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                    Expected VarId.")), None)));
                 };
 
                 match &mut addr {
@@ -1000,13 +1000,13 @@ impl WasmRewritingEmitter {
                 }
             }
             _ => {
-                return Err(ErrorGen::get_unexpected_error(false, Some(format!("{UNEXPECTED_ERR_MSG} \
-                    Wrong statement type, should be `assign`")), None));
+                return Err(Box::new(ErrorGen::get_unexpected_error(false, Some(format!("{UNEXPECTED_ERR_MSG} \
+                    Wrong statement type, should be `assign`")), None)));
             }
         }
     }
 
-    fn emit_assign_stmt(&mut self, stmt: &mut Statement) -> Result<bool, WhammError> {
+    fn emit_assign_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>> {
         return match stmt {
             Statement::Assign { var_id, expr, .. } => {
                 let folded_expr = ExprFolder::fold_expr(expr, &self.table);
@@ -1017,8 +1017,8 @@ impl WasmRewritingEmitter {
                             let var_rec_id = match self.table.lookup(name) {
                                 Some(rec_id) => rec_id.clone(),
                                 _ => {
-                                    return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                                    VarId '{name}' does not exist in this scope!")), None));
+                                    return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                                    VarId '{name}' does not exist in this scope!")), None)));
                                 }
                             };
                             match self.table.get_record_mut(&var_rec_id) {
@@ -1027,17 +1027,17 @@ impl WasmRewritingEmitter {
                                     Ok(true)
                                 },
                                 Some(ty) => {
-                                    return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                                    Incorrect variable record, expected Record::Var, found: {:?}", ty)), None));
+                                    return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                                    Incorrect variable record, expected Record::Var, found: {:?}", ty)), None)));
                                 },
                                 None => {
-                                    return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                                    Variable symbol does not exist!")), None));
+                                    return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                                    Variable symbol does not exist!")), None)));
                                 }
                             }
                         } else {
-                            return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                            Expected VarId.")), None));
+                            return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                            Expected VarId.")), None)));
                         }
                     }
                     Expr::VarId {..} | Expr::UnOp {..} | Expr::BinOp {..} | Expr::Call {..} | Expr::Ternary {..} => {
@@ -1054,12 +1054,12 @@ impl WasmRewritingEmitter {
                                         // Emit the instruction that sets the var's value to the emitted expression
                                         emit_set(&mut self.table, var_id, &mut instr_builder, &mut tracker.curr_idx)
                                     } else {
-                                        return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                                            Something went wrong while emitting an instruction.")), None));
+                                        return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                                            Something went wrong while emitting an instruction.")), None)));
                                     }
                                 } else {
-                                    return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                                        Something went wrong while emitting an instruction.")), None));
+                                    return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                                        Something went wrong while emitting an instruction.")), None)));
                                 }
                             }
                         }
@@ -1068,28 +1068,28 @@ impl WasmRewritingEmitter {
                 }
             }
             _ => {
-                return Err(ErrorGen::get_unexpected_error(false, Some(format!("{UNEXPECTED_ERR_MSG} \
-                    Wrong statement type, should be `assign`")), None));
+                return Err(Box::new(ErrorGen::get_unexpected_error(false, Some(format!("{UNEXPECTED_ERR_MSG} \
+                    Wrong statement type, should be `assign`")), None)));
             }
         }
     }
 }
 
 impl Emitter for WasmRewritingEmitter {
-    fn enter_scope(&mut self) -> Result<(), WhammError> {
+    fn enter_scope(&mut self) -> Result<(), Box<WhammError>> {
         self.table.enter_scope()
     }
     fn enter_named_scope(&mut self, scope_name: &String) -> bool {
         self.table.enter_named_scope(scope_name)
     }
-    fn exit_scope(&mut self) -> Result<(), WhammError> {
+    fn exit_scope(&mut self) -> Result<(), Box<WhammError>> {
         self.table.exit_scope()
     }
     fn reset_children(&mut self) {
         self.table.reset_children();
     }
 
-    fn init_instr_iter(&mut self, instrs_of_interest: &Vec<String>) -> Result<(), WhammError> {
+    fn init_instr_iter(&mut self, instrs_of_interest: &Vec<String>) -> Result<(), Box<WhammError>> {
         self.instr_iter.init(&self.app_wasm, instrs_of_interest);
         Ok(())
     }
@@ -1137,7 +1137,7 @@ impl Emitter for WasmRewritingEmitter {
         unreachable!()
     }
 
-    fn has_params(&mut self) -> Result<bool, WhammError> {
+    fn has_params(&mut self) -> Result<bool, Box<WhammError>> {
         if let Some(curr_instr) = self.instr_iter.curr_mut() {
             if let Some(params) = &curr_instr.instr_params {
                 return Ok(!params.is_empty());
@@ -1155,8 +1155,8 @@ impl Emitter for WasmRewritingEmitter {
             }
             return Ok(curr_instr.instr_params.is_some() && curr_instr.instr_params.as_ref().unwrap().len() > 0);
         }
-        Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-        Something went wrong when trying to access the current instruction.")), None))
+        Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+        Something went wrong when trying to access the current instruction.")), None)))
     }
 
     fn save_params(&mut self) -> bool {
@@ -1204,7 +1204,7 @@ impl Emitter for WasmRewritingEmitter {
         false
     }
 
-    fn emit_params(&mut self) -> Result<bool, WhammError> {
+    fn emit_params(&mut self) -> Result<bool, Box<WhammError>> {
         if let Some(curr_loc) = self.instr_iter.curr_mut() {
             if let Some(tracker) = &mut self.emitting_instr {
                 let func = self.app_wasm.funcs.get_mut(curr_loc.wasm_func_id).kind.unwrap_local_mut();
@@ -1219,8 +1219,8 @@ impl Emitter for WasmRewritingEmitter {
                         });
                         tracker.curr_idx += 1;
                     } else {
-                        return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                        Could not emit parameters, something went wrong...")), None));
+                        return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                        Could not emit parameters, something went wrong...")), None)));
                     }
                 }
                 return Ok(true);
@@ -1229,7 +1229,7 @@ impl Emitter for WasmRewritingEmitter {
         Ok(false)
     }
 
-    fn define_compiler_var(&mut self, context: &String, var_name: &String) -> Result<bool, WhammError> {
+    fn define_compiler_var(&mut self, context: &String, var_name: &String) -> Result<bool, Box<WhammError>> {
         let regex = Regex::new(r"whamm:script([0-9]+):wasm:bytecode").unwrap();
         return if let Some(_caps) = regex.captures(context) {
             match var_name.as_str() {
@@ -1246,13 +1246,13 @@ impl Emitter for WasmRewritingEmitter {
                     self.define_target_imp_module()
                 }
                 _ => {
-                    return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                    Current context `{}` does not provide definition for variable `{}`", context, var_name)), None));
+                    return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                    Current context `{}` does not provide definition for variable `{}`", context, var_name)), None)));
                 }
             }
         } else {
-            return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-            Could not find a context to provide the definition, context: {}", context)), None));
+            return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+            Could not find a context to provide the definition, context: {}", context)), None)));
         };
     }
 
@@ -1260,7 +1260,7 @@ impl Emitter for WasmRewritingEmitter {
         *expr = ExprFolder::fold_expr(expr, &self.table);
         true
     }
-    fn emit_expr(&mut self, expr: &mut Expr) -> Result<bool, WhammError> {
+    fn emit_expr(&mut self, expr: &mut Expr) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
         match expr {
             Expr::Ternary {cond, conseq, alt, ..} => {
@@ -1284,25 +1284,25 @@ impl Emitter for WasmRewritingEmitter {
                         is_success &= emit_expr(&mut self.table, &mut self.app_wasm.data, expr,
                                             &mut instr_builder, &mut self.metadata, &mut tracker.curr_idx)?;
                     } else {
-                        return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                            Something went wrong while emitting an instruction.")), None));
+                        return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                            Something went wrong while emitting an instruction.")), None)));
                     }
                 } else {
-                    return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                        Something went wrong while emitting an instruction.")), None));
+                    return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                        Something went wrong while emitting an instruction.")), None)));
                 }
             }
         }
         return Ok(is_success);
     }
-    fn emit_fn(&mut self, context: &str, f: &Fn) -> Result<bool, WhammError> {
+    fn emit_fn(&mut self, context: &str, f: &Fn) -> Result<bool, Box<WhammError>> {
         // figure out if this is a provided fn.
         if f.is_comp_provided {
             return if self.fn_providing_contexts.contains(&context.to_string()) {
                 self.emit_provided_fn(context, f)
             } else {
-                Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                Provided fn, but could not find a context to provide the definition, context: {}", context)), None))
+                Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                Provided fn, but could not find a context to provide the definition, context: {}", context)), None)))
             }
         }
 
@@ -1316,12 +1316,12 @@ impl Emitter for WasmRewritingEmitter {
         unimplemented!();
     }
 
-    fn emit_global(&mut self, name: String, ty: DataType, _val: &Option<Value>) -> Result<bool, WhammError> {
+    fn emit_global(&mut self, name: String, ty: DataType, _val: &Option<Value>) -> Result<bool, Box<WhammError>> {
         let rec_id = match self.table.lookup(&name) {
             Some(rec_id) => rec_id.clone(),
             _ => {
-                return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                Global variable symbol does not exist in this scope!")), None));
+                return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                Global variable symbol does not exist in this scope!")), None)));
             } // Ignore, continue to emit
         };
 
@@ -1339,12 +1339,12 @@ impl Emitter for WasmRewritingEmitter {
                 Ok(true)
             },
             Some(&mut ref ty) => {
-                Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                Incorrect global variable record, expected Record::Var, found: {:?}", ty)), None))
+                Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                Incorrect global variable record, expected Record::Var, found: {:?}", ty)), None)))
             },
             None => {
-                Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                Global variable symbol does not exist!")), None))
+                Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                Global variable symbol does not exist!")), None)))
             }
         }
     }
@@ -1538,7 +1538,7 @@ impl Emitter for WasmRewritingEmitter {
         }
         true
     }
-    fn emit_global_stmts(&mut self, stmts: &mut Vec<Statement>) -> Result<bool, WhammError> {
+    fn emit_global_stmts(&mut self, stmts: &mut Vec<Statement>) -> Result<bool, Box<WhammError>> {
         // NOTE: This should be done in the Module entrypoint
         //       https://docs.rs/walrus/latest/walrus/struct.Module.html
         if self.app_wasm.start.is_none() {
@@ -1573,7 +1573,7 @@ impl Emitter for WasmRewritingEmitter {
         Ok(true)
     }
 
-    fn emit_body(&mut self, body: &mut Vec<Statement>) -> Result<bool, WhammError> {
+    fn emit_body(&mut self, body: &mut Vec<Statement>) -> Result<bool, Box<WhammError>> {
         for stmt in body.iter_mut() {
             self.emit_stmt(stmt)?;
         }
@@ -1619,7 +1619,7 @@ impl Emitter for WasmRewritingEmitter {
         true
     }
 
-    fn emit_alt_call(&mut self) -> Result<bool, WhammError> {
+    fn emit_alt_call(&mut self) -> Result<bool, Box<WhammError>> {
         if let Some(curr_loc) = self.instr_iter.curr_mut() {
             if let Some(tracker) = &mut self.emitting_instr {
 
@@ -1636,15 +1636,15 @@ impl Emitter for WasmRewritingEmitter {
                     tracker.curr_idx += 1;
 
                 } else {
-                    return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                    Could not inject alternate call to function, something went wrong...")), None));
+                    return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                    Could not inject alternate call to function, something went wrong...")), None)));
                 }
             }
         }
         Ok(true)
     }
 
-    fn emit_stmt(&mut self, stmt: &mut Statement) -> Result<bool, WhammError> {
+    fn emit_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>> {
         return match stmt {
             Statement::Decl {..} => {
                 self.emit_decl_stmt(stmt)
@@ -1658,14 +1658,14 @@ impl Emitter for WasmRewritingEmitter {
         };
     }
 
-    fn dump_to_file(&mut self, output_wasm_path: String) -> Result<bool, WhammError> {
+    fn dump_to_file(&mut self, output_wasm_path: String) -> Result<bool, Box<WhammError>> {
         match self.app_wasm.emit_wasm_file(&output_wasm_path) {
             Ok(..) => {
                 Ok(true)
             },
             Err(err) => {
-                Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
-                Failed to dump instrumented wasm to {} from error: {}", &output_wasm_path, err)), None))
+                Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} \
+                Failed to dump instrumented wasm to {} from error: {}", &output_wasm_path, err)), None)))
             },
         }
     }
