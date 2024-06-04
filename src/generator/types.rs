@@ -360,20 +360,17 @@ impl ExprFolder {
     }
 
     fn fold_ternary(ternary: &Expr, table: &SymbolTable) -> Expr {
-        match ternary {
-            Expr::Ternary{cond, conseq, alt, loc} => {
-                let cond = ExprFolder::fold_expr(cond, table);
-                let conseq = ExprFolder::fold_expr(conseq, table);
-                let alt = ExprFolder::fold_expr(alt, table);
+        if let Expr::Ternary{cond, conseq, alt, loc} = ternary {
+            let cond = ExprFolder::fold_expr(cond, table);
+            let conseq = ExprFolder::fold_expr(conseq, table);
+            let alt = ExprFolder::fold_expr(alt, table);
 
-                return Expr::Ternary {
-                    cond: Box::new(cond),
-                    conseq: Box::new(conseq),
-                    alt: Box::new(alt),
-                    loc: loc.to_owned()
-                };
-            },
-            _ => {}
+            return Expr::Ternary {
+                cond: Box::new(cond),
+                conseq: Box::new(conseq),
+                alt: Box::new(alt),
+                loc: loc.to_owned()
+            };
         }
 
         // Cannot fold anymore
@@ -386,7 +383,7 @@ impl ExprFolder {
     fn fold_var_id(var_id: &Expr, table: &SymbolTable) -> Expr {
         match &var_id {
             Expr::VarId {name, ..} => {
-                let rec_id = match table.lookup(&name) {
+                let rec_id = match table.lookup(name) {
                     Some(rec_id) => *rec_id,
                     _ => {
                         return var_id.to_owned();
@@ -417,7 +414,7 @@ impl ExprFolder {
         primitive.to_owned()
     }
     pub fn get_single_bool(expr: &Expr) -> Option<bool> {
-        return match expr {
+        match expr {
             Expr::Primitive { val: Value::Boolean {val, .. }, ..} => Some(*val),
             _ => None
         }
