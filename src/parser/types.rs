@@ -374,6 +374,11 @@ pub struct Whamm {
 
     pub scripts: Vec<Script>
 }
+impl Default for Whamm {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl Whamm {
     pub fn new() -> Self {
         let mut whamm = Whamm {
@@ -896,6 +901,11 @@ pub struct ProbeSpec {
     pub event: Option<SpecPart>,
     pub mode: Option<SpecPart>
 }
+impl Default for ProbeSpec {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl ProbeSpec {
     pub fn new() -> Self {
         Self {
@@ -932,6 +942,11 @@ pub struct Script {
     pub globals: HashMap<String, Global>, // User-provided, should be VarId
     pub global_stmts: Vec<Statement>
 }
+impl Default for Script {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl Script {
     pub fn new() -> Self {
         Script {
@@ -943,7 +958,7 @@ impl Script {
         }
     }
 
-    fn get_provider_info(provided_probes: &ProvidedProbes, probe_spec: &ProbeSpec) -> Result<Vec<(ProvidedFunctionality, String)>, WhammError> {
+    fn get_provider_info(provided_probes: &ProvidedProbes, probe_spec: &ProbeSpec) -> Result<Vec<(ProvidedFunctionality, String)>, Box<WhammError>> {
         let (prov_matches, prov_loc) = if let Some(prov_patt) = &probe_spec.provider {
             (Provider::get_matches(provided_probes, &prov_patt.name), prov_patt.loc.clone())
         } else {
@@ -952,15 +967,15 @@ impl Script {
 
         if prov_matches.is_empty() {
             let loc = prov_loc.as_ref().map(|loc| loc.line_col.clone());
-            return Err(ErrorGen::get_parse_error(true,
+            return Err(Box::new(ErrorGen::get_parse_error(true,
                  Some("Could not find any matches for the provider pattern".to_string()),
-                 loc, vec![], vec![]));
+                 loc, vec![], vec![])));
         }
 
         Ok(prov_matches)
     }
 
-    fn get_package_info(provided_probes: &ProvidedProbes, provider_matches: &[(ProvidedFunctionality, String)], probe_spec: &ProbeSpec) -> Result<HashMap<String, Vec<(ProvidedFunctionality, String)>>, WhammError> {
+    fn get_package_info(provided_probes: &ProvidedProbes, provider_matches: &[(ProvidedFunctionality, String)], probe_spec: &ProbeSpec) -> Result<HashMap<String, Vec<(ProvidedFunctionality, String)>>, Box<WhammError>> {
         let (package_matches, package_loc) = if let Some(package_patt) = &probe_spec.package {
             let mut matches = HashMap::new();
             for (.., provider) in provider_matches.iter() {
@@ -975,14 +990,14 @@ impl Script {
 
         if package_matches.is_empty() {
             let loc = package_loc.as_ref().map(|loc| loc.line_col.clone());
-            return Err(ErrorGen::get_parse_error(true,
+            return Err(Box::new(ErrorGen::get_parse_error(true,
              Some("Could not find any matches for the package pattern".to_string()),
-             loc, vec![], vec![]));
+             loc, vec![], vec![])));
         }
         Ok(package_matches)
     }
 
-    fn get_event_info(provided_probes: &ProvidedProbes, package_matches: &HashMap<String, Vec<(ProvidedFunctionality, String)>>, probe_spec: &ProbeSpec) -> Result<HashMap<String, HashMap<String, Vec<(ProvidedFunctionality, String)>>>, WhammError> {
+    fn get_event_info(provided_probes: &ProvidedProbes, package_matches: &HashMap<String, Vec<(ProvidedFunctionality, String)>>, probe_spec: &ProbeSpec) -> Result<HashMap<String, HashMap<String, Vec<(ProvidedFunctionality, String)>>>, Box<WhammError>> {
         let (event_matches, event_loc) = if let Some(event_patt) = &probe_spec.event {
             let mut event_matches = HashMap::new();
             for (provider_name, packages) in package_matches.iter() {
@@ -1001,14 +1016,14 @@ impl Script {
 
         if package_matches.is_empty() {
             let loc = event_loc.as_ref().map(|loc| loc.line_col.clone());
-            return Err(ErrorGen::get_parse_error(true,
+            return Err(Box::new(ErrorGen::get_parse_error(true,
                                                  Some("Could not find any matches for the event pattern".to_string()),
-                                                 loc, vec![], vec![]));
+                                                 loc, vec![], vec![])));
         }
         Ok(event_matches)
     }
 
-    fn get_mode_info(provided_probes: &ProvidedProbes, matches: &HashMap<String, HashMap<String, Vec<(ProvidedFunctionality, String)>>>, probe_spec: &ProbeSpec) -> Result<HashMap<String, HashMap<String, HashMap<String, Vec<(ProvidedFunctionality, String)>>>>, WhammError> {
+    fn get_mode_info(provided_probes: &ProvidedProbes, matches: &HashMap<String, HashMap<String, Vec<(ProvidedFunctionality, String)>>>, probe_spec: &ProbeSpec) -> Result<HashMap<String, HashMap<String, HashMap<String, Vec<(ProvidedFunctionality, String)>>>>, Box<WhammError>> {
         let (mode_matches, mode_loc) = if let Some(mode_patt) = &probe_spec.mode {
             let mut mode_matches = HashMap::new();
             for (provider_name, package_matches) in matches.iter() {
@@ -1031,15 +1046,15 @@ impl Script {
 
         if mode_matches.is_empty() {
             let loc = mode_loc.as_ref().map(|loc| loc.line_col.clone());
-            return Err(ErrorGen::get_parse_error(true,
+            return Err(Box::new(ErrorGen::get_parse_error(true,
                                                  Some("Could not find any matches for the mode pattern".to_string()),
-                                                 loc, vec![], vec![]));
+                                                 loc, vec![], vec![])));
         }
         Ok(mode_matches)
     }
 
     pub fn print_info(&mut self, provided_probes: &ProvidedProbes, probe_spec: &ProbeSpec,
-                      print_globals: bool, print_functions: bool) -> Result<(), WhammError> {
+                      print_globals: bool, print_functions: bool) -> Result<(), Box<WhammError>> {
         let writer = BufferWriter::stderr(ColorChoice::Always);
         let mut buffer = writer.buffer();
 
@@ -1089,7 +1104,7 @@ impl Script {
 
         // Print matched provider introduction
         if !prov_info.is_empty() {
-            magenta(true, format!("{}", &probe_spec.provider.as_ref().unwrap().name), &mut buffer);
+            magenta(true, probe_spec.provider.as_ref().unwrap().name.to_string(), &mut buffer);
             if let Some(package_patt) = &probe_spec.package {
                 white(true, format!(":{}", &package_patt.name), &mut buffer);
                 if let Some(event_patt) = &probe_spec.event {
@@ -1134,7 +1149,7 @@ impl Script {
         // Print matched package introduction
         if !pkg_info.is_empty() {
             white(true, format!("{}:", &probe_spec.provider.as_ref().unwrap().name), &mut buffer);
-            magenta(true, format!("{}", &probe_spec.package.as_ref().unwrap().name), &mut buffer);
+            magenta(true, probe_spec.package.as_ref().unwrap().name.to_string(), &mut buffer);
             if let Some(event_patt) = &probe_spec.event {
                 white(true, format!(":{}", &event_patt.name), &mut buffer);
                 if let Some(mode_patt) = &probe_spec.mode {
@@ -1179,7 +1194,7 @@ impl Script {
         // Print matched event introduction
         if !event_info.is_empty() {
             white(true, format!("{}:{}:", &probe_spec.provider.as_ref().unwrap().name, &probe_spec.package.as_ref().unwrap().name), &mut buffer);
-            magenta(true, format!("{}", &probe_spec.event.as_ref().unwrap().name), &mut buffer);
+            magenta(true, probe_spec.event.as_ref().unwrap().name.to_string(), &mut buffer);
             if let Some(mode_patt) = &probe_spec.mode {
                 white(true, format!(":{}", &mode_patt.name), &mut buffer);
             }
@@ -1190,7 +1205,7 @@ impl Script {
         // Print the matched event information
         let mut tabs = 0;
         for (_prov_str, package_map) in event_info.iter() {
-            for (_package_str, event_list) in package_map {
+            for (_package_str, event_list) in package_map.iter() {
                 for (event_info, event_str) in event_list {
                     if event_str.is_empty() {
                         continue;
@@ -1247,13 +1262,13 @@ impl Script {
 
                         // Print the globals
                         if print_globals {
-                            let globals = Probe::get_provided_globals(&mode_str);
+                            let globals = Probe::get_provided_globals(mode_str);
                             print_global_vars(&mut tabs, &globals, &mut buffer);
                         }
 
                         // Print the functions
                         if print_functions {
-                            let functions = Probe::get_provided_fns(&mode_str);
+                            let functions = Probe::get_provided_fns(mode_str);
                             print_fns(&mut tabs, &functions, &mut buffer);
                         }
                         tabs -= 1;
@@ -1275,15 +1290,15 @@ impl Script {
     /// Iterates over all the matched providers, packages, events, and probe mode names
     /// to add a copy of the user-defined Probe for each of them.
     pub fn add_probe(&mut self, provided_probes: &ProvidedProbes,
-                     probe_spec: &ProbeSpec, predicate: Option<Expr>, body: Option<Vec<Statement>>) -> Result<(), WhammError> {
+                     probe_spec: &ProbeSpec, predicate: Option<Expr>, body: Option<Vec<Statement>>) -> Result<(), Box<WhammError>> {
         let mut reason = &probe_spec.provider;
         if let Some(prov_patt) = &probe_spec.provider {
 
             let matches = Provider::get_matches(provided_probes, &prov_patt.name);
             if matches.is_empty() {
-                return Err(ErrorGen::get_parse_error(true,
+                return Err(Box::new(ErrorGen::get_parse_error(true,
                     Some(format!("Could not find any matches for the specified provider pattern: {}", prov_patt.name)),
-                    Some(prov_patt.loc.as_ref().unwrap().line_col.clone()), vec![], vec![]));
+                    Some(prov_patt.loc.as_ref().unwrap().line_col.clone()), vec![], vec![])));
             }
 
             for (.., provider_str) in matches.iter() {
@@ -1349,11 +1364,11 @@ impl Script {
                                 }
                             }
                         } else {
-                            return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} Could not find an event matching pattern!")), None));
+                            return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} Could not find an event matching pattern!")), None)));
                         }
                     }
                 } else {
-                    return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} Could not find a package matching pattern!")), None));
+                    return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} Could not find a package matching pattern!")), None)));
                 }
                 if is_empty {
                     // Never found a match under this provider, removing
@@ -1361,14 +1376,14 @@ impl Script {
                 }
             }
         } else {
-            return Err(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} Could not find a provider matching pattern!")), None));
+            return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} Could not find a provider matching pattern!")), None)));
         }
         if self.providers.is_empty() {
             if let Some(r) = reason {
                 if let Some(mode_loc) = &r.loc {
-                    return Err(ErrorGen::get_parse_error(true,
+                    return Err(Box::new(ErrorGen::get_parse_error(true,
                          Some("Could not find any matches for this pattern".to_string()),
-                         Some(mode_loc.line_col.clone()), vec![], vec![]));
+                         Some(mode_loc.line_col.clone()), vec![], vec![])));
                 }
             }
         }
@@ -1376,7 +1391,7 @@ impl Script {
     }
 }
 
-fn matches_globs(s: &String, globs: &Vec<Pattern>) -> bool {
+fn matches_globs(s: &str, globs: &[Pattern]) -> bool {
     for glob in globs.iter() {
         if glob.matches(s) {
             return true;
@@ -1385,9 +1400,9 @@ fn matches_globs(s: &String, globs: &Vec<Pattern>) -> bool {
     false
 }
 
-fn get_globs(patt: &String) -> Vec<Pattern> {
+fn get_globs(patt: &str) -> Vec<Pattern> {
     let mut globs = vec![];
-    for p in patt.split("|") {
+    for p in patt.split('|') {
         globs.push(Pattern::new(p).unwrap());
     }
 
@@ -1436,7 +1451,7 @@ impl Provider {
         let globs = get_globs(&prov_patt.to_lowercase());
 
         let mut matches = vec![];
-        for (provider_name, (info, _provider)) in provided_probes.into_iter() {
+        for (provider_name, (info, _provider)) in provided_probes.iter() {
             if matches_globs(&provider_name.to_lowercase(), &globs) {
                 matches.push((info.clone(), provider_name.clone()));
             }
@@ -1473,7 +1488,7 @@ impl Package {
         vec![]
     }
 
-    fn get_provided_globals(name: &String) -> HashMap<String, (ProvidedFunctionality, Global)> {
+    fn get_provided_globals(name: &str) -> HashMap<String, (ProvidedFunctionality, Global)> {
         let mut globals = HashMap::new();
         if name.to_lowercase() == "bytecode" {
             // Add in provided globals for the "call" event
@@ -1674,11 +1689,11 @@ impl Probe {
         }
     }
 
-    fn get_provided_fns(_mode: &String) -> Vec<(ProvidedFunctionality, Fn)> {
+    fn get_provided_fns(_mode: &str) -> Vec<(ProvidedFunctionality, Fn)> {
         vec![]
     }
 
-    fn get_provided_globals(_mode: &String) -> HashMap<String, (ProvidedFunctionality, Global)> {
+    fn get_provided_globals(_mode: &str) -> HashMap<String, (ProvidedFunctionality, Global)> {
         HashMap::new()
     }
 

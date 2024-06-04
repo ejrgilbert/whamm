@@ -11,9 +11,11 @@ use crate::behavior::tree::DecoratorType::{HasAltCall, PredIs};
 use crate::common::error::ErrorGen;
 use crate::parser::types::{Global, ProvidedFunctionality};
 
+type SimpleAstProbes = HashMap<String, HashMap<String, HashMap<String, HashMap<String, Vec<Probe>>>>>;
+
 pub struct SimpleAST {
     pub global_stmts: Vec<Statement>,
-    pub probes: HashMap<String, HashMap<String, HashMap<String, HashMap<String, Vec<Probe>>>>>,
+    pub probes: SimpleAstProbes,
 }
 
 pub fn build_behavior_tree(ast: &Whamm, err: &mut ErrorGen) -> (BehaviorTree, SimpleAST) {
@@ -104,7 +106,7 @@ impl BehaviorTreeBuilder<'_> {
     // ================
 
     fn visit_provided_globals(&mut self, globals: &HashMap<String, (ProvidedFunctionality, Global)>) {
-        if globals.len() > 0 {
+        if !globals.is_empty() {
             self.tree.sequence(self.err);
 
             // visit globals
@@ -122,15 +124,11 @@ impl BehaviorTreeBuilder<'_> {
 
     fn is_in_context(&self, pattern: &str) -> bool {
         let regex = Regex::new(pattern).unwrap();
-        if let Some(_caps) = regex.captures(self.context_name.as_str()) {
-            true
-        } else {
-            false
-        }
+        matches!(regex.captures(self.context_name.as_str()), Some(_caps))
     }
 
     fn visit_bytecode_package(&mut self, package: &Package) {
-        if package.events.len() > 0 {
+        if !package.events.is_empty() {
             // Build events->globals HashMap
             let mut events = HashMap::new();
             for (event_name, event) in package.events.iter() {
@@ -143,11 +141,10 @@ impl BehaviorTreeBuilder<'_> {
                 package_name: package.name.clone(),
                 events,
             }, self.err);
-            for (_name, event) in package.events.iter() {
+            if let Some((_name, event)) = package.events.iter().next() {
                 // just grab the first one and emit behavior (the decorator above is what
                 // makes this apply to all events)
                 self.visit_event(event);
-                break;
             }
             self.tree.exit_action_with_child(self.err);
         }
@@ -170,7 +167,7 @@ impl BehaviorTreeBuilder<'_> {
 
     fn visit_probe_mode(&mut self, event: &Event, ty: &str) {
         if let Some(probes) = event.probe_map.get(ty) {
-            if let Some(probe) = probes.get(0) {
+            if let Some(probe) = probes.first() {
                 // just grab the first one and emit behavior (the behavior includes a loop
                 // over all probes of this type)
                 self.visit_probe(probe);
@@ -280,7 +277,7 @@ impl BehaviorTreeBuilder<'_> {
     }
 }
 impl WhammVisitor<()> for BehaviorTreeBuilder<'_> {
-    fn visit_whamm(&mut self, whamm: &Whamm) -> () {
+    fn visit_whamm(&mut self, whamm: &Whamm) {
         trace!("Entering: BehaviorTreeBuilder::visit_whamm");
         self.context_name  = "whamm".to_string();
 
@@ -301,7 +298,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_> {
         self.context_name = "".to_string();
     }
 
-    fn visit_script(&mut self, script: &Script) -> () {
+    fn visit_script(&mut self, script: &Script) {
         trace!("Entering: BehaviorTreeBuilder::visit_script");
         self.context_name += &format!(":{}", script.name.clone());
 
@@ -322,10 +319,10 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_> {
 
         trace!("Exiting: BehaviorTreeBuilder::visit_script");
         // Remove from `context_name`
-        self.context_name = self.context_name[..self.context_name.rfind(":").unwrap()].to_string();
+        self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
     }
 
-    fn visit_provider(&mut self, provider: &Provider) -> () {
+    fn visit_provider(&mut self, provider: &Provider) {
         trace!("Entering: BehaviorTreeBuilder::visit_provider");
         self.context_name += &format!(":{}", provider.name.clone());
         self.add_provider_to_ast(provider.name.clone());
@@ -343,21 +340,19 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_> {
 
         trace!("Exiting: BehaviorTreeBuilder::visit_provider");
         // Remove this package from `context_name`
-        self.context_name = self.context_name[..self.context_name.rfind(":").unwrap()].to_string();
+        self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
     }
 
-    fn visit_package(&mut self, package: &Package) -> () {
+    fn visit_package(&mut self, package: &Package) {
         trace!("Entering: BehaviorTreeBuilder::visit_package");
         self.context_name += &format!(":{}", package.name.clone());
 
         if self.is_in_context(r"whamm:script([0-9]+):wasm:bytecode") {
             self.visit_bytecode_package(package);
+        } else if let Some(loc) = &package.loc {
+            self.err.unexpected_error(true, Some(format!("Package not supported! {}", package.name)), Some(loc.line_col.clone()))
         } else {
-            if let Some(loc) = &package.loc {
-                self.err.unexpected_error(true, Some(format!("Package not supported! {}", package.name)), Some(loc.line_col.clone()))
-            } else {
-                self.err.unexpected_error(true, Some(format!("Package not supported! {}", package.name)), None)
-            }
+            self.err.unexpected_error(true, Some(format!("Package not supported! {}", package.name)), None)
         };
 
         // Handle AST separately since we don't visit every package
@@ -373,30 +368,28 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_> {
 
         trace!("Exiting: BehaviorTreeBuilder::visit_package");
         // Remove this package from `context_name`
-        self.context_name = self.context_name[..self.context_name.rfind(":").unwrap()].to_string();
+        self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
     }
 
-    fn visit_event(&mut self, event: &Event) -> () {
+    fn visit_event(&mut self, event: &Event) {
         trace!("Entering: BehaviorTreeBuilder::visit_event");
         self.context_name += &format!(":{}", event.name.clone());
         self.add_event_to_ast(event.name.clone());
 
         if self.is_in_context(r"whamm:script([0-9]+):wasm:bytecode:(.*)") {
             self.visit_bytecode_event(event);
+        } else if let Some(loc) = &event.loc {
+            self.err.unexpected_error(true, Some(format!("Event not supported! {}", event.name)), Some(loc.line_col.clone()))
         } else {
-            if let Some(loc) = &event.loc {
-                self.err.unexpected_error(true, Some(format!("Event not supported! {}", event.name)), Some(loc.line_col.clone()))
-            } else {
-                self.err.unexpected_error(true, Some(format!("Event not supported! {}", event.name)), None)
-            }
+            self.err.unexpected_error(true, Some(format!("Event not supported! {}", event.name)), None)
         };
 
         trace!("Exiting: BehaviorTreeBuilder::visit_event");
         // Remove this event from `context_name`
-        self.context_name = self.context_name[..self.context_name.rfind(":").unwrap()].to_string();
+        self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
     }
 
-    fn visit_probe(&mut self, probe: &Probe) -> () {
+    fn visit_probe(&mut self, probe: &Probe) {
         trace!("Entering: BehaviorTreeBuilder::visit_probe");
         self.context_name += &format!(":{}", probe.mode.clone());
         self.add_probe_to_ast(probe);
@@ -416,43 +409,43 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_> {
         trace!("Exiting: BehaviorTreeBuilder::visit_probe");
         self.tree.exit_action_with_child(self.err);
         // Remove this probe from `context_name`
-        self.context_name = self.context_name[..self.context_name.rfind(":").unwrap()].to_string();
+        self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
     }
 
-    fn visit_fn(&mut self, _f: &Fn) -> () {
+    fn visit_fn(&mut self, _f: &Fn) {
         unreachable!()
     }
 
-    fn visit_formal_param(&mut self, _param: &(Expr, DataType)) -> () {
+    fn visit_formal_param(&mut self, _param: &(Expr, DataType)) {
         unreachable!()
     }
 
-    fn visit_stmt(&mut self, _assign: &Statement) -> () {
+    fn visit_stmt(&mut self, _assign: &Statement) {
         // Not visiting event/probe bodies
         unreachable!()
     }
 
-    fn visit_expr(&mut self, _call: &Expr) -> () {
+    fn visit_expr(&mut self, _call: &Expr) {
         // Not visiting predicates/statements
         unreachable!()
     }
 
-    fn visit_unop(&mut self, _unop: &UnOp) -> () {
+    fn visit_unop(&mut self, _unop: &UnOp) {
         // Not visiting predicates/statements
         unreachable!()
     }
 
-    fn visit_binop(&mut self, _binop: &BinOp) -> () {
+    fn visit_binop(&mut self, _binop: &BinOp) {
         // Not visiting predicates/statements
         unreachable!()
     }
 
-    fn visit_datatype(&mut self, _datatype: &DataType) -> () {
+    fn visit_datatype(&mut self, _datatype: &DataType) {
         // Not visiting predicates/statements
         unreachable!()
     }
 
-    fn visit_value(&mut self, _val: &Value) -> () {
+    fn visit_value(&mut self, _val: &Value) {
         // Not visiting predicates/statements
         unreachable!()
     }

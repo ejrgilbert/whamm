@@ -9,6 +9,11 @@ pub struct BehaviorTree {
     pub nodes: Vec<Node>,
     pub curr: usize,     // indexes into this::nodes
 }
+impl Default for BehaviorTree {
+    fn default() -> Self {
+        BehaviorTree::new()
+    }
+}
 impl BehaviorTree {
     pub fn new() -> Self {
         Self {
@@ -61,7 +66,7 @@ impl BehaviorTree {
     pub fn exit_sequence(&mut self, err: &mut ErrorGen) -> &mut Self {
         match self.get_curr_mut() {
             Some(Node::Sequence {parent, ..}) => {
-                self.curr = parent.clone()
+                self.curr = *parent
             },
             other => {
                 err.unexpected_error(false, Some(format!("{UNEXPECTED_ERR_MSG} Something went wrong, expected Sequence, but was: {:?}.", other)), None);
@@ -83,7 +88,7 @@ impl BehaviorTree {
     pub fn exit_fallback(&mut self, err: &mut ErrorGen) -> &mut Self {
         match self.get_curr_mut() {
             Some(Node::Fallback {parent, ..}) => {
-                self.curr = parent.clone()
+                self.curr = *parent
             },
             other => {
                 err.unexpected_error(false, Some(format!("{UNEXPECTED_ERR_MSG} Something went wrong, expected Fallback, but was: {:?}.", other)), None);
@@ -106,7 +111,7 @@ impl BehaviorTree {
     pub fn exit_decorator(&mut self, err: &mut ErrorGen) -> &mut Self {
         match self.get_curr_mut() {
             Some(Node::Decorator {parent, ..}) => {
-                self.curr = parent.clone()
+                self.curr = *parent
             },
             other => {
                 err.unexpected_error(false, Some(format!("{UNEXPECTED_ERR_MSG} Something went wrong, expected Decorator, but was: {:?}.", other)), None);
@@ -129,7 +134,7 @@ impl BehaviorTree {
     pub fn exit_action_with_child(&mut self, err: &mut ErrorGen) -> &mut Self {
         match self.get_curr_mut() {
             Some(Node::ActionWithChild {parent, ..}) => {
-                self.curr = parent.clone()
+                self.curr = *parent
             },
             other => {
                 err.unexpected_error(false, Some(format!("{UNEXPECTED_ERR_MSG} Something went wrong, expected ActionWithChild, but was: {:?}.", other)), None);
@@ -152,7 +157,7 @@ impl BehaviorTree {
     pub fn exit_parameterized_action(&mut self, err: &mut ErrorGen) -> &mut Self {
         match self.get_curr_mut() {
             Some(Node::ActionWithParams {parent, ..}) => {
-                self.curr = parent.clone()
+                self.curr = *parent
             },
             other => {
                 err.unexpected_error(false, Some(format!("{UNEXPECTED_ERR_MSG} Something went wrong, expected ParameterizedAction, but was: {:?}.", other)), None);
@@ -166,32 +171,29 @@ impl BehaviorTree {
     // ==================
 
     fn add_action_as_param(&mut self, idx: usize, id: usize, err: &mut ErrorGen) {
-        match self.get_curr_mut() {
-            Some(Node::ActionWithParams {ty, ..}) => {
-                match ty {
-                    ParamActionType::EmitIf { cond, conseq } => {
-                        if idx == 0 {
-                            *cond = id;
-                        } else if idx == 1 {
-                            *conseq = id;
-                        } else {
-                            err.unexpected_error(false, Some(format!("{UNEXPECTED_ERR_MSG} Unexpected index for parameterized action (EmitIf):  {:?}.", idx)), None);
-                        }
-                    },
-                    ParamActionType::EmitIfElse { cond, conseq, alt } => {
-                        if idx == 0 {
-                            *cond = id;
-                        } else if idx == 1 {
-                            *conseq = id;
-                        }else if idx == 2 {
-                            *alt = id;
-                        } else {
-                            err.unexpected_error(false, Some(format!("{UNEXPECTED_ERR_MSG} Unexpected index for parameterized action (EmitIfElse):  {:?}.", idx)), None);
-                        }
+        if let Some(Node::ActionWithParams {ty, ..}) = self.get_curr_mut() {
+            match ty {
+                ParamActionType::EmitIf { cond, conseq } => {
+                    if idx == 0 {
+                        *cond = id;
+                    } else if idx == 1 {
+                        *conseq = id;
+                    } else {
+                        err.unexpected_error(false, Some(format!("{UNEXPECTED_ERR_MSG} Unexpected index for parameterized action (EmitIf):  {:?}.", idx)), None);
+                    }
+                },
+                ParamActionType::EmitIfElse { cond, conseq, alt } => {
+                    if idx == 0 {
+                        *cond = id;
+                    } else if idx == 1 {
+                        *conseq = id;
+                    }else if idx == 2 {
+                        *alt = id;
+                    } else {
+                        err.unexpected_error(false, Some(format!("{UNEXPECTED_ERR_MSG} Unexpected index for parameterized action (EmitIfElse):  {:?}.", idx)), None);
                     }
                 }
-            },
-            _ => {}
+            }
         };
     }
 
@@ -389,10 +391,10 @@ impl BehaviorTree {
         match self.get_curr_mut() {
             Some(Node::Sequence {parent, ..}) |
             Some(Node::Fallback {parent, ..}) => {
-                self.curr = parent.clone()
+                self.curr = *parent
             },
             Some(Node::Decorator {parent, ..}) => {
-                self.curr = parent.clone()
+                self.curr = *parent
             }
             _ => {
                 err.unexpected_error(false, Some(format!("{UNEXPECTED_ERR_MSG} Attempted to exit current scope, but there was no parent to exit into.")), None);

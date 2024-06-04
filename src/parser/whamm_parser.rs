@@ -30,7 +30,7 @@ pub fn print_info(spec: String, print_globals: bool, print_functions: bool, err:
             let id = whamm.add_script(Script::new());
             let script: &mut Script = whamm.scripts.get_mut(id).unwrap();
             if let Err(e) = script.print_info(&whamm.provided_probes, &probe_spec, print_globals, print_functions) {
-                err.add_error(e);
+                err.add_error(*e);
             }
         },
         Err(e) => {
@@ -57,7 +57,7 @@ pub fn parse_script(script: &String, err: &mut ErrorGen) -> Option<Whamm> {
                     Some(ast)
                 },
                 Err(e) => {
-                    err.pest_err(e);
+                    err.pest_err(*e);
                     None
                 },
             }
@@ -73,7 +73,7 @@ pub fn parse_script(script: &String, err: &mut ErrorGen) -> Option<Whamm> {
 // = AST Constructors =
 // ====================
 
-pub fn to_ast(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Whamm, Error<Rule>> {
+pub fn to_ast(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Whamm, Box<Error<Rule>>> {
     trace!("Entered to_ast");
 
     // Create initial AST with Whamm node
@@ -199,7 +199,7 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
             // Add probe definition to the script
             let script: &mut Script = whamm.scripts.get_mut(script_count).unwrap();
             if let Err(e) = script.add_probe(&whamm.provided_probes, &probe_spec, this_predicate, this_body) {
-                err.add_error(e);
+                err.add_error(*e);
             }
 
             trace!("Exiting probe_def");
@@ -354,7 +354,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
                     } else {
                         return Err(vec![ErrorGen::get_unexpected_error(
                             true,
-                            Some(format!("{}{}", UNEXPECTED_ERR_MSG.to_string(), "could not get location")),
+                            Some(format!("{}{}", UNEXPECTED_ERR_MSG, "could not get location")),
                             None)
                             ]);
                     };
