@@ -15,7 +15,7 @@ pub fn setup_logger() {
     let _ = env_logger::builder().is_test(true).try_init();
 }
 
-const VALID_SCRIPTS: &'static [&'static str] = &[
+const VALID_SCRIPTS: &[&str] = &[
     // Ternary
     r#"
 wasm:bytecode:br:before {
@@ -112,7 +112,7 @@ wasm:bytecode:br:before {
     "#,
 ];
 
-const INVALID_SCRIPTS: &'static [&'static str] = &[
+const INVALID_SCRIPTS: &[&str] = &[
     // globals
     r#"
 map<i32, i32> count;
@@ -134,7 +134,7 @@ map<i32, i32> count;
     "wasm:bytecode:call:alt / i == 1 / { i; }",
 ];
 
-const SPECIAL: &'static [&'static str] = &[
+const SPECIAL: &[&str] = &[
     "BEGIN { }",
     "END { }",
     "wasm:::alt { }",
@@ -149,7 +149,7 @@ const TEST_RSC_DIR: &str = "tests/scripts/";
 const PATTERN: &str = "*.mm";
 const TODO: &str = "*.TODO";
 
-pub fn get_test_scripts(subdir: &str) -> Vec<String> {
+pub fn get_test_scripts(sub_dir: &str) -> Vec<String> {
     let mut scripts = vec![];
     let options = glob::MatchOptions {
         case_sensitive: false,
@@ -157,13 +157,13 @@ pub fn get_test_scripts(subdir: &str) -> Vec<String> {
         require_literal_leading_dot: false,
     };
 
-    for path in glob(&*(TEST_RSC_DIR.to_owned() + subdir + "/" + &*PATTERN.to_owned()))
+    for path in glob(&(TEST_RSC_DIR.to_owned() + sub_dir + "/" + &*PATTERN.to_owned()))
         .expect("Failed to read glob pattern") {
-        let unparsed_file = std::fs::read_to_string(path.as_ref().unwrap()).expect(&*format!("Unable to read file at {:?}", &path));
+        let unparsed_file = std::fs::read_to_string(path.as_ref().unwrap()).unwrap_or_else(|_| panic!("Unable to read file at {:?}", &path));
         scripts.push(unparsed_file);
     }
 
-    for path in glob_with(&*(TEST_RSC_DIR.to_owned() + subdir + "/" + &*TODO.to_owned()), options).expect("Failed to read glob pattern") {
+    for path in glob_with(&(TEST_RSC_DIR.to_owned() + sub_dir + "/" + &*TODO.to_owned()), options).expect("Failed to read glob pattern") {
         warn!("File marked with TODO: {}", path.as_ref().unwrap().display());
     }
 
@@ -232,7 +232,7 @@ fn print_ast(ast: &Whamm ) {
     let mut visitor = AsStrVisitor {
         indent: 0
     };
-    println!("{}", visitor.visit_whamm(&ast));
+    println!("{}", visitor.visit_whamm(ast));
 }
 
 #[test]
@@ -255,7 +255,7 @@ wasm::call:alt /
         Some(ast) => {
             // script
             assert_eq!(1, ast.scripts.len()); // a single script
-            let script = ast.scripts.get(0).unwrap();
+            let script = ast.scripts.first().unwrap();
 
             // provider
             assert_eq!(1, script.providers.len());
@@ -279,7 +279,7 @@ wasm::call:alt /
             assert_eq!(1, event.probe_map.len());
             assert_eq!(1, event.probe_map.get("alt").unwrap().len());
 
-            let probe = event.probe_map.get("alt").unwrap().get(0).unwrap();
+            let probe = event.probe_map.get("alt").unwrap().first().unwrap();
             assert_eq!(0, probe.globals.len());
             assert_eq!(0, probe.fns.len());
             assert_eq!("alt", probe.mode);
@@ -301,7 +301,7 @@ wasm::call:alt /
         None => {
             error!("Could not get ast from script: {}", script);
             err.report();
-            assert!(false);
+            panic!();
         }
     };
 }
@@ -334,7 +334,7 @@ pub fn test_implicit_probe_defs_dumper() {
 pub fn fault_injection() {
     setup_logger();
     let scripts = get_test_scripts("fault_injection");
-    if scripts.len() == 0 {
+    if scripts.is_empty() {
         warn!("No test scripts found for `fault_injection` test.");
     }
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
@@ -345,7 +345,7 @@ pub fn fault_injection() {
 pub fn wizard_monitors() {
     setup_logger();
     let scripts = get_test_scripts("wizard_monitors");
-    if scripts.len() == 0 {
+    if scripts.is_empty() {
         warn!("No test scripts found for `wizard_monitors` test.");
     }
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
@@ -356,7 +356,7 @@ pub fn wizard_monitors() {
 pub fn replay() {
     setup_logger();
     let scripts = get_test_scripts("replay");
-    if scripts.len() == 0 {
+    if scripts.is_empty() {
         warn!("No test scripts found for `replay` test.");
     }
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);

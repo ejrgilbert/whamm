@@ -130,28 +130,20 @@ impl ErrorGen {
     }
 
     pub fn get_duplicate_identifier_error(fatal: bool, duplicated_id: String, err_line_col: Option<LineColLocation>, info_line_col: Option<LineColLocation>) -> WhammError {
-        let err_loc = if let Some(err_line_col) = err_line_col {
-            Some(CodeLocation {
+        let err_loc = err_line_col.map(|err_line_col| CodeLocation {
                 is_err: true,
                 message: Some(format!("duplicate definitions for `{}`", duplicated_id)),
                 line_col: err_line_col,
                 line_str: None,
                 line2_str: None
-            })
-        } else {
-            None
-        };
-        let info_loc = if let Some(info_line_col) = info_line_col {
-            Some(CodeLocation {
+            });
+        let info_loc = info_line_col.map(|info_line_col| CodeLocation {
                 is_err: false,
                 message: Some(format!("other definition for `{}`", duplicated_id)),
                 line_col: info_line_col,
                 line_str: None,
                 line2_str: None
-            })
-        } else {
-            None
-        };
+            });
 
         WhammError {
             fatal,
@@ -164,16 +156,8 @@ impl ErrorGen {
     }
 
     pub fn get_duplicate_identifier_error_from_loc(fatal: bool, duplicated_id: String, err_loc: &Option<Location>, info_loc: &Option<Location>) -> WhammError {
-        let err_loc = if let Some(err_loc) = err_loc {
-            Some(err_loc.line_col.clone())
-        } else {
-            None
-        };
-        let info_loc = if let Some(info_loc) = info_loc {
-            Some(info_loc.line_col.clone())
-        } else {
-            None
-        };
+        let err_loc = err_loc.as_ref().map(|err_loc| err_loc.line_col.clone());
+        let info_loc = info_loc.as_ref().map(|info_loc| info_loc.line_col.clone());
         Self::get_duplicate_identifier_error(fatal, duplicated_id, err_loc, info_loc)
     }
 
@@ -183,17 +167,13 @@ impl ErrorGen {
     }
 
     pub fn get_type_check_error(fatal: bool, message: String, loc: &Option<LineColLocation>) -> WhammError {
-        let loc = if let Some(loc) = loc {
-            Some(CodeLocation {
+        let loc = loc.as_ref().map(|loc| CodeLocation {
                 is_err: false,
                 message: Some(message.clone()),
                 line_col: loc.clone(),
                 line_str: None,
                 line2_str: None
-            })
-        } else {
-            None
-        };
+            });
 
         WhammError {
             fatal,
@@ -206,11 +186,7 @@ impl ErrorGen {
     }
 
     pub fn get_type_check_error_from_loc(fatal: bool, message: String, line_col: &Option<Location>) -> WhammError {
-        let loc = if let Some(loc) = line_col {
-            Some(loc.line_col.clone())
-        } else {
-            None
-        };
+        let loc = line_col.as_ref().map(|loc| loc.line_col.clone());
         Self::get_type_check_error(fatal, message, &loc)
     }
 
@@ -341,7 +317,7 @@ impl CodeLocation {
     }
 
     // report this error to the console, including color highlighting
-    pub fn print(&mut self, script: &String, spacing: &String, buffer: &mut Buffer) {
+    pub fn print(&mut self, script: &str, spacing: &String, buffer: &mut Buffer) {
         if !self.lines_are_defined() {
             self.define_lines(script);
         }
@@ -497,7 +473,7 @@ impl WhammError {
     }
 
     /// report this error to the console, including color highlighting
-    pub fn report(&mut self, script: &String, script_path: &String) {
+    pub fn report(&mut self, script: &str, script_path: &String) {
         let spacing = self.spacing();
         let message = self.ty.message();
 
@@ -645,7 +621,7 @@ impl ErrorType {
         where F: FnMut(&Rule) -> String,
     {
         let preamble = if let Some(msg) = message {
-            let mut s = format!("{msg}");
+            let mut s = msg.to_string();
             if !negatives.is_empty() && !positives.is_empty() {
                 s += " -- ";
             }
