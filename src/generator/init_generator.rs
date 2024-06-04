@@ -87,10 +87,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
 
     fn visit_script(&mut self, script: &mut Script) -> bool {
         trace!("Entering: CodeGenerator::visit_script");
-        match self.emitter.enter_scope() {
-            Err(e) => self.err.add_error(*e),
-            _ => {}
-        }
+        if let Err(e) = self.emitter.enter_scope() { self.err.add_error(*e) }
         self.context_name += &format!(":{}", script.name.clone());
         let mut is_success = true;
 
@@ -106,21 +103,15 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         });
 
         trace!("Exiting: CodeGenerator::visit_script");
-        match self.emitter.exit_scope() {
-            Err(e) => self.err.add_error(*e),
-            _ => {}
-        }
+        if let Err(e) = self.emitter.exit_scope() { self.err.add_error(*e) }
         // Remove from `context_name`
-        self.context_name = self.context_name[..self.context_name.rfind(":").unwrap()].to_string();
+        self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
         is_success
     }
 
     fn visit_provider(&mut self, provider: &mut Provider) -> bool {
         trace!("Entering: CodeGenerator::visit_provider");
-        match self.emitter.enter_scope() {
-            Err(e) => self.err.add_error(*e),
-            _ => {}
-        }
+        if let Err(e) = self.emitter.enter_scope() { self.err.add_error(*e) }
         self.context_name += &format!(":{}", provider.name.clone());
         let mut is_success = true;
 
@@ -136,21 +127,15 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         });
 
         trace!("Exiting: CodeGenerator::visit_provider");
-        match self.emitter.exit_scope() {
-            Err(e) => self.err.add_error(*e),
-            _ => {}
-        }
+        if let Err(e) = self.emitter.exit_scope() { self.err.add_error(*e) }
         // Remove this package from `context_name`
-        self.context_name = self.context_name[..self.context_name.rfind(":").unwrap()].to_string();
+        self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
         is_success
     }
 
     fn visit_package(&mut self, package: &mut Package) -> bool {
         trace!("Entering: CodeGenerator::visit_package");
-        match self.emitter.enter_scope() {
-            Err(e) => self.err.add_error(*e),
-            _ => {}
-        }
+        if let Err(e) = self.emitter.enter_scope() { self.err.add_error(*e) }
         let mut is_success = true;
         self.context_name += &format!(":{}", package.name.clone());
 
@@ -166,21 +151,15 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         });
 
         trace!("Exiting: CodeGenerator::visit_package");
-        match self.emitter.exit_scope() {
-            Err(e) => self.err.add_error(*e),
-            _ => {}
-        }
+        if let Err(e) = self.emitter.exit_scope() { self.err.add_error(*e) }
         // Remove this package from `context_name`
-        self.context_name = self.context_name[..self.context_name.rfind(":").unwrap()].to_string();
+        self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
         is_success
     }
 
     fn visit_event(&mut self, event: &mut Event) -> bool {
         trace!("Entering: CodeGenerator::visit_event");
-        match self.emitter.enter_scope() {
-            Err(e) => self.err.add_error(*e),
-            _ => {}
-        }
+        if let Err(e) = self.emitter.enter_scope() { self.err.add_error(*e) }
         // let mut is_success = self.emitter.emit_event(event);
         self.context_name += &format!(":{}", event.name.clone());
         let mut is_success = true;
@@ -217,21 +196,15 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         }
 
         trace!("Exiting: CodeGenerator::visit_event");
-        match self.emitter.exit_scope() {
-            Err(e) => self.err.add_error(*e),
-            _ => {}
-        }
+        if let Err(e) = self.emitter.exit_scope() { self.err.add_error(*e) }
         // Remove this event from `context_name`
-        self.context_name = self.context_name[..self.context_name.rfind(":").unwrap()].to_string();
+        self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
         is_success
     }
 
     fn visit_probe(&mut self, probe: &mut Probe) -> bool {
         trace!("Entering: CodeGenerator::visit_probe");
-        match self.emitter.enter_scope() {
-            Err(e) => self.err.add_error(*e),
-            _ => {}
-        }
+        if let Err(e) = self.emitter.enter_scope() { self.err.add_error(*e) }
         // let mut is_success = self.emitter.emit_probe(probe);
         self.context_name += &format!(":{}", probe.mode.clone());
         let mut is_success = true;
@@ -244,21 +217,15 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         is_success &= self.visit_provided_globals(&probe.globals);
 
         trace!("Exiting: CodeGenerator::visit_probe");
-        match self.emitter.exit_scope() {
-            Err(e) => self.err.add_error(*e),
-            _ => {}
-        }
+        if let Err(e) = self.emitter.exit_scope() { self.err.add_error(*e) }
         // Remove this probe from `context_name`
-        self.context_name = self.context_name[..self.context_name.rfind(":").unwrap()].to_string();
+        self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
         is_success
     }
 
     fn visit_fn(&mut self, f: &mut crate::parser::types::Fn) -> bool {
         trace!("Entering: CodeGenerator::visit_fn");
-        match self.emitter.enter_scope() {
-            Err(e) => self.err.add_error(*e),
-            _ => {}
-        }
+        if let Err(e) = self.emitter.enter_scope() { self.err.add_error(*e) }
         let mut is_success = true;
         if f.is_comp_provided {
             match self.emitter.emit_fn(&self.context_name, f) {
@@ -267,10 +234,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
             }
         }
         trace!("Exiting: CodeGenerator::visit_fn");
-        match self.emitter.exit_scope() {
-            Err(e) => self.err.add_error(*e),
-            _ => {}
-        }
+        if let Err(e) = self.emitter.exit_scope() { self.err.add_error(*e) }
         is_success
     }
 

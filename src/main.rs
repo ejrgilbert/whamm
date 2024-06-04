@@ -94,7 +94,7 @@ fn run_instr(app_wasm_path: String, script_path: String, output_wasm_path: Strin
 
     // Read app Wasm into Walrus module
     let _config =  walrus::ModuleConfig::new();
-    let app_wasm = Module::from_file(&app_wasm_path).unwrap();
+    let app_wasm = Module::from_file(app_wasm_path).unwrap();
 
     // Configure the emitter based on target instrumentation code format
     let mut emitter = if emit_virgil {
@@ -135,10 +135,7 @@ fn run_instr(app_wasm_path: String, script_path: String, output_wasm_path: Strin
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
 
-    match emitter.dump_to_file(output_wasm_path) {
-        Err(e) => err.add_error(*e),
-        _ => {}
-    }
+    if let Err(e) = emitter.dump_to_file(output_wasm_path) { err.add_error(*e) }
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
 }
@@ -146,40 +143,31 @@ fn run_instr(app_wasm_path: String, script_path: String, output_wasm_path: Strin
 fn run_vis_wasm(wasm_path: String, output_path: String) {
     // Read app Wasm into Walrus module
     let _config =  walrus::ModuleConfig::new();
-    let app_wasm = Module::from_file(&wasm_path).unwrap();
+    let app_wasm = Module::from_file(wasm_path).unwrap();
 
-    match app_wasm.write_graphviz_dot(output_path.clone()) {
-        Ok(_) => {
-            match std::fs::read_to_string(&output_path.clone()) {
-                Ok(dot_str) => {
-                    let svg_path = format!("{}.svg", output_path.clone());
+    if app_wasm.write_graphviz_dot(output_path.clone()).is_ok() {
+        match std::fs::read_to_string(output_path.clone()) {
+            Ok(dot_str) => {
+                let svg_path = format!("{}.svg", output_path.clone());
 
-                    match exec_dot(
-                        dot_str,
-                        vec![Format::Svg.into(), CommandArg::Output(svg_path.clone())]
-                    ) {
-                        Err(e) => {
-                            println!("{}", e.to_string());
-                            exit(1);
-                        }
-                        _ => {}
-                    }
-
-                    match opener::open(svg_path.clone()) {
-                        Err(err) => {
-                            error!("Could not open visualization of wasm at: {}", svg_path);
-                            error!("{:?}", err)
-                        }
-                        _ => {}
-                    }
-                },
-                Err(error) => {
-                    error!("Cannot read specified file {}: {}", output_path, error);
+                if let Err(e) = exec_dot(
+                    dot_str,
+                    vec![Format::Svg.into(), CommandArg::Output(svg_path.clone())]
+                ) {
+                    println!("{}", e);
                     exit(1);
                 }
-            };
-        }
-        Err(_) => {}
+
+                if let Err(err) = opener::open(svg_path.clone()) {
+                    error!("Could not open visualization of wasm at: {}", svg_path);
+                    error!("{:?}", err)
+                }
+            },
+            Err(error) => {
+                error!("Cannot read specified file {}: {}", output_path, error);
+                exit(1);
+            }
+        };
     }
 }
 
@@ -205,17 +193,11 @@ fn run_vis_script(script_path: String, run_verifier: bool, output_path: String) 
         }
     };
 
-    match visualization_to_file(&behavior_tree, path) {
-        Ok(_) => {
-            match opener::open(output_path.clone()) {
-                Err(err) => {
-                    error!("Could not open visualization tree at: {}", output_path);
-                    error!("{:?}", err)
-                }
-                _ => {}
-            }
+    if visualization_to_file(&behavior_tree, path).is_ok() {
+        if let Err(err) = opener::open(output_path.clone()) {
+            error!("Could not open visualization tree at: {}", output_path);
+            error!("{:?}", err)
         }
-        Err(_) => {}
     }
     exit(0);
 }
@@ -228,30 +210,28 @@ fn get_symbol_table(ast: &mut Whamm, run_verifier: bool, err: &mut ErrorGen) -> 
 }
 
 fn verify_ast(ast: &Whamm, run_verifier: bool, err: &mut ErrorGen) {
-    if run_verifier {
-        if !verify(ast) {
-            error!("AST failed verification!");
-            exit(1);
-        }
+    if run_verifier && !verify(ast) {
+        error!("AST failed verification!");
+        exit(1);
     }
     err.check_too_many();
 }
 
 fn get_script_ast(script_path: &String, err: &mut ErrorGen) -> Whamm {
-    match std::fs::read_to_string(&script_path) {
+    match std::fs::read_to_string(script_path) {
         Ok(unparsed_str) => {
             // Parse the script and build the AST
             match parse_script(&unparsed_str, err) {
                 Some(ast) => {
                     info!("successfully parsed");
                     err.check_too_many();
-                    return ast;
+                    ast
                 },
                 None => {
                     err.report();
                     exit(1);
                 }
-            };
+            }
         },
         Err(error) => {
             error!("Cannot read specified file {}: {}", script_path, error);
@@ -262,7 +242,7 @@ fn get_script_ast(script_path: &String, err: &mut ErrorGen) -> Whamm {
 
 fn build_behavior(whamm: &Whamm, err: &mut ErrorGen) -> (BehaviorTree, SimpleAST) {
     // Build the behavior tree from the AST
-    let (mut behavior, simple_ast) = build_behavior_tree(&whamm, err);
+    let (mut behavior, simple_ast) = build_behavior_tree(whamm, err);
     err.check_too_many();
     behavior.reset();
 

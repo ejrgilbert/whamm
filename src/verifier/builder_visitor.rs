@@ -43,7 +43,7 @@ impl SymbolTableBuilder<'_> {
         // Add script to current whamm record
         match self.table.get_record_mut(&self.curr_whamm.unwrap()).unwrap() {
             Record::Whamm { scripts, .. } => {
-                scripts.push(id.clone());
+                scripts.push(id);
             }
             _ => {
                 self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
@@ -51,15 +51,12 @@ impl SymbolTableBuilder<'_> {
         }
 
         // enter script scope
-        match self.table.enter_scope() {
-            Err(e) => self.err.add_error(*e),
-            _ => {}
-        }
-        self.curr_script = Some(id.clone());
+        if let Err(e) = self.table.enter_scope() { self.err.add_error(*e) }
+        self.curr_script = Some(id);
 
         // set scope name and type
         self.table.set_curr_scope_info(script.name.clone(), ScopeType::Script);
-        self.table.set_curr_script(id.clone());
+        self.table.set_curr_script(id);
     }
 
     fn add_provider(&mut self, provider: &Provider) {
@@ -82,7 +79,7 @@ impl SymbolTableBuilder<'_> {
         // Add provider to current script record
         match self.table.get_record_mut(&self.curr_script.unwrap()).unwrap() {
             Record::Script { providers, .. } => {
-                providers.push(id.clone());
+                providers.push(id);
             }
             _ => {
                 self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
@@ -90,11 +87,8 @@ impl SymbolTableBuilder<'_> {
         }
 
         // enter provider scope
-        match self.table.enter_scope() {
-            Err(e) => self.err.add_error(*e),
-            _ => {}
-        }
-        self.curr_provider = Some(id.clone());
+        if let Err(e) = self.table.enter_scope() { self.err.add_error(*e) }
+        self.curr_provider = Some(id);
 
         // set scope name and type
         self.table.set_curr_scope_info(provider.name.clone(), ScopeType::Provider);
@@ -120,7 +114,7 @@ impl SymbolTableBuilder<'_> {
         // Add package to current provider record
         match self.table.get_record_mut(&self.curr_provider.unwrap()).unwrap() {
             Record::Provider { packages, .. } => {
-                packages.push(id.clone());
+                packages.push(id);
             }
             _ => {
                 self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
@@ -128,11 +122,8 @@ impl SymbolTableBuilder<'_> {
         }
 
         // enter package scope
-        match self.table.enter_scope() {
-            Err(e) => self.err.add_error(*e),
-            _ => {}
-        }
-        self.curr_package = Some(id.clone());
+        if let Err(e) = self.table.enter_scope() { self.err.add_error(*e) }
+        self.curr_package = Some(id);
 
         // set scope name and type
         self.table.set_curr_scope_info(package.name.clone(), ScopeType::Package);
@@ -158,7 +149,7 @@ impl SymbolTableBuilder<'_> {
         // Add event to current package record
         match self.table.get_record_mut(&self.curr_package.unwrap()).unwrap() {
             Record::Package { events, .. } => {
-                events.push(id.clone());
+                events.push(id);
             }
             _ => {
                 self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
@@ -166,11 +157,8 @@ impl SymbolTableBuilder<'_> {
         }
 
         // enter event scope
-        match self.table.enter_scope() {
-            Err(e) => self.err.add_error(*e),
-            _ => {}
-        }
-        self.curr_event = Some(id.clone());
+        if let Err(e) = self.table.enter_scope() { self.err.add_error(*e) }
+        self.curr_event = Some(id);
 
         // set scope name and type
         self.table.set_curr_scope_info(event.name.clone(), ScopeType::Event);
@@ -195,7 +183,7 @@ impl SymbolTableBuilder<'_> {
         // Add probe to current event record
         match self.table.get_record_mut(&self.curr_event.unwrap()) {
             Some(Record::Event { probes, .. }) => {
-                probes.push(id.clone());
+                probes.push(id);
             }
             _ => {
                 self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
@@ -203,11 +191,8 @@ impl SymbolTableBuilder<'_> {
         }
 
         // enter probe scope
-        match self.table.enter_scope() {
-            Err(e) => self.err.add_error(*e),
-            _ => {}
-        }
-        self.curr_probe = Some(id.clone());
+        if let Err(e) = self.table.enter_scope() { self.err.add_error(*e) }
+        self.curr_probe = Some(id);
 
         // set scope name and type
         self.table.set_curr_scope_info(probe.mode.clone(), ScopeType::Probe);
@@ -245,11 +230,8 @@ impl SymbolTableBuilder<'_> {
         self.add_fn_id_to_curr_rec(id);
 
         // enter fn scope
-        match self.table.enter_scope() {
-            Err(e) => self.err.add_error(*e),
-            _ => {}
-        }
-        self.curr_fn = Some(id.clone());
+        if let Err(e) = self.table.enter_scope() { self.err.add_error(*e) }
+        self.curr_fn = Some(id);
 
         // set scope name and type
         self.table.set_curr_scope_info(f.name.name.clone(), ScopeType::Fn);
@@ -266,7 +248,7 @@ impl SymbolTableBuilder<'_> {
             Some(Record::Package { globals, .. }) |
             Some(Record::Event { globals, .. }) |
             Some(Record::Probe { globals, .. }) => {
-                globals.push(id.clone());
+                globals.push(id);
             }
             _ => {
                 self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
@@ -282,7 +264,7 @@ impl SymbolTableBuilder<'_> {
             Some(Record::Package { fns, .. }) |
             Some(Record::Event { fns, .. }) |
             Some(Record::Probe { fns, .. }) => {
-                fns.push(id.clone());
+                fns.push(id);
             }
             _ => {
                 self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
@@ -315,7 +297,7 @@ impl SymbolTableBuilder<'_> {
         // add param to fn record
         match self.table.get_record_mut(&self.curr_fn.unwrap()) {
             Some(Record::Fn { params, .. }) => {
-                params.push(id.clone());
+                params.push(id);
             }
             _ => {
                 self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
@@ -352,7 +334,7 @@ impl SymbolTableBuilder<'_> {
 }
 
 impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
-    fn visit_whamm(&mut self, whamm: &mut Whamm) -> () {
+    fn visit_whamm(&mut self, whamm: &mut Whamm) {
         trace!("Entering: visit_whamm");
         let name: String = "whamm".to_string();
         self.table.set_curr_scope_info(name.clone(), ScopeType::Whamm);
@@ -383,30 +365,26 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         self.curr_whamm = None;
     }
 
-    fn visit_script(&mut self, script: &mut Script) -> () {
+    fn visit_script(&mut self, script: &mut Script) {
         trace!("Entering: visit_script");
 
         self.add_script(script);
 
         script.fns.iter_mut().for_each(| f | self.visit_fn(f) );
         script.global_stmts.iter_mut().for_each(|stmt| {
-            match stmt {
-                Statement::Decl {ty, var_id, ..} => {
-                    if let Expr::VarId {name, ..} = &var_id {
-                        // Add global variable to script globals (triggers the init_generator to emit them!)
-                        script.globals.insert(name.clone(), Global {
-                            is_comp_provided: false,
-                            ty: ty.clone(),
-                            var_name: var_id.clone(),
-                            value: None,
-                        });
-                    } else {
-                        self.err.unexpected_error(true, Some(format!("{} \
-                    Variable declaration var_id is not the correct Expr variant!!", UNEXPECTED_ERR_MSG.to_string())), None);
-                    }
-                },
-                // We only care about building the symbols right now, not actual operations
-                _ => {}
+            if let Statement::Decl {ty, var_id, ..} = stmt {
+                if let Expr::VarId {name, ..} = &var_id {
+                    // Add global variable to script globals (triggers the init_generator to emit them!)
+                    script.globals.insert(name.clone(), Global {
+                        is_comp_provided: false,
+                        ty: ty.clone(),
+                        var_name: var_id.clone(),
+                        value: None,
+                    });
+                } else {
+                    self.err.unexpected_error(true, Some(format!("{} \
+                Variable declaration var_id is not the correct Expr variant!!", UNEXPECTED_ERR_MSG)), None);
+                }
             }
 
             self.visit_stmt(stmt)
@@ -416,14 +394,11 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         });
 
         trace!("Exiting: visit_script");
-        match self.table.exit_scope() {
-            Err(e) => self.err.add_error(*e),
-            _ => {}
-        }
+        if let Err(e) = self.table.exit_scope() { self.err.add_error(*e) }
         self.curr_script = None;
     }
 
-    fn visit_provider(&mut self, provider: &mut Provider) -> () {
+    fn visit_provider(&mut self, provider: &mut Provider) {
         trace!("Entering: visit_provider");
 
         self.add_provider(provider);
@@ -434,14 +409,11 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         });
 
         trace!("Exiting: visit_provider");
-        match self.table.exit_scope() {
-            Err(e) => self.err.add_error(*e),
-            _ => {}
-        }
+        if let Err(e) = self.table.exit_scope() { self.err.add_error(*e) }
         self.curr_provider = None;
     }
 
-    fn visit_package(&mut self, package: &mut Package) -> () {
+    fn visit_package(&mut self, package: &mut Package) {
         trace!("Entering: visit_package");
 
         self.add_package(package);
@@ -452,14 +424,11 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         });
 
         trace!("Exiting: visit_package");
-        match self.table.exit_scope() {
-            Err(e) => self.err.add_error(*e),
-            _ => {}
-        }
+        if let Err(e) = self.table.exit_scope() { self.err.add_error(*e) }
         self.curr_package = None;
     }
 
-    fn visit_event(&mut self, event: &mut Event) -> () {
+    fn visit_event(&mut self, event: &mut Event) {
         trace!("Entering: visit_event");
 
         self.add_event(event);
@@ -474,14 +443,11 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         });
 
         trace!("Exiting: visit_event");
-        match self.table.exit_scope() {
-            Err(e) => self.err.add_error(*e),
-            _ => {}
-        }
+        if let Err(e) = self.table.exit_scope() { self.err.add_error(*e) }
         self.curr_event = None;
     }
 
-    fn visit_probe(&mut self, probe: &mut Probe) -> () {
+    fn visit_probe(&mut self, probe: &mut Probe) {
         trace!("Entering: visit_probe");
 
         self.add_probe(probe);
@@ -491,14 +457,11 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         // Will not visit predicate/body at this stage
 
         trace!("Exiting: visit_probe");
-        match self.table.exit_scope() {
-            Err(e) => self.err.add_error(*e),
-            _ => {}
-        }
+        if let Err(e) = self.table.exit_scope() { self.err.add_error(*e) }
         self.curr_probe = None;
     }
 
-    fn visit_fn(&mut self, f: &mut Fn) -> () {
+    fn visit_fn(&mut self, f: &mut Fn) {
         trace!("Entering: visit_fn");
 
         // add fn
@@ -507,14 +470,11 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         // Will not visit predicate/body at this stage
 
         trace!("Exiting: visit_fn");
-        match self.table.exit_scope() {
-            Err(e) => self.err.add_error(*e),
-            _ => {}
-        }
+        if let Err(e) = self.table.exit_scope() { self.err.add_error(*e) }
         self.curr_fn = None;
     }
 
-    fn visit_formal_param(&mut self, param: &mut (Expr, DataType)) -> () {
+    fn visit_formal_param(&mut self, param: &mut (Expr, DataType)) {
         trace!("Entering: visit_formal_param");
 
         // add param
@@ -523,48 +483,44 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         trace!("Exiting: visit_formal_param");
     }
 
-    fn visit_stmt(&mut self, stmt: &mut Statement) -> () {
+    fn visit_stmt(&mut self, stmt: &mut Statement) {
         if self.curr_provider.is_some() || self.curr_package.is_some() || self.curr_event.is_some() || self.curr_probe.is_some() {
             self.err.unexpected_error(true, Some(format!("{} \
-            Only global script statements should be visited!", UNEXPECTED_ERR_MSG.to_string())), None);
+            Only global script statements should be visited!", UNEXPECTED_ERR_MSG)), None);
         }
 
-        match stmt {
-            Statement::Decl {ty, var_id, ..} => {
-                if let Expr::VarId {name, ..} = &var_id {
-                    // Add symbol to table
-                    self.add_global(ty.clone(), name.clone());
-                } else {
-                    self.err.unexpected_error(true, Some(format!("{} \
-                    Variable declaration var_id is not the correct Expr variant!!", UNEXPECTED_ERR_MSG.to_string())), None);
-                }
-            },
-            // We only care about building the symbols right now, not actual operations
-            _ => {}
+        if let Statement::Decl {ty, var_id, ..} = stmt {
+            if let Expr::VarId {name, ..} = &var_id {
+                // Add symbol to table
+                self.add_global(ty.clone(), name.clone());
+            } else {
+                self.err.unexpected_error(true, Some(format!("{} \
+                Variable declaration var_id is not the correct Expr variant!!", UNEXPECTED_ERR_MSG)), None);
+            }
         }
     }
 
-    fn visit_expr(&mut self, _call: &mut Expr) -> () {
+    fn visit_expr(&mut self, _call: &mut Expr) {
         // Not visiting predicates/statements
         self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
     }
 
-    fn visit_unop(&mut self, _unop: &mut UnOp) -> () {
+    fn visit_unop(&mut self, _unop: &mut UnOp) {
         // Not visiting predicates/statements
         self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
     }
 
-    fn visit_binop(&mut self, _binop: &mut BinOp) -> () {
+    fn visit_binop(&mut self, _binop: &mut BinOp) {
         // Not visiting predicates/statements
         self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
     }
 
-    fn visit_datatype(&mut self, _datatype: &mut DataType) -> () {
+    fn visit_datatype(&mut self, _datatype: &mut DataType) {
         // Not visiting predicates/statements
         self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
     }
 
-    fn visit_value(&mut self, _val: &mut Value) -> () {
+    fn visit_value(&mut self, _val: &mut Value) {
         // Not visiting predicates/statements
         self.err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
     }

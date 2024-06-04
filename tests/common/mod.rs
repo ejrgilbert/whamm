@@ -26,7 +26,7 @@ const TEST_RSC_DIR: &str = "tests/scripts/";
 const PATTERN: &str = "*.mm";
 const TODO: &str = "*.TODO";
 
-fn get_test_scripts(subdir: &str) -> Vec<(PathBuf, String)> {
+fn get_test_scripts(sub_dir: &str) -> Vec<(PathBuf, String)> {
     let mut scripts = vec![];
     let options = glob::MatchOptions {
         case_sensitive: false,
@@ -34,14 +34,14 @@ fn get_test_scripts(subdir: &str) -> Vec<(PathBuf, String)> {
         require_literal_leading_dot: false,
     };
 
-    for path in glob(&*(TEST_RSC_DIR.to_owned() + subdir + "/" + &*PATTERN.to_owned()))
+    for path in glob(&(TEST_RSC_DIR.to_owned() + sub_dir + "/" + &*PATTERN.to_owned()))
         .expect("Failed to read glob pattern") {
         let file_name = path.as_ref().unwrap();
-        let unparsed_file = std::fs::read_to_string(file_name).expect(&*format!("Unable to read file at {:?}", &path));
+        let unparsed_file = std::fs::read_to_string(file_name).unwrap_or_else(|_| panic!("Unable to read file at {:?}", &path));
         scripts.push((file_name.clone(), unparsed_file));
     }
 
-    for path in glob_with(&*(TEST_RSC_DIR.to_owned() + subdir + "/" + &*TODO.to_owned()), options).expect("Failed to read glob pattern") {
+    for path in glob_with(&(TEST_RSC_DIR.to_owned() + sub_dir + "/" + &*TODO.to_owned()), options).expect("Failed to read glob pattern") {
         warn!("File marked with TODO: {}", path.as_ref().unwrap().display());
     }
 
@@ -99,7 +99,7 @@ fn process_scripts(scripts: Vec<(PathBuf, String)>, err: &mut ErrorGen) -> Vec<(
 pub fn setup_fault_injection(err: &mut ErrorGen) -> Vec<(String, String, Whamm, SymbolTable, BehaviorTree, SimpleAST)> {
     setup_logger();
     let scripts = get_test_scripts("fault_injection");
-    if scripts.len() == 0 {
+    if scripts.is_empty() {
         warn!("No test scripts found for `fault_injection` test.");
     }
 
@@ -109,7 +109,7 @@ pub fn setup_fault_injection(err: &mut ErrorGen) -> Vec<(String, String, Whamm, 
 pub fn setup_wizard_monitors(err: &mut ErrorGen) -> Vec<(String, String, Whamm, SymbolTable, BehaviorTree, SimpleAST)> {
     setup_logger();
     let scripts = get_test_scripts("wizard_monitors");
-    if scripts.len() == 0 {
+    if scripts.is_empty() {
         warn!("No test scripts found for `wizard_monitors` test.");
     }
 
@@ -119,7 +119,7 @@ pub fn setup_wizard_monitors(err: &mut ErrorGen) -> Vec<(String, String, Whamm, 
 pub fn setup_replay(err: &mut ErrorGen) -> Vec<(String, String, Whamm, SymbolTable, BehaviorTree, SimpleAST)> {
     setup_logger();
     let scripts = get_test_scripts("replay");
-    if scripts.len() == 0 {
+    if scripts.is_empty() {
         warn!("No test scripts found for `replay` test.");
     }
 

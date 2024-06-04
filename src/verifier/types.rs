@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt;
 use walrus::{FunctionId, GlobalId, LocalId};
 use crate::common::error::{ErrorGen, WhammError};
 use crate::parser::types::{DataType, FnId, Location, Value};
@@ -13,6 +14,11 @@ pub struct SymbolTable {
 
     pub records: Vec<Record>,
     pub curr_rec: usize,    // indexes into this::records
+}
+impl Default for SymbolTable {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 impl SymbolTable {
     pub fn new() -> Self {
@@ -60,7 +66,7 @@ impl SymbolTable {
         });
     }
 
-    pub fn enter_named_scope(&mut self, scope_name: &String) -> bool {
+    pub fn enter_named_scope(&mut self, scope_name: &str) -> bool {
         let curr = self.get_curr_scope_mut().unwrap();
         let children = curr.children.clone();
 
@@ -69,8 +75,8 @@ impl SymbolTable {
         for (i, child_id) in children.iter().enumerate() {
             if let Some(child_scope) = self.scopes.get_mut(*child_id) {
                 if child_scope.name == *scope_name {
-                    new_curr_scope = Some(child_id.clone());
-                    new_next = Some(i.clone() + 1);
+                    new_curr_scope = Some(*child_id);
+                    new_next = Some(i + 1);
                     child_scope.reset();
                 }
             }
@@ -84,7 +90,7 @@ impl SymbolTable {
             return true;
         }
 
-        return false;
+        false
     }
 
     pub fn enter_scope(&mut self) -> Result<(), Box<WhammError>> {
@@ -97,7 +103,7 @@ impl SymbolTable {
                     Err(e)
                 },
                 Ok(n) => {
-                    self.curr_scope = n.clone();
+                    self.curr_scope = *n;
                     Ok(())
                 }
             }
@@ -119,13 +125,13 @@ impl SymbolTable {
 
         // Add new scope
         self.scopes.push(new_scope);
-        self.curr_scope = new_id.clone();
-        return Ok(());
+        self.curr_scope = new_id;
+        Ok(())
     }
 
     pub fn exit_scope(&mut self) -> Result<(), Box<WhammError>> {
         match self.get_curr_scope().unwrap().parent {
-            Some(parent) => self.curr_scope = parent.clone(),
+            Some(parent) => self.curr_scope = parent,
             None => {
                 return Err(Box::new(ErrorGen::get_unexpected_error(true,
                     Some(format!("{} Attempted to exit current scope, but there was no parent to exit into.", UNEXPECTED_ERR_MSG)),
@@ -166,7 +172,7 @@ impl SymbolTable {
             Record::Package { .. } |
             Record::Event { .. } |
             Record::Probe { .. } => {
-                self.curr_rec = new_rec_id.clone();
+                self.curr_rec = new_rec_id;
             }
             _ => {
                 // ignore, not a record container we'd want to add to!
@@ -302,32 +308,32 @@ pub enum ScopeType {
     Fn,
     Null
 }
-impl ScopeType {
-    pub fn to_string(&self) -> String {
-        return match self {
+impl fmt::Display for ScopeType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
             ScopeType::Whamm {..} => {
-                "Whamm".to_string()
+                write!(f, "Whamm")
             },
             ScopeType::Script {..} => {
-                "Script".to_string()
+                write!(f, "Script")
             },
             ScopeType::Provider {..} => {
-                "Provider".to_string()
+                write!(f, "Provider")
             },
             ScopeType::Package {..} => {
-                "Package".to_string()
+                write!(f, "Package")
             },
             ScopeType::Event {..} => {
-                "Event".to_string()
+                write!(f, "Event")
             },
             ScopeType::Probe {..} => {
-                "Probe".to_string()
+                write!(f, "Probe")
             },
             ScopeType::Fn {..} => {
-                "Fn".to_string()
+                write!(f, "Fn")
             },
             ScopeType::Null {..} => {
-                "Null".to_string()
+                write!(f, "Null")
             }
         }
     }

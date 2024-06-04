@@ -18,7 +18,7 @@ pub fn setup_logger() {
 
 fn get_rec<'a>(table: &'a mut SymbolTable, name: &str) -> Option<&'a mut Record> {
     let var_rec_id = match table.lookup(&name.to_string()) {
-        Some(id) => id.clone(),
+        Some(id) => *id,
         None => {
             error!("Variable symbol does not exist for name {}!", name);
             println!("{:#?}", table);
@@ -38,85 +38,61 @@ fn get_rec<'a>(table: &'a mut SymbolTable, name: &str) -> Option<&'a mut Record>
 }
 
 fn get_pred(whamm: &Whamm) -> &Expr {
-    whamm.scripts.get(0).unwrap()
+    whamm.scripts.first().unwrap()
         .providers.get("wasm").unwrap()
         .packages.get("bytecode").unwrap()
         .events.get("call").unwrap()
-        .probe_map.get("alt").unwrap()
-        .get(0).unwrap().predicate.as_ref().unwrap()
+        .probe_map.get("alt").unwrap().first().unwrap()
+        .predicate.as_ref().unwrap()
 }
 
 fn move_through_scopes_til_match(desired_ty: ScopeType, table: &mut SymbolTable, err: &mut ErrorGen) {
     while table.get_curr_scope().unwrap().ty != desired_ty {
-        match table.exit_scope() {
-            Err(e) => {
-                err.add_error(*e);
-                err.report();
-            },
-            _ => {}
+        if let Err(e) = table.exit_scope() {
+            err.add_error(*e);
+            err.report();
         }
-        match table.enter_scope() {
-            Err(e) => {
-                err.add_error(*e);
-                err.report();
-            },
-            _ => {}
+        if let Err(e) = table.enter_scope() {
+            err.add_error(*e);
+            err.report();
         }
     }
 }
 
 fn hardcode_compiler_constants(table: &mut SymbolTable, err: &mut ErrorGen) {
-    match table.enter_scope() {
-        Err(e) => {
-            err.add_error(*e);
-            err.report();
-        },
-        _ => {}
+    if let Err(e) = table.enter_scope() {
+        err.add_error(*e);
+        err.report();
     }
     move_through_scopes_til_match(ScopeType::Script, table, err);
     println!("Scope name: {}", table.get_curr_scope().unwrap().name);
     // enter wasm scope
-    match table.enter_scope() {
-        Err(e) => {
-            err.add_error(*e);
-            err.report();
-        },
-        _ => {}
+    if let Err(e) = table.enter_scope() {
+        err.add_error(*e);
+        err.report();
     }
     move_through_scopes_til_match(ScopeType::Provider, table, err);
     println!("Scope name: {}", table.get_curr_scope().unwrap().name);
     // enter bytecode scope
-    match table.enter_scope() {
-        Err(e) => {
-            err.add_error(*e);
-            err.report();
-        },
-        _ => {}
+    if let Err(e) = table.enter_scope() {
+        err.add_error(*e);
+        err.report();
     }
     move_through_scopes_til_match(ScopeType::Package, table, err);
     println!("Scope name: {}", table.get_curr_scope().unwrap().name);
     // enter call scope
-    match table.enter_scope() {
-        Err(e) => {
-            err.add_error(*e);
-            err.report();
-        },
-        _ => {}
+    if let Err(e) = table.enter_scope() {
+        err.add_error(*e);
+        err.report();
     }
     while table.get_curr_scope().unwrap().ty != ScopeType::Event {
-        match table.exit_scope() {
-            Err(e) => {
-                err.add_error(*e);
-                err.report();
-            },
-            _ => {}
+        if let Err(e) = table.exit_scope() {
+            err.add_error(*e);
+            err.report();
         }
-        match table.enter_scope() {
-            Err(e) => {
-                err.add_error(*e);
-                err.report();
-            },
-            _ => {}
+        if let Err(e) = table.enter_scope() {
+            err.add_error(*e);
+            err.report();
         }
     }
 
@@ -130,7 +106,7 @@ fn hardcode_compiler_constants(table: &mut SymbolTable, err: &mut ErrorGen) {
         })
     } else {
         error!("Could not find symbol for `target_fn_type`");
-        assert!(false);
+        panic!();
     }
 
     // define target_imp_module
@@ -143,7 +119,7 @@ fn hardcode_compiler_constants(table: &mut SymbolTable, err: &mut ErrorGen) {
         })
     } else {
         error!("Could not find symbol for `target_imp_module`");
-        assert!(false);
+        panic!();
     }
 
     // define target_imp_name
@@ -156,7 +132,7 @@ fn hardcode_compiler_constants(table: &mut SymbolTable, err: &mut ErrorGen) {
         })
     } else {
         error!("Could not find symbol for `target_imp_name`");
-        assert!(false);
+        panic!();
     }
 }
 
@@ -167,8 +143,8 @@ fn assert_simplified_predicate(pred: &Expr) {
     } else {
         // failed!
         error!("ExprFolder did not fold correctly...");
-        print!("{:#?}\n", pred);
-        assert!(false);
+        println!("{:#?}", pred);
+        panic!();
     }
 }
 
@@ -187,7 +163,7 @@ fn basic_run(script: &str, err: &mut ErrorGen) {
         None => {
             error!("Could not get ast from script: {}", script);
             err.report();
-            assert!(false);
+            panic!();
         }
     };
 }
@@ -234,18 +210,18 @@ fn asserts_on_call(call: &Expr) {
             assert_eq!("strcmp", name);
         } else {
             error!("ExprFolder did not fold correctly...");
-            assert!(false);
+            panic!();
         }
 
         let args = args.as_ref().unwrap();
         assert_eq!(2, args.len());
 
-        let tuple = &**args.get(0).unwrap();
+        let tuple = &**args.first().unwrap();
         if let Expr::Primitive { val: Value::Tuple {vals, ..}, ..} = tuple {
             assert_eq!(2, vals.len());
         } else {
             error!("ExprFolder did not fold correctly...");
-            assert!(false);
+            panic!();
         }
     }
 }
@@ -283,18 +259,18 @@ wasm::call:alt /
                 ..
             } = pred {
                 assert_eq!(*op, BinOp::And);
-                asserts_on_call(&**lhs);
-                asserts_on_call(&**rhs);
+                asserts_on_call(lhs);
+                asserts_on_call(rhs);
             } else {
                 // failed!
                 error!("ExprFolder did not fold correctly...");
-                print!("{:#?}\n", folded_expr);
-                assert!(false);
+                println!("{:#?}", folded_expr);
+                panic!();
             }
         },
         None => {
             error!("Could not get ast from script: {}", script);
-            assert!(false);
+            panic!();
         }
     };
 }

@@ -16,7 +16,7 @@ pub fn setup_logger() {
 // = Helper Functions =
 // ====================
 
-const VALID_SCRIPTS: &'static [&'static str] = &[
+const VALID_SCRIPTS: &[&str] = &[
     "wasm:bytecode:call:alt { new_target_fn_name = redirect_to_fault_injector; }",
 ];
 
@@ -38,7 +38,7 @@ pub fn test_build_table() {
             None => {
                 error!("Could not get ast from script: {}", script);
                 err.report();
-                assert!(false);
+                panic!();
             }
         };
     }
@@ -76,7 +76,7 @@ wasm::call:alt /
         },
         None => {
             error!("Could not get ast from script: {}", script);
-            assert!(false);
+            panic!();
         }
     };
 }
