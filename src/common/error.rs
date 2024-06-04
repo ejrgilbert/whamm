@@ -6,7 +6,7 @@ use crate::common::terminal::{blue, red, white};
 use log::error;
 use pest::error::{Error, LineColLocation};
 use pest::error::ErrorVariant::ParsingError;
-use crate::parser::types::Rule;
+use crate::parser::types::{Location, Rule};
 
 const ERR_UNDERLINE_CHAR: char = '^';
 const INFO_UNDERLINE_CHAR: char = '-';
@@ -34,7 +34,7 @@ impl ErrorGen {
     }
 
     pub fn add_error(&mut self, error: WhammError) {
-        let fatal = error.fatal.clone();
+        let fatal = error.fatal;
         self.errors.push(error);
         self.inc_errors();
 
@@ -129,45 +129,98 @@ impl ErrorGen {
         self.add_error(err);
     }
 
-    pub fn duplicate_identifier_error(&mut self, fatal: bool, duplicated_id: String, err_line_col: LineColLocation, info_line_col: LineColLocation) {
-        let err = WhammError {
-            fatal,
-            ty: ErrorType::DuplicateIdentifierError {
-                duplicated_id: duplicated_id.clone()
-            },
-            err_loc: Some(CodeLocation {
+    pub fn get_duplicate_identifier_error(fatal: bool, duplicated_id: String, err_line_col: Option<LineColLocation>, info_line_col: Option<LineColLocation>) -> WhammError {
+        let err_loc = if let Some(err_line_col) = err_line_col {
+            Some(CodeLocation {
                 is_err: true,
                 message: Some(format!("duplicate definitions for `{}`", duplicated_id)),
                 line_col: err_line_col,
                 line_str: None,
                 line2_str: None
-            }),
-            info_loc: Some(CodeLocation {
-                is_err: true,
+            })
+        } else {
+            None
+        };
+        let info_loc = if let Some(info_line_col) = info_line_col {
+            Some(CodeLocation {
+                is_err: false,
                 message: Some(format!("other definition for `{}`", duplicated_id)),
                 line_col: info_line_col,
                 line_str: None,
                 line2_str: None
-            }),
+            })
+        } else {
+            None
         };
+
+        WhammError {
+            fatal,
+            ty: ErrorType::DuplicateIdentifierError {
+                duplicated_id: duplicated_id.clone()
+            },
+            err_loc,
+            info_loc,
+        }
+    }
+
+    pub fn get_duplicate_identifier_error_from_loc(fatal: bool, duplicated_id: String, err_loc: &Option<Location>, info_loc: &Option<Location>) -> WhammError {
+        let err_loc = if let Some(err_loc) = err_loc {
+            Some(err_loc.line_col.clone())
+        } else {
+            None
+        };
+        let info_loc = if let Some(info_loc) = info_loc {
+            Some(info_loc.line_col.clone())
+        } else {
+            None
+        };
+        Self::get_duplicate_identifier_error(fatal, duplicated_id, err_loc, info_loc)
+    }
+
+    pub fn duplicate_identifier_error(&mut self, fatal: bool, duplicated_id: String, err_line_col: Option<LineColLocation>, info_line_col: Option<LineColLocation>) {
+        let err = Self::get_duplicate_identifier_error(fatal, duplicated_id, err_line_col, info_line_col);
         self.add_error(err);
     }
 
-    pub fn type_check_error(&mut self, fatal: bool, message: String, line_col: LineColLocation) {
-        let err = WhammError {
+    pub fn get_type_check_error(fatal: bool, message: String, loc: &Option<LineColLocation>) -> WhammError {
+        let loc = if let Some(loc) = loc {
+            Some(CodeLocation {
+                is_err: false,
+                message: Some(message.clone()),
+                line_col: loc.clone(),
+                line_str: None,
+                line2_str: None
+            })
+        } else {
+            None
+        };
+
+        WhammError {
             fatal,
             ty: ErrorType::TypeCheckError {
                 message: message.clone()
             },
-            err_loc: Some(CodeLocation {
-                is_err: true,
-                message: Some(message),
-                line_col,
-                line_str: None,
-                line2_str: None
-            }),
+            err_loc: loc,
             info_loc: None
+        }
+    }
+
+    pub fn get_type_check_error_from_loc(fatal: bool, message: String, line_col: &Option<Location>) -> WhammError {
+        let loc = if let Some(loc) = line_col {
+            Some(loc.line_col.clone())
+        } else {
+            None
         };
+        Self::get_type_check_error(fatal, message, &loc)
+    }
+
+    pub fn type_check_error(&mut self, fatal: bool, message: String, line_col: &Option<LineColLocation>) {
+        let err = Self::get_type_check_error(fatal, message, line_col);
+        self.add_error(err);
+    }
+
+    pub fn type_check_error_from_loc(&mut self, fatal: bool, message: String, loc: &Option<Location>) {
+        let err = Self::get_type_check_error_from_loc(fatal, message, loc);
         self.add_error(err);
     }
 
@@ -215,13 +268,9 @@ impl ErrorGen {
             // See code the following code for why we can do this:
             // https://github.com/pest-parser/pest/blob/master/pest/src/error.rs#L612
             let mut lines = orig_msg.lines();
-            if let Some(line) = lines.rfind(|line| {
+            lines.rfind(|line| {
                 line.as_bytes()[0].is_ascii_digit()
-            }) {
-                Some(line.to_string())
-            } else {
-                None
-            }
+            }).map(|line| line.to_string())
         } else {
             None
         };
@@ -285,13 +334,10 @@ pub struct CodeLocation {
 }
 impl CodeLocation {
     pub fn is_span(&self) -> bool {
-        match self.line_col {
-            LineColLocation::Span(..) => true,
-            _ => false
-        }
+        matches!(self.line_col, LineColLocation::Span(..))
     }
     pub fn lines_are_defined(&self) -> bool {
-        !self.line_str.is_none()
+        self.line_str.is_some()
     }
 
     // report this error to the console, including color highlighting
@@ -333,7 +379,7 @@ impl CodeLocation {
         }
     }
 
-    fn define_lines(&mut self, script: &String) {
+    fn define_lines(&mut self, script: &str) {
         match &self.line_col {
             LineColLocation::Pos((line_no, ..)) => {
                 if let Some(script_line) = script.lines().nth(line_no - 1) {
@@ -353,7 +399,7 @@ impl CodeLocation {
         }
     }
 
-    fn print_numbered_line(&self, l: &usize, line: &String, s: &String, buffer: &mut Buffer) {
+    fn print_numbered_line(&self, l: &usize, line: &String, s: &str, buffer: &mut Buffer) {
         let w = s.len();
         blue(false, format!("{l:w$} | "), buffer);
         white(false, format!("{line}\n"), buffer);
@@ -381,7 +427,7 @@ impl CodeLocation {
     fn underline(&self, start_col: &usize) -> String {
         let mut underline = String::new();
 
-        let mut start_col = start_col.clone();
+        let mut start_col = *start_col;
         let end = match &self.line_col {
             LineColLocation::Span(_, (_, mut end)) => {
                 let inverted_cols = start_col > end;
@@ -415,10 +461,10 @@ impl CodeLocation {
                 INFO_UNDERLINE_CHAR
             };
 
-            underline.push(u_char.clone());
-            if end - &start_col > 1 {
-                for _ in 2..(&end - &start_col) {
-                    underline.push(u_char.clone());
+            underline.push(u_char);
+            if end - start_col > 1 {
+                for _ in 2..(end - start_col) {
+                    underline.push(u_char);
                 }
                 underline.push(u_char);
             }
@@ -447,7 +493,7 @@ pub struct WhammError {
 }
 impl WhammError {
     pub fn is_fatal(&self) -> bool {
-        self.fatal.clone()
+        self.fatal
     }
 
     /// report this error to the console, including color highlighting
@@ -498,7 +544,7 @@ impl WhammError {
             print_empty(&spacing, &mut buffer);
         } else {
             // This error isn't tied to a specific code location
-            blue(false, format!(" --> "), &mut buffer);
+            blue(false, " --> ".to_string(), &mut buffer);
             blue(false, format!("{script_path}\n\n"), &mut buffer);
         }
         writer.print(&buffer).expect("Uh oh, something went wrong while printing to terminal");
@@ -637,7 +683,7 @@ impl ErrorType {
                 let non_separated = f(&rules[l - 1]);
                 let separated = rules
                     .iter()
-                    .take(l.clone() - 1)
+                    .take(l - 1)
                     .map(f)
                     .collect::<Vec<_>>()
                     .join(", ");

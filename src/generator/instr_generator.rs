@@ -524,6 +524,27 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         is_success
     }
 
+    fn visit_emit_global_stmts(&mut self, node: &Node) -> bool {
+        let mut is_success = true;
+        if let Node::Action { ty, ..} = node {
+            if let ActionType::EmitGlobalStmts = ty {
+                // NOTE -- this WILL NOT WORK for dfinity or microservice applications...they are stateless
+                //     will need to instrument ALL entrypoints for that to work :/
+                if !self.ast.global_stmts.is_empty() {
+                    match self.emitter.emit_global_stmts(&mut self.ast.global_stmts) {
+                        Err(e) => self.err.add_error(e),
+                        Ok(res) => is_success &= res,
+                    }
+                }
+            } else {
+                unreachable!()
+            }
+        } else {
+            unreachable!()
+        }
+        is_success
+    }
+
     fn visit_emit_pred(&mut self, node: &Node) -> bool {
         let mut is_success = true;
         if let Node::Action {ty, ..} = node {
@@ -645,7 +666,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
 fn get_probes_from_ast<'a>(ast: &'a SimpleAST,
                        curr_provider_name: &String, curr_package_name: &String, curr_event_name: &String,
                        name: &String) -> &'a Vec<Probe> {
-    if let Some(provider) = ast.get(curr_provider_name) {
+    if let Some(provider) = ast.probes.get(curr_provider_name) {
         if let Some(package) = provider.get(curr_package_name) {
             if let Some(event) = package.get(curr_event_name) {
                 if let Some(probes) = event.get(name) {

@@ -7,8 +7,8 @@ use log::error;
 use crate::common::error::ErrorGen;
 use crate::generator::types::ExprFolder;
 use crate::parser::tests;
-use crate::parser::types::Expr::{BinOp, VarId};
-use crate::parser::types::{DataType, Whamm, Expr, Op, Value};
+use crate::parser::types::Expr::{BinOp as ExprBinOp, VarId};
+use crate::parser::types::{DataType, Whamm, Expr, BinOp, Value};
 use crate::verifier::types::{Record, ScopeType, SymbolTable};
 use crate::verifier::verifier;
 
@@ -174,8 +174,8 @@ fn assert_simplified_predicate(pred: &Expr) {
 
 fn basic_run(script: &str, err: &mut ErrorGen) {
     match tests::get_ast(script, err) {
-        Some(whamm) => {
-            let mut table = verifier::build_symbol_table(&whamm, err);
+        Some(mut whamm) => {
+            let mut table = verifier::build_symbol_table(&mut whamm, err);
             table.reset();
 
             let pred = get_pred(&whamm);
@@ -265,8 +265,8 @@ wasm::call:alt /
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
 
     match tests::get_ast(script, &mut err) {
-        Some(whamm) => {
-            let mut table = verifier::build_symbol_table(&whamm, &mut err);
+        Some(mut whamm) => {
+            let mut table = verifier::build_symbol_table(&mut whamm, &mut err);
             table.reset();
 
             let pred = get_pred(&whamm);
@@ -276,13 +276,13 @@ wasm::call:alt /
             println!("{:#?}", folded_expr);
 
             // ExprFolder should not be able to simplify the Call expressions at all.
-            if let BinOp{
+            if let ExprBinOp{
                 lhs,
                 op,
                 rhs,
                 ..
             } = pred {
-                assert_eq!(*op, Op::And);
+                assert_eq!(*op, BinOp::And);
                 asserts_on_call(&**lhs);
                 asserts_on_call(&**rhs);
             } else {

@@ -8,12 +8,12 @@ pub struct WhammCli {
     // global_opts: GlobalOpts,
 
     #[command(subcommand)]
-    pub(crate) command: Cmd
+    pub command: Cmd
 }
 
 #[derive(Debug, Subcommand)]
-pub(crate) enum Cmd {
-    // /// Generate shell completion
+pub enum Cmd {
+    // /// Generate completion for shell
     // Completion {
     //     /// Shell to generate completion for
     //     #[arg(arg_enum)]

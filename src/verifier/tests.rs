@@ -31,8 +31,8 @@ pub fn test_build_table() {
 
     for script in VALID_SCRIPTS {
         match tests::get_ast(script, &mut err) {
-            Some(ast) => {
-                let table = verifier::build_symbol_table(&ast, &mut err);
+            Some(mut ast) => {
+                let table = verifier::build_symbol_table(&mut ast, &mut err);
                 println!("{:#?}", table);
             },
             None => {
@@ -51,8 +51,8 @@ wasm::call:alt /
     target_fn_type == "import" &&
     target_imp_module == "ic0" &&
     target_imp_name == "call_new" &&
-    strpaircmp((arg0, arg1), "bookings") &&
-    strpaircmp((arg2, arg3), "record")
+    strcmp((arg0, arg1), "bookings") &&
+    strcmp((arg2, arg3), "record")
 / {
     new_target_fn_name = "redirect_to_fault_injector";
 }
@@ -60,15 +60,15 @@ wasm::call:alt /
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
 
     match tests::get_ast(script, &mut err) {
-        Some(ast) => {
-            let table = verifier::build_symbol_table(&ast, &mut err);
+        Some(mut ast) => {
+            let table = verifier::build_symbol_table(&mut ast, &mut err);
             println!("{:#?}", table);
 
             // 7 scopes: whamm, strcmp, script, wasm, bytecode, call, alt
             let num_scopes = 7;
             // records: num_scopes PLUS (target_fn_type, target_imp_module, target_imp_name, new_target_fn_name,
-            //          str_addr, value)
-            let num_recs = num_scopes + 6;
+            //          tos, wasm_bytecode_loc, str_addr, value)
+            let num_recs = num_scopes + 8;
 
             // asserts on very high level table structure
             assert_eq!(num_scopes, table.scopes.len());

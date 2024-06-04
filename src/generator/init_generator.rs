@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use log::{trace, warn};
 use crate::common::error::ErrorGen;
 use crate::generator::emitters::Emitter;
-use crate::parser::types::{DataType, Script, Whamm, WhammVisitorMut, Expr, Event, Package, Op, Probe, Provider, Statement, Value, Global, ProvidedFunctionality};
+use crate::parser::types::{DataType, Script, Whamm, WhammVisitorMut, Expr, Event, Package, BinOp, Probe, Provider, Statement, Value, Global, ProvidedFunctionality, UnOp};
 
 /// Serves as the first phase of instrumenting a module by setting up
 /// the groundwork.
@@ -22,6 +22,8 @@ pub struct InitGenerator<'a> {
 }
 impl InitGenerator<'_> {
     pub fn run(&mut self, whamm: &mut Whamm) -> bool  {
+        // Reset the symbol table in the emitter just in case
+        self.emitter.reset_children();
         // Generate globals and fns defined by `whamm` (this should modify the app_wasm)
         self.visit_whamm(whamm)
     }
@@ -299,12 +301,17 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         // is_success
     }
 
-    fn visit_op(&mut self, _op: &mut Op) -> bool {
+    fn visit_unop(&mut self, _unop: &mut UnOp) -> bool {
         // never called
         unreachable!();
-        // trace!("Entering: CodeGenerator::visit_op");
-        // let is_success = self.emitter.emit_op(op);
-        // trace!("Exiting: CodeGenerator::visit_op");
+    }
+
+    fn visit_binop(&mut self, _binop: &mut BinOp) -> bool {
+        // never called
+        unreachable!();
+        // trace!("Entering: CodeGenerator::visit_binop");
+        // let is_success = self.emitter.emit_binop(binop);
+        // trace!("Exiting: CodeGenerator::visit_binop");
         // is_success
     }
 
