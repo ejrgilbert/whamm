@@ -185,7 +185,7 @@ impl ExprFolder {
         }
 
         // Cannot fold anymore
-        binop.clone()
+        binop.to_owned()
     }
 
     // similar to the logic of fold_binop
@@ -359,20 +359,37 @@ impl ExprFolder {
         None
     }
 
-    fn fold_ternary(_ternary: &Expr, _table: &SymbolTable) -> Expr {
-        todo!()
+    fn fold_ternary(ternary: &Expr, table: &SymbolTable) -> Expr {
+        match ternary {
+            Expr::Ternary{cond, conseq, alt, loc} => {
+                let cond = ExprFolder::fold_expr(cond, table);
+                let conseq = ExprFolder::fold_expr(conseq, table);
+                let alt = ExprFolder::fold_expr(alt, table);
+
+                return Expr::Ternary {
+                    cond: Box::new(cond),
+                    conseq: Box::new(conseq),
+                    alt: Box::new(alt),
+                    loc: loc.to_owned()
+                };
+            },
+            _ => {}
+        }
+
+        // Cannot fold anymore
+        ternary.to_owned()
     }
 
     fn fold_call(call: &Expr, _table: &SymbolTable) -> Expr {
-        call.clone()
+        call.to_owned()
     }
     fn fold_var_id(var_id: &Expr, table: &SymbolTable) -> Expr {
         match &var_id {
-            Expr::VarId { name, .. } => {
-                let rec_id = match table.lookup(name) {
+            Expr::VarId {name, ..} => {
+                let rec_id = match table.lookup(&name) {
                     Some(rec_id) => *rec_id,
                     _ => {
-                        return var_id.clone();
+                        return var_id.to_owned();
                     }
                 };
                 let rec = table.get_record(&rec_id);
@@ -380,8 +397,8 @@ impl ExprFolder {
                     Some(Var { value, .. }) => {
                         if value.is_some() {
                             return Expr::Primitive {
-                                val: value.as_ref().unwrap().clone(),
-                                loc: None,
+                                val: value.as_ref().unwrap().to_owned(),
+                                loc: None
                             };
                         }
                     }
@@ -394,18 +411,15 @@ impl ExprFolder {
                 // ignore
             }
         }
-        var_id.clone()
+        var_id.to_owned()
     }
     fn fold_primitive(primitive: &Expr, _table: &SymbolTable) -> Expr {
-        primitive.clone()
+        primitive.to_owned()
     }
     pub fn get_single_bool(expr: &Expr) -> Option<bool> {
-        match expr {
-            Expr::Primitive {
-                val: Value::Boolean { val, .. },
-                ..
-            } => Some(*val),
-            _ => None,
+        return match expr {
+            Expr::Primitive { val: Value::Boolean {val, .. }, ..} => Some(*val),
+            _ => None
         }
     }
     pub fn get_bool(lhs: &Expr, rhs: &Expr) -> (Option<bool>, Option<bool>) {
@@ -432,18 +446,12 @@ impl ExprFolder {
     }
     pub fn get_str(lhs: &Expr, rhs: &Expr) -> (Option<String>, Option<String>) {
         let lhs_val = match &lhs {
-            Expr::Primitive {
-                val: Value::Str { val: lhs_val, .. },
-                ..
-            } => Some(lhs_val.clone()),
-            _ => None,
+            Expr::Primitive { val: Value::Str {val: lhs_val, .. }, ..} => Some(lhs_val.to_owned()),
+            _ => None
         };
         let rhs_val = match &rhs {
-            Expr::Primitive {
-                val: Value::Str { val: rhs_val, .. },
-                ..
-            } => Some(rhs_val.clone()),
-            _ => None,
+            Expr::Primitive { val: Value::Str {val: rhs_val, .. }, ..} => Some(rhs_val.to_owned()),
+            _ => None
         };
         (lhs_val, rhs_val)
     }
