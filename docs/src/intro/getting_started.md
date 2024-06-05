@@ -28,6 +28,9 @@ This is an example of manipulating an application's dynamic behavior through cha
 
 Continue reading through this book's "getting started" content for how to write such _monitors_ and _manipulators_.
 
+# Architecture #
+TODO
+
 # Helpful Tools #
 
 Here are some tools that may help when working with Wasm:

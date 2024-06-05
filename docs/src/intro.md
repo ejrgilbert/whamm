@@ -11,7 +11,7 @@ This book will help you [get on the right track](intro/getting_started.md) when 
 Here are some of the goals of `whamm!`:
 1. is **high-level** and **intuitive**
 2. instrumentation is **easy-to-build**, [**testable**](intro/testing.md), and **debuggable**
-3. express instrumentation in terms of [**predicated probes**](intro/grammar.md)
+3. express instrumentation in terms of [**predicated probes**](intro/language.md)
 4. can instrument **[events](intro/events.md) of different granularity**
 5. provide **[behavior](intro/libraries.md) as Wasm functions**, say where to call them in `whamm!`
 6. **write instrumentation once**, `whamm!` takes care of the [injection strategy](intro/injection_strategies.md).

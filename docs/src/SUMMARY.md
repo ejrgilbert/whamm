@@ -3,8 +3,8 @@
 - [Introduction](intro.md)
 
 - [Getting Started](intro/getting_started.md)
-  - [WIP - Grammar](intro/grammar.md)
-  - [WIP - Events](intro/events.md)
+  - [Language](intro/language.md)
+  - [Events](intro/events.md)
   - [WIP - Libraries](intro/libraries.md)
   - [WIP - Testing](intro/testing.md)
   - [WIP - Injection Strategies](intro/injection_strategies.md)
