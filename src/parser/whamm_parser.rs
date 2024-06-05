@@ -840,7 +840,7 @@ fn expr_from_pair(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                             };
 
                             let lhs_line_col = if let Some(lhs_loc) = lhs.loc() {
-                                LineColLocation::from(lhs_loc.line_col.clone())
+                                lhs_loc.line_col.clone()
                             } else {
                                 return Err(vec![ErrorGen::get_unexpected_error(
                                     true,

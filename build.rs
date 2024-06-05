@@ -12,7 +12,7 @@ fn build_man(out_dir: &Path) -> Result<(), Error> {
     let app = WhammCli::command();
 
     let file = Path::new(&out_dir).join("example.1");
-    let mut file = File::create(&file)?;
+    let mut file = File::create(file)?;
 
     Man::new(app).render(&mut file)?;
 

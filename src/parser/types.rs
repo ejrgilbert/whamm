@@ -1025,6 +1025,7 @@ impl Script {
         Ok(prov_matches)
     }
 
+    #[allow(clippy::type_complexity)]
     fn get_package_info(
         provided_probes: &ProvidedProbes,
         provider_matches: &[(ProvidedFunctionality, String)],
@@ -1055,6 +1056,7 @@ impl Script {
         Ok(package_matches)
     }
 
+    #[allow(clippy::type_complexity)]
     fn get_event_info(
         provided_probes: &ProvidedProbes,
         package_matches: &HashMap<String, Vec<(ProvidedFunctionality, String)>>,
@@ -1097,6 +1099,7 @@ impl Script {
         Ok(event_matches)
     }
 
+    #[allow(clippy::type_complexity)]
     fn get_mode_info(
         provided_probes: &ProvidedProbes,
         matches: &HashMap<String, HashMap<String, Vec<(ProvidedFunctionality, String)>>>,
