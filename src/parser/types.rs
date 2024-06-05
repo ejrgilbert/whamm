@@ -937,7 +937,7 @@ pub struct SpecPart {
     pub loc: Option<Location>,
 }
 
-/// 
+///
 pub struct ProbeSpec {
     pub provider: Option<SpecPart>,
     pub package: Option<SpecPart>,
@@ -977,7 +977,7 @@ impl ProbeSpec {
     }
 }
 
-/// 
+///
 #[derive(Clone, Debug)]
 pub struct Script {
     pub name: String,

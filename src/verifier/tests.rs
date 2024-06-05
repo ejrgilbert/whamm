@@ -72,7 +72,7 @@ wasm::call:alt /
             // asserts on very high level table structure
             assert_eq!(num_scopes, table.scopes.len());
             assert_eq!(num_recs, table.records.len());
-        },
+        }
         None => {
             error!("Could not get ast from script: {}", script);
             panic!();
@@ -93,11 +93,10 @@ pub fn test_type_checker_predicate() {
     "#;
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
 
-
     match tests::get_ast(script, &mut err) {
         Some(ast) => {
             verifier::verify(&mut ast.clone());
-        },
+        }
         None => {
             error!("Could not get ast from script: {}", script);
             assert!(false);
