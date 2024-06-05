@@ -1,11 +1,9 @@
-use walrus::Data;
-
 use crate::common::error::ErrorGen;
 use crate::parser::types::{Whamm, WhammVisitor, DataType, Script, Package, 
                            Provider, Event, Statement, Expr, Op, Value, Fn,
                            Probe};
 use crate::verifier::builder_visitor::SymbolTableBuilder;
-use crate::verifier::types::SymbolTable;
+use crate::verifier::types::{SymbolTable, ScopeType};
 
 pub fn build_symbol_table(ast: &Whamm, err: &mut ErrorGen) -> SymbolTable {
     let mut visitor = SymbolTableBuilder {
@@ -36,6 +34,10 @@ impl WhammVisitor<Option<DataType>> for TypeChecker {
         self.table = build_symbol_table(whamm, &mut err);
 
         // not printing events and globals now
+        
+        let name: String = "whamm".to_string();
+        self.table.set_curr_scope_info(name.clone(), ScopeType::Whamm);
+
         for script in &whamm.scripts {
             self.visit_script(script);
         }
@@ -44,38 +46,63 @@ impl WhammVisitor<Option<DataType>> for TypeChecker {
     }
 
     fn visit_script(&mut self, script: &Script) -> Option<DataType> {
+        
+        // Alex: some how this enter_scope just change curr_scope from 0 to 7 ???
+        // println!("current scope: {:?}", self.table.get_curr_scope());
+
+        // let _ = self.table.enter_scope();
+        // println!("current scope: {:?}", self.table.get_curr_scope());
+
         for (_, provider) in &script.providers {
             self.visit_provider(provider);
         }
+
+        // let _ = self.table.exit_scope();
         None
     }
 
     fn visit_provider(&mut self, provider: &Provider) -> Option<DataType> {
+        // let _ = self.table.enter_scope();
+
         for (_, package) in &provider.packages {
             self.visit_package(package);
         }
+        
+        // let _ = self.table.exit_scope();
         None
     }
 
     fn visit_package(&mut self, package: &Package) -> Option<DataType> {
+
+        // let _ = self.table.enter_scope();
+
         for (_, event) in &package.events {
             self.visit_event(event);
         }
+
+        // let _ = self.table.exit_scope();
+
         None
     }
 
     fn visit_event(&mut self, event: &Event) -> Option<DataType> {
+
+        // let _ = self.table.enter_scope();
+
         for (_, probe) in &event.probe_map {
             for probe in probe {
                 self.visit_probe(probe);
             }
         }
+
+        // let _ = self.table.exit_scope();
+
         None
     }
 
     fn visit_probe(&mut self, probe: &Probe) -> Option<DataType> {
         
-        let _ = self.table.enter_scope();
+        // let _ = self.table.enter_scope();
         // type check predicate
         if let Some(predicate) = &probe.predicate {
             self.visit_expr(predicate);
@@ -87,6 +114,8 @@ impl WhammVisitor<Option<DataType>> for TypeChecker {
                 self.visit_stmt(stmt);
             }
         }
+
+        // let _ = self.table.exit_scope();
 
         None
     }
@@ -165,8 +194,12 @@ impl WhammVisitor<Option<DataType>> for TypeChecker {
                 // let _ = self.table.enter_scope();
                 println!("Var name: {:?}", name);
                 println!("table: {:?}", self.table);
-                // current scope
+
+                // Alex: also here enter_scope just change curr_scope from 0 to 7 ???
                 println!("Current scope: {:?}", self.table.get_curr_scope());
+                let _ = self.table.enter_scope();
+                println!("Current scope: {:?}", self.table.get_curr_scope());
+                
                 println!("LOOK AT ME Var id: {:?}", self.table.lookup(name));
                 // get type from symbol table
                 if let Some(id) = self.table.lookup(name) {
