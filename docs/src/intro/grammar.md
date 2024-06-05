@@ -1,7 +1,7 @@
 # Grammar
 
 
-![one liner](images/oneliner.png)
+![one liner](../images/oneliner.png)
 
 
 Every whamm clause begins with a list of one or more probe descriptions (red), each taking the usual form: 
