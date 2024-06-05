@@ -1,6 +1,11 @@
 [book]
+title = "`whamm!`"
+description = "An introduction to the `whamm!` DSL."
 authors = ["ahuoguo", "ejrgilbert"]
 language = "en"
 multilingual = false
 src = "src"
-title = "Whamm DSL"
+
+[output.html]
+git-repository-url = "https://github.com/ejrgilbert/whamm/tree/master/docs"
+edit-url-template = "https://github.com/ejrgilbert/whamm/edit/master/docs/{path}"

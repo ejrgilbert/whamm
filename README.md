@@ -4,12 +4,16 @@
 
 # whamm! #
 ![build](https://github.com/ejrgilbert/whamm/actions/workflows/rust.yml/badge.svg)
+[![book](https://img.shields.io/badge/book-WIP-4d76ae.svg)](https://ejrgilbert.github.io/whamm/intro.html)
 
 ## Debugging Wasm? Put some `whamm!` on it! ##
 
 `whamm!` is a tool for "Wasm Application Monitoring and Manipulation"<sup>[1](#silent_h)</sup>, a DSL inspired by the D language.
 
-## Tutorials ##
+## Getting Started ##
+Take a look at the official [`whamm!` book](https://ejrgilbert.github.io/whamm/intro.html) for how to get started with this language.
+
+### Tutorials ###
 
 To run basic build:
 ```shell
