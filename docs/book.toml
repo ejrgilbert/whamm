@@ -9,3 +9,5 @@ src = "src"
 [output.html]
 git-repository-url = "https://github.com/ejrgilbert/whamm/tree/master/docs"
 edit-url-template = "https://github.com/ejrgilbert/whamm/edit/master/docs/{path}"
+# TODO -- add highlighting here (see https://github.com/pest-parser/book/blob/master/highlight-pest.js)
+#additional-js = ["highlight-pest.js"]

@@ -70,4 +70,18 @@ Example:
 `wasm:bytecode:call:alt`
 `wasm:fn:enter:before`
 
+# The book #
+
+If you are wanting to deploy the book locally, use the following commands:
+```bash
+# Install the mdbook cargo package
+cargo install mdbook
+
+# Start the mdbook server and open the URL
+cd docs
+mdbook serve --open
+```
+
+This can be useful for offline learning OR for debugging documentation while doing updates (any local changes will automatically be updated in the served book pages).
+
 <a name="silent_h">1</a>: The 'h' is silent.
