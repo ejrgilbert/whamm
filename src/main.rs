@@ -2,27 +2,27 @@ extern crate core;
 
 use cli::{Cmd, WhammCli};
 
-use crate::parser::whamm_parser::*;
 use crate::behavior::builder_visitor::*;
+use crate::common::error::ErrorGen;
 use crate::generator::emitters::{Emitter, WasmRewritingEmitter};
 use crate::generator::init_generator::InitGenerator;
 use crate::generator::instr_generator::InstrGenerator;
-use crate::common::error::ErrorGen;
+use crate::parser::whamm_parser::*;
 
-mod cli;
-pub mod parser;
 pub mod behavior;
-pub mod verifier;
-pub mod generator;
+mod cli;
 pub mod common;
+pub mod generator;
+pub mod parser;
+pub mod verifier;
 
 use clap::Parser;
-use graphviz_rust::exec_dot;
-use log::{info, error};
-use std::process::exit;
-use std::path::PathBuf;
 use graphviz_rust::cmd::{CommandArg, Format};
+use graphviz_rust::exec_dot;
+use log::{error, info};
 use project_root::get_project_root;
+use std::path::PathBuf;
+use std::process::exit;
 use walrus::Module;
 
 use crate::behavior::tree::BehaviorTree;
@@ -55,16 +55,30 @@ fn try_main() -> Result<(), failure::Error> {
     let cli = WhammCli::parse();
 
     match cli.command {
-        Cmd::Info {spec, globals, functions} => {
+        Cmd::Info {
+            spec,
+            globals,
+            functions,
+        } => {
             run_info(spec, globals, functions);
         }
         Cmd::Instr(args) => {
-            run_instr(args.app, args.script, args.output_path, args.virgil, args.run_verifier);
+            run_instr(
+                args.app,
+                args.script,
+                args.output_path,
+                args.virgil,
+                args.run_verifier,
+            );
         }
-        Cmd::VisWasm {wasm, output_path} => {
+        Cmd::VisWasm { wasm, output_path } => {
             run_vis_wasm(wasm, output_path);
         }
-        Cmd::VisScript {script, run_verifier, output_path} => {
+        Cmd::VisScript {
+            script,
+            run_verifier,
+            output_path,
+        } => {
             run_vis_script(script, run_verifier, output_path);
         }
     }
@@ -80,7 +94,13 @@ fn run_info(spec: String, print_globals: bool, print_functions: bool) {
     err.fatal_report("PrintInfo");
 }
 
-fn run_instr(app_wasm_path: String, script_path: String, output_wasm_path: String, emit_virgil: bool, run_verifier: bool) {
+fn run_instr(
+    app_wasm_path: String,
+    script_path: String,
+    output_wasm_path: String,
+    emit_virgil: bool,
+    run_verifier: bool,
+) {
     // Set up error reporting mechanism
     let mut err = ErrorGen::new(script_path.clone(), "".to_string(), MAX_ERRORS);
 
@@ -93,24 +113,21 @@ fn run_instr(app_wasm_path: String, script_path: String, output_wasm_path: Strin
     err.check_has_errors();
 
     // Read app Wasm into Walrus module
-    let _config =  walrus::ModuleConfig::new();
+    let _config = walrus::ModuleConfig::new();
     let app_wasm = Module::from_file(app_wasm_path).unwrap();
 
     // Configure the emitter based on target instrumentation code format
     let mut emitter = if emit_virgil {
         unimplemented!();
     } else {
-        WasmRewritingEmitter::new(
-            app_wasm,
-            symbol_table
-        )
+        WasmRewritingEmitter::new(app_wasm, symbol_table)
     };
 
     // Phase 0 of instrumentation (emit globals and provided fns)
     let mut init = InitGenerator {
         emitter: Box::new(&mut emitter),
         context_name: "".to_string(),
-        err: &mut err
+        err: &mut err,
     };
     init.run(&mut whamm);
     // If there were any errors encountered, report and exit!
@@ -135,14 +152,16 @@ fn run_instr(app_wasm_path: String, script_path: String, output_wasm_path: Strin
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
 
-    if let Err(e) = emitter.dump_to_file(output_wasm_path) { err.add_error(*e) }
+    if let Err(e) = emitter.dump_to_file(output_wasm_path) {
+        err.add_error(*e)
+    }
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
 }
 
 fn run_vis_wasm(wasm_path: String, output_path: String) {
     // Read app Wasm into Walrus module
-    let _config =  walrus::ModuleConfig::new();
+    let _config = walrus::ModuleConfig::new();
     let app_wasm = Module::from_file(wasm_path).unwrap();
 
     if app_wasm.write_graphviz_dot(output_path.clone()).is_ok() {
@@ -152,7 +171,7 @@ fn run_vis_wasm(wasm_path: String, output_path: String) {
 
                 if let Err(e) = exec_dot(
                     dot_str,
-                    vec![Format::Svg.into(), CommandArg::Output(svg_path.clone())]
+                    vec![Format::Svg.into(), CommandArg::Output(svg_path.clone())],
                 ) {
                     println!("{}", e);
                     exit(1);
@@ -162,7 +181,7 @@ fn run_vis_wasm(wasm_path: String, output_path: String) {
                     error!("Could not open visualization of wasm at: {}", svg_path);
                     error!("{:?}", err)
                 }
-            },
+            }
             Err(error) => {
                 error!("Cannot read specified file {}: {}", output_path, error);
                 exit(1);
@@ -185,12 +204,8 @@ fn run_vis_script(script_path: String, run_verifier: bool, output_path: String) 
     err.check_has_errors();
 
     let path = match get_pb(&PathBuf::from(output_path.clone())) {
-        Ok(pb) => {
-            pb
-        }
-        Err(_) => {
-            exit(1)
-        }
+        Ok(pb) => pb,
+        Err(_) => exit(1),
     };
 
     if visualization_to_file(&behavior_tree, path).is_ok() {
@@ -226,13 +241,13 @@ fn get_script_ast(script_path: &String, err: &mut ErrorGen) -> Whamm {
                     info!("successfully parsed");
                     err.check_too_many();
                     ast
-                },
+                }
                 None => {
                     err.report();
                     exit(1);
                 }
             }
-        },
+        }
         Err(error) => {
             error!("Cannot read specified file {}: {}", script_path, error);
             exit(1);

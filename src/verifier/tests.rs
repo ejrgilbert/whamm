@@ -1,8 +1,8 @@
 use crate::parser::tests;
 use crate::verifier::verifier;
 
-use log::{error};
 use crate::common::error::ErrorGen;
+use log::error;
 
 // =================
 // = Setup Logging =
@@ -16,9 +16,8 @@ pub fn setup_logger() {
 // = Helper Functions =
 // ====================
 
-const VALID_SCRIPTS: &[&str] = &[
-    "wasm:bytecode:call:alt { new_target_fn_name = redirect_to_fault_injector; }",
-];
+const VALID_SCRIPTS: &[&str] =
+    &["wasm:bytecode:call:alt { new_target_fn_name = redirect_to_fault_injector; }"];
 
 // =============
 // = The Tests =
@@ -34,7 +33,7 @@ pub fn test_build_table() {
             Some(mut ast) => {
                 let table = verifier::build_symbol_table(&mut ast, &mut err);
                 println!("{:#?}", table);
-            },
+            }
             None => {
                 error!("Could not get ast from script: {}", script);
                 err.report();
@@ -73,7 +72,7 @@ wasm::call:alt /
             // asserts on very high level table structure
             assert_eq!(num_scopes, table.scopes.len());
             assert_eq!(num_recs, table.records.len());
-        },
+        }
         None => {
             error!("Could not get ast from script: {}", script);
             panic!();

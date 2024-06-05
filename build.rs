@@ -1,10 +1,10 @@
+use clap::CommandFactory;
+use clap_mangen::Man;
+use project_root::get_project_root;
 use std::fs::File;
 use std::io::Error;
 use std::path::{Path, PathBuf};
 use std::process::exit;
-use clap::CommandFactory;
-use clap_mangen::Man;
-use project_root::get_project_root;
 
 include!("src/cli.rs");
 
@@ -25,12 +25,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create `target/assets/` folder.
     let mut path = match get_pb(&PathBuf::from("target")) {
-        Ok(pb) => {
-            pb
-        }
-        Err(_) => {
-            exit(1)
-        }
+        Ok(pb) => pb,
+        Err(_) => exit(1),
     };
     path.push("assets");
     std::fs::create_dir_all(&path).unwrap();

@@ -1,4 +1,4 @@
-use crate::parser::types::{DataType, Expr, BinOp, Value, UnOp};
+use crate::parser::types::{BinOp, DataType, Expr, UnOp, Value};
 use crate::verifier::types::Record::Var;
 use crate::verifier::types::SymbolTable;
 
@@ -10,29 +10,17 @@ pub struct ExprFolder;
 impl ExprFolder {
     pub fn fold_expr(expr: &Expr, table: &SymbolTable) -> Expr {
         match *expr {
-            Expr::UnOp { .. } => {
-                ExprFolder::fold_unop(expr, table)
-            }
-            Expr::BinOp { .. } => {
-                ExprFolder::fold_binop(expr, table)
-            }
-            Expr::Ternary { .. } => {
-                ExprFolder::fold_ternary(expr, table)
-            }
-            Expr::Call { .. } => {
-                ExprFolder::fold_call(expr, table)
-            }
-            Expr::VarId { .. } => {
-                ExprFolder::fold_var_id(expr, table)
-            }
-            Expr::Primitive { .. } => {
-                ExprFolder::fold_primitive(expr, table)
-            }
+            Expr::UnOp { .. } => ExprFolder::fold_unop(expr, table),
+            Expr::BinOp { .. } => ExprFolder::fold_binop(expr, table),
+            Expr::Ternary { .. } => ExprFolder::fold_ternary(expr, table),
+            Expr::Call { .. } => ExprFolder::fold_call(expr, table),
+            Expr::VarId { .. } => ExprFolder::fold_var_id(expr, table),
+            Expr::Primitive { .. } => ExprFolder::fold_primitive(expr, table),
         }
     }
 
     fn fold_binop(binop: &Expr, table: &SymbolTable) -> Expr {
-        if let Expr::BinOp {lhs, op, rhs, ..} = &binop {
+        if let Expr::BinOp { lhs, op, rhs, .. } = &binop {
             let lhs = ExprFolder::fold_expr(lhs, table);
             let rhs = ExprFolder::fold_expr(rhs, table);
             match op {
@@ -46,7 +34,7 @@ impl ExprFolder {
                                     ty: DataType::Boolean,
                                     val: lhs_bool && rhs_bool,
                                 },
-                                loc: None
+                                loc: None,
                             };
                         }
                         // only lhs is boolean primitive
@@ -60,7 +48,7 @@ impl ExprFolder {
                                     ty: DataType::Boolean,
                                     val: false,
                                 },
-                                loc: None
+                                loc: None,
                             }
                         }
                     } else {
@@ -77,7 +65,7 @@ impl ExprFolder {
                                         ty: DataType::Boolean,
                                         val: false,
                                     },
-                                    loc: None
+                                    loc: None,
                                 }
                             }
                         } else {
@@ -87,10 +75,10 @@ impl ExprFolder {
                                 lhs: Box::new(lhs),
                                 op: BinOp::And,
                                 rhs: Box::new(rhs),
-                                loc: None
+                                loc: None,
                             }
                         }
-                    }
+                    };
                 }
                 BinOp::Or => {
                     let (lhs_val, rhs_val) = ExprFolder::get_bool(&lhs, &rhs);
@@ -102,7 +90,7 @@ impl ExprFolder {
                                     ty: DataType::Boolean,
                                     val: lhs_bool || rhs_bool,
                                 },
-                                loc: None
+                                loc: None,
                             };
                         }
                         // only lhs is boolean primitive
@@ -114,7 +102,7 @@ impl ExprFolder {
                                     ty: DataType::Boolean,
                                     val: true,
                                 },
-                                loc: None
+                                loc: None,
                             }
                         } else {
                             rhs
@@ -131,7 +119,7 @@ impl ExprFolder {
                                         ty: DataType::Boolean,
                                         val: true,
                                     },
-                                    loc: None
+                                    loc: None,
                                 }
                             } else {
                                 lhs
@@ -143,10 +131,10 @@ impl ExprFolder {
                                 lhs: Box::new(lhs),
                                 op: BinOp::Or,
                                 rhs: Box::new(rhs),
-                                loc: None
+                                loc: None,
                             }
                         }
-                    }
+                    };
                 }
                 BinOp::EQ => {
                     let (lhs_val, rhs_val) = ExprFolder::get_bool(&lhs, &rhs);
@@ -179,15 +167,15 @@ impl ExprFolder {
                         return res;
                     }
                 }
-                BinOp::GE |
-                BinOp::GT |
-                BinOp::LE |
-                BinOp::LT |
-                BinOp::Add |
-                BinOp::Subtract |
-                BinOp::Multiply |
-                BinOp::Divide |
-                BinOp::Modulo => {
+                BinOp::GE
+                | BinOp::GT
+                | BinOp::LE
+                | BinOp::LT
+                | BinOp::Add
+                | BinOp::Subtract
+                | BinOp::Multiply
+                | BinOp::Divide
+                | BinOp::Modulo => {
                     let (lhs_val, rhs_val) = ExprFolder::get_int(&lhs, &rhs);
                     if let Some(res) = ExprFolder::fold_ints(&lhs_val, &rhs_val, op) {
                         return res;
@@ -202,7 +190,7 @@ impl ExprFolder {
 
     // similar to the logic of fold_binop
     fn fold_unop(unop: &Expr, table: &SymbolTable) -> Expr {
-        if let Expr::UnOp {op, expr, ..} = &unop {
+        if let Expr::UnOp { op, expr, .. } = &unop {
             let expr = ExprFolder::fold_expr(expr, table);
             return match op {
                 UnOp::Not => {
@@ -213,17 +201,17 @@ impl ExprFolder {
                                 ty: DataType::Boolean,
                                 val: !expr_bool,
                             },
-                            loc: None
+                            loc: None,
                         }
                     } else {
                         Expr::UnOp {
                             op: UnOp::Not,
                             expr: Box::new(expr),
-                            loc: None
+                            loc: None,
                         }
                     }
                 }
-            }
+            };
         }
 
         unop.to_owned()
@@ -238,17 +226,17 @@ impl ExprFolder {
                             ty: DataType::Boolean,
                             val: lhs_bool == rhs_bool,
                         },
-                        loc: None
+                        loc: None,
                     }),
                     BinOp::NE => Some(Expr::Primitive {
                         val: Value::Boolean {
                             ty: DataType::Boolean,
                             val: lhs_bool != rhs_bool,
                         },
-                        loc: None
+                        loc: None,
                     }),
-                    _ => None
-                }
+                    _ => None,
+                };
             }
         }
         None
@@ -263,86 +251,90 @@ impl ExprFolder {
                             ty: DataType::Boolean,
                             val: lhs_int == rhs_int,
                         },
-                        loc: None
+                        loc: None,
                     }),
                     BinOp::NE => Some(Expr::Primitive {
                         val: Value::Boolean {
                             ty: DataType::Boolean,
                             val: lhs_int != rhs_int,
                         },
-                        loc: None
+                        loc: None,
                     }),
                     BinOp::GE => Some(Expr::Primitive {
                         val: Value::Boolean {
                             ty: DataType::Boolean,
                             val: lhs_int >= rhs_int,
                         },
-                        loc: None
+                        loc: None,
                     }),
                     BinOp::GT => Some(Expr::Primitive {
                         val: Value::Boolean {
                             ty: DataType::Boolean,
                             val: lhs_int > rhs_int,
                         },
-                        loc: None
+                        loc: None,
                     }),
                     BinOp::LE => Some(Expr::Primitive {
                         val: Value::Boolean {
                             ty: DataType::Boolean,
                             val: lhs_int <= rhs_int,
                         },
-                        loc: None
+                        loc: None,
                     }),
                     BinOp::LT => Some(Expr::Primitive {
                         val: Value::Boolean {
                             ty: DataType::Boolean,
                             val: lhs_int < rhs_int,
                         },
-                        loc: None
+                        loc: None,
                     }),
                     BinOp::Add => Some(Expr::Primitive {
                         val: Value::Integer {
                             ty: DataType::I32,
                             val: lhs_int + rhs_int,
                         },
-                        loc: None
+                        loc: None,
                     }),
                     BinOp::Subtract => Some(Expr::Primitive {
                         val: Value::Integer {
                             ty: DataType::I32,
                             val: lhs_int - rhs_int,
                         },
-                        loc: None
+                        loc: None,
                     }),
                     BinOp::Multiply => Some(Expr::Primitive {
                         val: Value::Integer {
                             ty: DataType::I32,
                             val: lhs_int * rhs_int,
                         },
-                        loc: None
+                        loc: None,
                     }),
                     BinOp::Divide => Some(Expr::Primitive {
                         val: Value::Integer {
                             ty: DataType::I32,
                             val: lhs_int / rhs_int,
                         },
-                        loc: None
+                        loc: None,
                     }),
                     BinOp::Modulo => Some(Expr::Primitive {
                         val: Value::Integer {
                             ty: DataType::I32,
                             val: lhs_int % rhs_int,
                         },
-                        loc: None
+                        loc: None,
                     }),
-                    _ => None
-                }
+                    _ => None,
+                };
             }
         }
         None
     }
 
-    fn fold_strings(lhs_val: &Option<String>, rhs_val: &Option<String>, op: &BinOp) -> Option<Expr> {
+    fn fold_strings(
+        lhs_val: &Option<String>,
+        rhs_val: &Option<String>,
+        op: &BinOp,
+    ) -> Option<Expr> {
         if let Some(lhs_str) = lhs_val {
             if let Some(rhs_str) = rhs_val {
                 return match op {
@@ -351,17 +343,17 @@ impl ExprFolder {
                             ty: DataType::Boolean,
                             val: lhs_str == rhs_str,
                         },
-                        loc: None
+                        loc: None,
                     }),
                     BinOp::NE => Some(Expr::Primitive {
                         val: Value::Boolean {
                             ty: DataType::Boolean,
                             val: lhs_str != rhs_str,
                         },
-                        loc: None
+                        loc: None,
                     }),
-                    _ => None
-                }
+                    _ => None,
+                };
             }
         }
         None
@@ -376,7 +368,7 @@ impl ExprFolder {
     }
     fn fold_var_id(var_id: &Expr, table: &SymbolTable) -> Expr {
         match &var_id {
-            Expr::VarId {name, ..} => {
+            Expr::VarId { name, .. } => {
                 let rec_id = match table.lookup(name) {
                     Some(rec_id) => *rec_id,
                     _ => {
@@ -385,11 +377,11 @@ impl ExprFolder {
                 };
                 let rec = table.get_record(&rec_id);
                 match &rec {
-                    Some(Var{value, .. }) => {
+                    Some(Var { value, .. }) => {
                         if value.is_some() {
                             return Expr::Primitive {
                                 val: value.as_ref().unwrap().clone(),
-                                loc: None
+                                loc: None,
                             };
                         }
                     }
@@ -397,7 +389,7 @@ impl ExprFolder {
                         // ignore
                     }
                 }
-            },
+            }
             _ => {
                 // ignore
             }
@@ -409,8 +401,11 @@ impl ExprFolder {
     }
     pub fn get_single_bool(expr: &Expr) -> Option<bool> {
         match expr {
-            Expr::Primitive { val: Value::Boolean {val, .. }, ..} => Some(*val),
-            _ => None
+            Expr::Primitive {
+                val: Value::Boolean { val, .. },
+                ..
+            } => Some(*val),
+            _ => None,
         }
     }
     pub fn get_bool(lhs: &Expr, rhs: &Expr) -> (Option<bool>, Option<bool>) {
@@ -420,23 +415,35 @@ impl ExprFolder {
     }
     pub fn get_int(lhs: &Expr, rhs: &Expr) -> (Option<i32>, Option<i32>) {
         let lhs_val = match lhs {
-            Expr::Primitive { val: Value::Integer {val: lhs_val, .. }, ..} => Some(*lhs_val),
-            _ => None
+            Expr::Primitive {
+                val: Value::Integer { val: lhs_val, .. },
+                ..
+            } => Some(*lhs_val),
+            _ => None,
         };
         let rhs_val = match rhs {
-            Expr::Primitive { val: Value::Integer {val: rhs_val, .. }, ..} => Some(*rhs_val),
-            _ => None
+            Expr::Primitive {
+                val: Value::Integer { val: rhs_val, .. },
+                ..
+            } => Some(*rhs_val),
+            _ => None,
         };
         (lhs_val, rhs_val)
     }
     pub fn get_str(lhs: &Expr, rhs: &Expr) -> (Option<String>, Option<String>) {
         let lhs_val = match &lhs {
-            Expr::Primitive { val: Value::Str {val: lhs_val, .. }, ..} => Some(lhs_val.clone()),
-            _ => None
+            Expr::Primitive {
+                val: Value::Str { val: lhs_val, .. },
+                ..
+            } => Some(lhs_val.clone()),
+            _ => None,
         };
         let rhs_val = match &rhs {
-            Expr::Primitive { val: Value::Str {val: rhs_val, .. }, ..} => Some(rhs_val.clone()),
-            _ => None
+            Expr::Primitive {
+                val: Value::Str { val: rhs_val, .. },
+                ..
+            } => Some(rhs_val.clone()),
+            _ => None,
         };
         (lhs_val, rhs_val)
     }

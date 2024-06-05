@@ -1,11 +1,11 @@
-use crate::parser::whamm_parser::*;
 use crate::parser::types::{Whamm, WhammVisitor};
+use crate::parser::whamm_parser::*;
 
 use glob::{glob, glob_with};
 
-use log::{info, error, warn};
 use crate::common::error::ErrorGen;
 use crate::parser::print_visitor::AsStrVisitor;
+use log::{error, info, warn};
 
 // =================
 // = Setup Logging =
@@ -22,14 +22,12 @@ wasm:bytecode:br:before {
     index = i ? 1 : 0;
 }
     "#,
-
     // Variations of PROBE_SPEC
     "BEGIN { }",
     "END { }",
     "wasm:bytecode:call:alt { }",
     "wasm:bytecode:call:before { }",
     "wasm:bytecode:call:after { }",
-
     // Regexes
     "wasm:byt*:call:before { }",
     "wasm::call:after { }",
@@ -41,10 +39,9 @@ wasm:bytecode:br:before {
     ":bytecode:call:alt { }",
     "wasm::call:alt { }",
     "wasm:bytecode::alt { }",
-
     // Predicates
     "wasm:bytecode:br:before / i / { }",
-    r#"wasm:bytecode:br:before / "i" <= 1 / { }"#,  // TODO make invalid in type checking
+    r#"wasm:bytecode:br:before / "i" <= 1 / { }"#, // TODO make invalid in type checking
     "wasm:bytecode:br:before / i54 < r77 / { }",
     "wasm:bytecode:br:before / i54 < r77 / { }",
     "wasm:bytecode:br:before / i != 7 / { }",
@@ -53,7 +50,6 @@ wasm:bytecode:br:before {
     "wasm:bytecode:br:before / i == (1 + 3) / { count = 0; }",
     "wasm:bytecode:br:before / !(a && b) / { count = 0; }",
     "wasm:bytecode:br:before / !a / { count = 0; }",
-
     // Function calls
     r#"
 wasm::call:alt / strcmp((arg2, arg3), "record") / {
@@ -71,7 +67,6 @@ wasm::call:alt /
     new_target_fn_name = "redirect_to_fault_injector";
 }
     "#,
-
     // globals
     r#"
 map<i32, i32> count;
@@ -82,7 +77,6 @@ map<i32, i32> count;
 count = 0;
 BEGIN { }
     "#,
-
     // Statements (either assignment or function call)
     r#"
 wasm:bytecode:br:before {
@@ -94,7 +88,6 @@ wasm:bytecode:br:before {
         call_new();
     }
     "#,
-
     // Comments
     r#"
 /* comment */
@@ -117,29 +110,21 @@ const INVALID_SCRIPTS: &[&str] = &[
     r#"
 map<i32, i32> count;
     "#,
-
     // Variations of PROBE_SPEC
     "wasm:bytecode:call:alt: { }",
     "wasm:bytecode:call:alt",
     "wasm:bytecode:call:dne",
-
     // Empty predicate
     "wasm:bytecode:call:alt  // { }",
     "wasm:bytecode:call:alt / 5i < r77 / { }",
     //            "wasm:bytecode:call:alt / i < 1 < 2 / { }", // TODO -- make invalid on semantic pass
     //            "wasm:bytecode:call:alt / (1 + 3) / { i }", // TODO -- make invalid on type check
     r#"wasm:bytecode:call:alt  / i == """" / { }"#,
-
     // bad statement
     "wasm:bytecode:call:alt / i == 1 / { i; }",
 ];
 
-const SPECIAL: &[&str] = &[
-    "BEGIN { }",
-    "END { }",
-    "wasm:::alt { }",
-    "wasm:::alt { }"
-];
+const SPECIAL: &[&str] = &["BEGIN { }", "END { }", "wasm:::alt { }", "wasm:::alt { }"];
 
 // ====================
 // = Helper Functions =
@@ -158,13 +143,23 @@ pub fn get_test_scripts(sub_dir: &str) -> Vec<String> {
     };
 
     for path in glob(&(TEST_RSC_DIR.to_owned() + sub_dir + "/" + &*PATTERN.to_owned()))
-        .expect("Failed to read glob pattern") {
-        let unparsed_file = std::fs::read_to_string(path.as_ref().unwrap()).unwrap_or_else(|_| panic!("Unable to read file at {:?}", &path));
+        .expect("Failed to read glob pattern")
+    {
+        let unparsed_file = std::fs::read_to_string(path.as_ref().unwrap())
+            .unwrap_or_else(|_| panic!("Unable to read file at {:?}", &path));
         scripts.push(unparsed_file);
     }
 
-    for path in glob_with(&(TEST_RSC_DIR.to_owned() + sub_dir + "/" + &*TODO.to_owned()), options).expect("Failed to read glob pattern") {
-        warn!("File marked with TODO: {}", path.as_ref().unwrap().display());
+    for path in glob_with(
+        &(TEST_RSC_DIR.to_owned() + sub_dir + "/" + &*TODO.to_owned()),
+        options,
+    )
+    .expect("Failed to read glob pattern")
+    {
+        warn!(
+            "File marked with TODO: {}",
+            path.as_ref().unwrap().display()
+        );
     }
 
     scripts
@@ -185,7 +180,10 @@ pub fn run_test_on_valid_list(scripts: Vec<String>, err: &mut ErrorGen) {
 
         let res = is_valid_script(&script, err);
         if !res || err.has_errors {
-            error!("script = '{}' is not recognized as valid, but it should be", script)
+            error!(
+                "script = '{}' is not recognized as valid, but it should be",
+                script
+            )
         }
         if err.has_errors {
             err.report();
@@ -203,7 +201,10 @@ pub fn run_test_on_valid_list(scripts: Vec<String>, err: &mut ErrorGen) {
 pub fn test_parse_valid_scripts() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-    run_test_on_valid_list(VALID_SCRIPTS.iter().map(|s| s.to_string()).collect(), &mut err);
+    run_test_on_valid_list(
+        VALID_SCRIPTS.iter().map(|s| s.to_string()).collect(),
+        &mut err,
+    );
 }
 
 #[test]
@@ -214,7 +215,10 @@ pub fn test_parse_invalid_scripts() {
         info!("Parsing: {}", script);
         let res = is_valid_script(script, &mut err);
         if res || !err.has_errors {
-            error!("string = '{}' is recognized as valid, but it should not", script)
+            error!(
+                "string = '{}' is recognized as valid, but it should not",
+                script
+            )
         }
         assert!(err.has_errors);
         assert!(!&res);
@@ -228,10 +232,8 @@ pub fn test_ast_special_cases() {
     run_test_on_valid_list(SPECIAL.iter().map(|s| s.to_string()).collect(), &mut err);
 }
 
-fn print_ast(ast: &Whamm ) {
-    let mut visitor = AsStrVisitor {
-        indent: 0
-    };
+fn print_ast(ast: &Whamm) {
+    let mut visitor = AsStrVisitor { indent: 0 };
     println!("{}", visitor.visit_whamm(ast));
 }
 
@@ -297,7 +299,7 @@ wasm::call:alt /
                 err.report()
             }
             assert!(!err.has_errors);
-        },
+        }
         None => {
             error!("Could not get ast from script: {}", script);
             err.report();
@@ -315,7 +317,7 @@ pub fn test_implicit_probe_defs_dumper() {
     match get_ast(script, &mut err) {
         Some(ast) => {
             print_ast(&ast);
-        },
+        }
         None => {
             error!("Could not get ast from script: {}", script);
             if err.has_errors {
