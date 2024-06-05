@@ -28,15 +28,19 @@ struct TypeChecker {
 
 
 impl WhammVisitor<Option<DataType>> for TypeChecker {
-    fn visit_whamm(&mut self, whamm: &Whamm) -> Option<DataType> {
+    fn visit_whamm(&mut self, whamm: &Whamm, ) -> Option<DataType> {
 
         let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
         self.table = build_symbol_table(whamm, &mut err);
 
         // not printing events and globals now
-        
-        let name: String = "whamm".to_string();
-        self.table.set_curr_scope_info(name.clone(), ScopeType::Whamm);
+        self.table.reset();
+
+        // since the fn child comes first, we need to enter and exit the fn scope
+        // before we get to the script scope
+        let _ = self.table.enter_scope();
+        let _ = self.table.exit_scope();
+
 
         for script in &whamm.scripts {
             self.visit_script(script);
@@ -47,11 +51,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker {
 
     fn visit_script(&mut self, script: &Script) -> Option<DataType> {
         
-        // Alex: some how this enter_scope just change curr_scope from 0 to 7 ???
-        // println!("current scope: {:?}", self.table.get_curr_scope());
-
-        // let _ = self.table.enter_scope();
-        // println!("current scope: {:?}", self.table.get_curr_scope());
+        let _ = self.table.enter_scope();
 
         for (_, provider) in &script.providers {
             self.visit_provider(provider);
@@ -62,32 +62,32 @@ impl WhammVisitor<Option<DataType>> for TypeChecker {
     }
 
     fn visit_provider(&mut self, provider: &Provider) -> Option<DataType> {
-        // let _ = self.table.enter_scope();
+        let _ = self.table.enter_scope();
 
         for (_, package) in &provider.packages {
             self.visit_package(package);
         }
         
-        // let _ = self.table.exit_scope();
+        let _ = self.table.exit_scope();
         None
     }
 
     fn visit_package(&mut self, package: &Package) -> Option<DataType> {
 
-        // let _ = self.table.enter_scope();
+        let _ = self.table.enter_scope();
 
         for (_, event) in &package.events {
             self.visit_event(event);
         }
 
-        // let _ = self.table.exit_scope();
+        let _ = self.table.exit_scope();
 
         None
     }
 
     fn visit_event(&mut self, event: &Event) -> Option<DataType> {
 
-        // let _ = self.table.enter_scope();
+        let _ = self.table.enter_scope();
 
         for (_, probe) in &event.probe_map {
             for probe in probe {
@@ -95,7 +95,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker {
             }
         }
 
-        // let _ = self.table.exit_scope();
+        let _ = self.table.exit_scope();
 
         None
     }
@@ -141,7 +141,6 @@ impl WhammVisitor<Option<DataType>> for TypeChecker {
     }
 
     fn visit_expr(&mut self, expr: &Expr) -> Option<DataType> {
-        eprintln!("Visiting expr: {:?}", expr);
         match expr {
             Expr::Primitive {val, ..} => {
                 self.visit_value(val)
@@ -191,22 +190,13 @@ impl WhammVisitor<Option<DataType>> for TypeChecker {
                 }
             },
             Expr::VarId { name, loc } => {
-                // let _ = self.table.enter_scope();
-                println!("Var name: {:?}", name);
-                println!("table: {:?}", self.table);
-
-                // Alex: also here enter_scope just change curr_scope from 0 to 7 ???
-                println!("Current scope: {:?}", self.table.get_curr_scope());
-                let _ = self.table.enter_scope();
-                println!("Current scope: {:?}", self.table.get_curr_scope());
-                
-                println!("LOOK AT ME Var id: {:?}", self.table.lookup(name));
                 // get type from symbol table
+                let _ = self.table.enter_scope(); // Alex: adding interscope here doens't seems to have an effect here (which is reasonable)
+
                 if let Some(id) = self.table.lookup(name) {
-                    println!("LOOK AT ME Var id: {:?}", id);
+                    println!("LOOK AT ME Var id: {:?}", self.table.get_record(id));
                     if let Some( rec ) = self.table.get_record(id) {
                         if let crate::verifier::types::Record::Var{ ty, .. } = rec {
-                            println!("Var type: {:?}", ty);
                             return Some(ty.to_owned());
                         }
                     } else {

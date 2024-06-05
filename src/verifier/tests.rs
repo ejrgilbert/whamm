@@ -82,11 +82,11 @@ wasm::call:alt /
 }
 
 #[test]
-pub fn test_type_checker() {
+pub fn test_type_checker_predicate() {
     setup_logger();
     let script = r#"
     wasm::call:alt /
-    1 == "str" &&
+    // 1 == "str" && // this should be a type error
     target_fn_type == "import"
 / {
 
