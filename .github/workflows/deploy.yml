@@ -1,7 +1,7 @@
 name: Deploy
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "master", "task/docs" ] # TODO -- remove task/docs from this list after finished debugging
 
 jobs:
   deploy:
