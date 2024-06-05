@@ -1,14 +1,13 @@
 mod common;
 
-
 use log::error;
 use std::fs;
-use std::process::{Command, Stdio};
 use std::path::Path;
+use std::process::{Command, Stdio};
 use walrus::Module;
 use whamm::common::error::ErrorGen;
-use whamm::generator::init_generator::InitGenerator;
 use whamm::generator::emitters::{Emitter, WasmRewritingEmitter};
+use whamm::generator::init_generator::InitGenerator;
 use whamm::generator::instr_generator::InstrGenerator;
 
 const APP_WASM_PATH: &str = "tests/apps/users.wasm";
@@ -18,7 +17,7 @@ const OUT_WASM_NAME: &str = "out.wasm";
 
 fn get_wasm_module() -> Module {
     // Read app Wasm into Walrus module
-    let _config =  walrus::ModuleConfig::new();
+    let _config = walrus::ModuleConfig::new();
     Module::from_file(APP_WASM_PATH).unwrap()
 }
 
@@ -31,18 +30,17 @@ fn instrument_with_fault_injection() {
     assert!(!processed_scripts.is_empty());
     err.fatal_report("Integration Test");
 
-    for (script_path, script_text, mut whamm, symbol_table, behavior, simple_ast) in processed_scripts {
+    for (script_path, script_text, mut whamm, symbol_table, behavior, simple_ast) in
+        processed_scripts
+    {
         let app_wasm = get_wasm_module();
         let mut err = ErrorGen::new(script_path.clone(), script_text, 0);
-        let mut emitter = WasmRewritingEmitter::new(
-            app_wasm,
-            symbol_table
-        );
+        let mut emitter = WasmRewritingEmitter::new(app_wasm, symbol_table);
         // Phase 0 of instrumentation (emit globals and provided fns)
         let mut init = InitGenerator {
             emitter: Box::new(&mut emitter),
             context_name: "".to_string(),
-            err: &mut err
+            err: &mut err,
         };
         assert!(init.run(&mut whamm));
         err.fatal_report("Integration Test");
@@ -60,7 +58,7 @@ fn instrument_with_fault_injection() {
             curr_event_name: "".to_string(),
             curr_probe_mode: "".to_string(),
             curr_probe: None,
-            err: &mut err
+            err: &mut err,
         };
         // TODO add assertions here once I have error logic in place to check that it worked!
         instr.run(&behavior);
@@ -74,12 +72,13 @@ fn instrument_with_fault_injection() {
         }
 
         let out_wasm_path = format!("{OUT_BASE_DIR}/{OUT_WASM_NAME}");
-        if let Err(e) = emitter.dump_to_file(out_wasm_path.clone()) { err.add_error(*e) }
+        if let Err(e) = emitter.dump_to_file(out_wasm_path.clone()) {
+            err.add_error(*e)
+        }
         err.fatal_report("Integration Test");
 
         let mut wasm2wat = Command::new("wasm2wat");
-        wasm2wat.stdout(Stdio::null())
-            .arg(out_wasm_path);
+        wasm2wat.stdout(Stdio::null()).arg(out_wasm_path);
 
         // wasm2wat verification check
         match wasm2wat.status() {

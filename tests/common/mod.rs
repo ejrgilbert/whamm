@@ -1,10 +1,10 @@
 use std::path::PathBuf;
-use whamm::parser::whamm_parser::*;
 use whamm::parser::types::Whamm;
+use whamm::parser::whamm_parser::*;
 use whamm::verifier::verifier::build_symbol_table;
 
 use glob::{glob, glob_with};
-use log::{info, error, warn};
+use log::{error, info, warn};
 use whamm::behavior::builder_visitor::{build_behavior_tree, SimpleAST};
 use whamm::behavior::tree::BehaviorTree;
 use whamm::common::error::ErrorGen;
@@ -35,14 +35,24 @@ fn get_test_scripts(sub_dir: &str) -> Vec<(PathBuf, String)> {
     };
 
     for path in glob(&(TEST_RSC_DIR.to_owned() + sub_dir + "/" + &*PATTERN.to_owned()))
-        .expect("Failed to read glob pattern") {
+        .expect("Failed to read glob pattern")
+    {
         let file_name = path.as_ref().unwrap();
-        let unparsed_file = std::fs::read_to_string(file_name).unwrap_or_else(|_| panic!("Unable to read file at {:?}", &path));
+        let unparsed_file = std::fs::read_to_string(file_name)
+            .unwrap_or_else(|_| panic!("Unable to read file at {:?}", &path));
         scripts.push((file_name.clone(), unparsed_file));
     }
 
-    for path in glob_with(&(TEST_RSC_DIR.to_owned() + sub_dir + "/" + &*TODO.to_owned()), options).expect("Failed to read glob pattern") {
-        warn!("File marked with TODO: {}", path.as_ref().unwrap().display());
+    for path in glob_with(
+        &(TEST_RSC_DIR.to_owned() + sub_dir + "/" + &*TODO.to_owned()),
+        options,
+    )
+    .expect("Failed to read glob pattern")
+    {
+        warn!(
+            "File marked with TODO: {}",
+            path.as_ref().unwrap().display()
+        );
     }
 
     scripts
@@ -51,9 +61,7 @@ fn get_test_scripts(sub_dir: &str) -> Vec<(PathBuf, String)> {
 fn get_ast(script: &str, err: &mut ErrorGen) -> Option<Whamm> {
     info!("Getting the AST");
     match parse_script(&script.to_string(), err) {
-        Some(ast) => {
-            Some(ast)
-        },
+        Some(ast) => Some(ast),
         None => {
             error!("Parse failed");
             err.report();
@@ -62,7 +70,10 @@ fn get_ast(script: &str, err: &mut ErrorGen) -> Option<Whamm> {
     }
 }
 
-fn parse_all_scripts(scripts: Vec<(PathBuf, String)>, err: &mut ErrorGen) -> Vec<(PathBuf, String, Whamm)> {
+fn parse_all_scripts(
+    scripts: Vec<(PathBuf, String)>,
+    err: &mut ErrorGen,
+) -> Vec<(PathBuf, String, Whamm)> {
     let mut mm_scripts = vec![];
     for (path, script) in scripts {
         info!("Parsing: {}", script);
@@ -77,7 +88,10 @@ fn parse_all_scripts(scripts: Vec<(PathBuf, String)>, err: &mut ErrorGen) -> Vec
     mm_scripts
 }
 
-fn process_scripts(scripts: Vec<(PathBuf, String)>, err: &mut ErrorGen) -> Vec<(String, String, Whamm, SymbolTable, BehaviorTree, SimpleAST)> {
+fn process_scripts(
+    scripts: Vec<(PathBuf, String)>,
+    err: &mut ErrorGen,
+) -> Vec<(String, String, Whamm, SymbolTable, BehaviorTree, SimpleAST)> {
     let asts = parse_all_scripts(scripts, err);
 
     // Build the symbol table from the AST
@@ -90,13 +104,22 @@ fn process_scripts(scripts: Vec<(PathBuf, String)>, err: &mut ErrorGen) -> Vec<(
         let (mut behavior, simple_ast) = build_behavior_tree(&ast, err);
         behavior.reset();
 
-        result.push((path.into_os_string().into_string().unwrap(), script_str.clone(), ast, symbol_table, behavior, simple_ast));
+        result.push((
+            path.into_os_string().into_string().unwrap(),
+            script_str.clone(),
+            ast,
+            symbol_table,
+            behavior,
+            simple_ast,
+        ));
     }
 
     result
 }
 
-pub fn setup_fault_injection(err: &mut ErrorGen) -> Vec<(String, String, Whamm, SymbolTable, BehaviorTree, SimpleAST)> {
+pub fn setup_fault_injection(
+    err: &mut ErrorGen,
+) -> Vec<(String, String, Whamm, SymbolTable, BehaviorTree, SimpleAST)> {
     setup_logger();
     let scripts = get_test_scripts("fault_injection");
     if scripts.is_empty() {
@@ -106,7 +129,9 @@ pub fn setup_fault_injection(err: &mut ErrorGen) -> Vec<(String, String, Whamm, 
     process_scripts(scripts, err)
 }
 
-pub fn setup_wizard_monitors(err: &mut ErrorGen) -> Vec<(String, String, Whamm, SymbolTable, BehaviorTree, SimpleAST)> {
+pub fn setup_wizard_monitors(
+    err: &mut ErrorGen,
+) -> Vec<(String, String, Whamm, SymbolTable, BehaviorTree, SimpleAST)> {
     setup_logger();
     let scripts = get_test_scripts("wizard_monitors");
     if scripts.is_empty() {
@@ -116,7 +141,9 @@ pub fn setup_wizard_monitors(err: &mut ErrorGen) -> Vec<(String, String, Whamm, 
     process_scripts(scripts, err)
 }
 
-pub fn setup_replay(err: &mut ErrorGen) -> Vec<(String, String, Whamm, SymbolTable, BehaviorTree, SimpleAST)> {
+pub fn setup_replay(
+    err: &mut ErrorGen,
+) -> Vec<(String, String, Whamm, SymbolTable, BehaviorTree, SimpleAST)> {
     setup_logger();
     let scripts = get_test_scripts("replay");
     if scripts.is_empty() {
