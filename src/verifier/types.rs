@@ -1,25 +1,31 @@
-use std::collections::HashMap;
-use walrus::{FunctionId, GlobalId, LocalId};
 use crate::common::error::{ErrorGen, WhammError};
 use crate::parser::types::{DataType, FnId, Location, Value};
+use std::collections::HashMap;
+use std::fmt;
+use walrus::{FunctionId, GlobalId, LocalId};
 
-const UNEXPECTED_ERR_MSG: &str = "SymbolTable: Looks like you've found a bug...please report this behavior!";
-
+const UNEXPECTED_ERR_MSG: &str =
+    "SymbolTable: Looks like you've found a bug...please report this behavior!";
 
 #[derive(Debug)]
 pub struct SymbolTable {
     pub scopes: Vec<Scope>,
-    curr_scope: usize,    // indexes into this::scopes
+    curr_scope: usize, // indexes into this::scopes
 
     pub records: Vec<Record>,
-    pub curr_rec: usize,    // indexes into this::records
+    pub curr_rec: usize, // indexes into this::records
+}
+impl Default for SymbolTable {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 impl SymbolTable {
     pub fn new() -> Self {
         let root_scope = Scope::new(0, "".to_string(), ScopeType::Null, None);
 
         SymbolTable {
-            scopes: vec![ root_scope ],
+            scopes: vec![root_scope],
             curr_scope: 0,
             records: vec![],
             curr_rec: 0,
@@ -60,7 +66,7 @@ impl SymbolTable {
         });
     }
 
-    pub fn enter_named_scope(&mut self, scope_name: &String) -> bool {
+    pub fn enter_named_scope(&mut self, scope_name: &str) -> bool {
         let curr = self.get_curr_scope_mut().unwrap();
         let children = curr.children.clone();
 
@@ -69,12 +75,12 @@ impl SymbolTable {
         for (i, child_id) in children.iter().enumerate() {
             if let Some(child_scope) = self.scopes.get_mut(*child_id) {
                 if child_scope.name == *scope_name {
-                    new_curr_scope = Some(child_id.clone());
-                    new_next = Some(i.clone() + 1);
+                    new_curr_scope = Some(*child_id);
+                    new_next = Some(i + 1);
                     child_scope.reset();
                 }
             }
-        };
+        }
 
         // create new instance fix Rust's compilation issue.
         let curr = self.get_curr_scope_mut().unwrap();
@@ -84,52 +90,50 @@ impl SymbolTable {
             return true;
         }
 
-        return false;
+        false
     }
 
-    pub fn enter_scope(&mut self) -> Result<(), WhammError> {
+    pub fn enter_scope(&mut self) -> Result<(), Box<WhammError>> {
         let new_id = self.scopes.len();
 
         let curr_scope = self.get_curr_scope_mut().unwrap();
         if curr_scope.has_next() {
             return match curr_scope.next_child() {
-                Err(e) => {
-                    Err(e)
-                },
+                Err(e) => Err(e),
                 Ok(n) => {
-                    self.curr_scope = n.clone();
+                    self.curr_scope = *n;
                     Ok(())
                 }
-            }
+            };
         }
         // Will need to create a new next scope
         // Store new scope in the current scope's children
         curr_scope.add_child(new_id);
 
         // Does not have next child, create it
-        let new_scope = Scope::new(
-            new_id,
-            "".to_string(),
-            ScopeType::Null,
-            Some(curr_scope.id)
-        );
+        let new_scope = Scope::new(new_id, "".to_string(), ScopeType::Null, Some(curr_scope.id));
 
         // Increment current scope's next child pointer
         curr_scope.next += 1;
 
         // Add new scope
         self.scopes.push(new_scope);
-        self.curr_scope = new_id.clone();
-        return Ok(());
+        self.curr_scope = new_id;
+        Ok(())
     }
 
-    pub fn exit_scope(&mut self) -> Result<(), WhammError> {
+    pub fn exit_scope(&mut self) -> Result<(), Box<WhammError>> {
         match self.get_curr_scope().unwrap().parent {
-            Some(parent) => self.curr_scope = parent.clone(),
+            Some(parent) => self.curr_scope = parent,
             None => {
-                return Err(ErrorGen::get_unexpected_error(true,
-                    Some(format!("{} Attempted to exit current scope, but there was no parent to exit into.", UNEXPECTED_ERR_MSG)),
-                    None));
+                return Err(Box::new(ErrorGen::get_unexpected_error(
+                    true,
+                    Some(format!(
+                        "{} Attempted to exit current scope, but there was no parent to exit into.",
+                        UNEXPECTED_ERR_MSG
+                    )),
+                    None,
+                )));
             }
         }
         Ok(())
@@ -160,13 +164,13 @@ impl SymbolTable {
     pub fn put(&mut self, key: String, rec: Record) -> usize {
         let new_rec_id = self.records.len();
         match rec {
-            Record::Whamm { .. } |
-            Record::Script { .. } |
-            Record::Provider { .. } |
-            Record::Package { .. } |
-            Record::Event { .. } |
-            Record::Probe { .. } => {
-                self.curr_rec = new_rec_id.clone();
+            Record::Whamm { .. }
+            | Record::Script { .. }
+            | Record::Provider { .. }
+            | Record::Package { .. }
+            | Record::Event { .. }
+            | Record::Probe { .. } => {
+                self.curr_rec = new_rec_id;
             }
             _ => {
                 // ignore, not a record container we'd want to add to!
@@ -175,7 +179,9 @@ impl SymbolTable {
 
         self.records.push(rec);
 
-        self.get_curr_scope_mut().unwrap().put(key.clone(), new_rec_id);
+        self.get_curr_scope_mut()
+            .unwrap()
+            .put(key.clone(), new_rec_id);
 
         new_rec_id
     }
@@ -185,9 +191,7 @@ impl SymbolTable {
             None => None,
             Some(curr) => {
                 match curr.lookup(key) {
-                    Some(rec_id) => {
-                        Some(rec_id)
-                    },
+                    Some(rec_id) => Some(rec_id),
                     None => {
                         let mut rec_id = None;
 
@@ -195,7 +199,7 @@ impl SymbolTable {
                         let mut lookup_scope = curr;
                         let mut next_parent: Option<&Scope> = match lookup_scope.parent {
                             None => None,
-                            Some(p_id) => self.scopes.get(p_id)
+                            Some(p_id) => self.scopes.get(p_id),
                         };
                         while rec_id.is_none() && next_parent.is_some() {
                             // Perform lookup in next_parent (moving in the chain of parent scopes)
@@ -204,13 +208,13 @@ impl SymbolTable {
                             lookup_scope = next_parent.unwrap();
                             next_parent = match lookup_scope.parent {
                                 None => None,
-                                Some(p_id) => self.scopes.get(p_id)
+                                Some(p_id) => self.scopes.get(p_id),
                             };
                         }
 
                         match rec_id {
                             None => None,
-                            Some(id) => Some(id)
+                            Some(id) => Some(id),
                         }
                     }
                 }
@@ -221,16 +225,16 @@ impl SymbolTable {
 
 #[derive(Debug)]
 pub struct Scope {
-    pub id: usize,                       // indexes into SymbolTable::scopes
+    pub id: usize, // indexes into SymbolTable::scopes
     pub name: String,
     pub ty: ScopeType,
 
-    parent: Option<usize>,             // indexes into SymbolTable::scopes
-    children: Vec<usize>,              // indexes into SymbolTable::scopes
-    next: usize,                       // indexes into this::children
+    parent: Option<usize>, // indexes into SymbolTable::scopes
+    children: Vec<usize>,  // indexes into SymbolTable::scopes
+    next: usize,           // indexes into this::children
 
     pub containing_script: Option<usize>, // indexes into SymbolTable::records
-    records: HashMap<String, usize>,   // indexes into SymbolTable::records
+    records: HashMap<String, usize>,      // indexes into SymbolTable::records
 }
 impl Scope {
     pub fn new(id: usize, name: String, ty: ScopeType, parent: Option<usize>) -> Self {
@@ -244,7 +248,7 @@ impl Scope {
             parent,
             children: vec![],
 
-            records: HashMap::new()
+            records: HashMap::new(),
         }
     }
 
@@ -263,11 +267,11 @@ impl Scope {
         self.next < self.children.len()
     }
 
-    pub fn next_child(&mut self) -> Result<&usize, WhammError> {
+    pub fn next_child(&mut self) -> Result<&usize, Box<WhammError>> {
         if !self.has_next() {
-            return Err(ErrorGen::get_unexpected_error(true,
+            return Err(Box::new(ErrorGen::get_unexpected_error(true,
               Some(format!("{} Scope::next_child() should never be called without first checking that there is one.", UNEXPECTED_ERR_MSG)),
-              None));
+              None)));
         }
 
         let next_child = self.children.get(self.next).unwrap();
@@ -300,34 +304,34 @@ pub enum ScopeType {
     Event,
     Probe,
     Fn,
-    Null
+    Null,
 }
-impl ScopeType {
-    pub fn to_string(&self) -> String {
-        return match self {
-            ScopeType::Whamm {..} => {
-                "Whamm".to_string()
-            },
-            ScopeType::Script {..} => {
-                "Script".to_string()
-            },
-            ScopeType::Provider {..} => {
-                "Provider".to_string()
-            },
-            ScopeType::Package {..} => {
-                "Package".to_string()
-            },
-            ScopeType::Event {..} => {
-                "Event".to_string()
-            },
-            ScopeType::Probe {..} => {
-                "Probe".to_string()
-            },
-            ScopeType::Fn {..} => {
-                "Fn".to_string()
-            },
-            ScopeType::Null {..} => {
-                "Null".to_string()
+impl fmt::Display for ScopeType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ScopeType::Whamm { .. } => {
+                write!(f, "Whamm")
+            }
+            ScopeType::Script { .. } => {
+                write!(f, "Script")
+            }
+            ScopeType::Provider { .. } => {
+                write!(f, "Provider")
+            }
+            ScopeType::Package { .. } => {
+                write!(f, "Package")
+            }
+            ScopeType::Event { .. } => {
+                write!(f, "Event")
+            }
+            ScopeType::Probe { .. } => {
+                write!(f, "Probe")
+            }
+            ScopeType::Fn { .. } => {
+                write!(f, "Fn")
+            }
+            ScopeType::Null { .. } => {
+                write!(f, "Null")
             }
         }
     }
@@ -340,36 +344,36 @@ pub enum Record {
         name: String,
         fns: Vec<usize>,
         globals: Vec<usize>,
-        scripts: Vec<usize>
+        scripts: Vec<usize>,
     },
     Script {
         name: String,
         fns: Vec<usize>,
         globals: Vec<usize>,
-        providers: Vec<usize>
+        providers: Vec<usize>,
     },
     Provider {
         name: String,
         fns: Vec<usize>,
         globals: Vec<usize>,
-        packages: Vec<usize>
+        packages: Vec<usize>,
     },
     Package {
         name: String,
         fns: Vec<usize>,
         globals: Vec<usize>,
-        events: Vec<usize>
+        events: Vec<usize>,
     },
     Event {
         name: String,
         fns: Vec<usize>,
         globals: Vec<usize>,
-        probes: Vec<usize>
+        probes: Vec<usize>,
     },
     Probe {
         mode: String,
         fns: Vec<usize>,
-        globals: Vec<usize>
+        globals: Vec<usize>,
     },
     Fn {
         name: FnId,
@@ -379,7 +383,7 @@ pub enum Record {
         // TODO -- this representation SUCKS...specific to walrus bytecode injection...
         //         can't find another way though since I can't encode a FunctionId through the API
         //         ...maybe use type parameters?
-        addr: Option<FunctionId>
+        addr: Option<FunctionId>,
     },
     Var {
         ty: DataType,
@@ -388,29 +392,21 @@ pub enum Record {
 
         /// The address of this var post-injection
         addr: Option<VarAddr>,
-        loc: Option<Location>
-    }
+        loc: Option<Location>,
+    },
 }
 impl Record {
     pub fn loc(&self) -> &Option<Location> {
         match self {
-            Record::Fn {name, ..} => {
-                &name.loc
-            }
-            Record::Var {loc, ..} => {
-                loc
-            }
-            _ => &None
+            Record::Fn { name, .. } => &name.loc,
+            Record::Var { loc, .. } => loc,
+            _ => &None,
         }
     }
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum VarAddr {
-    Local {
-        addr: LocalId
-    },
-    Global {
-        addr: GlobalId
-    }
+    Local { addr: LocalId },
+    Global { addr: GlobalId },
 }

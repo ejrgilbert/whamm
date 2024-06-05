@@ -6,14 +6,13 @@ use clap::{Args, Parser, Subcommand};
 pub struct WhammCli {
     // #[clap(flatten)]
     // global_opts: GlobalOpts,
-
     #[command(subcommand)]
-    pub(crate) command: Cmd
+    pub command: Cmd,
 }
 
 #[derive(Debug, Subcommand)]
-pub(crate) enum Cmd {
-    // /// Generate shell completion
+pub enum Cmd {
+    // /// Generate completion for shell
     // Completion {
     //     /// Shell to generate completion for
     //     #[arg(arg_enum)]
@@ -56,13 +55,14 @@ pub(crate) enum Cmd {
         script: String,
 
         /// Whether to run the verifier on the specified script
-        #[clap(long, short, action, default_value = "false")] // TODO -- change this default value to true when I have this implemented
+        #[clap(long, short, action, default_value = "false")]
+        // TODO -- change this default value to true when I have this implemented
         run_verifier: bool,
 
         /// The path to output the visualization to.
         #[clap(short, long, value_parser, default_value = "output/vis.svg")]
         output_path: String,
-    }
+    },
 }
 
 // #[derive(Debug, Args)]
@@ -87,8 +87,9 @@ pub struct InstrArgs {
     pub virgil: bool,
 
     /// Whether to run the verifier on the specified script
-    #[arg(long, short, action, default_value = "false")] // TODO -- change this default value to true when I have this implemented
-    pub run_verifier: bool
+    #[arg(long, short, action, default_value = "false")]
+    // TODO -- change this default value to true when I have this implemented
+    pub run_verifier: bool,
 }
 
 // pub fn print_completion<G: Generator>(gen: G, app: &mut App) {

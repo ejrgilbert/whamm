@@ -1,14 +1,17 @@
 use crate::parser::types as parser_types;
-use parser_types::{WhammVisitor};
+use parser_types::WhammVisitor;
 
+use crate::parser::types::{
+    BinOp, DataType, Event, Expr, Global, Package, Probe, ProvidedFunctionality, Provider, Script,
+    Statement, UnOp, Value, Whamm,
+};
 use std::cmp;
 use std::collections::HashMap;
-use crate::parser::types::{DataType, Script, Whamm, Expr, Event, Package, Op, Probe, Provider, Statement, Value, Global, ProvidedFunctionality};
 
 const NL: &str = "\n";
 
 pub struct AsStrVisitor {
-    pub indent: i32
+    pub indent: i32,
 }
 impl AsStrVisitor {
     fn increase_indent(&mut self) {
@@ -20,7 +23,7 @@ impl AsStrVisitor {
     }
 
     fn get_indent(&self) -> String {
-        "--".repeat(cmp::max(0, self.indent.clone() as usize))
+        "--".repeat(cmp::max(0, self.indent as usize))
     }
 
     fn visit_globals(&mut self, globals: &HashMap<String, Global>) -> String {
@@ -29,19 +32,22 @@ impl AsStrVisitor {
             s += &format!("{}{} := ", self.get_indent(), name);
             match &global.value {
                 Some(v) => s += &format!("{}{}", self.visit_value(v), NL),
-                None => s += &format!("None{}", NL)
+                None => s += &format!("None{}", NL),
             }
         }
         s
     }
 
-    fn visit_provided_globals(&mut self, globals: &HashMap<String, (ProvidedFunctionality, Global)>) -> String {
+    fn visit_provided_globals(
+        &mut self,
+        globals: &HashMap<String, (ProvidedFunctionality, Global)>,
+    ) -> String {
         let mut s = "".to_string();
         for (name, (.., global)) in globals.iter() {
             s += &format!("{}{} := ", self.get_indent(), name);
             match &global.value {
                 Some(v) => s += &format!("{}{}", self.visit_value(v), NL),
-                None => s += &format!("None{}", NL)
+                None => s += &format!("None{}", NL),
             }
         }
         s
@@ -54,7 +60,7 @@ impl WhammVisitor<String> for AsStrVisitor {
 
         // Alex: arne't these fn? why call them events
         // print fns
-        if whamm.fns.len() > 0 {
+        if !whamm.fns.is_empty() {
             s += &format!("Whamm events:{}", NL);
             self.increase_indent();
             for (.., f) in whamm.fns.iter() {
@@ -64,14 +70,14 @@ impl WhammVisitor<String> for AsStrVisitor {
         }
 
         // print globals
-        if whamm.globals.len() > 0 {
+        if !whamm.globals.is_empty() {
             s += &format!("Whamm globals:{}", NL);
             self.increase_indent();
             for (name, (.., global)) in whamm.globals.iter() {
                 s += &format!("{}{} := ", self.get_indent(), name);
                 match &global.value {
                     Some(v) => s += &format!("{}{}", self.visit_value(v), NL),
-                    None => s += &format!("None{}", NL)
+                    None => s += &format!("None{}", NL),
                 }
             }
             self.decrease_indent();
@@ -82,7 +88,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         for script in whamm.scripts.iter() {
             s += &format!("{} `{}`:{}", self.get_indent(), script.name, NL);
             self.increase_indent();
-            s += &format!("{}", self.visit_script(script));
+            s += &self.visit_script(script).to_string();
             self.decrease_indent();
         }
         self.decrease_indent();
@@ -94,7 +100,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         let mut s = "".to_string();
 
         // print fns
-        if script.fns.len() > 0 {
+        if !script.fns.is_empty() {
             s += &format!("{} script events:{}", self.get_indent(), NL);
             self.increase_indent();
             for f in script.fns.iter() {
@@ -104,7 +110,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         }
 
         // print globals
-        if script.globals.len() > 0 {
+        if !script.globals.is_empty() {
             s += &format!("{} script globals:{}", self.get_indent(), NL);
             self.increase_indent();
             self.visit_globals(&script.globals);
@@ -118,7 +124,7 @@ impl WhammVisitor<String> for AsStrVisitor {
             s += &format!("{} `{}` {{{}", self.get_indent(), name, NL);
 
             self.increase_indent();
-            s += &format!("{}", self.visit_provider(provider));
+            s += &self.visit_provider(provider).to_string();
             self.decrease_indent();
 
             s += &format!("{} }}{}", self.get_indent(), NL);
@@ -132,7 +138,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         let mut s = "".to_string();
 
         // print fns
-        if provider.fns.len() > 0 {
+        if !provider.fns.is_empty() {
             s += &format!("{} events:{}", self.get_indent(), NL);
             self.increase_indent();
             for (.., f) in provider.fns.iter() {
@@ -142,7 +148,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         }
 
         // print globals
-        if provider.globals.len() > 0 {
+        if !provider.globals.is_empty() {
             s += &format!("{} globals:{}", self.get_indent(), NL);
             self.increase_indent();
             self.visit_provided_globals(&provider.globals);
@@ -150,14 +156,14 @@ impl WhammVisitor<String> for AsStrVisitor {
         }
 
         // print packages
-        if provider.packages.len() > 0 {
+        if !provider.packages.is_empty() {
             s += &format!("{} packages:{}", self.get_indent(), NL);
             for (name, package) in provider.packages.iter() {
                 self.increase_indent();
                 s += &format!("{} `{}` {{{}", self.get_indent(), name, NL);
 
                 self.increase_indent();
-                s += &format!("{}", self.visit_package(package));
+                s += &self.visit_package(package).to_string();
                 self.decrease_indent();
 
                 s += &format!("{} }}{}", self.get_indent(), NL);
@@ -172,7 +178,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         let mut s = "".to_string();
 
         // print fns
-        if package.fns.len() > 0 {
+        if !package.fns.is_empty() {
             s += &format!("{} package fns:{}", self.get_indent(), NL);
             self.increase_indent();
             for (.., f) in package.fns.iter() {
@@ -182,7 +188,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         }
 
         // print globals
-        if package.globals.len() > 0 {
+        if !package.globals.is_empty() {
             s += &format!("{} package globals:{}", self.get_indent(), NL);
             self.increase_indent();
             self.visit_provided_globals(&package.globals);
@@ -196,7 +202,7 @@ impl WhammVisitor<String> for AsStrVisitor {
             s += &format!("{} `{}` {{{}", self.get_indent(), name, NL);
 
             self.increase_indent();
-            s += &format!("{}", self.visit_event(event));
+            s += &self.visit_event(event).to_string();
             self.decrease_indent();
 
             s += &format!("{} }}{}", self.get_indent(), NL);
@@ -210,7 +216,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         let mut s = "".to_string();
 
         // print fns
-        if event.fns.len() > 0 {
+        if !event.fns.is_empty() {
             s += &format!("{} event fns:{}", self.get_indent(), NL);
             self.increase_indent();
             for (.., f) in event.fns.iter() {
@@ -220,7 +226,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         }
 
         // print globals
-        if event.globals.len() > 0 {
+        if !event.globals.is_empty() {
             s += &format!("{} event globals:{}", self.get_indent(), NL);
             self.increase_indent();
             s += &self.visit_provided_globals(&event.globals);
@@ -228,14 +234,17 @@ impl WhammVisitor<String> for AsStrVisitor {
         }
 
         // print probes
-        if event.probe_map.len() > 0 {
+        if !event.probe_map.is_empty() {
             s += &format!("{} event probe_map:{}", self.get_indent(), NL);
             for (name, probes) in event.probe_map.iter() {
                 self.increase_indent();
                 s += &format!("{} {}: ", self.get_indent(), name);
 
                 s += &format!("({}", NL);
-                s += &probes.iter().map(|probe| self.visit_probe(probe)).collect::<String>();
+                s += &probes
+                    .iter()
+                    .map(|probe| self.visit_probe(probe))
+                    .collect::<String>();
                 s += &format!("){}", NL);
                 self.decrease_indent();
             }
@@ -251,7 +260,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         self.increase_indent();
 
         // print fns
-        if probe.fns.len() > 0 {
+        if !probe.fns.is_empty() {
             s += &format!("{} probe fns:{}", self.get_indent(), NL);
             self.increase_indent();
             for (.., f) in probe.fns.iter() {
@@ -261,7 +270,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         }
 
         // print globals
-        if probe.globals.len() > 0 {
+        if !probe.globals.is_empty() {
             s += &format!("{} probe globals:{}", self.get_indent(), NL);
             self.increase_indent();
             self.visit_provided_globals(&probe.globals);
@@ -274,11 +283,10 @@ impl WhammVisitor<String> for AsStrVisitor {
         match &probe.predicate {
             Some(pred) => {
                 let expr = self.visit_expr(pred);
-                expr.split("&&").for_each(|line| {
-                    s += &format!("{}&& {}{}", self.get_indent(), line, NL)
-                });
-            },
-            None => s += &format!("{} / None /{}", self.get_indent(), NL)
+                expr.split("&&")
+                    .for_each(|line| s += &format!("{}&& {}{}", self.get_indent(), line, NL));
+            }
+            None => s += &format!("{} / None /{}", self.get_indent(), NL),
         }
         self.decrease_indent();
 
@@ -290,8 +298,8 @@ impl WhammVisitor<String> for AsStrVisitor {
                 for stmt in b {
                     s += &format!("{} {};{}", self.get_indent(), self.visit_stmt(stmt), NL)
                 }
-            },
-            None => s += &format!("{{}}")
+            }
+            None => s += "{}",
         }
         self.decrease_indent();
 
@@ -315,26 +323,20 @@ impl WhammVisitor<String> for AsStrVisitor {
         for param in f.params.iter() {
             s += &format!("{}, ", self.visit_formal_param(param));
         }
-        s += &format!(")");
+        s += ")";
 
         // print return type
-        match &f.return_ty {
-            Some(ty) => {
-                s += &format!(" -> {}", self.visit_datatype(ty));
-            },
-            _ => {}
+        if let Some(ty) = &f.return_ty {
+            s += &format!(" -> {}", self.visit_datatype(ty));
         }
         s += &format!(" {{{}", NL);
 
         // print body
         self.increase_indent();
-        match &f.body {
-            Some(stmts) => {
-                for stmt in stmts.iter() {
-                    s += &format!("{}{}{}", self.get_indent(), self.visit_stmt(stmt), NL);
-                }
-            },
-            _ => {}
+        if let Some(stmts) = &f.body {
+            for stmt in stmts.iter() {
+                s += &format!("{}{}{}", self.get_indent(), self.visit_stmt(stmt), NL);
+            }
         }
         self.decrease_indent();
         s += &format!("{} }}{}", self.get_indent(), NL);
@@ -343,112 +345,143 @@ impl WhammVisitor<String> for AsStrVisitor {
     }
 
     fn visit_formal_param(&mut self, param: &(Expr, DataType)) -> String {
-        format!("{}: {}", self.visit_expr(&param.0), self.visit_datatype(&param.1))
+        format!(
+            "{}: {}",
+            self.visit_expr(&param.0),
+            self.visit_datatype(&param.1)
+        )
     }
 
     fn visit_stmt(&mut self, stmt: &Statement) -> String {
         match stmt {
-            Statement::Assign {var_id, expr, ..} => {
-                format!("{} = {}", self.visit_expr(var_id), self.visit_expr(expr))
-            },
-            Statement::Expr {expr, ..} => {
-                self.visit_expr(expr)
+            Statement::Decl { ty, var_id, .. } => {
+                format!("{} {}", self.visit_datatype(ty), self.visit_expr(var_id))
             }
+            Statement::Assign { var_id, expr, .. } => {
+                format!("{} = {}", self.visit_expr(var_id), self.visit_expr(expr))
+            }
+            Statement::Expr { expr, .. } => self.visit_expr(expr),
         }
     }
 
     fn visit_expr(&mut self, expr: &Expr) -> String {
         match expr {
-            Expr::BinOp {lhs, op, rhs, ..} => {
+            Expr::Ternary {
+                cond, conseq, alt, ..
+            } => {
                 let mut s = "".to_string();
-                s += &format!("{} {} {}",
+                s += &format!(
+                    "{} ? {} : {}",
+                    self.visit_expr(cond),
+                    self.visit_expr(conseq),
+                    self.visit_expr(alt)
+                );
+                s
+            }
+            Expr::BinOp { lhs, op, rhs, .. } => {
+                let mut s = "".to_string();
+                s += &format!(
+                    "{} {} {}",
                     self.visit_expr(lhs),
-                    self.visit_op(op),
+                    self.visit_binop(op),
                     self.visit_expr(rhs)
                 );
                 s
-            },
-            Expr::Call {fn_target, args, ..} => {
+            }
+            Expr::Call {
+                fn_target, args, ..
+            } => {
                 let mut s = "".to_string();
                 s += &format!("{}(", self.visit_expr(fn_target));
-                match args {
-                    Some(args) => {
-                        s += &args.iter().map(|arg| self.visit_expr(arg)).collect::<Vec<String>>().join(", ");
-                    },
-                    _ => {}
+                if let Some(args) = args {
+                    s += &args
+                        .iter()
+                        .map(|arg| self.visit_expr(arg))
+                        .collect::<Vec<String>>()
+                        .join(", ");
                 }
-                s += &format!(")");
+                s += ")";
                 s
-            },
-            Expr::VarId {name, ..} => {
-                format!("{}", name)
             }
-            Expr::Primitive {val, ..} => {
-                self.visit_value(val)
+            Expr::VarId { name, .. } => name.to_string(),
+            Expr::Primitive { val, .. } => self.visit_value(val),
+            Expr::UnOp { op, expr, .. } => {
+                let mut s = "".to_string();
+                s += &format!("{}{}", self.visit_unop(op), self.visit_expr(expr));
+                s
             }
         }
     }
 
-    fn visit_op(&mut self, op: &Op) -> String {
+    fn visit_unop(&mut self, op: &UnOp) -> String {
         match op {
-            Op::And => "&&",
-            Op::Or => "||",
-            Op::EQ => "==",
-            Op::NE => "!=",
-            Op::GE => ">=",
-            Op::GT => ">",
-            Op::LE => "<=",
-            Op::LT => "<",
-            Op::Add => "+",
-            Op::Subtract => "-",
-            Op::Multiply => "*",
-            Op::Divide => "/",
-            Op::Modulo => "%",
-        }.parse().unwrap()
+            UnOp::Not => "!",
+        }
+        .parse()
+        .unwrap()
+    }
+
+    fn visit_binop(&mut self, op: &BinOp) -> String {
+        match op {
+            BinOp::And => "&&",
+            BinOp::Or => "||",
+            BinOp::EQ => "==",
+            BinOp::NE => "!=",
+            BinOp::GE => ">=",
+            BinOp::GT => ">",
+            BinOp::LE => "<=",
+            BinOp::LT => "<",
+            BinOp::Add => "+",
+            BinOp::Subtract => "-",
+            BinOp::Multiply => "*",
+            BinOp::Divide => "/",
+            BinOp::Modulo => "%",
+        }
+        .parse()
+        .unwrap()
     }
 
     fn visit_datatype(&mut self, datatype: &DataType) -> String {
         match datatype {
-            DataType::Integer => {
-                "int".to_string()
-            },
-            DataType::Boolean => {
-                "bool".to_string()
-            },
-            DataType::Null => {
-                "null".to_string()
-            },
-            DataType::Str => {
-                "str".to_string()
-            },
-            DataType::Tuple {..} => {
-                "tuple".to_string()
-            },
+            DataType::I32 => "int".to_string(),
+            DataType::Boolean => "bool".to_string(),
+            DataType::Null => "null".to_string(),
+            DataType::Str => "str".to_string(),
+            DataType::Tuple { .. } => "tuple".to_string(),
+            DataType::Map { .. } => "map".to_string(),
         }
     }
 
     fn visit_value(&mut self, value: &Value) -> String {
         match value {
-            Value::Boolean { ty: _ty, val} => {
+            Value::Boolean { ty: _ty, val } => {
                 let mut s = "".to_string();
                 s += &format!("{}", val);
                 s
-            },
-            Value::Integer { ty: _ty, val} => {
+            }
+            Value::Integer { ty: _ty, val } => {
                 let mut s = "".to_string();
                 s += &format!("{}", val);
                 s
-            },
-            Value::Str {ty: _ty, val, addr: _addr} => {
+            }
+            Value::Str {
+                ty: _ty,
+                val,
+                addr: _addr,
+            } => {
                 let mut s = "".to_string();
                 s += &format!("\"{}\"", val);
                 s
-            },
-            Value::Tuple {ty: _ty, vals} => {
+            }
+            Value::Tuple { ty: _ty, vals } => {
                 let mut s = "".to_string();
-                s += &format!("(");
-                s += &vals.iter().map(|v| self.visit_expr(v)).collect::<Vec<String>>().join(", ");
-                s += &format!(")");
+                s += "(";
+                s += &vals
+                    .iter()
+                    .map(|v| self.visit_expr(v))
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                s += ")";
                 s
             }
         }

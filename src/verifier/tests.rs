@@ -1,8 +1,8 @@
 use crate::parser::tests;
 use crate::verifier::verifier;
 
-use log::{error};
 use crate::common::error::ErrorGen;
+use log::error;
 
 // =================
 // = Setup Logging =
@@ -16,9 +16,8 @@ pub fn setup_logger() {
 // = Helper Functions =
 // ====================
 
-const VALID_SCRIPTS: &'static [&'static str] = &[
-    "wasm:bytecode:call:alt { new_target_fn_name = redirect_to_fault_injector; }",
-];
+const VALID_SCRIPTS: &[&str] =
+    &["wasm:bytecode:call:alt { new_target_fn_name = redirect_to_fault_injector; }"];
 
 // =============
 // = The Tests =
@@ -31,14 +30,14 @@ pub fn test_build_table() {
 
     for script in VALID_SCRIPTS {
         match tests::get_ast(script, &mut err) {
-            Some(ast) => {
-                let table = verifier::build_symbol_table(&ast, &mut err);
+            Some(mut ast) => {
+                let table = verifier::build_symbol_table(&mut ast, &mut err);
                 println!("{:#?}", table);
-            },
+            }
             None => {
                 error!("Could not get ast from script: {}", script);
                 err.report();
-                assert!(false);
+                panic!();
             }
         };
     }
@@ -60,15 +59,15 @@ wasm::call:alt /
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
 
     match tests::get_ast(script, &mut err) {
-        Some(ast) => {
-            let table = verifier::build_symbol_table(&ast, &mut err);
+        Some(mut ast) => {
+            let table = verifier::build_symbol_table(&mut ast, &mut err);
             println!("{:#?}", table);
 
             // 7 scopes: whamm, strcmp, script, wasm, bytecode, call, alt
             let num_scopes = 7;
             // records: num_scopes PLUS (target_fn_type, target_imp_module, target_imp_name, new_target_fn_name,
-            //          str_addr, value)
-            let num_recs = num_scopes + 6;
+            //          tos, wasm_bytecode_loc, str_addr, value)
+            let num_recs = num_scopes + 8;
 
             // asserts on very high level table structure
             assert_eq!(num_scopes, table.scopes.len());
@@ -76,7 +75,7 @@ wasm::call:alt /
         },
         None => {
             error!("Could not get ast from script: {}", script);
-            assert!(false);
+            panic!();
         }
     };
 }
@@ -97,7 +96,7 @@ pub fn test_type_checker_predicate() {
 
     match tests::get_ast(script, &mut err) {
         Some(ast) => {
-            verifier::verify(&ast);
+            verifier::verify(&mut ast.clone());
         },
         None => {
             error!("Could not get ast from script: {}", script);

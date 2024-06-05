@@ -2,27 +2,27 @@ extern crate core;
 
 use cli::{Cmd, WhammCli};
 
-use crate::parser::whamm_parser::*;
 use crate::behavior::builder_visitor::*;
+use crate::common::error::ErrorGen;
 use crate::generator::emitters::{Emitter, WasmRewritingEmitter};
 use crate::generator::init_generator::InitGenerator;
 use crate::generator::instr_generator::InstrGenerator;
-use crate::common::error::ErrorGen;
+use crate::parser::whamm_parser::*;
 
-mod cli;
-pub mod parser;
 pub mod behavior;
-pub mod verifier;
-pub mod generator;
+mod cli;
 pub mod common;
+pub mod generator;
+pub mod parser;
+pub mod verifier;
 
 use clap::Parser;
-use graphviz_rust::exec_dot;
-use log::{info, error};
-use std::process::exit;
-use std::path::PathBuf;
 use graphviz_rust::cmd::{CommandArg, Format};
+use graphviz_rust::exec_dot;
+use log::{error, info};
 use project_root::get_project_root;
+use std::path::PathBuf;
+use std::process::exit;
 use walrus::Module;
 
 use crate::behavior::tree::BehaviorTree;
@@ -55,16 +55,30 @@ fn try_main() -> Result<(), failure::Error> {
     let cli = WhammCli::parse();
 
     match cli.command {
-        Cmd::Info {spec, globals, functions} => {
+        Cmd::Info {
+            spec,
+            globals,
+            functions,
+        } => {
             run_info(spec, globals, functions);
         }
         Cmd::Instr(args) => {
-            run_instr(args.app, args.script, args.output_path, args.virgil, args.run_verifier);
+            run_instr(
+                args.app,
+                args.script,
+                args.output_path,
+                args.virgil,
+                args.run_verifier,
+            );
         }
-        Cmd::VisWasm {wasm, output_path} => {
+        Cmd::VisWasm { wasm, output_path } => {
             run_vis_wasm(wasm, output_path);
         }
-        Cmd::VisScript {script, run_verifier, output_path} => {
+        Cmd::VisScript {
+            script,
+            run_verifier,
+            output_path,
+        } => {
             run_vis_script(script, run_verifier, output_path);
         }
     }
@@ -80,37 +94,40 @@ fn run_info(spec: String, print_globals: bool, print_functions: bool) {
     err.fatal_report("PrintInfo");
 }
 
-fn run_instr(app_wasm_path: String, script_path: String, output_wasm_path: String, emit_virgil: bool, run_verifier: bool) {
+fn run_instr(
+    app_wasm_path: String,
+    script_path: String,
+    output_wasm_path: String,
+    emit_virgil: bool,
+    run_verifier: bool,
+) {
     // Set up error reporting mechanism
     let mut err = ErrorGen::new(script_path.clone(), "".to_string(), MAX_ERRORS);
 
     // Process the script
     let mut whamm = get_script_ast(&script_path, &mut err);
-    let symbol_table = get_symbol_table(&whamm, run_verifier, &mut err);
+    let symbol_table = get_symbol_table(&mut whamm, run_verifier, &mut err);
     let (behavior_tree, simple_ast) = build_behavior(&whamm, &mut err);
 
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
 
     // Read app Wasm into Walrus module
-    let _config =  walrus::ModuleConfig::new();
-    let app_wasm = Module::from_file(&app_wasm_path).unwrap();
+    let _config = walrus::ModuleConfig::new();
+    let app_wasm = Module::from_file(app_wasm_path).unwrap();
 
     // Configure the emitter based on target instrumentation code format
     let mut emitter = if emit_virgil {
         unimplemented!();
     } else {
-        WasmRewritingEmitter::new(
-            app_wasm,
-            symbol_table
-        )
+        WasmRewritingEmitter::new(app_wasm, symbol_table)
     };
 
     // Phase 0 of instrumentation (emit globals and provided fns)
     let mut init = InitGenerator {
         emitter: Box::new(&mut emitter),
         context_name: "".to_string(),
-        err: &mut err
+        err: &mut err,
     };
     init.run(&mut whamm);
     // If there were any errors encountered, report and exit!
@@ -135,9 +152,8 @@ fn run_instr(app_wasm_path: String, script_path: String, output_wasm_path: Strin
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
 
-    match emitter.dump_to_file(output_wasm_path) {
-        Err(e) => err.add_error(e),
-        _ => {}
+    if let Err(e) = emitter.dump_to_file(output_wasm_path) {
+        err.add_error(*e)
     }
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
@@ -145,41 +161,32 @@ fn run_instr(app_wasm_path: String, script_path: String, output_wasm_path: Strin
 
 fn run_vis_wasm(wasm_path: String, output_path: String) {
     // Read app Wasm into Walrus module
-    let _config =  walrus::ModuleConfig::new();
-    let app_wasm = Module::from_file(&wasm_path).unwrap();
+    let _config = walrus::ModuleConfig::new();
+    let app_wasm = Module::from_file(wasm_path).unwrap();
 
-    match app_wasm.write_graphviz_dot(output_path.clone()) {
-        Ok(_) => {
-            match std::fs::read_to_string(&output_path.clone()) {
-                Ok(dot_str) => {
-                    let svg_path = format!("{}.svg", output_path.clone());
+    if app_wasm.write_graphviz_dot(output_path.clone()).is_ok() {
+        match std::fs::read_to_string(output_path.clone()) {
+            Ok(dot_str) => {
+                let svg_path = format!("{}.svg", output_path.clone());
 
-                    match exec_dot(
-                        dot_str,
-                        vec![Format::Svg.into(), CommandArg::Output(svg_path.clone())]
-                    ) {
-                        Err(e) => {
-                            println!("{}", e.to_string());
-                            exit(1);
-                        }
-                        _ => {}
-                    }
-
-                    match opener::open(svg_path.clone()) {
-                        Err(err) => {
-                            error!("Could not open visualization of wasm at: {}", svg_path);
-                            error!("{:?}", err)
-                        }
-                        _ => {}
-                    }
-                },
-                Err(error) => {
-                    error!("Cannot read specified file {}: {}", output_path, error);
+                if let Err(e) = exec_dot(
+                    dot_str,
+                    vec![Format::Svg.into(), CommandArg::Output(svg_path.clone())],
+                ) {
+                    println!("{}", e);
                     exit(1);
                 }
-            };
-        }
-        Err(_) => {}
+
+                if let Err(err) = opener::open(svg_path.clone()) {
+                    error!("Could not open visualization of wasm at: {}", svg_path);
+                    error!("{:?}", err)
+                }
+            }
+            Err(error) => {
+                error!("Cannot read specified file {}: {}", output_path, error);
+                exit(1);
+            }
+        };
     }
 }
 
@@ -187,70 +194,60 @@ fn run_vis_script(script_path: String, run_verifier: bool, output_path: String) 
     // Set up error reporting mechanism
     let mut err = ErrorGen::new(script_path.clone(), "".to_string(), MAX_ERRORS);
 
-    let whamm = get_script_ast(&script_path, &mut err);
-    verify_ast(&whamm, run_verifier, &mut err);
+    let mut whamm = get_script_ast(&script_path, &mut err);
+    // building the symbol table is necessary since it does some minor manipulations of the AST
+    // (adds declared globals to the script AST node)
+    let _symbol_table = get_symbol_table(&mut whamm, run_verifier, &mut err);
     let (behavior_tree, ..) = build_behavior(&whamm, &mut err);
 
-    // if has any errors, should report and exit!
+    // if there are any errors, should report and exit!
     err.check_has_errors();
 
     let path = match get_pb(&PathBuf::from(output_path.clone())) {
-        Ok(pb) => {
-            pb
-        }
-        Err(_) => {
-            exit(1)
-        }
+        Ok(pb) => pb,
+        Err(_) => exit(1),
     };
 
-    match visualization_to_file(&behavior_tree, path) {
-        Ok(_) => {
-            match opener::open(output_path.clone()) {
-                Err(err) => {
-                    error!("Could not open visualization tree at: {}", output_path);
-                    error!("{:?}", err)
-                }
-                _ => {}
-            }
+    if visualization_to_file(&behavior_tree, path).is_ok() {
+        if let Err(err) = opener::open(output_path.clone()) {
+            error!("Could not open visualization tree at: {}", output_path);
+            error!("{:?}", err)
         }
-        Err(_) => {}
     }
     exit(0);
 }
 
-fn get_symbol_table(ast: &Whamm, run_verifier: bool, err: &mut ErrorGen) -> SymbolTable {
-    let st = build_symbol_table(&ast, err);
+fn get_symbol_table(ast: &mut Whamm, run_verifier: bool, err: &mut ErrorGen) -> SymbolTable {
+    let st = build_symbol_table(ast, err);
     err.check_too_many();
     verify_ast(ast, run_verifier, err);
     st
 }
 
 fn verify_ast(ast: &Whamm, run_verifier: bool, err: &mut ErrorGen) {
-    if run_verifier {
-        if !verify(ast) {
-            error!("AST failed verification!");
-            exit(1);
-        }
+    if run_verifier && !verify(&mut ast.clone()) {
+        error!("AST failed verification!");
+        exit(1);
     }
     err.check_too_many();
 }
 
 fn get_script_ast(script_path: &String, err: &mut ErrorGen) -> Whamm {
-    match std::fs::read_to_string(&script_path) {
+    match std::fs::read_to_string(script_path) {
         Ok(unparsed_str) => {
             // Parse the script and build the AST
             match parse_script(&unparsed_str, err) {
                 Some(ast) => {
                     info!("successfully parsed");
                     err.check_too_many();
-                    return ast;
-                },
+                    ast
+                }
                 None => {
                     err.report();
                     exit(1);
                 }
-            };
-        },
+            }
+        }
         Err(error) => {
             error!("Cannot read specified file {}: {}", script_path, error);
             exit(1);
@@ -260,7 +257,7 @@ fn get_script_ast(script_path: &String, err: &mut ErrorGen) -> Whamm {
 
 fn build_behavior(whamm: &Whamm, err: &mut ErrorGen) -> (BehaviorTree, SimpleAST) {
     // Build the behavior tree from the AST
-    let (mut behavior, simple_ast) = build_behavior_tree(&whamm, err);
+    let (mut behavior, simple_ast) = build_behavior_tree(whamm, err);
     err.check_too_many();
     behavior.reset();
 
