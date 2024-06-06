@@ -27,7 +27,7 @@
   - [Phases of Compilation](devs/compiler_phases.md)
     - [Parse](devs/parsing.md)
     - [Verify](devs/verifying.md)
-    - [TODO - Encode as a `BehaviorTree`](devs/behavior_tree.md)
+    - [Encode as a `BehaviorTree`](devs/behavior_tree.md)
     - [TODO - Emit](devs/emitting.md)
   - [TODO - CLI](devs/cli.md)
   - [TODO - Testing](devs/testing.md)
