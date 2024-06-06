@@ -37,6 +37,10 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
 
         // since the fn child comes first, we need to enter and exit the fn scope
         // before we get to the script scope
+        println!("table: {:?}", self.table);
+
+        // skip the compiler provided functions
+        // we only need to type check user provided functions
         let _ = self.table.enter_scope();
         let _ = self.table.exit_scope();
 
