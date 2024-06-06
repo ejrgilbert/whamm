@@ -18,7 +18,6 @@ When performing bytecode rewriting, `whamm!`:
 The `info` command provided by the CLI is a great resource to view what can be used as the probe specification.
 This command provides documentation describing the specification parts as well as the globals and functions in scope, which can help users learn about how to build their instrumentation.
 
-
 ## The Probe Specification ##
 `provider:package:event:mode`
 

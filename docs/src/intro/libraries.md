@@ -1,12 +1,20 @@
 # Libraries #
 
-Libraries are used to define instrumentation behavior when it goes beyond the scope of the core DSL grammar.
+NOTE: This functionality hasn't been fully implemented! More docs to come post-implementation!
 
-## How does `whamm!` use libraries? ##
-TODO
+[//]: # (Libraries are used to define instrumentation behavior when it goes beyond the scope of the core DSL grammar.)
 
-## Provided libraries ##
-TODO
+[//]: # ()
+[//]: # (## How does `whamm!` use libraries? ##)
 
-## Building and using custom libraries ##
-TODO
+[//]: # (TODO)
+
+[//]: # ()
+[//]: # (## Provided libraries ##)
+
+[//]: # (TODO)
+
+[//]: # ()
+[//]: # (## Building and using custom libraries ##)
+
+[//]: # (TODO)
