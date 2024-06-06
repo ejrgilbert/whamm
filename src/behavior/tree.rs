@@ -453,6 +453,7 @@ pub enum Node {
         child: usize,
     },
     Sequence {
+        
         id: usize,
         parent: usize,
         children: Vec<usize>,
