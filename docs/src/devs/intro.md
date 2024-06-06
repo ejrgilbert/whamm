@@ -3,6 +3,11 @@
 Do you want to contribute to `whamm!` or just learn about the low-level details for fun?
 Then you're in the right place.
 
+## Resources ##
+
+Parsing:
+- The [Pest book](https://pest.rs/book/)
+
 ## `whamm!` Implementation Concepts ##
 The [_four phases_ of compilation](compiler_phases.md):
 1. [Parse](parsing.md)
