@@ -20,8 +20,8 @@
   - [WIP - Testing](intro/testing.md)
   - [Injection Strategies](intro/injection_strategies.md)
 
-- [TODO - Example Use Cases](examples/intro.md)
-  - [TODO - Branch Monitor](examples/branch_monitor.md)
+- [WIP - Example Use Cases](examples/intro.md)
+  - [WIP - Branch Monitor](examples/branch_monitor.md)
 
 - [TODO - Developers](devs/intro.md)
   - [TODO - Parsing](devs/parsing.md)
