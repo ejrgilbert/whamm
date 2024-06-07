@@ -428,7 +428,6 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
                 }),
                 loc: Some(Location::from(&var_id_line_col, &var_id_line_col, None)),
             };
-            }
             trace!("Exiting incrementor");
             Ok(Statement::Assign {
                 var_id,
