@@ -135,7 +135,7 @@ map<i32, i32> count;
     // bad statement
     "wasm:bytecode:call:alt / i == 1 / { i; }",
     // bad incrementor
-        r#"
+    r#"
     wasm:bytecode:br:before {
         i = 0;
         if(i++ == 0){

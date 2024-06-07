@@ -187,7 +187,6 @@ pub enum Statement {
         var_id: Expr, // Should be VarId
         loc: Option<Location>,
     },
-    
 }
 impl Statement {
     pub fn loc(&self) -> &Option<Location> {

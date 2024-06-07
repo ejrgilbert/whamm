@@ -413,7 +413,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
                     path: None,
                 }),
             };
-            let _val = Value::Integer{
+            let _val = Value::Integer {
                 ty: DataType::I32,
                 val: 1,
             };
