@@ -28,7 +28,7 @@
     - [Parse](devs/parsing.md)
     - [Verify](devs/verifying.md)
     - [Encode as a `BehaviorTree`](devs/behavior_tree.md)
-    - [TODO - Emit](devs/emitting.md)
+    - [Emit](devs/emitting.md)
   - [TODO - CLI](devs/cli.md)
   - [TODO - Testing](devs/testing.md)
   - [TODO - Error Handling](devs/error_handling.md)
