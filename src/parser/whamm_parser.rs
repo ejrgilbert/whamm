@@ -413,6 +413,14 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
                     path: None,
                 }),
             };
+            let _val = Value::Integer{
+                ty: DataType::I32,
+                val: 1,
+            };
+            let _rhs = Expr::Primitive {
+                val: _val,
+                loc: Some(Location::from(&var_id_line_col, &var_id_line_col, None)),
+            };
             let expr = Expr::BinOp {
                 lhs: Box::new(Expr::VarId {
                     name: var_id_rule.as_str().parse().unwrap(),
@@ -422,10 +430,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
                     }),
                 }),
                 op: BinOp::Add,
-                rhs: Box::new(Expr::Primitive {
-                    ty: DataType::I32,
-                    val: Value::Integer(1),
-                }),
+                rhs: Box::new(_rhs),
                 loc: Some(Location::from(&var_id_line_col, &var_id_line_col, None)),
             };
             trace!("Exiting incrementor");

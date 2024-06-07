@@ -194,8 +194,8 @@ impl Statement {
         match self {
             Statement::Decl { loc, .. }
             | Statement::Assign { loc, .. }
-            | Statement::Expr { loc, .. } => loc,
             | Statement::Incrementor { loc, .. }
+            | Statement::Expr { loc, .. } => loc,
         }
     }
     pub fn line_col(&self) -> Option<LineColLocation> {
