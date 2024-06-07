@@ -183,6 +183,11 @@ pub enum Statement {
     ///   return 0;
     /// }
     Expr { expr: Expr, loc: Option<Location> },
+    Incrementor {
+        var_id: Expr, // Should be VarId
+        loc: Option<Location>,
+    },
+    
 }
 impl Statement {
     pub fn loc(&self) -> &Option<Location> {
@@ -190,6 +195,7 @@ impl Statement {
             Statement::Decl { loc, .. }
             | Statement::Assign { loc, .. }
             | Statement::Expr { loc, .. } => loc,
+            | Statement::Incrementor { loc, .. }
         }
     }
     pub fn line_col(&self) -> Option<LineColLocation> {

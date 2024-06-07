@@ -401,6 +401,41 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
                 }
             }
         }
+        Rule::incrementor => {
+            trace!("Entering incrementor");
+            let mut pair = pair.into_inner();
+            let var_id_rule = pair.next().unwrap();
+            let var_id_line_col = LineColLocation::from(var_id_rule.as_span());
+            let var_id = Expr::VarId {
+                name: var_id_rule.as_str().parse().unwrap(),
+                loc: Some(Location {
+                    line_col: var_id_line_col.clone(),
+                    path: None,
+                }),
+            };
+            let expr = Expr::BinOp {
+                lhs: Box::new(Expr::VarId {
+                    name: var_id_rule.as_str().parse().unwrap(),
+                    loc: Some(Location {
+                        line_col: var_id_line_col.clone(),
+                        path: None,
+                    }),
+                }),
+                op: BinOp::Add,
+                rhs: Box::new(Expr::Primitive {
+                    ty: DataType::I32,
+                    val: Value::Integer(1),
+                }),
+                loc: Some(Location::from(&var_id_line_col, &var_id_line_col, None)),
+            };
+            }
+            trace!("Exiting incrementor");
+            Ok(Statement::Assign {
+                var_id,
+                expr,
+                loc: Some(Location::from(&var_id_line_col, &var_id_line_col, None)),
+            })
+        }
         rule => {
             err.parse_error(
                 true,

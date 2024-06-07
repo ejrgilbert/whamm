@@ -64,7 +64,7 @@ fn_call = { ID ~ "(" ~ ( arg )? ~ ( "," ~ arg )* ~ ")" }
 declaration = { TYPE ~ ID }
 assignment = { ID ~ "=" ~ (ternary | expr) }
 statement = { ( ( declaration | assignment | fn_call ) ~ ";" )+ }
-
+incrementor = { ID ~ "++"}
 // =====================
 // ---- Expressions ----
 // =====================
