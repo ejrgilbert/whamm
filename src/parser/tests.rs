@@ -127,6 +127,18 @@ wasm:bytecode:br:before {
     i = 0; // this is a comment
 }
     "#,
+    r#"
+wasm:bytecode:br:before {
+    //has an empty comment
+    i = 0; //
+}
+    "#,
+    r#"
+wasm:bytecode:br:before {
+    //has an empty block comment
+    i = 0; /**/
+}
+    "#,
 ];
 
 const INVALID_SCRIPTS: &[&str] = &[
