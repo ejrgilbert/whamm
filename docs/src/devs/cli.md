@@ -1,0 +1,3 @@
+# The `whamm!` CLI #
+
+TODO

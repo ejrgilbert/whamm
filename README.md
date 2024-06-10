@@ -4,12 +4,16 @@
 
 # whamm! #
 ![build](https://github.com/ejrgilbert/whamm/actions/workflows/rust.yml/badge.svg)
+[![book](https://img.shields.io/badge/book-WIP-4d76ae.svg)](https://ejrgilbert.github.io/whamm/intro.html)
 
 ## Debugging Wasm? Put some `whamm!` on it! ##
 
 `whamm!` is a tool for "Wasm Application Monitoring and Manipulation"<sup>[1](#silent_h)</sup>, a DSL inspired by the D language.
 
-## Tutorials ##
+## Getting Started ##
+Take a look at the official [`whamm!` book](https://ejrgilbert.github.io/whamm/intro.html) for how to get started with this language.
+
+### Tutorials ###
 
 To run basic build:
 ```shell
@@ -65,5 +69,19 @@ Example:
 `wasi:http:send_req:alt`
 `wasm:bytecode:call:alt`
 `wasm:fn:enter:before`
+
+# The book #
+
+If you are wanting to deploy the book locally, use the following commands:
+```bash
+# Install the mdbook cargo package
+cargo install mdbook
+
+# Start the mdbook server and open the URL
+cd docs
+mdbook serve --open
+```
+
+This can be useful for offline learning OR for debugging documentation while doing updates (any local changes will automatically be updated in the served book pages).
 
 <a name="silent_h">1</a>: The 'h' is silent.

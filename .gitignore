@@ -17,7 +17,7 @@ Cargo.lock
 *.pdb
 
 # Ignore the huge test files
-tests/apps/*.wat
+tests/apps/**/*.wat
 output/
 
 # Ignore the wasm playground files
