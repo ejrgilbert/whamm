@@ -413,12 +413,12 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
                     path: None,
                 }),
             };
-            let _val = Value::Integer {
+            let val_local = Value::Integer {
                 ty: DataType::I32,
                 val: 1,
             };
-            let _rhs = Expr::Primitive {
-                val: _val,
+            let rhs_local = Expr::Primitive {
+                val: val_local,
                 loc: Some(Location::from(&var_id_line_col, &var_id_line_col, None)),
             };
             let expr = Expr::BinOp {
@@ -430,7 +430,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
                     }),
                 }),
                 op: BinOp::Add,
-                rhs: Box::new(_rhs),
+                rhs: Box::new(rhs_local),
                 loc: Some(Location::from(&var_id_line_col, &var_id_line_col, None)),
             };
             trace!("Exiting incrementor");
@@ -452,12 +452,12 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
                     path: None,
                 }),
             };
-            let _val = Value::Integer {
+            let val_local = Value::Integer {
                 ty: DataType::I32,
                 val: 1,
             };
-            let _rhs = Expr::Primitive {
-                val: _val,
+            let rhs_local = Expr::Primitive {
+                val: val_local,
                 loc: Some(Location::from(&var_id_line_col, &var_id_line_col, None)),
             };
             let expr = Expr::BinOp {
@@ -469,7 +469,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
                     }),
                 }),
                 op: BinOp::Subtract,
-                rhs: Box::new(_rhs),
+                rhs: Box::new(rhs_local),
                 loc: Some(Location::from(&var_id_line_col, &var_id_line_col, None)),
             };
             trace!("Exiting decrementor");
