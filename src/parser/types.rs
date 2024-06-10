@@ -183,7 +183,6 @@ pub enum Statement {
     ///   return 0;
     /// }
     Expr { expr: Expr, loc: Option<Location> },
-    
 }
 impl Statement {
     pub fn loc(&self) -> &Option<Location> {
