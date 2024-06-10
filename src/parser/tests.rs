@@ -100,6 +100,18 @@ wasm:bytecode:br:before {
         i++;
     }
     "#,
+    r#"
+    wasm:bytecode:br:before {
+        i = 0;
+        i--;
+    }
+    "#,
+    r#"
+    wasm:bytecode:br:before {
+        i = 0;
+        i --;
+    }
+    "#,
     // Comments
     r#"
 /* comment */

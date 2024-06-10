@@ -440,6 +440,45 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
                 loc: Some(Location::from(&var_id_line_col, &var_id_line_col, None)),
             })
         }
+        Rule::decrementor => {
+            trace!("Entering decrementor");
+            let mut pair = pair.into_inner();
+            let var_id_rule = pair.next().unwrap();
+            let var_id_line_col = LineColLocation::from(var_id_rule.as_span());
+            let var_id = Expr::VarId {
+                name: var_id_rule.as_str().parse().unwrap(),
+                loc: Some(Location {
+                    line_col: var_id_line_col.clone(),
+                    path: None,
+                }),
+            };
+            let _val = Value::Integer {
+                ty: DataType::I32,
+                val: 1,
+            };
+            let _rhs = Expr::Primitive {
+                val: _val,
+                loc: Some(Location::from(&var_id_line_col, &var_id_line_col, None)),
+            };
+            let expr = Expr::BinOp {
+                lhs: Box::new(Expr::VarId {
+                    name: var_id_rule.as_str().parse().unwrap(),
+                    loc: Some(Location {
+                        line_col: var_id_line_col.clone(),
+                        path: None,
+                    }),
+                }),
+                op: BinOp::Subtract,
+                rhs: Box::new(_rhs),
+                loc: Some(Location::from(&var_id_line_col, &var_id_line_col, None)),
+            };
+            trace!("Exiting decrementor");
+            Ok(Statement::Assign {
+                var_id,
+                expr,
+                loc: Some(Location::from(&var_id_line_col, &var_id_line_col, None)),
+            })
+        }
         rule => {
             err.parse_error(
                 true,

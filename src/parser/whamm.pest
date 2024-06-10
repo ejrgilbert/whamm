@@ -63,8 +63,9 @@ fn_call = { ID ~ "(" ~ ( arg )? ~ ( "," ~ arg )* ~ ")" }
 // var ops
 declaration = { TYPE ~ ID }
 assignment = { ID ~ "=" ~ (ternary | expr) }
-statement = { ( ( declaration | assignment | fn_call | incrementor ) ~ ";" )+ }
+statement = { ( ( declaration | assignment | fn_call | incrementor | decrementor) ~ ";" )+ }
 incrementor = { ID ~ "++"}
+decrementor = { ID ~ "--"}
 // =====================
 // ---- Expressions ----
 // =====================
