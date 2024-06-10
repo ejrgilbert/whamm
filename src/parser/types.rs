@@ -177,17 +177,37 @@ pub enum Statement {
         loc: Option<Location>,
     },
 
-    /// Standalone `Expr` statement, which means we can write programs like this:
+    /// Standalone `Expr` statement, which means we can write programs like this: 
     /// int main() {
     ///   2 + 2;
     ///   return 0;
     /// }
     Expr { expr: Expr, loc: Option<Location> },
+    //expr is like this in the parser, but later this does not work and returns an error
+    
+    Block {
+        stmts: Vec<Statement>,
+        loc: Option<Location>,
+    },
+    FunctionDefinition {
+        fn_id: FnId,
+        params: Vec<(FnId, DataType)>, // Expr::VarId -> DataType
+        return_ty: DataType,
+        body: Block,
+        loc: Option<Location>,
+    },
+    ReturnStatement {
+        expr: Expr,
+        loc: Option<Location>,
+    },
 }
 impl Statement {
     pub fn loc(&self) -> &Option<Location> {
         match self {
             Statement::Decl { loc, .. }
+            | Statement::Block { loc, .. }
+            | Statement::FunctionDefinition { loc, .. }
+            | Statement::ReturnStatement { loc, .. }
             | Statement::Assign { loc, .. }
             | Statement::Expr { loc, .. } => loc,
         }

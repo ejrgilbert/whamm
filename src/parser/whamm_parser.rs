@@ -413,12 +413,12 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
                     path: None,
                 }),
             };
-            let val_local = Value::Integer {
+            let val = Value::Integer {
                 ty: DataType::I32,
                 val: 1,
             };
-            let rhs_local = Expr::Primitive {
-                val: val_local,
+            let rhs = Expr::Primitive {
+                val: val,
                 loc: Some(Location::from(&var_id_line_col, &var_id_line_col, None)),
             };
             let expr = Expr::BinOp {
@@ -430,7 +430,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
                     }),
                 }),
                 op: BinOp::Add,
-                rhs: Box::new(rhs_local),
+                rhs: Box::new(rhs),
                 loc: Some(Location::from(&var_id_line_col, &var_id_line_col, None)),
             };
             trace!("Exiting incrementor");
@@ -452,12 +452,12 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
                     path: None,
                 }),
             };
-            let val_local = Value::Integer {
+            let val = Value::Integer {
                 ty: DataType::I32,
                 val: 1,
             };
-            let rhs_local = Expr::Primitive {
-                val: val_local,
+            let rhs = Expr::Primitive {
+                val,
                 loc: Some(Location::from(&var_id_line_col, &var_id_line_col, None)),
             };
             let expr = Expr::BinOp {
@@ -469,7 +469,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
                     }),
                 }),
                 op: BinOp::Subtract,
-                rhs: Box::new(rhs_local),
+                rhs: Box::new(rhs),
                 loc: Some(Location::from(&var_id_line_col, &var_id_line_col, None)),
             };
             trace!("Exiting decrementor");
@@ -477,6 +477,138 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
                 var_id,
                 expr,
                 loc: Some(Location::from(&var_id_line_col, &var_id_line_col, None)),
+            })
+        }
+        //HAS NOT BEEN CHECKED
+        Rule::return_statement => {
+            trace!("Entering return_stmt");
+            let mut pair = pair.into_inner();
+            let expr_rule = pair.next().unwrap();
+
+            return match expr_from_pair(expr_rule) {
+                Err(errors) => {
+                    err.add_errors(errors);
+                    Ok(Statement::dummy())
+                }
+                Ok(expr) => {
+                    trace!("Exiting return_stmt");
+                    trace!("Exiting stmt_from_rule");
+
+                    let expr_line_col = if let Some(expr_loc) = expr.loc() {
+                        expr_loc.line_col.clone()
+                    } else {
+                        return Err(vec![ErrorGen::get_unexpected_error(
+                            true,
+                            Some(format!(
+                                "{}{}",
+                                UNEXPECTED_ERR_MSG, "could not get location"
+                            )),
+                            None,
+                        )]);
+                    };
+
+                    Ok(Statement::Return {
+                        expr,
+                        loc: Some(Location::from(&expr_line_col, &expr_line_col, None)),
+                    })
+                }
+            };
+        }
+        //HAS NOT BEEN CHECKED - make sure this is how the parser works (is .next() correct?)
+        Rule::fn_def{
+            let mut pair = pair.into_inner();
+            let fn_name_rule = pair.next().unwrap();
+            let fn_name_line_col = LineColLocation::from(fn_name_rule.as_span());
+            let fn_id = fn_name_rule.as_str().parse().unwrap();
+            let mut args = vec![];
+            //get every parameter in the function, stopping at "->"
+            while let Some(arg_rule) = pair.next() {
+                let arg_str = arg_rule.as_str();
+                if arg_str == "->" {
+                    break;
+                }
+                let arg_line_col = LineColLocation::from(arg_rule.as_span());
+                //Get the type of the parameter from arg_rule
+                let type_local =  match(arg_rule.as_rule()) {
+                    Rule::TY_I32 => DataType::I32,
+                    Rule::TY_BOOL => DataType::Boolean,
+                    Rule::TY_STRING => DataType::Str,
+                    Rule::TY_TUPLE => {
+                        let mut tuple_content_types = vec![];
+                        arg_rule.into_inner().for_each(|p| {
+                            tuple_content_types.push(Box::new(type_from_rule(p, err)));
+                        });
+                        if tuple_content_types.is_empty() {
+                            DataType::Tuple { ty_info: None }
+                        } else {
+                            DataType::Tuple {
+                                ty_info: Some(tuple_content_types),
+                            }
+                        }
+                    }
+                    Rule::TY_MAP => {
+                        let mut pair = arg_rule.into_inner();
+                        let key_ty_rule = pair.next().unwrap();
+                        let val_ty_rule = pair.next().unwrap();
+
+                        let key_ty = type_from_rule(key_ty_rule, err);
+                        let val_ty = type_from_rule(val_ty_rule, err);
+
+                        DataType::Map {
+                            key_ty: Box::new(key_ty),
+                            val_ty: Box::new(val_ty),
+                        }
+                    }
+                    rule => {
+                        err.parse_error(
+                            true,
+                            Some(UNEXPECTED_ERR_MSG.to_string()),
+                            Some(LineColLocation::from(arg_rule.as_span())),
+                            vec![
+                                Rule::TY_I32,
+                                Rule::TY_BOOL,
+                                Rule::TY_STRING,
+                                Rule::TY_TUPLE,
+                                Rule::TY_MAP,
+                            ],
+                            vec![rule],
+                        );
+                        // should have exited above (since it's a fatal error)
+                        unreachable!();
+                    }
+                };
+                arg_rule = pair.next();
+                //now get the varId for the parameter
+                let mut arg_name = arg_rule.as_str().parse().unwrap();
+                //arg holds Vec<(FnId, DataType)>
+                let mut fnId_local = FnID {
+                    name: arg_name,
+                    loc: Some(Location {
+                        line_col: arg_line_col.clone(),
+                        path: None,
+                    }),
+                }
+                args.push((fnId_local ,type_local));
+            }
+            let mut ret_type = type_from_rule(pair.next().unwrap(), err);
+
+            let mut body_vec = vec![];
+            while(pair.next().is_some()){
+                let pair = pair.next().unwrap();
+                match stmt_from_rule(pair, err) {
+                    Ok(s) => body_vec.push(s),
+                    Err(errors) => err.add_errors(errors),
+                }
+            }
+            let body = Statement::Block {
+                stmts: body_vec,
+                loc: Some(Location::from(&fn_name_line_col, &fn_name_line_col, None)),
+            };
+            Ok(Statement::FnDef {
+                fn_id,
+                args,
+                body,
+                loc: Some(Location::from(&fn_name_line_col, &fn_name_line_col, None)),
             })
         }
         rule => {
