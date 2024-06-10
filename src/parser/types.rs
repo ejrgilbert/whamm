@@ -183,17 +183,13 @@ pub enum Statement {
     ///   return 0;
     /// }
     Expr { expr: Expr, loc: Option<Location> },
-    Incrementor {
-        var_id: Expr, // Should be VarId
-        loc: Option<Location>,
-    },
+    
 }
 impl Statement {
     pub fn loc(&self) -> &Option<Location> {
         match self {
             Statement::Decl { loc, .. }
             | Statement::Assign { loc, .. }
-            | Statement::Incrementor { loc, .. }
             | Statement::Expr { loc, .. } => loc,
         }
     }
