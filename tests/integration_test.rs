@@ -10,7 +10,7 @@ use whamm::generator::emitters::{Emitter, WasmRewritingEmitter};
 use whamm::generator::init_generator::InitGenerator;
 use whamm::generator::instr_generator::InstrGenerator;
 
-const APP_WASM_PATH: &str = "tests/apps/users.wasm";
+const APP_WASM_PATH: &str = "tests/apps/dfinity/users.wasm";
 
 const OUT_BASE_DIR: &str = "target";
 const OUT_WASM_NAME: &str = "out.wasm";
@@ -24,9 +24,9 @@ fn get_wasm_module() -> Module {
 /// This test just confirms that a wasm module can be instrumented with the preconfigured
 /// scripts without errors occurring.
 #[test]
-fn instrument_with_fault_injection() {
+fn instrument_dfinity_with_fault_injection() {
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-    let processed_scripts = common::setup_fault_injection(&mut err);
+    let processed_scripts = common::setup_fault_injection("dfinity", &mut err);
     assert!(!processed_scripts.is_empty());
     err.fatal_report("Integration Test");
 
@@ -93,6 +93,13 @@ fn instrument_with_fault_injection() {
             }
         };
     }
+}
+#[test]
+fn instrument_spin_with_fault_injection() {
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let processed_scripts = common::setup_fault_injection("spin", &mut err);
+    // TODO -- change this when you've supported this monitor type
+    assert_eq!(processed_scripts.len(), 0);
 }
 
 #[test]
