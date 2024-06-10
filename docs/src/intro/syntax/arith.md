@@ -8,7 +8,8 @@ Arithmetic is fundamental to computation.
 ```
 i32 a;
 a = 0;
-a = a++;   // increment == 1
+a++;       // increment == 1
+a--;       // decrement == 0
 a = 9 + 3; // add == 12
 a = 8 - 2; // subtract == 6
 a = 7 * 4; // multiply == 28
