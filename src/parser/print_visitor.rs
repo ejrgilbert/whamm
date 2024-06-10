@@ -353,7 +353,6 @@ impl WhammVisitor<String> for AsStrVisitor {
 
     fn visit_stmt(&mut self, stmt: &Statement) -> String {
         match stmt {
-            Statement::Incrementor { var_id, .. } => format!("{}++", self.visit_expr(var_id)),
             Statement::Decl { ty, var_id, .. } => {
                 format!("{} {}", self.visit_datatype(ty), self.visit_expr(var_id))
             }
