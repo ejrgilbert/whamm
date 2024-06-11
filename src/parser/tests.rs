@@ -78,17 +78,17 @@ count = 0;
 BEGIN { }
     "#,
     //function stuff
-        r#"
+    r#"
     fn_name(i32 param) -> i32{}
     BEGIN { }
         "#,
-        r#"
+    r#"
     fn_name() -> i32{
         i = 0;
     }
     BEGIN { }
         "#,
-        r#"
+    r#"
     fn_name() -> i32{
         i = 0;
         i++;

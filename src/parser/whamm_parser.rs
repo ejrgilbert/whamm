@@ -254,8 +254,7 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
                         if tuple_content_types.is_empty() {
                             type_local = DataType::Tuple { ty_info: None };
                         } else {
-                            type_local =
-                            DataType::Tuple {
+                            type_local = DataType::Tuple {
                                 ty_info: Some(tuple_content_types),
                             };
                         }
@@ -276,7 +275,10 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
                     rule => {
                         err.parse_error(
                             true,
-                            Some("Error in proceeing function datatype in parameters of FnDef".to_string()),
+                            Some(
+                                "Error in proceeing function datatype in parameters of FnDef"
+                                    .to_string(),
+                            ),
                             Some(LineColLocation::from(arg_rule.as_span())),
                             vec![
                                 Rule::TY_I32,
@@ -289,7 +291,7 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
                         );
                         // should have exited above (since it's a fatal error)
                         unreachable!();
-                    } 
+                    }
                 };
                 arg_rule = pair.next().expect("Should be a token here still - for ID");
                 //now get the varId for the parameter
@@ -303,13 +305,12 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
                     }),
                 };
                 args.push((fn_id_local, type_local));
-                
             }
             let return_ty = type_from_rule(pair.next().unwrap(), err);
-            
+
             let mut body_vec = vec![];
             let body_rule = pair.next().expect("There should be a body token here");
-            //correctly holds a block!            
+            //correctly holds a block!
             body_rule.into_inner().for_each(|p| {
                 eprintln!("P rule: {:?}", p.as_rule());
                 match p.as_rule(){
