@@ -364,3 +364,28 @@ pub fn replay() {
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     run_test_on_valid_list(scripts, &mut err);
 }
+
+#[test]
+pub fn test_decl() {
+    setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let script = r#"
+wasm::call:alt {
+i32 x;
+x = "str"; // this should be a type error
+}
+"#;
+
+    match get_ast(script, &mut err) {
+        Some(ast) => {
+            print_ast(&ast);
+        }
+        None => {
+            error!("Could not get ast from script: {}", script);
+            if err.has_errors {
+                err.report();
+            }
+            assert!(!err.has_errors);
+        }
+    };
+}

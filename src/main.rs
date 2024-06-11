@@ -29,7 +29,7 @@ use crate::behavior::tree::BehaviorTree;
 use crate::behavior::visualize::visualization_to_file;
 use crate::parser::types::Whamm;
 use crate::verifier::types::SymbolTable;
-use crate::verifier::verifier::{build_symbol_table, verify};
+use crate::verifier::verifier::{build_symbol_table, type_check};
 
 const MAX_ERRORS: i32 = 15;
 
@@ -220,12 +220,13 @@ fn run_vis_script(script_path: String, run_verifier: bool, output_path: String) 
 fn get_symbol_table(ast: &mut Whamm, run_verifier: bool, err: &mut ErrorGen) -> SymbolTable {
     let st = build_symbol_table(ast, err);
     err.check_too_many();
-    verify_ast(ast, run_verifier, err);
+    verify_ast(ast, &st, run_verifier, err);
     st
 }
 
-fn verify_ast(ast: &Whamm, run_verifier: bool, err: &mut ErrorGen) {
-    if run_verifier && !verify(&mut ast.clone()) {
+fn verify_ast(ast: &Whamm, st: &SymbolTable, run_verifier: bool, err: &mut ErrorGen) {
+    // not sure about cloning this, especially now they are cloned twice
+    if run_verifier && !type_check(&mut ast.clone(), &st.clone(), err) {
         error!("AST failed verification!");
         exit(1);
     }

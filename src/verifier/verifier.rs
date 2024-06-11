@@ -25,13 +25,11 @@ pub fn build_symbol_table(ast: &mut Whamm, err: &mut ErrorGen) -> SymbolTable {
 #[allow(dead_code)]
 struct TypeChecker {
     table: SymbolTable,
+    err: ErrorGen,
 }
 
 impl WhammVisitorMut<Option<DataType>> for TypeChecker {
     fn visit_whamm(&mut self, whamm: &mut Whamm) -> Option<DataType> {
-        let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-        self.table = build_symbol_table(whamm, &mut err);
-
         // not printing events and globals now
         self.table.reset();
 
@@ -128,13 +126,41 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
         match stmt {
             crate::parser::types::Statement::Assign { var_id, expr, .. } => {
                 // change type in symbol table?
-                self.visit_expr(expr);
-                None
+                let lhs_loc =
+                    <Option<crate::parser::types::Location> as Clone>::clone(var_id.loc()).unwrap();
+                let rhs_loc =
+                    <Option<crate::parser::types::Location> as Clone>::clone(expr.loc()).unwrap();
+                let lhs_ty_op = self.visit_expr(var_id);
+                let rhs_ty_op = self.visit_expr(expr);
+
+                if let (Some(lhs_ty), Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {
+                    if lhs_ty == rhs_ty {
+                        None
+                    } else {
+                        // using a struct in parser to merge two locations
+                        let loc = crate::parser::types::Location::from(
+                            &lhs_loc.line_col,
+                            &rhs_loc.line_col,
+                            None,
+                        );
+                        self.err.type_check_error(
+                            false,
+                            format! {"Type Mismatch, lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty},
+                            &Some(loc.line_col),
+                        );
+
+                        None
+                    }
+                } else {
+                    eprintln!("Error: Cant get type of lhs or rhs");
+                    None
+                }
             }
             crate::parser::types::Statement::Expr { expr, .. } => {
                 self.visit_expr(expr);
                 None
             }
+            // symbol table should handle declaration
             Statement::Decl { ty, var_id, loc } => None,
         }
     }
@@ -143,6 +169,10 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
         match expr {
             Expr::Primitive { val, .. } => self.visit_value(val),
             Expr::BinOp { lhs, rhs, op, .. } => {
+                let lhs_loc =
+                    <Option<crate::parser::types::Location> as Clone>::clone(lhs.loc()).unwrap();
+                let rhs_loc =
+                    <Option<crate::parser::types::Location> as Clone>::clone(rhs.loc()).unwrap();
                 let lhs_ty_op = self.visit_expr(lhs);
                 let rhs_ty_op = self.visit_expr(rhs);
                 if let (Some(lhs_ty), Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {
@@ -163,7 +193,12 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
                             if lhs_ty == DataType::Boolean && rhs_ty == DataType::Boolean {
                                 Some(DataType::Boolean)
                             } else {
-                                eprintln!("Error: lhs_ty: {:?}, rhs_ty: {:?}", lhs_ty, rhs_ty);
+                                self.err.type_check_error(
+                                    false,
+                                    "Different types for lhs and rhs".to_owned(),
+                                    &None,
+                                );
+                                // eprintln!("Error: lhs_ty: {:?}, rhs_ty: {:?}", lhs_ty, rhs_ty);
                                 None
                             }
                         }
@@ -172,7 +207,18 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
                             if lhs_ty == rhs_ty {
                                 Some(DataType::Boolean)
                             } else {
-                                eprintln!("Error: lhs_ty: {:?}, rhs_ty: {:?}", lhs_ty, rhs_ty);
+                                // using a struct in parser to merge two locations
+                                let loc = crate::parser::types::Location::from(
+                                    &lhs_loc.line_col,
+                                    &rhs_loc.line_col,
+                                    None,
+                                );
+                                self.err.type_check_error(
+                                    false,
+                                    format! {"Type Mismatch, lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty},
+                                    &Some(loc.line_col),
+                                );
+
                                 None
                             }
                         }
@@ -180,7 +226,18 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
                             if lhs_ty == DataType::I32 && rhs_ty == DataType::I32 {
                                 Some(DataType::Boolean)
                             } else {
-                                eprintln!("Error: lhs_ty: {:?}, rhs_ty: {:?}", lhs_ty, rhs_ty);
+                                // using a struct in parser to merge two locations
+                                let loc = crate::parser::types::Location::from(
+                                    &lhs_loc.line_col,
+                                    &rhs_loc.line_col,
+                                    None,
+                                );
+                                self.err.type_check_error(
+                                    false,
+                                    format! {"Type Mismatch, lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty},
+                                    &Some(loc.line_col),
+                                );
+
                                 None
                             }
                         }
@@ -193,9 +250,9 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
             #[allow(unused_variables)]
             Expr::VarId { name, loc } => {
                 // get type from symbol table
-                println!("curr scope: {:?}", self.table.get_curr_scope());
-                let _ = self.table.enter_scope(); // Alex: adding interscope here doens't seems to have an effect here (which is reasonable)
-                println!("curr scope: {:?}", self.table.get_curr_scope());
+                // println!("curr scope: {:?}", self.table.get_curr_scope());
+                // let _ = self.table.enter_scope(); // Alex: adding interscope here doens't seems to have an effect here (which is reasonable)
+                // println!("curr scope: {:?}", self.table.get_curr_scope());
 
                 if let Some(id) = self.table.lookup(name) {
                     println!("LOOK AT ME Var id: {:?}", self.table.get_record(id));
@@ -226,17 +283,8 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
             Value::Str { .. } => Some(DataType::Str),
             Value::Boolean { .. } => Some(DataType::Boolean),
             // recurse on expressions?
-            // Alex TODO: Not sure how to recurse
-            Value::Tuple { ty, .. } => {
-                match ty {
-                    DataType::Tuple { ty_info } => match ty_info {
-                        Some(ve) => {}
-                        _ => (),
-                    },
-                    _ => (),
-                }
-                None
-            }
+            // Alex TODO: parsing
+            Value::Tuple { ty, .. } => Some(ty.to_owned()),
         }
     }
 
@@ -256,11 +304,17 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
     }
 }
 
-pub fn verify(_ast: &mut Whamm) -> bool {
+pub fn type_check(ast: &mut Whamm, st: &SymbolTable, err: &mut ErrorGen) -> bool {
     // Alex TODO typechecking!
+    // Alex TODO, is cloning the way to go ??
     let mut type_checker = TypeChecker {
-        table: SymbolTable::new(),
+        table: st.clone(),
+        err: err.clone(),
     };
-    type_checker.visit_whamm(_ast);
-    true
+    type_checker.visit_whamm(ast);
+    // propagate error
+    *err = type_checker.err;
+    // check if there are any errors
+    // TODO: note that parser errors might propagate here
+    !err.has_errors
 }

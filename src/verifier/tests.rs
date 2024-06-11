@@ -2,7 +2,7 @@ use crate::parser::tests;
 use crate::verifier::verifier;
 
 use crate::common::error::ErrorGen;
-use log::error;
+use log::{error, info};
 
 // =================
 // = Setup Logging =
@@ -80,26 +80,96 @@ wasm::call:alt /
     };
 }
 
+fn is_valid_script(script: &str, err: &mut ErrorGen) -> bool {
+    match tests::get_ast(script, err) {
+        Some(ast) => verifier::type_check(
+            &mut ast.clone(),
+            &mut verifier::build_symbol_table(&mut ast.clone(), err),
+            err,
+        ),
+        None => {
+            error!("Should fail at type checking, not parsing: {}", script);
+            assert!(false);
+            false
+        }
+    }
+}
+
+// These tests are mostly making sure errors are reported at the right location
 #[test]
-pub fn test_type_checker_predicate() {
+pub fn test_type_error_in_predicate() {
     setup_logger();
     let script = r#"
     wasm::call:alt /
-    // 1 == "str" && // this should be a type error
+    1 == "str" && // this should be a type error
     target_fn_type == "import"
 / {
 
 }
     "#;
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    info!("Parsing: {}", script);
+    let res = is_valid_script(script, &mut err);
 
-    match tests::get_ast(script, &mut err) {
-        Some(ast) => {
-            verifier::verify(&mut ast.clone());
-        }
-        None => {
-            error!("Could not get ast from script: {}", script);
-            assert!(false);
-        }
-    };
+    // TODO: is_valid_script doesn't have side effect on the passed in `err`
+    // since the err is changed at struct type_check
+
+    if res || !err.has_errors {
+        error!(
+            "string = '{}' is recognized as valid, but it should not",
+            script
+        )
+    }
+
+    err.report();
+    assert!(err.has_errors);
+    assert!(!&res);
+}
+
+#[test]
+pub fn test_type_error_stmt() {
+    setup_logger();
+    let script = r#"
+    wasm::call:alt {
+    target_fn_type = 1;
+}
+    "#;
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    info!("Parsing: {}", script);
+    let res = is_valid_script(script, &mut err);
+
+    if res || !err.has_errors {
+        error!(
+            "string = '{}' is recognized as valid, but it should not",
+            script
+        )
+    }
+    err.report();
+    assert!(err.has_errors);
+    assert!(!&res);
+}
+
+// TODO
+#[test]
+pub fn test_type_error_decl() {
+    setup_logger();
+    let script = r#"
+    wasm::call:alt {
+    i32 x;
+    x = "str";
+}
+    "#;
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    info!("Parsing: {}", script);
+    let res = is_valid_script(script, &mut err);
+
+    if res || !err.has_errors {
+        error!(
+            "string = '{}' is recognized as valid, but it should not",
+            script
+        )
+    }
+    err.report();
+    // assert!(err.has_errors);
+    // assert!(!&res);
 }

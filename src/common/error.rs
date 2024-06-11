@@ -11,6 +11,7 @@ use termcolor::{Buffer, BufferWriter, ColorChoice, WriteColor};
 const ERR_UNDERLINE_CHAR: char = '^';
 const INFO_UNDERLINE_CHAR: char = '-';
 
+#[derive(Debug, Clone)]
 pub struct ErrorGen {
     script_path: String,
     script_text: String,
@@ -351,6 +352,7 @@ impl ErrorGen {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct CodeLocation {
     // True if this is an error-causing code location, false if not (just informational)
     pub is_err: bool,
@@ -515,6 +517,7 @@ impl CodeLocation {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct WhammError {
     pub fatal: bool,
     /// The location within the input string causing the error
@@ -621,6 +624,7 @@ impl WhammError {
     }
 }
 
+#[derive(Debug, Clone)]
 pub enum ErrorType {
     DuplicateIdentifierError {
         duplicated_id: String,
