@@ -412,10 +412,6 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                 }
             }
             if probe_mode == "before" || probe_mode == "after" {
-                if probe_mode == "after" {
-                    // tell the emitter to point to location after instruction-of-interest
-                    self.emitter.incr_loc_pointer();
-                }
                 // Perform 'before' and 'after' probe logic
                 // Must pull the probe by index due to Rust calling constraints...
                 let probe_list_len = get_probes_from_ast(
@@ -673,6 +669,10 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         {
             if let Some(probe) = &mut self.curr_probe {
                 if let Some(body) = &mut probe.body {
+                    if self.curr_probe_mode == "after" {
+                        // tell the emitter to point to location after instruction-of-interest
+                        self.emitter.incr_loc_pointer();
+                    }
                     match self.emitter.emit_body(body) {
                         Err(e) => self.err.add_error(*e),
                         Ok(res) => is_success &= res,

@@ -5,7 +5,6 @@ use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use log::{debug, info};
 use regex::Regex;
 use walrus::ir::{BinaryOp, ExtendedLoad, Instr, InstrSeqId, LoadKind, MemArg};
-use walrus::InitExpr::RefNull;
 use walrus::{ActiveData, ActiveDataLocation, DataKind, FunctionBuilder, FunctionId, FunctionKind, ImportedFunction, InitExpr, InstrSeqBuilder, LocalFunction, MemoryId, ModuleData, ValType};
 
 // =================================================
@@ -810,6 +809,9 @@ struct FuncInfo {
     name: String
 }
 struct EmittingInstrTracker {
+    // To keep track of the location of the original instruction while we're instrumenting! 
+    orig_instr_idx: usize,
+    
     curr_seq_id: InstrSeqId,
     curr_idx: usize,
 
@@ -1401,6 +1403,7 @@ impl Emitter for WasmRewritingEmitter {
         if self.instr_iter.has_next() {
             if let Some(next) = self.instr_iter.next() {
                 self.emitting_instr = Some(EmittingInstrTracker {
+                    orig_instr_idx: next.index,
                     curr_seq_id: next.instr_seq_id,
                     curr_idx: next.index,
                     main_seq_id: next.instr_seq_id,
@@ -1435,9 +1438,6 @@ impl Emitter for WasmRewritingEmitter {
     }
 
     fn incr_loc_pointer(&mut self) {
-        if let Some(instr) = self.instr_iter.curr_mut() {
-            instr.index += 1;
-        }
         if let Some(tracker) = &mut self.emitting_instr {
             tracker.curr_idx += 1;
             tracker.main_idx += 1;
@@ -1502,8 +1502,12 @@ impl Emitter for WasmRewritingEmitter {
                         },
                     );
 
-                    // update index to point to what follows our insertions
+                    // update index of tracker to point to what follows our insertions
                     tracker.curr_idx += 1;
+                    
+                    // also update index to point to new location of instrumented instruction!
+                    // (saved params go before the original instruction)
+                    tracker.orig_instr_idx += 1;
 
                     // place in symbol table with var addr for future reference
                     let arg_name = format!("arg{}", num);
@@ -1546,9 +1550,14 @@ impl Emitter for WasmRewritingEmitter {
                         ..
                     }) = param_rec
                     {
+                        // Inject at tracker.orig_instr_idx to make sure that this actually emits the params
+                        // for the instrumented instruction right before that instruction is called!
                         instr_builder
-                            .instr_at(tracker.curr_idx, walrus::ir::LocalGet { local: *addr });
-                        tracker.curr_idx += 1;
+                            .instr_at(tracker.orig_instr_idx, walrus::ir::LocalGet { local: *addr });
+
+                        // update index to point to new location of instrumented instruction!
+                        // (re-emitted params go before the original instruction)
+                        tracker.orig_instr_idx += 1;
                     } else {
                         return Err(Box::new(ErrorGen::get_unexpected_error(
                             true,
@@ -1728,7 +1737,7 @@ impl Emitter for WasmRewritingEmitter {
                 let id = self
                     .app_wasm
                     .globals
-                    .add_local(walrus_ty, false, init_expr);
+                    .add_local(walrus_ty, true, init_expr);
                 *addr = Some(VarAddr::Global { addr: id });
 
                 Ok(true)
@@ -1774,7 +1783,7 @@ impl Emitter for WasmRewritingEmitter {
 
     fn emit_orig(&mut self) -> bool {
         if let Some(curr_loc) = self.instr_iter.curr_mut() {
-            if let Some(tracker) = &self.emitting_instr {
+            if let Some(tracker) = &mut self.emitting_instr {
                 let func = self
                     .app_wasm
                     .funcs
@@ -1784,6 +1793,8 @@ impl Emitter for WasmRewritingEmitter {
                 let func_builder = func.builder_mut();
                 let mut instr_builder = func_builder.instr_seq(tracker.curr_seq_id);
 
+                // reset where the "orig instruction" is located in the bytecode
+                tracker.orig_instr_idx = tracker.curr_idx;
                 instr_builder.instr_at(tracker.curr_idx, curr_loc.instr.clone());
                 return true;
             }
@@ -1961,6 +1972,7 @@ impl Emitter for WasmRewritingEmitter {
         if let Some(start_fid) = self.app_wasm.start {
             if let FunctionKind::Local(local_func) = &self.app_wasm.funcs.get(start_fid).kind {
                 self.emitting_instr = Some(EmittingInstrTracker {
+                    orig_instr_idx: 0usize,
                     curr_seq_id: local_func.entry_block(),
                     curr_idx: 0usize,
                     main_seq_id: local_func.entry_block(),
@@ -1974,9 +1986,21 @@ impl Emitter for WasmRewritingEmitter {
                 })
             }
         } else {
-            return Err(Box::new(ErrorGen::get_unexpected_error(true,
-                Some("This module has no configured entrypoint, \
+            for stmt in stmts.iter_mut() {
+                match stmt {
+                    Statement::Decl { .. } => {
+                        // This is fine
+                    },
+                    _ => {
+                        // This is NOT fine...error!
+                        // Cannot emit this at the moment since there's no entrypoint for our module to emit initialization instructions into
+                        return Err(Box::new(ErrorGen::get_unexpected_error(true,
+                                                                           Some("This module has no configured entrypoint, \
                     unable to emit a `script` with global state".to_string()), None)));
+                    }
+                }
+            }
+            return Ok(true);
         }
 
         for stmt in stmts.iter_mut() {
@@ -2051,6 +2075,9 @@ impl Emitter for WasmRewritingEmitter {
                     let func_builder = func.builder_mut();
                     let mut instr_builder = func_builder.instr_seq(tracker.curr_seq_id);
 
+                    // Hack to have emit_params target this new call site!
+                    tracker.orig_instr_idx = tracker.curr_idx;
+                    
                     // inject call
                     instr_builder.instr_at(tracker.curr_idx, walrus::ir::Call { func: alt_fn_id });
                     tracker.curr_idx += 1;
