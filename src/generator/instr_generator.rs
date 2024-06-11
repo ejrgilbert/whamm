@@ -412,6 +412,10 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                 }
             }
             if probe_mode == "before" || probe_mode == "after" {
+                if probe_mode == "after" {
+                    // tell the emitter to point to location after instruction-of-interest
+                    self.emitter.incr_loc_pointer();
+                }
                 // Perform 'before' and 'after' probe logic
                 // Must pull the probe by index due to Rust calling constraints...
                 let probe_list_len = get_probes_from_ast(
@@ -437,6 +441,18 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                         if let Some(pred) = &mut probe_cloned.predicate {
                             // Fold predicate
                             is_success &= self.emitter.fold_expr(pred);
+
+                            // If the predicate evaluates to false, short-circuit!
+                            if let Some(pred_as_bool) = ExprFolder::get_single_bool(pred) {
+                                // predicate has been reduced to a boolean value
+                                if !pred_as_bool {
+                                    // predicate is reduced to `false` short-circuit!
+                                    if let Err(e) = self.emitter.exit_scope() {
+                                        self.err.add_error(*e)
+                                    }
+                                    return true;
+                                }
+                            }
                         }
 
                         self.curr_probe = Some(probe_cloned);
