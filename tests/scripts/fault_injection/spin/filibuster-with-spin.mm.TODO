@@ -1,0 +1,22 @@
+use fi;
+
+wasi:http:call:alt {
+    // Call WASI HTTP with new arguments that redirect to Filibuster
+    fi.create_fb_args();
+    whamm.call_orig_instr();
+
+    // Collect Filibuster's response
+    i32 fb_resp = fi.get_fb_resp();
+
+    // Check if Filibuster said to inject a fault.
+    // If it returned a fault, leave it on the stack to propagate through the program.
+    // If it did not return a fault, call the original endpoint with the original args.
+    if (fi.is_fault(fb_resp)) {
+        // Leave Filibuster's response on the stack
+        fb_resp;
+    } else {
+        // Call the original endpoint with the original arguments
+        whamm.orig_params();
+        whamm.call_orig_instr();
+    }
+}
