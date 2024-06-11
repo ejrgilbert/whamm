@@ -389,6 +389,7 @@ pub enum Record {
         ty: DataType,
         name: String,
         value: Option<Value>,
+        is_comp_provided: bool, // TODO -- this is only necessary for `new_target_fn_name`, remove after deprecating!
 
         /// The address of this var post-injection
         addr: Option<VarAddr>,

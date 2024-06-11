@@ -24,7 +24,7 @@ pub trait Emitter {
     fn curr_instr_is_of_type(&mut self, instr_names: &[String]) -> bool;
     fn curr_instr_type(&mut self) -> String;
     fn incr_loc_pointer(&mut self);
-    
+
     fn has_params(&mut self) -> Result<bool, Box<WhammError>>;
     fn save_params(&mut self) -> bool;
     fn emit_params(&mut self) -> Result<bool, Box<WhammError>>;
@@ -1174,6 +1174,7 @@ impl WasmRewritingEmitter {
                                     ty: ty.clone(),
                                     name: name.clone(),
                                     value: None,
+                                    is_comp_provided: false,
                                     addr: None,
                                     loc: None,
                                 },
@@ -1256,9 +1257,59 @@ impl WasmRewritingEmitter {
         return match stmt {
             Statement::Assign { var_id, expr, .. } => {
                 // NOTE: For now, do not simply save off primitives as constants in the symbol table.
-                match self.emit_expr(&mut ExprFolder::fold_expr(expr, &self.table)) {
+                let mut folded_expr = ExprFolder::fold_expr(expr, &self.table);
+                // Save off primitives to symbol table
+                // TODO -- this is only necessary for `new_target_fn_name`, remove after deprecating!
+                if let (Expr::VarId { name, .. }, Expr::Primitive { val, .. }) = (&var_id, &folded_expr) {
+                    let var_rec_id = match self.table.lookup(name) {
+                        Some(rec_id) => *rec_id,
+                        _ => {
+                            return Err(Box::new(ErrorGen::get_unexpected_error(
+                                true,
+                                Some(format!(
+                                    "{UNEXPECTED_ERR_MSG} \
+                                    Attempting to emit an assign, but VarId '{name}' does not exist in this scope!"
+                                )),
+                                None,
+                            )));
+                        }
+                    };
+                    match self.table.get_record_mut(&var_rec_id) {
+                        Some(Record::Var { value, is_comp_provided, .. }) => {
+                            *value = Some(val.clone());
+
+                            if *is_comp_provided {
+                                return Ok(true);
+                            }
+                        }
+                        Some(ty) => {
+                            return Err(Box::new(ErrorGen::get_unexpected_error(
+                                true,
+                                Some(format!(
+                                    "{UNEXPECTED_ERR_MSG} \
+                                    Incorrect variable record, expected Record::Var, found: {:?}",
+                                    ty
+                                )),
+                                None,
+                            )));
+                        }
+                        None => {
+                            return Err(Box::new(ErrorGen::get_unexpected_error(
+                                true,
+                                Some(format!(
+                                    "{UNEXPECTED_ERR_MSG} \
+                                    Variable symbol does not exist!"
+                                )),
+                                None,
+                            )));
+                        }
+                    }
+                }
+                
+                match self.emit_expr(&mut folded_expr) {
                     Err(e) => Err(e),
                     Ok(_) => {
+                        
                         if let Some(curr_loc) = self.instr_iter.curr_mut() {
                             if let Some(tracker) = &mut self.emitting_instr {
                                 let func = self
@@ -1401,7 +1452,7 @@ impl Emitter for WasmRewritingEmitter {
             //     // if func.name.as_ref().unwrap().contains("call_perform") {
             //     //     println!("{}", func.name.as_ref().unwrap());
             //     // }
-            // 
+            //
             //     curr_instr.instr_params = Some(func_info.params);
             // }
             // return Ok(curr_instr.instr_params.is_some()
@@ -1456,6 +1507,7 @@ impl Emitter for WasmRewritingEmitter {
                             ty: DataType::I32, // we only support integers right now.
                             name: arg_name.clone(),
                             value: None,
+                            is_comp_provided: false,
                             addr: Some(VarAddr::Local { addr: arg_local_id }),
                             loc: None,
                         },
