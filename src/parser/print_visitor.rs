@@ -333,7 +333,8 @@ impl WhammVisitor<String> for AsStrVisitor {
         // print body
         self.increase_indent();
         if let Some(stmts) = &f.body {
-            for stmt in stmts.iter() {
+            let stmts_vec = &stmts.stmts;
+            for stmt in stmts_vec.iter() {
                 s += &format!("{}{}{}", self.get_indent(), self.visit_stmt(stmt), NL);
             }
         }
@@ -360,7 +361,6 @@ impl WhammVisitor<String> for AsStrVisitor {
                 format!("{} = {}", self.visit_expr(var_id), self.visit_expr(expr))
             }
             Statement::Expr { expr, .. } => self.visit_expr(expr),
-            Statement::FunctionDefinition { .. } => unimplemented!(),
             Statement::ReturnStatement { .. } => unimplemented!(),
         }
     }

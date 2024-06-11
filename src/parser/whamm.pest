@@ -10,6 +10,9 @@ probe_def = { PROBE_SPEC ~ PUSH(predicate?) ~ "{" ~ statement* ~ "}" }
 
 predicate = { "/" ~ expr ~ "/" }
 
+//making the decision not to support "void" functions -- can change later
+fn_def = { ID ~ "(" ~ ( TYPE ~ ID ) ? ~ ("," ~ TYPE ~ ID )* ~ ")" ~ (arrow) ~ TYPE ~ block }
+arrow = { "->" }
 // =====================
 // ---- Identifiers ----
 // =====================
@@ -59,8 +62,6 @@ TYPE = _{ TY_I32 | TY_BOOL | TY_STRING | TY_TUPLE | TY_MAP }
 
 arg = { tuple | expr | val | ternary }
 fn_call = { ID ~ "(" ~ ( arg )? ~ ( "," ~ arg )* ~ ")" }
-//making the decision not to support "void" functions -- can change later
-fn_def = { ID ~ "(" ~ ( TYPE ~ ID ) ? ~ ("," ~ TYPE ~ ID )* ~ ")" ~ ("->") ~ TYPE ~ block }
 block = { "{" ~ (statement)* ~ "}" }
 
 

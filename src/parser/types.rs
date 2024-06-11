@@ -191,13 +191,6 @@ pub enum Statement {
         loc: Option<Location>,
     },
     //expr is like this in the parser, but later this does not work and returns an error
-    FunctionDefinition {
-        fn_id: FnId,
-        params: Vec<(FnId, DataType)>, // Expr::VarId -> DataType
-        return_ty: DataType,
-        body: Block,
-        loc: Option<Location>,
-    },
     ReturnStatement {
         expr: Expr,
         loc: Option<Location>,
@@ -207,7 +200,6 @@ impl Statement {
     pub fn loc(&self) -> &Option<Location> {
         match self {
             Statement::Decl { loc, .. }
-            | Statement::FunctionDefinition { loc, .. }
             | Statement::ReturnStatement { loc, .. }
             | Statement::Assign { loc, .. }
             | Statement::Expr { loc, .. } => loc,
@@ -295,7 +287,7 @@ pub struct Fn {
     pub(crate) name: FnId,
     pub(crate) params: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
     pub(crate) return_ty: Option<DataType>,
-    pub(crate) body: Option<Vec<Statement>>,
+    pub(crate) body: Option<Block>,
 }
 impl Fn {
     pub fn print(&self, buffer: &mut Buffer) {

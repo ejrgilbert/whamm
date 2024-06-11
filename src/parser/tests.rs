@@ -78,23 +78,23 @@ count = 0;
 BEGIN { }
     "#,
     //function stuff
-    //     r#"
-    // fn_name(i32 param) -> i32{}
-    // BEGIN { }
-    //     "#,
-    //     r#"
-    // fn_name() -> i32{
-    //     i = 0;
-    // }
-    // BEGIN { }
-    //     "#,
-    //     r#"
-    // fn_name() -> i32{
-    //     i = 0;
-    //     i++;
-    // }
-    // BEGIN { }
-    //     "#,
+        r#"
+    fn_name(i32 param) -> i32{}
+    BEGIN { }
+        "#,
+        r#"
+    fn_name() -> i32{
+        i = 0;
+    }
+    BEGIN { }
+        "#,
+        r#"
+    fn_name() -> i32{
+        i = 0;
+        i++;
+    }
+    BEGIN { }
+        "#,
     r#"
     wasm:bytecode:br:before {
         i32 i;
@@ -397,6 +397,48 @@ pub fn test_implicit_probe_defs_dumper() {
     };
 }
 
+//Works with an empty body
+#[test]
+pub fn test_fn_def() {
+    setup_logger();
+    let script = r#"fn_name(i32 param) -> i32{
+    }
+    BEGIN { } "#;
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    match get_ast(script, &mut err) {
+        Some(ast) => {
+            print_ast(&ast);
+        }
+        None => {
+            error!("Could not get ast from script: {}", script);
+            if err.has_errors {
+                err.report();
+            }
+            assert!(!err.has_errors);
+        }
+    };
+}
+#[test]
+pub fn test_fn_def2() {
+    setup_logger();
+    let script = r#"fn_name(i32 param) -> i32{
+        i32 i;
+    }
+    BEGIN { } "#;
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    match get_ast(script, &mut err) {
+        Some(ast) => {
+            print_ast(&ast);
+        }
+        None => {
+            error!("Could not get ast from script: {}", script);
+            if err.has_errors {
+                err.report();
+            }
+            assert!(!err.has_errors);
+        }
+    };
+}
 // ===================
 // = Full File Tests =
 // ===================

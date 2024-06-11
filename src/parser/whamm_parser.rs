@@ -216,6 +216,148 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
             trace!("Exiting probe_def");
         }
         Rule::EOI => {}
+        //HAS NOT BEEN CHECKED - make sure this is how the parser works (is .next() correct?)
+        //Rule looks like this: fn_def = { ID ~ "(" ~ ( TYPE ~ ID ) ? ~ ("," ~ TYPE ~ ID )* ~ ")" ~ ("->") ~ TYPE ~ block }
+        Rule::fn_def => {
+            trace!("Entering fn_def");
+            let mut pair = pair.into_inner();
+            let fn_name_rule = pair.next().unwrap();
+            let fn_name_line_col = LineColLocation::from(fn_name_rule.as_span());
+            let mut args = vec![];
+            //get every parameter in the function, stopping at arrow - FIX THIS BUG
+            while let mut arg_rule = pair
+                .next()
+                .expect("Should be a token here still - for type")
+            {
+                let arg_line_col = LineColLocation::from(arg_rule.as_span());
+                let arg_str = arg_rule.as_str();
+                if arg_str == "->" {
+                    break;
+                }
+                //Get the type of the parameter from arg_rule
+                let mut type_local;
+                match arg_rule.as_rule() {
+                    Rule::TY_I32 => {
+                        type_local = DataType::I32;
+                    }
+                    Rule::TY_BOOL => {
+                        type_local = DataType::Boolean;
+                    }
+                    Rule::TY_STRING => {
+                        type_local = DataType::Str;
+                    }
+                    Rule::TY_TUPLE => {
+                        let mut tuple_content_types = vec![];
+                        arg_rule.into_inner().for_each(|p| {
+                            tuple_content_types.push(Box::new(type_from_rule(p, err)));
+                        });
+                        if tuple_content_types.is_empty() {
+                            type_local = DataType::Tuple { ty_info: None };
+                        } else {
+                            type_local =
+                            DataType::Tuple {
+                                ty_info: Some(tuple_content_types),
+                            };
+                        }
+                    }
+                    Rule::TY_MAP => {
+                        let mut pair = arg_rule.into_inner();
+                        let key_ty_rule = pair.next().unwrap();
+                        let val_ty_rule = pair.next().unwrap();
+
+                        let key_ty = type_from_rule(key_ty_rule, err);
+                        let val_ty = type_from_rule(val_ty_rule, err);
+
+                        type_local = DataType::Map {
+                            key_ty: Box::new(key_ty),
+                            val_ty: Box::new(val_ty),
+                        };
+                    }
+                    rule => {
+                        err.parse_error(
+                            true,
+                            Some("Error in proceeing function datatype in parameters of FnDef".to_string()),
+                            Some(LineColLocation::from(arg_rule.as_span())),
+                            vec![
+                                Rule::TY_I32,
+                                Rule::TY_BOOL,
+                                Rule::TY_STRING,
+                                Rule::TY_TUPLE,
+                                Rule::TY_MAP,
+                            ],
+                            vec![rule],
+                        );
+                        // should have exited above (since it's a fatal error)
+                        unreachable!();
+                    } 
+                };
+                arg_rule = pair.next().expect("Should be a token here still - for ID");
+                //now get the varId for the parameter
+                let arg_name = arg_rule.as_str().parse().unwrap();
+                //arg holds Vec<(FnId, DataType)>
+                let fn_id_local = Expr::VarId {
+                    name: arg_name,
+                    loc: Some(Location {
+                        line_col: arg_line_col.clone(),
+                        path: None,
+                    }),
+                };
+                args.push((fn_id_local, type_local));
+                
+            }
+            let return_ty = type_from_rule(pair.next().unwrap(), err);
+            
+            let mut body_vec = vec![];
+            let body_rule = pair.next().expect("There should be a body token here");
+            //correctly holds a block!            
+            body_rule.into_inner().for_each(|p| {
+                eprintln!("P rule: {:?}", p.as_rule());
+                match p.as_rule(){
+                    Rule::statement => {
+                        p.into_inner().for_each(|n| {
+                            let local = stmt_from_rule(n, err);
+                            if let Ok(local) = local {
+                                body_vec.push(local);
+                            } else if let Err(errors) = local {
+                                err.add_errors(errors);
+                            }
+                        });
+                    }
+                    _ => {
+                        err.parse_error(
+                            true,
+                            Some("Error in proceeing function body in FnDef - how did you get something other than Statement into block?".to_string()),
+                            Some(LineColLocation::from(p.as_span())),
+                            vec![
+                                Rule::statement,
+                            ],
+                            vec![p.as_rule()],
+                        );
+                        // should have exited above (since it's a fatal error)
+                        unreachable!();
+                    }
+                }
+            });
+            let body = Block {
+                stmts: body_vec,
+                loc: Some(Location::from(&fn_name_line_col, &fn_name_line_col, None)),
+            };
+            //convert fn_name_rule from Pair<_, Rule> to FnId
+            let fn_id = FnId {
+                name: fn_name_rule.as_str().parse().unwrap(),
+                loc: Some(Location::from(&fn_name_line_col, &fn_name_line_col, None)),
+            };
+            let output = types::Fn {
+                is_comp_provided: false,
+                name: fn_id,
+                params: args,
+                body: Some(body),
+                return_ty: Some(return_ty),
+            };
+            let script: &mut Script = whamm.scripts.get_mut(script_count).unwrap();
+            script.fns.push(output);
+            trace!("Exiting fn_def");
+        }
         rule => {
             err.parse_error(
                 true,
@@ -512,111 +654,6 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
                     })
                 }
             };
-        }
-        //HAS NOT BEEN CHECKED - make sure this is how the parser works (is .next() correct?)
-        Rule::fn_def => {
-            let mut pair = pair.into_inner();
-            let fn_name_rule = pair.next().unwrap();
-            let fn_name_line_col = LineColLocation::from(fn_name_rule.as_span());
-            let mut args = vec![];
-            //get every parameter in the function, stopping at "->" - FIX THIS BUG
-            while let mut arg_rule = pair
-                .next()
-                .expect("Should be a token here still - for type")
-            {
-                let arg_str = arg_rule.as_str();
-                if arg_str == "->" {
-                    break;
-                }
-                let arg_line_col = LineColLocation::from(arg_rule.as_span());
-                //Get the type of the parameter from arg_rule
-                let type_local = match arg_rule.as_rule() {
-                    Rule::TY_I32 => DataType::I32,
-                    Rule::TY_BOOL => DataType::Boolean,
-                    Rule::TY_STRING => DataType::Str,
-                    Rule::TY_TUPLE => {
-                        let mut tuple_content_types = vec![];
-                        arg_rule.into_inner().for_each(|p| {
-                            tuple_content_types.push(Box::new(type_from_rule(p, err)));
-                        });
-                        if tuple_content_types.is_empty() {
-                            DataType::Tuple { ty_info: None }
-                        } else {
-                            DataType::Tuple {
-                                ty_info: Some(tuple_content_types),
-                            }
-                        }
-                    }
-                    Rule::TY_MAP => {
-                        let mut pair = arg_rule.into_inner();
-                        let key_ty_rule = pair.next().unwrap();
-                        let val_ty_rule = pair.next().unwrap();
-
-                        let key_ty = type_from_rule(key_ty_rule, err);
-                        let val_ty = type_from_rule(val_ty_rule, err);
-
-                        DataType::Map {
-                            key_ty: Box::new(key_ty),
-                            val_ty: Box::new(val_ty),
-                        }
-                    }
-                    rule => {
-                        err.parse_error(
-                            true,
-                            Some(UNEXPECTED_ERR_MSG.to_string()),
-                            Some(LineColLocation::from(arg_rule.as_span())),
-                            vec![
-                                Rule::TY_I32,
-                                Rule::TY_BOOL,
-                                Rule::TY_STRING,
-                                Rule::TY_TUPLE,
-                                Rule::TY_MAP,
-                            ],
-                            vec![rule],
-                        );
-                        // should have exited above (since it's a fatal error)
-                        unreachable!();
-                    }
-                };
-                arg_rule = pair.next().expect("Should be a token here still - for ID");
-                //now get the varId for the parameter
-                let arg_name = arg_rule.as_str().parse().unwrap();
-                //arg holds Vec<(FnId, DataType)>
-                let fn_id_local = FnId {
-                    name: arg_name,
-                    loc: Some(Location {
-                        line_col: arg_line_col.clone(),
-                        path: None,
-                    }),
-                };
-                args.push((fn_id_local, type_local));
-            }
-            let return_ty = type_from_rule(pair.next().unwrap(), err);
-
-            let mut body_vec = vec![];
-            while pair.next().is_some() {
-                let pair = pair.next().unwrap();
-                match stmt_from_rule(pair, err) {
-                    Ok(s) => body_vec.push(s),
-                    Err(errors) => err.add_errors(errors),
-                }
-            }
-            let body = Block {
-                stmts: body_vec,
-                loc: Some(Location::from(&fn_name_line_col, &fn_name_line_col, None)),
-            };
-            //convert fn_name_rule from Pair<_, Rule> to FnId
-            let fn_id = FnId {
-                name: fn_name_rule.as_str().parse().unwrap(),
-                loc: Some(Location::from(&fn_name_line_col, &fn_name_line_col, None)),
-            };
-            Ok(Statement::FunctionDefinition {
-                fn_id,
-                params: args,
-                body,
-                return_ty,
-                loc: Some(Location::from(&fn_name_line_col, &fn_name_line_col, None)),
-            })
         }
         rule => {
             err.parse_error(
