@@ -360,6 +360,8 @@ impl WhammVisitor<String> for AsStrVisitor {
                 format!("{} = {}", self.visit_expr(var_id), self.visit_expr(expr))
             }
             Statement::Expr { expr, .. } => self.visit_expr(expr),
+            Statement::FunctionDefinition { .. } => unimplemented!(),
+            Statement::ReturnStatement { .. } => unimplemented!(),
         }
     }
 

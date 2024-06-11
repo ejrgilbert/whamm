@@ -161,7 +161,11 @@ pub enum Value {
         val: bool,
     },
 }
-
+#[derive(Clone, Debug)]
+pub struct Block {
+    pub stmts: Vec<Statement>,
+    pub loc: Option<Location>,
+}
 // Statements
 #[derive(Clone, Debug)]
 pub enum Statement {
@@ -177,18 +181,16 @@ pub enum Statement {
         loc: Option<Location>,
     },
 
-    /// Standalone `Expr` statement, which means we can write programs like this: 
+    /// Standalone `Expr` statement, which means we can write programs like this:
     /// int main() {
     ///   2 + 2;
     ///   return 0;
     /// }
-    Expr { expr: Expr, loc: Option<Location> },
-    //expr is like this in the parser, but later this does not work and returns an error
-    
-    Block {
-        stmts: Vec<Statement>,
+    Expr {
+        expr: Expr,
         loc: Option<Location>,
     },
+    //expr is like this in the parser, but later this does not work and returns an error
     FunctionDefinition {
         fn_id: FnId,
         params: Vec<(FnId, DataType)>, // Expr::VarId -> DataType
@@ -205,7 +207,6 @@ impl Statement {
     pub fn loc(&self) -> &Option<Location> {
         match self {
             Statement::Decl { loc, .. }
-            | Statement::Block { loc, .. }
             | Statement::FunctionDefinition { loc, .. }
             | Statement::ReturnStatement { loc, .. }
             | Statement::Assign { loc, .. }

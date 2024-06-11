@@ -77,6 +77,30 @@ map<i32, i32> count;
 count = 0;
 BEGIN { }
     "#,
+    //function stuff
+//     r#"
+// fn_name(i32 param) -> i32{}
+// BEGIN { }
+//     "#,
+//     r#"
+// fn_name() -> i32{
+//     i = 0;
+// }
+// BEGIN { }
+//     "#,
+//     r#"
+// fn_name() -> i32{
+//     i = 0;
+//     i++;
+// }
+// BEGIN { }
+//     "#,
+    r#"
+    wasm:bytecode:br:before {
+        i32 i;
+        return i;
+    }
+    "#,
     // Statements (either assignment or function call)
     r#"
 wasm:bytecode:br:before {

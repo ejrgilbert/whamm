@@ -1,15 +1,14 @@
 use crate::parser::types;
-use types::{BinOp, Rule, UnOp, WhammParser, PRATT_PARSER};
-
-use pest::error::{Error, LineColLocation};
-use pest::iterators::Pair;
-use pest::Parser;
+use types::{BinOp, Block, FnId, Rule, UnOp, WhammParser, PRATT_PARSER};
 
 use crate::common::error::{ErrorGen, WhammError};
 use crate::parser::types::{
     DataType, Expr, Location, ProbeSpec, Script, SpecPart, Statement, Value, Whamm,
 };
 use log::trace;
+use pest::error::{Error, LineColLocation};
+use pest::iterators::Pair;
+use pest::Parser;
 
 const UNEXPECTED_ERR_MSG: &str =
     "WhammParser: Looks like you've found a bug...please report this behavior! Exiting now...";
@@ -507,7 +506,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
                         )]);
                     };
 
-                    Ok(Statement::Return {
+                    Ok(Statement::ReturnStatement {
                         expr,
                         loc: Some(Location::from(&expr_line_col, &expr_line_col, None)),
                     })
@@ -515,21 +514,23 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
             };
         }
         //HAS NOT BEEN CHECKED - make sure this is how the parser works (is .next() correct?)
-        Rule::fn_def{
+        Rule::fn_def => {
             let mut pair = pair.into_inner();
             let fn_name_rule = pair.next().unwrap();
             let fn_name_line_col = LineColLocation::from(fn_name_rule.as_span());
-            let fn_id = fn_name_rule.as_str().parse().unwrap();
             let mut args = vec![];
-            //get every parameter in the function, stopping at "->"
-            while let Some(arg_rule) = pair.next() {
+            //get every parameter in the function, stopping at "->" - FIX THIS BUG 
+            while let mut arg_rule = pair
+                .next()
+                .expect("Should be a token here still - for type")
+            {
                 let arg_str = arg_rule.as_str();
                 if arg_str == "->" {
                     break;
                 }
                 let arg_line_col = LineColLocation::from(arg_rule.as_span());
                 //Get the type of the parameter from arg_rule
-                let type_local =  match(arg_rule.as_rule()) {
+                let type_local = match arg_rule.as_rule() {
                     Rule::TY_I32 => DataType::I32,
                     Rule::TY_BOOL => DataType::Boolean,
                     Rule::TY_STRING => DataType::Str,
@@ -577,37 +578,43 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
                         unreachable!();
                     }
                 };
-                arg_rule = pair.next();
+                arg_rule = pair.next().expect("Should be a token here still - for ID");
                 //now get the varId for the parameter
-                let mut arg_name = arg_rule.as_str().parse().unwrap();
+                let arg_name = arg_rule.as_str().parse().unwrap();
                 //arg holds Vec<(FnId, DataType)>
-                let mut fnId_local = FnID {
+                let fn_id_local = FnId {
                     name: arg_name,
                     loc: Some(Location {
                         line_col: arg_line_col.clone(),
                         path: None,
                     }),
-                }
-                args.push((fnId_local ,type_local));
+                };
+                args.push((fn_id_local, type_local));
             }
-            let mut ret_type = type_from_rule(pair.next().unwrap(), err);
+            let return_ty = type_from_rule(pair.next().unwrap(), err);
 
             let mut body_vec = vec![];
-            while(pair.next().is_some()){
+            while pair.next().is_some() {
                 let pair = pair.next().unwrap();
                 match stmt_from_rule(pair, err) {
                     Ok(s) => body_vec.push(s),
                     Err(errors) => err.add_errors(errors),
                 }
             }
-            let body = Statement::Block {
+            let body = Block {
                 stmts: body_vec,
                 loc: Some(Location::from(&fn_name_line_col, &fn_name_line_col, None)),
             };
-            Ok(Statement::FnDef {
+            //convert fn_name_rule from Pair<_, Rule> to FnId
+            let fn_id = FnId {
+                name: fn_name_rule.as_str().parse().unwrap(),
+                loc: Some(Location::from(&fn_name_line_col, &fn_name_line_col, None)),
+            };
+            Ok(Statement::FunctionDefinition {
                 fn_id,
-                args,
+                params: args,
                 body,
+                return_ty,
                 loc: Some(Location::from(&fn_name_line_col, &fn_name_line_col, None)),
             })
         }
