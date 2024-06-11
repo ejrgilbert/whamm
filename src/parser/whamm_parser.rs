@@ -689,7 +689,7 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                 loc: Some(Location {
                     line_col: LineColLocation::from(pair.as_span()),
                     path: None,
-                })
+                }),
             });
         }
         Rule::tuple => {

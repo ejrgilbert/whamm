@@ -599,7 +599,12 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         }
 
         if let Statement::Decl { ty, var_id, .. } = stmt {
-            if let Expr::VarId { name, is_comp_provided, .. } = &var_id {
+            if let Expr::VarId {
+                name,
+                is_comp_provided,
+                ..
+            } = &var_id
+            {
                 // Add symbol to table
                 self.add_global(ty.clone(), name.clone(), *is_comp_provided);
             } else {
