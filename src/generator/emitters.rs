@@ -1264,8 +1264,8 @@ impl WasmRewritingEmitter {
     fn emit_assign_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>> {
         return match stmt {
             Statement::Assign { var_id, expr, .. } => {
-                // NOTE: For now, do not simply save off primitives as constants in the symbol table.
                 let mut folded_expr = ExprFolder::fold_expr(expr, &self.table);
+                
                 // Save off primitives to symbol table
                 // TODO -- this is only necessary for `new_target_fn_name`, remove after deprecating!
                 if let (Expr::VarId { name, .. }, Expr::Primitive { val, .. }) = (&var_id, &folded_expr) {
@@ -1447,22 +1447,6 @@ impl Emitter for WasmRewritingEmitter {
     fn has_params(&mut self) -> Result<bool, Box<WhammError>> {
         if let Some(curr_instr) = self.instr_iter.curr_mut() {
             return Ok(!curr_instr.instr_params.is_empty());
-            // if let Some(params) = &curr_instr.instr_params {
-            //     return Ok(!params.is_empty());
-            // }
-
-            // // We haven't defined the params for this instr yet, let's do that
-            // if let Instr::Call(func) = &curr_instr.instr {
-            //     let func = self.app_wasm.funcs.get(func.func);
-            //     let func_info = get_func_info(&self.app_wasm, func);
-            //     // if func.name.as_ref().unwrap().contains("call_perform") {
-            //     //     println!("{}", func.name.as_ref().unwrap());
-            //     // }
-            //
-            //     curr_instr.instr_params = Some(func_info.params);
-            // }
-            // return Ok(curr_instr.instr_params.is_some()
-            //     && !curr_instr.instr_params.as_ref().unwrap().is_empty());
         }
         Err(Box::new(ErrorGen::get_unexpected_error(
             true,

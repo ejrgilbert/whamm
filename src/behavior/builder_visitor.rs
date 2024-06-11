@@ -277,8 +277,8 @@ impl BehaviorTreeBuilder<'_> {
             .fallback(self.err)
             .decorator(HasAltCall, self.err)
             .sequence(self.err) // TODO -- remove need for this (just have normal lib::<fn_name>() call syntax)
-            // Emit original instruction before emitting parameters so that the location
-            // of the original instruction is known to contextualize targeting the right place
+            // Emit alternate call before emitting parameters so that the location
+            // of the alternate call is known to contextualize targeting the right place
             // for emitting the parameters.
             .emit_alt_call(self.err)
             .emit_params(true, self.err)

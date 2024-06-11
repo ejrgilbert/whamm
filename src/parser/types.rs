@@ -237,7 +237,7 @@ pub enum Expr {
         loc: Option<Location>,
     },
     VarId {
-        is_comp_provided: bool,
+        is_comp_provided: bool, // TODO -- this is only necessary for `new_target_fn_name`, remove after deprecating!
         name: String,
         loc: Option<Location>,
     },
