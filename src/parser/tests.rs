@@ -366,26 +366,31 @@ pub fn replay() {
 }
 
 #[test]
-pub fn test_decl() {
+pub fn test_whamm_try() {
     setup_logger();
-    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
-wasm::call:alt {
-i32 x;
-x = "str"; // this should be a type error
+wasm::call:alt /
+    target_fn_type == "import" &&
+    target_imp_module == "ic0" &&
+    target_imp_name == "call_new" &&
+    strpaircmp((arg0, arg1), "bookings") &&
+    strpaircmp((arg2, arg3), "record")
+/ {
+    try((arg0, arg1), "bookings");
 }
-"#;
+    whamm::br:before / i == 1 / { i = 0; }  // SHOULD FAIL HERE
+    "#;
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
 
     match get_ast(script, &mut err) {
         Some(ast) => {
+            // script
             print_ast(&ast);
-        }
+        },
         None => {
             error!("Could not get ast from script: {}", script);
-            if err.has_errors {
-                err.report();
-            }
-            assert!(!err.has_errors);
+            err.report();
+            assert!(false);
         }
     };
 }

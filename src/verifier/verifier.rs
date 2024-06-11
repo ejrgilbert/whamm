@@ -102,7 +102,16 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
 
         // type check predicate
         if let Some(predicate) = &mut probe.predicate {
-            self.visit_expr(predicate);
+            let predicate_loc = <Option<crate::parser::types::Location> as Clone>::clone(predicate.loc()).unwrap();
+            if let Some(ty) = self.visit_expr(predicate) {
+                if ty != DataType::Boolean {
+                    self.err.type_check_error(
+                        false,
+                        "Predicate must be of type boolean".to_owned(),
+                        &Some(predicate_loc.line_col),
+                    );
+                }                
+            }
         }
 
         // type check action
