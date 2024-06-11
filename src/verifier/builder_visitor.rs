@@ -346,6 +346,7 @@ impl SymbolTableBuilder<'_> {
             name: name.clone(),
             ty: ty.clone(),
             value: None,
+            is_comp_provided: false,
             addr: None,
             loc: var_id.loc().clone(),
         };
@@ -366,7 +367,7 @@ impl SymbolTableBuilder<'_> {
     }
 
     /// Insert `global` record into scope
-    fn add_global(&mut self, ty: DataType, name: String) {
+    fn add_global(&mut self, ty: DataType, name: String, is_comp_provided: bool) {
         if self.table.lookup(&name).is_some() {
             // This should never be the case since it's controlled by the compiler!
             self.err
@@ -381,6 +382,7 @@ impl SymbolTableBuilder<'_> {
                 ty,
                 name,
                 value: None,
+                is_comp_provided,
                 addr: None,
                 loc: None,
             },
@@ -395,7 +397,7 @@ impl SymbolTableBuilder<'_> {
         globals: &HashMap<String, (ProvidedFunctionality, Global)>,
     ) {
         for (name, (.., global)) in globals.iter() {
-            self.add_global(global.ty.clone(), name.clone());
+            self.add_global(global.ty.clone(), name.clone(), true);
         }
     }
 }
@@ -597,9 +599,14 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         }
 
         if let Statement::Decl { ty, var_id, .. } = stmt {
-            if let Expr::VarId { name, .. } = &var_id {
+            if let Expr::VarId {
+                name,
+                is_comp_provided,
+                ..
+            } = &var_id
+            {
                 // Add symbol to table
-                self.add_global(ty.clone(), name.clone());
+                self.add_global(ty.clone(), name.clone(), *is_comp_provided);
             } else {
                 self.err.unexpected_error(
                     true,

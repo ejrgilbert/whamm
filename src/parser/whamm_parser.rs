@@ -241,6 +241,7 @@ fn fn_call_from_rule(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
 
     let fn_target_line_col = LineColLocation::from(fn_rule.as_span());
     let fn_target = Expr::VarId {
+        is_comp_provided: false,
         name: fn_rule.as_str().parse().unwrap(),
         loc: Some(Location {
             line_col: fn_target_line_col.clone(),
@@ -324,6 +325,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
             let var_id_rule = pair.next().unwrap();
             let var_id_line_col = LineColLocation::from(var_id_rule.as_span());
             let var_id = Expr::VarId {
+                is_comp_provided: false,
                 name: var_id_rule.as_str().parse().unwrap(),
                 loc: Some(Location {
                     line_col: var_id_line_col.clone(),
@@ -347,6 +349,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
             let var_id_line_col = LineColLocation::from(var_id_rule.as_span());
 
             let var_id = Expr::VarId {
+                is_comp_provided: false,
                 name: var_id_rule.as_str().parse().unwrap(),
                 loc: Some(Location {
                     line_col: var_id_line_col.clone(),
@@ -407,6 +410,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
             let var_id_rule = pair.next().unwrap();
             let var_id_line_col = LineColLocation::from(var_id_rule.as_span());
             let var_id = Expr::VarId {
+                is_comp_provided: false,
                 name: var_id_rule.as_str().parse().unwrap(),
                 loc: Some(Location {
                     line_col: var_id_line_col.clone(),
@@ -423,6 +427,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
             };
             let expr = Expr::BinOp {
                 lhs: Box::new(Expr::VarId {
+                    is_comp_provided: false,
                     name: var_id_rule.as_str().parse().unwrap(),
                     loc: Some(Location {
                         line_col: var_id_line_col.clone(),
@@ -446,6 +451,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
             let var_id_rule = pair.next().unwrap();
             let var_id_line_col = LineColLocation::from(var_id_rule.as_span());
             let var_id = Expr::VarId {
+                is_comp_provided: false,
                 name: var_id_rule.as_str().parse().unwrap(),
                 loc: Some(Location {
                     line_col: var_id_line_col.clone(),
@@ -462,6 +468,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
             };
             let expr = Expr::BinOp {
                 lhs: Box::new(Expr::VarId {
+                    is_comp_provided: false,
                     name: var_id_rule.as_str().parse().unwrap(),
                     loc: Some(Location {
                         line_col: var_id_line_col.clone(),
@@ -677,6 +684,7 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
         Rule::fn_call => fn_call_from_rule(pair),
         Rule::ID => {
             return Ok(Expr::VarId {
+                is_comp_provided: false,
                 name: pair.as_str().parse().unwrap(),
                 loc: Some(Location {
                     line_col: LineColLocation::from(pair.as_span()),
