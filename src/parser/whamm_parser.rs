@@ -519,7 +519,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
             let fn_name_rule = pair.next().unwrap();
             let fn_name_line_col = LineColLocation::from(fn_name_rule.as_span());
             let mut args = vec![];
-            //get every parameter in the function, stopping at "->" - FIX THIS BUG 
+            //get every parameter in the function, stopping at "->" - FIX THIS BUG
             while let mut arg_rule = pair
                 .next()
                 .expect("Should be a token here still - for type")
