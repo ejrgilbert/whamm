@@ -101,6 +101,19 @@ BEGIN { }
         return i;
     }
     "#,
+    r#"
+    add_vars(i32 a, i32 b) -> i32{
+        a++;
+        b--;
+        return a + b;
+    }
+    wasm:bytecode:br:before {
+        i32 a;
+        i32 b;
+        i32 c;
+        c = add_vars(a, b);
+    }
+    "#,
     // Statements (either assignment or function call)
     r#"
 wasm:bytecode:br:before {
@@ -439,10 +452,39 @@ pub fn test_fn_def2() {
         }
     };
 }
+// #[test]
+// pub fn test_fn_def_complex(){
+//     setup_logger();
+//     let script = r#"
+//     add_vars(i32 a, i32 b) -> i32{
+//         a++;
+//         b--;
+//         return a + b;
+//     }
+//     wasm:bytecode:br:before {
+//         i32 a;
+//         i32 b;
+//         i32 c;
+//         c = add_vars(a, b);
+//     }
+//     "#;
+//     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+//     match get_ast(script, &mut err) {
+//         Some(ast) => {
+//             print_ast(&ast);
+//         }
+//         None => {
+//             error!("Could not get ast from script: {}", script);
+//             if err.has_errors {
+//                 err.report();
+//             }
+//             assert!(!err.has_errors);
+//         }
+//     };
+// }
 // ===================
 // = Full File Tests =
 // ===================
-
 #[test]
 pub fn fault_injection() {
     setup_logger();
