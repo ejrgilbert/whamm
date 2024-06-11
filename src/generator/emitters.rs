@@ -6,7 +6,7 @@ use log::{debug, info};
 use regex::Regex;
 use walrus::ir::{BinaryOp, ExtendedLoad, Instr, InstrSeqId, LoadKind, MemArg};
 use walrus::InitExpr::RefNull;
-use walrus::{ActiveData, ActiveDataLocation, DataKind, FunctionBuilder, FunctionId, FunctionKind, ImportedFunction, InstrSeqBuilder, LocalFunction, MemoryId, ModuleData, ValType};
+use walrus::{ActiveData, ActiveDataLocation, DataKind, FunctionBuilder, FunctionId, FunctionKind, ImportedFunction, InitExpr, InstrSeqBuilder, LocalFunction, MemoryId, ModuleData, ValType};
 
 // =================================================
 // ==== Emitter Trait --> Used By All Emitters! ====
@@ -79,15 +79,21 @@ pub trait Emitter {
 const UNEXPECTED_ERR_MSG: &str =
     "WasmRewritingEmitter: Looks like you've found a bug...please report this behavior!";
 
-fn data_type_to_val_type(ty: &DataType) -> ValType {
+fn data_type_to_val_type(ty: &DataType) -> (ValType, InitExpr) {
     match ty {
-        DataType::I32 => ValType::I32,
-        DataType::Boolean => ValType::I32,
+        DataType::I32 => (ValType::I32, InitExpr::Value(
+            walrus::ir::Value::I32(0)
+        )),
+        DataType::Boolean => (ValType::I32, InitExpr::Value(
+            walrus::ir::Value::I32(0)
+        )),
         DataType::Null => unimplemented!(),
         DataType::Str => unimplemented!(),
         DataType::Tuple { .. } => unimplemented!(),
         // the ID used to track this var in the lib
-        DataType::Map { .. } => ValType::I32,
+        DataType::Map { .. } => (ValType::I32, InitExpr::Value(
+            walrus::ir::Value::I32(0)
+        )),
     }
 }
 
@@ -1235,7 +1241,7 @@ impl WasmRewritingEmitter {
                         // If the local already exists, it would be because the probe has been
                         // emitted at another bytecode location. Simply overwrite the previously saved
                         // address.
-                        let walrus_ty = data_type_to_val_type(ty);
+                        let (walrus_ty, ..) = data_type_to_val_type(ty);
                         let id = self.app_wasm.locals.add(walrus_ty);
                         *addr = Some(VarAddr::Local { addr: id });
                         Ok(true)
@@ -1305,11 +1311,11 @@ impl WasmRewritingEmitter {
                         }
                     }
                 }
-                
+
                 match self.emit_expr(&mut folded_expr) {
                     Err(e) => Err(e),
                     Ok(_) => {
-                        
+
                         if let Some(curr_loc) = self.instr_iter.curr_mut() {
                             if let Some(tracker) = &mut self.emitting_instr {
                                 let func = self
@@ -1718,11 +1724,11 @@ impl Emitter for WasmRewritingEmitter {
             Some(Record::Var { ref mut addr, .. }) => {
                 // emit global variable and set addr in symbol table
                 // this is used for user-defined global vars in the script...
-                let walrus_ty = data_type_to_val_type(&ty);
+                let (walrus_ty, init_expr) = data_type_to_val_type(&ty);
                 let id = self
                     .app_wasm
                     .globals
-                    .add_local(walrus_ty, false, RefNull(walrus_ty));
+                    .add_local(walrus_ty, false, init_expr);
                 *addr = Some(VarAddr::Global { addr: id });
 
                 Ok(true)
@@ -1951,9 +1957,6 @@ impl Emitter for WasmRewritingEmitter {
     fn emit_global_stmts(&mut self, stmts: &mut Vec<Statement>) -> Result<bool, Box<WhammError>> {
         // NOTE: This should be done in the Module entrypoint
         //       https://docs.rs/walrus/latest/walrus/struct.Module.html
-        if self.app_wasm.start.is_none() {
-            // unimplemented!()
-        }
 
         if let Some(start_fid) = self.app_wasm.start {
             if let FunctionKind::Local(local_func) = &self.app_wasm.funcs.get(start_fid).kind {
@@ -1971,9 +1974,9 @@ impl Emitter for WasmRewritingEmitter {
                 })
             }
         } else {
-            // return Err(ErrorGen::get_unexpected_error(true,
-            //     Some("This module has no configured entrypoint, \
-            //         enable to emit `script` with global state".to_string()), None));
+            return Err(Box::new(ErrorGen::get_unexpected_error(true,
+                Some("This module has no configured entrypoint, \
+                    unable to emit a `script` with global state".to_string()), None)));
         }
 
         for stmt in stmts.iter_mut() {
