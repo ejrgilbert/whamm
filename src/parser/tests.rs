@@ -456,7 +456,7 @@ pub fn test_fn_def2() {
     };
 }
 #[test]
-pub fn test_fn_def_complex(){
+pub fn test_fn_def_complex() {
     setup_logger();
     let script = r#"
     add_vars(i32 a, i32 b) -> i32{
