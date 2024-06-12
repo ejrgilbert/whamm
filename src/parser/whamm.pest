@@ -11,8 +11,8 @@ probe_def = { PROBE_SPEC ~ PUSH(predicate?) ~ "{" ~ statement* ~ "}" }
 predicate = { "/" ~ expr ~ "/" }
 
 //making the decision not to support "void" functions -- can change later
-fn_def = { ID ~ "(" ~ ( TYPE ~ ID ) ? ~ ("," ~ TYPE ~ ID )* ~ ")" ~ (arrow) ~ TYPE ~ block }
-arrow = { "->" }
+fn_def = { ID ~ "(" ~ ( param ) ? ~ ("," ~ param )* ~ ")" ~ "->" ~ TYPE ~ block }
+param = { TYPE ~ ID }
 // =====================
 // ---- Identifiers ----
 // =====================
