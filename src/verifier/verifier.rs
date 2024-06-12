@@ -86,7 +86,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
 
         // skip the compiler provided functions
         // we only need to type check user provided functions
-        
+
         // TODO type check user provided functions
         // whamm.fns.iter_mut().for_each(|function| {
         //     self.visit_fn(&mut function.1);
@@ -178,7 +178,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
     }
 
     fn visit_fn(&mut self, function: &mut Fn) -> Option<DataType> {
-        
         // type check body
         if let Some(body) = &mut function.body {
             for stmt in body {
@@ -188,7 +187,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
 
         // return type
         todo!();
-        
+
         None
     }
 
