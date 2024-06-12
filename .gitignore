@@ -25,3 +25,4 @@ wasm_playground/*.wasm
 
 # Ignore mac files
 .DS_Store
+

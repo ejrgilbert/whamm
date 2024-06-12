@@ -56,6 +56,9 @@ wasm::call:alt / strcmp((arg2, arg3), "record") / {
     new_target_fn_name = "redirect_to_fault_injector";
 }
     "#,
+    "wasm::call:alt { fn_name(); }",
+    "wasm::call:alt { fn_name(a); }",
+    "wasm::call:alt { fn_name(a + a); }",
     r#"
 wasm::call:alt /
     target_fn_type == "import" &&
@@ -88,6 +91,30 @@ wasm:bytecode:br:before {
         call_new();
     }
     "#,
+    r#"
+    wasm:bytecode:br:before {
+        i = 0;
+        i ++;
+    }
+    "#,
+    r#"
+    wasm:bytecode:br:before {
+        i = 0;
+        i++;
+    }
+    "#,
+    r#"
+    wasm:bytecode:br:before {
+        i = 0;
+        i--;
+    }
+    "#,
+    r#"
+    wasm:bytecode:br:before {
+        i = 0;
+        i --;
+    }
+    "#,
     // Comments
     r#"
 /* comment */
@@ -101,6 +128,18 @@ wasm:bytecode:br:before { } // this is a comment
     r#"
 wasm:bytecode:br:before {
     i = 0; // this is a comment
+}
+    "#,
+    r#"
+wasm:bytecode:br:before {
+    //has an empty comment
+    i = 0; //
+}
+    "#,
+    r#"
+wasm:bytecode:br:before {
+    //has an empty block comment
+    i = 0; /**/
 }
     "#,
 ];
@@ -122,6 +161,15 @@ map<i32, i32> count;
     r#"wasm:bytecode:call:alt  / i == """" / { }"#,
     // bad statement
     "wasm:bytecode:call:alt / i == 1 / { i; }",
+    // bad incrementor
+    r#"
+    wasm:bytecode:br:before {
+        i = 0;
+        if(i++ == 0){
+            i = 2;
+        }
+    }
+        "#,
 ];
 
 const SPECIAL: &[&str] = &["BEGIN { }", "END { }", "wasm:::alt { }", "wasm:::alt { }"];
