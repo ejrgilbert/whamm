@@ -80,6 +80,10 @@ map<i32, i32> count;
 count = 0;
 BEGIN { }
     "#,
+    r#"
+(i32, i32) i;
+wasm:::alt { i = (1, 2); }
+    "#,
     // Statements (either assignment or function call)
     r#"
 wasm:bytecode:br:before {
@@ -434,7 +438,7 @@ wasm::call:alt /
         Some(ast) => {
             // script
             print_ast(&ast);
-        },
+        }
         None => {
             error!("Could not get ast from script: {}", script);
             err.report();

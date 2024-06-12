@@ -4,7 +4,10 @@ use crate::parser::types::{
     Whamm, WhammVisitorMut,
 };
 use crate::verifier::builder_visitor::SymbolTableBuilder;
-use crate::verifier::types::SymbolTable;
+use crate::verifier::types::{Record, SymbolTable};
+
+const UNEXPECTED_ERR_MSG: &str =
+    "TypeChecker: Looks like you've found a bug...please report this behavior! Exiting now...";
 
 pub fn build_symbol_table(ast: &mut Whamm, err: &mut ErrorGen) -> SymbolTable {
     let mut visitor = SymbolTableBuilder {
@@ -28,6 +31,50 @@ struct TypeChecker {
     err: ErrorGen,
 }
 
+impl TypeChecker {
+    /// Insert `global` record into scope
+    fn add_global(&mut self, ty: DataType, name: String, is_comp_provided: bool) {
+        if self.table.lookup(&name).is_some() {
+            // This should never be the case since it's controlled by the compiler!
+            self.err
+                .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+            unreachable!()
+        }
+
+        // Add global to scope
+        let id = self.table.put(
+            name.clone(),
+            Record::Var {
+                ty,
+                name,
+                value: None,
+                is_comp_provided,
+                addr: None,
+                loc: None,
+            },
+        );
+
+        // add global record to the current record
+        self.add_global_id_to_curr_rec(id);
+    }
+    fn add_global_id_to_curr_rec(&mut self, id: usize) {
+        match self.table.get_curr_rec_mut() {
+            Some(Record::Whamm { globals, .. })
+            | Some(Record::Script { globals, .. })
+            | Some(Record::Provider { globals, .. })
+            | Some(Record::Package { globals, .. })
+            | Some(Record::Event { globals, .. })
+            | Some(Record::Probe { globals, .. }) => {
+                globals.push(id);
+            }
+            _ => {
+                self.err
+                    .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+            }
+        }
+    }
+}
+
 impl WhammVisitorMut<Option<DataType>> for TypeChecker {
     fn visit_whamm(&mut self, whamm: &mut Whamm) -> Option<DataType> {
         // not printing events and globals now
@@ -37,6 +84,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
         // before we get to the script scope
         println!("table: {:?}", self.table);
 
+        // TODO use enter_named_scope
         // skip the compiler provided functions
         // we only need to type check user provided functions
         let _ = self.table.enter_scope();
@@ -102,7 +150,8 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
 
         // type check predicate
         if let Some(predicate) = &mut probe.predicate {
-            let predicate_loc = <Option<crate::parser::types::Location> as Clone>::clone(predicate.loc()).unwrap();
+            let predicate_loc =
+                <Option<crate::parser::types::Location> as Clone>::clone(predicate.loc()).unwrap();
             if let Some(ty) = self.visit_expr(predicate) {
                 if ty != DataType::Boolean {
                     self.err.type_check_error(
@@ -110,7 +159,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
                         "Predicate must be of type boolean".to_owned(),
                         &Some(predicate_loc.line_col),
                     );
-                }                
+                }
             }
         }
 
@@ -169,8 +218,22 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
                 self.visit_expr(expr);
                 None
             }
-            // symbol table should handle declaration
-            Statement::Decl { ty, var_id, loc } => None,
+            Statement::Decl { ty, var_id, loc } => {
+                if let Expr::VarId { name, .. } = var_id {
+                    self.add_global(ty.to_owned(), name.to_owned(), false);
+                } else {
+                    self.err.unexpected_error(
+                        true,
+                        Some(format!(
+                            "{} \
+                Variable declaration var_id is not the correct Expr variant!!",
+                            UNEXPECTED_ERR_MSG
+                        )),
+                        None,
+                    );
+                }
+                None
+            }
         }
     }
 
@@ -257,7 +320,11 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
                 }
             }
             #[allow(unused_variables)]
-            Expr::VarId { name, loc } => {
+            Expr::VarId {
+                name,
+                loc,
+                is_comp_provided,
+            } => {
                 // get type from symbol table
                 // println!("curr scope: {:?}", self.table.get_curr_scope());
                 // let _ = self.table.enter_scope(); // Alex: adding interscope here doens't seems to have an effect here (which is reasonable)
@@ -276,7 +343,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
 
                 None
             }
-            _ => unimplemented!(),
+            _ => todo!(),
         }
     }
 
@@ -291,9 +358,27 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
             Value::Integer { .. } => Some(DataType::I32),
             Value::Str { .. } => Some(DataType::Str),
             Value::Boolean { .. } => Some(DataType::Boolean),
-            // recurse on expressions?
-            // Alex TODO: parsing
-            Value::Tuple { ty, .. } => Some(ty.to_owned()),
+            Value::Tuple { ty, vals } => {
+                // Alex TODO: in the example tuple progarm, the type of this tuple is None, but why??
+                let tys = vals
+                    .iter_mut()
+                    .map(|val| self.visit_expr(val))
+                    .collect::<Vec<_>>();
+                // assume these expressions (actually just values) all parse
+                // and have Some type
+                let mut all_tys: Vec<Box<DataType>> = Vec::new();
+                for ty in tys {
+                    if let Some(ty) = ty {
+                        all_tys.push(Box::new(ty));
+                    } else {
+                        self.err
+                            .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+                    }
+                }
+                Some(DataType::Tuple {
+                    ty_info: Some(all_tys),
+                })
+            }
         }
     }
 

@@ -78,7 +78,7 @@ prefix = _{ UNOP }
 UNOP = _{ neg }
     neg = { "!" }
 
-val = _{ BOOL | ID | I32 | STRING }
+val = _{ BOOL | ID | I32 | STRING | tuple}
 operand = _{ fn_call | "(" ~ expr ~ ")" | val }
 
 tuple = { "(" ~ (val) ~ ( "," ~ val )* ~ ")" }

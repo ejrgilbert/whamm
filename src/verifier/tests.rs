@@ -127,6 +127,27 @@ pub fn test_type_error_in_predicate() {
 }
 
 #[test]
+pub fn test_type_error_in_predicate2() {
+    setup_logger();
+    let script = r#"
+    wasm:bytecode:br:before / "i" <= 1 / { }
+    "#;
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    info!("Parsing: {}", script);
+    let res = is_valid_script(script, &mut err);
+
+    if res || !err.has_errors {
+        error!(
+            "string = '{}' is recognized as valid, but it should not",
+            script
+        )
+    }
+    err.report();
+    assert!(err.has_errors);
+    assert!(!&res);
+}
+
+#[test]
 pub fn test_type_error_stmt() {
     setup_logger();
     let script = r#"
@@ -149,15 +170,11 @@ pub fn test_type_error_stmt() {
     assert!(!&res);
 }
 
-// "wasm:bytecode:call:alt / i < 1 < 2 / { }", // TODO -- make invalid on semantic pass
-// "wasm:bytecode:call:alt / (1 + 3) / { i }", // TODO -- make invalid on type check
-
 #[test]
 pub fn test_type_error_pred_final() {
     setup_logger();
     let script = r#"
-    wasm:bytecode:call:alt / (1 + 3) / {  } // TODO -- make invalid on type check
-
+    wasm:bytecode:call:alt / (1 + 3) / {  }
     "#;
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     info!("Parsing: {}", script);
@@ -170,13 +187,60 @@ pub fn test_type_error_pred_final() {
         )
     }
     err.report();
-    // assert!(err.has_errors);
-    // assert!(!&res);
+    assert!(err.has_errors);
+    assert!(!&res);
 }
 
-// TODO
 #[test]
-pub fn test_type_error_decl() {
+pub fn test_type_error_global_decl() {
+    setup_logger();
+    let script = r#"
+    i32 x;
+    wasm::call:alt {
+    x = "str";
+}
+    "#;
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    info!("Parsing: {}", script);
+    let res = is_valid_script(script, &mut err);
+
+    if res || !err.has_errors {
+        error!(
+            "string = '{}' is recognized as valid, but it should not",
+            script
+        )
+    }
+    err.report();
+    assert!(err.has_errors);
+    assert!(!&res);
+}
+
+#[test]
+pub fn test_type_error_tuple() {
+    setup_logger();
+    let script = r#"
+    (i32, i32) x;
+    wasm::call:alt {
+    x = (1, 2, 3);
+}
+    "#;
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    info!("Parsing: {}", script);
+    let res = is_valid_script(script, &mut err);
+
+    if res || !err.has_errors {
+        error!(
+            "string = '{}' is recognized as valid, but it should not",
+            script
+        )
+    }
+    err.report();
+    assert!(err.has_errors);
+    assert!(!&res);
+}
+
+#[test]
+pub fn test_type_error_local_decl() {
     setup_logger();
     let script = r#"
     wasm::call:alt {
@@ -195,6 +259,6 @@ pub fn test_type_error_decl() {
         )
     }
     err.report();
-    // assert!(err.has_errors);
-    // assert!(!&res);
+    assert!(err.has_errors);
+    assert!(!&res);
 }
