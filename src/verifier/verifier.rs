@@ -82,13 +82,14 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
         // not printing events and globals now
         self.table.reset();
 
-        // since the fn child comes first, we need to enter and exit the fn scope
-        // before we get to the script scope
+        // since the fn child comes first, we enter the named scope after
+        // getting into user defined function and scripts
+        // not entering scopes here
 
         // skip the compiler provided functions
         // we only need to type check user provided functions
 
-        // TODO type check user provided functions
+        // TODO: type check user provided functions
         // whamm.fns.iter_mut().for_each(|function| {
         //     self.visit_fn(&mut function.1);
         // });
@@ -179,6 +180,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
     }
 
     fn visit_fn(&mut self, function: &mut Fn) -> Option<DataType> {
+        // TODO: not typechecking user provided functions yet
         // type check body
         if let Some(body) = &mut function.body {
             for stmt in body {
@@ -188,8 +190,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
 
         // return type
         todo!();
-
-        None
     }
 
     #[allow(unused_variables)]
@@ -230,7 +230,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
                     );
                     self.err.type_check_error(
                         false,
-                        format! {"Can't get type of lhs or rhs of this binary operation"},
+                        "Can't get type of lhs or rhs of this binary operation".to_string(),
                         &Some(loc.line_col),
                     );
                     None
@@ -352,7 +352,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
                     );
                     self.err.type_check_error(
                         false,
-                        format! {"Can't get type of lhs or rhs of this binary operation"},
+                        "Can't get type of lhs or rhs of this binary operation".to_string(),
                         &Some(loc.line_col),
                     );
                     None
@@ -366,20 +366,20 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
             } => {
                 // get type from symbol table
                 // println!("curr scope: {:?}", self.table.get_curr_scope());
-                // let _ = self.table.enter_scope(); // Alex: adding interscope here doens't seems to have an effect here (which is reasonable)
+                // let _ = self.table.enter_scope(); // Alex: adding enter_scope here doens't seems to have an effect here (which is reasonable)
                 // println!("curr scope: {:?}", self.table.get_curr_scope());
 
                 if let Some(id) = self.table.lookup(name) {
                     // println!("LOOK AT ME Var id: {:?}", self.table.get_record(id));
                     if let Some(rec) = self.table.get_record(id) {
-                        if let crate::verifier::types::Record::Var { ty, .. } = rec {
+                        if let Record::Var { ty, .. } = rec {
                             return Some(ty.to_owned());
                         } else {
                             // unexpected record type
                             self.err.unexpected_error(
                                 true,
                                 Some(UNEXPECTED_ERR_MSG.to_string()),
-                                <Option<crate::parser::types::Location> as Clone>::clone(&loc)
+                                <Option<crate::parser::types::Location> as Clone>::clone(loc)
                                     .map(|l| l.line_col),
                             )
                         }
@@ -387,7 +387,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
                         self.err.type_check_error(
                             false,
                             format! {"Can't look up {} in symbol table", name},
-                            &<Option<crate::parser::types::Location> as Clone>::clone(&loc)
+                            &<Option<crate::parser::types::Location> as Clone>::clone(loc)
                                 .map(|l| l.line_col),
                         );
                     }
@@ -417,7 +417,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
                     self.err.type_check_error(
                         false,
                         "Can't get type of expr of this unary operation".to_owned(),
-                        &<Option<crate::parser::types::Location> as Clone>::clone(&expr.loc())
+                        &<Option<crate::parser::types::Location> as Clone>::clone(expr.loc())
                             .map(|l| l.line_col),
                     );
                     None
@@ -428,6 +428,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
                 args,
                 loc,
             } => {
+                // TODO: finish type checking for function calls
                 // lookup type of function
                 let mut param_tys = vec![];
                 if let Some(args) = args {
@@ -460,10 +461,9 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
                 };
 
                 if let Some(id) = self.table.lookup(&fn_name) {
-                    if let Some(rec) = self.table.get_record(id) {
-                        if let crate::verifier::types::Record::Fn { params, .. } = rec {
-                            // TODO how to get the real Datatype of the Param
-                        }
+                    if let Some(Record::Fn { .. }) = self.table.get_record(id) {
+                        // TODO how to get the real Datatype of the Param
+                        todo!();
                     }
                 }
 
@@ -486,11 +486,10 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
                         );
                     }
                 }
-                // TODO should conseq and alt have the same type?
-                let conseq_ty = self.visit_expr(conseq);
-                let alt_ty = self.visit_expr(alt);
-
-                None
+                // TODO: should conseq and alt have the same type?
+                let _conseq_ty = self.visit_expr(conseq);
+                let _alt_ty = self.visit_expr(alt);
+                todo!()
             }
         }
     }
@@ -507,7 +506,8 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
             Value::Str { .. } => Some(DataType::Str),
             Value::Boolean { .. } => Some(DataType::Boolean),
             Value::Tuple { ty, vals } => {
-                // Alex TODO: in the example tuple progarm, the type of this tuple is None, but why??
+                // Alex TODO: this ty does not contain the DataType
+                // and I need to recurse to get the type, why?
                 let tys = vals
                     .iter_mut()
                     .map(|val| self.visit_expr(val))
@@ -547,7 +547,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
 }
 
 pub fn type_check(ast: &mut Whamm, st: &SymbolTable, err: &mut ErrorGen) -> bool {
-    // Alex TODO typechecking!
     // Alex TODO, is cloning the way to go ??
     let mut type_checker = TypeChecker {
         table: st.clone(),

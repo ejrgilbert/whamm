@@ -549,15 +549,6 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         self.visit_provided_globals(&probe.globals);
 
         // Will not visit predicate/body at this stage
-        // TODO: Seems like local declaration of variables are not put in the
-        // symbol table
-        // if let Some(vs) = &mut probe.body {
-        //     for stmt in vs {
-        //         self.visit_stmt(stmt);
-        //     }
-        // }
-
-        // probe.body.iter_mut().for_each(|stmt| self.visit_stmt(stmt));
 
         trace!("Exiting: visit_probe");
         if let Err(e) = self.table.exit_scope() {

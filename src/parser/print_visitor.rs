@@ -58,7 +58,6 @@ impl WhammVisitor<String> for AsStrVisitor {
     fn visit_whamm(&mut self, whamm: &Whamm) -> String {
         let mut s = "".to_string();
 
-        // Alex: arne't these fn? why call them events
         // print fns
         if !whamm.fns.is_empty() {
             s += &format!("Whamm events:{}", NL);
