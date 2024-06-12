@@ -262,3 +262,49 @@ pub fn test_type_error_local_decl() {
     assert!(err.has_errors);
     assert!(!&res);
 }
+
+#[test]
+pub fn test_type_error_in_predicate_unop() {
+    setup_logger();
+    let script = r#"
+    wasm::call:alt / !1 / {
+}
+    "#;
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    info!("Parsing: {}", script);
+    let res = is_valid_script(script, &mut err);
+
+    if res || !err.has_errors {
+        error!(
+            "string = '{}' is recognized as valid, but it should not",
+            script
+        )
+    }
+    err.report();
+    assert!(err.has_errors);
+    assert!(!&res);
+}
+
+#[test]
+pub fn test_type_error_in_ternary() {
+    setup_logger();
+    let script = r#"
+    i32 i;
+    wasm::call:alt {
+    i = 1 ? 2 : 3;
+}
+    "#;
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    info!("Parsing: {}", script);
+    let res = is_valid_script(script, &mut err);
+
+    if res || !err.has_errors {
+        error!(
+            "string = '{}' is recognized as valid, but it should not",
+            script
+        )
+    }
+    err.report();
+    assert!(err.has_errors);
+    assert!(!&res);
+}

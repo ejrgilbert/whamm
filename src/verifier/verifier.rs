@@ -1,3 +1,5 @@
+use std::vec;
+
 use crate::common::error::ErrorGen;
 use crate::parser::types::{
     BinOp, DataType, Event, Expr, Fn, Package, Probe, Provider, Script, Statement, UnOp, Value,
@@ -82,7 +84,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
 
         // since the fn child comes first, we need to enter and exit the fn scope
         // before we get to the script scope
-        println!("table: {:?}", self.table);
 
         // skip the compiler provided functions
         // we only need to type check user provided functions
@@ -222,7 +223,16 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
                         None
                     }
                 } else {
-                    eprintln!("Error: Cant get type of lhs or rhs");
+                    let loc = crate::parser::types::Location::from(
+                        &lhs_loc.line_col,
+                        &rhs_loc.line_col,
+                        None,
+                    );
+                    self.err.type_check_error(
+                        false,
+                        format! {"Can't get type of lhs or rhs of this binary operation"},
+                        &Some(loc.line_col),
+                    );
                     None
                 }
             }
@@ -269,7 +279,16 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
                             if lhs_ty == DataType::I32 && rhs_ty == DataType::I32 {
                                 Some(DataType::I32)
                             } else {
-                                eprintln!("Error: lhs_ty: {:?}, rhs_ty: {:?}", lhs_ty, rhs_ty);
+                                let loc = crate::parser::types::Location::from(
+                                    &lhs_loc.line_col,
+                                    &rhs_loc.line_col,
+                                    None,
+                                );
+                                self.err.type_check_error(
+                                    false,
+                                    format! {"Type Mismatch, lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty},
+                                    &Some(loc.line_col),
+                                );
                                 None
                             }
                         }
@@ -282,7 +301,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
                                     "Different types for lhs and rhs".to_owned(),
                                     &None,
                                 );
-                                // eprintln!("Error: lhs_ty: {:?}, rhs_ty: {:?}", lhs_ty, rhs_ty);
                                 None
                             }
                         }
@@ -327,7 +345,16 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
                         }
                     }
                 } else {
-                    eprintln!("Error: Cant get type of lhs or rhs");
+                    let loc = crate::parser::types::Location::from(
+                        &lhs_loc.line_col,
+                        &rhs_loc.line_col,
+                        None,
+                    );
+                    self.err.type_check_error(
+                        false,
+                        format! {"Can't get type of lhs or rhs of this binary operation"},
+                        &Some(loc.line_col),
+                    );
                     None
                 }
             }
@@ -343,19 +370,128 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
                 // println!("curr scope: {:?}", self.table.get_curr_scope());
 
                 if let Some(id) = self.table.lookup(name) {
-                    println!("LOOK AT ME Var id: {:?}", self.table.get_record(id));
+                    // println!("LOOK AT ME Var id: {:?}", self.table.get_record(id));
                     if let Some(rec) = self.table.get_record(id) {
                         if let crate::verifier::types::Record::Var { ty, .. } = rec {
                             return Some(ty.to_owned());
+                        } else {
+                            // unexpected record type
+                            self.err.unexpected_error(
+                                true,
+                                Some(UNEXPECTED_ERR_MSG.to_string()),
+                                <Option<crate::parser::types::Location> as Clone>::clone(&loc)
+                                    .map(|l| l.line_col),
+                            )
                         }
                     } else {
-                        eprintln!("Error: Cant get record from symbol table");
+                        self.err.type_check_error(
+                            false,
+                            format! {"Can't look up {} in symbol table", name},
+                            &<Option<crate::parser::types::Location> as Clone>::clone(&loc)
+                                .map(|l| l.line_col),
+                        );
                     }
                 }
 
                 None
             }
-            _ => todo!(),
+            Expr::UnOp { op, expr, loc } => {
+                let expr_ty_op = self.visit_expr(expr);
+                if let Some(expr_ty) = expr_ty_op {
+                    match op {
+                        UnOp::Not => {
+                            if expr_ty == DataType::Boolean {
+                                Some(DataType::Boolean)
+                            } else {
+                                self.err.type_check_error(
+                                    false,
+                                    "Not operator can only be applied to boolean".to_owned(),
+                                    &<Option<crate::parser::types::Location> as Clone>::clone(loc)
+                                        .map(|l| l.line_col),
+                                );
+                                None
+                            }
+                        }
+                    }
+                } else {
+                    self.err.type_check_error(
+                        false,
+                        "Can't get type of expr of this unary operation".to_owned(),
+                        &<Option<crate::parser::types::Location> as Clone>::clone(&expr.loc())
+                            .map(|l| l.line_col),
+                    );
+                    None
+                }
+            }
+            Expr::Call {
+                fn_target,
+                args,
+                loc,
+            } => {
+                // lookup type of function
+                let mut param_tys = vec![];
+                if let Some(args) = args {
+                    for arg in args {
+                        if let Some(ty) = self.visit_expr(arg) {
+                            param_tys.push(ty);
+                        } else {
+                            self.err.type_check_error(
+                                false,
+                                "Can't get type of argument".to_owned(),
+                                &<Option<crate::parser::types::Location> as Clone>::clone(loc)
+                                    .map(|l| l.line_col),
+                            );
+                            return None;
+                        }
+                    }
+                } // else function has no arguments
+
+                let fn_name = match *fn_target.clone() {
+                    Expr::VarId { name, .. } => name,
+                    _ => {
+                        self.err.type_check_error(
+                            false,
+                            "Function target must be a variable".to_owned(),
+                            &<Option<crate::parser::types::Location> as Clone>::clone(loc)
+                                .map(|l| l.line_col),
+                        );
+                        return None;
+                    }
+                };
+
+                if let Some(id) = self.table.lookup(&fn_name) {
+                    if let Some(rec) = self.table.get_record(id) {
+                        if let crate::verifier::types::Record::Fn { params, .. } = rec {
+                            // TODO how to get the real Datatype of the Param
+                        }
+                    }
+                }
+
+                None
+            }
+            Expr::Ternary {
+                cond,
+                conseq,
+                alt,
+                loc,
+            } => {
+                let cond_ty = self.visit_expr(cond);
+                if let Some(ty) = cond_ty {
+                    if ty != DataType::Boolean {
+                        self.err.type_check_error(
+                            false,
+                            "Condition must be of type boolean".to_owned(),
+                            &<Option<crate::parser::types::Location> as Clone>::clone(loc)
+                                .map(|l| l.line_col),
+                        );
+                    }
+                }
+                // TODO should conseq and alt have the same type?
+                let conseq_ty = self.visit_expr(conseq);
+                let alt_ty = self.visit_expr(alt);
+
+                None
+            }
         }
     }
 
