@@ -363,7 +363,7 @@ impl WhammVisitor<String> for AsStrVisitor {
             Statement::Expr { expr, .. } => self.visit_expr(expr),
             Statement::ReturnStatement { expr, .. } => {
                 format!("return {}", self.visit_expr(expr))
-            },
+            }
         }
     }
 
