@@ -223,7 +223,7 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
             let fn_name_rule: Pair<Rule> = pair.next().unwrap();
             let fn_name_line_col = LineColLocation::from(fn_name_rule.as_span());
             let mut args = vec![];
-            let mut return_ty = DataType::I32;
+            let mut return_ty = DataType::Tuple { ty_info: vec![] };
             let mut body = Block {
                 stmts: vec![Statement::dummy()],
                 loc: Some(Location::from(&fn_name_line_col, &fn_name_line_col, None)),
@@ -251,10 +251,10 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
                             tuple_content_types.push(Box::new(type_from_rule(p, err)));
                         });
                         if tuple_content_types.is_empty() {
-                            return_ty = DataType::Tuple { ty_info: None };
+                            return_ty = DataType::Tuple { ty_info: vec![] };
                         } else {
                             return_ty = DataType::Tuple {
-                                ty_info: Some(tuple_content_types),
+                                ty_info: tuple_content_types,
                             };
                         }
                     }
@@ -271,7 +271,7 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
                             val_ty: Box::new(val_ty),
                         };
                     }
-                    //make a set of rules for each possible type 
+                    //make a set of rules for each possible type
                     Rule::param => {
                         //go into the param rule and add the output to args
                         let mut type_local = DataType::I32;
@@ -293,10 +293,10 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
                                         tuple_content_types.push(Box::new(type_from_rule(p, err)));
                                     });
                                     if tuple_content_types.is_empty() {
-                                        type_local = DataType::Tuple { ty_info: None };
+                                        type_local = DataType::Tuple { ty_info: vec![] };
                                     } else {
                                         type_local = DataType::Tuple {
-                                            ty_info: Some(tuple_content_types),
+                                            ty_info: tuple_content_types,
                                         };
                                     }
                                 }
@@ -384,6 +384,33 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
                 name: fn_name_rule.as_str().parse().unwrap(),
                 loc: Some(Location::from(&fn_name_line_col, &fn_name_line_col, None)),
             };
+            //before creating the output, check if there is a return statement in the body
+            //if there is not, add a return empty tuple
+            let mut has_return = false;
+            for stmt in &body.stmts {
+                match stmt {
+                    Statement::ReturnStatement { .. } => {
+                        has_return = true;
+                        break;
+                    }
+                    _ => {}
+                }
+            }
+            if !has_return {
+                //add an empty tuple return statement to body.stmts
+                let empty_tuple = Expr::Primitive {
+                    val: Value::Tuple {
+                        ty: DataType::Tuple { ty_info: vec![] },
+                        vals: vec![],
+                    },
+                    loc: None,
+                };
+                let return_stmt = Statement::ReturnStatement {
+                    expr: empty_tuple,
+                    loc: None,
+                };
+                body.stmts.push(return_stmt);
+            }
             let output = types::Fn {
                 is_comp_provided: false,
                 name: fn_id,
@@ -757,10 +784,10 @@ fn type_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> DataType {
                 tuple_content_types.push(Box::new(type_from_rule(p, err)));
             });
             return if tuple_content_types.is_empty() {
-                DataType::Tuple { ty_info: None }
+                DataType::Tuple { ty_info: vec![] }
             } else {
                 DataType::Tuple {
-                    ty_info: Some(tuple_content_types),
+                    ty_info: tuple_content_types,
                 }
             };
         }
@@ -953,7 +980,7 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
             trace!("Exiting tuple");
             Ok(Expr::Primitive {
                 val: Value::Tuple {
-                    ty: DataType::Tuple { ty_info: None },
+                    ty: DataType::Tuple { ty_info: vec![] },
                     vals,
                 },
                 loc: Some(Location {

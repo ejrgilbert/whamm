@@ -361,7 +361,9 @@ impl WhammVisitor<String> for AsStrVisitor {
                 format!("{} = {}", self.visit_expr(var_id), self.visit_expr(expr))
             }
             Statement::Expr { expr, .. } => self.visit_expr(expr),
-            Statement::ReturnStatement { .. } => unimplemented!(),
+            Statement::ReturnStatement { expr, .. } => {
+                format!("return {}", self.visit_expr(expr))
+            },
         }
     }
 

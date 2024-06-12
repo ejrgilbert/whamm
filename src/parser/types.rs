@@ -87,7 +87,7 @@ pub enum DataType {
     Null,
     Str,
     Tuple {
-        ty_info: Option<Vec<Box<DataType>>>,
+        ty_info: Vec<Box<DataType>>,
     },
     Map {
         key_ty: Box<DataType>,
@@ -112,15 +112,15 @@ impl DataType {
             DataType::Tuple { ty_info } => {
                 white(true, "(".to_string(), buffer);
                 let mut is_first = true;
-                if let Some(types) = ty_info {
-                    for ty in types {
-                        if !is_first {
-                            white(true, ", ".to_string(), buffer);
-                        }
-                        ty.print(buffer);
-                        is_first = false;
+                let types = ty_info;
+                for ty in types {
+                    if !is_first {
+                        white(true, ", ".to_string(), buffer);
                     }
+                    ty.print(buffer);
+                    is_first = false;
                 }
+
                 white(true, ")".to_string(), buffer);
             }
             DataType::Map { key_ty, val_ty } => {
@@ -429,7 +429,7 @@ impl Whamm {
                     loc: None,
                 },
                 DataType::Tuple {
-                    ty_info: Some(vec![Box::new(DataType::I32), Box::new(DataType::I32)]),
+                    ty_info: (vec![Box::new(DataType::I32), Box::new(DataType::I32)]),
                 },
             ),
             (
