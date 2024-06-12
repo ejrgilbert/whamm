@@ -437,6 +437,18 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                         if let Some(pred) = &mut probe_cloned.predicate {
                             // Fold predicate
                             is_success &= self.emitter.fold_expr(pred);
+
+                            // If the predicate evaluates to false, short-circuit!
+                            if let Some(pred_as_bool) = ExprFolder::get_single_bool(pred) {
+                                // predicate has been reduced to a boolean value
+                                if !pred_as_bool {
+                                    // predicate is reduced to `false` short-circuit!
+                                    if let Err(e) = self.emitter.exit_scope() {
+                                        self.err.add_error(*e)
+                                    }
+                                    return true;
+                                }
+                            }
                         }
 
                         self.curr_probe = Some(probe_cloned);
@@ -657,6 +669,10 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         {
             if let Some(probe) = &mut self.curr_probe {
                 if let Some(body) = &mut probe.body {
+                    if self.curr_probe_mode == "after" {
+                        // tell the emitter to point to location after instruction-of-interest
+                        self.emitter.incr_loc_pointer();
+                    }
                     match self.emitter.emit_body(body) {
                         Err(e) => self.err.add_error(*e),
                         Ok(res) => is_success &= res,
