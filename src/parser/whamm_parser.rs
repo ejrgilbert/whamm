@@ -235,7 +235,7 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
                     break;
                 }
                 //Get the type of the parameter from arg_rule
-                let mut type_local;
+                let type_local;
                 match arg_rule.as_rule() {
                     Rule::TY_I32 => {
                         type_local = DataType::I32;
