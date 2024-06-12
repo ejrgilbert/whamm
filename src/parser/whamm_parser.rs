@@ -389,6 +389,7 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
             let mut has_return = false;
             for stmt in &body.stmts {
                 match stmt {
+                    //ADD SUPPORT FOR IF/ELSE/LOOPS WHEN IMPLEMENTED
                     Statement::ReturnStatement { .. } => {
                         has_return = true;
                         break;
