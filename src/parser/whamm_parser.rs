@@ -340,6 +340,7 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
                             }
                         }
                         let param_id_local = Expr::VarId {
+                            is_comp_provided: false,
                             name: arg_name,
                             loc: None,
                         };
