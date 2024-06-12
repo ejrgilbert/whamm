@@ -118,12 +118,13 @@ fn process_scripts(
 }
 
 pub fn setup_fault_injection(
+    variation: &str,
     err: &mut ErrorGen,
 ) -> Vec<(String, String, Whamm, SymbolTable, BehaviorTree, SimpleAST)> {
     setup_logger();
-    let scripts = get_test_scripts("fault_injection");
+    let scripts = get_test_scripts(format!("fault_injection/{variation}").as_str());
     if scripts.is_empty() {
-        warn!("No test scripts found for `fault_injection` test.");
+        warn!("No test scripts found for `fault_injection/{variation}` test.");
     }
 
     process_scripts(scripts, err)

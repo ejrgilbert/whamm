@@ -56,6 +56,9 @@ wasm::call:alt / strcmp((arg2, arg3), "record") / {
     new_target_fn_name = "redirect_to_fault_injector";
 }
     "#,
+    "wasm::call:alt { fn_name(); }",
+    "wasm::call:alt { fn_name(a); }",
+    "wasm::call:alt { fn_name(a + a); }",
     r#"
 wasm::call:alt /
     target_fn_type == "import" &&

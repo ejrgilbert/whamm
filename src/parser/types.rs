@@ -250,7 +250,7 @@ pub enum Expr {
         loc: Option<Location>,
     },
     VarId {
-        // is_comp_provided: bool, // TODO -- do I need this?
+        is_comp_provided: bool, // TODO -- this is only necessary for `new_target_fn_name`, remove after deprecating!
         name: String,
         loc: Option<Location>,
     },
@@ -425,6 +425,7 @@ impl Whamm {
         let params = vec![
             (
                 Expr::VarId {
+                    is_comp_provided: true,
                     name: "str_addr".to_string(),
                     loc: None,
                 },
@@ -434,6 +435,7 @@ impl Whamm {
             ),
             (
                 Expr::VarId {
+                    is_comp_provided: true,
                     name: "value".to_string(),
                     loc: None,
                 },
@@ -1756,6 +1758,7 @@ impl Package {
                         is_comp_provided: true,
                         ty: DataType::I32,
                         var_name: Expr::VarId {
+                            is_comp_provided: true,
                             name: "tos".to_string(),
                             loc: None,
                         },
@@ -1776,6 +1779,7 @@ impl Package {
                         is_comp_provided: true,
                         ty: DataType::I32,
                         var_name: Expr::VarId {
+                            is_comp_provided: true,
                             name: "wasm_bytecode_loc".to_string(),
                             loc: None,
                         },
@@ -1846,6 +1850,7 @@ impl Event {
                     is_comp_provided: true,
                     ty: DataType::Str,
                     var_name: Expr::VarId {
+                        is_comp_provided: true,
                         name: "target_fn_type".to_string(),
                         loc: None
                     },
@@ -1865,6 +1870,7 @@ impl Event {
                         is_comp_provided: true,
                         ty: DataType::Str,
                         var_name: Expr::VarId {
+                            is_comp_provided: true,
                             name: "target_imp_module".to_string(),
                             loc: None,
                         },
@@ -1886,6 +1892,7 @@ impl Event {
                         is_comp_provided: true,
                         ty: DataType::Str,
                         var_name: Expr::VarId {
+                            is_comp_provided: true,
                             name: "target_imp_name".to_string(),
                             loc: None,
                         },
@@ -1902,6 +1909,7 @@ impl Event {
                     is_comp_provided: true,
                     ty: DataType::Str,
                     var_name: Expr::VarId {
+                        is_comp_provided: true,
                         name: "new_target_fn_name".to_string(),
                         loc: None
                     },
