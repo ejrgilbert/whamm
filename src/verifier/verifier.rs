@@ -84,11 +84,13 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
         // before we get to the script scope
         println!("table: {:?}", self.table);
 
-        // TODO use enter_named_scope
         // skip the compiler provided functions
         // we only need to type check user provided functions
-        let _ = self.table.enter_scope();
-        let _ = self.table.exit_scope();
+        
+        // TODO type check user provided functions
+        // whamm.fns.iter_mut().for_each(|function| {
+        //     self.visit_fn(&mut function.1);
+        // });
 
         whamm.scripts.iter_mut().for_each(|script| {
             self.visit_script(script);
@@ -98,7 +100,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
     }
 
     fn visit_script(&mut self, script: &mut Script) -> Option<DataType> {
-        let _ = self.table.enter_scope();
+        let _ = self.table.enter_named_scope(&script.name);
 
         script.providers.iter_mut().for_each(|(_, provider)| {
             self.visit_provider(provider);
@@ -175,8 +177,19 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
         None
     }
 
-    fn visit_fn(&mut self, _function: &mut Fn) -> Option<DataType> {
-        unimplemented!()
+    fn visit_fn(&mut self, function: &mut Fn) -> Option<DataType> {
+        
+        // type check body
+        if let Some(body) = &mut function.body {
+            for stmt in body {
+                self.visit_stmt(stmt);
+            }
+        }
+
+        // return type
+        todo!();
+        
+        None
     }
 
     #[allow(unused_variables)]
