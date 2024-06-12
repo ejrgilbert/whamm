@@ -50,7 +50,7 @@ TY_BOOL = @{ "bool" }
 TY_STRING = @{ "str" }
 
 // a tuple that's used as a type declaration
-TY_TUPLE = { "(" ~ TYPE ~ ( "," ~ TYPE )* ~ ")" }
+TY_TUPLE = { "(" ~ ")"| "(" ~ TYPE ~ ( "," ~ TYPE )* ~ ")" }
 // first TYPE is the type of the key, second TYPE is the type of the value
 TY_MAP = { "map<" ~ TYPE ~ "," ~ TYPE ~ ">" }
 
@@ -84,10 +84,10 @@ prefix = _{ UNOP }
 UNOP = _{ neg }
     neg = { "!" }
 
-val = _{ BOOL | ID | I32 | STRING }
+val = _{ BOOL | ID | I32 | STRING | tuple}
 operand = _{ fn_call | "(" ~ expr ~ ")" | val }
 
-tuple = { "(" ~ (val) ~ ( "," ~ val )* ~ ")" }
+tuple = { "(" ~ ")" | "(" ~ (val) ~ ( "," ~ val )* ~ ")" }
 
 BINOP = _{ LOGOP | RELOP | SUMOP | MULOP }
     // Logical operators

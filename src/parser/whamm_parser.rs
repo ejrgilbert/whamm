@@ -389,6 +389,7 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
             //if there is not, add a return empty tuple
             let mut has_return = false;
             for stmt in &body.stmts {
+                #[allow(clippy::single_match)]
                 match stmt {
                     //ADD SUPPORT FOR IF/ELSE/LOOPS WHEN IMPLEMENTED
                     Statement::ReturnStatement { .. } => {
@@ -471,10 +472,10 @@ pub fn block_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Block, Ve
     });
 
     //create the block object and return it in the wrapper with result
-    return Ok(Block {
+    Ok(Block {
         stmts: body_vec,
         loc: Some(Location::from(&fn_name_line_col, &fn_name_line_col, None)),
-    });
+    })
 }
 fn fn_call_from_rule(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     trace!("Entering fn_call");
@@ -667,7 +668,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
                 val: 1,
             };
             let rhs = Expr::Primitive {
-                val: val,
+                val,
                 loc: Some(Location::from(&var_id_line_col, &var_id_line_col, None)),
             };
             let expr = Expr::BinOp {
