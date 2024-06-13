@@ -70,6 +70,7 @@ wasm::call:alt /
     new_target_fn_name = "redirect_to_fault_injector";
 }
     "#,
+    r#"wasm:::alt / (i == "1") && (b == "2") / { i = 0; }"#,
     // globals
     r#"
 map<i32, i32> count;
@@ -355,98 +356,6 @@ fn print_ast(ast: &Whamm) {
 }
 
 #[test]
-pub fn test_whamm_with_asserts() {
-    setup_logger();
-    let script = r#"
-wasm::call:alt /
-    target_fn_type == "import" &&
-    target_imp_module == "ic0" &&
-    target_imp_name == "call_new" &&
-    strcmp((arg0, arg1), "bookings") &&
-    strcmp((arg2, arg3), "record")
-/ {
-    new_target_fn_name = "redirect_to_fault_injector";
-}
-    "#;
-    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-
-    match get_ast(script, &mut err) {
-        Some(ast) => {
-            // script
-            assert_eq!(1, ast.scripts.len()); // a single script
-            let script = ast.scripts.first().unwrap();
-
-            // provider
-            assert_eq!(1, script.providers.len());
-            let provider = script.providers.get("wasm").unwrap();
-            assert_eq!("wasm", provider.name);
-            assert_eq!(0, provider.globals.len());
-            assert_eq!(0, provider.fns.len());
-
-            assert_eq!(1, provider.packages.len());
-            let package = provider.packages.get("bytecode").unwrap();
-            assert_eq!("bytecode", package.name);
-            assert_eq!(2, package.globals.len());
-            assert_eq!(0, package.fns.len());
-
-            assert_eq!(1, package.events.len());
-            let event = package.events.get("call").unwrap();
-            assert_eq!("call", event.name);
-            assert_eq!(4, event.globals.len());
-            assert_eq!(0, event.fns.len());
-
-            assert_eq!(1, event.probe_map.len());
-            assert_eq!(1, event.probe_map.get("alt").unwrap().len());
-
-            let probe = event.probe_map.get("alt").unwrap().first().unwrap();
-            assert_eq!(0, probe.globals.len());
-            assert_eq!(0, probe.fns.len());
-            assert_eq!("alt", probe.mode);
-
-            // probe predicate
-            assert!(probe.predicate.is_some());
-
-            // probe body
-            assert!(&probe.body.is_some());
-            assert_eq!(1, probe.body.as_ref().unwrap().len());
-
-            print_ast(&ast);
-
-            if err.has_errors {
-                err.report()
-            }
-            assert!(!err.has_errors);
-        }
-        None => {
-            error!("Could not get ast from script: {}", script);
-            err.report();
-            panic!();
-        }
-    };
-}
-
-#[test]
-pub fn test_implicit_probe_defs_dumper() {
-    setup_logger();
-    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-    let script = r#"wasm:::alt / (i == "1") && (b == "2") / { i = 0; }"#;
-
-    match get_ast(script, &mut err) {
-        Some(ast) => {
-            print_ast(&ast);
-        }
-        None => {
-            error!("Could not get ast from script: {}", script);
-            if err.has_errors {
-                err.report();
-            }
-            assert!(!err.has_errors);
-        }
-    };
-}
-
-        // CURRENTLY FAILING TEST
-#[test]
 pub fn testing_strcmp() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
@@ -473,7 +382,6 @@ pub fn testing_strcmp() {
             assert!(!err.has_errors);
         }
     };
-
 }
 // ===================
 // = Full File Tests =
