@@ -70,7 +70,7 @@ block = { "{" ~ statement* ~ "}" }
 
 // var ops
 ret = { "return" ~ expr ? }
-declaration = { TYPE ~ ID }
+declaration = { TYPE ~ !RESERVED_KEYWORDS ~ ID }
 assignment = { ID ~ "=" ~ (ternary | expr) }
 initialize = { TYPE ~ ID ~ "=" ~ (ternary | expr) }
 statement = { ( ( initialize | fn_call | declaration | assignment | incrementor | decrementor | ret ) ~ ";" )+ }
@@ -139,6 +139,16 @@ BOOL = @{
 }
 
 STRING = @{ "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
+
+// ===========================
+// ---- Reserved Keywords ----
+// ===========================
+
+instr_arg = { "arg" ~ ASCII_DIGIT+ }
+
+RESERVED_KEYWORDS = @{
+    instr_arg
+}
 
 // ===================
 // ---- Skip-able ----
