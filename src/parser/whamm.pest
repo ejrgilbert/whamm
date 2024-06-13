@@ -61,7 +61,7 @@ arg = { tuple | expr | val }
 fn_call = { ID ~ "(" ~ ( arg )? ~ ( "," ~ arg )* ~ ")" }
 
 // var ops
-declaration = { TYPE ~ ID }
+declaration = { TYPE ~ !RESERVED_KEYWORDS ~ ID }
 assignment = { ID ~ "=" ~ (ternary | expr) }
 statement = { ( ( declaration | assignment | fn_call | incrementor | decrementor) ~ ";" )+ }
 incrementor = { ID ~ "++"}
@@ -129,6 +129,16 @@ BOOL = @{
 }
 
 STRING = @{ "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
+
+// ===========================
+// ---- Reserved Keywords ----
+// ===========================
+
+instr_arg = { "arg" ~ ASCII_DIGIT+ }
+
+RESERVED_KEYWORDS = @{
+    instr_arg
+}
 
 // ===================
 // ---- Skip-able ----

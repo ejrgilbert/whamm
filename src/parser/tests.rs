@@ -142,6 +142,10 @@ wasm:bytecode:br:before {
     i = 0; /**/
 }
     "#,
+    // valid "variants" of reserved keywords
+    "wasm:bytecode:call:alt { i32 arg; }",
+    "wasm:bytecode:call:alt { arg = 1; }",
+    "wasm:bytecode:call:alt { arg0 = 1; }",
 ];
 
 const INVALID_SCRIPTS: &[&str] = &[
@@ -170,6 +174,11 @@ map<i32, i32> count;
         }
     }
         "#,
+    // reserved keywords
+    "wasm:bytecode:call:alt { i32 arg0; }",
+    r#"
+map<i32, i32> arg0;
+    "#,
 ];
 
 const SPECIAL: &[&str] = &["BEGIN { }", "END { }", "wasm:::alt { }", "wasm:::alt { }"];
