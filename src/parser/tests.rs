@@ -222,6 +222,10 @@ wasm:bytecode:br:before {
         }
     
     "#,
+    // valid "variants" of reserved keywords
+    "wasm:bytecode:call:alt { i32 arg; }",
+    "wasm:bytecode:call:alt { arg = 1; }",
+    "wasm:bytecode:call:alt { arg0 = 1; }"
 ];
 
 const INVALID_SCRIPTS: &[&str] = &[
@@ -296,6 +300,10 @@ map<i32, i32> count;
             bool a = true;
             elif(a){};
         }
+    // reserved keywords
+    "wasm:bytecode:call:alt { i32 arg0; }",
+    r#"
+map<i32, i32> arg0;
     "#,
 ];
 
