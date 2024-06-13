@@ -372,26 +372,7 @@ pub fn block_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
     let fn_name_line_col = LineColLocation::from(pair.as_span());
     let mut body_vec = vec![];
     pair.into_inner().for_each(|p| {
-        match p.as_rule(){
-            Rule::statement => {
-                p.into_inner().for_each(|n| {
-                   body_vec.push(stmt_from_rule(n, err));
-                });
-            }
-            _ => {
-                err.parse_error(
-                    true,
-                    Some("Error in proceeding function body in FnDef - how did you get something other than Statement into block?".to_string()),
-                    Some(LineColLocation::from(p.as_span())),
-                    vec![
-                        Rule::statement,
-                    ],
-                    vec![p.as_rule()],
-                );
-                // should have exited above (since it's a fatal error)
-                unreachable!();
-            }
-        }
+        body_vec.push(stmt_from_rule(p, err));
     });
 
     //create the block object and return it in the wrapper with result
