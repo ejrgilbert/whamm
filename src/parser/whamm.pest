@@ -62,7 +62,7 @@ TYPE = _{ TY_I32 | TY_BOOL | TY_STRING | TY_TUPLE | TY_MAP }
 
 arg = { tuple | expr | val | ternary }
 fn_call = { ID ~ "(" ~ ( arg )? ~ ( "," ~ arg )* ~ ")" }
-block = { "{" ~ (statement)* ~ "}" }
+block = { "{" ~ statement* ~ "}" }
 
 
 // var ops
