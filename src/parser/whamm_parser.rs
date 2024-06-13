@@ -230,6 +230,7 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
                     //make a set of rules for each possible type
                     Rule::param => {
                         //go into the param rule and add the output to args
+                        let p_clone = p.clone();
                         let mut type_local = DataType::I32;
                         let mut arg_name = "".to_string();
                         for inner_p in p.into_inner() {
@@ -245,7 +246,7 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
                         let param_id_local = Expr::VarId {
                             is_comp_provided: false,
                             name: arg_name,
-                            loc: None,
+                            loc: Some(Location::from(&LineColLocation::from(p_clone.as_span()), &LineColLocation::from(p_clone.as_span()), None)),
                         };
                         //arg holds Vec<(VarId, DataType)>
                         args.push((param_id_local, type_local));
