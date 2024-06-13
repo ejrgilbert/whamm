@@ -128,11 +128,9 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
             // let stmt_rules = pair.next().unwrap();
 
             let mut global_stmts = vec![];
-            pair.into_inner()
-                .for_each(|p| match stmt_from_rule(p, err) {
-                    Ok(s) => global_stmts.push(s),
-                    Err(errors) => err.add_errors(errors),
-                });
+            pair.into_inner().for_each(|p| {
+                global_stmts.push(stmt_from_rule(p, err));
+            });
 
             // Add global statements to the script
             let script: &mut Script = whamm.scripts.get_mut(script_count).unwrap();
@@ -194,10 +192,7 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
             let this_body: Option<Vec<Statement>> = this_body.map(|b| {
                 let mut stmts = vec![];
                 for stmt in b {
-                    match stmt {
-                        Ok(s) => stmts.push(s),
-                        Err(errors) => err.add_errors(errors),
-                    }
+                    stmts.push(stmt);
                 }
                 stmts
             });
@@ -380,12 +375,7 @@ pub fn block_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
         match p.as_rule(){
             Rule::statement => {
                 p.into_inner().for_each(|n| {
-                    let local = stmt_from_rule(n, err);
-                    if let Ok(local) = local {
-                        body_vec.push(local);
-                    } else if let Err(errors) = local {
-                        err.add_errors(errors);
-                    }
+                   body_vec.push(stmt_from_rule(n, err));
                 });
             }
             _ => {
@@ -482,12 +472,13 @@ fn fn_call_from_rule(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     }
 }
 
-fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec<WhammError>> {
+fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Statement {
     trace!("Entered stmt_from_rule");
     match pair.as_rule() {
         Rule::statement => {
             trace!("Entering statement");
-            let res = stmt_from_rule(pair, err);
+            let stmt = pair.into_inner().next().unwrap();
+            let res = stmt_from_rule(stmt, err);
             trace!("Exiting statement");
 
             trace!("Exiting stmt_from_rule");
@@ -513,11 +504,11 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
             };
             trace!("Exiting declaration");
 
-            Ok(Statement::Decl {
+            Statement::Decl {
                 ty,
                 var_id,
                 loc: Some(Location::from(&type_line_col, &var_id_line_col, None)),
-            })
+            }
         }
         Rule::assignment => {
             trace!("Entering assignment");
@@ -539,7 +530,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
             return match expr_from_pair(expr_rule) {
                 Err(errors) => {
                     err.add_errors(errors);
-                    Ok(Statement::dummy())
+                    Statement::dummy()
                 }
                 Ok(expr) => {
                     trace!("Exiting assignment");
@@ -548,21 +539,22 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
                     let expr_line_col = if let Some(expr_loc) = expr.loc() {
                         expr_loc.line_col.clone()
                     } else {
-                        return Err(vec![ErrorGen::get_unexpected_error(
+                        err.add_error(ErrorGen::get_unexpected_error(
                             true,
                             Some(format!(
                                 "{}{}",
                                 UNEXPECTED_ERR_MSG, "could not get location"
                             )),
                             None,
-                        )]);
+                        ));
+                        return Statement::dummy();
                     };
 
-                    Ok(Statement::Assign {
+                    Statement::Assign {
                         var_id,
                         expr,
                         loc: Some(Location::from(&var_id_line_col, &expr_line_col, None)),
-                    })
+                    }
                 }
             };
         }
@@ -570,16 +562,16 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
             return match fn_call_from_rule(pair) {
                 Err(errors) => {
                     err.add_errors(errors);
-                    Ok(Statement::dummy())
+                    Statement::dummy()
                 }
                 Ok(call) => {
                     let call_loc = call.loc().clone();
                     trace!("Exiting stmt_from_rule");
 
-                    Ok(Statement::Expr {
+                    Statement::Expr {
                         expr: call,
                         loc: call_loc,
-                    })
+                    }
                 }
             }
         }
@@ -618,11 +610,11 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
                 loc: Some(Location::from(&var_id_line_col, &var_id_line_col, None)),
             };
             trace!("Exiting incrementor");
-            Ok(Statement::Assign {
+            Statement::Assign {
                 var_id,
                 expr,
                 loc: Some(Location::from(&var_id_line_col, &var_id_line_col, None)),
-            })
+            }
         }
         Rule::decrementor => {
             trace!("Entering decrementor");
@@ -659,11 +651,11 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
                 loc: Some(Location::from(&var_id_line_col, &var_id_line_col, None)),
             };
             trace!("Exiting decrementor");
-            Ok(Statement::Assign {
+            Statement::Assign {
                 var_id,
                 expr,
                 loc: Some(Location::from(&var_id_line_col, &var_id_line_col, None)),
-            })
+            }
         }
         //HAS NOT BEEN CHECKED
         Rule::ret => {
@@ -674,7 +666,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
             return match expr_from_pair(expr_rule) {
                 Err(errors) => {
                     err.add_errors(errors);
-                    Ok(Statement::dummy())
+                    Statement::dummy()
                 }
                 Ok(expr) => {
                     trace!("Exiting return_stmt");
@@ -683,20 +675,21 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
                     let expr_line_col = if let Some(expr_loc) = expr.loc() {
                         expr_loc.line_col.clone()
                     } else {
-                        return Err(vec![ErrorGen::get_unexpected_error(
+                        err.add_error(ErrorGen::get_unexpected_error(
                             true,
                             Some(format!(
                                 "{}{}",
                                 UNEXPECTED_ERR_MSG, "could not get location"
                             )),
                             None,
-                        )]);
+                        ));
+                        return Statement::dummy();
                     };
 
-                    Ok(Statement::ReturnStatement {
+                    Statement::ReturnStatement {
                         expr,
                         loc: Some(Location::from(&expr_line_col, &expr_line_col, None)),
-                    })
+                    }
                 }
             };
         }
