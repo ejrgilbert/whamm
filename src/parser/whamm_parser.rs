@@ -225,7 +225,7 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
             let mut args = vec![];
             let mut return_ty = DataType::Tuple { ty_info: vec![] };
             let mut body = Block {
-                stmts: vec![Statement::dummy()],
+                stmts: vec![],
                 loc: Some(Location::from(&fn_name_line_col, &fn_name_line_col, None)),
             };
             //pair now holds the list of tokens in the fn_def rule
@@ -278,64 +278,11 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
                         let mut arg_name = "".to_string();
                         for inner_p in p.into_inner() {
                             match inner_p.as_rule() {
-                                Rule::TY_I32 => {
-                                    type_local = DataType::I32;
-                                }
-                                Rule::TY_BOOL => {
-                                    type_local = DataType::Boolean;
-                                }
-                                Rule::TY_STRING => {
-                                    type_local = DataType::Str;
-                                }
-                                Rule::TY_TUPLE => {
-                                    let mut tuple_content_types = vec![];
-                                    inner_p.into_inner().for_each(|p| {
-                                        tuple_content_types.push(Box::new(type_from_rule(p, err)));
-                                    });
-                                    if tuple_content_types.is_empty() {
-                                        type_local = DataType::Tuple { ty_info: vec![] };
-                                    } else {
-                                        type_local = DataType::Tuple {
-                                            ty_info: tuple_content_types,
-                                        };
-                                    }
-                                }
-                                Rule::TY_MAP => {
-                                    let mut pair = inner_p.into_inner();
-                                    let key_ty_rule = pair.next().unwrap();
-                                    let val_ty_rule = pair.next().unwrap();
-
-                                    let key_ty = type_from_rule(key_ty_rule, err);
-                                    let val_ty = type_from_rule(val_ty_rule, err);
-
-                                    type_local = DataType::Map {
-                                        key_ty: Box::new(key_ty),
-                                        val_ty: Box::new(val_ty),
-                                    };
-                                }
                                 Rule::ID => {
                                     arg_name = inner_p.as_str().parse().unwrap();
                                 }
-                                rule => {
-                                    err.parse_error(
-                                        true,
-                                        Some(
-                                            "Error in proceeding function datatype in parameters of FnDef"
-                                                .to_string(),
-                                        ),
-                                        Some(LineColLocation::from(inner_p.as_span())),
-                                        vec![
-                                            Rule::TY_I32,
-                                            Rule::TY_BOOL,
-                                            Rule::TY_STRING,
-                                            Rule::TY_TUPLE,
-                                            Rule::TY_MAP,
-                                            Rule::ID,
-                                        ],
-                                        vec![rule],
-                                    );
-                                    // should have exited above (since it's a fatal error)
-                                    unreachable!();
+                                _ => {
+                                    type_local = type_from_rule(inner_p, err);
                                 }
                             }
                         }
@@ -348,21 +295,7 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
                         args.push((param_id_local, type_local));
                     }
                     Rule::block => {
-                        let body_result = block_from_rule(p, err);
-                        body = match body_result {
-                            Ok(body) => body,
-                            Err(errors) => {
-                                err.add_errors(errors);
-                                Block {
-                                    stmts: vec![Statement::dummy()],
-                                    loc: Some(Location::from(
-                                        &fn_name_line_col,
-                                        &fn_name_line_col,
-                                        None,
-                                    )),
-                                }
-                            }
-                        };
+                        body = block_from_rule(p, err);
                     }
                     rule => {
                         err.parse_error(
@@ -439,7 +372,7 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
     }
 }
 
-pub fn block_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Block, Vec<WhammError>> {
+pub fn block_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
     trace!("Entered parse_block");
     let fn_name_line_col = LineColLocation::from(pair.as_span());
     let mut body_vec = vec![];
@@ -472,10 +405,10 @@ pub fn block_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Block, Ve
     });
 
     //create the block object and return it in the wrapper with result
-    Ok(Block {
+    return Block {
         stmts: body_vec,
         loc: Some(Location::from(&fn_name_line_col, &fn_name_line_col, None)),
-    })
+    };
 }
 fn fn_call_from_rule(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     trace!("Entering fn_call");
