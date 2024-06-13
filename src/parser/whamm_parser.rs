@@ -227,45 +227,6 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
             for p in pair {
                 //iterate over each p in the pair and match based on the rule
                 match p.as_rule() {
-                    Rule::TYPE => {
-                        //return type is here
-                        return_ty = type_from_rule(p, err);
-                    }
-                    Rule::TY_I32 => {
-                        return_ty = DataType::I32;
-                    }
-                    Rule::TY_BOOL => {
-                        return_ty = DataType::Boolean;
-                    }
-                    Rule::TY_STRING => {
-                        return_ty = DataType::Str;
-                    }
-                    Rule::TY_TUPLE => {
-                        let mut tuple_content_types = vec![];
-                        p.into_inner().for_each(|p| {
-                            tuple_content_types.push(Box::new(type_from_rule(p, err)));
-                        });
-                        if tuple_content_types.is_empty() {
-                            return_ty = DataType::Tuple { ty_info: vec![] };
-                        } else {
-                            return_ty = DataType::Tuple {
-                                ty_info: tuple_content_types,
-                            };
-                        }
-                    }
-                    Rule::TY_MAP => {
-                        let mut pair = p.into_inner();
-                        let key_ty_rule = pair.next().unwrap();
-                        let val_ty_rule = pair.next().unwrap();
-
-                        let key_ty = type_from_rule(key_ty_rule, err);
-                        let val_ty = type_from_rule(val_ty_rule, err);
-
-                        return_ty = DataType::Map {
-                            key_ty: Box::new(key_ty),
-                            val_ty: Box::new(val_ty),
-                        };
-                    }
                     //make a set of rules for each possible type
                     Rule::param => {
                         //go into the param rule and add the output to args
@@ -292,19 +253,8 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
                     Rule::block => {
                         body = block_from_rule(p, err);
                     }
-                    rule => {
-                        err.parse_error(
-                            true,
-                            Some(
-                                "Error in proceeding function datatype in parameters of FnDef"
-                                    .to_string(),
-                            ),
-                            Some(LineColLocation::from(p.as_span())),
-                            vec![Rule::block, Rule::param, Rule::TYPE],
-                            vec![rule],
-                        );
-                        // should have exited above (since it's a fatal error)
-                        unreachable!();
+                    _ => {
+                        return_ty = type_from_rule(p, err);
                     }
                 }
             }
