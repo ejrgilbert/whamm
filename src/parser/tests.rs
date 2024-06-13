@@ -117,6 +117,21 @@ BEGIN { }
         c = add_vars(a, b);
     }
     "#,
+    r#"
+    do_nothing(i32 a, i32 b){
+        
+    }
+    BEGIN { }
+    "#,
+    r#"
+    nested_fn() -> i32 {
+        return 5;
+    }
+    outter_fn() -> i32 {
+        return nested_fn() + 1;
+    }
+    BEGIN {}
+    "#,
     // Statements (either assignment or function call)
     r#"
 wasm:bytecode:br:before {
@@ -207,6 +222,23 @@ map<i32, i32> count;
         }
     }
         "#,
+    //bad fn definitions
+    // r#"
+    // fn_name() -> i32{
+    // wasm:bytecode:br:before {
+    // }
+    //     "#,
+    // r#"
+    // fn_name {
+    // }
+    // wasm:bytecode:br:before {
+    // }
+    //     "#,
+    // r#"
+    // fn_name(, arg0) -> i32{}
+    // wasm:bytecode:br:before {
+    // }
+    //     "#,
 ];
 
 const SPECIAL: &[&str] = &["BEGIN { }", "END { }", "wasm:::alt { }", "wasm:::alt { }"];
@@ -413,104 +445,6 @@ pub fn test_implicit_probe_defs_dumper() {
     };
 }
 
-//Works with an empty body
-#[test]
-pub fn test_fn_def() {
-    setup_logger();
-    let script = r#"fn_name(i32 param) -> i32{
-    }
-    BEGIN { } "#;
-    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-    match get_ast(script, &mut err) {
-        Some(ast) => {
-            print_ast(&ast);
-        }
-        None => {
-            error!("Could not get ast from script: {}", script);
-            if err.has_errors {
-                err.report();
-            }
-            assert!(!err.has_errors);
-        }
-    };
-}
-#[test]
-pub fn test_fn_def2() {
-    setup_logger();
-    let script = r#"fn_name(i32 param) -> i32{
-        i32 i;
-    }
-    BEGIN { } "#;
-    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-    match get_ast(script, &mut err) {
-        Some(ast) => {
-            print_ast(&ast);
-        }
-        None => {
-            error!("Could not get ast from script: {}", script);
-            if err.has_errors {
-                err.report();
-            }
-            assert!(!err.has_errors);
-        }
-    };
-}
-#[test]
-pub fn test_fn_def_complex() {
-    setup_logger();
-    let script = r#"
-    add_vars(i32 a, i32 b) -> i32 {
-        a++;
-        b--;
-        return a + b;
-    }
-    add_vars2(i32 a, i32 b) -> i32 {
-        a = strcmp((a, b), "record"); // TODO fail in type checking
-    }
-    wasm:bytecode:br:before {
-        i32 a;
-        i32 b;
-        i32 c;
-        c = add_vars(a, b);
-    }
-    "#;
-    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-    match get_ast(script, &mut err) {
-        Some(ast) => {
-            print_ast(&ast);
-        }
-        None => {
-            error!("Could not get ast from script: {}", script);
-            if err.has_errors {
-                err.report();
-            }
-            assert!(!err.has_errors);
-        }
-    };
-}
-
-#[test]
-pub fn test_fn_def_no_return() {
-    setup_logger();
-    let script: &str = r#"
-    add_vars(i32 count) -> () {
-        count++;
-    }
-    BEGIN { }
-    "#;
-    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-    match get_ast(script, &mut err) {
-        Some(ast) => {
-            print_ast(&ast);
-        }
-        None => {
-            error!("Could not get ast from script: {}", script);
-            if err.has_errors {
-                err.report();
-            }
-        }
-    };
-}
 // ===================
 // = Full File Tests =
 // ===================

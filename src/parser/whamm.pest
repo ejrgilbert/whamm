@@ -11,7 +11,7 @@ probe_def = { PROBE_SPEC ~ PUSH(predicate?) ~ "{" ~ statement* ~ "}" }
 predicate = { "/" ~ expr ~ "/" }
 
 //making the decision not to support "void" functions -- can change later
-fn_def = { ID ~ "(" ~ ( param ) ? ~ ("," ~ param )* ~ ")" ~ "->" ~ TYPE ~ block }
+fn_def = { ID ~ "(" ~ (( param ) ~ ("," ~ param )*) ? ~ ")" ~ ("->" ~ TYPE) ? ~ block }
 param = { TYPE ~ ID }
 // =====================
 // ---- Identifiers ----
@@ -66,10 +66,10 @@ block = { "{" ~ (statement)* ~ "}" }
 
 
 // var ops
-return_statement = { "return" ~ expr }
+ret = { "return" ~ expr }
 declaration = { TYPE ~ ID }
 assignment = { ID ~ "=" ~ (ternary | expr) }
-statement = { ( ( declaration | assignment | fn_call | incrementor | decrementor | return_statement ) ~ ";" )+ }
+statement = { ( ( declaration | assignment | fn_call | incrementor | decrementor | ret ) ~ ";" )+ }
 incrementor = { ID ~ "++"}
 decrementor = { ID ~ "--"}
 // =====================

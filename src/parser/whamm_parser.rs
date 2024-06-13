@@ -368,7 +368,7 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
                         err.parse_error(
                             true,
                             Some(
-                                "Error in proceeing function datatype in parameters of FnDef"
+                                "Error in proceeding function datatype in parameters of FnDef"
                                     .to_string(),
                             ),
                             Some(LineColLocation::from(p.as_span())),
@@ -458,7 +458,7 @@ pub fn block_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Block, Ve
             _ => {
                 err.parse_error(
                     true,
-                    Some("Error in proceeing function body in FnDef - how did you get something other than Statement into block?".to_string()),
+                    Some("Error in proceeding function body in FnDef - how did you get something other than Statement into block?".to_string()),
                     Some(LineColLocation::from(p.as_span())),
                     vec![
                         Rule::statement,
@@ -733,7 +733,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Statement, Vec
             })
         }
         //HAS NOT BEEN CHECKED
-        Rule::return_statement => {
+        Rule::ret => {
             trace!("Entering return_stmt");
             let mut pair = pair.into_inner();
             let expr_rule = pair.next().unwrap();
