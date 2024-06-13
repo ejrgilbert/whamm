@@ -161,6 +161,11 @@ map<i32, i32> count;
     r#"wasm:bytecode:call:alt  / i == """" / { }"#,
     // bad statement
     "wasm:bytecode:call:alt / i == 1 / { i; }",
+    r#"
+    wasm:bytecode:br:before {
+        i32 return;
+    }
+    "#,
     // bad incrementor
     r#"
     wasm:bytecode:br:before {
