@@ -114,14 +114,6 @@ fn run_instr(
 
     // Read app Wasm into Walrus module
     let _config = walrus::ModuleConfig::new();
-    eprintln!("Reading app wasm from: {}", app_wasm_path);
-    // print result of tree command
-    let out = std::process::Command::new("tree")
-        .current_dir("wasm_playground/control_flow")
-        .output()
-        .expect("failed to execute process");
-    eprintln!("{}", String::from_utf8_lossy(&out.stdout));
-
     let app_wasm = Module::from_file(app_wasm_path).unwrap();
 
     // Configure the emitter based on target instrumentation code format

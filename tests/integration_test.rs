@@ -139,8 +139,6 @@ fn instrument_control_flow() {
         .current_dir("wasm_playground/control_flow")
         .output()
         .expect("failed to execute process");
-    let stderr = String::from_utf8(a.stderr).unwrap();
-    println!("{}", stderr);
     assert!(a.status.success());
 
     let res = Command::new(executable)
@@ -151,17 +149,15 @@ fn instrument_control_flow() {
         .arg("wasm_playground/control_flow/target/wasm32-unknown-unknown/debug/cf.wasm")
         .output()
         .expect("failed to execute process");
-    let stderr = String::from_utf8(res.stderr).unwrap();
-    println!("{}", stderr);
     assert!(res.status.success());
 
     let out = Command::new("wasm2wat")
         .arg("output/output.wasm")
         .output()
         .expect("failed to execute process");
-
-    let stdout = String::from_utf8(out.stdout).unwrap();
+    
     // write to file
+    let stdout = String::from_utf8(out.stdout).unwrap();
     fs::write("output/output.wat", stdout).unwrap();
 }
 
