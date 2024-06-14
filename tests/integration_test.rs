@@ -4,13 +4,12 @@ use log::error;
 use std::fs;
 use std::path::Path;
 use std::process::{Command, Stdio};
+use wabt::wat2wasm;
 use walrus::Module;
 use whamm::common::error::ErrorGen;
 use whamm::generator::emitters::{Emitter, WasmRewritingEmitter};
 use whamm::generator::init_generator::InitGenerator;
 use whamm::generator::instr_generator::InstrGenerator;
-use wabt::wat2wasm;
-
 
 const APP_WASM_PATH: &str = "tests/apps/dfinity/users.wasm";
 
@@ -118,7 +117,7 @@ fn instrument_handwritten_wasm() {
         .output()
         .expect("failed to execute process");
     assert!(res.status.success());
-    
+
     let out = Command::new("wasm2wat")
         .arg("output/output.wasm")
         .output()
@@ -134,12 +133,12 @@ fn instrument_control_flow() {
 
     // run cargo run on control flow
     Command::new("cargo")
-    .arg("build")
-    .arg("--target")
-    .arg("wasm32-unknown-unknown")
-    .current_dir("wasm_playground/control_flow")
-    .output()
-    .expect("failed to execute process");
+        .arg("build")
+        .arg("--target")
+        .arg("wasm32-unknown-unknown")
+        .current_dir("wasm_playground/control_flow")
+        .output()
+        .expect("failed to execute process");
 
     let res = Command::new(executable)
         .arg("instr")
@@ -161,7 +160,6 @@ fn instrument_control_flow() {
     let stdout = String::from_utf8(out.stdout).unwrap();
     // write to file
     fs::write("output/output.wat", stdout).unwrap();
-
 }
 
 #[test]
