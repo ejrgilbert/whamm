@@ -459,7 +459,8 @@ impl WhammVisitor<String> for AsStrVisitor {
 
     fn visit_datatype(&mut self, datatype: &DataType) -> String {
         match datatype {
-            DataType::I32 => "int".to_string(),
+            DataType::I32 => "i32".to_string(),
+            DataType::U32 => "u32".to_string(),
             DataType::Boolean => "bool".to_string(),
             DataType::Null => "null".to_string(),
             DataType::Str => "str".to_string(),
