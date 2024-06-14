@@ -152,6 +152,11 @@ fn run_instr(
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
 
+    // create output path if it doesn't exist
+    if !PathBuf::from(&output_wasm_path).exists() {
+        std::fs::create_dir_all(PathBuf::from(&output_wasm_path).parent().unwrap()).unwrap();
+    }
+
     if let Err(e) = emitter.dump_to_file(output_wasm_path) {
         err.add_error(*e)
     }
