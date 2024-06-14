@@ -155,7 +155,7 @@ fn instrument_control_flow() {
         .arg("output/output.wasm")
         .output()
         .expect("failed to execute process");
-    
+
     // write to file
     let stdout = String::from_utf8(out.stdout).unwrap();
     fs::write("output/output.wat", stdout).unwrap();
