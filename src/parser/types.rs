@@ -116,6 +116,7 @@ impl Eq for DataType {}
 #[derive(Clone, Debug)]
 pub enum DataType {
     I32,
+    U32,
     Boolean,
     Null,
     Str,
@@ -133,6 +134,9 @@ impl DataType {
         match self {
             DataType::I32 => {
                 yellow(true, "i32".to_string(), buffer);
+            }
+            DataType::U32 => {
+                yellow(true, "u32".to_string(), buffer);
             }
             DataType::Boolean => {
                 yellow(true, "bool".to_string(), buffer);
@@ -1890,54 +1894,69 @@ impl Event {
 
     fn get_provided_globals(name: &str) -> HashMap<String, (ProvidedFunctionality, Global)> {
         let mut globals = HashMap::new();
-        if name.to_lowercase() == "call" {
-            // Add in provided globals for the "call" event
-            globals.insert("target_fn_type".to_string(),(
-                ProvidedFunctionality {
-                    name: "target_fn_type".to_string(),
-                    docs: "The type of function being called at this call site. This constant will \
-                    evaluate to either `local` or `import`.".to_string()
-                },
-                Global {
-                    is_comp_provided: true,
-                    ty: DataType::Str,
-                    var_name: Expr::VarId {
-                        is_comp_provided: true,
-                        name: "target_fn_type".to_string(),
-                        loc: None
-                    },
-                    value: None
-                }));
-            globals.insert(
-                "target_imp_module".to_string(),
-                (
+        match name.to_lowercase().as_str() {
+            "call" => {
+                globals.insert("arg[0:9]+".to_string(),(
                     ProvidedFunctionality {
-                        name: "target_imp_module".to_string(),
-                        docs: "The name of the module that the imported function comes from. \
-                    To improve performance, pair with `target_fn_type == \"import\"` \
-                    for faster short-circuiting."
-                            .to_string(),
+                        name: "arg[0:9]+".to_string(),
+                        docs: "To reference the arguments passed to the target function, can use any name matching this regex. For example, the first arg can be referenced with `arg0`.".to_string()
+                    },
+                    Global {
+                        is_comp_provided: true,
+                        ty: DataType::Null,
+                        var_name: Expr::VarId {
+                            is_comp_provided: true,
+                            name: "arg[0:9]+".to_string(),
+                            loc: None
+                        },
+                        value: None
+                    }
+                ));
+                // Add in provided globals for the "call" event
+                globals.insert("target_fn_type".to_string(),(
+                    ProvidedFunctionality {
+                        name: "target_fn_type".to_string(),
+                        docs: "The type of function being called at this call site. This constant will \
+                evaluate to either `local` or `import`.".to_string()
                     },
                     Global {
                         is_comp_provided: true,
                         ty: DataType::Str,
                         var_name: Expr::VarId {
                             is_comp_provided: true,
-                            name: "target_imp_module".to_string(),
-                            loc: None,
+                            name: "target_fn_type".to_string(),
+                            loc: None
                         },
-                        value: None,
-                    },
-                ),
-            );
-            globals.insert(
-                "target_imp_name".to_string(),
-                (
+                        value: None
+                    }));
+                globals.insert(
+                    "target_imp_module".to_string(),
+                    (
+                        ProvidedFunctionality {
+                            name: "target_imp_module".to_string(),
+                            docs: "The name of the module that the imported function comes from. \
+                To improve performance, pair with `target_fn_type == \"import\"` \
+                for faster short-circuiting."
+                                .to_string(),
+                        },
+                        Global {
+                            is_comp_provided: true,
+                            ty: DataType::Str,
+                            var_name: Expr::VarId {
+                                is_comp_provided: true,
+                                name: "target_imp_module".to_string(),
+                                loc: None,
+                            },
+                            value: None,
+                        },
+                    ),
+                );
+                globals.insert("target_imp_name".to_string(), (
                     ProvidedFunctionality {
                         name: "target_imp_name".to_string(),
                         docs: "The name of the imported function. \
-                    To improve performance, pair with `target_fn_type == \"import\"` \
-                    for faster short-circuiting."
+                        To improve performance, pair with `target_fn_type == \"import\"` \
+                        for faster short-circuiting."
                             .to_string(),
                     },
                     Global {
@@ -1950,25 +1969,508 @@ impl Event {
                         },
                         value: None,
                     },
-                ),
-            );
-            globals.insert("new_target_fn_name".to_string(),(
-                ProvidedFunctionality {
-                    name: "new_target_fn_name".to_string(),
-                    docs: "(DEPRECATED) The name of the target function to call instead of the original.".to_string()
-                },
-                Global {
-                    is_comp_provided: true,
-                    ty: DataType::Str,
-                    var_name: Expr::VarId {
-                        is_comp_provided: true,
+                ));
+                globals.insert("new_target_fn_name".to_string(),(
+                    ProvidedFunctionality {
                         name: "new_target_fn_name".to_string(),
-                        loc: None
+                        docs: "(DEPRECATED) The name of the target function to call instead of the original.".to_string()
                     },
-                    value: None
-                }));
-        }
-
+                    Global {
+                        is_comp_provided: true,
+                        ty: DataType::Str,
+                        var_name: Expr::VarId {
+                            is_comp_provided: true,
+                            name: "new_target_fn_name".to_string(),
+                            loc: None
+                        },
+                        value: None
+                    }
+                ));
+            },
+            "call_indirect" => {
+                // TODO
+                // Unsure what intuitively makes sense to expose here
+                // Comment out for now and figure out later!
+                // globals.insert("table_idx".to_string(), (
+                //     ProvidedFunctionality {
+                //         name: "table_idx".to_string(),
+                //         docs: "Index into the table specifying a function to indirectly call.".to_string()
+                //     },
+                //     Global {
+                //         is_comp_provided: true,
+                //         ty: DataType::U32,
+                //         var_name: Expr::VarId {
+                //             is_comp_provided: true,
+                //             name: "table_idx".to_string(),
+                //             loc: None
+                //         },
+                //         value: None
+                //     }
+                // ));
+                // globals.insert("func_type_id".to_string(), (
+                //     ProvidedFunctionality {
+                //         name: "func_type_id".to_string(),
+                //         docs: "The ID of the type that holds the signature for the called function.".to_string()
+                //     },
+                //     Global {
+                //         is_comp_provided: true,
+                //         ty: DataType::U32,
+                //         var_name: Expr::VarId {
+                //             is_comp_provided: true,
+                //             name: "func_type_id".to_string(),
+                //             loc: None
+                //         },
+                //         value: None
+                //     }
+                // ));
+                todo!();
+            },
+            "local_get" | "local_set" | "local_tee" => {
+                // TODO
+                // Unsure what intuitively makes sense to expose here
+                // Comment out for now and figure out later!
+                // globals.insert("local_id".to_string(), (
+                //     ProvidedFunctionality {
+                //         name: "local_id".to_string(),
+                //         docs: "The ID of the local variable referenced in this instruction.".to_string()
+                //     },
+                //     Global {
+                //         is_comp_provided: true,
+                //         ty: DataType::U32,
+                //         var_name: Expr::VarId {
+                //             is_comp_provided: true,
+                //             name: "local_id".to_string(),
+                //             loc: None
+                //         },
+                //         value: None
+                //     }
+                // ));
+            },
+            "global_get" | "global_set" => {
+                // Unsure what intuitively makes sense to expose here
+                // Comment out for now and figure out later!
+                // globals.insert("global_id".to_string(), (
+                //     ProvidedFunctionality {
+                //         name: "global_id".to_string(),
+                //         docs: "The ID of the global variable referenced in this instruction.".to_string()
+                //     },
+                //     Global {
+                //         is_comp_provided: true,
+                //         ty: DataType::U32,
+                //         var_name: Expr::VarId {
+                //             is_comp_provided: true,
+                //             name: "global_id".to_string(),
+                //             loc: None
+                //         },
+                //         value: None
+                //     }
+                // ));
+                todo!()
+            },
+            "const" => {
+                // Unsure what intuitively makes sense to expose here
+                // Comment out for now and figure out later!
+                // globals.insert("wasm_type".to_string(), (
+                //     ProvidedFunctionality {
+                //         name: "wasm_type".to_string(),
+                //         docs: "The type of this constant value. \
+                //         The possible values of this global are the names of the enum variants located at: \
+                //         https://docs.rs/walrus/latest/walrus/ir/enum.Value.html".to_string()
+                //     },
+                //     Global {
+                //         is_comp_provided: true,
+                //         ty: DataType::Str,
+                //         var_name: Expr::VarId {
+                //             is_comp_provided: true,
+                //             name: "wasm_type".to_string(),
+                //             loc: None
+                //         },
+                //         value: None
+                //     }
+                // ));
+                // TODO -- Should there be a way to check the actual value of this constant?
+                todo!()
+            },
+            "binop" => {
+                // Unsure what intuitively makes sense to expose here
+                // Comment out for now and figure out later!
+                // globals.insert("binop_type".to_string(), (
+                //     ProvidedFunctionality {
+                //         name: "binop_type".to_string(),
+                //         docs: "The type of this binary operation.\
+                //         The possible values of this global are the names of the enum variants located at: \
+                //         https://docs.rs/walrus/latest/walrus/ir/enum.BinaryOp.html".to_string()
+                //     },
+                //     Global {
+                //         is_comp_provided: true,
+                //         ty: DataType::Str,
+                //         var_name: Expr::VarId {
+                //             is_comp_provided: true,
+                //             name: "binop_type".to_string(),
+                //             loc: None
+                //         },
+                //         value: None
+                //     }
+                // ));
+                // TODO -- No way to check lhs/rhs using walrus since due to lack of
+                //     typing info at this point. Maybe wasmparser will support this.
+                todo!()
+            },
+            "unop" => {
+                // Unsure what intuitively makes sense to expose here
+                // Comment out for now and figure out later!
+                // globals.insert("unop_type".to_string(), (
+                //     ProvidedFunctionality {
+                //         name: "unop_type".to_string(),
+                //         docs: "The type of this binary operation. \
+                //         The possible values of this global are the names of the enum variants located at: \
+                //         https://docs.rs/walrus/latest/walrus/ir/enum.UnaryOp.html".to_string()
+                //     },
+                //     Global {
+                //         is_comp_provided: true,
+                //         ty: DataType::Str,
+                //         var_name: Expr::VarId {
+                //             is_comp_provided: true,
+                //             name: "unop_type".to_string(),
+                //             loc: None
+                //         },
+                //         value: None
+                //     }
+                // ));
+                // TODO -- No way to check operand using walrus since due to lack of
+                //     typing info at this point. Maybe wasmparser will support this.
+                todo!()
+            },
+            "select" => {
+                // TODO -- No way to check lhs/rhs using walrus since due to lack of
+                //     typing info at this point. Maybe wasmparser will support this.
+                todo!();
+            },
+            "unreachable" => {
+                // no provided globals for this event
+                todo!();
+            },
+            "br" => {
+                globals.insert("label_id".to_string(), (
+                    ProvidedFunctionality {
+                        name: "label_id".to_string(),
+                        docs: "The ID of the block to unconditionally break out of.".to_string()
+                    },
+                    Global {
+                        is_comp_provided: true,
+                        ty: DataType::U32,
+                        var_name: Expr::VarId {
+                            is_comp_provided: true,
+                            name: "label_id".to_string(),
+                            loc: None
+                        },
+                        value: None
+                    }
+                ));
+            },
+            "br_if" => {
+                globals.insert("label_id".to_string(), (
+                    ProvidedFunctionality {
+                        name: "label_id".to_string(),
+                        docs: "The ID of the block to break out of if the condition evaluates to true (nonzero).".to_string()
+                    },
+                    Global {
+                        is_comp_provided: true,
+                        ty: DataType::U32,
+                        var_name: Expr::VarId {
+                            is_comp_provided: true,
+                            name: "label_id".to_string(),
+                            loc: None
+                        },
+                        value: None
+                    }
+                ));
+                globals.insert("condition".to_string(), (
+                    ProvidedFunctionality {
+                        name: "condition".to_string(),
+                        docs: "Contains the value of the condition to break on if true (0 is false, nonzero is true).".to_string()
+                    },
+                    Global {
+                        is_comp_provided: true,
+                        ty: DataType::I32,
+                        var_name: Expr::VarId {
+                            is_comp_provided: true,
+                            name: "condition".to_string(),
+                            loc: None
+                        },
+                        value: None
+                    }
+                ));
+            },
+            "if_else" => {
+                // no provided globals for this event
+            },
+            "br_table" => {
+                // no provided globals for this event
+            },
+            "drop" => {
+                // no provided globals for this event
+            },
+            "return" => {
+                // no provided globals for this event
+            },
+            "memory_size" => {
+                // I'm worried about what instrumenting things like this looks like...
+                // are these technically parameters? Should I save these off?
+                // Comment out for now and figure out later!
+                // globals.insert("mem_id".to_string(), (
+                //     ProvidedFunctionality {
+                //         name: "mem_id".to_string(),
+                //         docs: "The ID of the target memory.".to_string()
+                //     },
+                //     Global {
+                //         is_comp_provided: true,
+                //         ty: DataType::U32,
+                //         var_name: Expr::VarId {
+                //             is_comp_provided: true,
+                //             name: "mem_id".to_string(),
+                //             loc: None
+                //         },
+                //         value: None
+                //     }
+                // ));
+                todo!()
+            },
+            "memory_grow" => {
+                // I'm worried about what instrumenting things like this looks like...
+                // are these technically parameters? Should I save these off?
+                // Comment out for now and figure out later!
+                
+                // ;; grow memory by 1 page
+                // ;; grow returns in 1 for success and -1 for failure
+                // ;; will fail if you change to more more than 1 page
+                //     (memory.grow (i32.const 1))
+                // globals.insert("mem_id".to_string(), (
+                //     ProvidedFunctionality {
+                //         name: "mem_id".to_string(),
+                //         docs: "The ID of the target memory.".to_string()
+                //     },
+                //     Global {
+                //         is_comp_provided: true,
+                //         ty: DataType::U32,
+                //         var_name: Expr::VarId {
+                //             is_comp_provided: true,
+                //             name: "mem_id".to_string(),
+                //             loc: None
+                //         },
+                //         value: None
+                //     }
+                // ));
+                todo!()
+            },
+            "memory_init" => {
+                // I'm worried about what instrumenting things like this looks like...
+                // are these technically parameters? Should I save these off?
+                // Comment out for now and figure out later!
+                //https://github.com/WebAssembly/bulk-memory-operations/blob/master/proposals/bulk-memory-operations/Overview.md#memoryinit-instruction
+                // globals.insert("mem_id".to_string(), (
+                //     ProvidedFunctionality {
+                //         name: "mem_id".to_string(),
+                //         docs: "The ID of the target memory.".to_string()
+                //     },
+                //     Global {
+                //         is_comp_provided: true,
+                //         ty: DataType::U32,
+                //         var_name: Expr::VarId {
+                //             is_comp_provided: true,
+                //             name: "mem_id".to_string(),
+                //             loc: None
+                //         },
+                //         value: None
+                //     }
+                // ));
+                // globals.insert("data_id".to_string(), (
+                //     ProvidedFunctionality {
+                //         name: "data_id".to_string(),
+                //         docs: "The ID of the data to copy in.".to_string()
+                //     },
+                //     Global {
+                //         is_comp_provided: true,
+                //         ty: DataType::U32,
+                //         var_name: Expr::VarId {
+                //             is_comp_provided: true,
+                //             name: "data_id".to_string(),
+                //             loc: None
+                //         },
+                //         value: None
+                //     }
+                // ));
+                todo!()
+            },
+            "data_drop" => {
+                // Unsure what intuitively makes sense to expose here
+                // Comment out for now and figure out later!
+                // globals.insert("data_id".to_string(), (
+                //     ProvidedFunctionality {
+                //         name: "data_id".to_string(),
+                //         docs: "The ID of the data to drop.".to_string()
+                //     },
+                //     Global {
+                //         is_comp_provided: true,
+                //         ty: DataType::U32,
+                //         var_name: Expr::VarId {
+                //             is_comp_provided: true,
+                //             name: "data_id".to_string(),
+                //             loc: None
+                //         },
+                //         value: None
+                //     }
+                // ));
+                todo!()
+            },
+            "memory_copy" => {
+                // I'm worried about what instrumenting things like this looks like...
+                // are these technically parameters? Should I save these off?
+                // Comment out for now and figure out later!
+                
+                // ;; Copy data in specific memory  [100, 125] to [50, 75]
+                // i32.const 50 ;; Destination address to copy to
+                // i32.const 100 ;; Source address to copy from
+                // i32.const 25 ;; Number of bytes to copy
+                // memory.copy (memory 2)  ;; Copy memory within memory with index 2
+                // globals.insert("src_mem_id".to_string(), (
+                //     ProvidedFunctionality {
+                //         name: "src_mem_id".to_string(),
+                //         docs: "The ID of the source memory.".to_string()
+                //     },
+                //     Global {
+                //         is_comp_provided: true,
+                //         ty: DataType::U32,
+                //         var_name: Expr::VarId {
+                //             is_comp_provided: true,
+                //             name: "src_mem_id".to_string(),
+                //             loc: None
+                //         },
+                //         value: None
+                //     }
+                // ));
+                // globals.insert("dst_mem_id".to_string(), (
+                //     ProvidedFunctionality {
+                //         name: "dst_mem_id".to_string(),
+                //         docs: "The ID of the destination memory.".to_string()
+                //     },
+                //     Global {
+                //         is_comp_provided: true,
+                //         ty: DataType::U32,
+                //         var_name: Expr::VarId {
+                //             is_comp_provided: true,
+                //             name: "dst_mem_id".to_string(),
+                //             loc: None
+                //         },
+                //         value: None
+                //     }
+                // ));
+                todo!()
+            },
+            "memory_fill" => {
+                // TODO
+                // ;; Fill region at offset/range in default memory with 255
+                // i32.const 200 ;; The pointer to the region to update
+                // i32.const 255 ;; The value to set each byte to (must be < 256)
+                // i32.const 100 ;; The number of bytes to update
+                // memory.fill ;; Fill default memory
+            },
+            "load" => {
+                // TODO
+                // I'm worried about what instrumenting things like this looks like...
+                // are these technically parameters? Should I save these off?
+                // Comment out for now and figure out later!
+                // globals.insert("mem_id".to_string(), (
+                //     ProvidedFunctionality {
+                //         name: "mem_id".to_string(),
+                //         docs: "The ID of the target memory.".to_string()
+                //     },
+                //     Global {
+                //         is_comp_provided: true,
+                //         ty: DataType::U32,
+                //         var_name: Expr::VarId {
+                //             is_comp_provided: true,
+                //             name: "mem_id".to_string(),
+                //             loc: None
+                //         },
+                //         value: None
+                //     }
+                // ));
+                // globals.insert("wasm_type".to_string(), (
+                //     ProvidedFunctionality {
+                //         name: "wasm_type".to_string(),
+                //         docs: "The type of this load operation.\
+                //         The possible values of this global are the names of the enum variants located at: \
+                //         https://docs.rs/walrus/latest/walrus/ir/enum.LoadKind.html".to_string()
+                //     },
+                //     Global {
+                //         is_comp_provided: true,
+                //         ty: DataType::Str,
+                //         var_name: Expr::VarId {
+                //             is_comp_provided: true,
+                //             name: "wasm_type".to_string(),
+                //             loc: None
+                //         },
+                //         value: None
+                //     }
+                // ));
+                // globals.insert("mem_align".to_string(), (
+                //     ProvidedFunctionality {
+                //         name: "mem_align".to_string(),
+                //         docs: "The expected alignment (expressed as the exponent of a power of 2).".to_string()
+                //     },
+                //     Global {
+                //         is_comp_provided: true,
+                //         ty: DataType::U32,
+                //         var_name: Expr::VarId {
+                //             is_comp_provided: true,
+                //             name: "mem_align".to_string(),
+                //             loc: None
+                //         },
+                //         value: None
+                //     }
+                // ));
+                // globals.insert("mem_offset".to_string(), (
+                //     ProvidedFunctionality {
+                //         name: "mem_offset".to_string(),
+                //         docs: "The memory address offset.".to_string()
+                //     },
+                //     Global {
+                //         is_comp_provided: true,
+                //         ty: DataType::U32,
+                //         var_name: Expr::VarId {
+                //             is_comp_provided: true,
+                //             name: "mem_offset".to_string(),
+                //             loc: None
+                //         },
+                //         value: None
+                //     }
+                // ));
+                todo!()
+            },
+            "store" => todo!(),
+            "atomic_rmw" => todo!(),
+            "cmpxchg" => todo!(),
+            "atomic_notify" => todo!(),
+            "atomic_wait" => todo!(),
+            "atomic_fence" => todo!(),
+            "table_get" => todo!(),
+            "table_set" => todo!(),
+            "table_grow" => todo!(),
+            "table_size" => todo!(),
+            "table_fill" => todo!(),
+            "ref_null" => todo!(),
+            "ref_is_null" => todo!(),
+            "ref_func" => todo!(),
+            "v128_bitselect" => todo!(),
+            "i8x16_swizzle" => todo!(),
+            "i8x16_shuffle" => todo!(),
+            "load_simd" => todo!(),
+            "table_init" => todo!(),
+            "elem_drop" => todo!(),
+            "table_copy" => todo!(),
+            _ => {}
+        };
         globals
     }
 

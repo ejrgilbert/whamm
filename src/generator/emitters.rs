@@ -85,6 +85,7 @@ const UNEXPECTED_ERR_MSG: &str =
 fn data_type_to_val_type(ty: &DataType) -> (ValType, InitExpr) {
     match ty {
         DataType::I32 => (ValType::I32, InitExpr::Value(walrus::ir::Value::I32(0))),
+        DataType::U32 => (ValType::I32, InitExpr::Value(walrus::ir::Value::I32(0))),
         DataType::Boolean => (ValType::I32, InitExpr::Value(walrus::ir::Value::I32(0))),
         DataType::Null => unimplemented!(),
         DataType::Str => unimplemented!(),
