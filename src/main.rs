@@ -114,6 +114,8 @@ fn run_instr(
 
     // Read app Wasm into Walrus module
     let _config = walrus::ModuleConfig::new();
+    eprintln!("Reading app wasm from: {}", app_wasm_path);
+    eprintln!("current dir: {}", std::env::current_dir().unwrap().to_str().unwrap());
     let app_wasm = Module::from_file(app_wasm_path).unwrap();
 
     // Configure the emitter based on target instrumentation code format
