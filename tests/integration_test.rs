@@ -139,6 +139,8 @@ fn instrument_control_flow() {
         .current_dir("wasm_playground/control_flow")
         .output()
         .expect("failed to execute process");
+    let stderr = String::from_utf8(a.stderr).unwrap();
+    println!("{}", stderr);
     assert!(a.status.success());
 
     let res = Command::new(executable)
