@@ -132,13 +132,14 @@ fn instrument_control_flow() {
     let executable = "target/debug/whamm";
 
     // run cargo run on control flow
-    Command::new("cargo")
+    let a = Command::new("cargo")
         .arg("build")
         .arg("--target")
         .arg("wasm32-unknown-unknown")
         .current_dir("wasm_playground/control_flow")
         .output()
         .expect("failed to execute process");
+    assert!(a.status.success());
 
     let res = Command::new(executable)
         .arg("instr")
