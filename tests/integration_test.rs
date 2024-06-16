@@ -4,7 +4,7 @@ use log::error;
 use std::fs;
 use std::path::Path;
 use std::process::{Command, Stdio};
-use wabt::wat2wasm;
+use wabt::{wasm2wat, wat2wasm};
 use walrus::Module;
 use whamm::common::error::ErrorGen;
 use whamm::generator::emitters::{Emitter, WasmRewritingEmitter};
@@ -118,13 +118,9 @@ fn instrument_handwritten_wasm() {
         .expect("failed to execute process");
     assert!(res.status.success());
 
-    let out = Command::new("wasm2wat")
-        .arg("output/output.wasm")
-        .output()
-        .expect("failed to execute process");
-
-    let stdout = String::from_utf8(out.stdout).unwrap();
-    println!("{}", stdout);
+    let file_data = fs::read("output/output.wasm").unwrap();
+    let wat_data = wasm2wat(file_data).unwrap();
+    println!("{}", wat_data);
 }
 
 #[test]
@@ -151,14 +147,9 @@ fn instrument_control_flow() {
         .expect("failed to execute process");
     assert!(res.status.success());
 
-    let out = Command::new("wasm2wat")
-        .arg("output/output.wasm")
-        .output()
-        .expect("failed to execute process");
-
-    // write to file
-    let stdout = String::from_utf8(out.stdout).unwrap();
-    fs::write("output/output.wat", stdout).unwrap();
+    let file_data = fs::read("output/output.wasm").unwrap();
+    let wat_data = wasm2wat(file_data).unwrap();
+    fs::write("output/output.wat", wat_data).unwrap();
 }
 
 #[test]
