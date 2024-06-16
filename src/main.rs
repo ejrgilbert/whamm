@@ -169,6 +169,10 @@ fn run_vis_wasm(wasm_path: String, output_path: String) {
     let _config = walrus::ModuleConfig::new();
     let app_wasm = Module::from_file(wasm_path).unwrap();
 
+    if !PathBuf::from(&output_path).exists() {
+        std::fs::create_dir_all(PathBuf::from(&output_path).parent().unwrap()).unwrap();
+    }
+
     if app_wasm.write_graphviz_dot(output_path.clone()).is_ok() {
         match std::fs::read_to_string(output_path.clone()) {
             Ok(dot_str) => {
@@ -207,6 +211,10 @@ fn run_vis_script(script_path: String, run_verifier: bool, output_path: String) 
 
     // if there are any errors, should report and exit!
     err.check_has_errors();
+
+    if !PathBuf::from(&output_path).exists() {
+        std::fs::create_dir_all(PathBuf::from(&output_path).parent().unwrap()).unwrap();
+    }
 
     let path = match get_pb(&PathBuf::from(output_path.clone())) {
         Ok(pb) => pb,
