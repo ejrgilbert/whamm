@@ -87,8 +87,7 @@ pub struct InstrArgs {
     pub virgil: bool,
 
     /// Whether to run the verifier on the specified script
-    #[arg(long, short, action, default_value = "false")]
-    // TODO -- change this default value to true when I have this implemented
+    #[arg(long, short, action, default_value = "true")]
     pub run_verifier: bool,
 }
 

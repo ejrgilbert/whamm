@@ -225,10 +225,8 @@ fn get_symbol_table(ast: &mut Whamm, run_verifier: bool, err: &mut ErrorGen) -> 
 }
 
 fn verify_ast(ast: &Whamm, st: &SymbolTable, run_verifier: bool, err: &mut ErrorGen) {
-    // not sure about cloning this, especially now they are cloned twice
-    if run_verifier && !type_check(&mut ast.clone(), &st.clone(), err) {
+    if run_verifier && !type_check(ast, st, err) {
         error!("AST failed verification!");
-        exit(1);
     }
     err.check_too_many();
 }

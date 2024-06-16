@@ -2063,7 +2063,7 @@ pub enum BinOp {
 // ==== Visitor ====
 // =================
 
-// add a default visit implementation
+// TODO add a default visit implementation
 // (take a look at the behavior tree visit trait) that would be good to add to
 // the AST visitor as well to make the visit ordering/conventions less annoying.
 pub trait WhammVisitor<T> {

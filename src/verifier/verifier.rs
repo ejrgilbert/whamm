@@ -2,8 +2,8 @@ use std::vec;
 
 use crate::common::error::ErrorGen;
 use crate::parser::types::{
-    BinOp, DataType, Event, Expr, Fn, Package, Probe, Provider, Script, Statement, UnOp, Value,
-    Whamm, WhammVisitorMut,
+    BinOp, DataType, Event, Expr, Fn, Location, Package, Probe, Provider, Script, Statement, UnOp,
+    Value, Whamm, WhammVisitor, WhammVisitorMut,
 };
 use crate::verifier::builder_visitor::SymbolTableBuilder;
 use crate::verifier::types::{Record, SymbolTable};
@@ -27,15 +27,13 @@ pub fn build_symbol_table(ast: &mut Whamm, err: &mut ErrorGen) -> SymbolTable {
     visitor.table
 }
 
-#[allow(dead_code)]
 struct TypeChecker {
     table: SymbolTable,
     err: ErrorGen,
 }
 
 impl TypeChecker {
-    /// Insert `global` record into scope
-    fn add_global(&mut self, ty: DataType, name: String, is_comp_provided: bool) {
+    fn add_local(&mut self, ty: DataType, name: String, is_comp_provided: bool) {
         if self.table.lookup(&name).is_some() {
             // This should never be the case since it's controlled by the compiler!
             self.err
@@ -43,8 +41,8 @@ impl TypeChecker {
             unreachable!()
         }
 
-        // Add global to scope
-        let id = self.table.put(
+        // Add local to scope
+        let _ = self.table.put(
             name.clone(),
             Record::Var {
                 ty,
@@ -55,30 +53,11 @@ impl TypeChecker {
                 loc: None,
             },
         );
-
-        // add global record to the current record
-        self.add_global_id_to_curr_rec(id);
-    }
-    fn add_global_id_to_curr_rec(&mut self, id: usize) {
-        match self.table.get_curr_rec_mut() {
-            Some(Record::Whamm { globals, .. })
-            | Some(Record::Script { globals, .. })
-            | Some(Record::Provider { globals, .. })
-            | Some(Record::Package { globals, .. })
-            | Some(Record::Event { globals, .. })
-            | Some(Record::Probe { globals, .. }) => {
-                globals.push(id);
-            }
-            _ => {
-                self.err
-                    .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
-            }
-        }
     }
 }
 
-impl WhammVisitorMut<Option<DataType>> for TypeChecker {
-    fn visit_whamm(&mut self, whamm: &mut Whamm) -> Option<DataType> {
+impl WhammVisitor<Option<DataType>> for TypeChecker {
+    fn visit_whamm(&mut self, whamm: &Whamm) -> Option<DataType> {
         // not printing events and globals now
         self.table.reset();
 
@@ -89,22 +68,22 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
         // skip the compiler provided functions
         // we only need to type check user provided functions
 
-        // TODO: type check user provided functions
-        // whamm.fns.iter_mut().for_each(|function| {
-        //     self.visit_fn(&mut function.1);
-        // });
-
-        whamm.scripts.iter_mut().for_each(|script| {
+        whamm.scripts.iter().for_each(|script| {
             self.visit_script(script);
         });
 
         None
     }
 
-    fn visit_script(&mut self, script: &mut Script) -> Option<DataType> {
-        let _ = self.table.enter_named_scope(&script.name);
+    fn visit_script(&mut self, script: &Script) -> Option<DataType> {
+        self.table.enter_named_scope(&script.name);
 
-        script.providers.iter_mut().for_each(|(_, provider)| {
+        // TODO: type check user provided functions
+        // whamm.fns.iter().for_each(|function| {
+        //     self.visit_fn(&mut function.1);
+        // });
+
+        script.providers.iter().for_each(|(_, provider)| {
             self.visit_provider(provider);
         });
 
@@ -112,10 +91,10 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
         None
     }
 
-    fn visit_provider(&mut self, provider: &mut Provider) -> Option<DataType> {
+    fn visit_provider(&mut self, provider: &Provider) -> Option<DataType> {
         let _ = self.table.enter_scope();
 
-        provider.packages.iter_mut().for_each(|(_, package)| {
+        provider.packages.iter().for_each(|(_, package)| {
             self.visit_package(package);
         });
 
@@ -123,10 +102,10 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
         None
     }
 
-    fn visit_package(&mut self, package: &mut Package) -> Option<DataType> {
+    fn visit_package(&mut self, package: &Package) -> Option<DataType> {
         let _ = self.table.enter_scope();
 
-        package.events.iter_mut().for_each(|(_, event)| {
+        package.events.iter().for_each(|(_, event)| {
             self.visit_event(event);
         });
 
@@ -135,11 +114,11 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
         None
     }
 
-    fn visit_event(&mut self, event: &mut Event) -> Option<DataType> {
+    fn visit_event(&mut self, event: &Event) -> Option<DataType> {
         let _ = self.table.enter_scope();
 
-        event.probe_map.iter_mut().for_each(|(_, probe)| {
-            probe.iter_mut().for_each(|probe| {
+        event.probe_map.iter().for_each(|(_, probe)| {
+            probe.iter().for_each(|probe| {
                 self.visit_probe(probe);
             });
         });
@@ -149,13 +128,12 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
         None
     }
 
-    fn visit_probe(&mut self, probe: &mut Probe) -> Option<DataType> {
+    fn visit_probe(&mut self, probe: &Probe) -> Option<DataType> {
         let _ = self.table.enter_scope();
 
         // type check predicate
-        if let Some(predicate) = &mut probe.predicate {
-            let predicate_loc =
-                <Option<crate::parser::types::Location> as Clone>::clone(predicate.loc()).unwrap();
+        if let Some(predicate) = &probe.predicate {
+            let predicate_loc = predicate.loc().clone().unwrap();
             if let Some(ty) = self.visit_expr(predicate) {
                 if ty != DataType::Boolean {
                     self.err.type_check_error(
@@ -168,7 +146,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
         }
 
         // type check action
-        if let Some(body) = &mut probe.body {
+        if let Some(body) = &probe.body {
             for stmt in body {
                 self.visit_stmt(stmt);
             }
@@ -179,28 +157,27 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
         None
     }
 
-    fn visit_fn(&mut self, function: &mut Fn) -> Option<DataType> {
+    fn visit_fn(&mut self, function: &Fn) -> Option<DataType> {
         // TODO: not typechecking user provided functions yet
         // type check body
-        if let Some(body) = &mut function.body {
+        self.table.enter_named_scope(&function.name.name);
+        if let Some(body) = &function.body {
             for stmt in body {
                 self.visit_stmt(stmt);
             }
         }
+        let _ = self.table.exit_scope();
 
         // return type
         todo!();
     }
 
-    #[allow(unused_variables)]
-    fn visit_stmt(&mut self, stmt: &mut Statement) -> Option<DataType> {
+    fn visit_stmt(&mut self, stmt: &Statement) -> Option<DataType> {
         match stmt {
-            crate::parser::types::Statement::Assign { var_id, expr, .. } => {
+            Statement::Assign { var_id, expr, .. } => {
                 // change type in symbol table?
-                let lhs_loc =
-                    <Option<crate::parser::types::Location> as Clone>::clone(var_id.loc()).unwrap();
-                let rhs_loc =
-                    <Option<crate::parser::types::Location> as Clone>::clone(expr.loc()).unwrap();
+                let lhs_loc = var_id.loc().clone().unwrap();
+                let rhs_loc = expr.loc().clone().unwrap();
                 let lhs_ty_op = self.visit_expr(var_id);
                 let rhs_ty_op = self.visit_expr(expr);
 
@@ -209,11 +186,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
                         None
                     } else {
                         // using a struct in parser to merge two locations
-                        let loc = crate::parser::types::Location::from(
-                            &lhs_loc.line_col,
-                            &rhs_loc.line_col,
-                            None,
-                        );
+                        let loc = Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
                         self.err.type_check_error(
                             false,
                             format! {"Type Mismatch, lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty},
@@ -223,11 +196,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
                         None
                     }
                 } else {
-                    let loc = crate::parser::types::Location::from(
-                        &lhs_loc.line_col,
-                        &rhs_loc.line_col,
-                        None,
-                    );
+                    let loc = Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
                     self.err.type_check_error(
                         false,
                         "Can't get type of lhs or rhs of this binary operation".to_string(),
@@ -236,13 +205,13 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
                     None
                 }
             }
-            crate::parser::types::Statement::Expr { expr, .. } => {
+            Statement::Expr { expr, .. } => {
                 self.visit_expr(expr);
                 None
             }
-            Statement::Decl { ty, var_id, loc } => {
+            Statement::Decl { ty, var_id, .. } => {
                 if let Expr::VarId { name, .. } = var_id {
-                    self.add_global(ty.to_owned(), name.to_owned(), false);
+                    self.add_local(ty.to_owned(), name.to_owned(), false);
                 } else {
                     self.err.unexpected_error(
                         true,
@@ -259,14 +228,12 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
         }
     }
 
-    fn visit_expr(&mut self, expr: &mut Expr) -> Option<DataType> {
+    fn visit_expr(&mut self, expr: &Expr) -> Option<DataType> {
         match expr {
             Expr::Primitive { val, .. } => self.visit_value(val),
             Expr::BinOp { lhs, rhs, op, .. } => {
-                let lhs_loc =
-                    <Option<crate::parser::types::Location> as Clone>::clone(lhs.loc()).unwrap();
-                let rhs_loc =
-                    <Option<crate::parser::types::Location> as Clone>::clone(rhs.loc()).unwrap();
+                let lhs_loc = lhs.loc().clone().unwrap();
+                let rhs_loc = rhs.loc().clone().unwrap();
                 let lhs_ty_op = self.visit_expr(lhs);
                 let rhs_ty_op = self.visit_expr(rhs);
                 if let (Some(lhs_ty), Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {
@@ -279,11 +246,8 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
                             if lhs_ty == DataType::I32 && rhs_ty == DataType::I32 {
                                 Some(DataType::I32)
                             } else {
-                                let loc = crate::parser::types::Location::from(
-                                    &lhs_loc.line_col,
-                                    &rhs_loc.line_col,
-                                    None,
-                                );
+                                let loc =
+                                    Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
                                 self.err.type_check_error(
                                     false,
                                     format! {"Type Mismatch, lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty},
@@ -310,11 +274,8 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
                                 Some(DataType::Boolean)
                             } else {
                                 // using a struct in parser to merge two locations
-                                let loc = crate::parser::types::Location::from(
-                                    &lhs_loc.line_col,
-                                    &rhs_loc.line_col,
-                                    None,
-                                );
+                                let loc =
+                                    Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
                                 self.err.type_check_error(
                                     false,
                                     format! {"Type Mismatch, lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty},
@@ -329,11 +290,8 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
                                 Some(DataType::Boolean)
                             } else {
                                 // using a struct in parser to merge two locations
-                                let loc = crate::parser::types::Location::from(
-                                    &lhs_loc.line_col,
-                                    &rhs_loc.line_col,
-                                    None,
-                                );
+                                let loc =
+                                    Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
                                 self.err.type_check_error(
                                     false,
                                     format! {"Type Mismatch, lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty},
@@ -345,11 +303,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
                         }
                     }
                 } else {
-                    let loc = crate::parser::types::Location::from(
-                        &lhs_loc.line_col,
-                        &rhs_loc.line_col,
-                        None,
-                    );
+                    let loc = Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
                     self.err.type_check_error(
                         false,
                         "Can't get type of lhs or rhs of this binary operation".to_string(),
@@ -358,37 +312,25 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
                     None
                 }
             }
-            #[allow(unused_variables)]
-            Expr::VarId {
-                name,
-                loc,
-                is_comp_provided,
-            } => {
+            Expr::VarId { name, loc, .. } => {
                 // get type from symbol table
-                // println!("curr scope: {:?}", self.table.get_curr_scope());
-                // let _ = self.table.enter_scope(); // Alex: adding enter_scope here doens't seems to have an effect here (which is reasonable)
-                // println!("curr scope: {:?}", self.table.get_curr_scope());
-
                 if let Some(id) = self.table.lookup(name) {
-                    // println!("LOOK AT ME Var id: {:?}", self.table.get_record(id));
                     if let Some(rec) = self.table.get_record(id) {
                         if let Record::Var { ty, .. } = rec {
-                            return Some(ty.to_owned());
+                            return Some(ty.clone());
                         } else {
                             // unexpected record type
                             self.err.unexpected_error(
                                 true,
                                 Some(UNEXPECTED_ERR_MSG.to_string()),
-                                <Option<crate::parser::types::Location> as Clone>::clone(loc)
-                                    .map(|l| l.line_col),
+                                loc.clone().map(|l| l.line_col),
                             )
                         }
                     } else {
                         self.err.type_check_error(
                             false,
                             format! {"Can't look up {} in symbol table", name},
-                            &<Option<crate::parser::types::Location> as Clone>::clone(loc)
-                                .map(|l| l.line_col),
+                            &loc.clone().map(|l| l.line_col),
                         );
                     }
                 }
@@ -406,8 +348,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
                                 self.err.type_check_error(
                                     false,
                                     "Not operator can only be applied to boolean".to_owned(),
-                                    &<Option<crate::parser::types::Location> as Clone>::clone(loc)
-                                        .map(|l| l.line_col),
+                                    &loc.clone().map(|l| l.line_col),
                                 );
                                 None
                             }
@@ -417,8 +358,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
                     self.err.type_check_error(
                         false,
                         "Can't get type of expr of this unary operation".to_owned(),
-                        &<Option<crate::parser::types::Location> as Clone>::clone(expr.loc())
-                            .map(|l| l.line_col),
+                        &loc.clone().map(|l| l.line_col),
                     );
                     None
                 }
@@ -439,8 +379,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
                             self.err.type_check_error(
                                 false,
                                 "Can't get type of argument".to_owned(),
-                                &<Option<crate::parser::types::Location> as Clone>::clone(loc)
-                                    .map(|l| l.line_col),
+                                &loc.clone().map(|l| l.line_col),
                             );
                             return None;
                         }
@@ -452,9 +391,8 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
                     _ => {
                         self.err.type_check_error(
                             false,
-                            "Function target must be a variable".to_owned(),
-                            &<Option<crate::parser::types::Location> as Clone>::clone(loc)
-                                .map(|l| l.line_col),
+                            "Function target must be a valid identifier.".to_owned(),
+                            &loc.clone().map(|l| l.line_col),
                         );
                         return None;
                     }
@@ -470,10 +408,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
                 None
             }
             Expr::Ternary {
-                cond,
-                conseq,
-                alt,
-                loc,
+                cond, conseq, alt, ..
             } => {
                 let cond_ty = self.visit_expr(cond);
                 if let Some(ty) = cond_ty {
@@ -481,35 +416,49 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
                         self.err.type_check_error(
                             false,
                             "Condition must be of type boolean".to_owned(),
-                            &<Option<crate::parser::types::Location> as Clone>::clone(loc)
-                                .map(|l| l.line_col),
+                            &Some(cond.loc().clone().unwrap().line_col),
                         );
                     }
                 }
-                // TODO: should conseq and alt have the same type?
-                let _conseq_ty = self.visit_expr(conseq);
-                let _alt_ty = self.visit_expr(alt);
-                todo!()
+
+                let conseq_ty = self.visit_expr(conseq);
+                let alt_ty = self.visit_expr(alt);
+
+                if conseq_ty == alt_ty {
+                    conseq_ty
+                } else {
+                    self.err.type_check_error(
+                        false,
+                        "Consequent and alternative must have the same type".to_owned(),
+                        &Some(
+                            Location::from(
+                                &conseq.loc().clone().unwrap().line_col,
+                                &alt.loc().clone().unwrap().line_col,
+                                None,
+                            )
+                            .line_col,
+                        ),
+                    );
+                    None
+                }
             }
         }
     }
 
-    #[allow(unused_variables)]
-    fn visit_datatype(&mut self, datatype: &mut DataType) -> Option<DataType> {
+    fn visit_datatype(&mut self, _datatype: &DataType) -> Option<DataType> {
         unimplemented!()
     }
 
-    #[allow(unused_variables)]
-    fn visit_value(&mut self, val: &mut Value) -> Option<DataType> {
+    fn visit_value(&mut self, val: &Value) -> Option<DataType> {
         match val {
             Value::Integer { .. } => Some(DataType::I32),
             Value::Str { .. } => Some(DataType::Str),
             Value::Boolean { .. } => Some(DataType::Boolean),
-            Value::Tuple { ty, vals } => {
+            Value::Tuple { ty: _, vals } => {
                 // Alex TODO: this ty does not contain the DataType
                 // and I need to recurse to get the type, why?
                 let tys = vals
-                    .iter_mut()
+                    .iter()
                     .map(|val| self.visit_expr(val))
                     .collect::<Vec<_>>();
                 // assume these expressions (actually just values) all parse
@@ -530,24 +479,20 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker {
         }
     }
 
-    #[allow(unused_variables)]
-    fn visit_formal_param(&mut self, param: &mut (Expr, DataType)) -> Option<DataType> {
+    fn visit_formal_param(&mut self, _param: &(Expr, DataType)) -> Option<DataType> {
         unimplemented!()
     }
 
-    #[allow(unused_variables)]
-    fn visit_binop(&mut self, binop: &mut BinOp) -> Option<DataType> {
+    fn visit_binop(&mut self, _binop: &BinOp) -> Option<DataType> {
         unimplemented!()
     }
 
-    #[allow(unused_variables)]
-    fn visit_unop(&mut self, unop: &mut UnOp) -> Option<DataType> {
+    fn visit_unop(&mut self, _unop: &UnOp) -> Option<DataType> {
         unimplemented!()
     }
 }
 
-pub fn type_check(ast: &mut Whamm, st: &SymbolTable, err: &mut ErrorGen) -> bool {
-    // Alex TODO, is cloning the way to go ??
+pub fn type_check(ast: &Whamm, st: &SymbolTable, err: &mut ErrorGen) -> bool {
     let mut type_checker = TypeChecker {
         table: st.clone(),
         err: err.clone(),

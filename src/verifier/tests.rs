@@ -62,13 +62,20 @@ wasm::call:alt {
     x = "str";
 }
     "#,
-    //     // TODO: Ternary
-    //     r#"
-    // i32 i;
-    // wasm::call:alt {
-    //     i = 1 ? 2 : 3;
-    // }
-    //     "#,
+    // Ternary (TODO: We do not emit code for tenary yet)
+    r#"
+i32 i;
+wasm::call:alt {
+    i = 1 ? 2 : 3;
+}
+    "#,
+    r#"
+bool i;
+i32 a;
+wasm:bytecode:br:before {
+    a = i ? 1 : true;
+}
+    "#,
 ];
 
 // =============
@@ -134,9 +141,9 @@ wasm::call:alt /
 
 fn is_valid_script(script: &str, err: &mut ErrorGen) -> bool {
     match tests::get_ast(script, err) {
-        Some(ast) => verifier::type_check(
-            &mut ast.clone(),
-            &mut verifier::build_symbol_table(&mut ast.clone(), err),
+        Some(mut ast) => verifier::type_check(
+            &ast.clone(),
+            &mut verifier::build_symbol_table(&mut ast, err),
             err,
         ),
         None => {
