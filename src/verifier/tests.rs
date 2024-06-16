@@ -76,6 +76,30 @@ wasm:bytecode:br:before {
     a = i ? 1 : true;
 }
     "#,
+    // calls (comp provided function)
+    r#"
+wasm::call:alt /
+    target_fn_type == "import" &&
+    target_imp_module == "ic0" &&
+    target_imp_name == "call_new" &&
+    strcmp((arg0, arg1), 1) &&
+    strcmp((arg2, arg3), "record")
+/ {
+    new_target_fn_name = "instr_redirect_to_fault_injector";
+}
+    "#,
+    // TODO: I can't support something like
+    // Since the ty_info field only takes Vec<DataType>
+    // so I can't put assume good in it
+    // One way to fix it is to add AssumeGood in the DataType Struct
+    //     r#"
+    // wasm::call:alt /
+    //     // I can't typecheck this because the entire Tuple is assume to be good
+    //     strcmp((arg2, "32q"), "bookings")
+    // / {
+    //     new_target_fn_name = "instr_redirect_to_fault_injector";
+    // }
+    //     "#
 ];
 
 // =============
