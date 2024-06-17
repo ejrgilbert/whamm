@@ -725,6 +725,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                         expr,
                         loc: Some(Location::from(&var_id_line_col, &expr_line_col, None)),
                     });
+                    trace!("exiting dec_assign");
                     output
                 }
             };
