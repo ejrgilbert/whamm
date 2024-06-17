@@ -470,6 +470,7 @@ pub fn testing_strcmp() {
         }
     };
 }
+#[test]
 pub fn testing_block() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);

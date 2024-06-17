@@ -165,7 +165,9 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
                         Rule::statement => {
                             let mut stmts = vec![];
                             n.into_inner().for_each(|p| {
-                                stmts.push(stmt_from_rule(p, err));
+                                for stmt in stmt_from_rule(p, err) {
+                                    stmts.push(stmt);
+                                }
                             });
                             (None, Some(stmts))
                         }
@@ -178,7 +180,9 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
                                 let mut stmts = vec![];
 
                                 b.into_inner().for_each(|p| {
-                                    stmts.push(stmt_from_rule(p, err));
+                                    for stmt in stmt_from_rule(p, err) {
+                                        stmts.push(stmt);
+                                    }
                                 });
                                 Some(stmts)
                             }
@@ -195,9 +199,7 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
                 let mut stmts = vec![];
                 //each stmt_from_rule returns a vector
                 for stmt in b {
-                    for s in stmt {
-                        stmts.push(s);
-                    }
+                    stmts.push(stmt);
                 }
                 stmts
             });
@@ -334,12 +336,50 @@ pub fn block_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
     trace!("Entered parse_block");
     let fn_name_line_col = LineColLocation::from(pair.as_span());
     let mut body_vec = vec![];
-    pair.into_inner().for_each(|p| {
-        for stmt in stmt_from_rule(p, err) {
-            body_vec.push(stmt);
-        }
-    });
+    //NGL, this is mostly stolen from process pair::probe_def
+    let next = pair.clone().into_inner().next();
+    let this_body = match next {
+        Some(n) => {
+            let mut this_body = match n.as_rule() {
+                Rule::statement => {
+                    let mut stmts = vec![];
+                    n.into_inner().for_each(|p| {
+                        for stmt in stmt_from_rule(p, err) {
+                            stmts.push(stmt);
+                        }
+                    });
+                    Some(stmts)
+                }
+                _ => None,
+            };
+            if this_body.is_none() {
+                this_body = match pair.into_inner().next() {
+                    Some(b) => {
+                        let mut stmts = vec![];
 
+                        b.into_inner().for_each(|p| {
+                            for stmt in stmt_from_rule(p, err) {
+                                stmts.push(stmt);
+                            }
+                        });
+                        Some(stmts)
+                    }
+                    None => None,
+                };
+            }
+            this_body
+        }
+        None => None,
+    };
+    this_body.map(|b| {
+        let mut stmts = vec![];
+        //each stmt_from_rule returns a vector
+        for stmt in b {
+            stmts.push(stmt);
+        }
+        body_vec = stmts.clone();
+        stmts
+    });
     //create the block object and return it in the wrapper with result
     Block {
         stmts: body_vec,
@@ -729,7 +769,6 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                     output
                 }
             };
-            
         }
         rule => {
             err.parse_error(
