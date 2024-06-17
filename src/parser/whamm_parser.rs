@@ -301,7 +301,7 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
                 is_comp_provided: false,
                 name: fn_id,
                 params: args,
-                body: Some(body),
+                body,
                 return_ty: Some(return_ty),
             };
             let script: &mut Script = whamm.scripts.get_mut(script_count).unwrap();

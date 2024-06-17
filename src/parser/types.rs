@@ -281,7 +281,7 @@ pub struct Fn {
     pub(crate) name: FnId,
     pub(crate) params: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
     pub(crate) return_ty: Option<DataType>,
-    pub(crate) body: Option<Block>,
+    pub(crate) body: Block,
 }
 impl Fn {
     pub fn print(&self, buffer: &mut Buffer) {
@@ -444,7 +444,10 @@ impl Whamm {
             },
             params,
             return_ty: Some(DataType::Boolean),
-            body: None,
+            body: Block {
+                stmts: vec![],
+                loc: None,
+            },
         };
         let docs = ProvidedFunctionality {
             name: "strcmp".to_string(),

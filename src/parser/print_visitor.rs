@@ -337,17 +337,16 @@ impl WhammVisitor<String> for AsStrVisitor {
 
         // print body
         self.increase_indent();
-        if let Some(block) = &f.body {
-            for stmt in block.stmts.iter() {
-                s += &format!(
-                    "{} {}{}{}",
-                    self.get_indent(),
-                    self.visit_stmt(stmt),
-                    ";",
-                    NL
-                );
-            }
+        for stmt in f.body.stmts.iter() {
+            s += &format!(
+                "{} {}{}{}",
+                self.get_indent(),
+                self.visit_stmt(stmt),
+                ";",
+                NL
+            );
         }
+
         self.decrease_indent();
         s += &format!("{} }}{}", self.get_indent(), NL);
 
