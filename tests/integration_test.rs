@@ -4,6 +4,7 @@ use log::error;
 use std::fs;
 use std::path::Path;
 use std::process::{Command, Stdio};
+use wabt::{wasm2wat, wat2wasm};
 use walrus::Module;
 use whamm::common::error::ErrorGen;
 use whamm::generator::emitters::{Emitter, WasmRewritingEmitter};
@@ -94,6 +95,63 @@ fn instrument_dfinity_with_fault_injection() {
         };
     }
 }
+
+#[test]
+fn instrument_handwritten_wasm() {
+    // executable is located at target/debug/whamm
+    let executable = "target/debug/whamm";
+
+    // if you want to change the wat file
+    // (calling wat2wasm from a child process doesn't work
+    //  since somehow the executable can't write to the file system directly)
+    let file_data = fs::read("tests/apps/handwritten/add.wat").unwrap();
+    let wasm_data = wat2wasm(file_data).unwrap();
+    fs::write("tests/apps/handwritten/add.wasm", wasm_data).unwrap();
+
+    let res = Command::new(executable)
+        .arg("instr")
+        .arg("--script")
+        .arg("tests/scripts/instr.mm")
+        .arg("--app")
+        .arg("tests/apps/handwritten/add.wasm")
+        .output()
+        .expect("failed to execute process");
+    assert!(res.status.success());
+
+    let file_data = fs::read("output/output.wasm").unwrap();
+    let wat_data = wasm2wat(file_data).unwrap();
+    println!("{}", wat_data);
+}
+
+#[test]
+fn instrument_control_flow() {
+    let executable = "target/debug/whamm";
+
+    // run cargo run on control flow
+    let a = Command::new("cargo")
+        .arg("build")
+        .arg("--target")
+        .arg("wasm32-unknown-unknown")
+        .current_dir("wasm_playground/control_flow")
+        .output()
+        .expect("failed to execute process");
+    assert!(a.status.success());
+
+    let res = Command::new(executable)
+        .arg("instr")
+        .arg("--script")
+        .arg("tests/scripts/instr.mm")
+        .arg("--app")
+        .arg("wasm_playground/control_flow/target/wasm32-unknown-unknown/debug/cf.wasm")
+        .output()
+        .expect("failed to execute process");
+    assert!(res.status.success());
+
+    let file_data = fs::read("output/output.wasm").unwrap();
+    let wat_data = wasm2wat(file_data).unwrap();
+    fs::write("output/output.wat", wat_data).unwrap();
+}
+
 #[test]
 fn instrument_spin_with_fault_injection() {
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);

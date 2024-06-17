@@ -615,7 +615,7 @@ fn get_func_info(app_wasm: &walrus::Module, func: &walrus::Function) -> (FuncInf
                 FuncInfo {
                     func_kind: "local".to_string(),
                     module: "".to_string(),
-                    name: "".to_string(),
+                    name: func.name.clone().unwrap_or("".to_string()),
                 },
                 params,
             )
