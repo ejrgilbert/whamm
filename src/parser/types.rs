@@ -112,8 +112,7 @@ impl DataType {
             DataType::Tuple { ty_info } => {
                 white(true, "(".to_string(), buffer);
                 let mut is_first = true;
-                let types = ty_info;
-                for ty in types {
+                for ty in ty_info.iter() {
                     if !is_first {
                         white(true, ", ".to_string(), buffer);
                     }
