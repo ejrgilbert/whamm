@@ -228,23 +228,17 @@ map<i32, i32> count;
         }
     }
         "#,
-    //bad fn definitions
-    // r#"
-    // fn_name() -> i32{
-    // wasm:bytecode:br:before {
-    // }
-    //     "#,
-    // r#"
-    // fn_name {
-    // }
-    // wasm:bytecode:br:before {
-    // }
-    //     "#,
-    // r#"
-    // fn_name(, arg0) -> i32{}
-    // wasm:bytecode:br:before {
-    // }
-    //     "#,
+    // bad fn definitions
+    r#"
+    fn_name() -> i32{
+    wasm:bytecode:br:before {
+    }
+        "#,
+    r#"
+    fn_name(, arg0) -> i32{}
+    wasm:bytecode:br:before {
+    }
+        "#,
 ];
 
 const SPECIAL: &[&str] = &["BEGIN { }", "END { }", "wasm:::alt { }", "wasm:::alt { }"];

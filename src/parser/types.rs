@@ -181,16 +181,10 @@ pub enum Statement {
         loc: Option<Location>,
     },
 
-    /// Standalone `Expr` statement, which means we can write programs like this:
-    /// int main() {
-    ///   2 + 2;
-    ///   return 0;
-    /// }
     Expr {
         expr: Expr,
         loc: Option<Location>,
     },
-    //expr is like this in the parser, but later this does not work and returns an error
     Return {
         expr: Expr,
         loc: Option<Location>,
