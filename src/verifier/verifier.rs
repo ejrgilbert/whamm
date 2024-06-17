@@ -253,7 +253,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker {
                                     format! {"Type Mismatch, lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty},
                                     &Some(loc.line_col),
                                 );
-                                None
+                                Some(DataType::AssumeGood)
                             }
                         }
                         BinOp::And | BinOp::Or => {
@@ -265,7 +265,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker {
                                     "Different types for lhs and rhs".to_owned(),
                                     &None,
                                 );
-                                None
+                                Some(DataType::AssumeGood)
                             }
                         }
 
@@ -282,7 +282,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker {
                                     &Some(loc.line_col),
                                 );
 
-                                None
+                                Some(DataType::AssumeGood)
                             }
                         }
                         BinOp::GT | BinOp::LT | BinOp::GE | BinOp::LE => {
@@ -298,7 +298,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker {
                                     &Some(loc.line_col),
                                 );
 
-                                None
+                                Some(DataType::AssumeGood)
                             }
                         }
                     }
@@ -309,7 +309,8 @@ impl WhammVisitor<Option<DataType>> for TypeChecker {
                         "Can't get type of lhs or rhs of this binary operation".to_string(),
                         &Some(loc.line_col),
                     );
-                    None
+
+                    Some(DataType::AssumeGood)
                 }
             }
             Expr::VarId { name, loc, .. } => {
@@ -341,7 +342,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker {
                     }
                 }
 
-                None
+                Some(DataType::AssumeGood)
             }
             Expr::UnOp { op, expr, loc } => {
                 let expr_ty_op = self.visit_expr(expr);
@@ -356,7 +357,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker {
                                     "Not operator can only be applied to boolean".to_owned(),
                                     &loc.clone().map(|l| l.line_col),
                                 );
-                                None
+                                Some(DataType::AssumeGood)
                             }
                         }
                     }
@@ -366,7 +367,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker {
                         "Can't get type of expr of this unary operation".to_owned(),
                         &loc.clone().map(|l| l.line_col),
                     );
-                    None
+                    Some(DataType::AssumeGood)
                 }
             }
             Expr::Call {
@@ -387,7 +388,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker {
                                     "Can't get type of argument".to_owned(),
                                     &loc.clone().map(|l| l.line_col),
                                 );
-                                return None;
+                                return Some(DataType::AssumeGood);
                             }
                         }
                     }
@@ -401,7 +402,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker {
                             "Function target must be a valid identifier.".to_owned(),
                             &loc.clone().map(|l| l.line_col),
                         );
-                        return None;
+                        return Some(DataType::AssumeGood);
                     }
                 };
 
@@ -455,7 +456,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker {
                                     "Return type of function not specified".to_owned(),
                                     &loc.clone().map(|l| l.line_col),
                                 );
-                                None
+                                Some(DataType::AssumeGood)
                             }
                         };
                     } else {
@@ -473,7 +474,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker {
                     );
                 }
 
-                None
+                Some(DataType::AssumeGood)
             }
             Expr::Ternary {
                 cond, conseq, alt, ..
@@ -509,10 +510,24 @@ impl WhammVisitor<Option<DataType>> for TypeChecker {
                                     .line_col,
                                 ),
                             );
-                            None
+                            Some(DataType::AssumeGood)
                         }
                     }
-                    _ => None,
+                    _ => {
+                        self.err.type_check_error(
+                            false,
+                            "Can't get type of consequent or alternative".to_owned(),
+                            &Some(
+                                Location::from(
+                                    &conseq.loc().clone().unwrap().line_col,
+                                    &alt.loc().clone().unwrap().line_col,
+                                    None,
+                                )
+                                .line_col,
+                            ),
+                        );
+                        Some(DataType::AssumeGood)
+                    }
                 }
             }
         }

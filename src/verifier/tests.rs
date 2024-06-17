@@ -103,6 +103,29 @@ wasm::call:alt {
     u = argdadf;
 }
     "#,
+    // long type check error
+    r#"
+wasm::call:alt /
+    (1 == "str") &&
+    true &&
+    true &&
+    true
+/ {
+
+}
+    "#,
+    // long type check error, but recognizes both sides
+    r#"
+wasm::call:alt /
+    (1 == "str") &&
+    true &&
+    true &&
+    true &&
+    strcmp((arg0, "arg1"), "bookings")
+/ {
+
+}
+    "#,
 ];
 
 // =============
