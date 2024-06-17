@@ -38,9 +38,12 @@ PROBE_SPEC = ${
     | PROBE_ID? ~ ":" ~ PROBE_ID?
     | PROBE_ID
 }
+//disallowed IDs should have the full list of reserved names like return
 
-ID = @{ (ASCII_ALPHA | "_")+ ~ ( ASCII_DIGIT | (ASCII_ALPHA | "_")+ )* }
-
+DISALLOWED_ID = _{ "return" | "if" | "while" | "else" }
+ID = @{ (!DISALLOWED_ID ~ (ASCII_ALPHA | "_")+ ~ ( ASCII_DIGIT | (ASCII_ALPHA | "_")+ )*) |
+        (DISALLOWED_ID ~ (ASCII_ALPHA | "_" | ASCII_DIGIT)+)
+}
 // ===============
 // ---- Types ----
 // ===============

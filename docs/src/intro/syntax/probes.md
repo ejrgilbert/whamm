@@ -34,7 +34,7 @@ Each part of the `probe_specification` gradually increases in specificity until 
 Consider the following example specification: `wasm:bytecode:br_if:before`.
 This spec can be read as "Insert this probe _before_ each of the _br_if_ _Wasm_ _bytecode_ instructions in my program."
 
-Read through our [instrumentable events](events.md) documentation for what we currently support and our future goals.
+Read through our [instrumentable events](../events.md) documentation for what we currently support and our future goals.
 
 ## The Predicate ##
 `/ <predicate> /`

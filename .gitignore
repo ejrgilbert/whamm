@@ -18,6 +18,7 @@ Cargo.lock
 
 # Ignore the huge test files
 tests/apps/**/*.wat
+!tests/apps/handwritten/*.wat
 output/
 
 # Ignore the wasm playground files
