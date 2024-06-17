@@ -360,6 +360,9 @@ pub fn test_parse_invalid_scripts() {
 pub fn test_whamm_with_asserts() {
     setup_logger();
     let script = r#"
+my_func() -> i32{
+    return 5;
+}
 wasm::call:alt /
     target_fn_type == "import" &&
     target_imp_module == "ic0" &&
@@ -377,7 +380,8 @@ wasm::call:alt /
             // script
             assert_eq!(1, ast.scripts.len()); // a single script
             let script = ast.scripts.first().unwrap();
-
+            //functions length - strcmp and my_func
+            assert_eq!(1, script.fns.len());
             // provider
             assert_eq!(1, script.providers.len());
             let provider = script.providers.get("wasm").unwrap();
