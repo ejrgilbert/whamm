@@ -246,7 +246,11 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
                         let param_id_local = Expr::VarId {
                             is_comp_provided: false,
                             name: arg_name,
-                            loc: Some(Location::from(&LineColLocation::from(p_clone.as_span()), &LineColLocation::from(p_clone.as_span()), None)),
+                            loc: Some(Location::from(
+                                &LineColLocation::from(p_clone.as_span()),
+                                &LineColLocation::from(p_clone.as_span()),
+                                None,
+                            )),
                         };
                         //arg holds Vec<(VarId, DataType)>
                         args.push((param_id_local, type_local));
