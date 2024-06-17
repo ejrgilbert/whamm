@@ -221,7 +221,10 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
             let mut return_ty = DataType::Tuple { ty_info: vec![] };
             let mut body = Block {
                 stmts: vec![],
-                loc: Some(Location::from(&fn_name_line_col, &fn_name_line_col, None)),
+                loc: Some(Location {
+                    line_col: fn_name_line_col.clone(),
+                    path: None,
+                }),
             };
             //pair now holds the list of tokens in the fn_def rule
             for p in pair {
