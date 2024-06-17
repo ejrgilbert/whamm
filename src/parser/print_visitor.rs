@@ -448,6 +448,7 @@ impl WhammVisitor<String> for AsStrVisitor {
             DataType::Str => "str".to_string(),
             DataType::Tuple { .. } => "tuple".to_string(),
             DataType::Map { .. } => "map".to_string(),
+            DataType::AssumeGood => "unknown".to_string(),
         }
     }
 

@@ -271,6 +271,7 @@ impl SymbolTableBuilder<'_> {
         let fn_rec = Record::Fn {
             name: f.name.clone(),
             params: vec![],
+            ret_ty: f.return_ty.clone(),
             addr: None,
         };
 

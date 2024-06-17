@@ -80,19 +80,53 @@ impl Location {
     }
 }
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+impl PartialEq for DataType {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (DataType::I32, DataType::I32)
+            | (DataType::Boolean, DataType::Boolean)
+            | (DataType::Null, DataType::Null)
+            | (DataType::Str, DataType::Str)
+            | (_, DataType::AssumeGood)
+            | (DataType::AssumeGood, _) => true,
+            (DataType::Tuple { ty_info: ty_info0 }, DataType::Tuple { ty_info: ty_info1 }) => {
+                ty_info0.len() == ty_info1.len()
+                    && ty_info0
+                        .iter()
+                        .zip(ty_info1.iter())
+                        .all(|(ty0, ty1)| ty0 == ty1)
+            }
+            (
+                DataType::Map {
+                    key_ty: key_ty0,
+                    val_ty: val_ty0,
+                },
+                DataType::Map {
+                    key_ty: key_ty1,
+                    val_ty: val_ty1,
+                },
+            ) => key_ty0 == key_ty1 && val_ty0 == val_ty1,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for DataType {}
+
+#[derive(Clone, Debug)]
 pub enum DataType {
     I32,
     Boolean,
     Null,
     Str,
     Tuple {
-        ty_info: Option<Vec<Box<DataType>>>,
+        ty_info: Vec<Box<DataType>>,
     },
     Map {
         key_ty: Box<DataType>,
         val_ty: Box<DataType>,
     },
+    AssumeGood,
 }
 impl DataType {
     pub fn print(&self, buffer: &mut Buffer) {
@@ -112,14 +146,12 @@ impl DataType {
             DataType::Tuple { ty_info } => {
                 white(true, "(".to_string(), buffer);
                 let mut is_first = true;
-                if let Some(types) = ty_info {
-                    for ty in types {
-                        if !is_first {
-                            white(true, ", ".to_string(), buffer);
-                        }
-                        ty.print(buffer);
-                        is_first = false;
+                for ty in ty_info {
+                    if !is_first {
+                        white(true, ", ".to_string(), buffer);
                     }
+                    ty.print(buffer);
+                    is_first = false;
                 }
                 white(true, ")".to_string(), buffer);
             }
@@ -131,12 +163,15 @@ impl DataType {
                 val_ty.print(buffer);
                 white(true, ">".to_string(), buffer);
             }
+            DataType::AssumeGood => {
+                yellow(true, "unknown".to_string(), buffer);
+            }
         }
     }
 }
 
 // Values
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Value {
     Integer {
         ty: DataType,
@@ -209,7 +244,7 @@ impl Statement {
     }
 }
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Expr {
     UnOp {
         // Type is based on the outermost `op`
@@ -418,7 +453,7 @@ impl Whamm {
                     loc: None,
                 },
                 DataType::Tuple {
-                    ty_info: Some(vec![Box::new(DataType::I32), Box::new(DataType::I32)]),
+                    ty_info: vec![Box::new(DataType::I32), Box::new(DataType::I32)],
                 },
             ),
             (

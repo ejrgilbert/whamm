@@ -378,6 +378,10 @@ pub enum Record {
     Fn {
         name: FnId,
         params: Vec<usize>,
+        // TODO: should this be an option?
+        // given that we are assuming function that return nothing
+        // returns a unit type (empty tuple)
+        ret_ty: Option<DataType>,
 
         /// The address of this function post-injection
         // TODO -- this representation SUCKS...specific to walrus bytecode injection...

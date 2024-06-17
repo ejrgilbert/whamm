@@ -88,18 +88,21 @@ wasm::call:alt /
     new_target_fn_name = "instr_redirect_to_fault_injector";
 }
     "#,
-    // TODO: I can't support something like
-    // Since the ty_info field only takes Vec<DataType>
-    // so I can't put assume good in it
-    // One way to fix it is to add AssumeGood in the DataType Struct
-    //     r#"
-    // wasm::call:alt /
-    //     // I can't typecheck this because the entire Tuple is assume to be good
-    //     strcmp((arg2, "32q"), "bookings")
-    // / {
-    //     new_target_fn_name = "instr_redirect_to_fault_injector";
-    // }
-    //     "#
+    r#"
+wasm::call:alt /
+    // I can't typecheck this because the entire Tuple is assume to be good
+    strcmp((arg2, "32q"), "bookings")
+/ {
+    new_target_fn_name = "instr_redirect_to_fault_injector";
+}
+    "#,
+    // only allow arg0-9 to be unknown type
+    r#"
+i32 u;
+wasm::call:alt {
+    u = argdadf;
+}
+    "#,
 ];
 
 // =============

@@ -56,15 +56,8 @@ impl TypeChecker {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-enum Opt<T> {
-    Some(T),
-    AssumeGood,
-    None,
-}
-
-impl WhammVisitor<Opt<DataType>> for TypeChecker {
-    fn visit_whamm(&mut self, whamm: &Whamm) -> Opt<DataType> {
+impl WhammVisitor<Option<DataType>> for TypeChecker {
+    fn visit_whamm(&mut self, whamm: &Whamm) -> Option<DataType> {
         // not printing events and globals now
         self.table.reset();
 
@@ -79,10 +72,10 @@ impl WhammVisitor<Opt<DataType>> for TypeChecker {
             self.visit_script(script);
         });
 
-        Opt::None
+        None
     }
 
-    fn visit_script(&mut self, script: &Script) -> Opt<DataType> {
+    fn visit_script(&mut self, script: &Script) -> Option<DataType> {
         self.table.enter_named_scope(&script.name);
 
         // TODO: type check user provided functions
@@ -95,10 +88,10 @@ impl WhammVisitor<Opt<DataType>> for TypeChecker {
         });
 
         let _ = self.table.exit_scope();
-        Opt::None
+        None
     }
 
-    fn visit_provider(&mut self, provider: &Provider) -> Opt<DataType> {
+    fn visit_provider(&mut self, provider: &Provider) -> Option<DataType> {
         let _ = self.table.enter_scope();
 
         provider.packages.iter().for_each(|(_, package)| {
@@ -106,10 +99,10 @@ impl WhammVisitor<Opt<DataType>> for TypeChecker {
         });
 
         let _ = self.table.exit_scope();
-        Opt::None
+        None
     }
 
-    fn visit_package(&mut self, package: &Package) -> Opt<DataType> {
+    fn visit_package(&mut self, package: &Package) -> Option<DataType> {
         let _ = self.table.enter_scope();
 
         package.events.iter().for_each(|(_, event)| {
@@ -118,10 +111,10 @@ impl WhammVisitor<Opt<DataType>> for TypeChecker {
 
         let _ = self.table.exit_scope();
 
-        Opt::None
+        None
     }
 
-    fn visit_event(&mut self, event: &Event) -> Opt<DataType> {
+    fn visit_event(&mut self, event: &Event) -> Option<DataType> {
         let _ = self.table.enter_scope();
 
         event.probe_map.iter().for_each(|(_, probe)| {
@@ -132,16 +125,16 @@ impl WhammVisitor<Opt<DataType>> for TypeChecker {
 
         let _ = self.table.exit_scope();
 
-        Opt::None
+        None
     }
 
-    fn visit_probe(&mut self, probe: &Probe) -> Opt<DataType> {
+    fn visit_probe(&mut self, probe: &Probe) -> Option<DataType> {
         let _ = self.table.enter_scope();
 
         // type check predicate
         if let Some(predicate) = &probe.predicate {
             let predicate_loc = predicate.loc().clone().unwrap();
-            if let Opt::Some(ty) = self.visit_expr(predicate) {
+            if let Some(ty) = self.visit_expr(predicate) {
                 if ty != DataType::Boolean {
                     self.err.type_check_error(
                         false,
@@ -161,10 +154,10 @@ impl WhammVisitor<Opt<DataType>> for TypeChecker {
 
         let _ = self.table.exit_scope();
 
-        Opt::None
+        None
     }
 
-    fn visit_fn(&mut self, function: &Fn) -> Opt<DataType> {
+    fn visit_fn(&mut self, function: &Fn) -> Option<DataType> {
         // TODO: not typechecking user provided functions yet
         // type check body
         self.table.enter_named_scope(&function.name.name);
@@ -179,7 +172,7 @@ impl WhammVisitor<Opt<DataType>> for TypeChecker {
         todo!();
     }
 
-    fn visit_stmt(&mut self, stmt: &Statement) -> Opt<DataType> {
+    fn visit_stmt(&mut self, stmt: &Statement) -> Option<DataType> {
         match stmt {
             Statement::Assign { var_id, expr, .. } => {
                 // change type in symbol table?
@@ -188,9 +181,9 @@ impl WhammVisitor<Opt<DataType>> for TypeChecker {
                 let lhs_ty_op = self.visit_expr(var_id);
                 let rhs_ty_op = self.visit_expr(expr);
 
-                if let (Opt::Some(lhs_ty), Opt::Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {
+                if let (Some(lhs_ty), Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {
                     if lhs_ty == rhs_ty {
-                        Opt::None
+                        None
                     } else {
                         // using a struct in parser to merge two locations
                         let loc = Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
@@ -200,7 +193,7 @@ impl WhammVisitor<Opt<DataType>> for TypeChecker {
                             &Some(loc.line_col),
                         );
 
-                        Opt::None
+                        None
                     }
                 } else {
                     let loc = Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
@@ -209,12 +202,12 @@ impl WhammVisitor<Opt<DataType>> for TypeChecker {
                         "Can't get type of lhs or rhs of this assignment".to_string(),
                         &Some(loc.line_col),
                     );
-                    Opt::None
+                    None
                 }
             }
             Statement::Expr { expr, .. } => {
                 self.visit_expr(expr);
-                Opt::None
+                None
             }
             Statement::Decl { ty, var_id, .. } => {
                 if let Expr::VarId { name, .. } = var_id {
@@ -230,12 +223,12 @@ impl WhammVisitor<Opt<DataType>> for TypeChecker {
                         var_id.loc().clone().map(|l| l.line_col),
                     );
                 }
-                Opt::None
+                None
             }
         }
     }
 
-    fn visit_expr(&mut self, expr: &Expr) -> Opt<DataType> {
+    fn visit_expr(&mut self, expr: &Expr) -> Option<DataType> {
         match expr {
             Expr::Primitive { val, .. } => self.visit_value(val),
             Expr::BinOp { lhs, rhs, op, .. } => {
@@ -243,7 +236,7 @@ impl WhammVisitor<Opt<DataType>> for TypeChecker {
                 let rhs_loc = rhs.loc().clone().unwrap();
                 let lhs_ty_op = self.visit_expr(lhs);
                 let rhs_ty_op = self.visit_expr(rhs);
-                if let (Opt::Some(lhs_ty), Opt::Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {
+                if let (Some(lhs_ty), Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {
                     match op {
                         BinOp::Add
                         | BinOp::Subtract
@@ -251,7 +244,7 @@ impl WhammVisitor<Opt<DataType>> for TypeChecker {
                         | BinOp::Divide
                         | BinOp::Modulo => {
                             if lhs_ty == DataType::I32 && rhs_ty == DataType::I32 {
-                                Opt::Some(DataType::I32)
+                                Some(DataType::I32)
                             } else {
                                 let loc =
                                     Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
@@ -260,25 +253,25 @@ impl WhammVisitor<Opt<DataType>> for TypeChecker {
                                     format! {"Type Mismatch, lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty},
                                     &Some(loc.line_col),
                                 );
-                                Opt::None
+                                None
                             }
                         }
                         BinOp::And | BinOp::Or => {
                             if lhs_ty == DataType::Boolean && rhs_ty == DataType::Boolean {
-                                Opt::Some(DataType::Boolean)
+                                Some(DataType::Boolean)
                             } else {
                                 self.err.type_check_error(
                                     false,
                                     "Different types for lhs and rhs".to_owned(),
                                     &None,
                                 );
-                                Opt::None
+                                None
                             }
                         }
 
                         BinOp::EQ | BinOp::NE => {
                             if lhs_ty == rhs_ty {
-                                Opt::Some(DataType::Boolean)
+                                Some(DataType::Boolean)
                             } else {
                                 // using a struct in parser to merge two locations
                                 let loc =
@@ -289,12 +282,12 @@ impl WhammVisitor<Opt<DataType>> for TypeChecker {
                                     &Some(loc.line_col),
                                 );
 
-                                Opt::None
+                                None
                             }
                         }
                         BinOp::GT | BinOp::LT | BinOp::GE | BinOp::LE => {
                             if lhs_ty == DataType::I32 && rhs_ty == DataType::I32 {
-                                Opt::Some(DataType::Boolean)
+                                Some(DataType::Boolean)
                             } else {
                                 // using a struct in parser to merge two locations
                                 let loc =
@@ -305,7 +298,7 @@ impl WhammVisitor<Opt<DataType>> for TypeChecker {
                                     &Some(loc.line_col),
                                 );
 
-                                Opt::None
+                                None
                             }
                         }
                     }
@@ -316,20 +309,21 @@ impl WhammVisitor<Opt<DataType>> for TypeChecker {
                         "Can't get type of lhs or rhs of this binary operation".to_string(),
                         &Some(loc.line_col),
                     );
-                    Opt::None
+                    None
                 }
             }
             Expr::VarId { name, loc, .. } => {
+                // TODO: may have a more principled way to handle this (with SymbolTable)
                 // if name is prefixed with arg, report error
-                if name.starts_with("arg") {
-                    return Opt::AssumeGood;
+                if name.starts_with("arg") && name[3..].parse::<u32>().is_ok() {
+                    return Some(DataType::AssumeGood);
                 }
 
                 // get type from symbol table
                 if let Some(id) = self.table.lookup(name) {
                     if let Some(rec) = self.table.get_record(id) {
                         if let Record::Var { ty, .. } = rec {
-                            return Opt::Some(ty.clone());
+                            return Some(ty.clone());
                         } else {
                             // unexpected record type
                             self.err.unexpected_error(
@@ -347,22 +341,22 @@ impl WhammVisitor<Opt<DataType>> for TypeChecker {
                     }
                 }
 
-                Opt::None
+                None
             }
             Expr::UnOp { op, expr, loc } => {
                 let expr_ty_op = self.visit_expr(expr);
-                if let Opt::Some(expr_ty) = expr_ty_op {
+                if let Some(expr_ty) = expr_ty_op {
                     match op {
                         UnOp::Not => {
                             if expr_ty == DataType::Boolean {
-                                Opt::Some(DataType::Boolean)
+                                Some(DataType::Boolean)
                             } else {
                                 self.err.type_check_error(
                                     false,
                                     "Not operator can only be applied to boolean".to_owned(),
                                     &loc.clone().map(|l| l.line_col),
                                 );
-                                Opt::None
+                                None
                             }
                         }
                     }
@@ -372,7 +366,7 @@ impl WhammVisitor<Opt<DataType>> for TypeChecker {
                         "Can't get type of expr of this unary operation".to_owned(),
                         &loc.clone().map(|l| l.line_col),
                     );
-                    Opt::None
+                    None
                 }
             }
             Expr::Call {
@@ -380,23 +374,20 @@ impl WhammVisitor<Opt<DataType>> for TypeChecker {
                 args,
                 loc,
             } => {
-                // TODO: finish type checking for function calls
                 // lookup type of function
-
-                let mut param_tys = vec![];
+                let mut actual_param_tys = vec![];
 
                 if let Some(args) = args {
                     for arg in args {
                         match self.visit_expr(arg) {
-                            Opt::Some(ty) => param_tys.push(Opt::Some(ty)),
-                            Opt::AssumeGood => param_tys.push(Opt::AssumeGood),
+                            Some(ty) => actual_param_tys.push(Some(ty)),
                             _ => {
                                 self.err.type_check_error(
                                     false,
                                     "Can't get type of argument".to_owned(),
                                     &loc.clone().map(|l| l.line_col),
                                 );
-                                return Opt::None;
+                                return None;
                             }
                         }
                     }
@@ -410,7 +401,7 @@ impl WhammVisitor<Opt<DataType>> for TypeChecker {
                             "Function target must be a valid identifier.".to_owned(),
                             &loc.clone().map(|l| l.line_col),
                         );
-                        return Opt::None;
+                        return None;
                     }
                 };
 
@@ -418,23 +409,26 @@ impl WhammVisitor<Opt<DataType>> for TypeChecker {
                     if let Some(Record::Fn {
                         name: _,
                         params,
+                        ret_ty,
                         addr: _,
                     }) = self.table.get_record(id)
                     {
-                        // TODO how to get the real Datatype of the Param
                         // look up param
                         let mut expected_param_tys = vec![];
                         for param in params {
                             if let Some(Record::Var { ty, .. }) = self.table.get_record(param) {
                                 // check if it matches actual param
-                                expected_param_tys.push(Opt::Some(ty.clone()));
+                                expected_param_tys.push(Some(ty.clone()));
                             }
                         }
-                        for (i, (expected, actual)) in
-                            expected_param_tys.iter().zip(param_tys.iter()).enumerate()
+                        for (i, (expected, actual)) in expected_param_tys
+                            .iter()
+                            .zip(actual_param_tys.iter())
+                            .enumerate()
                         {
                             match (expected, actual) {
-                                (Opt::Some(expected), Opt::Some(actual)) => {
+                                (Some(expected), Some(actual)) => {
+                                    // if actual is a tuple, it's not structural equality
                                     if expected != actual {
                                         self.err.type_check_error(
                                             false,
@@ -443,11 +437,6 @@ impl WhammVisitor<Opt<DataType>> for TypeChecker {
                                         );
                                     }
                                 }
-                                // only actual param can be assumed good
-                                // also omit the case that there will be Opt::None
-                                // in expected
-                                (_, Opt::AssumeGood) => {}
-
                                 _ => {
                                     self.err.type_check_error(
                                         false,
@@ -458,9 +447,17 @@ impl WhammVisitor<Opt<DataType>> for TypeChecker {
                             }
                         }
 
-                        // TODO: where is the return type of the function in the symbol table?
-                        // now the only comp provided function is strcmp so bool is fine now
-                        return Opt::Some(DataType::Boolean);
+                        return match ret_ty.clone() {
+                            Some(ty) => Some(ty),
+                            None => {
+                                self.err.type_check_error(
+                                    false,
+                                    "Return type of function not specified".to_owned(),
+                                    &loc.clone().map(|l| l.line_col),
+                                );
+                                None
+                            }
+                        };
                     } else {
                         self.err.type_check_error(
                             false,
@@ -476,13 +473,13 @@ impl WhammVisitor<Opt<DataType>> for TypeChecker {
                     );
                 }
 
-                Opt::None
+                None
             }
             Expr::Ternary {
                 cond, conseq, alt, ..
             } => {
                 let cond_ty = self.visit_expr(cond);
-                if let Opt::Some(ty) = cond_ty {
+                if let Some(ty) = cond_ty {
                     if ty != DataType::Boolean {
                         self.err.type_check_error(
                             false,
@@ -496,7 +493,7 @@ impl WhammVisitor<Opt<DataType>> for TypeChecker {
                 let alt_ty = self.visit_expr(alt);
 
                 match (alt_ty, conseq_ty.clone()) {
-                    (Opt::Some(alt_t), Opt::Some(conseq_t)) => {
+                    (Some(alt_t), Some(conseq_t)) => {
                         if alt_t == conseq_t {
                             conseq_ty
                         } else {
@@ -512,24 +509,24 @@ impl WhammVisitor<Opt<DataType>> for TypeChecker {
                                     .line_col,
                                 ),
                             );
-                            Opt::None
+                            None
                         }
                     }
-                    _ => Opt::None,
+                    _ => None,
                 }
             }
         }
     }
 
-    fn visit_datatype(&mut self, _datatype: &DataType) -> Opt<DataType> {
+    fn visit_datatype(&mut self, _datatype: &DataType) -> Option<DataType> {
         unimplemented!()
     }
 
-    fn visit_value(&mut self, val: &Value) -> Opt<DataType> {
+    fn visit_value(&mut self, val: &Value) -> Option<DataType> {
         match val {
-            Value::Integer { .. } => Opt::Some(DataType::I32),
-            Value::Str { .. } => Opt::Some(DataType::Str),
-            Value::Boolean { .. } => Opt::Some(DataType::Boolean),
+            Value::Integer { .. } => Some(DataType::I32),
+            Value::Str { .. } => Some(DataType::Str),
+            Value::Boolean { .. } => Some(DataType::Boolean),
             Value::Tuple { ty: _, vals } => {
                 // Alex TODO: this ty does not contain the DataType
                 // and I need to recurse to get the type, why?
@@ -543,35 +540,34 @@ impl WhammVisitor<Opt<DataType>> for TypeChecker {
                 let mut all_tys: Vec<Box<DataType>> = Vec::new();
                 for ty in tys {
                     match ty {
-                        Opt::Some(ty) => all_tys.push(Box::new(ty)),
-                        Opt::AssumeGood => {
-                            // if there's one `arg*` in the tuple,
-                            // we assume the type to be good
-                            return Opt::AssumeGood;
-                        }
+                        Some(ty) => all_tys.push(Box::new(ty)),
+                        // Opt::AssumeGood => {
+                        //     // if there's one `arg*` in the tuple,
+                        //     // we assume the type to be good
+                        //     return Opt::AssumeGood;
+                        // }
                         _ => self.err.unexpected_error(
                             true,
                             Some(UNEXPECTED_ERR_MSG.to_string()),
+                            // This provides some imprecise info about the location of the error
                             Some(vals.iter().next().unwrap().loc().clone().unwrap().line_col),
                         ),
                     }
                 }
-                Opt::Some(DataType::Tuple {
-                    ty_info: Some(all_tys),
-                })
+                Some(DataType::Tuple { ty_info: all_tys })
             }
         }
     }
 
-    fn visit_formal_param(&mut self, _param: &(Expr, DataType)) -> Opt<DataType> {
+    fn visit_formal_param(&mut self, _param: &(Expr, DataType)) -> Option<DataType> {
         unimplemented!()
     }
 
-    fn visit_binop(&mut self, _binop: &BinOp) -> Opt<DataType> {
+    fn visit_binop(&mut self, _binop: &BinOp) -> Option<DataType> {
         unimplemented!()
     }
 
-    fn visit_unop(&mut self, _unop: &UnOp) -> Opt<DataType> {
+    fn visit_unop(&mut self, _unop: &UnOp) -> Option<DataType> {
         unimplemented!()
     }
 }

@@ -513,10 +513,10 @@ fn type_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> DataType {
                 tuple_content_types.push(Box::new(type_from_rule(p, err)));
             });
             return if tuple_content_types.is_empty() {
-                DataType::Tuple { ty_info: None }
+                DataType::Tuple { ty_info: vec![] }
             } else {
                 DataType::Tuple {
-                    ty_info: Some(tuple_content_types),
+                    ty_info: tuple_content_types,
                 }
             };
         }
@@ -710,7 +710,7 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
             trace!("Exiting tuple");
             Ok(Expr::Primitive {
                 val: Value::Tuple {
-                    ty: DataType::Tuple { ty_info: None },
+                    ty: DataType::Tuple { ty_info: vec![] },
                     vals,
                 },
                 loc: Some(Location {
