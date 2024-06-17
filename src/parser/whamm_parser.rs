@@ -275,7 +275,7 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
                 #[allow(clippy::single_match)]
                 match stmt {
                     //ADD SUPPORT FOR IF/ELSE/LOOPS WHEN IMPLEMENTED
-                    Statement::ReturnStatement { .. } => {
+                    Statement::Return { .. } => {
                         has_return = true;
                         break;
                     }
@@ -291,7 +291,7 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
                     },
                     loc: None,
                 };
-                let return_stmt = Statement::ReturnStatement {
+                let return_stmt = Statement::Return {
                     expr: empty_tuple,
                     loc: None,
                 };
@@ -622,7 +622,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Statement {
                         return Statement::dummy();
                     };
 
-                    Statement::ReturnStatement {
+                    Statement::Return {
                         expr,
                         loc: Some(Location::from(&expr_line_col, &expr_line_col, None)),
                     }

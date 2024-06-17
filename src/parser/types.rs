@@ -191,7 +191,7 @@ pub enum Statement {
         loc: Option<Location>,
     },
     //expr is like this in the parser, but later this does not work and returns an error
-    ReturnStatement {
+    Return {
         expr: Expr,
         loc: Option<Location>,
     },
@@ -200,7 +200,7 @@ impl Statement {
     pub fn loc(&self) -> &Option<Location> {
         match self {
             Statement::Decl { loc, .. }
-            | Statement::ReturnStatement { loc, .. }
+            | Statement::Return { loc, .. }
             | Statement::Assign { loc, .. }
             | Statement::Expr { loc, .. } => loc,
         }
