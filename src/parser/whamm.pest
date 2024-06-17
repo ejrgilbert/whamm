@@ -72,7 +72,8 @@ block = { "{" ~ statement* ~ "}" }
 ret = { "return" ~ expr ? }
 declaration = { TYPE ~ ID }
 assignment = { ID ~ "=" ~ (ternary | expr) }
-statement = { ( ( fn_call | declaration | assignment | incrementor | decrementor | ret ) ~ ";" )+ }
+dec_assign = { TYPE ~ ID ~ "=" ~ (ternary | expr) }
+statement = { ( ( dec_assign| fn_call | declaration | assignment | incrementor | decrementor | ret ) ~ ";" )+ }
 incrementor = { ID ~ "++"}
 decrementor = { ID ~ "--"}
 // =====================

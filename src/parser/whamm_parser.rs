@@ -672,6 +672,64 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                 }
             }
         }
+        Rule::dec_assign => {
+            trace!("Entering dec_assign");
+            let mut output: Vec<Statement> = vec![];
+            let mut pair = pair.into_inner();
+            let type_rule = pair.next().unwrap();
+            let type_line_col = LineColLocation::from(type_rule.as_span());
+            let ty = type_from_rule(type_rule, err);
+
+            let var_id_rule = pair.next().unwrap();
+            let var_id_line_col = LineColLocation::from(var_id_rule.as_span());
+            let var_id = Expr::VarId {
+                is_comp_provided: false,
+                name: var_id_rule.as_str().parse().unwrap(),
+                loc: Some(Location {
+                    line_col: var_id_line_col.clone(),
+                    path: None,
+                }),
+            };
+            let dec = Statement::Decl {
+                ty,
+                var_id: var_id.clone(),
+                loc: Some(Location::from(&type_line_col, &var_id_line_col, None)),
+            };
+            output.push(dec);
+            let expr_rule = pair.next().unwrap();
+            return match expr_from_pair(expr_rule) {
+                Err(errors) => {
+                    err.add_errors(errors);
+
+                    output
+                }
+                Ok(expr) => {
+                    trace!("Exiting assignment");
+                    trace!("Exiting stmt_from_rule");
+
+                    let expr_line_col = if let Some(expr_loc) = expr.loc() {
+                        expr_loc.line_col.clone()
+                    } else {
+                        err.add_error(ErrorGen::get_unexpected_error(
+                            true,
+                            Some(format!(
+                                "{}{}",
+                                UNEXPECTED_ERR_MSG, "could not get location"
+                            )),
+                            None,
+                        ));
+                        return output;
+                    };
+                    output.push(Statement::Assign {
+                        var_id,
+                        expr,
+                        loc: Some(Location::from(&var_id_line_col, &expr_line_col, None)),
+                    });
+                    output
+                }
+            };
+            
+        }
         rule => {
             err.parse_error(
                 true,
