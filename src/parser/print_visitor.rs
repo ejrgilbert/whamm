@@ -337,9 +337,8 @@ impl WhammVisitor<String> for AsStrVisitor {
 
         // print body
         self.increase_indent();
-        if let Some(stmts) = &f.body {
-            let stmts_vec = &stmts.stmts;
-            for stmt in stmts_vec.iter() {
+        if let Some(block) = &f.body {
+            for stmt in block.stmts.iter() {
                 s += &format!(
                     "{} {}{}{}",
                     self.get_indent(),

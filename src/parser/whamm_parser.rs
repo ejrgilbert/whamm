@@ -596,38 +596,65 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Statement {
         //HAS NOT BEEN CHECKED
         Rule::ret => {
             trace!("Entering return_stmt");
+            let ret_statement_line_col = LineColLocation::from(pair.as_span());
+            let expr_rule;
             let mut pair = pair.into_inner();
-            let expr_rule = pair.next().unwrap();
-
-            return match expr_from_pair(expr_rule) {
-                Err(errors) => {
-                    err.add_errors(errors);
-                    Statement::dummy()
-                }
-                Ok(expr) => {
-                    trace!("Exiting return_stmt");
-                    trace!("Exiting stmt_from_rule");
-
-                    let expr_line_col = if let Some(expr_loc) = expr.loc() {
-                        expr_loc.line_col.clone()
-                    } else {
-                        err.add_error(ErrorGen::get_unexpected_error(
-                            true,
-                            Some(format!(
-                                "{}{}",
-                                UNEXPECTED_ERR_MSG, "could not get location"
+            let next_pair = pair.next();
+            match next_pair {
+                None => {
+                    let output = Statement::Return {
+                        expr: Expr::Primitive {
+                            val: Value::Tuple {
+                                ty: DataType::Tuple { ty_info: vec![] },
+                                vals: vec![],
+                            },
+                            loc: Some(Location::from(
+                                &ret_statement_line_col,
+                                &ret_statement_line_col,
+                                None,
                             )),
+                        },
+                        loc: Some(Location::from(
+                            &ret_statement_line_col,
+                            &ret_statement_line_col,
                             None,
-                        ));
-                        return Statement::dummy();
+                        )),
                     };
-
-                    Statement::Return {
-                        expr,
-                        loc: Some(Location::from(&expr_line_col, &expr_line_col, None)),
-                    }
+                    return output;
                 }
-            };
+                Some(_) => {
+                    expr_rule = next_pair.unwrap();
+                    return match expr_from_pair(expr_rule) {
+                        Err(errors) => {
+                            err.add_errors(errors);
+                            Statement::dummy()
+                        }
+                        Ok(expr) => {
+                            trace!("Exiting return_stmt");
+                            trace!("Exiting stmt_from_rule");
+
+                            let expr_line_col = if let Some(expr_loc) = expr.loc() {
+                                expr_loc.line_col.clone()
+                            } else {
+                                err.add_error(ErrorGen::get_unexpected_error(
+                                    true,
+                                    Some(format!(
+                                        "{}{}",
+                                        UNEXPECTED_ERR_MSG, "could not get location"
+                                    )),
+                                    None,
+                                ));
+                                return Statement::dummy();
+                            };
+
+                            Statement::Return {
+                                expr,
+                                loc: Some(Location::from(&expr_line_col, &expr_line_col, None)),
+                            }
+                        }
+                    };
+                }
+            }
         }
         rule => {
             err.parse_error(

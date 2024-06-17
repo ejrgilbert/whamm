@@ -106,6 +106,11 @@ BEGIN { }
     }
     "#,
     r#"
+    wasm:bytecode:br:before {
+        return;
+    }
+    "#,
+    r#"
     add_vars(i32 a, i32 b) -> i32{
         a++;
         b--;
