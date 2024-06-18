@@ -418,7 +418,6 @@ pub type ProvidedProbes = HashMap<
     ),
 >;
 
-#[derive(Clone, Debug)]
 pub struct Whamm {
     pub provided_probes: ProvidedProbes,
     pub fns: Vec<(ProvidedFunctionality, Fn)>, // Comp-provided
@@ -1013,7 +1012,6 @@ impl ProbeSpec {
     }
 }
 
-#[derive(Clone, Debug)]
 pub struct Script {
     pub name: String,
     /// The providers of the probes that have been used in the Script.
@@ -1692,7 +1690,6 @@ pub struct ProvidedFunctionality {
     pub docs: String,
 }
 
-#[derive(Clone, Debug)]
 pub struct Provider {
     pub name: String,
     pub fns: Vec<(ProvidedFunctionality, Fn)>, // Comp-provided
@@ -1742,7 +1739,6 @@ impl Provider {
     }
 }
 
-#[derive(Clone, Debug)]
 pub struct Package {
     pub name: String,
     pub fns: Vec<(ProvidedFunctionality, Fn)>, // Comp-provided
@@ -1839,7 +1835,6 @@ impl Package {
     }
 }
 
-#[derive(Clone, Debug)]
 pub struct Event {
     pub name: String,
     pub fns: Vec<(ProvidedFunctionality, Fn)>, // Comp-provided
