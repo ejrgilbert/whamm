@@ -80,7 +80,40 @@ impl Location {
     }
 }
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+impl PartialEq for DataType {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (DataType::I32, DataType::I32)
+            | (DataType::Boolean, DataType::Boolean)
+            | (DataType::Null, DataType::Null)
+            | (DataType::Str, DataType::Str)
+            | (_, DataType::AssumeGood)
+            | (DataType::AssumeGood, _) => true,
+            (DataType::Tuple { ty_info: ty_info0 }, DataType::Tuple { ty_info: ty_info1 }) => {
+                ty_info0.len() == ty_info1.len()
+                    && ty_info0
+                        .iter()
+                        .zip(ty_info1.iter())
+                        .all(|(ty0, ty1)| ty0 == ty1)
+            }
+            (
+                DataType::Map {
+                    key_ty: key_ty0,
+                    val_ty: val_ty0,
+                },
+                DataType::Map {
+                    key_ty: key_ty1,
+                    val_ty: val_ty1,
+                },
+            ) => key_ty0 == key_ty1 && val_ty0 == val_ty1,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for DataType {}
+
+#[derive(Clone, Debug)]
 pub enum DataType {
     I32,
     Boolean,
@@ -93,6 +126,7 @@ pub enum DataType {
         key_ty: Box<DataType>,
         val_ty: Box<DataType>,
     },
+    AssumeGood,
 }
 impl DataType {
     pub fn print(&self, buffer: &mut Buffer) {
@@ -130,12 +164,15 @@ impl DataType {
                 val_ty.print(buffer);
                 white(true, ">".to_string(), buffer);
             }
+            DataType::AssumeGood => {
+                yellow(true, "unknown".to_string(), buffer);
+            }
         }
     }
 }
 
 // Values
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Value {
     Integer {
         ty: DataType,
@@ -215,7 +252,7 @@ impl Statement {
     }
 }
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Expr {
     UnOp {
         // Type is based on the outermost `op`
@@ -941,6 +978,7 @@ impl Whamm {
     }
 }
 
+/// SpecPart are the probe ids in a probe spec
 pub struct SpecPart {
     pub name: String,
     pub loc: Option<Location>,
@@ -1966,6 +2004,7 @@ pub struct Probe {
     pub globals: HashMap<String, (ProvidedFunctionality, Global)>, // Comp-provided
 
     pub predicate: Option<Expr>,
+    // TODO: Change to Blocks when we support general if statements
     pub body: Option<Vec<Statement>>,
 }
 impl Probe {
@@ -2066,6 +2105,9 @@ pub enum BinOp {
 // ==== Visitor ====
 // =================
 
+// TODO add a default visit implementation
+// (take a look at the behavior tree visit trait) that would be good to add to
+// the AST visitor as well to make the visit ordering/conventions less annoying.
 pub trait WhammVisitor<T> {
     fn visit_whamm(&mut self, whamm: &Whamm) -> T;
     fn visit_script(&mut self, script: &Script) -> T;
@@ -2076,6 +2118,7 @@ pub trait WhammVisitor<T> {
     // fn visit_predicate(&mut self, predicate: &Expr) -> T;
     fn visit_fn(&mut self, f: &Fn) -> T;
     fn visit_formal_param(&mut self, param: &(Expr, DataType)) -> T;
+    fn visit_block(&mut self, block: &Block) -> T;
     fn visit_stmt(&mut self, stmt: &Statement) -> T;
     fn visit_expr(&mut self, expr: &Expr) -> T;
     fn visit_unop(&mut self, unop: &UnOp) -> T;
@@ -2095,6 +2138,7 @@ pub trait WhammVisitorMut<T> {
     // fn visit_predicate(&mut self, predicate: &mut Expr) -> T;
     fn visit_fn(&mut self, f: &mut Fn) -> T;
     fn visit_formal_param(&mut self, param: &mut (Expr, DataType)) -> T;
+    fn visit_block(&mut self, block: &Block) -> T;
     fn visit_stmt(&mut self, stmt: &mut Statement) -> T;
     fn visit_expr(&mut self, expr: &mut Expr) -> T;
     fn visit_unop(&mut self, unop: &mut UnOp) -> T;

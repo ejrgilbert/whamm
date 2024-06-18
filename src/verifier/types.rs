@@ -338,7 +338,7 @@ impl fmt::Display for ScopeType {
 }
 
 /// The usize values in the record fields index into the SymbolTable::records Vec.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum Record {
     Whamm {
         name: String,
@@ -378,6 +378,10 @@ pub enum Record {
     Fn {
         name: FnId,
         params: Vec<usize>,
+        // TODO: should this be an option?
+        // given that we are assuming function that return nothing
+        // returns a unit type (empty tuple)
+        ret_ty: Option<DataType>,
 
         /// The address of this function post-injection
         // TODO -- this representation SUCKS...specific to walrus bytecode injection...
@@ -406,7 +410,7 @@ impl Record {
     }
 }
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Debug, Eq, Hash, PartialEq)]
 pub enum VarAddr {
     Local { addr: LocalId },
     Global { addr: GlobalId },

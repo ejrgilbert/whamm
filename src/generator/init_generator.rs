@@ -5,8 +5,8 @@
 use crate::common::error::ErrorGen;
 use crate::generator::emitters::Emitter;
 use crate::parser::types::{
-    BinOp, DataType, Event, Expr, Global, Package, Probe, ProvidedFunctionality, Provider, Script,
-    Statement, UnOp, Value, Whamm, WhammVisitorMut,
+    BinOp, Block, DataType, Event, Expr, Global, Package, Probe, ProvidedFunctionality, Provider,
+    Script, Statement, UnOp, Value, Whamm, WhammVisitorMut,
 };
 use log::{trace, warn};
 use std::collections::HashMap;
@@ -277,6 +277,10 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         // let is_success = self.emitter.emit_formal_param(param);
         // trace!("Exiting: CodeGenerator::visit_formal_param");
         // is_success
+    }
+
+    fn visit_block(&mut self, _block: &Block) -> bool {
+        unreachable!();
     }
 
     fn visit_stmt(&mut self, _stmt: &mut Statement) -> bool {

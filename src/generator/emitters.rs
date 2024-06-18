@@ -90,6 +90,7 @@ fn data_type_to_val_type(ty: &DataType) -> (ValType, InitExpr) {
         DataType::Tuple { .. } => unimplemented!(),
         // the ID used to track this var in the lib
         DataType::Map { .. } => (ValType::I32, InitExpr::Value(walrus::ir::Value::I32(0))),
+        &DataType::AssumeGood => unimplemented!(),
     }
 }
 

@@ -2,8 +2,8 @@ use crate::behavior::tree::{ActionWithChildType, BehaviorTree, DecoratorType};
 
 use crate::parser::types as parser_types;
 use parser_types::{
-    BinOp, DataType, Event, Expr, Fn, Package, Probe, Provider, Script, Statement, UnOp, Value,
-    Whamm, WhammVisitor,
+    BinOp, Block, DataType, Event, Expr, Fn, Package, Probe, Provider, Script, Statement, UnOp,
+    Value, Whamm, WhammVisitor,
 };
 use std::collections::HashMap;
 
@@ -479,6 +479,10 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_> {
     }
 
     fn visit_formal_param(&mut self, _param: &(Expr, DataType)) {
+        unreachable!()
+    }
+
+    fn visit_block(&mut self, _block: &Block) {
         unreachable!()
     }
 

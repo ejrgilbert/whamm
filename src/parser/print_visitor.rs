@@ -2,8 +2,8 @@ use crate::parser::types as parser_types;
 use parser_types::WhammVisitor;
 
 use crate::parser::types::{
-    BinOp, DataType, Event, Expr, Global, Package, Probe, ProvidedFunctionality, Provider, Script,
-    Statement, UnOp, Value, Whamm,
+    BinOp, Block, DataType, Event, Expr, Global, Package, Probe, ProvidedFunctionality, Provider,
+    Script, Statement, UnOp, Value, Whamm,
 };
 use std::cmp;
 use std::collections::HashMap;
@@ -228,7 +228,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         if !event.globals.is_empty() {
             s += &format!("{} event globals:{}", self.get_indent(), NL);
             self.increase_indent();
-            self.visit_provided_globals(&event.globals);
+            s += &self.visit_provided_globals(&event.globals);
             self.decrease_indent();
         }
 
@@ -319,7 +319,6 @@ impl WhammVisitor<String> for AsStrVisitor {
         s += &format!("{} {} (", self.get_indent(), f.name.name);
 
         // print params
-
         s += &f
             .params
             .iter()
@@ -337,16 +336,7 @@ impl WhammVisitor<String> for AsStrVisitor {
 
         // print body
         self.increase_indent();
-        for stmt in f.body.stmts.iter() {
-            s += &format!(
-                "{} {}{}{}",
-                self.get_indent(),
-                self.visit_stmt(stmt),
-                ";",
-                NL
-            );
-        }
-
+        s += &self.visit_block(&f.body);
         self.decrease_indent();
         s += &format!("{} }}{}", self.get_indent(), NL);
 
@@ -359,6 +349,20 @@ impl WhammVisitor<String> for AsStrVisitor {
             self.visit_expr(&param.0),
             self.visit_datatype(&param.1)
         )
+    }
+
+    fn visit_block(&mut self, block: &Block) -> String {
+        let mut s = "".to_string();
+        for stmt in block.stmts.iter() {
+            s += &format!(
+                "{} {}{}{}",
+                self.get_indent(),
+                self.visit_stmt(stmt),
+                ";",
+                NL
+            );
+        }
+        s
     }
 
     fn visit_stmt(&mut self, stmt: &Statement) -> String {
@@ -471,6 +475,7 @@ impl WhammVisitor<String> for AsStrVisitor {
                 s
             }
             DataType::Map { .. } => "map".to_string(),
+            DataType::AssumeGood => "unknown".to_string(),
         }
     }
 
