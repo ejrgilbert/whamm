@@ -543,8 +543,8 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
             Value::Str { .. } => Some(DataType::Str),
             Value::Boolean { .. } => Some(DataType::Boolean),
             Value::Tuple { ty: _, vals } => {
-                // Alex TODO: this ty does not contain the DataType
-                // and I need to recurse to get the type, why?
+                // this ty does not contain the DataType in ty_info
+                // Whamm parser doesn't give the ty_info for Tuples
                 let tys = vals
                     .iter()
                     .map(|val| self.visit_expr(val))
@@ -556,11 +556,6 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                 for ty in tys {
                     match ty {
                         Some(ty) => all_tys.push(Box::new(ty)),
-                        // Opt::AssumeGood => {
-                        //     // if there's one `arg*` in the tuple,
-                        //     // we assume the type to be good
-                        //     return Opt::AssumeGood;
-                        // }
                         _ => self.err.unexpected_error(
                             true,
                             Some(UNEXPECTED_ERR_MSG.to_string()),
