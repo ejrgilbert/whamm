@@ -60,7 +60,7 @@ impl WhammVisitor<String> for AsStrVisitor {
 
         // print fns
         if !whamm.fns.is_empty() {
-            s += &format!("Whamm events:{}", NL);
+            s += &format!("Whamm functions:{}", NL);
             self.increase_indent();
             for (.., f) in whamm.fns.iter() {
                 s += &format!("{}{}", self.visit_fn(f), NL);
@@ -100,10 +100,10 @@ impl WhammVisitor<String> for AsStrVisitor {
 
         // print fns
         if !script.fns.is_empty() {
-            s += &format!("{} script events:{}", self.get_indent(), NL);
+            s += &format!("{} user defined functions:{}", self.get_indent(), NL);
             self.increase_indent();
             for f in script.fns.iter() {
-                s += &format!("{}{}{}", self.get_indent(), self.visit_fn(f), NL);
+                s += &format!("{}{}{}", "", self.visit_fn(f), NL);
             }
             self.decrease_indent();
         }
@@ -319,9 +319,14 @@ impl WhammVisitor<String> for AsStrVisitor {
         s += &format!("{} {} (", self.get_indent(), f.name.name);
 
         // print params
-        for param in f.params.iter() {
-            s += &format!("{}, ", self.visit_formal_param(param));
-        }
+
+        s += &f
+            .params
+            .iter()
+            .map(|arg| self.visit_formal_param(arg))
+            .collect::<Vec<String>>()
+            .join(", ");
+
         s += ")";
 
         // print return type
@@ -332,11 +337,16 @@ impl WhammVisitor<String> for AsStrVisitor {
 
         // print body
         self.increase_indent();
-        if let Some(stmts) = &f.body {
-            for stmt in stmts.iter() {
-                s += &format!("{}{}{}", self.get_indent(), self.visit_stmt(stmt), NL);
-            }
+        for stmt in f.body.stmts.iter() {
+            s += &format!(
+                "{} {}{}{}",
+                self.get_indent(),
+                self.visit_stmt(stmt),
+                ";",
+                NL
+            );
         }
+
         self.decrease_indent();
         s += &format!("{} }}{}", self.get_indent(), NL);
 
@@ -360,6 +370,9 @@ impl WhammVisitor<String> for AsStrVisitor {
                 format!("{} = {}", self.visit_expr(var_id), self.visit_expr(expr))
             }
             Statement::Expr { expr, .. } => self.visit_expr(expr),
+            Statement::Return { expr, .. } => {
+                format!("return {}", self.visit_expr(expr))
+            }
         }
     }
 
@@ -446,7 +459,17 @@ impl WhammVisitor<String> for AsStrVisitor {
             DataType::Boolean => "bool".to_string(),
             DataType::Null => "null".to_string(),
             DataType::Str => "str".to_string(),
-            DataType::Tuple { .. } => "tuple".to_string(),
+            DataType::Tuple { ty_info } => {
+                let mut s = "".to_string();
+                s += "(";
+                s += &ty_info
+                    .iter()
+                    .map(|ty| self.visit_datatype(ty))
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                s += ")";
+                s
+            }
             DataType::Map { .. } => "map".to_string(),
         }
     }

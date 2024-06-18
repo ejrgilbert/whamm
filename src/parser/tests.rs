@@ -70,6 +70,7 @@ wasm::call:alt /
     new_target_fn_name = "redirect_to_fault_injector";
 }
     "#,
+    r#"wasm:::alt / (i == "1") && (b == "2") / { i = 0; }"#,
     // globals
     r#"
 map<i32, i32> count;
@@ -79,6 +80,63 @@ BEGIN { }
 map<i32, i32> count;
 count = 0;
 BEGIN { }
+    "#,
+    //function stuff
+    r#"
+    fn_name(i32 param) -> i32{}
+    BEGIN { }
+        "#,
+    r#"
+    fn_name() -> i32{
+        i = 0;
+    }
+    BEGIN { }
+        "#,
+    r#"
+    fn_name() -> i32{
+        i = 0;
+        i++;
+    }
+    BEGIN { }
+        "#,
+    r#"
+    wasm:bytecode:br:before {
+        i32 i;
+        return i;
+    }
+    "#,
+    r#"
+    wasm:bytecode:br:before {
+        return;
+    }
+    "#,
+    r#"
+    add_vars(i32 a, i32 b) -> i32{
+        a++;
+        b--;
+        return a + b;
+    }
+    wasm:bytecode:br:before {
+        i32 a;
+        i32 b;
+        i32 c;
+        c = add_vars(a, b);
+    }
+    "#,
+    r#"
+    do_nothing(i32 a, i32 b){
+        
+    }
+    BEGIN { }
+    "#,
+    r#"
+    nested_fn() -> i32 {
+        return 5;
+    }
+    outter_fn() -> i32 {
+        return nested_fn() + 1;
+    }
+    BEGIN {}
     "#,
     // Statements (either assignment or function call)
     r#"
@@ -185,6 +243,17 @@ map<i32, i32> count;
         }
     }
         "#,
+    // bad fn definitions
+    r#"
+    fn_name() -> i32{
+    wasm:bytecode:br:before {
+    }
+        "#,
+    r#"
+    fn_name(, arg0) -> i32{}
+    wasm:bytecode:br:before {
+    }
+        "#,
 ];
 
 const SPECIAL: &[&str] = &["BEGIN { }", "END { }", "wasm:::alt { }", "wasm:::alt { }"];
@@ -287,23 +356,13 @@ pub fn test_parse_invalid_scripts() {
         assert!(!&res);
     }
 }
-
-#[test]
-pub fn test_ast_special_cases() {
-    setup_logger();
-    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-    run_test_on_valid_list(SPECIAL.iter().map(|s| s.to_string()).collect(), &mut err);
-}
-
-fn print_ast(ast: &Whamm) {
-    let mut visitor = AsStrVisitor { indent: 0 };
-    println!("{}", visitor.visit_whamm(ast));
-}
-
 #[test]
 pub fn test_whamm_with_asserts() {
     setup_logger();
     let script = r#"
+my_func() -> i32{
+    return 5;
+}
 wasm::call:alt /
     target_fn_type == "import" &&
     target_imp_module == "ic0" &&
@@ -321,7 +380,8 @@ wasm::call:alt /
             // script
             assert_eq!(1, ast.scripts.len()); // a single script
             let script = ast.scripts.first().unwrap();
-
+            //functions length - strcmp and my_func
+            assert_eq!(1, script.fns.len());
             // provider
             assert_eq!(1, script.providers.len());
             let provider = script.providers.get("wasm").unwrap();
@@ -370,12 +430,60 @@ wasm::call:alt /
         }
     };
 }
-
 #[test]
-pub fn test_implicit_probe_defs_dumper() {
+pub fn test_ast_special_cases() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-    let script = r#"wasm:::alt / (i == "1") && (b == "2") / { i = 0; }"#;
+    run_test_on_valid_list(SPECIAL.iter().map(|s| s.to_string()).collect(), &mut err);
+}
+
+fn print_ast(ast: &Whamm) {
+    let mut visitor = AsStrVisitor { indent: 0 };
+    println!("{}", visitor.visit_whamm(ast));
+}
+
+#[test]
+pub fn testing_strcmp() {
+    setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let script = r#"
+        dummy_fn() {
+            a = strcmp((arg0, arg1), "bookings");
+            strcmp((arg0, arg1), "bookings");
+        }
+        BEGIN{
+            strcmp((arg0, arg1), "bookings");
+        }
+    
+    "#;
+
+    match get_ast(script, &mut err) {
+        Some(ast) => {
+            print_ast(&ast);
+        }
+        None => {
+            error!("Could not get ast from script: {}", script);
+            if err.has_errors {
+                err.report();
+            }
+            assert!(!err.has_errors);
+        }
+    };
+}
+#[test]
+pub fn testing_block() {
+    setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let script = r#"
+        dummy_fn() {
+            a = strcmp((arg0, arg1), "bookings");
+            strcmp((arg0, arg1), "bookings");
+        }
+        BEGIN{
+            strcmp((arg0, arg1), "bookings");
+        }
+    
+    "#;
 
     match get_ast(script, &mut err) {
         Some(ast) => {
@@ -394,7 +502,6 @@ pub fn test_implicit_probe_defs_dumper() {
 // ===================
 // = Full File Tests =
 // ===================
-
 #[test]
 pub fn fault_injection() {
     setup_logger();

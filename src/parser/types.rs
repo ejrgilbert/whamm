@@ -87,7 +87,7 @@ pub enum DataType {
     Null,
     Str,
     Tuple {
-        ty_info: Option<Vec<Box<DataType>>>,
+        ty_info: Vec<Box<DataType>>,
     },
     Map {
         key_ty: Box<DataType>,
@@ -112,15 +112,14 @@ impl DataType {
             DataType::Tuple { ty_info } => {
                 white(true, "(".to_string(), buffer);
                 let mut is_first = true;
-                if let Some(types) = ty_info {
-                    for ty in types {
-                        if !is_first {
-                            white(true, ", ".to_string(), buffer);
-                        }
-                        ty.print(buffer);
-                        is_first = false;
+                for ty in ty_info.iter() {
+                    if !is_first {
+                        white(true, ", ".to_string(), buffer);
                     }
+                    ty.print(buffer);
+                    is_first = false;
                 }
+
                 white(true, ")".to_string(), buffer);
             }
             DataType::Map { key_ty, val_ty } => {
@@ -161,7 +160,11 @@ pub enum Value {
         val: bool,
     },
 }
-
+#[derive(Clone, Debug)]
+pub struct Block {
+    pub stmts: Vec<Statement>,
+    pub loc: Option<Location>,
+}
 // Statements
 #[derive(Clone, Debug)]
 pub enum Statement {
@@ -177,17 +180,20 @@ pub enum Statement {
         loc: Option<Location>,
     },
 
-    /// Standalone `Expr` statement, which means we can write programs like this:
-    /// int main() {
-    ///   2 + 2;
-    ///   return 0;
-    /// }
-    Expr { expr: Expr, loc: Option<Location> },
+    Expr {
+        expr: Expr,
+        loc: Option<Location>,
+    },
+    Return {
+        expr: Expr,
+        loc: Option<Location>,
+    },
 }
 impl Statement {
     pub fn loc(&self) -> &Option<Location> {
         match self {
             Statement::Decl { loc, .. }
+            | Statement::Return { loc, .. }
             | Statement::Assign { loc, .. }
             | Statement::Expr { loc, .. } => loc,
         }
@@ -274,7 +280,7 @@ pub struct Fn {
     pub(crate) name: FnId,
     pub(crate) params: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
     pub(crate) return_ty: Option<DataType>,
-    pub(crate) body: Option<Vec<Statement>>,
+    pub(crate) body: Block,
 }
 impl Fn {
     pub fn print(&self, buffer: &mut Buffer) {
@@ -417,7 +423,7 @@ impl Whamm {
                     loc: None,
                 },
                 DataType::Tuple {
-                    ty_info: Some(vec![Box::new(DataType::I32), Box::new(DataType::I32)]),
+                    ty_info: vec![Box::new(DataType::I32), Box::new(DataType::I32)],
                 },
             ),
             (
@@ -437,7 +443,10 @@ impl Whamm {
             },
             params,
             return_ty: Some(DataType::Boolean),
-            body: None,
+            body: Block {
+                stmts: vec![],
+                loc: None,
+            },
         };
         let docs = ProvidedFunctionality {
             name: "strcmp".to_string(),
