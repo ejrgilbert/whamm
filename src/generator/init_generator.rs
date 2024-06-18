@@ -3,7 +3,7 @@
 // =======================
 
 use crate::common::error::ErrorGen;
-use crate::generator::emitters::Emitter;
+use crate::emitter::Emitter;
 use crate::parser::types::{
     BinOp, Block, DataType, Event, Expr, Global, Package, Probe, ProvidedFunctionality, Provider,
     Script, Statement, UnOp, Value, Whamm, WhammVisitorMut,
@@ -107,7 +107,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         });
         // inject globals
         is_success &= self.visit_globals(&script.globals);
-        // visit providers
+        // visit rules
         script.providers.iter_mut().for_each(|(_name, provider)| {
             is_success &= self.visit_provider(provider);
         });

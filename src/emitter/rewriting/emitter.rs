@@ -1,3 +1,5 @@
+// use crate::emitter::rewriting::providers::wasm;
+
 use crate::common::error::{ErrorGen, WhammError};
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{BinOp, DataType, Expr, Fn, Statement, UnOp, Value};
@@ -614,8 +616,15 @@ fn get_instr_info(app_wasm: &walrus::Module, instr: &Instr, instr_name: &String)
         Instr::Binop(_) => todo!(),
         Instr::Unop(_) => todo!(),
         Instr::Select(_) => todo!(),
-        Instr::Br(_) => todo!(), // here first!
-        Instr::BrIf(_) => todo!(), // here first!
+        Instr::Br(_) => {
+            // label_id
+            todo!()
+        },
+        Instr::BrIf(_) => {
+            // label_id
+            // condition
+            todo!()
+        },
         Instr::IfElse(_) => todo!(),
         Instr::BrTable(_) => todo!(),
         Instr::Return(_) => todo!(),
@@ -859,11 +868,13 @@ impl InstrIter {
 // Note that blocks can be indefinitely nested.
 #[derive(Debug)]
 struct ProbeLoc {
+    // the location of this probe in the bytecode
     // wasm_func_name: Option<String>,
     wasm_func_id: FunctionId,
     instr_seq_id: InstrSeqId,
     index: usize,
 
+    // the information about the instruction at this location
     instr: Instr,
     instr_info: InstrInfo,
     instr_created_args: Vec<(String, usize)>,
@@ -872,6 +883,16 @@ struct ProbeLoc {
     // instr_symbols: HashMap<String, Record>, // TODO -- do I need this? (could be used to "reset" the symbol table!) Which is necessary in the context of arg* in a call bytecode rule
     instr_alt_call: Option<FunctionId>,
 }
+
+/**
+Elizabeth's thoughts:
+
+For each instruction, I know what globals are set from the stack vs. statically defined.
+Might need to add this context to `info` output, make visible to the end-user!
+All dynamically defined information needs to be put in instr_params.
+BOTH types should be saved off to instr_symbols, this enables the symboltable to be reset after visiting an instruction.
+(only needs to be done for a call!)
+*/
 
 #[derive(Debug)]
 struct InstrInfo {
