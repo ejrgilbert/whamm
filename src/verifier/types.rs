@@ -7,7 +7,7 @@ use walrus::{FunctionId, GlobalId, LocalId};
 const UNEXPECTED_ERR_MSG: &str =
     "SymbolTable: Looks like you've found a bug...please report this behavior!";
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct SymbolTable {
     pub scopes: Vec<Scope>,
     curr_scope: usize, // indexes into this::scopes
