@@ -32,7 +32,6 @@ pub fn print_info(spec: String, print_globals: bool, print_functions: bool, err:
             let id = whamm.add_script(Script::new());
             let script: &mut Script = whamm.scripts.get_mut(id).unwrap();
             if let Err(e) = script.print_info(
-                &whamm.provided_probes,
                 &probe_spec,
                 print_globals,
                 print_functions,
@@ -912,7 +911,7 @@ fn probe_spec_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeSpec {
 
                 return ProbeSpec {
                     provider: Some(SpecPart {
-                        name: "whamm".to_string(),
+                        name: "core".to_string(),
                         loc: loc.clone(),
                     }),
                     package: Some(SpecPart {
@@ -924,7 +923,7 @@ fn probe_spec_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeSpec {
                         loc: loc.clone(),
                     }),
                     mode: Some(SpecPart {
-                        name: "BEGIN".to_string(),
+                        name: spec_as_str.to_string(),
                         loc,
                     }),
                 };

@@ -1,3 +1,5 @@
+// use crate::emitter::rewriting::providers::wasm;
+
 use crate::common::error::{ErrorGen, WhammError};
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{BinOp, DataType, Expr, Fn, Statement, UnOp, Value};
@@ -9,65 +11,6 @@ use walrus::{
     ActiveData, ActiveDataLocation, DataKind, FunctionBuilder, FunctionId, FunctionKind,
     ImportedFunction, InitExpr, InstrSeqBuilder, LocalFunction, MemoryId, ModuleData, ValType,
 };
-
-// =================================================
-// ==== Emitter Trait --> Used By All Emitters! ====
-// =================================================
-
-pub trait Emitter {
-    fn enter_scope(&mut self) -> Result<(), Box<WhammError>>;
-    fn enter_named_scope(&mut self, scope_name: &str) -> bool;
-    fn exit_scope(&mut self) -> Result<(), Box<WhammError>>;
-    fn reset_children(&mut self);
-
-    fn init_instr_iter(&mut self, instrs_of_interest: &[String]) -> Result<(), Box<WhammError>>;
-    fn has_next_instr(&self) -> bool;
-    fn init_first_instr(&mut self) -> bool;
-    fn next_instr(&mut self) -> bool;
-    fn curr_instr_is_of_type(&mut self, instr_names: &[String]) -> bool;
-    fn curr_instr_type(&mut self) -> String;
-    fn incr_loc_pointer(&mut self);
-
-    fn has_params(&mut self) -> Result<bool, Box<WhammError>>;
-    fn save_params(&mut self) -> bool;
-    fn emit_params(&mut self) -> Result<bool, Box<WhammError>>;
-    fn define_compiler_var(
-        &mut self,
-        context: &str,
-        var_name: &str,
-    ) -> Result<bool, Box<WhammError>>;
-    // fn emit_event(&mut self, context: &str, event: &mut Event) -> bool;
-    fn fold_expr(&mut self, expr: &mut Expr) -> bool;
-    fn emit_expr(&mut self, expr: &mut Expr) -> Result<bool, Box<WhammError>>;
-
-    fn emit_fn(&mut self, context_name: &str, f: &Fn) -> Result<bool, Box<WhammError>>;
-    fn emit_formal_param(&mut self, param: &(Expr, DataType)) -> bool;
-    fn emit_global(
-        &mut self,
-        name: String,
-        ty: DataType,
-        val: &Option<Value>,
-    ) -> Result<bool, Box<WhammError>>;
-    fn remove_orig(&mut self) -> bool;
-    fn emit_orig(&mut self) -> bool;
-    fn emit_if(&mut self) -> bool;
-    fn emit_if_else(&mut self) -> bool;
-    /// Will configure the emitter to emit subsequent expression as the condition of an if or if/else stmt
-    fn emit_condition(&mut self) -> bool;
-    /// Will configure the emitter to emit subsequent statements into the consequent body of an if or if/else stmt
-    fn emit_consequent(&mut self) -> bool;
-    /// Will configure the emitter to emit subsequent statements into the alternate body of an if/else stmt
-    fn emit_alternate(&mut self) -> bool;
-    /// Will configure the emitter to emit subsequent statements in the outer block of some branching logic
-    fn finish_branch(&mut self) -> bool;
-    fn emit_global_stmts(&mut self, stmts: &mut Vec<Statement>) -> Result<bool, Box<WhammError>>;
-    fn emit_body(&mut self, body: &mut Vec<Statement>) -> Result<bool, Box<WhammError>>;
-    fn has_alt_call(&mut self) -> bool; // TODO -- remove need for this
-    fn emit_alt_call(&mut self) -> Result<bool, Box<WhammError>>; // TODO -- remove need for this
-    fn emit_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>>;
-
-    fn dump_to_file(&mut self, output_wasm_path: String) -> Result<bool, Box<WhammError>>;
-}
 
 // =================================================================================
 // ================ WasmRewritingEmitter - HELPER FUNCTIONS ========================
@@ -614,8 +557,15 @@ fn get_instr_info(app_wasm: &walrus::Module, instr: &Instr, instr_name: &String)
         Instr::Binop(_) => todo!(),
         Instr::Unop(_) => todo!(),
         Instr::Select(_) => todo!(),
-        Instr::Br(_) => todo!(), // here first!
-        Instr::BrIf(_) => todo!(), // here first!
+        Instr::Br(_) => {
+            // label_id
+            todo!()
+        },
+        Instr::BrIf(_) => {
+            // label_id
+            // condition
+            todo!()
+        },
         Instr::IfElse(_) => todo!(),
         Instr::BrTable(_) => todo!(),
         Instr::Return(_) => todo!(),
@@ -859,11 +809,13 @@ impl InstrIter {
 // Note that blocks can be indefinitely nested.
 #[derive(Debug)]
 struct ProbeLoc {
+    // the location of this probe in the bytecode
     // wasm_func_name: Option<String>,
     wasm_func_id: FunctionId,
     instr_seq_id: InstrSeqId,
     index: usize,
 
+    // the information about the instruction at this location
     instr: Instr,
     instr_info: InstrInfo,
     instr_created_args: Vec<(String, usize)>,
@@ -872,6 +824,16 @@ struct ProbeLoc {
     // instr_symbols: HashMap<String, Record>, // TODO -- do I need this? (could be used to "reset" the symbol table!) Which is necessary in the context of arg* in a call bytecode rule
     instr_alt_call: Option<FunctionId>,
 }
+
+/**
+Elizabeth's thoughts:
+
+For each instruction, I know what globals are set from the stack vs. statically defined.
+Might need to add this context to `info` output, make visible to the end-user!
+All dynamically defined information needs to be put in instr_params.
+BOTH types should be saved off to instr_symbols, this enables the symboltable to be reset after visiting an instruction.
+(only needs to be done for a call!)
+*/
 
 #[derive(Debug)]
 struct InstrInfo {

@@ -1,13 +1,13 @@
 use crate::parser::types as parser_types;
 use crate::verifier::types::{Record, ScopeType, SymbolTable};
 use parser_types::{
-    BinOp, Block, DataType, Event, Expr, Fn, Package, Probe, Provider, Script, Statement, UnOp,
-    Value, Whamm,
+    BinOp, Block, DataType, Event, Expr, Fn, Package, Probe, OldProvider, Script, Statement, UnOp, Value,
+    Whamm,
 };
 use std::collections::HashMap;
 
 use crate::common::error::ErrorGen;
-use crate::parser::types::{Global, ProvidedFunctionality, WhammVisitorMut};
+use crate::parser::types::{Global, ProvidedFunction, ProvidedFunctionality, ProvidedGlobal, WhammVisitorMut};
 use log::trace;
 
 const UNEXPECTED_ERR_MSG: &str = "SymbolTableBuilder: Looks like you've found a bug...please report this behavior! Exiting now...";
@@ -71,7 +71,7 @@ impl SymbolTableBuilder<'_> {
         self.table.set_curr_script(id);
     }
 
-    fn add_provider(&mut self, provider: &Provider) {
+    fn add_provider(&mut self, provider: &OldProvider) {
         if self.table.lookup(&provider.name).is_some() {
             // This should never be the case since it's controlled by the compiler!
             self.err
@@ -395,9 +395,9 @@ impl SymbolTableBuilder<'_> {
 
     fn visit_provided_globals(
         &mut self,
-        globals: &HashMap<String, (ProvidedFunctionality, Global)>,
+        globals: &HashMap<String, ProvidedGlobal>,
     ) {
-        for (name, (.., global)) in globals.iter() {
+        for (name, ProvidedGlobal{ global, ..}) in globals.iter() {
             self.add_global(global.ty.clone(), name.clone(), true);
         }
     }
@@ -424,7 +424,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         self.curr_whamm = Some(id);
 
         // visit fns
-        whamm.fns.iter_mut().for_each(|(.., f)| self.visit_fn(f));
+        whamm.fns.iter_mut().for_each(|ProvidedFunction {function, ..}| self.visit_fn(function));
 
         // visit globals
         self.visit_provided_globals(&whamm.globals);
@@ -485,12 +485,12 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         self.curr_script = None;
     }
 
-    fn visit_provider(&mut self, provider: &mut Provider) {
+    fn visit_provider(&mut self, provider: &mut OldProvider) {
         trace!("Entering: visit_provider");
 
         self.add_provider(provider);
         provider.fns.iter_mut().for_each(|(.., f)| self.visit_fn(f));
-        self.visit_provided_globals(&provider.globals);
+        // self.visit_provided_globals(&provider.globals);
         provider
             .packages
             .iter_mut()
@@ -508,7 +508,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
 
         self.add_package(package);
         package.fns.iter_mut().for_each(|(.., f)| self.visit_fn(f));
-        self.visit_provided_globals(&package.globals);
+        // self.visit_provided_globals(&package.globals);
         package
             .events
             .iter_mut()
@@ -526,7 +526,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
 
         self.add_event(event);
         event.fns.iter_mut().for_each(|(.., f)| self.visit_fn(f));
-        self.visit_provided_globals(&event.globals);
+        // self.visit_provided_globals(&event.globals);
 
         // visit probe_map
         event.probe_map.iter_mut().for_each(|probes| {
@@ -547,7 +547,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
 
         self.add_probe(probe);
         probe.fns.iter_mut().for_each(|(.., f)| self.visit_fn(f));
-        self.visit_provided_globals(&probe.globals);
+        // self.visit_provided_globals(&probe.globals);
 
         // Will not visit predicate/body at this stage
 

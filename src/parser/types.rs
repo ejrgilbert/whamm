@@ -3,6 +3,7 @@ use pest::error::LineColLocation;
 use std::collections::HashMap;
 use termcolor::{Buffer, ColorChoice, WriteColor};
 
+use crate::parser::rules::{print_provider_docs, Provider, provider_factory, WhammProvider};
 use crate::common::error::{ErrorGen, WhammError};
 use crate::common::terminal::{
     green, grey_italics, long_line, magenta, magenta_italics, white, yellow,
@@ -207,7 +208,7 @@ pub struct Block {
     pub loc: Option<Location>,
 }
 // Statements
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Statement {
     Decl {
         ty: DataType,
@@ -309,7 +310,7 @@ impl Expr {
 
 // Functions
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct FnId {
     pub name: String,
     pub loc: Option<Location>,
@@ -348,7 +349,7 @@ impl Fn {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Global {
     pub is_comp_provided: bool,
 
@@ -366,22 +367,22 @@ impl Global {
     }
 }
 
-fn print_global_vars(
+pub(crate) fn print_global_vars(
     tabs: &mut usize,
-    globals: &HashMap<String, (ProvidedFunctionality, Global)>,
+    globals: &HashMap<String, ProvidedGlobal>,
     buffer: &mut Buffer,
 ) {
     if !globals.is_empty() {
         white(true, format!("{}GLOBALS:\n", " ".repeat(*tabs * 4)), buffer);
         *tabs += 1;
-        for (.., (info, global)) in globals.iter() {
+        for (.., ProvidedGlobal{docs, global, ..}) in globals.iter() {
             white(false, " ".repeat(*tabs * 4).to_string(), buffer);
             global.print(buffer);
 
             *tabs += 1;
             white(
                 false,
-                format!("\n{}{}\n", " ".repeat(*tabs * 4), info.docs),
+                format!("\n{}{}\n", " ".repeat(*tabs * 4), docs),
                 buffer,
             );
             *tabs -= 1;
@@ -391,7 +392,7 @@ fn print_global_vars(
     }
 }
 
-fn print_fns(tabs: &mut usize, functions: &[(ProvidedFunctionality, Fn)], buffer: &mut Buffer) {
+pub(crate) fn print_fns(tabs: &mut usize, functions: &[ProvidedFunction], buffer: &mut Buffer) {
     if !functions.is_empty() {
         white(
             true,
@@ -399,14 +400,14 @@ fn print_fns(tabs: &mut usize, functions: &[(ProvidedFunctionality, Fn)], buffer
             buffer,
         );
         *tabs += 1;
-        for (info, f) in functions.iter() {
+        for ProvidedFunction{ docs, function , .. } in functions.iter() {
             green(true, " ".repeat(*tabs * 4).to_string(), buffer);
-            f.print(buffer);
+            function.print(buffer);
             green(true, "\n".to_string(), buffer);
             *tabs += 1;
             white(
                 false,
-                format!("{}{}\n", " ".repeat(*tabs * 4), info.docs),
+                format!("{}{}\n", " ".repeat(*tabs * 4), docs),
                 buffer,
             );
             *tabs -= 1;
@@ -432,8 +433,8 @@ pub type ProvidedProbes = HashMap<
 
 pub struct Whamm {
     pub provided_probes: ProvidedProbes,
-    pub fns: Vec<(ProvidedFunctionality, Fn)>, // Comp-provided
-    pub globals: HashMap<String, (ProvidedFunctionality, Global)>, // Comp-provided
+    pub fns: Vec<ProvidedFunction>, // Comp-provided
+    pub globals: HashMap<String, ProvidedGlobal>, // Comp-provided
 
     pub scripts: Vec<Script>,
 }
@@ -451,12 +452,11 @@ impl Whamm {
 
             scripts: vec![],
         };
-        whamm.init_provided_probes();
         whamm
     }
 
-    fn get_provided_fns() -> Vec<(ProvidedFunctionality, Fn)> {
-        let params = vec![
+    fn get_provided_fns() -> Vec<ProvidedFunction> {
+        let strcmp_params = vec![
             (
                 Expr::VarId {
                     is_comp_provided: true,
@@ -476,503 +476,21 @@ impl Whamm {
                 DataType::Str,
             ),
         ];
-        let strcmp_fn = Fn {
-            is_comp_provided: true,
-            name: FnId {
-                name: "strcmp".to_string(),
-                loc: None,
-            },
-            params,
-            return_ty: Some(DataType::Boolean),
-            body: Block {
-                stmts: vec![],
-                loc: None,
-            },
-        };
-        let docs = ProvidedFunctionality {
-            name: "strcmp".to_string(),
-            docs: "Compare two wasm strings and return whether they are equivalent.".to_string(),
-        };
+        
+        let strcmp = ProvidedFunction::new(
+            "strcmp".to_string(),
+            "Compare two wasm strings and return whether they are equivalent.".to_string(),
+            strcmp_params,
+            Some(DataType::Boolean)
+        );
 
-        vec![(docs, strcmp_fn)]
+        vec![strcmp]
     }
 
-    fn get_provided_globals() -> HashMap<String, (ProvidedFunctionality, Global)> {
+    fn get_provided_globals() -> HashMap<String, ProvidedGlobal> {
         HashMap::new()
     }
 
-    fn init_provided_probes(&mut self) {
-        // A giant data structure to encode the available `providers->packages->events->probe_types`
-        self.init_core_probes();
-        self.init_wasm_probes();
-    }
-
-    fn init_core_probes(&mut self) {
-        // Not really any packages or events for a whamm core probe...just two types!
-        self.provided_probes.insert(
-            "whamm".to_string(),
-            (
-                ProvidedFunctionality {
-                    name: "whamm".to_string(),
-                    docs: "Provides the core probe definitions of `whamm`.".to_string(),
-                },
-                HashMap::from([(
-                    "".to_string(),
-                    (
-                        ProvidedFunctionality {
-                            name: "".to_string(),
-                            docs: "".to_string(),
-                        },
-                        HashMap::from([(
-                            "".to_string(),
-                            (
-                                ProvidedFunctionality {
-                                    name: "".to_string(),
-                                    docs: "".to_string(),
-                                },
-                                vec![
-                                    (
-                                        ProvidedFunctionality {
-                                            name: "begin".to_string(),
-                                            docs: "Run this logic on application startup."
-                                                .to_string(),
-                                        },
-                                        "begin".to_string(),
-                                    ),
-                                    (
-                                        ProvidedFunctionality {
-                                            name: "end".to_string(),
-                                            docs: "Run this logic when the application exits."
-                                                .to_string(),
-                                        },
-                                        "end".to_string(),
-                                    ),
-                                ],
-                            ),
-                        )]),
-                    ),
-                )]),
-            ),
-        );
-        self.provided_probes.insert(
-            "end".to_string(),
-            (
-                ProvidedFunctionality {
-                    name: "end".to_string(),
-                    docs: "Run this logic when the application exits.".to_string(),
-                },
-                HashMap::new(),
-            ),
-        );
-    }
-
-    fn init_wasm_probes(&mut self) {
-        // This list of events matches up with bytecodes supported by Walrus.
-        // See: https://docs.rs/walrus/latest/walrus/ir/
-        let wasm_bytecode_events = vec![
-            (
-                ProvidedFunctionality {
-                    name: "block".to_string(),
-                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/block".to_string(),
-                },
-                "block".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "loop".to_string(),
-                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/loop".to_string(),
-                },
-                "loop".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "call".to_string(),
-                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call".to_string(),
-                },
-                "call".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "call_indirect".to_string(),
-                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call".to_string(),
-                },
-                "call_indirect".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "local_get".to_string(),
-                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_get".to_string(),
-                },
-                "local_get".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "local_set".to_string(),
-                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_set".to_string(),
-                },
-                "local_set".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "local_tee".to_string(),
-                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_tee".to_string(),
-                },
-                "local_tee".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "global_get".to_string(),
-                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Global_get".to_string(),
-                },
-                "global_get".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "global_set".to_string(),
-                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Global_set".to_string(),
-                },
-                "global_set".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "const".to_string(),
-                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Const".to_string(),
-                },
-                "const".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "binop".to_string(),
-                    docs: "Consume two operands and produce one result of the respective type. \
-                    The types of binary operations available to instrument depend on the operands \
-                    of the respective instruction. \
-                    A list of such operations is available here: \
-                    https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric".to_string(),
-                },
-                "binop".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "unop".to_string(),
-                    docs: "Consume one operand and produce one result of the respective type. \
-                    The types of unary operations available to instrument depend on the operands \
-                    of the respective instruction. \
-                    A list of such operations is available here: \
-                    https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric".to_string(),
-                },
-                "unop".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "select".to_string(),
-                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/Select".to_string(),
-                },
-                "select".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "unreachable".to_string(),
-                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/unreachable".to_string(),
-                },
-                "unreachable".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "br".to_string(),
-                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br".to_string(),
-                },
-                "br".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "br_if".to_string(),
-                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br".to_string(),
-                },
-                "br_if".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "if_else".to_string(),
-                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else".to_string(),
-                },
-                "if_else".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "br_table".to_string(),
-                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br".to_string(),
-                },
-                "br_table".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "drop".to_string(),
-                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/Drop".to_string(),
-                },
-                "drop".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "return".to_string(),
-                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/return".to_string(),
-                },
-                "return".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "memory_size".to_string(),
-                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Size".to_string(),
-                },
-                "memory_size".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "memory_grow".to_string(),
-                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Grow".to_string(),
-                },
-                "memory_grow".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "memory_init".to_string(),
-                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-memory".to_string(),
-                },
-                "memory_init".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "data_drop".to_string(),
-                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-memory".to_string(),
-                },
-                "data_drop".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "memory_copy".to_string(),
-                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Copy".to_string(),
-                },
-                "memory_copy".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "memory_fill".to_string(),
-                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Fill".to_string(),
-                },
-                "memory_fill".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "load".to_string(),
-                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load".to_string(),
-                },
-                "load".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "store".to_string(),
-                    docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store".to_string(),
-                },
-                "store".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "atomic_rmw".to_string(),
-                    docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#read-modify-write".to_string(),
-                },
-                "atomic_rmw".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "cmpxchg".to_string(),
-                    docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#compare-exchange".to_string(),
-                },
-                "cmpxchg".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "atomic_notify".to_string(),
-                    docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#wait-and-notify-operators".to_string(),
-                },
-                "atomic_notify".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "atomic_wait".to_string(),
-                    docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#wait-and-notify-operators".to_string(),
-                },
-                "atomic_wait".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "atomic_fence".to_string(),
-                    docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#fence-operator".to_string(),
-                },
-                "atomic_fence".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "table_get".to_string(),
-                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
-                },
-                "table_get".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "table_set".to_string(),
-                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
-                },
-                "table_set".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "table_grow".to_string(),
-                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
-                },
-                "table_grow".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "table_size".to_string(),
-                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
-                },
-                "table_size".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "table_fill".to_string(),
-                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
-                },
-                "table_fill".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "ref_null".to_string(),
-                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-ref".to_string(),
-                },
-                "ref_null".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "ref_is_null".to_string(),
-                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-ref".to_string(),
-                },
-                "ref_is_null".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "ref_func".to_string(),
-                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-ref".to_string(),
-                },
-                "ref_func".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "v128_bitselect".to_string(),
-                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-vec".to_string(),
-                },
-                "v128_bitselect".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "i8x16_swizzle".to_string(),
-                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-vec".to_string(),
-                },
-                "i8x16_swizzle".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "i8x16_shuffle".to_string(),
-                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-vec".to_string(),
-                },
-                "i8x16_shuffle".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "load_simd".to_string(),
-                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-vec".to_string(),
-                },
-                "load_simd".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "table_init".to_string(),
-                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
-                },
-                "table_init".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "elem_drop".to_string(),
-                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
-                },
-                "elem_drop".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "table_copy".to_string(),
-                    docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
-                },
-                "table_copy".to_string()
-            ),
-        ];
-        let wasm_bytecode_probe_modes =
-            vec![
-            (
-                ProvidedFunctionality {
-                    name: "before".to_string(),
-                    docs: "This mode will cause the instrumentation logic to run *before* the \
-                    probed event (if the predicate evaluates to `true`).".to_string(),
-                },
-                "before".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "after".to_string(),
-                    docs: "This mode will cause the instrumentation logic to run *after* the \
-                    probed event (if the predicate evaluates to `true`).".to_string(),
-                },
-                "after".to_string()
-            ),
-            (
-                ProvidedFunctionality {
-                    name: "alt".to_string(),
-                    docs: "This mode will cause the instrumentation logic to run *instead of* the \
-                    probed event (if the predicate evaluates to `true`).".to_string(),
-                },
-                "alt".to_string()
-            )
-        ];
-        let mut wasm_bytecode_map = HashMap::new();
-
-        // Build out the wasm_bytecode_map
-        for (info, name) in wasm_bytecode_events {
-            wasm_bytecode_map.insert(name, (info.clone(), wasm_bytecode_probe_modes.clone()));
-        }
-
-        self.provided_probes.insert(
-            "wasm".to_string(),
-            (
-                ProvidedFunctionality {
-                    name: "wasm".to_string(),
-                    docs: "This provides various events to instrument that are specific \
-                to WebAssembly."
-                        .to_string(),
-                },
-                HashMap::from([(
-                    "bytecode".to_string(),
-                    (
-                        ProvidedFunctionality {
-                            name: "bytecode".to_string(),
-                            docs: "This package within the wasm provider contains enables the \
-                    instrumentation of WebAssembly bytecode instructions."
-                                .to_string(),
-                        },
-                        wasm_bytecode_map,
-                    ),
-                )]),
-            ),
-        );
-    }
     pub fn add_script(&mut self, mut script: Script) -> usize {
         let id = self.scripts.len();
         script.name = format!("script{}", id);
@@ -1025,12 +543,109 @@ impl ProbeSpec {
             self.mode = Some(part);
         }
     }
+    
+    pub fn print_bold_provider(&self, buffer: &mut Buffer) {
+        magenta(
+            true,
+            self.provider.as_ref().unwrap().name.to_string(),
+            buffer,
+        );
+        if let Some(package_patt) = &self.package {
+            white(true, format!(":{}", &package_patt.name), buffer);
+            if let Some(event_patt) = &self.event {
+                white(true, format!(":{}", &event_patt.name), buffer);
+                if let Some(mode_patt) = &self.mode {
+                    white(true, format!(":{}", &mode_patt.name), buffer);
+                }
+            }
+        }
+        white(true, "\n".to_string(), buffer);
+        grey_italics(
+            true,
+            "matches the following rules:\n\n".to_string(),
+            buffer,
+        );
+    }
+
+    pub fn print_bold_package(&self, buffer: &mut Buffer) {
+        white(
+            true,
+            format!("{}:", self.provider.as_ref().unwrap().name),
+            buffer,
+        );
+        magenta(
+            true,
+            self.package.as_ref().unwrap().name.to_string(),
+            buffer,
+        );
+        if let Some(event_patt) = &self.event {
+            white(true, format!(":{}", &event_patt.name), buffer);
+            if let Some(mode_patt) = &self.mode {
+                white(true, format!(":{}", &mode_patt.name), buffer);
+            }
+        }
+        white(true, "\n".to_string(), buffer);
+        grey_italics(
+            true,
+            "matches the following packages:\n\n".to_string(),
+            buffer,
+        );
+    }
+
+    pub fn print_bold_event(&self, buffer: &mut Buffer) {
+        white(
+            true,
+            format!(
+                "{}:{}:",
+                self.provider.as_ref().unwrap().name,
+                self.package.as_ref().unwrap().name
+            ),
+            buffer,
+        );
+        magenta(
+            true,
+            self.event.as_ref().unwrap().name.to_string(),
+            buffer,
+        );
+        if let Some(mode_patt) = &self.mode {
+            white(true, format!(":{}", &mode_patt.name), buffer);
+        }
+        white(true, "\n".to_string(), buffer);
+        grey_italics(
+            true,
+            "matches the following events:\n\n".to_string(),
+            buffer,
+        );
+    }
+
+    pub fn print_bold_mode(&self, buffer: &mut Buffer) {
+        white(
+            true,
+            format!(
+                "{}:{}:{}:",
+                self.provider.as_ref().unwrap().name,
+                self.package.as_ref().unwrap().name,
+                self.event.as_ref().unwrap().name
+            ),
+            buffer,
+        );
+        magenta(
+            true,
+            format!("{}\n", self.mode.as_ref().unwrap().name),
+            buffer,
+        );
+        grey_italics(
+            true,
+            "matches the following modes:\n\n".to_string(),
+            buffer,
+        );
+    }
 }
 
 pub struct Script {
     pub name: String,
-    /// The providers of the probes that have been used in the Script.
-    pub providers: HashMap<String, Provider>,
+    /// The rules of the probes that have been used in the Script.
+    pub providers: HashMap<String, OldProvider>,
     pub fns: Vec<Fn>,                     // User-provided
     pub globals: HashMap<String, Global>, // User-provided, should be VarId
     pub global_stmts: Vec<Statement>,
@@ -1051,158 +666,8 @@ impl Script {
         }
     }
 
-    fn get_provider_info(
-        provided_probes: &ProvidedProbes,
-        probe_spec: &ProbeSpec,
-    ) -> Result<Vec<(ProvidedFunctionality, String)>, Box<WhammError>> {
-        let (prov_matches, prov_loc) = if let Some(prov_patt) = &probe_spec.provider {
-            (
-                Provider::get_matches(provided_probes, &prov_patt.name),
-                prov_patt.loc.clone(),
-            )
-        } else {
-            (vec![], None)
-        };
-
-        if prov_matches.is_empty() {
-            let loc = prov_loc.as_ref().map(|loc| loc.line_col.clone());
-            return Err(Box::new(ErrorGen::get_parse_error(
-                true,
-                Some("Could not find any matches for the provider pattern".to_string()),
-                loc,
-                vec![],
-                vec![],
-            )));
-        }
-
-        Ok(prov_matches)
-    }
-
-    #[allow(clippy::type_complexity)]
-    fn get_package_info(
-        provided_probes: &ProvidedProbes,
-        provider_matches: &[(ProvidedFunctionality, String)],
-        probe_spec: &ProbeSpec,
-    ) -> Result<HashMap<String, Vec<(ProvidedFunctionality, String)>>, Box<WhammError>> {
-        let (package_matches, package_loc) = if let Some(package_patt) = &probe_spec.package {
-            let mut matches = HashMap::new();
-            for (.., provider) in provider_matches.iter() {
-                let next = Package::get_matches(provided_probes, provider, &package_patt.name);
-                matches.insert(provider.clone(), next);
-            }
-
-            (matches, package_patt.loc.clone())
-        } else {
-            (HashMap::new(), None)
-        };
-
-        if package_matches.is_empty() {
-            let loc = package_loc.as_ref().map(|loc| loc.line_col.clone());
-            return Err(Box::new(ErrorGen::get_parse_error(
-                true,
-                Some("Could not find any matches for the package pattern".to_string()),
-                loc,
-                vec![],
-                vec![],
-            )));
-        }
-        Ok(package_matches)
-    }
-
-    #[allow(clippy::type_complexity)]
-    fn get_event_info(
-        provided_probes: &ProvidedProbes,
-        package_matches: &HashMap<String, Vec<(ProvidedFunctionality, String)>>,
-        probe_spec: &ProbeSpec,
-    ) -> Result<
-        HashMap<String, HashMap<String, Vec<(ProvidedFunctionality, String)>>>,
-        Box<WhammError>,
-    > {
-        let (event_matches, event_loc) = if let Some(event_patt) = &probe_spec.event {
-            let mut event_matches = HashMap::new();
-            for (provider_name, packages) in package_matches.iter() {
-                let mut package = HashMap::new();
-                for (.., package_name) in packages.iter() {
-                    let next = Event::get_matches(
-                        provided_probes,
-                        provider_name,
-                        package_name,
-                        &event_patt.name,
-                    );
-                    package.insert(package_name.clone(), next);
-                }
-                event_matches.insert(provider_name.clone(), package);
-            }
-
-            (event_matches, event_patt.loc.clone())
-        } else {
-            (HashMap::new(), None)
-        };
-
-        if package_matches.is_empty() {
-            let loc = event_loc.as_ref().map(|loc| loc.line_col.clone());
-            return Err(Box::new(ErrorGen::get_parse_error(
-                true,
-                Some("Could not find any matches for the event pattern".to_string()),
-                loc,
-                vec![],
-                vec![],
-            )));
-        }
-        Ok(event_matches)
-    }
-
-    #[allow(clippy::type_complexity)]
-    fn get_mode_info(
-        provided_probes: &ProvidedProbes,
-        matches: &HashMap<String, HashMap<String, Vec<(ProvidedFunctionality, String)>>>,
-        probe_spec: &ProbeSpec,
-    ) -> Result<
-        HashMap<String, HashMap<String, HashMap<String, Vec<(ProvidedFunctionality, String)>>>>,
-        Box<WhammError>,
-    > {
-        let (mode_matches, mode_loc) = if let Some(mode_patt) = &probe_spec.mode {
-            let mut mode_matches = HashMap::new();
-            for (provider_name, package_matches) in matches.iter() {
-                let mut package = HashMap::new();
-                for (package_name, event_matches) in package_matches.iter() {
-                    let mut modes = HashMap::new();
-                    for (.., event_name) in event_matches.iter() {
-                        let next = Probe::get_matches(
-                            provided_probes,
-                            provider_name,
-                            package_name,
-                            event_name,
-                            &mode_patt.name,
-                        );
-                        modes.insert(package_name.clone(), next);
-                    }
-                    package.insert(package_name.clone(), modes);
-                }
-                mode_matches.insert(provider_name.clone(), package);
-            }
-
-            (mode_matches, mode_patt.loc.clone())
-        } else {
-            (HashMap::new(), None)
-        };
-
-        if mode_matches.is_empty() {
-            let loc = mode_loc.as_ref().map(|loc| loc.line_col.clone());
-            return Err(Box::new(ErrorGen::get_parse_error(
-                true,
-                Some("Could not find any matches for the mode pattern".to_string()),
-                loc,
-                vec![],
-                vec![],
-            )));
-        }
-        Ok(mode_matches)
-    }
-
     pub fn print_info(
         &mut self,
-        provided_probes: &ProvidedProbes,
         probe_spec: &ProbeSpec,
         print_globals: bool,
         print_functions: bool,
@@ -1232,269 +697,48 @@ impl Script {
 
         long_line(&mut buffer);
         white(true, "\n\n".to_string(), &mut buffer);
-
-        let prov_info = if probe_spec.provider.is_some() {
-            Self::get_provider_info(provided_probes, probe_spec)?
-        } else {
-            vec![]
-        };
-        let pkg_info = if probe_spec.package.is_some() {
-            Self::get_package_info(provided_probes, &prov_info, probe_spec)?
-        } else {
-            HashMap::new()
-        };
-        let event_info = if probe_spec.event.is_some() {
-            Self::get_event_info(provided_probes, &pkg_info, probe_spec)?
-        } else {
-            HashMap::new()
-        };
-        let mode_info = if probe_spec.mode.is_some() {
-            Self::get_mode_info(provided_probes, &event_info, probe_spec)?
-        } else {
-            HashMap::new()
-        };
-
-        // Print matched provider introduction
-        if !prov_info.is_empty() {
-            magenta(
-                true,
-                probe_spec.provider.as_ref().unwrap().name.to_string(),
-                &mut buffer,
-            );
-            if let Some(package_patt) = &probe_spec.package {
-                white(true, format!(":{}", &package_patt.name), &mut buffer);
-                if let Some(event_patt) = &probe_spec.event {
-                    white(true, format!(":{}", &event_patt.name), &mut buffer);
-                    if let Some(mode_patt) = &probe_spec.mode {
-                        white(true, format!(":{}", &mode_patt.name), &mut buffer);
-                    }
-                }
-            }
-            white(true, "\n".to_string(), &mut buffer);
-            grey_italics(
-                true,
-                "matches the following providers:\n\n".to_string(),
-                &mut buffer,
-            );
-        }
+        
+        let (providers, matched_packages, matched_events, matched_modes): (Vec<Box<WhammProvider>>, bool, bool, bool) = provider_factory(probe_spec, None)?;
 
         // Print the matched provider information
-        for (provider_info, provider_str) in prov_info.iter() {
-            if provider_str.is_empty() {
-                continue;
-            }
-            magenta_italics(true, provider_str.clone(), &mut buffer);
-            white(true, " provider\n".to_string(), &mut buffer);
-
-            // Print the provider description
-            tabs += 1;
-            white(
-                false,
-                format!("{}{}\n\n", " ".repeat(tabs * 4), provider_info.docs),
-                &mut buffer,
-            );
-
-            // Print the globals
-            if print_globals {
-                let globals = Provider::get_provided_globals(provider_str);
-                print_global_vars(&mut tabs, &globals, &mut buffer);
-            }
-
-            // Print the functions
-            if print_functions {
-                let functions = Provider::get_provided_fns(provider_str);
-                print_fns(&mut tabs, &functions, &mut buffer);
-            }
-            tabs -= 1;
+        if !providers.is_empty() {
+            probe_spec.print_bold_provider(&mut buffer);
+        }
+        for provider in providers.iter() {
+            print_provider_docs(provider.as_ref(), print_globals, print_functions, &mut tabs, &mut buffer);
         }
         long_line(&mut buffer);
         white(true, "\n\n".to_string(), &mut buffer);
-
-        // Print matched package introduction
-        if !pkg_info.is_empty() {
-            white(
-                true,
-                format!("{}:", &probe_spec.provider.as_ref().unwrap().name),
-                &mut buffer,
-            );
-            magenta(
-                true,
-                probe_spec.package.as_ref().unwrap().name.to_string(),
-                &mut buffer,
-            );
-            if let Some(event_patt) = &probe_spec.event {
-                white(true, format!(":{}", &event_patt.name), &mut buffer);
-                if let Some(mode_patt) = &probe_spec.mode {
-                    white(true, format!(":{}", &mode_patt.name), &mut buffer);
-                }
-            }
-            white(true, "\n".to_string(), &mut buffer);
-            grey_italics(
-                true,
-                "matches the following packages:\n\n".to_string(),
-                &mut buffer,
-            );
-        }
 
         // Print the matched package information
-        let mut tabs = 0;
-        for (_prov_str, package_list) in pkg_info.iter() {
-            for (package_info, package_str) in package_list {
-                if package_str.is_empty() {
-                    continue;
-                }
-                magenta_italics(true, package_str.clone(), &mut buffer);
-                white(true, " package\n".to_string(), &mut buffer);
-
-                // Print the package description
-                tabs += 1;
-                white(
-                    false,
-                    format!("{}{}\n\n", " ".repeat(tabs * 4), package_info.docs),
-                    &mut buffer,
-                );
-
-                // Print the globals
-                if print_globals {
-                    let globals = Package::get_provided_globals(package_str);
-                    print_global_vars(&mut tabs, &globals, &mut buffer);
-                }
-
-                // Print the functions
-                if print_functions {
-                    let functions = Package::get_provided_fns(package_str);
-                    print_fns(&mut tabs, &functions, &mut buffer);
-                }
-                tabs -= 1;
-            }
+        if matched_packages {
+            probe_spec.print_bold_package(&mut buffer);
+        }
+        for provider in providers.iter() {
+            provider.print_package_docs(print_globals, print_functions, &mut tabs, &mut buffer);
         }
         long_line(&mut buffer);
         white(true, "\n\n".to_string(), &mut buffer);
-
-        // Print matched event introduction
-        if !event_info.is_empty() {
-            white(
-                true,
-                format!(
-                    "{}:{}:",
-                    &probe_spec.provider.as_ref().unwrap().name,
-                    &probe_spec.package.as_ref().unwrap().name
-                ),
-                &mut buffer,
-            );
-            magenta(
-                true,
-                probe_spec.event.as_ref().unwrap().name.to_string(),
-                &mut buffer,
-            );
-            if let Some(mode_patt) = &probe_spec.mode {
-                white(true, format!(":{}", &mode_patt.name), &mut buffer);
-            }
-            white(true, "\n".to_string(), &mut buffer);
-            grey_italics(
-                true,
-                "matches the following events:\n\n".to_string(),
-                &mut buffer,
-            );
-        }
 
         // Print the matched event information
-        let mut tabs = 0;
-        for (_prov_str, package_map) in event_info.iter() {
-            for (_package_str, event_list) in package_map.iter() {
-                for (event_info, event_str) in event_list {
-                    if event_str.is_empty() {
-                        continue;
-                    }
-                    magenta_italics(true, event_str.clone(), &mut buffer);
-                    white(true, " event\n".to_string(), &mut buffer);
-
-                    // Print the event description
-                    tabs += 1;
-                    white(
-                        false,
-                        format!("{}{}\n\n", " ".repeat(tabs * 4), event_info.docs),
-                        &mut buffer,
-                    );
-
-                    // Print the globals
-                    if print_globals {
-                        let globals = Event::get_provided_globals(event_str);
-                        print_global_vars(&mut tabs, &globals, &mut buffer);
-                    }
-
-                    // Print the functions
-                    if print_functions {
-                        let functions = Event::get_provided_fns(event_str);
-                        print_fns(&mut tabs, &functions, &mut buffer);
-                    }
-                    tabs -= 1;
-                }
-            }
+        if matched_events {
+            probe_spec.print_bold_event(&mut buffer);
+        }
+        for provider in providers.iter() {
+            provider.print_event_docs(print_globals, print_functions, &mut tabs, &mut buffer);
         }
         long_line(&mut buffer);
         white(true, "\n\n".to_string(), &mut buffer);
-
-        // Print matched mode introduction
-        if !mode_info.is_empty() {
-            white(
-                true,
-                format!(
-                    "{}:{}:{}:",
-                    &probe_spec.provider.as_ref().unwrap().name,
-                    &probe_spec.package.as_ref().unwrap().name,
-                    &probe_spec.event.as_ref().unwrap().name
-                ),
-                &mut buffer,
-            );
-            magenta(
-                true,
-                format!("{}\n", &probe_spec.mode.as_ref().unwrap().name),
-                &mut buffer,
-            );
-            grey_italics(
-                true,
-                "matches the following modes:\n\n".to_string(),
-                &mut buffer,
-            );
-        }
-
+        
         // Print the matched mode information
-        let mut tabs = 0;
-        for (_prov_str, package_map) in mode_info.iter() {
-            for event_list in package_map.values() {
-                for mode_list in event_list.values() {
-                    for (mode_info, mode_str) in mode_list {
-                        if mode_str.is_empty() {
-                            continue;
-                        }
-                        magenta_italics(true, mode_str.clone(), &mut buffer);
-                        white(true, " mode\n".to_string(), &mut buffer);
-
-                        // Print the mode description
-                        tabs += 1;
-                        white(
-                            false,
-                            format!("{}{}\n\n", " ".repeat(tabs * 4), mode_info.docs),
-                            &mut buffer,
-                        );
-
-                        // Print the globals
-                        if print_globals {
-                            let globals = Probe::get_provided_globals(mode_str);
-                            print_global_vars(&mut tabs, &globals, &mut buffer);
-                        }
-
-                        // Print the functions
-                        if print_functions {
-                            let functions = Probe::get_provided_fns(mode_str);
-                            print_fns(&mut tabs, &functions, &mut buffer);
-                        }
-                        tabs -= 1;
-                    }
-                }
-            }
+        if matched_modes {
+            probe_spec.print_bold_mode(&mut buffer);
         }
+        for provider in providers.iter() {
+            provider.print_mode_docs(print_globals, print_functions, &mut tabs, &mut buffer);
+        }
+        long_line(&mut buffer);
+        white(true, "\n\n".to_string(), &mut buffer);
 
         writer
             .print(&buffer)
@@ -1510,7 +754,7 @@ impl Script {
         self.global_stmts = global_statements;
     }
 
-    /// Iterates over all the matched providers, packages, events, and probe mode names
+    /// Iterates over all the matched rules, packages, events, and probe mode names
     /// to add a copy of the user-defined Probe for each of them.
     pub fn add_probe(
         &mut self,
@@ -1521,7 +765,7 @@ impl Script {
     ) -> Result<(), Box<WhammError>> {
         let mut reason = &probe_spec.provider;
         if let Some(prov_patt) = &probe_spec.provider {
-            let matches = Provider::get_matches(provided_probes, &prov_patt.name);
+            let matches = OldProvider::get_matches(provided_probes, &prov_patt.name);
             if matches.is_empty() {
                 return Err(Box::new(ErrorGen::get_parse_error(
                     true,
@@ -1542,7 +786,7 @@ impl Script {
                     Some(prov) => prov,
                     None => {
                         // add the provider!
-                        let new_prov = Provider::new(
+                        let new_prov = OldProvider::new(
                             provider_str.to_lowercase().to_string(),
                             prov_patt.loc.clone(),
                         );
@@ -1704,8 +948,59 @@ pub struct ProvidedFunctionality {
     pub name: String,
     pub docs: String,
 }
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct ProvidedGlobal {
+    pub name: String,
+    pub docs: String,
+    pub global: Global
+}
+impl ProvidedGlobal {
+    pub fn new(name: String, docs: String, ty: DataType) -> Self {
+        Self {
+            name: name.clone(),
+            docs,
+            global: Global {
+                is_comp_provided: true,
+                ty,
+                var_name: Expr::VarId {
+                    is_comp_provided: true,
+                    name,
+                    loc: None
+                },
+                value: None
+            }
+        }
+    }
+}
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct ProvidedFunction {
+    pub name: String,
+    pub docs: String,
+    pub function: Fn
+}
+impl ProvidedFunction {
+    pub fn new(name: String, docs: String, params: Vec<(Expr, DataType)>, return_ty: Option<DataType>) -> Self {
+        Self {
+            name: name.clone(),
+            docs,
+            function: Fn {
+                is_comp_provided: true,
+                name: FnId {
+                    name,
+                    loc: None,
+                },
+                params,
+                return_ty,
+                body: Block {
+                    stmts: vec![],
+                    loc: None,
+                },
+            }
+        }
+    }
+}
 
-pub struct Provider {
+pub struct OldProvider {
     pub name: String,
     pub fns: Vec<(ProvidedFunctionality, Fn)>, // Comp-provided
     pub globals: HashMap<String, (ProvidedFunctionality, Global)>, // Comp-provided
@@ -1715,25 +1010,15 @@ pub struct Provider {
     pub packages: HashMap<String, Package>,
     pub loc: Option<Location>,
 }
-impl Provider {
+impl OldProvider {
     pub fn new(name: String, loc: Option<Location>) -> Self {
-        let fns = Provider::get_provided_fns(&name);
-        let globals = Provider::get_provided_globals(&name);
-        Provider {
+        OldProvider {
             name,
-            fns,
-            globals,
+            fns: vec![],
+            globals: HashMap::new(),
             packages: HashMap::new(),
             loc,
         }
-    }
-
-    fn get_provided_fns(_name: &str) -> Vec<(ProvidedFunctionality, Fn)> {
-        vec![]
-    }
-
-    fn get_provided_globals(_name: &str) -> HashMap<String, (ProvidedFunctionality, Global)> {
-        HashMap::new()
     }
 
     /// Get the provider names that match the passed glob pattern
@@ -1766,68 +1051,13 @@ pub struct Package {
 }
 impl Package {
     pub fn new(name: String, loc: Option<Location>) -> Self {
-        let fns = Package::get_provided_fns(&name);
-        let globals = Package::get_provided_globals(&name);
         Package {
             name,
-            fns,
-            globals,
+            fns: vec![],
+            globals: HashMap::new(),
             events: HashMap::new(),
             loc,
         }
-    }
-
-    fn get_provided_fns(_name: &str) -> Vec<(ProvidedFunctionality, Fn)> {
-        vec![]
-    }
-
-    fn get_provided_globals(name: &str) -> HashMap<String, (ProvidedFunctionality, Global)> {
-        let mut globals = HashMap::new();
-        if name.to_lowercase() == "bytecode" {
-            // Add in provided globals for the "call" event
-            globals.insert(
-                "tos".to_string(),
-                (
-                    ProvidedFunctionality {
-                        name: "tos".to_string(),
-                        docs: "To get the value on top of the Wasm stack.".to_string(),
-                    },
-                    Global {
-                        is_comp_provided: true,
-                        ty: DataType::I32,
-                        var_name: Expr::VarId {
-                            is_comp_provided: true,
-                            name: "tos".to_string(),
-                            loc: None,
-                        },
-                        value: None,
-                    },
-                ),
-            );
-            globals.insert(
-                "wasm_bytecode_loc".to_string(),
-                (
-                    ProvidedFunctionality {
-                        name: "wasm_bytecode_loc".to_string(),
-                        docs:
-                            "A unique identifier tied to the probe's location in the Wasm bytecode."
-                                .to_string(),
-                    },
-                    Global {
-                        is_comp_provided: true,
-                        ty: DataType::I32,
-                        var_name: Expr::VarId {
-                            is_comp_provided: true,
-                            name: "wasm_bytecode_loc".to_string(),
-                            loc: None,
-                        },
-                        value: None,
-                    },
-                ),
-            );
-        }
-
-        globals
     }
 
     /// Get the Package names that match the passed glob pattern
@@ -1859,601 +1089,13 @@ pub struct Event {
 }
 impl Event {
     pub fn new(name: String, loc: Option<Location>) -> Self {
-        let fns = Event::get_provided_fns(&name);
-        let globals = Event::get_provided_globals(&name);
         Event {
             name,
-            fns,
-            globals,
+            fns: vec![],
+            globals: HashMap::new(),
             probe_map: HashMap::new(),
             loc,
         }
-    }
-
-    fn get_provided_fns(_name: &str) -> Vec<(ProvidedFunctionality, Fn)> {
-        vec![]
-    }
-
-    fn get_provided_globals(name: &str) -> HashMap<String, (ProvidedFunctionality, Global)> {
-        let mut globals = HashMap::new();
-        match name.to_lowercase().as_str() {
-            "call" => {
-                globals.insert("arg[0:9]+".to_string(),(
-                    ProvidedFunctionality {
-                        name: "arg[0:9]+".to_string(),
-                        docs: "To reference the arguments passed to the target function, can use any name matching this regex. For example, the first arg can be referenced with `arg0`.".to_string()
-                    },
-                    Global {
-                        is_comp_provided: true,
-                        ty: DataType::Null,
-                        var_name: Expr::VarId {
-                            is_comp_provided: true,
-                            name: "arg[0:9]+".to_string(),
-                            loc: None
-                        },
-                        value: None
-                    }
-                ));
-                // Add in provided globals for the "call" event
-                globals.insert("target_fn_type".to_string(),(
-                    ProvidedFunctionality {
-                        name: "target_fn_type".to_string(),
-                        docs: "The type of function being called at this call site. This constant will \
-                evaluate to either `local` or `import`.".to_string()
-                    },
-                    Global {
-                        is_comp_provided: true,
-                        ty: DataType::Str,
-                        var_name: Expr::VarId {
-                            is_comp_provided: true,
-                            name: "target_fn_type".to_string(),
-                            loc: None
-                        },
-                        value: None
-                    }));
-                globals.insert(
-                    "target_imp_module".to_string(),
-                    (
-                        ProvidedFunctionality {
-                            name: "target_imp_module".to_string(),
-                            docs: "The name of the module that the imported function comes from. \
-                To improve performance, pair with `target_fn_type == \"import\"` \
-                for faster short-circuiting."
-                                .to_string(),
-                        },
-                        Global {
-                            is_comp_provided: true,
-                            ty: DataType::Str,
-                            var_name: Expr::VarId {
-                                is_comp_provided: true,
-                                name: "target_imp_module".to_string(),
-                                loc: None,
-                            },
-                            value: None,
-                        },
-                    ),
-                );
-                globals.insert("target_imp_name".to_string(), (
-                    ProvidedFunctionality {
-                        name: "target_imp_name".to_string(),
-                        docs: "The name of the imported function. \
-                        To improve performance, pair with `target_fn_type == \"import\"` \
-                        for faster short-circuiting."
-                            .to_string(),
-                    },
-                    Global {
-                        is_comp_provided: true,
-                        ty: DataType::Str,
-                        var_name: Expr::VarId {
-                            is_comp_provided: true,
-                            name: "target_imp_name".to_string(),
-                            loc: None,
-                        },
-                        value: None,
-                    },
-                ));
-                globals.insert("new_target_fn_name".to_string(),(
-                    ProvidedFunctionality {
-                        name: "new_target_fn_name".to_string(),
-                        docs: "(DEPRECATED) The name of the target function to call instead of the original.".to_string()
-                    },
-                    Global {
-                        is_comp_provided: true,
-                        ty: DataType::Str,
-                        var_name: Expr::VarId {
-                            is_comp_provided: true,
-                            name: "new_target_fn_name".to_string(),
-                            loc: None
-                        },
-                        value: None
-                    }
-                ));
-            },
-            "call_indirect" => {
-                // TODO
-                // Unsure what intuitively makes sense to expose here
-                // Comment out for now and figure out later!
-                // globals.insert("table_idx".to_string(), (
-                //     ProvidedFunctionality {
-                //         name: "table_idx".to_string(),
-                //         docs: "Index into the table specifying a function to indirectly call.".to_string()
-                //     },
-                //     Global {
-                //         is_comp_provided: true,
-                //         ty: DataType::U32,
-                //         var_name: Expr::VarId {
-                //             is_comp_provided: true,
-                //             name: "table_idx".to_string(),
-                //             loc: None
-                //         },
-                //         value: None
-                //     }
-                // ));
-                // globals.insert("func_type_id".to_string(), (
-                //     ProvidedFunctionality {
-                //         name: "func_type_id".to_string(),
-                //         docs: "The ID of the type that holds the signature for the called function.".to_string()
-                //     },
-                //     Global {
-                //         is_comp_provided: true,
-                //         ty: DataType::U32,
-                //         var_name: Expr::VarId {
-                //             is_comp_provided: true,
-                //             name: "func_type_id".to_string(),
-                //             loc: None
-                //         },
-                //         value: None
-                //     }
-                // ));
-                todo!();
-            },
-            "local_get" | "local_set" | "local_tee" => {
-                // TODO
-                // Unsure what intuitively makes sense to expose here
-                // Comment out for now and figure out later!
-                // globals.insert("local_id".to_string(), (
-                //     ProvidedFunctionality {
-                //         name: "local_id".to_string(),
-                //         docs: "The ID of the local variable referenced in this instruction.".to_string()
-                //     },
-                //     Global {
-                //         is_comp_provided: true,
-                //         ty: DataType::U32,
-                //         var_name: Expr::VarId {
-                //             is_comp_provided: true,
-                //             name: "local_id".to_string(),
-                //             loc: None
-                //         },
-                //         value: None
-                //     }
-                // ));
-            },
-            "global_get" | "global_set" => {
-                // Unsure what intuitively makes sense to expose here
-                // Comment out for now and figure out later!
-                // globals.insert("global_id".to_string(), (
-                //     ProvidedFunctionality {
-                //         name: "global_id".to_string(),
-                //         docs: "The ID of the global variable referenced in this instruction.".to_string()
-                //     },
-                //     Global {
-                //         is_comp_provided: true,
-                //         ty: DataType::U32,
-                //         var_name: Expr::VarId {
-                //             is_comp_provided: true,
-                //             name: "global_id".to_string(),
-                //             loc: None
-                //         },
-                //         value: None
-                //     }
-                // ));
-                todo!()
-            },
-            "const" => {
-                // Unsure what intuitively makes sense to expose here
-                // Comment out for now and figure out later!
-                // globals.insert("wasm_type".to_string(), (
-                //     ProvidedFunctionality {
-                //         name: "wasm_type".to_string(),
-                //         docs: "The type of this constant value. \
-                //         The possible values of this global are the names of the enum variants located at: \
-                //         https://docs.rs/walrus/latest/walrus/ir/enum.Value.html".to_string()
-                //     },
-                //     Global {
-                //         is_comp_provided: true,
-                //         ty: DataType::Str,
-                //         var_name: Expr::VarId {
-                //             is_comp_provided: true,
-                //             name: "wasm_type".to_string(),
-                //             loc: None
-                //         },
-                //         value: None
-                //     }
-                // ));
-                // TODO -- Should there be a way to check the actual value of this constant?
-                todo!()
-            },
-            "binop" => {
-                // Unsure what intuitively makes sense to expose here
-                // Comment out for now and figure out later!
-                // globals.insert("binop_type".to_string(), (
-                //     ProvidedFunctionality {
-                //         name: "binop_type".to_string(),
-                //         docs: "The type of this binary operation.\
-                //         The possible values of this global are the names of the enum variants located at: \
-                //         https://docs.rs/walrus/latest/walrus/ir/enum.BinaryOp.html".to_string()
-                //     },
-                //     Global {
-                //         is_comp_provided: true,
-                //         ty: DataType::Str,
-                //         var_name: Expr::VarId {
-                //             is_comp_provided: true,
-                //             name: "binop_type".to_string(),
-                //             loc: None
-                //         },
-                //         value: None
-                //     }
-                // ));
-                // TODO -- No way to check lhs/rhs using walrus since due to lack of
-                //     typing info at this point. Maybe wasmparser will support this.
-                todo!()
-            },
-            "unop" => {
-                // Unsure what intuitively makes sense to expose here
-                // Comment out for now and figure out later!
-                // globals.insert("unop_type".to_string(), (
-                //     ProvidedFunctionality {
-                //         name: "unop_type".to_string(),
-                //         docs: "The type of this binary operation. \
-                //         The possible values of this global are the names of the enum variants located at: \
-                //         https://docs.rs/walrus/latest/walrus/ir/enum.UnaryOp.html".to_string()
-                //     },
-                //     Global {
-                //         is_comp_provided: true,
-                //         ty: DataType::Str,
-                //         var_name: Expr::VarId {
-                //             is_comp_provided: true,
-                //             name: "unop_type".to_string(),
-                //             loc: None
-                //         },
-                //         value: None
-                //     }
-                // ));
-                // TODO -- No way to check operand using walrus since due to lack of
-                //     typing info at this point. Maybe wasmparser will support this.
-                todo!()
-            },
-            "select" => {
-                // TODO -- No way to check lhs/rhs using walrus since due to lack of
-                //     typing info at this point. Maybe wasmparser will support this.
-                todo!();
-            },
-            "unreachable" => {
-                // no provided globals for this event
-                todo!();
-            },
-            "br" => {
-                globals.insert("label_id".to_string(), (
-                    ProvidedFunctionality {
-                        name: "label_id".to_string(),
-                        docs: "The ID of the block to unconditionally break out of.".to_string()
-                    },
-                    Global {
-                        is_comp_provided: true,
-                        ty: DataType::U32,
-                        var_name: Expr::VarId {
-                            is_comp_provided: true,
-                            name: "label_id".to_string(),
-                            loc: None
-                        },
-                        value: None
-                    }
-                ));
-            },
-            "br_if" => {
-                globals.insert("label_id".to_string(), (
-                    ProvidedFunctionality {
-                        name: "label_id".to_string(),
-                        docs: "The ID of the block to break out of if the condition evaluates to true (nonzero).".to_string()
-                    },
-                    Global {
-                        is_comp_provided: true,
-                        ty: DataType::U32,
-                        var_name: Expr::VarId {
-                            is_comp_provided: true,
-                            name: "label_id".to_string(),
-                            loc: None
-                        },
-                        value: None
-                    }
-                ));
-                globals.insert("condition".to_string(), (
-                    ProvidedFunctionality {
-                        name: "condition".to_string(),
-                        docs: "Contains the value of the condition to break on if true (0 is false, nonzero is true).".to_string()
-                    },
-                    Global {
-                        is_comp_provided: true,
-                        ty: DataType::I32,
-                        var_name: Expr::VarId {
-                            is_comp_provided: true,
-                            name: "condition".to_string(),
-                            loc: None
-                        },
-                        value: None
-                    }
-                ));
-            },
-            "if_else" => {
-                // no provided globals for this event
-            },
-            "br_table" => {
-                // no provided globals for this event
-            },
-            "drop" => {
-                // no provided globals for this event
-            },
-            "return" => {
-                // no provided globals for this event
-            },
-            "memory_size" => {
-                // I'm worried about what instrumenting things like this looks like...
-                // are these technically parameters? Should I save these off?
-                // Comment out for now and figure out later!
-                // globals.insert("mem_id".to_string(), (
-                //     ProvidedFunctionality {
-                //         name: "mem_id".to_string(),
-                //         docs: "The ID of the target memory.".to_string()
-                //     },
-                //     Global {
-                //         is_comp_provided: true,
-                //         ty: DataType::U32,
-                //         var_name: Expr::VarId {
-                //             is_comp_provided: true,
-                //             name: "mem_id".to_string(),
-                //             loc: None
-                //         },
-                //         value: None
-                //     }
-                // ));
-                todo!()
-            },
-            "memory_grow" => {
-                // I'm worried about what instrumenting things like this looks like...
-                // are these technically parameters? Should I save these off?
-                // Comment out for now and figure out later!
-                
-                // ;; grow memory by 1 page
-                // ;; grow returns in 1 for success and -1 for failure
-                // ;; will fail if you change to more more than 1 page
-                //     (memory.grow (i32.const 1))
-                // globals.insert("mem_id".to_string(), (
-                //     ProvidedFunctionality {
-                //         name: "mem_id".to_string(),
-                //         docs: "The ID of the target memory.".to_string()
-                //     },
-                //     Global {
-                //         is_comp_provided: true,
-                //         ty: DataType::U32,
-                //         var_name: Expr::VarId {
-                //             is_comp_provided: true,
-                //             name: "mem_id".to_string(),
-                //             loc: None
-                //         },
-                //         value: None
-                //     }
-                // ));
-                todo!()
-            },
-            "memory_init" => {
-                // I'm worried about what instrumenting things like this looks like...
-                // are these technically parameters? Should I save these off?
-                // Comment out for now and figure out later!
-                //https://github.com/WebAssembly/bulk-memory-operations/blob/master/proposals/bulk-memory-operations/Overview.md#memoryinit-instruction
-                // globals.insert("mem_id".to_string(), (
-                //     ProvidedFunctionality {
-                //         name: "mem_id".to_string(),
-                //         docs: "The ID of the target memory.".to_string()
-                //     },
-                //     Global {
-                //         is_comp_provided: true,
-                //         ty: DataType::U32,
-                //         var_name: Expr::VarId {
-                //             is_comp_provided: true,
-                //             name: "mem_id".to_string(),
-                //             loc: None
-                //         },
-                //         value: None
-                //     }
-                // ));
-                // globals.insert("data_id".to_string(), (
-                //     ProvidedFunctionality {
-                //         name: "data_id".to_string(),
-                //         docs: "The ID of the data to copy in.".to_string()
-                //     },
-                //     Global {
-                //         is_comp_provided: true,
-                //         ty: DataType::U32,
-                //         var_name: Expr::VarId {
-                //             is_comp_provided: true,
-                //             name: "data_id".to_string(),
-                //             loc: None
-                //         },
-                //         value: None
-                //     }
-                // ));
-                todo!()
-            },
-            "data_drop" => {
-                // Unsure what intuitively makes sense to expose here
-                // Comment out for now and figure out later!
-                // globals.insert("data_id".to_string(), (
-                //     ProvidedFunctionality {
-                //         name: "data_id".to_string(),
-                //         docs: "The ID of the data to drop.".to_string()
-                //     },
-                //     Global {
-                //         is_comp_provided: true,
-                //         ty: DataType::U32,
-                //         var_name: Expr::VarId {
-                //             is_comp_provided: true,
-                //             name: "data_id".to_string(),
-                //             loc: None
-                //         },
-                //         value: None
-                //     }
-                // ));
-                todo!()
-            },
-            "memory_copy" => {
-                // I'm worried about what instrumenting things like this looks like...
-                // are these technically parameters? Should I save these off?
-                // Comment out for now and figure out later!
-                
-                // ;; Copy data in specific memory  [100, 125] to [50, 75]
-                // i32.const 50 ;; Destination address to copy to
-                // i32.const 100 ;; Source address to copy from
-                // i32.const 25 ;; Number of bytes to copy
-                // memory.copy (memory 2)  ;; Copy memory within memory with index 2
-                // globals.insert("src_mem_id".to_string(), (
-                //     ProvidedFunctionality {
-                //         name: "src_mem_id".to_string(),
-                //         docs: "The ID of the source memory.".to_string()
-                //     },
-                //     Global {
-                //         is_comp_provided: true,
-                //         ty: DataType::U32,
-                //         var_name: Expr::VarId {
-                //             is_comp_provided: true,
-                //             name: "src_mem_id".to_string(),
-                //             loc: None
-                //         },
-                //         value: None
-                //     }
-                // ));
-                // globals.insert("dst_mem_id".to_string(), (
-                //     ProvidedFunctionality {
-                //         name: "dst_mem_id".to_string(),
-                //         docs: "The ID of the destination memory.".to_string()
-                //     },
-                //     Global {
-                //         is_comp_provided: true,
-                //         ty: DataType::U32,
-                //         var_name: Expr::VarId {
-                //             is_comp_provided: true,
-                //             name: "dst_mem_id".to_string(),
-                //             loc: None
-                //         },
-                //         value: None
-                //     }
-                // ));
-                todo!()
-            },
-            "memory_fill" => {
-                // TODO
-                // ;; Fill region at offset/range in default memory with 255
-                // i32.const 200 ;; The pointer to the region to update
-                // i32.const 255 ;; The value to set each byte to (must be < 256)
-                // i32.const 100 ;; The number of bytes to update
-                // memory.fill ;; Fill default memory
-            },
-            "load" => {
-                // TODO
-                // I'm worried about what instrumenting things like this looks like...
-                // are these technically parameters? Should I save these off?
-                // Comment out for now and figure out later!
-                // globals.insert("mem_id".to_string(), (
-                //     ProvidedFunctionality {
-                //         name: "mem_id".to_string(),
-                //         docs: "The ID of the target memory.".to_string()
-                //     },
-                //     Global {
-                //         is_comp_provided: true,
-                //         ty: DataType::U32,
-                //         var_name: Expr::VarId {
-                //             is_comp_provided: true,
-                //             name: "mem_id".to_string(),
-                //             loc: None
-                //         },
-                //         value: None
-                //     }
-                // ));
-                // globals.insert("wasm_type".to_string(), (
-                //     ProvidedFunctionality {
-                //         name: "wasm_type".to_string(),
-                //         docs: "The type of this load operation.\
-                //         The possible values of this global are the names of the enum variants located at: \
-                //         https://docs.rs/walrus/latest/walrus/ir/enum.LoadKind.html".to_string()
-                //     },
-                //     Global {
-                //         is_comp_provided: true,
-                //         ty: DataType::Str,
-                //         var_name: Expr::VarId {
-                //             is_comp_provided: true,
-                //             name: "wasm_type".to_string(),
-                //             loc: None
-                //         },
-                //         value: None
-                //     }
-                // ));
-                // globals.insert("mem_align".to_string(), (
-                //     ProvidedFunctionality {
-                //         name: "mem_align".to_string(),
-                //         docs: "The expected alignment (expressed as the exponent of a power of 2).".to_string()
-                //     },
-                //     Global {
-                //         is_comp_provided: true,
-                //         ty: DataType::U32,
-                //         var_name: Expr::VarId {
-                //             is_comp_provided: true,
-                //             name: "mem_align".to_string(),
-                //             loc: None
-                //         },
-                //         value: None
-                //     }
-                // ));
-                // globals.insert("mem_offset".to_string(), (
-                //     ProvidedFunctionality {
-                //         name: "mem_offset".to_string(),
-                //         docs: "The memory address offset.".to_string()
-                //     },
-                //     Global {
-                //         is_comp_provided: true,
-                //         ty: DataType::U32,
-                //         var_name: Expr::VarId {
-                //             is_comp_provided: true,
-                //             name: "mem_offset".to_string(),
-                //             loc: None
-                //         },
-                //         value: None
-                //     }
-                // ));
-                todo!()
-            },
-            "store" => todo!(),
-            "atomic_rmw" => todo!(),
-            "cmpxchg" => todo!(),
-            "atomic_notify" => todo!(),
-            "atomic_wait" => todo!(),
-            "atomic_fence" => todo!(),
-            "table_get" => todo!(),
-            "table_set" => todo!(),
-            "table_grow" => todo!(),
-            "table_size" => todo!(),
-            "table_fill" => todo!(),
-            "ref_null" => todo!(),
-            "ref_is_null" => todo!(),
-            "ref_func" => todo!(),
-            "v128_bitselect" => todo!(),
-            "i8x16_swizzle" => todo!(),
-            "i8x16_shuffle" => todo!(),
-            "load_simd" => todo!(),
-            "table_init" => todo!(),
-            "elem_drop" => todo!(),
-            "table_copy" => todo!(),
-            _ => {}
-        };
-        globals
     }
 
     /// Get the Event names that match the passed glob pattern
@@ -2613,7 +1255,7 @@ pub enum BinOp {
 pub trait WhammVisitor<T> {
     fn visit_whamm(&mut self, whamm: &Whamm) -> T;
     fn visit_script(&mut self, script: &Script) -> T;
-    fn visit_provider(&mut self, provider: &Provider) -> T;
+    fn visit_provider(&mut self, provider: &OldProvider) -> T;
     fn visit_package(&mut self, package: &Package) -> T;
     fn visit_event(&mut self, event: &Event) -> T;
     fn visit_probe(&mut self, probe: &Probe) -> T;
@@ -2633,7 +1275,7 @@ pub trait WhammVisitor<T> {
 pub trait WhammVisitorMut<T> {
     fn visit_whamm(&mut self, whamm: &mut Whamm) -> T;
     fn visit_script(&mut self, script: &mut Script) -> T;
-    fn visit_provider(&mut self, provider: &mut Provider) -> T;
+    fn visit_provider(&mut self, provider: &mut OldProvider) -> T;
     fn visit_package(&mut self, package: &mut Package) -> T;
     fn visit_event(&mut self, event: &mut Event) -> T;
     fn visit_probe(&mut self, probe: &mut Probe) -> T;

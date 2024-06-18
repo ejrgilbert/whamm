@@ -2,15 +2,15 @@ use crate::behavior::tree::{ActionWithChildType, BehaviorTree, DecoratorType};
 
 use crate::parser::types as parser_types;
 use parser_types::{
-    BinOp, Block, DataType, Event, Expr, Fn, Package, Probe, Provider, Script, Statement, UnOp,
-    Value, Whamm, WhammVisitor,
+    BinOp, DataType, Event, Expr, Fn, Package, Probe, OldProvider, Script, Statement, UnOp, Value,
+    Whamm, WhammVisitor,
 };
 use std::collections::HashMap;
 
 use crate::behavior::tree::DecoratorType::{HasAltCall, PredIs};
 use crate::behavior::tree::ParamActionType;
 use crate::common::error::ErrorGen;
-use crate::parser::types::{Global, ProvidedFunctionality};
+use crate::parser::types::{Global, ProvidedFunctionality, ProvidedGlobal};
 use log::{debug, trace};
 use regex::Regex;
 
@@ -111,13 +111,13 @@ impl BehaviorTreeBuilder<'_> {
 
     fn visit_provided_globals(
         &mut self,
-        globals: &HashMap<String, (ProvidedFunctionality, Global)>,
+        globals: &HashMap<String, ProvidedGlobal>,
     ) {
         if !globals.is_empty() {
             self.tree.sequence(self.err);
 
             // visit globals
-            for (_name, (.., global)) in globals.iter() {
+            for (_name, ProvidedGlobal {global, ..}) in globals.iter() {
                 if global.is_comp_provided {
                     if let Expr::VarId { name, .. } = &global.var_name {
                         self.tree
@@ -357,7 +357,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_> {
         self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
     }
 
-    fn visit_provider(&mut self, provider: &Provider) {
+    fn visit_provider(&mut self, provider: &OldProvider) {
         trace!("Entering: BehaviorTreeBuilder::visit_provider");
         self.context_name += &format!(":{}", provider.name.clone());
         self.add_provider_to_ast(provider.name.clone());
@@ -366,7 +366,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_> {
             .enter_scope(self.context_name.clone(), provider.name.clone(), self.err);
 
         // visit globals
-        self.visit_provided_globals(&provider.globals);
+        // self.visit_provided_globals(&provider.globals);
 
         provider
             .packages
