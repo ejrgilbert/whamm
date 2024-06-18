@@ -1,8 +1,8 @@
 use crate::parser::types as parser_types;
 use crate::verifier::types::{Record, ScopeType, SymbolTable};
 use parser_types::{
-    BinOp, DataType, Event, Expr, Fn, Package, Probe, Provider, Script, Statement, UnOp, Value,
-    Whamm,
+    BinOp, Block, DataType, Event, Expr, Fn, Package, Probe, Provider, Script, Statement, UnOp,
+    Value, Whamm,
 };
 use std::collections::HashMap;
 
@@ -580,6 +580,12 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         self.add_param(&param.0, &param.1);
 
         trace!("Exiting: visit_formal_param");
+    }
+
+    fn visit_block(&mut self, _block: &Block) {
+        // Not visiting Blocks
+        self.err
+            .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
     }
 
     fn visit_stmt(&mut self, stmt: &mut Statement) {

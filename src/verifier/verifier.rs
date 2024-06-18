@@ -2,8 +2,8 @@ use std::vec;
 
 use crate::common::error::ErrorGen;
 use crate::parser::types::{
-    BinOp, DataType, Event, Expr, Fn, Location, Package, Probe, Provider, Script, Statement, UnOp,
-    Value, Whamm, WhammVisitor, WhammVisitorMut,
+    BinOp, Block, DataType, Event, Expr, Fn, Location, Package, Probe, Provider, Script, Statement,
+    UnOp, Value, Whamm, WhammVisitor, WhammVisitorMut,
 };
 use crate::verifier::builder_visitor::SymbolTableBuilder;
 use crate::verifier::types::{Record, SymbolTable};
@@ -160,16 +160,21 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
     fn visit_fn(&mut self, function: &Fn) -> Option<DataType> {
         // TODO: not typechecking user provided functions yet
         // type check body
+
         self.table.enter_named_scope(&function.name.name);
-        if let Some(body) = &function.body {
-            for stmt in body {
-                self.visit_stmt(stmt);
-            }
-        }
+        self.visit_block(&function.body);
         let _ = self.table.exit_scope();
 
         // return type
         todo!();
+    }
+
+    fn visit_block(&mut self, block: &Block) -> Option<DataType> {
+        // TODO: finish user def function type checking
+        for stmt in &block.stmts {
+            self.visit_stmt(stmt);
+        }
+        todo!()
     }
 
     fn visit_stmt(&mut self, stmt: &Statement) -> Option<DataType> {
@@ -223,6 +228,12 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                         var_id.loc().clone().map(|l| l.line_col),
                     );
                 }
+                None
+            }
+            Statement::Return { expr, loc: _loc } => {
+                let _ret_ty_op = self.visit_expr(expr);
+                // TODO: type check Return statement (to do with user defined functions)
+
                 None
             }
         }
