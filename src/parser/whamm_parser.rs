@@ -335,10 +335,10 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
 pub fn block_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
     trace!("Entered parse_block");
     let fn_name_line_col = LineColLocation::from(pair.as_span());
-    let mut body_vec = vec![];
     //NGL, this is mostly stolen from process pair::probe_def
     let next = pair.clone().into_inner().next();
     let this_body = match next {
+        //option because it needs to deal with the case that "next" is None
         Some(n) => {
             let mut this_body = match n.as_rule() {
                 Rule::statement => {
@@ -354,6 +354,7 @@ pub fn block_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
             };
             if this_body.is_none() {
                 this_body = match pair.into_inner().next() {
+                    //option because it needs to deal with the case that "next" is None
                     Some(b) => {
                         let mut stmts = vec![];
 
@@ -371,15 +372,15 @@ pub fn block_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
         }
         None => None,
     };
-    this_body.map(|b| {
+    let body_vec = if let Some(this_body) = this_body {
         let mut stmts = vec![];
-        //each stmt_from_rule returns a vector
-        for stmt in b {
+        for stmt in this_body {
             stmts.push(stmt);
         }
-        body_vec = stmts.clone();
         stmts
-    });
+    } else {
+        vec![]
+    };
     //create the block object and return it in the wrapper with result
     Block {
         stmts: body_vec,
