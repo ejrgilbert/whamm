@@ -131,6 +131,7 @@ I32 = @{
     | "0" ~ ASCII_OCT_DIGIT+ // Octal digit
     | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT+ // Multiple digit, base 10
     | ASCII_DIGIT // Single digit, base 10 (account for having just '0')
+    | "-" ~ ASCII_NONZERO_DIGIT ~ ASCII_DIGIT* //negative anything but 0
 }
 
 BOOL = @{
