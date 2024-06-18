@@ -616,7 +616,7 @@ fn get_func_info(app_wasm: &walrus::Module, func: &walrus::Function) -> (FuncInf
                 FuncInfo {
                     func_kind: "local".to_string(),
                     module: "".to_string(),
-                    name: "".to_string(),
+                    name: func.name.clone().unwrap_or("".to_string()),
                 },
                 params,
             )
@@ -2105,6 +2105,7 @@ impl Emitter for WasmRewritingEmitter {
             Statement::Decl { .. } => self.emit_decl_stmt(stmt),
             Statement::Assign { .. } => self.emit_assign_stmt(stmt),
             Statement::Expr { expr, .. } => self.emit_expr(expr),
+            Statement::Return { .. } => unimplemented!(),
         }
     }
 

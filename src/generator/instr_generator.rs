@@ -237,6 +237,13 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                             }
                         }
                     }
+                } else {
+                    // the predicate is not defined, it is automatically true
+                    if *val {
+                        if let Some(node) = self.tree.get_node(*child) {
+                            return self.visit_node(node);
+                        }
+                    }
                 }
             }
         } else {
