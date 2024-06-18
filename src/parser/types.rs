@@ -966,7 +966,7 @@ pub struct ProvidedFunctionality {
     pub name: String,
     pub docs: String,
 }
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProvidedGlobal {
     pub name: String,
     pub docs: String,
@@ -990,7 +990,7 @@ impl ProvidedGlobal {
         }
     }
 }
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct ProvidedFunction {
     pub name: String,
     pub docs: String,
