@@ -116,6 +116,7 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
             trace!("Entering script");
             let base_script = Script::new();
             let id = whamm.add_script(base_script);
+            //this isnt the right way to iterate over the pairs in script
             pair.into_inner().for_each(|p| {
                 process_pair(whamm, id, p, err);
             });
@@ -256,11 +257,10 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
                         let param_id_local = Expr::VarId {
                             is_comp_provided: false,
                             name: arg_name,
-                            loc: Some(Location::from(
-                                &LineColLocation::from(p_clone.as_span()),
-                                &LineColLocation::from(p_clone.as_span()),
-                                None,
-                            )),
+                            loc: Some(Location {
+                                line_col: LineColLocation::from(p_clone.as_span()),
+                                path: None,
+                            }),
                         };
                         //arg holds Vec<(VarId, DataType)>
                         args.push((param_id_local, type_local));
@@ -276,7 +276,10 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
             //convert fn_name_rule from Pair<_, Rule> to FnId
             let fn_id = FnId {
                 name: fn_name_rule.as_str().parse().unwrap(),
-                loc: Some(Location::from(&fn_name_line_col, &fn_name_line_col, None)),
+                loc: Some(Location {
+                    line_col: fn_name_line_col.clone(),
+                    path: None,
+                }),
             };
             //before creating the output, check if there is a return statement in the body
             //if there is not, add a return empty tuple
@@ -334,7 +337,7 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
 
 pub fn block_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
     trace!("Entered parse_block");
-    let fn_name_line_col = LineColLocation::from(pair.as_span());
+    let block_loc = LineColLocation::from(pair.as_span());
     //NGL, this is mostly stolen from process pair::probe_def
     let next = pair.clone().into_inner().next();
     let this_body = match next {
@@ -384,7 +387,10 @@ pub fn block_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
     //create the block object and return it in the wrapper with result
     Block {
         stmts: body_vec,
-        loc: Some(Location::from(&fn_name_line_col, &fn_name_line_col, None)),
+        loc: Some(Location {
+            line_col: block_loc,
+            path: None,
+        }),
     }
 }
 fn fn_call_from_rule(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
@@ -567,6 +573,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
         Rule::incrementor => {
             trace!("Entering incrementor");
             let mut output: Vec<Statement> = vec![];
+            let full_loc = LineColLocation::from(pair.as_span());
             let mut pair = pair.into_inner();
             let var_id_rule = pair.next().unwrap();
             let var_id_line_col = LineColLocation::from(var_id_rule.as_span());
@@ -597,18 +604,25 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                 }),
                 op: BinOp::Add,
                 rhs: Box::new(rhs),
-                loc: Some(Location::from(&var_id_line_col, &var_id_line_col, None)),
+                loc: Some(Location {
+                    line_col: full_loc.clone(),
+                    path: None,
+                }),
             };
             trace!("Exiting incrementor");
             output.push(Statement::Assign {
                 var_id,
                 expr,
-                loc: Some(Location::from(&var_id_line_col, &var_id_line_col, None)),
+                loc: Some(Location {
+                    line_col: full_loc,
+                    path: None,
+                }),
             });
             output
         }
         Rule::decrementor => {
             trace!("Entering decrementor");
+            let full_loc = LineColLocation::from(pair.as_span());
             let mut output: Vec<Statement> = vec![];
             let mut pair = pair.into_inner();
             let var_id_rule = pair.next().unwrap();
@@ -634,7 +648,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                     is_comp_provided: false,
                     name: var_id_rule.as_str().parse().unwrap(),
                     loc: Some(Location {
-                        line_col: var_id_line_col.clone(),
+                        line_col: full_loc.clone(),
                         path: None,
                     }),
                 }),
@@ -646,7 +660,10 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
             output.push(Statement::Assign {
                 var_id,
                 expr,
-                loc: Some(Location::from(&var_id_line_col, &var_id_line_col, None)),
+                loc: Some(Location {
+                    line_col: full_loc,
+                    path: None,
+                }),
             });
             output
         }
@@ -665,17 +682,15 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                                 ty: DataType::Tuple { ty_info: vec![] },
                                 vals: vec![],
                             },
-                            loc: Some(Location::from(
-                                &ret_statement_line_col,
-                                &ret_statement_line_col,
-                                None,
-                            )),
+                            loc: Some(Location {
+                                line_col: ret_statement_line_col.clone(),
+                                path: None,
+                            }),
                         },
-                        loc: Some(Location::from(
-                            &ret_statement_line_col,
-                            &ret_statement_line_col,
-                            None,
-                        )),
+                        loc: Some(Location {
+                            line_col: ret_statement_line_col.clone(),
+                            path: None,
+                        }),
                     });
                     output
                 }
@@ -705,7 +720,10 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                             };
                             output.push(Statement::Return {
                                 expr,
-                                loc: Some(Location::from(&expr_line_col, &expr_line_col, None)),
+                                loc: Some(Location {
+                                    line_col: expr_line_col.clone(),
+                                    path: None,
+                                }),
                             });
                             output
                         }
@@ -713,7 +731,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                 }
             }
         }
-        Rule::dec_assign => {
+        Rule::initialize => {
             trace!("Entering dec_assign");
             let mut output: Vec<Statement> = vec![];
             let mut pair = pair.into_inner();
