@@ -191,11 +191,10 @@ wasm::call:alt /
 
 fn is_valid_script(script: &str, err: &mut ErrorGen) -> bool {
     match tests::get_ast(script, err) {
-        Some(mut ast) => verifier::type_check(
-            &ast.clone(),
-            &mut verifier::build_symbol_table(&mut ast, err),
-            err,
-        ),
+        Some(mut ast) => {
+            let mut table = verifier::build_symbol_table(&mut ast, err);
+            verifier::type_check(&ast, &mut table, err)
+        }
         None => {
             error!("Should fail at type checking, not parsing: {}", script);
             assert!(false);

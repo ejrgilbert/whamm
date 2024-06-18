@@ -27,12 +27,12 @@ pub fn build_symbol_table(ast: &mut Whamm, err: &mut ErrorGen) -> SymbolTable {
     visitor.table
 }
 
-struct TypeChecker {
-    table: SymbolTable,
-    err: ErrorGen,
+struct TypeChecker<'a> {
+    table: &'a mut SymbolTable,
+    err: &'a mut ErrorGen,
 }
 
-impl TypeChecker {
+impl TypeChecker<'_> {
     fn add_local(&mut self, ty: DataType, name: String, is_comp_provided: bool) {
         if self.table.lookup(&name).is_some() {
             // This should never be the case since it's controlled by the compiler!
@@ -56,7 +56,7 @@ impl TypeChecker {
     }
 }
 
-impl WhammVisitor<Option<DataType>> for TypeChecker {
+impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
     fn visit_whamm(&mut self, whamm: &Whamm) -> Option<DataType> {
         // not printing events and globals now
         self.table.reset();
@@ -394,7 +394,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker {
                     }
                 } // else function has no arguments
 
-                let fn_name = match *fn_target.clone() {
+                let fn_name = match fn_target.as_ref() {
                     Expr::VarId { name, .. } => name,
                     _ => {
                         self.err.type_check_error(
@@ -406,7 +406,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker {
                     }
                 };
 
-                if let Some(id) = self.table.lookup(&fn_name) {
+                if let Some(id) = self.table.lookup(fn_name) {
                     if let Some(Record::Fn {
                         name: _,
                         params,
@@ -587,15 +587,9 @@ impl WhammVisitor<Option<DataType>> for TypeChecker {
     }
 }
 
-pub fn type_check(ast: &Whamm, st: &SymbolTable, err: &mut ErrorGen) -> bool {
-    let mut type_checker = TypeChecker {
-        table: st.clone(),
-        err: err.clone(),
-    };
+pub fn type_check(ast: &Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> bool {
+    let mut type_checker = TypeChecker { table: st, err };
     type_checker.visit_whamm(ast);
-    // propagate error
-    *err = type_checker.err;
-    // check if there are any errors
-    // TODO: note that parser errors might propagate here
+    // note that parser errors might propagate here
     !err.has_errors
 }

@@ -218,13 +218,13 @@ fn run_vis_script(script_path: String, run_verifier: bool, output_path: String) 
 }
 
 fn get_symbol_table(ast: &mut Whamm, run_verifier: bool, err: &mut ErrorGen) -> SymbolTable {
-    let st = build_symbol_table(ast, err);
+    let mut st = build_symbol_table(ast, err);
     err.check_too_many();
-    verify_ast(ast, &st, run_verifier, err);
+    verify_ast(ast, &mut st, run_verifier, err);
     st
 }
 
-fn verify_ast(ast: &Whamm, st: &SymbolTable, run_verifier: bool, err: &mut ErrorGen) {
+fn verify_ast(ast: &Whamm, st: &mut SymbolTable, run_verifier: bool, err: &mut ErrorGen) {
     if run_verifier && !type_check(ast, st, err) {
         error!("AST failed verification!");
     }
