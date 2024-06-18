@@ -223,7 +223,7 @@ impl SymbolTable {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Scope {
     pub id: usize, // indexes into SymbolTable::scopes
     pub name: String,
@@ -295,7 +295,7 @@ impl Scope {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum ScopeType {
     Whamm,
     Script,
@@ -338,7 +338,7 @@ impl fmt::Display for ScopeType {
 }
 
 /// The usize values in the record fields index into the SymbolTable::records Vec.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum Record {
     Whamm {
         name: String,
@@ -410,7 +410,7 @@ impl Record {
     }
 }
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Debug, Eq, Hash, PartialEq)]
 pub enum VarAddr {
     Local { addr: LocalId },
     Global { addr: GlobalId },
