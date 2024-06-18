@@ -423,7 +423,7 @@ impl Whamm {
                     loc: None,
                 },
                 DataType::Tuple {
-                    ty_info: (vec![Box::new(DataType::I32), Box::new(DataType::I32)]),
+                    ty_info: vec![Box::new(DataType::I32), Box::new(DataType::I32)],
                 },
             ),
             (
