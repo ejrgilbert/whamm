@@ -470,6 +470,40 @@ pub fn testing_strcmp() {
         }
     };
 }
+
+#[test]
+fn test_global_stmts() {
+    setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let script = r#"
+        i32 a;
+        a = 1;
+        dummy_fn() {
+            a = strcmp((arg0, arg1), "bookings");
+            strcmp((arg0, arg1), "bookings");
+        }
+        BEGIN{
+            strcmp((arg0, arg1), "bookings");
+        }
+        END {
+            a = 2;
+        }
+    "#;
+
+    match get_ast(script, &mut err) {
+        Some(ast) => {
+            print_ast(&ast);
+        }
+        None => {
+            error!("Could not get ast from script: {}", script);
+            if err.has_errors {
+                err.report();
+            }
+            assert!(!err.has_errors);
+        }
+    };
+}
+
 #[test]
 pub fn testing_block() {
     setup_logger();
