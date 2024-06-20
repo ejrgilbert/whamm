@@ -124,7 +124,6 @@ BINOP = _{ LOGOP | RELOP | SUMOP | MULOP }
 // ===================
 
 // TODO -- make sure that the binary/octal/hexadecimal formats are parsed correctly
-// TODO -- add support for negative numbers (see calc-pest tutorial)
 I32 = @{
     "0x" ~ ASCII_HEX_DIGIT+ // Hexadecimal digit
     | "0b" ~ ASCII_BIN_DIGIT+ // Binary digit
