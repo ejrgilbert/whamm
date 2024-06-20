@@ -508,6 +508,7 @@ pub fn test_global_defs() {
         i32 i;
         i = 5; 
         i32 j = 5;
+        i32 while = 1; // will give an error
         dummy_fn() {
             a = strcmp((arg0, arg1), "bookings");
             strcmp((arg0, arg1), "bookings");
@@ -515,7 +516,7 @@ pub fn test_global_defs() {
         BEGIN {
             strcmp((arg0, arg1), "bookings");
         }
-        // i = 2; will give an error
+        // i = 2; will give an error (global defs must be in front)
         END {
             i = 1;
         }
