@@ -255,12 +255,39 @@ pub fn test_user_defined() {
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
 
     let script = r#"
-        i32 a;
-        nested_fn() -> i32 {
-            return 5;
+        bool a;
+        i32 b;
+        nested_fn(i32 a) -> i32 {
+            return a;
         }
         dummy_fn() {
-            a = nested_fn();
+            b = nested_fn();
+        }
+        wasm::call:alt {
+            dummy_fn();
+        }   
+    "#;
+    info!("Typechecking: {}", script);
+    let res = is_valid_script(script, &mut err);
+
+    err.report();
+    assert!(!err.has_errors);
+    assert!(res);
+}
+#[test]
+pub fn test_user_with_provided() {
+    setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+
+    let script = r#"
+        bool a;
+        i32 b;
+        nested_fn(i32 a) -> i32 {
+            return a;
+        }
+        dummy_fn() {
+            b = nested_fn(5);
+            a = strcmp((b, 8), "bookings");
         }
         wasm::call:alt {
             dummy_fn();
