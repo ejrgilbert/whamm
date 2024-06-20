@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use termcolor::Buffer;
 use crate::common::error::WhammError;
-use crate::parser::rules::{Event, event_factory, FromStr, Mode, mode_factory, NameOptions, Package, Probe, WhammMode, WhammProbe};
-use crate::parser::types::{DataType, Expr, Global, Location, ProbeSpec, ProvidedFunction, ProvidedFunctionality, ProvidedGlobal};
+use crate::parser::rules::{Event, event_factory, FromStr, Mode, mode_factory, NameOptions, Package, package_factory, Probe, WhammMode, WhammProbe};
+use crate::parser::types::{DataType, Expr, Global, Location, ProbeSpec, ProvidedFunction, ProvidedFunctionality, ProvidedGlobal, Statement};
 
 /// The base information needed for `WasmPackage`s, pulled out into a single struct.
 pub struct WasmPackageInfo {
@@ -123,20 +123,14 @@ impl Package for WasmPackage {
         }
     }
 
-    fn assign_matching_events(&mut self, probe_spec: &ProbeSpec, loc: Option<Location>) -> Result<(bool, bool), Box<WhammError>> {
-        let mut matched_events = false;
-        let mut matched_modes = false;
+    fn assign_matching_events(&mut self, probe_spec: &ProbeSpec, loc: Option<Location>,
+                              predicate: Option<Expr>,
+                              body: Option<Vec<Statement>>) -> Result<(bool, bool), Box<WhammError>> {
         match self {
             Self::Bytecode {events, ..} => {
-                let matched:Vec<(Box<BytecodeEvent>, bool)> = event_factory(probe_spec, loc)?;
-                for (event, found_match_for_mode) in matched {
-                    matched_events = true;
-                    matched_modes |= found_match_for_mode;
-                    events.insert(event.name().clone(), event);
-                }
-            }
+                Ok(event_factory(events, probe_spec, loc, predicate, body)?)
+            },
         }
-        Ok((matched_events, matched_modes))
     }
 }
 /// The base information needed for `BytecodeEvent`s, pulled out into a single struct.
@@ -1628,13 +1622,14 @@ impl Event for BytecodeEvent {
         &metadata.globals
     }
 
-    fn assign_matching_modes(&mut self, probe_spec: &ProbeSpec, loc: Option<Location>) -> Result<bool, Box<WhammError>> {
+    fn assign_matching_modes(&mut self, probe_spec: &ProbeSpec, loc: Option<Location>,  predicate: Option<Expr>,
+                             body: Option<Vec<Statement>>) -> Result<bool, Box<WhammError>> {
         let mut matched_modes = false;
         let probes = self.probes_mut();
         let modes: Vec<Box<WhammMode>> = mode_factory(probe_spec, loc.clone())?;
         for mode in modes {
             matched_modes = true;
-            probes.insert(mode.name(), vec![Box::new(WhammProbe::new(*mode, loc.clone(), None, None))]);
+            probes.insert(mode.name(), vec![Box::new(WhammProbe::new(*mode, loc.clone(), predicate.clone(), body.clone()))]);
         }
         Ok(matched_modes)
     }

@@ -97,20 +97,14 @@ impl Package for CorePackage {
         }
     }
 
-    fn assign_matching_events(&mut self, probe_spec: &ProbeSpec, loc: Option<Location>) -> Result<(bool, bool), Box<WhammError>> {
-        let mut matched_events = false;
-        let mut matched_modes = false;
+    fn assign_matching_events(&mut self, probe_spec: &ProbeSpec, loc: Option<Location>,
+                              predicate: Option<Expr>,
+                              body: Option<Vec<Statement>>) -> Result<(bool, bool), Box<WhammError>> {
         match self {
             Self::Default {events, ..} => {
-                let matched: Vec<(Box<CoreEvent>, bool)> = event_factory(probe_spec, loc)?;
-                for (event, found_match_for_mode) in matched {
-                    matched_events = true;
-                    matched_modes |= found_match_for_mode;
-                    events.insert(event.name().clone(), event);
-                }
-            }
+                Ok(event_factory(events, probe_spec, loc, predicate, body)?)
+            },
         }
-        Ok((matched_events, matched_modes))
     }
 }
 
@@ -207,14 +201,16 @@ impl Event for CoreEvent {
         }
     }
 
-    fn assign_matching_modes(&mut self, probe_spec: &ProbeSpec, loc: Option<Location>) -> Result<bool, Box<WhammError>> {
+    fn assign_matching_modes(&mut self, probe_spec: &ProbeSpec, loc: Option<Location>,
+                             predicate: Option<Expr>,
+                             body: Option<Vec<Statement>>) -> Result<bool, Box<WhammError>> {
         let mut matched_modes = false;
         match self {
             Self::Default{ref mut probe_map, ..} => {
                 let modes: Vec<Box<CoreMode>> = mode_factory(probe_spec, loc.clone())?;
                 for mode in modes {
                     matched_modes = true;
-                    probe_map.insert(mode.name(), vec![Box::new(CoreProbe::new(*mode, loc.clone(), None, None))]);
+                    probe_map.insert(mode.name(), vec![Box::new(CoreProbe::new(*mode, loc.clone(), predicate.clone(), body.clone()))]);
                 }
             }
         }
