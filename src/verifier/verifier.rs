@@ -176,7 +176,6 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
     }
 
     fn visit_block(&mut self, block: &Block) -> Option<DataType> {
-        // TODO: finish user def function type checking
         let mut ret_type = None;
         for stmt in &block.stmts {
             //add a check for return statement type matching the function return type if provided
