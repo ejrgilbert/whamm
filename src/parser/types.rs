@@ -565,6 +565,7 @@ impl Whamm {
     fn init_wasm_probes(&mut self) {
         // This list of events matches up with bytecodes supported by Walrus.
         // See: https://docs.rs/walrus/latest/walrus/ir/
+        // TODO - Look into this after wasm-parser/wasm-encoder switch
         let wasm_bytecode_events = vec![
             (
                 ProvidedFunctionality {
