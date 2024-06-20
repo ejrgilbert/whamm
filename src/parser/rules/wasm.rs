@@ -157,10 +157,10 @@ impl Package for WasmPackage {
 
     fn assign_matching_events(&mut self, probe_spec: &ProbeSpec, loc: Option<Location>,
                               predicate: Option<Expr>,
-                              body: Option<Vec<Statement>>) -> Result<(bool, bool), Box<WhammError>> {
+                              body: Option<Vec<Statement>>) -> (bool, bool) {
         match self {
             Self::Bytecode {events, ..} => {
-                Ok(event_factory(events, probe_spec, loc, predicate, body)?)
+                event_factory(events, probe_spec, loc, predicate, body)
             },
         }
     }
@@ -1636,7 +1636,8 @@ impl Event for BytecodeEvent {
 
     fn print_mode_docs(&self, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer) {
         for (.., probes) in self.probes().iter() {
-            for probe in probes.iter() {
+            if let Some(probe) = probes.iter().next() {
+                // only print out the docs for some probe type one time!
                 probe.print_mode_docs(print_globals, print_functions, tabs, buffer);
             }
         }
@@ -1661,14 +1662,15 @@ impl Event for BytecodeEvent {
     }
 
     fn assign_matching_modes(&mut self, probe_spec: &ProbeSpec, loc: Option<Location>,  predicate: Option<Expr>,
-                             body: Option<Vec<Statement>>) -> Result<bool, Box<WhammError>> {
+                             body: Option<Vec<Statement>>) -> bool {
         let mut matched_modes = false;
         let probes = self.probes_mut();
-        let modes: Vec<Box<WhammMode>> = mode_factory(probe_spec, loc.clone())?;
+        let modes: Vec<Box<WhammMode>> = mode_factory(probe_spec, loc.clone());
         for mode in modes {
             matched_modes = true;
-            probes.insert(mode.name(), vec![Box::new(WhammProbe::new(*mode, loc.clone(), predicate.clone(), body.clone()))]);
+            let modes = probes.entry(mode.name()).or_default();
+            modes.push(Box::new(WhammProbe::new(*mode, loc.clone(), predicate.clone(), body.clone())));
         }
-        Ok(matched_modes)
+        matched_modes
     }
 }

@@ -36,7 +36,7 @@ pub trait Provider {
     fn get_provided_globals(&self) -> &HashMap<String, ProvidedGlobal>;
     fn assign_matching_packages(&mut self, probe_spec: &ProbeSpec, loc: Option<Location>,
                                 predicate: Option<Expr>,
-                                body: Option<Vec<Statement>>) -> Result<(bool, bool, bool), Box<WhammError>>;
+                                body: Option<Vec<Statement>>) -> (bool, bool, bool);
 }
 
 /// 0: Box<Self> the matched provider instance
@@ -67,18 +67,64 @@ pub fn provider_factory<P: Provider + NameOptions + FromStr>(curr_providers: &mu
         let mut matched_modes = false;
         for m in matches {
             matched_providers = true;
-            let provider = curr_providers.entry(m.clone()).or_insert(Box::new(P::from_str(m, loc.clone())));
+            let already_has = curr_providers.contains_key(&m.clone());
+            let provider = curr_providers.entry(m.clone()).or_insert(Box::new(P::from_str(m.clone(), loc.clone())));
 
             let (found_package, found_events, found_modes) = if let Some(SpecPart {loc: package_loc, .. }) = &probe_spec.package {
                 provider.assign_matching_packages(probe_spec, package_loc.to_owned(),
                                                   predicate.clone(),
-                                                  body.clone())?
+                                                  body.clone())
             } else {
                 (false, false, false)
             };
+            if !found_modes && !already_has {
+                // If this matched provider wasn't already present, we need to remove.
+                // Otherwise, we'd have providers with no probes in them!
+                curr_providers.remove(&m.clone());
+            }
             matched_packages |= found_package;
             matched_events |= found_events;
             matched_modes |= found_modes;
+        }
+        if !matched_providers {
+            let loc = provider_loc.as_ref().map(|loc| loc.line_col.clone());
+            return Err(Box::new(ErrorGen::get_parse_error(
+                true,
+                Some("Could not find any matches for the provider pattern".to_string()),
+                loc,
+                vec![],
+                vec![],
+            )));
+        }
+        if !matched_packages {
+            let loc = probe_spec.package.as_ref().unwrap().loc.as_ref().map(|loc| loc.line_col.clone());
+            return Err(Box::new(ErrorGen::get_parse_error(
+                true,
+                Some("Could not find any matches for the package pattern".to_string()),
+                loc,
+                vec![],
+                vec![],
+            )));
+        }
+        if !matched_events {
+            let loc = probe_spec.event.as_ref().unwrap().loc.as_ref().map(|loc| loc.line_col.clone());
+            return Err(Box::new(ErrorGen::get_parse_error(
+                true,
+                Some("Could not find any matches for the event pattern".to_string()),
+                loc,
+                vec![],
+                vec![],
+            )));
+        }
+        if !matched_modes {
+            let loc = probe_spec.mode.as_ref().unwrap().loc.as_ref().map(|loc| loc.line_col.clone());
+            return Err(Box::new(ErrorGen::get_parse_error(
+                true,
+                Some("Could not find any matches for the mode pattern".to_string()),
+                loc,
+                vec![],
+                vec![],
+            )));
         }
 
         Ok((matched_providers, matched_packages, matched_events, matched_modes))
@@ -136,7 +182,7 @@ pub trait Package {
     fn get_provided_globals(&self) -> &HashMap<String, ProvidedGlobal>;
     fn assign_matching_events(&mut self, probe_spec: &ProbeSpec, loc: Option<Location>,
                               predicate: Option<Expr>,
-                              body: Option<Vec<Statement>>) -> Result<(bool, bool), Box<WhammError>>;
+                              body: Option<Vec<Statement>>) -> (bool, bool);
 }
 /// 0: Box<Self> the matched package instance
 /// 2: bool, whether there were matched events
@@ -144,18 +190,11 @@ pub trait Package {
 fn package_factory<P: Package + NameOptions + FromStr>(curr_packages: &mut HashMap<String, Box<P>>,
                                                        probe_spec: &ProbeSpec, loc: Option<Location>,
                                                        predicate: Option<Expr>,
-                                                       body: Option<Vec<Statement>>) -> Result<(bool, bool, bool), Box<WhammError>> {
-    if let Some(SpecPart {name: package_patt, loc: package_loc}) = &probe_spec.package {
+                                                       body: Option<Vec<Statement>>) -> (bool, bool, bool) {
+    if let Some(SpecPart {name: package_patt, ..}) = &probe_spec.package {
         let matches = get_matches(P::get_name_options(), package_patt);
         if matches.is_empty() {
-            let loc = package_loc.as_ref().map(|loc| loc.line_col.clone());
-            return Err(Box::new(ErrorGen::get_parse_error(
-                true,
-                Some("Could not find any matches for the package pattern".to_string()),
-                loc,
-                vec![],
-                vec![],
-            )));
+            return (false, false, false)
         }
 
         let mut matched_packages = false;
@@ -163,20 +202,26 @@ fn package_factory<P: Package + NameOptions + FromStr>(curr_packages: &mut HashM
         let mut matched_modes = false;
         for m in matches {
             matched_packages = true;
-            let package = curr_packages.entry(m.clone()).or_insert(Box::new(P::from_str(m, loc.clone())));
+            let already_has = curr_packages.contains_key(&m.clone());
+            let package = curr_packages.entry(m.clone()).or_insert(Box::new(P::from_str(m.clone(), loc.clone())));
 
             let (found_match_for_event, found_match_for_mode) = if let Some(SpecPart {loc: event_loc, .. }) = &probe_spec.event {
-                package.assign_matching_events(probe_spec, event_loc.to_owned(), predicate.clone(), body.clone())?
+                package.assign_matching_events(probe_spec, event_loc.to_owned(), predicate.clone(), body.clone())
             } else {
                 (false, false)
             };
+            if !found_match_for_mode && !already_has {
+                // If this matched package wasn't already present, we need to remove.
+                // Otherwise, we'd have packages with no probes in them!
+                curr_packages.remove(&m.clone());
+            }
             matched_events |= found_match_for_event;
             matched_modes |= found_match_for_mode;
         }
 
-        Ok((matched_packages, matched_events, matched_modes))
+        (matched_packages, matched_events, matched_modes)
     } else {
-        Ok((false, false, false))
+        (false, false, false)
     }
 }
 fn print_package_docs<P>(package: &Box<P>, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer)
@@ -200,14 +245,12 @@ fn print_package_docs<P>(package: &Box<P>, print_globals: bool, print_functions:
 
     // Print the globals
     if print_globals {
-        let globals = package.get_provided_globals();
-        print_global_vars(tabs, &globals, buffer);
+        print_global_vars(tabs, package.get_provided_globals(), buffer);
     }
 
     // Print the functions
     if print_functions {
-        let functions = package.get_provided_fns();
-        print_fns(tabs, &functions, buffer);
+        print_fns(tabs, package.get_provided_fns(), buffer);
     }
     *tabs -= 1;
 }
@@ -236,44 +279,43 @@ pub trait Event {
     fn get_provided_globals(&self) -> &HashMap<String, ProvidedGlobal>;
     fn assign_matching_modes(&mut self, probe_spec: &ProbeSpec, loc: Option<Location>,
                              predicate: Option<Expr>,
-                             body: Option<Vec<Statement>>) -> Result<bool, Box<WhammError>>;
+                             body: Option<Vec<Statement>>) -> bool;
 }
 
 /// 0: Box<Self> the matched event instance
 /// 3: bool, whether there were matched modes
 fn event_factory<E: Event + NameOptions + FromStr>(curr_events: &mut HashMap<String, Box<E>>, probe_spec: &ProbeSpec, loc: Option<Location>,
                                                    predicate: Option<Expr>,
-                                                   body: Option<Vec<Statement>>) -> Result<(bool, bool), Box<WhammError>> {
-    if let Some(SpecPart {name: event_patt, loc: event_loc}) = &probe_spec.event {
+                                                   body: Option<Vec<Statement>>) -> (bool, bool) {
+    if let Some(SpecPart {name: event_patt, ..}) = &probe_spec.event {
         let matches = get_matches(E::get_name_options(), event_patt);
         if matches.is_empty() {
-            let loc = event_loc.as_ref().map(|loc| loc.line_col.clone());
-            return Err(Box::new(ErrorGen::get_parse_error(
-                true,
-                Some("Could not find any matches for the event pattern".to_string()),
-                loc,
-                vec![],
-                vec![],
-            )));
+            return (false, false);
         }
 
         let mut matched_events = false;
         let mut matched_modes = false;
         for m in matches {
             matched_events = true;
-            let event = curr_events.entry(m.clone()).or_insert(Box::new(E::from_str(m, loc.clone())));
+            let already_has = curr_events.contains_key(&m.clone());
+            let event = curr_events.entry(m.clone()).or_insert(Box::new(E::from_str(m.clone(), loc.clone())));
 
             let found_match_for_mode = if let Some(SpecPart {loc: mode_loc, .. }) = &probe_spec.mode {
-                event.assign_matching_modes(probe_spec, mode_loc.to_owned(), predicate.clone(), body.clone())?
+                event.assign_matching_modes(probe_spec, mode_loc.to_owned(), predicate.clone(), body.clone())
             } else {
                 false
             };
+            if !found_match_for_mode && !already_has {
+                // If this matched package wasn't already present, we need to remove.
+                // Otherwise, we'd have packages with no probes in them!
+                curr_events.remove(&m.clone());
+            }
             matched_modes |= found_match_for_mode;
         }
 
-        Ok((matched_events, matched_modes))
+        (matched_events, matched_modes)
     } else {
-        Ok((false, false))
+        (false, false)
     }
 }
 fn print_event_docs<E: Event>(event: &E, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer) {
@@ -321,18 +363,11 @@ pub trait Mode {
 }
 
 /// 0: Box<Self> the matched provider instance
-fn mode_factory<M: Mode + NameOptions + FromStr>(probe_spec: &ProbeSpec, loc: Option<Location>) -> Result<Vec<Box<M>>, Box<WhammError>> {
-    if let Some(SpecPart {name: mode_patt, loc: mode_loc}) = &probe_spec.mode {
+fn mode_factory<M: Mode + NameOptions + FromStr>(probe_spec: &ProbeSpec, loc: Option<Location>) -> Vec<Box<M>> {
+    if let Some(SpecPart {name: mode_patt, ..}) = &probe_spec.mode {
         let matches = get_matches(M::get_name_options(), mode_patt);
         if matches.is_empty() {
-            let loc = mode_loc.as_ref().map(|loc| loc.line_col.clone());
-            return Err(Box::new(ErrorGen::get_parse_error(
-                true,
-                Some("Could not find any matches for the mode pattern".to_string()),
-                loc,
-                vec![],
-                vec![],
-            )));
+            return vec![];
         }
 
         let mut modes = vec![];
@@ -341,9 +376,9 @@ fn mode_factory<M: Mode + NameOptions + FromStr>(probe_spec: &ProbeSpec, loc: Op
             modes.push(Box::new(mode));
         }
 
-        Ok(modes)
+        modes
     } else {
-        Ok(vec![])
+        vec![]
     }
 }
 fn print_mode_docs<M: Mode>(mode: &M, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer) {
@@ -591,13 +626,13 @@ impl Provider for WhammProvider {
 
     fn assign_matching_packages(&mut self, probe_spec: &ProbeSpec, loc: Option<Location>,
                                 predicate: Option<Expr>,
-                                body: Option<Vec<Statement>>) -> Result<(bool, bool, bool), Box<WhammError>> {
+                                body: Option<Vec<Statement>>) -> (bool, bool, bool) {
         match self {
             Self::Core {packages, ..} => {
-                Ok(package_factory(packages, probe_spec, loc, predicate, body)?)
+                package_factory(packages, probe_spec, loc, predicate, body)
             },
             Self::Wasm {packages, ..} => {
-                Ok(package_factory(packages, probe_spec, loc, predicate, body)?)
+                package_factory(packages, probe_spec, loc, predicate, body)
             }
         }
     }

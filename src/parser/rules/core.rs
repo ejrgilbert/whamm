@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use termcolor::Buffer;
-use crate::common::error::WhammError;
 use crate::parser::rules::{Event, event_factory, FromStr, Mode, mode_factory, ModeInfo, NameOptions, Package, print_mode_docs, Probe};
 use crate::parser::types::{Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal, Statement};
 
@@ -131,10 +130,10 @@ impl Package for CorePackage {
 
     fn assign_matching_events(&mut self, probe_spec: &ProbeSpec, loc: Option<Location>,
                               predicate: Option<Expr>,
-                              body: Option<Vec<Statement>>) -> Result<(bool, bool), Box<WhammError>> {
+                              body: Option<Vec<Statement>>) -> (bool, bool) {
         match self {
             Self::Default {events, ..} => {
-                Ok(event_factory(events, probe_spec, loc, predicate, body)?)
+                event_factory(events, probe_spec, loc, predicate, body)
             },
         }
     }
@@ -209,7 +208,8 @@ impl Event for CoreEvent {
         match self {
             Self::Default{probe_map, ..} => {
                 for (.., probes) in probe_map.iter() {
-                    for probe in probes.iter() {
+                    if let Some(probe) = probes.iter().next() {
+                        // only print out the docs for some probe type one time!
                         probe.print_mode_docs(print_globals, print_functions, tabs, buffer);
                     }
                 }
@@ -243,18 +243,18 @@ impl Event for CoreEvent {
 
     fn assign_matching_modes(&mut self, probe_spec: &ProbeSpec, loc: Option<Location>,
                              predicate: Option<Expr>,
-                             body: Option<Vec<Statement>>) -> Result<bool, Box<WhammError>> {
+                             body: Option<Vec<Statement>>) -> bool {
         let mut matched_modes = false;
         match self {
             Self::Default{ref mut probe_map, ..} => {
-                let modes: Vec<Box<CoreMode>> = mode_factory(probe_spec, loc.clone())?;
+                let modes: Vec<Box<CoreMode>> = mode_factory(probe_spec, loc.clone());
                 for mode in modes {
                     matched_modes = true;
                     probe_map.insert(mode.name(), vec![Box::new(CoreProbe::new(*mode, loc.clone(), predicate.clone(), body.clone()))]);
                 }
             }
         }
-        Ok(matched_modes)
+        matched_modes
     }
 }
 

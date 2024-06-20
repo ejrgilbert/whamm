@@ -17,6 +17,7 @@ pub fn setup_logger() {
 }
 
 const VALID_SCRIPTS: &[&str] = &[
+    ":::alt { }",
     // Ternary
     r#"
 wasm:bytecode:br:before {
@@ -32,7 +33,7 @@ wasm:bytecode:br:before {
     // Regexes
     "wasm:byt*:call:before { }",
     "wasm::call:after { }",
-    ":::alt { }",
+    // ":::alt { }", // todo uncomment
     "wasm::: { }",
     ":bytecode:: { }",
     "::call: { }",
@@ -444,13 +445,13 @@ wasm::call:alt /
             assert_eq!(1, provider.len_packages());
             let package = provider.packages().next().unwrap();
             assert_eq!("bytecode", package.name());
-            assert_eq!(2, package.get_provided_globals().len());
+            assert_eq!(1, package.get_provided_globals().len());
             assert_eq!(0, package.get_provided_fns().len());
 
             assert_eq!(1, package.len_events());
             let event = package.events().next().unwrap();
             assert_eq!("call", event.name());
-            assert_eq!(4, event.get_provided_globals().len());
+            assert_eq!(5, event.get_provided_globals().len());
             assert_eq!(0, event.get_provided_fns().len());
 
             assert_eq!(1, event.probes().len());
