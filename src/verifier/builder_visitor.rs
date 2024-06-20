@@ -250,10 +250,24 @@ impl SymbolTableBuilder<'_> {
                         Some(other_loc.line_col.clone()),
                     );
                 } else {
-                    // This should never be the case since it's controlled by the compiler!
-                    self.err
-                        .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
-                    unreachable!()
+                    // If there is another fn with the same name as a compiler generated fn, throw a duplicate id error
+                    match &f_name.loc {
+                        Some(loc) => {
+                            self.err.compiler_fn_overload_error(
+                                false,
+                                f_name.name.clone(),
+                                Some(loc.line_col.clone()),
+                            );
+                        }
+                        None => {
+                            self.err.compiler_fn_overload_error(
+                                false,
+                                f_name.name.clone(),
+                                None,
+                            );
+                        }
+                    }
+                    
                 }
             } else {
                 // This should never be the case since it's controlled by the compiler!

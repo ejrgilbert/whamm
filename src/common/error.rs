@@ -181,7 +181,16 @@ impl ErrorGen {
         let info_loc = info_loc.as_ref().map(|info_loc| info_loc.line_col.clone());
         Self::get_duplicate_identifier_error(fatal, duplicated_id, err_loc, info_loc)
     }
-
+    pub fn compiler_fn_overload_error(
+        &mut self,
+        fatal: bool,
+        duplicated_id: String,
+        loc: Option<LineColLocation>,
+    ) {
+        let err =
+            Self::get_duplicate_identifier_error(fatal, duplicated_id, loc, None);
+        self.add_error(err);
+    }
     pub fn duplicate_identifier_error(
         &mut self,
         fatal: bool,
