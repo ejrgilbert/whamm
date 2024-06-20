@@ -645,7 +645,7 @@ impl ProbeSpec {
 pub struct Script {
     pub name: String,
     /// The rules of the probes that have been used in the Script.
-    pub providers: HashMap<String, OldProvider>,
+    pub providers: HashMap<String, Box<WhammProvider>>,
     pub fns: Vec<Fn>,                     // User-provided
     pub globals: HashMap<String, Global>, // User-provided, should be VarId
     pub global_stmts: Vec<Statement>,
@@ -698,13 +698,14 @@ impl Script {
         long_line(&mut buffer);
         white(true, "\n\n".to_string(), &mut buffer);
         
-        let (providers, matched_packages, matched_events, matched_modes): (Vec<Box<WhammProvider>>, bool, bool, bool) = provider_factory(probe_spec, None)?;
+        let mut providers: HashMap<String, Box<WhammProvider>> = HashMap::new();
+        let (matched_providers, matched_packages, matched_events, matched_modes) = provider_factory(&mut providers, probe_spec, None, None, None)?;
 
         // Print the matched provider information
-        if !providers.is_empty() {
+        if !matched_providers {
             probe_spec.print_bold_provider(&mut buffer);
         }
-        for provider in providers.iter() {
+        for (.., provider) in providers.iter() {
             print_provider_docs(provider.as_ref(), print_globals, print_functions, &mut tabs, &mut buffer);
         }
         long_line(&mut buffer);
@@ -714,7 +715,7 @@ impl Script {
         if matched_packages {
             probe_spec.print_bold_package(&mut buffer);
         }
-        for provider in providers.iter() {
+        for (.., provider) in providers.iter() {
             provider.print_package_docs(print_globals, print_functions, &mut tabs, &mut buffer);
         }
         long_line(&mut buffer);
@@ -724,7 +725,7 @@ impl Script {
         if matched_events {
             probe_spec.print_bold_event(&mut buffer);
         }
-        for provider in providers.iter() {
+        for (.., provider) in providers.iter() {
             provider.print_event_docs(print_globals, print_functions, &mut tabs, &mut buffer);
         }
         long_line(&mut buffer);
@@ -734,7 +735,7 @@ impl Script {
         if matched_modes {
             probe_spec.print_bold_mode(&mut buffer);
         }
-        for provider in providers.iter() {
+        for (.., provider) in providers.iter() {
             provider.print_mode_docs(print_globals, print_functions, &mut tabs, &mut buffer);
         }
         long_line(&mut buffer);
@@ -758,16 +759,16 @@ impl Script {
     /// to add a copy of the user-defined Probe for each of them.
     pub fn add_probe(
         &mut self,
-        provided_probes: &ProvidedProbes,
         probe_spec: &ProbeSpec,
         predicate: Option<Expr>,
-        body: Option<Vec<Statement>>,
+        body: Option<Vec<Statement>>
     ) -> Result<(), Box<WhammError>> {
-        let mut reason = &probe_spec.provider;
-        if let Some(prov_patt) = &probe_spec.provider {
-            let matches = OldProvider::get_matches(provided_probes, &prov_patt.name);
-            if matches.is_empty() {
-                return Err(Box::new(ErrorGen::get_parse_error(
+        let mut curr_providers = &self.providers;
+        let (matched_providers, matched_packages, matched_events, matched_modes): (bool, bool, bool, bool) = provider_factory(&mut curr_providers, probe_spec, None, predicate, body)?;
+        
+        if !matched_providers {
+            return if let Some(prov_patt) = &probe_spec.provider {
+                Err(Box::new(ErrorGen::get_parse_error(
                     true,
                     Some(format!(
                         "Could not find any matches for the specified provider pattern: {}",
@@ -776,151 +777,101 @@ impl Script {
                     Some(prov_patt.loc.as_ref().unwrap().line_col.clone()),
                     vec![],
                     vec![],
-                )));
-            }
-
-            for (.., provider_str) in matches.iter() {
-                let mut is_empty = true;
-                // Does provider exist yet?
-                let provider = match self.providers.get_mut(provider_str) {
-                    Some(prov) => prov,
-                    None => {
-                        // add the provider!
-                        let new_prov = OldProvider::new(
-                            provider_str.to_lowercase().to_string(),
-                            prov_patt.loc.clone(),
-                        );
-                        self.providers
-                            .insert(provider_str.to_lowercase().to_string(), new_prov);
-                        self.providers
-                            .get_mut(&provider_str.to_lowercase())
-                            .unwrap()
-                    }
-                };
-
-                if provider_str.to_uppercase() == "BEGIN" || provider_str.to_uppercase() == "END" {
-                    // special case, just stop here
-                    return Ok(());
-                }
-
-                if let Some(package_patt) = &probe_spec.package {
-                    let matches =
-                        Package::get_matches(provided_probes, provider_str, &package_patt.name);
-                    if matches.is_empty() {
-                        reason = &probe_spec.package;
-                    }
-                    for (.., package_str) in matches.iter() {
-                        // Does package exist yet?
-                        let package = match provider.packages.get_mut(package_str) {
-                            Some(m) => m,
-                            None => {
-                                // add the package!
-                                let new_mod = Package::new(
-                                    package_str.to_lowercase().to_string(),
-                                    package_patt.loc.clone(),
-                                );
-                                provider
-                                    .packages
-                                    .insert(package_str.to_lowercase().to_string(), new_mod);
-                                provider
-                                    .packages
-                                    .get_mut(&package_str.to_lowercase())
-                                    .unwrap()
-                            }
-                        };
-                        if let Some(event_patt) = &probe_spec.event {
-                            let matches = Event::get_matches(
-                                provided_probes,
-                                provider_str,
-                                package_str,
-                                &event_patt.name,
-                            );
-                            if matches.is_empty() {
-                                reason = &probe_spec.event;
-                            }
-                            for (.., event_str) in matches.iter() {
-                                // Does event exist yet?
-                                let event = match package.events.get_mut(event_str) {
-                                    Some(f) => f,
-                                    None => {
-                                        // add the event!
-                                        let new_event = Event::new(
-                                            event_str.to_lowercase().to_string(),
-                                            event_patt.loc.clone(),
-                                        );
-                                        package.events.insert(
-                                            event_str.to_lowercase().to_string(),
-                                            new_event,
-                                        );
-                                        package.events.get_mut(&event_str.to_lowercase()).unwrap()
-                                    }
-                                };
-                                if let Some(mode_patt) = &probe_spec.mode {
-                                    let matches = Probe::get_matches(
-                                        provided_probes,
-                                        provider_str,
-                                        package_str,
-                                        event_str,
-                                        &mode_patt.name,
-                                    );
-                                    if matches.is_empty() {
-                                        reason = &probe_spec.mode;
-                                    }
-
-                                    for (.., name_str) in matches.iter() {
-                                        event.insert_probe(
-                                            name_str.to_string(),
-                                            Probe::new(
-                                                mode_patt.name.to_string(),
-                                                mode_patt.loc.clone(),
-                                                predicate.clone(),
-                                                body.clone(),
-                                            ),
-                                        );
-                                        is_empty = false;
-                                    }
-                                }
-                            }
-                        } else {
-                            return Err(Box::new(ErrorGen::get_unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} Could not find an event matching pattern!")), None)));
-                        }
-                    }
-                } else {
-                    return Err(Box::new(ErrorGen::get_unexpected_error(
-                        true,
-                        Some(format!(
-                            "{UNEXPECTED_ERR_MSG} Could not find a package matching pattern!"
-                        )),
-                        None,
-                    )));
-                }
-                if is_empty {
-                    // Never found a match under this provider, removing
-                    self.providers.remove(provider_str);
-                }
-            }
-        } else {
-            return Err(Box::new(ErrorGen::get_unexpected_error(
-                true,
-                Some(format!(
-                    "{UNEXPECTED_ERR_MSG} Could not find a provider matching pattern!"
-                )),
-                None,
-            )));
-        }
-        if self.providers.is_empty() {
-            if let Some(r) = reason {
-                if let Some(mode_loc) = &r.loc {
-                    return Err(Box::new(ErrorGen::get_parse_error(
-                        true,
-                        Some("Could not find any matches for this pattern".to_string()),
-                        Some(mode_loc.line_col.clone()),
-                        vec![],
-                        vec![],
-                    )));
-                }
+                )))
+            } else {
+                Err(Box::new(ErrorGen::get_unexpected_error(
+                    true,
+                    Some(format!(
+                        "{UNEXPECTED_ERR_MSG} Could not find a provider matching pattern!"
+                    )),
+                    None,
+                )))
             }
         }
+        
+        if !matched_packages {
+            return if let Some(prov_patt) = &probe_spec.package {
+                Err(Box::new(ErrorGen::get_parse_error(
+                    true,
+                    Some(format!(
+                        "Could not find any matches for the specified package pattern: {}",
+                        prov_patt.name
+                    )),
+                    Some(prov_patt.loc.as_ref().unwrap().line_col.clone()),
+                    vec![],
+                    vec![],
+                )))
+            } else {
+                Err(Box::new(ErrorGen::get_unexpected_error(
+                    true,
+                    Some(format!(
+                        "{UNEXPECTED_ERR_MSG} Could not find a package matching pattern!"
+                    )),
+                    None,
+                )))
+            }
+        }
+
+        if !matched_events {
+            return if let Some(prov_patt) = &probe_spec.event {
+                Err(Box::new(ErrorGen::get_parse_error(
+                    true,
+                    Some(format!(
+                        "Could not find any matches for the specified event pattern: {}",
+                        prov_patt.name
+                    )),
+                    Some(prov_patt.loc.as_ref().unwrap().line_col.clone()),
+                    vec![],
+                    vec![],
+                )))
+            } else {
+                Err(Box::new(ErrorGen::get_unexpected_error(
+                    true,
+                    Some(format!(
+                        "{UNEXPECTED_ERR_MSG} Could not find an event matching pattern!"
+                    )),
+                    None,
+                )))
+            }
+        }
+
+        if !matched_modes {
+            return if let Some(prov_patt) = &probe_spec.mode {
+                Err(Box::new(ErrorGen::get_parse_error(
+                    true,
+                    Some(format!(
+                        "Could not find any matches for the specified mode pattern: {}",
+                        prov_patt.name
+                    )),
+                    Some(prov_patt.loc.as_ref().unwrap().line_col.clone()),
+                    vec![],
+                    vec![],
+                )))
+            } else {
+                Err(Box::new(ErrorGen::get_unexpected_error(
+                    true,
+                    Some(format!(
+                        "{UNEXPECTED_ERR_MSG} Could not find a mode matching pattern!"
+                    )),
+                    None,
+                )))
+            }
+        }
+        
+        // // insert the matched providers into this script instance!
+        // for (.., provider) in curr_providers {
+        //     if let Some(prov) = self.providers.get(&provider.name()) {
+        //         // Add the probe to this provider already in the script instance
+        //         // TODO -- also check for package/event/mode availability
+        //         
+        //     } else {
+        //         // Add the probe to the new provider
+        //         // TODO
+        //         
+        //         // Add the new provider to the script instance
+        //         self.providers.insert(provider.name(), provider);
+        //     }
+        // }
         Ok(())
     }
 }
@@ -1255,7 +1206,7 @@ pub enum BinOp {
 pub trait WhammVisitor<T> {
     fn visit_whamm(&mut self, whamm: &Whamm) -> T;
     fn visit_script(&mut self, script: &Script) -> T;
-    fn visit_provider(&mut self, provider: &OldProvider) -> T;
+    fn visit_provider(&mut self, provider: &dyn Provider) -> T;
     fn visit_package(&mut self, package: &Package) -> T;
     fn visit_event(&mut self, event: &Event) -> T;
     fn visit_probe(&mut self, probe: &Probe) -> T;

@@ -2,9 +2,10 @@ use std::vec;
 
 use crate::common::error::ErrorGen;
 use crate::parser::types::{
-    BinOp, Block, DataType, Event, Expr, Fn, Location, Package, Probe, Provider, Script, Statement,
+    BinOp, Block, DataType, Event, Expr, Fn, Location, Package, Probe, Script, Statement,
     UnOp, Value, Whamm, WhammVisitor, WhammVisitorMut,
 };
+use crate::parser::rules::Provider;
 use crate::verifier::builder_visitor::SymbolTableBuilder;
 use crate::verifier::types::{Record, SymbolTable};
 
@@ -84,17 +85,17 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         // });
 
         script.providers.iter().for_each(|(_, provider)| {
-            self.visit_provider(provider);
+            self.visit_provider(provider.as_ref());
         });
 
         let _ = self.table.exit_scope();
         None
     }
 
-    fn visit_provider(&mut self, provider: &Provider) -> Option<DataType> {
+    fn visit_provider(&mut self, provider: &dyn Provider) -> Option<DataType> {
         let _ = self.table.enter_scope();
 
-        provider.packages.iter().for_each(|(_, package)| {
+        provider.packages().iter().for_each(|(_, package)| {
             self.visit_package(package);
         });
 
