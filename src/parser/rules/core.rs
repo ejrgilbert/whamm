@@ -61,6 +61,30 @@ impl Package for CorePackage {
         }
     }
 
+    fn len_events(&self) -> usize {
+        match self {
+            Self::Default{events, ..} => {
+                events.len()
+            }
+        }
+    }
+
+    fn events(&self) -> Box<dyn Iterator<Item = &dyn Event> + '_> {
+        match self {
+            Self::Default{events, ..} => {
+                Box::new(events.values().map(|p| p.as_ref() as &dyn Event))
+            }
+        }
+    }
+
+    fn events_mut(&mut self) -> Box<dyn Iterator<Item = &mut dyn Event> + '_> {
+        match self {
+            Self::Default{events, ..} => {
+                Box::new(events.values_mut().map(|p| p.as_mut() as &mut dyn Event))
+            }
+        }
+    }
+
     fn print_event_docs(&self, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer) {
         match self {
             Self::Default{events, ..} => {
@@ -82,6 +106,14 @@ impl Package for CorePackage {
     }
 
     fn get_provided_fns(&self) -> &Vec<ProvidedFunction> {
+        match self {
+            Self::Default { fns, ..} => {
+                fns
+            }
+        }
+    }
+
+    fn get_provided_fns_mut(&mut self) -> &mut Vec<ProvidedFunction> {
         match self {
             Self::Default { fns, ..} => {
                 fns
@@ -193,6 +225,14 @@ impl Event for CoreEvent {
         }
     }
 
+    fn get_provided_fns_mut(&mut self) -> &mut Vec<ProvidedFunction> {
+        match self {
+            Self::Default{fns, ..} => {
+                fns
+            }
+        }
+    }
+
     fn get_provided_globals(&self) -> &HashMap<String, ProvidedGlobal> {
         match self {
             Self::Default{globals, ..} => {
@@ -294,6 +334,15 @@ impl Mode for CoreMode {
         }
     }
 
+    fn get_provided_fns_mut(&mut self) -> &mut Vec<ProvidedFunction> {
+        match self {
+            Self::Begin(ModeInfo { fns, ..}) |
+            Self::End(ModeInfo { fns, ..}) => {
+                fns
+            }
+        }
+    }
+
     fn get_provided_globals(&self) -> &HashMap<String, ProvidedGlobal> {
         match self {
             Self::Begin(ModeInfo { globals, ..}) |
@@ -312,8 +361,31 @@ struct CoreProbe {
     pub body: Option<Vec<Statement>>
 }
 impl Probe for CoreProbe {
+    fn mode_name(&self) -> String {
+        self.mode.name()
+    }
+    fn predicate(&self) -> &Option<Expr> {
+        &self.predicate
+    }
+
+    fn body(&self) -> &Option<Vec<Statement>> {
+        &self.body
+    }
+    
     fn print_mode_docs(&self, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer) {
         print_mode_docs(&self.mode, print_globals, print_functions, tabs, buffer);
+    }
+
+    fn get_mode_provided_fns(&self) -> &Vec<ProvidedFunction> {
+        self.mode.get_provided_fns()
+    }
+
+    fn get_mode_provided_fns_mut(&mut self) -> &mut Vec<ProvidedFunction> {
+        self.mode.get_provided_fns_mut()
+    }
+
+    fn get_mode_provided_globals(&self) -> &HashMap<String, ProvidedGlobal> {
+        self.mode.get_provided_globals()
     }
 }
 impl CoreProbe {

@@ -3,10 +3,10 @@ use pest::error::LineColLocation;
 use std::collections::HashMap;
 use termcolor::{Buffer, ColorChoice, WriteColor};
 
-use crate::parser::rules::{print_provider_docs, Provider, provider_factory, WhammProvider};
+use crate::parser::rules::{print_provider_docs, provider_factory, Provider, Package, Event, Probe, WhammProvider};
 use crate::common::error::{ErrorGen, WhammError};
 use crate::common::terminal::{
-    green, grey_italics, long_line, magenta, magenta_italics, white, yellow,
+    green, grey_italics, long_line, magenta, white, yellow,
 };
 use pest::pratt_parser::PrattParser;
 use pest_derive::Parser;
@@ -445,7 +445,7 @@ impl Default for Whamm {
 }
 impl Whamm {
     pub fn new() -> Self {
-        let mut whamm = Whamm {
+        let whamm = Whamm {
             provided_probes: HashMap::new(),
             fns: Whamm::get_provided_fns(),
             globals: Whamm::get_provided_globals(),
@@ -763,7 +763,7 @@ impl Script {
         predicate: Option<Expr>,
         body: Option<Vec<Statement>>
     ) -> Result<(), Box<WhammError>> {
-        let mut curr_providers = &self.providers;
+        let mut curr_providers = &mut self.providers;
         let (matched_providers, matched_packages, matched_events, matched_modes): (bool, bool, bool, bool) = provider_factory(&mut curr_providers, probe_spec, None, predicate, body)?;
         
         if !matched_providers {
@@ -958,7 +958,7 @@ pub struct OldProvider {
 
     /// The packages of the probes that have been used in the Script.
     /// These will be sub-packages of this Provider.
-    pub packages: HashMap<String, Package>,
+    pub packages: HashMap<String, OldPackage>,
     pub loc: Option<Location>,
 }
 impl OldProvider {
@@ -990,19 +990,19 @@ impl OldProvider {
     }
 }
 
-pub struct Package {
+pub struct OldPackage {
     pub name: String,
     pub fns: Vec<(ProvidedFunctionality, Fn)>, // Comp-provided
     pub globals: HashMap<String, (ProvidedFunctionality, Global)>, // Comp-provided
 
     /// The events of the probes that have been used in the Script.
     /// These will be sub-events of this Package.
-    pub events: HashMap<String, Event>,
+    pub events: HashMap<String, OldEvent>,
     pub loc: Option<Location>,
 }
-impl Package {
+impl OldPackage {
     pub fn new(name: String, loc: Option<Location>) -> Self {
-        Package {
+        OldPackage {
             name,
             fns: vec![],
             globals: HashMap::new(),
@@ -1031,16 +1031,16 @@ impl Package {
     }
 }
 
-pub struct Event {
+pub struct OldEvent {
     pub name: String,
     pub fns: Vec<(ProvidedFunctionality, Fn)>, // Comp-provided
     pub globals: HashMap<String, (ProvidedFunctionality, Global)>, // Comp-provided
-    pub probe_map: HashMap<String, Vec<Probe>>,
+    pub probe_map: HashMap<String, Vec<OldProbe>>,
     pub loc: Option<Location>,
 }
-impl Event {
+impl OldEvent {
     pub fn new(name: String, loc: Option<Location>) -> Self {
-        Event {
+        Self {
             name,
             fns: vec![],
             globals: HashMap::new(),
@@ -1077,7 +1077,7 @@ impl Event {
         matches
     }
 
-    pub fn insert_probe(&mut self, name: String, probe: Probe) {
+    pub fn insert_probe(&mut self, name: String, probe: OldProbe) {
         // Does name exist yet?
         match self.probe_map.get_mut(&name) {
             Some(probes) => {
@@ -1092,7 +1092,7 @@ impl Event {
 }
 
 #[derive(Clone, Debug)]
-pub struct Probe {
+pub struct OldProbe {
     pub mode: String,
     pub loc: Option<Location>,
     pub fns: Vec<(ProvidedFunctionality, Fn)>, // Comp-provided
@@ -1102,16 +1102,16 @@ pub struct Probe {
     // TODO: Change to Blocks when we support general if statements
     pub body: Option<Vec<Statement>>,
 }
-impl Probe {
+impl OldProbe {
     pub fn new(
         mode: String,
         loc: Option<Location>,
         predicate: Option<Expr>,
         body: Option<Vec<Statement>>,
     ) -> Self {
-        let fns = Probe::get_provided_fns(&mode);
-        let globals = Probe::get_provided_globals(&mode);
-        Probe {
+        let fns = Self::get_provided_fns(&mode);
+        let globals = Self::get_provided_globals(&mode);
+        Self {
             mode,
             loc,
             fns,
@@ -1207,9 +1207,9 @@ pub trait WhammVisitor<T> {
     fn visit_whamm(&mut self, whamm: &Whamm) -> T;
     fn visit_script(&mut self, script: &Script) -> T;
     fn visit_provider(&mut self, provider: &dyn Provider) -> T;
-    fn visit_package(&mut self, package: &Package) -> T;
-    fn visit_event(&mut self, event: &Event) -> T;
-    fn visit_probe(&mut self, probe: &Probe) -> T;
+    fn visit_package(&mut self, package: &dyn Package) -> T;
+    fn visit_event(&mut self, event: &dyn Event) -> T;
+    fn visit_probe(&mut self, probe: &dyn Probe) -> T;
     // fn visit_predicate(&mut self, predicate: &Expr) -> T;
     fn visit_fn(&mut self, f: &Fn) -> T;
     fn visit_formal_param(&mut self, param: &(Expr, DataType)) -> T;
@@ -1226,10 +1226,10 @@ pub trait WhammVisitor<T> {
 pub trait WhammVisitorMut<T> {
     fn visit_whamm(&mut self, whamm: &mut Whamm) -> T;
     fn visit_script(&mut self, script: &mut Script) -> T;
-    fn visit_provider(&mut self, provider: &mut OldProvider) -> T;
-    fn visit_package(&mut self, package: &mut Package) -> T;
-    fn visit_event(&mut self, event: &mut Event) -> T;
-    fn visit_probe(&mut self, probe: &mut Probe) -> T;
+    fn visit_provider(&mut self, provider: &mut dyn Provider) -> T;
+    fn visit_package(&mut self, package: &mut dyn Package) -> T;
+    fn visit_event(&mut self, event: &mut dyn Event) -> T;
+    fn visit_probe(&mut self, probe: &mut dyn Probe) -> T;
     // fn visit_predicate(&mut self, predicate: &mut Expr) -> T;
     fn visit_fn(&mut self, f: &mut Fn) -> T;
     fn visit_formal_param(&mut self, param: &mut (Expr, DataType)) -> T;

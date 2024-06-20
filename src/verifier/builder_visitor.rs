@@ -1,14 +1,15 @@
 use crate::parser::types as parser_types;
 use crate::verifier::types::{Record, ScopeType, SymbolTable};
 use parser_types::{
-    BinOp, Block, DataType, Event, Expr, Fn, Package, Probe, OldProvider, Script, Statement, UnOp, Value,
+    BinOp, Block, DataType, Expr, Fn, Script, Statement, UnOp, Value,
     Whamm,
 };
 use std::collections::HashMap;
 
 use crate::common::error::ErrorGen;
-use crate::parser::types::{Global, ProvidedFunction, ProvidedFunctionality, ProvidedGlobal, WhammVisitorMut};
+use crate::parser::types::{Global, ProvidedFunction, ProvidedGlobal, WhammVisitorMut};
 use log::trace;
+use crate::parser::rules::{Event, Package, Probe, Provider};
 
 const UNEXPECTED_ERR_MSG: &str = "SymbolTableBuilder: Looks like you've found a bug...please report this behavior! Exiting now...";
 
@@ -71,8 +72,8 @@ impl SymbolTableBuilder<'_> {
         self.table.set_curr_script(id);
     }
 
-    fn add_provider(&mut self, provider: &OldProvider) {
-        if self.table.lookup(&provider.name).is_some() {
+    fn add_provider(&mut self, provider: &dyn Provider) {
+        if self.table.lookup(&provider.name()).is_some() {
             // This should never be the case since it's controlled by the compiler!
             self.err
                 .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
@@ -80,14 +81,14 @@ impl SymbolTableBuilder<'_> {
 
         // create record
         let provider_rec = Record::Provider {
-            name: provider.name.clone(),
+            name: provider.name().clone(),
             fns: vec![],
             globals: vec![],
             packages: vec![],
         };
 
         // Add provider to scope
-        let id = self.table.put(provider.name.clone(), provider_rec);
+        let id = self.table.put(provider.name().clone(), provider_rec);
 
         // Add provider to current script record
         match self
@@ -112,11 +113,11 @@ impl SymbolTableBuilder<'_> {
 
         // set scope name and type
         self.table
-            .set_curr_scope_info(provider.name.clone(), ScopeType::Provider);
+            .set_curr_scope_info(provider.name().clone(), ScopeType::Provider);
     }
 
-    fn add_package(&mut self, package: &Package) {
-        if self.table.lookup(&package.name).is_some() {
+    fn add_package(&mut self, package: &dyn Package) {
+        if self.table.lookup(&package.name()).is_some() {
             // This should never be the case since it's controlled by the compiler!
             self.err
                 .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
@@ -124,14 +125,14 @@ impl SymbolTableBuilder<'_> {
 
         // create record
         let package_rec = Record::Package {
-            name: package.name.clone(),
+            name: package.name().clone(),
             fns: vec![],
             globals: vec![],
             events: vec![],
         };
 
         // Add package to scope
-        let id = self.table.put(package.name.clone(), package_rec);
+        let id = self.table.put(package.name().clone(), package_rec);
 
         // Add package to current provider record
         match self
@@ -156,11 +157,11 @@ impl SymbolTableBuilder<'_> {
 
         // set scope name and type
         self.table
-            .set_curr_scope_info(package.name.clone(), ScopeType::Package);
+            .set_curr_scope_info(package.name().clone(), ScopeType::Package);
     }
 
-    fn add_event(&mut self, event: &Event) {
-        if self.table.lookup(&event.name).is_some() {
+    fn add_event(&mut self, event: &dyn Event) {
+        if self.table.lookup(&event.name()).is_some() {
             // This should never be the case since it's controlled by the compiler!
             self.err
                 .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
@@ -168,14 +169,14 @@ impl SymbolTableBuilder<'_> {
 
         // create record
         let event_rec = Record::Event {
-            name: event.name.clone(),
+            name: event.name().clone(),
             fns: vec![],
             globals: vec![],
             probes: vec![],
         };
 
         // Add event to scope
-        let id = self.table.put(event.name.clone(), event_rec);
+        let id = self.table.put(event.name().clone(), event_rec);
 
         // Add event to current package record
         match self
@@ -200,11 +201,11 @@ impl SymbolTableBuilder<'_> {
 
         // set scope name and type
         self.table
-            .set_curr_scope_info(event.name.clone(), ScopeType::Event);
+            .set_curr_scope_info(event.name().clone(), ScopeType::Event);
     }
 
-    fn add_probe(&mut self, probe: &Probe) {
-        if self.table.lookup(&probe.mode).is_some() {
+    fn add_probe(&mut self, probe: &dyn Probe) {
+        if self.table.lookup(&probe.mode_name()).is_some() {
             // This should never be the case since it's controlled by the compiler!
             self.err
                 .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
@@ -212,13 +213,13 @@ impl SymbolTableBuilder<'_> {
 
         // create record
         let probe_rec = Record::Probe {
-            mode: probe.mode.clone(),
+            mode: probe.mode_name().clone(),
             fns: vec![],
             globals: vec![],
         };
 
         // Add probe to scope
-        let id = self.table.put(probe.mode.clone(), probe_rec);
+        let id = self.table.put(probe.mode_name().clone(), probe_rec);
 
         // Add probe to current event record
         match self.table.get_record_mut(&self.curr_event.unwrap()) {
@@ -239,7 +240,7 @@ impl SymbolTableBuilder<'_> {
 
         // set scope name and type
         self.table
-            .set_curr_scope_info(probe.mode.clone(), ScopeType::Probe);
+            .set_curr_scope_info(probe.mode_name().clone(), ScopeType::Probe);
     }
 
     fn add_fn(&mut self, f: &mut Fn) {
@@ -476,7 +477,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         script
             .providers
             .iter_mut()
-            .for_each(|(_name, provider)| self.visit_provider(provider));
+            .for_each(|(_name, provider)| self.visit_provider(provider.as_mut()));
 
         trace!("Exiting: visit_script");
         if let Err(e) = self.table.exit_scope() {
@@ -485,16 +486,15 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         self.curr_script = None;
     }
 
-    fn visit_provider(&mut self, provider: &mut OldProvider) {
+    fn visit_provider(&mut self, provider: &mut dyn Provider) {
         trace!("Entering: visit_provider");
 
         self.add_provider(provider);
-        provider.fns.iter_mut().for_each(|(.., f)| self.visit_fn(f));
+        provider.get_provided_fns_mut().iter_mut().for_each(|f| self.visit_fn(&mut f.function));
         // self.visit_provided_globals(&provider.globals);
         provider
-            .packages
-            .iter_mut()
-            .for_each(|(_name, package)| self.visit_package(package));
+            .packages_mut()
+            .for_each(|package| self.visit_package(package));
 
         trace!("Exiting: visit_provider");
         if let Err(e) = self.table.exit_scope() {
@@ -503,16 +503,15 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         self.curr_provider = None;
     }
 
-    fn visit_package(&mut self, package: &mut Package) {
+    fn visit_package(&mut self, package: &mut dyn Package) {
         trace!("Entering: visit_package");
 
         self.add_package(package);
-        package.fns.iter_mut().for_each(|(.., f)| self.visit_fn(f));
+        package.get_provided_fns_mut().iter_mut().for_each(|f| self.visit_fn(&mut f.function));
         // self.visit_provided_globals(&package.globals);
         package
-            .events
-            .iter_mut()
-            .for_each(|(_name, event)| self.visit_event(event));
+            .events_mut()
+            .for_each(|event| self.visit_event(event));
 
         trace!("Exiting: visit_package");
         if let Err(e) = self.table.exit_scope() {
@@ -521,17 +520,17 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         self.curr_package = None;
     }
 
-    fn visit_event(&mut self, event: &mut Event) {
+    fn visit_event(&mut self, event: &mut dyn Event) {
         trace!("Entering: visit_event");
 
         self.add_event(event);
-        event.fns.iter_mut().for_each(|(.., f)| self.visit_fn(f));
+        event.get_provided_fns_mut().iter_mut().for_each(|f| self.visit_fn(&mut f.function));
         // self.visit_provided_globals(&event.globals);
 
         // visit probe_map
-        event.probe_map.iter_mut().for_each(|probes| {
+        event.probes_mut().iter_mut().for_each(|probes| {
             probes.1.iter_mut().for_each(|probe| {
-                self.visit_probe(probe);
+                self.visit_probe(probe.as_mut());
             });
         });
 
@@ -542,11 +541,11 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         self.curr_event = None;
     }
 
-    fn visit_probe(&mut self, probe: &mut Probe) {
+    fn visit_probe(&mut self, probe: &mut dyn Probe) {
         trace!("Entering: visit_probe");
 
         self.add_probe(probe);
-        probe.fns.iter_mut().for_each(|(.., f)| self.visit_fn(f));
+        probe.get_mode_provided_fns_mut().iter_mut().for_each(|f| self.visit_fn(&mut f.function));
         // self.visit_provided_globals(&probe.globals);
 
         // Will not visit predicate/body at this stage
