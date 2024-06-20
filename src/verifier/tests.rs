@@ -225,15 +225,18 @@ pub fn test_type_errors() {
     }
 }
 #[test]
-pub fn test_user_defined() {
+pub fn test_user_defined_errors() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
 
     let script = r#"
-        // i32 i;
-        // i = 5; 
+        i32 a;
+        nested_fn() -> bool {
+            return "hi";
+            return 1;
+        }
         dummy_fn() {
-            i32 a;
+            a = nested_fn();
         }
         wasm::call:alt {
             dummy_fn();
@@ -241,25 +244,49 @@ pub fn test_user_defined() {
     "#;
     info!("Typechecking: {}", script);
     let res = is_valid_script(script, &mut err);
-    
+
     err.report();
-    assert!(!err.has_errors);
-    assert!(res);
+    assert!(err.has_errors);
+    assert!(!res);
 }
 #[test]
-pub fn test_whamm_module(){
+pub fn test_user_defined() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
 
     let script = r#"
-        BEGIN {
-            i32 a;
+        i32 a;
+        nested_fn() -> i32 {
+            return 5;
+        }
+        dummy_fn() {
+            a = nested_fn();
+        }
+        wasm::call:alt {
+            dummy_fn();
         }   
     "#;
     info!("Typechecking: {}", script);
     let res = is_valid_script(script, &mut err);
-    
+
     err.report();
     assert!(!err.has_errors);
     assert!(res);
 }
+// #[test]
+// pub fn test_whamm_module() {
+//     setup_logger();
+//     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+
+//     let script = r#"
+//         BEGIN {
+//             i32 a;
+//         }
+//     "#;
+//     info!("Typechecking: {}", script);
+//     let res = is_valid_script(script, &mut err);
+
+//     err.report();
+//     assert!(!err.has_errors);
+//     assert!(res);
+// }

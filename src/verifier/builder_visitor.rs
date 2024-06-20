@@ -134,11 +134,7 @@ impl SymbolTableBuilder<'_> {
         let id = self.table.put(package.name.clone(), package_rec);
 
         // Add package to current provider record
-        match self
-            .table
-            .get_record_mut(&self.curr_provider.unwrap())
-            
-        {
+        match self.table.get_record_mut(&self.curr_provider.unwrap()) {
             Some(Record::Provider { packages, .. }) => {
                 packages.push(id);
             }
