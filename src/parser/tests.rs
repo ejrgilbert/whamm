@@ -485,7 +485,6 @@ fn test_global_stmts() {
         BEGIN{
             strcmp((arg0, arg1), "bookings");
         }
-        a = 10;
         END {
             a = 2;
         }
