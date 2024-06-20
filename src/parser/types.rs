@@ -702,7 +702,7 @@ impl Script {
         let (matched_providers, matched_packages, matched_events, matched_modes) = provider_factory(&mut providers, probe_spec, None, None, None)?;
 
         // Print the matched provider information
-        if !matched_providers {
+        if matched_providers {
             probe_spec.print_bold_provider(&mut buffer);
         }
         for (.., provider) in providers.iter() {
