@@ -532,7 +532,37 @@ pub fn testing_block() {
         }
     };
 }
+#[test]
+pub fn testing_global_def() {
+    setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let script = r#"
+        dummy_fn() {
+            a = strcmp((arg0, arg1), "bookings");
+            strcmp((arg0, arg1), "bookings");
+        }
+        i32 i;
+        i = 5; 
+        i32 j = 5;
+        BEGIN{
+            strcmp((arg0, arg1), "bookings");
+        }
+    
+    "#;
 
+    match get_ast(script, &mut err) {
+        Some(ast) => {
+            print_ast(&ast);
+        }
+        None => {
+            error!("Could not get ast from script: {}", script);
+            if err.has_errors {
+                err.report();
+            }
+            assert!(!err.has_errors);
+        }
+    };
+}
 // ===================
 // = Full File Tests =
 // ===================
