@@ -77,8 +77,6 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
 
     fn visit_script(&mut self, script: &Script) -> Option<DataType> {
         self.table.enter_named_scope(&script.name);
-
-        // TODO: type check user provided functions
         script.fns.iter().for_each(|function| {
             self.visit_fn(function);
         });

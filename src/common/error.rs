@@ -170,7 +170,31 @@ impl ErrorGen {
             info_loc,
         }
     }
+    pub fn get_compiler_fn_overload_error(
+        fatal: bool,
+        duplicated_id: String,
+        loc: Option<LineColLocation>,
+    ) -> WhammError {
+        let err_loc = loc.map(|err_line_col| CodeLocation {
+            is_err: true,
+            message: Some(format!(
+                "definition for `{}` is provided by compiler. Overloading is not supported",
+                duplicated_id
+            )),
+            line_col: err_line_col,
+            line_str: None,
+            line2_str: None,
+        });
 
+        WhammError {
+            fatal,
+            ty: ErrorType::DuplicateIdentifierError {
+                duplicated_id: duplicated_id.clone(),
+            },
+            err_loc,
+            info_loc: None,
+        }
+    }
     pub fn get_duplicate_identifier_error_from_loc(
         fatal: bool,
         duplicated_id: String,
@@ -187,8 +211,7 @@ impl ErrorGen {
         duplicated_id: String,
         loc: Option<LineColLocation>,
     ) {
-        let err =
-            Self::get_duplicate_identifier_error(fatal, duplicated_id, loc, None);
+        let err = Self::get_compiler_fn_overload_error(fatal, duplicated_id, loc);
         self.add_error(err);
     }
     pub fn duplicate_identifier_error(

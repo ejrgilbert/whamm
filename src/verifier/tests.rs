@@ -301,7 +301,7 @@ pub fn test_user_with_provided() {
     assert!(res);
 }
 #[test]
-pub fn conflicting_fn_names(){
+pub fn conflicting_fn_names() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
 
@@ -328,7 +328,6 @@ pub fn conflicting_fn_names(){
     err.report();
     assert!(err.has_errors);
     assert!(!res);
-
 }
 #[test]
 pub fn test_user_with_provided_error() {
@@ -359,6 +358,7 @@ pub fn test_user_with_provided_error() {
     assert!(err.has_errors);
     assert!(!res);
 }
+//WE DONT HAVE BEGIN WORKING YET
 // #[test]
 // pub fn test_whamm_module() {
 //     setup_logger();

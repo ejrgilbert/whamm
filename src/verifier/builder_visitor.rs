@@ -260,14 +260,10 @@ impl SymbolTableBuilder<'_> {
                             );
                         }
                         None => {
-                            self.err.compiler_fn_overload_error(
-                                false,
-                                f_name.name.clone(),
-                                None,
-                            );
+                            self.err
+                                .compiler_fn_overload_error(false, f_name.name.clone(), None);
                         }
                     }
-                    
                 }
             } else {
                 // This should never be the case since it's controlled by the compiler!
