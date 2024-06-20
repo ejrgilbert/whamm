@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use termcolor::Buffer;
 use crate::common::error::WhammError;
-use crate::parser::rules::{Event, event_factory, FromStr, Mode, mode_factory, NameOptions, Package, package_factory, Probe, WhammMode, WhammProbe};
-use crate::parser::types::{DataType, Expr, Global, Location, ProbeSpec, ProvidedFunction, ProvidedFunctionality, ProvidedGlobal, Statement};
+use crate::parser::rules::{Event, event_factory, FromStr, Mode, mode_factory, NameOptions, Package, Probe, WhammMode, WhammProbe};
+use crate::parser::types::{DataType, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal, Statement};
 
 /// The base information needed for `WasmPackage`s, pulled out into a single struct.
 pub struct WasmPackageInfo {
@@ -87,6 +87,30 @@ impl Package for WasmPackage {
         }
     }
 
+    fn len_events(&self) -> usize {
+        match self {
+            Self::Bytecode{events, ..} => {
+                events.len()
+            }
+        }
+    }
+
+    fn events(&self) -> Box<dyn Iterator<Item = &dyn Event> + '_> {
+        match self {
+            Self::Bytecode{events, ..} => {
+                Box::new(events.values().map(|p| p.as_ref() as &dyn Event))
+            }
+        }
+    }
+
+    fn events_mut(&mut self) -> Box<dyn Iterator<Item = &mut dyn Event> + '_> {
+        match self {
+            Self::Bytecode{events, ..} => {
+                Box::new(events.values_mut().map(|p| p.as_mut() as &mut dyn Event))
+            }
+        }
+    }
+
     fn print_event_docs(&self, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer) {
         match self {
             Self::Bytecode{events, ..} => {
@@ -108,6 +132,14 @@ impl Package for WasmPackage {
     }
 
     fn get_provided_fns(&self) -> &Vec<ProvidedFunction> {
+        match self {
+            Self::Bytecode{metadata: WasmPackageInfo { fns, ..}, ..} => {
+                fns
+            }
+        }
+    }
+
+    fn get_provided_fns_mut(&mut self) -> &mut Vec<ProvidedFunction> {
         match self {
             Self::Bytecode{metadata: WasmPackageInfo { fns, ..}, ..} => {
                 fns
@@ -1614,6 +1646,12 @@ impl Event for BytecodeEvent {
         let metadata = self.get_metadata();
 
         &metadata.fns
+    }
+
+    fn get_provided_fns_mut(&mut self) -> &mut Vec<ProvidedFunction> {
+        let metadata = self.get_metadata_mut();
+
+        &mut metadata.fns
     }
 
     fn get_provided_globals(&self) -> &HashMap<String, ProvidedGlobal> {

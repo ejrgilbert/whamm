@@ -5,7 +5,7 @@ use glob::Pattern;
 use termcolor::Buffer;
 use crate::common::error::{ErrorGen, WhammError};
 use crate::common::terminal::{magenta_italics, white};
-use crate::parser::rules::wasm::{BytecodeEventInfo, WasmPackage};
+use crate::parser::rules::wasm::{WasmPackage};
 use crate::parser::rules::core::{CorePackage};
 use crate::parser::types::{Expr, Location, print_fns, print_global_vars, ProbeSpec, ProvidedFunction, ProvidedGlobal, SpecPart, Statement};
 
@@ -24,11 +24,15 @@ pub trait FromStr {
 pub trait Provider {
     fn name(&self) -> String;
     fn docs(&self) -> &String;
-    fn packages(&self) -> &HashMap<String, Box<dyn Package>>;
+    fn has_packages(&self) -> bool;
+    fn len_packages(&self) -> usize;
+    fn packages(&self) -> Box<dyn Iterator<Item = &dyn Package> + '_>;
+    fn packages_mut(&mut self) -> Box<dyn Iterator<Item = &mut dyn Package> + '_>;
     fn print_package_docs(&self, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer);
     fn print_event_docs(&self, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer);
     fn print_mode_docs(&self, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer);
     fn get_provided_fns(&self) -> &Vec<ProvidedFunction>;
+    fn get_provided_fns_mut(&mut self) -> &mut Vec<ProvidedFunction>;
     fn get_provided_globals(&self) -> &HashMap<String, ProvidedGlobal>;
     fn assign_matching_packages(&mut self, probe_spec: &ProbeSpec, loc: Option<Location>,
                                 predicate: Option<Expr>,
@@ -63,14 +67,7 @@ pub fn provider_factory<P: Provider + NameOptions + FromStr>(curr_providers: &mu
         let mut matched_modes = false;
         for m in matches {
             matched_providers = true;
-            let mut provider = if let Some(provider) = curr_providers.get(&m) {
-                // update the already-added provider to contain this probe
-                provider.as_ref()
-            } else {
-                // not added yet, let's add it!
-                let mut provider = P::from_str(m, loc.clone());
-                curr_providers.insert(provider.name(), Box::new(provider)).unwrap().as_ref()
-            };
+            let provider = curr_providers.entry(m.clone()).or_insert(Box::new(P::from_str(m, loc.clone())));
 
             let (found_package, found_events, found_modes) = if let Some(SpecPart {loc: package_loc, .. }) = &probe_spec.package {
                 provider.assign_matching_packages(probe_spec, package_loc.to_owned(),
@@ -129,9 +126,13 @@ pub fn print_provider_docs<P: Provider>(provider: &P, print_globals: bool, print
 pub trait Package {
     fn name(&self) -> String;
     fn docs(&self) -> &String;
+    fn len_events(&self) -> usize;
+    fn events(&self) -> Box<dyn Iterator<Item = &dyn Event> + '_>;
+    fn events_mut(&mut self) -> Box<dyn Iterator<Item = &mut dyn Event> + '_>;
     fn print_event_docs(&self, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer);
     fn print_mode_docs(&self, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer);
     fn get_provided_fns(&self) -> &Vec<ProvidedFunction>;
+    fn get_provided_fns_mut(&mut self) -> &mut Vec<ProvidedFunction>;
     fn get_provided_globals(&self) -> &HashMap<String, ProvidedGlobal>;
     fn assign_matching_events(&mut self, probe_spec: &ProbeSpec, loc: Option<Location>,
                               predicate: Option<Expr>,
@@ -162,14 +163,8 @@ fn package_factory<P: Package + NameOptions + FromStr>(curr_packages: &mut HashM
         let mut matched_modes = false;
         for m in matches {
             matched_packages = true;
-            let mut package = if let Some(package) = curr_packages.get(&m) {
-                // update the already-added package to contain this probe
-                package.as_ref()
-            } else {
-                // not added yet, let's add it!
-                let mut package = P::from_str(m, loc.clone());
-                curr_packages.insert(package.name(), Box::new(package)).unwrap().as_ref()
-            };
+            let package = curr_packages.entry(m.clone()).or_insert(Box::new(P::from_str(m, loc.clone())));
+
             let (found_match_for_event, found_match_for_mode) = if let Some(SpecPart {loc: event_loc, .. }) = &probe_spec.event {
                 package.assign_matching_events(probe_spec, event_loc.to_owned(), predicate.clone(), body.clone())?
             } else {
@@ -222,7 +217,13 @@ fn print_package_docs<P>(package: &Box<P>, print_globals: bool, print_functions:
 // ===============
 
 pub trait Probe {
+    fn mode_name(&self) -> String;
+    fn predicate(&self) -> &Option<Expr>;
+    fn body(&self) -> &Option<Vec<Statement>>;
     fn print_mode_docs(&self, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer);
+    fn get_mode_provided_fns(&self) -> &Vec<ProvidedFunction>;
+    fn get_mode_provided_fns_mut(&mut self) -> &mut Vec<ProvidedFunction>;
+    fn get_mode_provided_globals(&self) -> &HashMap<String, ProvidedGlobal>;
 }
 pub trait Event {
     fn name(&self) -> &String;
@@ -231,6 +232,7 @@ pub trait Event {
     fn probes_mut(&mut self) -> &mut HashMap<String, Vec<Box<dyn Probe>>>;
     fn print_mode_docs(&self, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer);
     fn get_provided_fns(&self) -> &Vec<ProvidedFunction>;
+    fn get_provided_fns_mut(&mut self) -> &mut Vec<ProvidedFunction>;
     fn get_provided_globals(&self) -> &HashMap<String, ProvidedGlobal>;
     fn assign_matching_modes(&mut self, probe_spec: &ProbeSpec, loc: Option<Location>,
                              predicate: Option<Expr>,
@@ -259,14 +261,8 @@ fn event_factory<E: Event + NameOptions + FromStr>(curr_events: &mut HashMap<Str
         let mut matched_modes = false;
         for m in matches {
             matched_events = true;
-            let mut event = if let Some(event) = curr_events.get(&m) {
-                // update the already-added package to contain this probe
-                event.as_ref()
-            } else {
-                // not added yet, let's add it!
-                let mut event = E::from_str(m, loc.clone());
-                curr_events.insert(event.name().clone(), Box::new(event)).unwrap().as_ref()
-            };
+            let event = curr_events.entry(m.clone()).or_insert(Box::new(E::from_str(m, loc.clone())));
+
             let found_match_for_mode = if let Some(SpecPart {loc: mode_loc, .. }) = &probe_spec.mode {
                 event.assign_matching_modes(probe_spec, mode_loc.to_owned(), predicate.clone(), body.clone())?
             } else {
@@ -320,6 +316,7 @@ pub trait Mode {
     fn name(&self) -> String;
     fn docs(&self) -> &String;
     fn get_provided_fns(&self) -> &Vec<ProvidedFunction>;
+    fn get_provided_fns_mut(&mut self) -> &mut Vec<ProvidedFunction>;
     fn get_provided_globals(&self) -> &HashMap<String, ProvidedGlobal>;
 }
 
@@ -476,13 +473,46 @@ impl Provider for WhammProvider {
         }
     }
 
-    fn packages(&self) -> &HashMap<String, Box<dyn Package>> {
+    fn has_packages(&self) -> bool {
         match self {
             Self::Core{packages, ..} => {
-                packages
+                !packages.is_empty()
             }
             Self::Wasm{packages, ..} => {
-                packages
+                !packages.is_empty()
+            }
+        }
+    }
+
+    fn len_packages(&self) -> usize {
+        match self {
+            Self::Core{packages, ..} => {
+                packages.len()
+            }
+            Self::Wasm{packages, ..} => {
+                packages.len()
+            }
+        }
+    }
+
+    fn packages(&self) -> Box<dyn Iterator<Item = &dyn Package> + '_> {
+        match self {
+            Self::Wasm { packages, .. } => {
+                Box::new(packages.values().map(|p| p.as_ref() as &dyn Package))
+            }
+            Self::Core { packages, .. } => {
+                Box::new(packages.values().map(|p| p.as_ref() as &dyn Package))
+            }
+        }
+    }
+
+    fn packages_mut(&mut self) -> Box<dyn Iterator<Item = &mut dyn Package> + '_> {
+        match self {
+            Self::Wasm { packages, .. } => {
+                Box::new(packages.values_mut().map(|p| p.as_mut() as &mut dyn Package))
+            }
+            Self::Core { packages, .. } => {
+                Box::new(packages.values_mut().map(|p| p.as_mut() as &mut dyn Package))
             }
         }
     }
@@ -533,6 +563,15 @@ impl Provider for WhammProvider {
     }
 
     fn get_provided_fns(&self) -> &Vec<ProvidedFunction> {
+        match self {
+            Self::Wasm{metadata: ProviderInfo {fns, ..}, ..} |
+            Self::Core{metadata: ProviderInfo {fns, ..}, ..} => {
+                fns
+            }
+        }
+    }
+
+    fn get_provided_fns_mut(&mut self) -> &mut Vec<ProvidedFunction> {
         match self {
             Self::Wasm{metadata: ProviderInfo {fns, ..}, ..} |
             Self::Core{metadata: ProviderInfo {fns, ..}, ..} => {
@@ -673,6 +712,16 @@ impl Mode for WhammMode {
         }
     }
 
+    fn get_provided_fns_mut(&mut self) -> &mut Vec<ProvidedFunction> {
+        match self {
+            Self::Before(ModeInfo { fns, ..}) |
+            Self::After(ModeInfo { fns, ..}) |
+            Self::Alt(ModeInfo { fns, ..}) => {
+                fns
+            }
+        }
+    }
+
     fn get_provided_globals(&self) -> &HashMap<String, ProvidedGlobal> {
         match self {
             Self::Before(ModeInfo { globals, ..}) |
@@ -694,8 +743,31 @@ pub struct WhammProbe {
     pub body: Option<Vec<Statement>>
 }
 impl Probe for WhammProbe {
+    fn mode_name(&self) -> String {
+        self.mode.name()
+    }
+    fn predicate(&self) -> &Option<Expr> {
+        &self.predicate
+    }
+
+    fn body(&self) -> &Option<Vec<Statement>> {
+        &self.body
+    }
+
     fn print_mode_docs(&self, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer) {
         print_mode_docs(&self.mode, print_globals, print_functions, tabs, buffer);
+    }
+
+    fn get_mode_provided_fns(&self) -> &Vec<ProvidedFunction> {
+        self.mode.get_provided_fns()
+    }
+
+    fn get_mode_provided_fns_mut(&mut self) -> &mut Vec<ProvidedFunction> {
+        self.mode.get_provided_fns_mut()
+    }
+
+    fn get_mode_provided_globals(&self) -> &HashMap<String, ProvidedGlobal> {
+        self.mode.get_provided_globals()
     }
 }
 impl WhammProbe {

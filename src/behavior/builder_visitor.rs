@@ -2,20 +2,21 @@ use crate::behavior::tree::{ActionWithChildType, BehaviorTree, DecoratorType};
 
 use crate::parser::types as parser_types;
 use parser_types::{
-    BinOp, DataType, Event, Expr, Fn, Package, Probe, OldProvider, Script, Statement, UnOp, Value,
+    BinOp, DataType, Expr, Fn, Script, Statement, UnOp, Value,
     Whamm, WhammVisitor,
 };
 use std::collections::HashMap;
+use crate::parser::rules::{Provider, Package, Event, Probe};
 
 use crate::behavior::tree::DecoratorType::{HasAltCall, PredIs};
 use crate::behavior::tree::ParamActionType;
 use crate::common::error::ErrorGen;
-use crate::parser::types::{Global, ProvidedFunctionality, ProvidedGlobal};
+use crate::parser::types::{Block, ProvidedGlobal};
 use log::{debug, trace};
 use regex::Regex;
 
 type SimpleAstProbes =
-    HashMap<String, HashMap<String, HashMap<String, HashMap<String, Vec<Probe>>>>>;
+    HashMap<String, HashMap<String, HashMap<String, HashMap<String, Vec<dyn Probe>>>>>;
 
 pub struct SimpleAST {
     pub global_stmts: Vec<Statement>,
@@ -89,7 +90,7 @@ impl BehaviorTreeBuilder<'_> {
         self.curr_event_name = event_name;
     }
 
-    fn add_probe_to_ast(&mut self, probe: &Probe) {
+    fn add_probe_to_ast(&mut self, probe: &dyn Probe) {
         if let Some(provider) = self.ast.probes.get_mut(&self.curr_provider_name) {
             if let Some(package) = provider.get_mut(&self.curr_package_name) {
                 if let Some(event) = package.get_mut(&self.curr_event_name) {
@@ -134,7 +135,7 @@ impl BehaviorTreeBuilder<'_> {
         matches!(regex.captures(self.context_name.as_str()), Some(_caps))
     }
 
-    fn visit_bytecode_package(&mut self, package: &Package) {
+    fn visit_bytecode_package(&mut self, package: &dyn Package) {
         if !package.events.is_empty() {
             // Build events->globals HashMap
             let mut events = HashMap::new();
@@ -160,7 +161,7 @@ impl BehaviorTreeBuilder<'_> {
         }
     }
 
-    fn visit_bytecode_event(&mut self, event: &Event) {
+    fn visit_bytecode_event(&mut self, event: &dyn Event) {
         // Only create a sequence if there are multiple probes we're emitting
         if event.probe_map.len() > 1 {
             self.tree.sequence(self.err);
@@ -175,7 +176,7 @@ impl BehaviorTreeBuilder<'_> {
         }
     }
 
-    fn visit_probe_mode(&mut self, event: &Event, ty: &str) {
+    fn visit_probe_mode(&mut self, event: &dyn Event, ty: &str) {
         if let Some(probes) = event.probe_map.get(ty) {
             if let Some(probe) = probes.first() {
                 // just grab the first one and emit behavior (the behavior includes a loop
@@ -185,7 +186,7 @@ impl BehaviorTreeBuilder<'_> {
         }
     }
 
-    fn visit_bytecode_probe(&mut self, probe: &Probe) {
+    fn visit_bytecode_probe(&mut self, probe: &dyn Probe) {
         self.tree
             .sequence(self.err)
             .save_params(true, self.err)
@@ -357,7 +358,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_> {
         self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
     }
 
-    fn visit_provider(&mut self, provider: &OldProvider) {
+    fn visit_provider(&mut self, provider: &dyn Provider) {
         trace!("Entering: BehaviorTreeBuilder::visit_provider");
         self.context_name += &format!(":{}", provider.name.clone());
         self.add_provider_to_ast(provider.name.clone());
@@ -380,7 +381,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_> {
         self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
     }
 
-    fn visit_package(&mut self, package: &Package) {
+    fn visit_package(&mut self, package: &dyn Package) {
         trace!("Entering: BehaviorTreeBuilder::visit_package");
         self.context_name += &format!(":{}", package.name.clone());
 
@@ -418,7 +419,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_> {
         self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
     }
 
-    fn visit_event(&mut self, event: &Event) {
+    fn visit_event(&mut self, event: &dyn Event) {
         trace!("Entering: BehaviorTreeBuilder::visit_event");
         self.context_name += &format!(":{}", event.name.clone());
         self.add_event_to_ast(event.name.clone());
@@ -444,7 +445,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_> {
         self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
     }
 
-    fn visit_probe(&mut self, probe: &Probe) {
+    fn visit_probe(&mut self, probe: &dyn Probe) {
         trace!("Entering: BehaviorTreeBuilder::visit_probe");
         self.context_name += &format!(":{}", probe.mode.clone());
         self.add_probe_to_ast(probe);

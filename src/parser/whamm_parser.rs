@@ -207,7 +207,6 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
             // Add probe definition to the script
             let script: &mut Script = whamm.scripts.get_mut(script_count).unwrap();
             if let Err(e) = script.add_probe(
-                &whamm.provided_probes,
                 &probe_spec,
                 this_predicate,
                 this_body,

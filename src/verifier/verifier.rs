@@ -2,10 +2,10 @@ use std::vec;
 
 use crate::common::error::ErrorGen;
 use crate::parser::types::{
-    BinOp, Block, DataType, Event, Expr, Fn, Location, Package, Probe, Script, Statement,
+    BinOp, Block, DataType, Expr, Fn, Location, Script, Statement,
     UnOp, Value, Whamm, WhammVisitor, WhammVisitorMut,
 };
-use crate::parser::rules::Provider;
+use crate::parser::rules::{Provider, Package, Event, Probe};
 use crate::verifier::builder_visitor::SymbolTableBuilder;
 use crate::verifier::types::{Record, SymbolTable};
 
@@ -152,7 +152,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
     fn visit_provider(&mut self, provider: &dyn Provider) -> Option<DataType> {
         let _ = self.table.enter_scope();
 
-        provider.packages().iter().for_each(|(_, package)| {
+        provider.packages().for_each(|package| {
             self.visit_package(package);
         });
 
@@ -160,10 +160,10 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         None
     }
 
-    fn visit_package(&mut self, package: &Package) -> Option<DataType> {
+    fn visit_package(&mut self, package: &dyn Package) -> Option<DataType> {
         let _ = self.table.enter_scope();
 
-        package.events.iter().for_each(|(_, event)| {
+        package.events().for_each(|event| {
             self.visit_event(event);
         });
 
@@ -172,12 +172,12 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         None
     }
 
-    fn visit_event(&mut self, event: &Event) -> Option<DataType> {
+    fn visit_event(&mut self, event: &dyn Event) -> Option<DataType> {
         let _ = self.table.enter_scope();
 
-        event.probe_map.iter().for_each(|(_, probe)| {
+        event.probes().iter().for_each(|(_, probe)| {
             probe.iter().for_each(|probe| {
-                self.visit_probe(probe);
+                self.visit_probe(probe.as_ref());
             });
         });
 
@@ -186,11 +186,11 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         None
     }
 
-    fn visit_probe(&mut self, probe: &Probe) -> Option<DataType> {
+    fn visit_probe(&mut self, probe: &dyn Probe) -> Option<DataType> {
         let _ = self.table.enter_scope();
 
         // type check predicate
-        if let Some(predicate) = &probe.predicate {
+        if let Some(predicate) = &probe.predicate() {
             let predicate_loc = predicate.loc().clone().unwrap();
             if let Some(ty) = self.visit_expr(predicate) {
                 if ty != DataType::Boolean {
@@ -204,7 +204,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         }
 
         // type check action
-        if let Some(body) = &probe.body {
+        if let Some(body) = &probe.body() {
             for stmt in body {
                 self.visit_stmt(stmt);
             }
