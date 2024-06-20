@@ -73,7 +73,7 @@ impl SymbolTableBuilder<'_> {
 
     fn add_provider(&mut self, provider: &Provider) {
         if self.table.lookup(&provider.name).is_some() {
-            // This should never be the case since it's controlled by the compiler!
+            // This should never be the case since it's controlled by the compiler! - THIS BREAKS WITH WHAMM
             self.err
                 .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
         }
@@ -137,9 +137,9 @@ impl SymbolTableBuilder<'_> {
         match self
             .table
             .get_record_mut(&self.curr_provider.unwrap())
-            .unwrap()
+            
         {
-            Record::Provider { packages, .. } => {
+            Some(Record::Provider { packages, .. }) => {
                 packages.push(id);
             }
             _ => {

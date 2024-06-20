@@ -79,9 +79,9 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         self.table.enter_named_scope(&script.name);
 
         // TODO: type check user provided functions
-        // whamm.fns.iter().for_each(|function| {
-        //     self.visit_fn(&mut function.1);
-        // });
+        script.fns.iter().for_each(|function| {
+            self.visit_fn(function);
+        });
 
         script.providers.iter().for_each(|(_, provider)| {
             self.visit_provider(provider);
@@ -162,19 +162,43 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         // type check body
 
         self.table.enter_named_scope(&function.name.name);
-        self.visit_block(&function.body);
+        let check_ret_type = self.visit_block(&function.body);
         let _ = self.table.exit_scope();
+        
 
-        // return type
-        todo!();
+        //figure out how to deal with void functions (return type is ())
+        if check_ret_type != Some(DataType::AssumeGood) && check_ret_type != function.return_ty {
+            self.err.type_check_error(
+                false,
+                format! {"Return type of function {} does not match the return type specified in the function signature", function.name.name},
+                &function.name.loc.clone().map(|l| l.line_col),
+            );
+        }
+        //return the type of the fn
+        function.return_ty.clone()
+        
     }
 
     fn visit_block(&mut self, block: &Block) -> Option<DataType> {
         // TODO: finish user def function type checking
+        let mut ret_type = None;
         for stmt in &block.stmts {
-            self.visit_stmt(stmt);
+            //add a check for return statement type matching the function return type if provided              
+            let temp = self.visit_stmt(stmt);
+            if temp != None {
+                //throw an error if not all returns give the same return type
+                if ret_type == None{
+                    ret_type = temp;
+                } else if ret_type != temp {
+                    self.err.type_check_error(
+                        false,
+                        "Return type of function does not match the return type of the return statement".to_owned(),
+                        &stmt.loc().clone().map(|l| l.line_col),
+                    );
+                }
+            }
         }
-        todo!()
+        ret_type
     }
 
     fn visit_stmt(&mut self, stmt: &Statement) -> Option<DataType> {
@@ -233,8 +257,10 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
             Statement::Return { expr, loc: _loc } => {
                 let _ret_ty_op = self.visit_expr(expr);
                 // TODO: type check Return statement (to do with user defined functions)
-
-                None
+                match _ret_ty_op {
+                    Some(ty) => Some(ty),
+                    None => None,
+                }
             }
         }
     }

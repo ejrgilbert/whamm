@@ -224,3 +224,42 @@ pub fn test_type_errors() {
         assert!(!&res);
     }
 }
+#[test]
+pub fn test_user_defined() {
+    setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+
+    let script = r#"
+        // i32 i;
+        // i = 5; 
+        dummy_fn() {
+            i32 a;
+        }
+        wasm::call:alt {
+            dummy_fn();
+        }   
+    "#;
+    info!("Typechecking: {}", script);
+    let res = is_valid_script(script, &mut err);
+    
+    err.report();
+    assert!(!err.has_errors);
+    assert!(res);
+}
+#[test]
+pub fn test_whamm_module(){
+    setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+
+    let script = r#"
+        BEGIN {
+            i32 a;
+        }   
+    "#;
+    info!("Typechecking: {}", script);
+    let res = is_valid_script(script, &mut err);
+    
+    err.report();
+    assert!(!err.has_errors);
+    assert!(res);
+}
