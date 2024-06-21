@@ -299,6 +299,48 @@ pub fn test_type_errors() {
         assert!(!&res);
     }
 }
+#[test]
+pub fn test_template() {
+    setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let script = r#"
+    my_fn(i32 a) -> i32 {
+        if(a > 5){
+            return 1;
+        }
+        else{
+            return true;
+        };
+    }
+    wasm::call:alt{
+        bool a = true;
+        i32 b = 5;
+        if(a){
+            b = 6;
+        }
+        else{
+            b = 7;
+        };
+        if(b){
+        };
+        if(b == 5){
+        };
+    }
+    "#;
+    match tests::get_ast(script, &mut err) {
+        Some(mut ast) => {
+            let mut table = verifier::build_symbol_table(&mut ast, &mut err);
+            let res = verifier::type_check(&ast, &mut table, &mut err);
+            err.report();
+            assert!(err.has_errors);
+            assert!(!res);
+        }
+        None => {
+            error!("Could not get ast from script: {}", script);
+            panic!();
+        }
+    };
+}
 
 //WE DONT HAVE BEGIN WORKING YET
 // #[test]

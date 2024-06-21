@@ -281,35 +281,35 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
                     path: None,
                 }),
             };
-            //before creating the output, check if there is a return statement in the body
+            //before creating the output, check if there is a return statement in the body - NO LONGER NEEDED
             //if there is not, add a return empty tuple
-            let mut has_return = false;
-            for stmt in &body.stmts {
-                #[allow(clippy::single_match)]
-                match stmt {
-                    //ADD SUPPORT FOR IF/ELSE/LOOPS WHEN IMPLEMENTED
-                    Statement::Return { .. } => {
-                        has_return = true;
-                        break;
-                    }
-                    _ => {}
-                }
-            }
-            if !has_return {
-                //add an empty tuple return statement to body.stmts
-                let empty_tuple = Expr::Primitive {
-                    val: Value::Tuple {
-                        ty: DataType::Tuple { ty_info: vec![] },
-                        vals: vec![],
-                    },
-                    loc: None,
-                };
-                let return_stmt = Statement::Return {
-                    expr: empty_tuple,
-                    loc: None,
-                };
-                body.stmts.push(return_stmt);
-            }
+            // let mut has_return = false;
+            // for stmt in &body.stmts {
+            //     #[allow(clippy::single_match)]
+            //     match stmt {
+            //         //ADD SUPPORT FOR IF/ELSE/LOOPS WHEN IMPLEMENTED
+            //         Statement::Return { .. } => {
+            //             has_return = true;
+            //             break;
+            //         }
+            //         _ => {}
+            //     }
+            // }
+            // if !has_return {
+            //     //add an empty tuple return statement to body.stmts
+            //     let empty_tuple = Expr::Primitive {
+            //         val: Value::Tuple {
+            //             ty: DataType::Tuple { ty_info: vec![] },
+            //             vals: vec![],
+            //         },
+            //         loc: None,
+            //     };
+            //     let return_stmt = Statement::Return {
+            //         expr: empty_tuple,
+            //         loc: None,
+            //     };
+            //     body.stmts.push(return_stmt);
+            // }
             let output = types::Fn {
                 is_comp_provided: false,
                 name: fn_id,
@@ -470,8 +470,7 @@ fn alt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
         Rule::else_stmt => {
             let mut pair = pair.into_inner();
             let block_rule = pair.next().unwrap();
-            let block = block_from_rule(block_rule, err);
-            block
+            block_from_rule(block_rule, err)
         }
         Rule::elif => {
             let mut pair = pair.into_inner();
@@ -516,7 +515,7 @@ fn alt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
                 };
             }
             let alt = alt_from_rule(next_pair.unwrap(), err);
-            return Block {
+            Block {
                 stmts: vec![Statement::If {
                     cond,
                     conseq: inner_block,
@@ -530,7 +529,7 @@ fn alt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
                     line_col: alt_loc.clone(),
                     path: None,
                 }),
-            };
+            }
         }
         _ => {
             err.parse_error(

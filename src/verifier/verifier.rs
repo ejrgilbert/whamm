@@ -160,11 +160,13 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         // type check body
 
         self.table.enter_named_scope(&function.name.name);
-        let check_ret_type = self.visit_block(&function.body);
+        let mut check_ret_type = self.visit_block(&function.body);
         let _ = self.table.exit_scope();
-
+        if check_ret_type.is_none() {
+            check_ret_type = Some(DataType::Tuple { ty_info: vec![] });
+        }
         //figure out how to deal with void functions (return type is ())
-        if check_ret_type != Some(DataType::AssumeGood) || check_ret_type != function.return_ty {
+        if check_ret_type != function.return_ty {
             self.err.type_check_error(
                 false,
                 format! {"Return type of function {} does not match the return type specified in the function signature", function.name.name},
@@ -253,7 +255,47 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
             Statement::If {
                 cond, conseq, alt, ..
             } => {
-                unimplemented!()
+                let cond_ty = self.visit_expr(cond);
+                print!("{:?}", cond_ty);
+                if cond_ty != Some(DataType::Boolean) {
+                    self.err.type_check_error(
+                        false,
+                        "Condition must be of type boolean".to_owned(),
+                        &Some(cond.loc().clone().unwrap().line_col),
+                    );
+                }
+                let ret_ty_conseq = self.visit_block(conseq);
+                let ret_ty_alt = self.visit_block(alt);
+                if ret_ty_conseq == ret_ty_alt {
+                    ret_ty_conseq
+                } else {
+                    //check if it is assume good
+                    let empty_tuple = Some(DataType::Tuple { ty_info: vec![] });
+                    match (ret_ty_conseq, ret_ty_alt) {
+                        (None, _) | (_, None) => return None,
+                        (Some(DataType::AssumeGood), _) | (_, Some(DataType::AssumeGood)) => {
+                            return Some(DataType::AssumeGood)
+                        }
+                        (conseq, _) if conseq == empty_tuple.clone() => return empty_tuple.clone(),
+                        (_, alt) if alt == empty_tuple.clone() => return empty_tuple.clone(),
+                        (_, _) => {}
+                    }
+                    //check that they are not returning differnt types if neither is () or None
+                    //error here
+                    self.err.type_check_error(
+                        false,
+                        "Return type of if and else blocks do not match".to_owned(),
+                        &Some(
+                            Location::from(
+                                &conseq.loc().clone().unwrap().line_col,
+                                &alt.loc().clone().unwrap().line_col,
+                                None,
+                            )
+                            .line_col,
+                        ),
+                    );
+                    Some(DataType::AssumeGood)
+                }
             }
         }
     }

@@ -202,6 +202,15 @@ pub struct Block {
     pub stmts: Vec<Statement>,
     pub loc: Option<Location>,
 }
+impl Block {
+    pub fn loc(&self) -> &Option<Location> {
+        &self.loc
+    }
+    pub fn line_col(&self) -> Option<LineColLocation> {
+        self.loc().as_ref().map(|loc| loc.line_col.clone())
+    }
+}
+
 // Statements
 #[derive(Clone, Debug)]
 pub enum Statement {
