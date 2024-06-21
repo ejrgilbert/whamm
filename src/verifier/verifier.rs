@@ -250,6 +250,9 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                 None
             }
             Statement::Return { expr, loc: _loc } => self.visit_expr(expr),
+            Statement::If {cond, conseq, alt, .. } => {
+                unimplemented!()
+            }
         }
     }
 

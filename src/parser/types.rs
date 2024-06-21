@@ -225,11 +225,18 @@ pub enum Statement {
         expr: Expr,
         loc: Option<Location>,
     },
+    If {
+        cond: Expr,
+        conseq: Block,
+        alt: Block, //should be either an elif or else - boxed for determined size
+        loc: Option<Location>,
+    },
 }
 impl Statement {
     pub fn loc(&self) -> &Option<Location> {
         match self {
             Statement::Decl { loc, .. }
+            | Statement::If { loc, .. } 
             | Statement::Return { loc, .. }
             | Statement::Assign { loc, .. }
             | Statement::Expr { loc, .. } => loc,

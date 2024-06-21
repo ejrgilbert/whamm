@@ -464,7 +464,92 @@ fn fn_call_from_rule(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
         })
     }
 }
-
+fn alt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
+    let alt_loc = LineColLocation::from(pair.as_span());
+    match pair.as_rule() {
+        Rule::else_stmt => {
+            let mut pair = pair.into_inner();
+            let block_rule = pair.next().unwrap();
+            let block = block_from_rule(block_rule, err);
+            block
+        }
+        Rule::elif => {
+            let mut pair = pair.into_inner();
+            let cond_rule = pair.next().unwrap();
+            let cond = match expr_from_pair(cond_rule) {
+                Ok(expr) => expr,
+                Err(errors) => {
+                    err.add_errors(errors);
+                    return Block {
+                        stmts: vec![],
+                        loc: Some(Location {
+                            line_col: alt_loc,
+                            path: None,
+                        }),
+                    };
+                }
+            };
+            let block_rule = pair.next().unwrap();
+            let inner_block = block_from_rule(block_rule, err);
+            let next_pair = pair.next();
+            if next_pair.is_none() {
+                return Block {
+                    stmts: vec![Statement::If {
+                        cond,
+                        conseq: inner_block,
+                        alt: Block {
+                            stmts: vec![],
+                            loc: Some(Location {
+                                line_col: alt_loc.clone(),
+                                path: None,
+                            }),
+                        },
+                        loc: Some(Location {
+                            line_col: alt_loc.clone(),
+                            path: None,
+                        }),
+                    }],
+                    loc: Some(Location {
+                        line_col: alt_loc.clone(),
+                        path: None,
+                    }),
+                };
+            }
+            let alt = alt_from_rule(next_pair.unwrap(), err);
+            return Block {
+                stmts: vec![Statement::If {
+                    cond,
+                    conseq: inner_block,
+                    alt,
+                    loc: Some(Location {
+                        line_col: alt_loc.clone(),
+                        path: None,
+                    }),
+                }],
+                loc: Some(Location {
+                    line_col: alt_loc.clone(),
+                    path: None,
+                }),
+            };
+        }
+        _ => {
+            err.parse_error(
+                true,
+                Some("Error parsing if/else - alteranative contained something other than else or elif".to_string()),
+                Some(LineColLocation::from(pair.as_span())),
+                vec![Rule::block],
+                vec![pair.as_rule()],
+            );
+            Block {
+                stmts: vec![],
+                loc: Some(Location {
+                    line_col: alt_loc,
+                    path: None,
+                }),
+            }
+        }
+    }
+}
 fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     trace!("Entered stmt_from_rule");
     match pair.as_rule() {
@@ -670,7 +755,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
         Rule::ret => {
             trace!("Entering return_stmt");
             let mut output: Vec<Statement> = vec![];
-            let ret_statement_line_col = LineColLocation::from(pair.as_span());
+            let ret_statement_line_col: LineColLocation = LineColLocation::from(pair.as_span());
             let expr_rule;
             let mut pair = pair.into_inner();
             let next_pair = pair.next();
@@ -788,6 +873,56 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                     output
                 }
             };
+        }
+        Rule::if_stmt =>{
+            //TODO test this
+            let mut output = vec![];
+            trace!("entering the if stmt");
+            let if_stmt_line_col: LineColLocation = LineColLocation::from(pair.as_span());
+            let mut pair = pair.into_inner();
+            let cond_rule = pair.next().unwrap();
+            let cond = match expr_from_pair(cond_rule) {
+                Ok(expr) => expr,
+                Err(errors) => {
+                    err.add_errors(errors);
+                    return vec![];
+                }
+            };
+            let block_rule = pair.next().unwrap();
+            let block = block_from_rule(block_rule, err);
+            let next_pair = pair.next();
+            match next_pair {
+                Some(_) => {
+                    let alt = alt_from_rule(next_pair.unwrap(), err);
+                    output.push(Statement::If {
+                        cond,
+                        conseq: block,
+                        alt,
+                        loc: Some(Location {
+                            line_col: if_stmt_line_col.clone(),
+                            path: None,
+                        })
+                    });
+                }
+                None => {
+                    output.push(Statement::If {
+                        cond,
+                        conseq: block,
+                        alt: Block {
+                            stmts: vec![],
+                            loc: Some(Location {
+                                line_col: if_stmt_line_col.clone(),
+                                path: None,
+                            }),
+                        },
+                        loc: Some(Location {
+                            line_col: if_stmt_line_col.clone(),
+                            path: None,
+                        })
+                    });
+                }
+            }
+            output 
         }
         rule => {
             err.parse_error(
