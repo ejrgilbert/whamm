@@ -874,7 +874,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                 }
             };
         }
-        Rule::if_stmt =>{
+        Rule::if_stmt => {
             //TODO test this
             let mut output = vec![];
             trace!("entering the if stmt");
@@ -901,7 +901,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                         loc: Some(Location {
                             line_col: if_stmt_line_col.clone(),
                             path: None,
-                        })
+                        }),
                     });
                 }
                 None => {
@@ -918,11 +918,11 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                         loc: Some(Location {
                             line_col: if_stmt_line_col.clone(),
                             path: None,
-                        })
+                        }),
                     });
                 }
             }
-            output 
+            output
         }
         rule => {
             err.parse_error(

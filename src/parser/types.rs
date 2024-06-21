@@ -236,7 +236,7 @@ impl Statement {
     pub fn loc(&self) -> &Option<Location> {
         match self {
             Statement::Decl { loc, .. }
-            | Statement::If { loc, .. } 
+            | Statement::If { loc, .. }
             | Statement::Return { loc, .. }
             | Statement::Assign { loc, .. }
             | Statement::Expr { loc, .. } => loc,

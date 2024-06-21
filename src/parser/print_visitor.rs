@@ -377,7 +377,9 @@ impl WhammVisitor<String> for AsStrVisitor {
             Statement::Return { expr, .. } => {
                 format!("return {}", self.visit_expr(expr))
             }
-            Statement::If {cond, conseq, alt, .. } => {
+            Statement::If {
+                cond, conseq, alt, ..
+            } => {
                 unimplemented!()
             }
         }
