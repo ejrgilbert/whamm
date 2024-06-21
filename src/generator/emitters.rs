@@ -81,6 +81,7 @@ pub trait Emitter {
 const UNEXPECTED_ERR_MSG: &str =
     "WasmRewritingEmitter: Looks like you've found a bug...please report this behavior!";
 
+// Reliant on walrus
 fn data_type_to_val_type(ty: &DataType) -> (ValType, InitExpr) {
     match ty {
         DataType::I32 => (ValType::I32, InitExpr::Value(walrus::ir::Value::I32(0))),
@@ -94,6 +95,7 @@ fn data_type_to_val_type(ty: &DataType) -> (ValType, InitExpr) {
     }
 }
 
+// Reliant on walrus
 fn emit_set(
     table: &mut SymbolTable,
     var_id: &mut Expr,
@@ -160,6 +162,7 @@ fn emit_set(
     }
 }
 
+// Reliant on walrus
 fn emit_expr(
     table: &mut SymbolTable,
     module_data: &mut ModuleData,
@@ -321,6 +324,7 @@ fn emit_expr(
     Ok(is_success)
 }
 
+// Reliant on Walrus
 fn emit_binop(op: &BinOp, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> bool {
     match op {
         BinOp::And => {
@@ -482,6 +486,7 @@ fn emit_binop(op: &BinOp, instr_builder: &mut InstrSeqBuilder, index: &mut usize
     }
 }
 
+// Reliant on walrus
 fn emit_unop(op: &UnOp, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> bool {
     match op {
         UnOp::Not => {
@@ -498,6 +503,7 @@ fn emit_unop(op: &UnOp, instr_builder: &mut InstrSeqBuilder, index: &mut usize) 
     }
 }
 
+// Reliant on walrus
 fn emit_value(
     table: &mut SymbolTable,
     module_data: &mut ModuleData,
@@ -587,6 +593,7 @@ fn emit_value(
     Ok(is_success)
 }
 
+// Reliant on walrus
 fn get_func_info(app_wasm: &walrus::Module, func: &walrus::Function) -> (FuncInfo, Vec<ValType>) {
     match &func.kind {
         FunctionKind::Import(ImportedFunction {
@@ -640,6 +647,7 @@ fn get_func_info(app_wasm: &walrus::Module, func: &walrus::Function) -> (FuncInf
 // ==== WasmRewritingEmitter ====
 // ==============================
 
+// Reliant on walrus
 struct InsertionMetadata {
     // curr_event: String,
     mem_id: MemoryId,
@@ -651,6 +659,8 @@ struct InstrIter {
     instr_locs: Vec<ProbeLoc>,
     curr_loc: usize,
 }
+
+// Reliant on walrus
 impl InstrIter {
     /// Build out a list of all local functions and their blocks/instruction indexes
     /// to visit while doing instrumentation.
@@ -686,6 +696,8 @@ impl InstrIter {
         }
         debug!("Finished creating list of instructions to visit");
     }
+
+    // Reliant on walrus
     fn init_instr_locs(
         &mut self,
         instrs_of_interest: &[String],
@@ -792,6 +804,8 @@ impl InstrIter {
 
 // Struct to store info on insertion locations for an instruction sequence.
 // Note that blocks can be indefinitely nested.
+
+// Reliant on walrus
 #[derive(Debug)]
 struct ProbeLoc {
     // wasm_func_name: Option<String>,
@@ -1010,6 +1024,7 @@ impl WasmRewritingEmitter {
         }
     }
 
+    // Reliant on walrus
     fn emit_whamm_strcmp_fn(&mut self, f: &Fn) -> Result<bool, Box<WhammError>> {
         let strcmp_params = vec![ValType::I32, ValType::I32, ValType::I32, ValType::I32];
         let strcmp_result = vec![ValType::I32];
@@ -1963,6 +1978,8 @@ impl Emitter for WasmRewritingEmitter {
         }
         true
     }
+
+    // Reliant on walrus
     fn emit_global_stmts(&mut self, stmts: &mut Vec<Statement>) -> Result<bool, Box<WhammError>> {
         // NOTE: This should be done in the Module entrypoint
         //       https://docs.rs/walrus/latest/walrus/struct.Module.html
