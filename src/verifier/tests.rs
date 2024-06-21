@@ -16,8 +16,36 @@ pub fn setup_logger() {
 // = Helper Functions =
 // ====================
 
-const VALID_SCRIPTS: &[&str] =
-    &["wasm:bytecode:call:alt { new_target_fn_name = redirect_to_fault_injector; }"];
+const VALID_SCRIPTS: &[&str] = &[
+    "wasm:bytecode:call:alt { new_target_fn_name = redirect_to_fault_injector; }",
+    r#"
+        bool a;
+        i32 b;
+        nested_fn(i32 a) -> i32 {
+            return a;
+        }
+        dummy_fn() {
+            b = nested_fn(5);
+            a = strcmp((b, 8), "bookings");
+        }
+        wasm::call:alt {
+            dummy_fn();
+        }   
+    "#,
+    r#"
+        bool a;
+        i32 b;
+        nested_fn(i32 a) -> i32 {
+            return a;
+        }
+        dummy_fn() {
+            b = nested_fn();
+        }
+        wasm::call:alt {
+            dummy_fn();
+        }   
+    "#,
+];
 
 const TYPE_ERROR_SCRIPTS: &[&str] = &[
     // predicate
@@ -126,6 +154,53 @@ wasm::call:alt /
 
 }
     "#,
+    r#"
+        bool a;
+        i32 b;
+        strcmp(){
+            a = false;
+        }
+        nested_fn(i32 a) -> i32 {
+            return a;
+        }
+        dummy_fn() {
+            b = nested_fn(5);
+            a = strcmp((b, 8), "bookings");
+        }
+        wasm::call:alt {
+            dummy_fn();
+        }   
+    "#,
+    r#"
+        bool a;
+        i32 b;
+        nested_fn(i32 a) -> i32 {
+            return a;
+        }
+        nested_fn(i32 a) -> i32 {
+            return a;
+        }
+        dummy_fn() {
+            b = nested_fn(5);
+            a = strcmp((b, 8), "bookings");
+        }
+        wasm::call:alt {
+            dummy_fn();
+        }   
+    "#,
+    r#"
+        i32 a;
+        nested_fn() -> bool {
+            return "hi";
+            return 1;
+        }
+        dummy_fn() {
+            a = nested_fn();
+        }
+        wasm::call:alt {
+            dummy_fn();
+        }   
+    "#,
 ];
 
 // =============
@@ -224,140 +299,7 @@ pub fn test_type_errors() {
         assert!(!&res);
     }
 }
-#[test]
-pub fn test_user_defined_errors() {
-    setup_logger();
-    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
 
-    let script = r#"
-        i32 a;
-        nested_fn() -> bool {
-            return "hi";
-            return 1;
-        }
-        dummy_fn() {
-            a = nested_fn();
-        }
-        wasm::call:alt {
-            dummy_fn();
-        }   
-    "#;
-    info!("Typechecking: {}", script);
-    let res = is_valid_script(script, &mut err);
-
-    err.report();
-    assert!(err.has_errors);
-    assert!(!res);
-}
-#[test]
-pub fn test_user_defined() {
-    setup_logger();
-    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-
-    let script = r#"
-        bool a;
-        i32 b;
-        nested_fn(i32 a) -> i32 {
-            return a;
-        }
-        dummy_fn() {
-            b = nested_fn();
-        }
-        wasm::call:alt {
-            dummy_fn();
-        }   
-    "#;
-    info!("Typechecking: {}", script);
-    let res = is_valid_script(script, &mut err);
-
-    err.report();
-    assert!(!err.has_errors);
-    assert!(res);
-}
-#[test]
-pub fn test_user_with_provided() {
-    setup_logger();
-    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-
-    let script = r#"
-        bool a;
-        i32 b;
-        nested_fn(i32 a) -> i32 {
-            return a;
-        }
-        dummy_fn() {
-            b = nested_fn(5);
-            a = strcmp((b, 8), "bookings");
-        }
-        wasm::call:alt {
-            dummy_fn();
-        }   
-    "#;
-    info!("Typechecking: {}", script);
-    let res = is_valid_script(script, &mut err);
-
-    err.report();
-    assert!(!err.has_errors);
-    assert!(res);
-}
-#[test]
-pub fn conflicting_fn_names() {
-    setup_logger();
-    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-
-    let script = r#"
-        bool a;
-        i32 b;
-        nested_fn(i32 a) -> i32 {
-            return a;
-        }
-        nested_fn(i32 a) -> i32 {
-            return a;
-        }
-        dummy_fn() {
-            b = nested_fn(5);
-            a = strcmp((b, 8), "bookings");
-        }
-        wasm::call:alt {
-            dummy_fn();
-        }   
-    "#;
-    info!("Typechecking: {}", script);
-    let res = is_valid_script(script, &mut err);
-
-    err.report();
-    assert!(err.has_errors);
-    assert!(!res);
-}
-#[test]
-pub fn test_user_with_provided_error() {
-    setup_logger();
-    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-
-    let script = r#"
-        bool a;
-        i32 b;
-        strcmp(){
-            a = false;
-        }
-        nested_fn(i32 a) -> i32 {
-            return a;
-        }
-        dummy_fn() {
-            b = nested_fn(5);
-            a = strcmp((b, 8), "bookings");
-        }
-        wasm::call:alt {
-            dummy_fn();
-        }   
-    "#;
-    info!("Typechecking: {}", script);
-    let res = is_valid_script(script, &mut err);
-
-    err.report();
-    assert!(err.has_errors);
-    assert!(!res);
-}
 //WE DONT HAVE BEGIN WORKING YET
 // #[test]
 // pub fn test_whamm_module() {
