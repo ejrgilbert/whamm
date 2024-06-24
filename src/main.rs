@@ -24,6 +24,7 @@ use project_root::get_project_root;
 use std::path::PathBuf;
 use std::process::exit;
 use walrus::Module;
+use orca::ir::Module as WasmModule;
 
 use crate::behavior::tree::BehaviorTree;
 use crate::behavior::visualize::visualization_to_file;
@@ -112,9 +113,9 @@ fn run_instr(
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
 
-    // Read app Wasm into Walrus module
-    let _config = walrus::ModuleConfig::new();
-    let app_wasm = Module::from_file(app_wasm_path).unwrap();
+    // Read app Wasm into Orca module
+    let buff = std::fs::read(app_wasm_path).unwrap();
+    let app_wasm = WasmModule::parse(&buff, false).expect("Failed to parse Wasm module");
 
     // Configure the emitter based on target instrumentation code format
     let mut emitter = if emit_virgil {
@@ -156,6 +157,8 @@ fn run_instr(
     if !PathBuf::from(&output_wasm_path).exists() {
         std::fs::create_dir_all(PathBuf::from(&output_wasm_path).parent().unwrap()).unwrap();
     }
+
+    // emitter.app_wasm
 
     if let Err(e) = emitter.dump_to_file(output_wasm_path) {
         err.add_error(*e)
