@@ -311,6 +311,7 @@ pub fn test_template() {
         else{
             return true;
         };
+        a = 5;
     }
     wasm::call:alt{
         bool a = true;

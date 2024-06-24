@@ -182,17 +182,14 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         for stmt in &block.stmts {
             //add a check for return statement type matching the function return type if provided
             let temp = self.visit_stmt(stmt);
-            if temp.is_some() {
-                //throw an error if not all returns give the same return type
-                if ret_type.is_none() {
-                    ret_type = temp;
-                } else if ret_type != temp {
-                    self.err.type_check_error(
-                        false,
-                        "Return type of statement does not match the return type of prior return statements".to_owned(),
-                        &stmt.loc().clone().map(|l| l.line_col),
-                    );
-                }
+            if temp.is_some() && ret_type.is_none() {
+                ret_type = temp;
+            } else if ret_type.is_some() {
+                self.err.type_check_error(
+                    false,
+                    "Unreachable code in block".to_owned(),
+                    &stmt.loc().clone().map(|l| l.line_col),
+                );
             }
         }
         ret_type
