@@ -29,6 +29,18 @@ if (a == 4){
     a = 1;
 }; 
 ```
+```
+//This is an example in a function
+my_fn (i32 param) -> bool {
+    return (param/10 == 0);    
+}
+i32 a = 5;
+if(my_fn(a)) {
+    a = 3;
+}else{
+    a = 2;
+};
+```
 ## Short-circuit evaluation ##
 
 Conditional expressions will only evaluate the branch corresponding to the value of the condition.
