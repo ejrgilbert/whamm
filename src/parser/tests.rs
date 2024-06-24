@@ -150,6 +150,11 @@ wasm:bytecode:br:before {
 }
     "#,
     r#"
+wasm:bytecode:br:before {
+    i = -10;
+}
+    "#,
+    r#"
     wasm:bytecode:br:before {
         call_new();
     }
