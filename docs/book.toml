@@ -1,7 +1,7 @@
 [book]
 title = "whamm!"
 description = "An introduction to the `whamm!` DSL."
-authors = ["ahuoguo", "ejrgilbert"]
+authors = ["ahuoguo", "ejrgilbert", "wavid-b"]
 language = "en"
 multilingual = false
 src = "src"
