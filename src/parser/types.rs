@@ -202,6 +202,15 @@ pub struct Block {
     pub stmts: Vec<Statement>,
     pub loc: Option<Location>,
 }
+impl Block {
+    pub fn loc(&self) -> &Option<Location> {
+        &self.loc
+    }
+    pub fn line_col(&self) -> Option<LineColLocation> {
+        self.loc().as_ref().map(|loc| loc.line_col.clone())
+    }
+}
+
 // Statements
 #[derive(Clone, Debug)]
 pub enum Statement {
@@ -225,11 +234,18 @@ pub enum Statement {
         expr: Expr,
         loc: Option<Location>,
     },
+    If {
+        cond: Expr,
+        conseq: Block,
+        alt: Block, //should be either an elif or else - boxed for determined size
+        loc: Option<Location>,
+    },
 }
 impl Statement {
     pub fn loc(&self) -> &Option<Location> {
         match self {
             Statement::Decl { loc, .. }
+            | Statement::If { loc, .. }
             | Statement::Return { loc, .. }
             | Statement::Assign { loc, .. }
             | Statement::Expr { loc, .. } => loc,

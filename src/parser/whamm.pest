@@ -40,7 +40,7 @@ PROBE_SPEC = ${
 }
 //disallowed IDs should have the full list of reserved names like return
 
-DISALLOWED_ID = _{ "return" | "if" | "while" | "else" }
+DISALLOWED_ID = _{ "return" | "if" | "while" | "else" | "elif" }
 ID = @{ (!DISALLOWED_ID ~ (ASCII_ALPHA | "_")+ ~ ( ASCII_DIGIT | (ASCII_ALPHA | "_")+ )*) |
         (DISALLOWED_ID ~ (ASCII_ALPHA | "_" | ASCII_DIGIT)+)
 }
@@ -62,7 +62,10 @@ TYPE = _{ TY_I32 | TY_BOOL | TY_STRING | TY_TUPLE | TY_MAP }
 // ====================
 // ---- Statements ----
 // ====================
-
+    //has to be "_stmt" because of rust rules
+if_stmt = { "if" ~ "(" ~ expr ~ ")" ~ block ~ (else_stmt | elif) ? }
+elif = { "elif" ~ "(" ~ expr ~ ")" ~ block ~ (else_stmt | elif) ? }
+else_stmt = { "else" ~  block }
 arg = { tuple | expr | val | ternary }
 fn_call = { ID ~ "(" ~ ( arg )? ~ ( "," ~ arg )* ~ ")" }
 block = { "{" ~ statement* ~ "}" }
@@ -73,7 +76,7 @@ ret = { "return" ~ expr ? }
 declaration = { TYPE ~ ID }
 assignment = { ID ~ "=" ~ (ternary | expr) }
 initialize = { TYPE ~ ID ~ "=" ~ (ternary | expr) }
-statement = { ( ( initialize | fn_call | declaration | assignment | incrementor | decrementor | ret ) ~ ";" )+ }
+statement = { ( ( initialize | if_stmt | fn_call | declaration | assignment | incrementor | decrementor | ret ) ~ ";" )+ }
 incrementor = { ID ~ "++"}
 decrementor = { ID ~ "--"}
 // =====================

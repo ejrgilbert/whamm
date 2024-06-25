@@ -386,6 +386,22 @@ impl WhammVisitor<String> for AsStrVisitor {
             Statement::Return { expr, .. } => {
                 format!("return {}", self.visit_expr(expr))
             }
+            Statement::If {
+                cond, conseq, alt, ..
+            } => {
+                let mut s = "".to_string();
+                s += &format!("if ({}) {{{}", self.visit_expr(cond), NL);
+                self.increase_indent();
+                s += &self.visit_block(conseq);
+                self.decrease_indent();
+                s += &format!("{} }}", self.get_indent());
+                s += &format!(" else {{{}", NL);
+                self.increase_indent();
+                s += &self.visit_block(alt);
+                self.decrease_indent();
+                s += &format!("{} }}", self.get_indent());
+                s
+            }
         }
     }
 

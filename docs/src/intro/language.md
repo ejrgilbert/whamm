@@ -16,5 +16,6 @@ Read on for an overview of the syntax and semantics of the language.
 - [Tuples](syntax/tuples.md) allow using multiple values where one value is expected.
 - [Maps](syntax/maps.md) are key for storing large amounts of data, but they're implemented quite differently in `whamm!`.
 - [Function](syntax/functions.md) definitions can be used to reuse code snippets.
+- [Conditionals](syntax/conditionals.md) are if/else/elif statements used for simple control flow 
 - And finally, [probes](syntax/probes.md) are used to express instrumentation.
 - All of this syntax is used to write `whamm!` [scripts](syntax/scripts.md).
