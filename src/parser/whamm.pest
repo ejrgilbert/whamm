@@ -3,7 +3,7 @@
 // ==============================
 
 // supports top-level global declarations/initial assignments and probe definitions
-script = { SOI ~ (statement | fn_def)* ~ probe_def ~ (statement | fn_def | probe_def)* ~ EOI }
+script = { SOI ~ (statement | fn_def)* ~ probe_def ~ (fn_def | probe_def)* ~ EOI }
  
 // TODO -- support comma separated list of specs: https://docs.oracle.com/cd/E23824_01/html/E22973/glghi.html#scrolltoc
 probe_def = { PROBE_SPEC ~ PUSH(predicate?) ~ "{" ~ statement* ~ "}" }
@@ -30,7 +30,12 @@ PROBE_ID = @{
     | "["
     | "]")+
 }
+//disallowed IDs should have the full list of reserved names like return
 
+DISALLOWED_ID = _{ "return" | "if" | "while" | "else" }
+ID = @{ (!DISALLOWED_ID ~ (ASCII_ALPHA | "_")+ ~ ( ASCII_DIGIT | (ASCII_ALPHA | "_")+ )*) |
+        (DISALLOWED_ID ~ (ASCII_ALPHA | "_" | ASCII_DIGIT)+)
+}
 // TODO -- I think we only want the one that has all three colons, or a single PROBE_ID
 PROBE_SPEC = ${
     PROBE_ID? ~ ":" ~ PROBE_ID? ~ ":" ~ PROBE_ID? ~ ":" ~ PROBE_ID?
@@ -38,12 +43,7 @@ PROBE_SPEC = ${
     | PROBE_ID? ~ ":" ~ PROBE_ID?
     | PROBE_ID
 }
-//disallowed IDs should have the full list of reserved names like return
 
-DISALLOWED_ID = _{ "return" | "if" | "while" | "else" | "elif" }
-ID = @{ (!DISALLOWED_ID ~ (ASCII_ALPHA | "_")+ ~ ( ASCII_DIGIT | (ASCII_ALPHA | "_")+ )*) |
-        (DISALLOWED_ID ~ (ASCII_ALPHA | "_" | ASCII_DIGIT)+)
-}
 // ===============
 // ---- Types ----
 // ===============
