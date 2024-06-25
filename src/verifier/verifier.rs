@@ -194,10 +194,9 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
             if temp.is_some() && ret_type.is_none() {
                 ret_type = temp;
             } else if ret_type.is_some() {
-                self.err.type_check_error(
-                    false,
-                    "Unreachable code in block".to_owned(),
-                    &stmt.loc().clone().map(|l| l.line_col),
+                self.err.add_typecheck_warn(
+                    "Unreachable code in block".to_string(),
+                    stmt.loc().clone().map(|l| l.line_col),
                 );
             }
         }
@@ -208,8 +207,8 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         if self.in_script_global {
             match stmt {
                 //allow declarations and assignment
-                Statement::Decl { ty, var_id, .. } => {
-                    if let Expr::VarId { name, .. } = var_id {
+                Statement::Decl { var_id, .. } => {
+                    if let Expr::VarId { .. } = var_id {
                         //no need to add local because its already in there
                     } else {
                         self.err.unexpected_error(
@@ -258,7 +257,8 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                 _ => {
                     self.err.type_check_error(
                         false,
-                        "Only variable declarations and assignment are allowed in the global scope".to_owned(),
+                        "Only variable declarations and assignment are allowed in the global scope"
+                            .to_owned(),
                         &stmt.loc().clone().map(|l| l.line_col),
                     );
                     None
@@ -342,7 +342,9 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                             (Some(DataType::AssumeGood), _) | (_, Some(DataType::AssumeGood)) => {
                                 return Some(DataType::AssumeGood)
                             }
-                            (conseq, _) if conseq == empty_tuple.clone() => return empty_tuple.clone(),
+                            (conseq, _) if conseq == empty_tuple.clone() => {
+                                return empty_tuple.clone()
+                            }
                             (_, alt) if alt == empty_tuple.clone() => return empty_tuple.clone(),
                             (_, _) => {}
                         }
@@ -518,7 +520,8 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                 if self.in_script_global {
                     self.err.type_check_error(
                         false,
-                        "Function calls are not allowed in the global state of the script".to_owned(),
+                        "Function calls are not allowed in the global state of the script"
+                            .to_owned(),
                         &loc.clone().map(|l| l.line_col),
                     );
                     return Some(DataType::AssumeGood);
@@ -562,7 +565,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                         addr: _,
                     }) = self.table.get_record(id)
                     {
-                        //check if the 
+                        //check if the
                         // look up param
                         let mut expected_param_tys = vec![];
                         for param in params {
@@ -732,7 +735,11 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
 }
 
 pub fn type_check(ast: &Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> bool {
-    let mut type_checker = TypeChecker { table: st, err, in_script_global: false };
+    let mut type_checker = TypeChecker {
+        table: st,
+        err,
+        in_script_global: false,
+    };
     type_checker.visit_whamm(ast);
     // note that parser errors might propagate here
     !err.has_errors

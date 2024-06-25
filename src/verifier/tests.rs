@@ -349,6 +349,7 @@ pub fn test_template() {
             let res = verifier::type_check(&ast, &mut table, &mut err);
             err.report();
             assert!(err.has_errors);
+            assert!(err.has_warnings);
             assert!(!res);
         }
         None => {
@@ -357,7 +358,6 @@ pub fn test_template() {
         }
     };
 }
-
 
 //TODO: uncomment after BEGIN is working
 

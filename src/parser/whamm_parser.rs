@@ -281,7 +281,7 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
                     path: None,
                 }),
             };
-            
+
             let output = types::Fn {
                 is_comp_provided: false,
                 name: fn_id,
