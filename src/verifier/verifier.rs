@@ -175,7 +175,10 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         if check_ret_type != function.return_ty {
             self.err.type_check_error(
                 false,
-                format! {"Return type of function {} does not match the return type specified in the function signature", function.name.name},
+                format!(
+                    "The function signature for '{}' returns '{:?}', but the body returns '{:?}'",
+                    function.name.name, function.return_ty, check_ret_type
+                ),
                 &function.name.loc.clone().map(|l| l.line_col),
             );
         }

@@ -324,6 +324,7 @@ pub fn test_type_errors() {
         assert!(!&res);
     }
 }
+
 #[test]
 pub fn test_template() {
     setup_logger();
@@ -356,6 +357,9 @@ pub fn test_template() {
         }
     };
 }
+
+
+//TODO: uncomment after BEGIN is working
 
 //WE DONT HAVE BEGIN WORKING YET
 // #[test]

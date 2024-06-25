@@ -1519,7 +1519,9 @@ impl Script {
     }
 
     pub fn add_global_stmts(&mut self, global_statements: Vec<Statement>) {
-        self.global_stmts = global_statements;
+        for stmt in global_statements.iter() {
+            self.global_stmts.push(stmt.clone());
+        }
     }
 
     /// Iterates over all the matched providers, packages, events, and probe mode names

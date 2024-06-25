@@ -225,7 +225,6 @@ impl ErrorGen {
             Self::get_duplicate_identifier_error(fatal, duplicated_id, err_line_col, info_line_col);
         self.add_error(err);
     }
-
     pub fn get_type_check_error(
         fatal: bool,
         message: String,
