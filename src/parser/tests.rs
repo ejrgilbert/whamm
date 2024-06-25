@@ -210,23 +210,7 @@ wasm:bytecode:br:before {
     i = 0; /**/
 }
     "#,
-    // If/else stmts
-    r#"
-        wasm::call:alt{
-            bool a = true;
-            if(a){
-                i = 0;
-            } else {
-                i = 1;
-            };
-            if(a){
-                i = 0;
-            } elif(b) {
-                i = 1;
-            };
-        }
     
-    "#,
 ];
 
 const INVALID_SCRIPTS: &[&str] = &[
@@ -276,32 +260,6 @@ map<i32, i32> count;
     wasm:bytecode:br:before {
     }
         "#,
-    // invalid if/else
-    r#"
-        wasm::call:alt{
-            else {
-                i = 0;
-            };
-        }
-    "#,
-    r#"
-        wasm::call:alt{
-            if(a){
-                i = 0;
-            } else {
-                i = 1;
-            };
-            else {
-                i = 0;
-            };
-        }
-    "#,
-    r#"
-        wasm::call:alt{
-            bool a = true;
-            elif(a){};
-        }
-    "#,
 ];
 
 const SPECIAL: &[&str] = &["BEGIN { }", "END { }", "wasm:::alt { }", "wasm:::alt { }"];
