@@ -210,7 +210,6 @@ wasm:bytecode:br:before {
     i = 0; /**/
 }
     "#,
-    
 ];
 
 const INVALID_SCRIPTS: &[&str] = &[

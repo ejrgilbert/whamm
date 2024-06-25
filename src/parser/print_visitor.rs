@@ -82,7 +82,6 @@ impl WhammVisitor<String> for AsStrVisitor {
             self.decrease_indent();
         }
 
-
         s += &format!("Scripts:{}", NL);
         self.increase_indent();
         for script in whamm.scripts.iter() {
