@@ -167,7 +167,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         if check_ret_type != Some(DataType::AssumeGood) || check_ret_type != function.return_ty {
             self.err.type_check_error(
                 false,
-                format! {"Return type of function {} does not match the return type specified in the function signature", function.name.name},
+                format!("The function signature for '{}' returns '{:?}', but the body returns '{:?}'", function.name.name, function.return_ty, check_ret_type),
                 &function.name.loc.clone().map(|l| l.line_col),
             );
         }
@@ -177,6 +177,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
 
     fn visit_block(&mut self, block: &Block) -> Option<DataType> {
         let mut ret_type = None;
+        let mut ret_type_loc = None;
         for stmt in &block.stmts {
             //add a check for return statement type matching the function return type if provided
             let temp = self.visit_stmt(stmt);
@@ -184,6 +185,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                 //throw an error if not all returns give the same return type
                 if ret_type.is_none() {
                     ret_type = temp;
+                    ret_type_loc = stmt.loc().clone().map(|l| l.line_col);
                 } else if ret_type != temp {
                     self.err.type_check_error(
                         false,

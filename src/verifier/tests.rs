@@ -299,7 +299,7 @@ pub fn test_type_errors() {
         assert!(!&res);
     }
 }
-
+//TODO: uncomment after BEGIN is working
 //WE DONT HAVE BEGIN WORKING YET
 // #[test]
 // pub fn test_whamm_module() {
