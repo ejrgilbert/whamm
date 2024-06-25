@@ -325,7 +325,11 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                     if cond_ty != Some(DataType::Boolean) {
                         self.err.type_check_error(
                             false,
-                            format!("Condition must be of type boolean, found {:?}", cond_ty.unwrap()).to_owned(),
+                            format!(
+                                "Condition must be of type boolean, found {:?}",
+                                cond_ty.unwrap()
+                            )
+                            .to_owned(),
                             &Some(cond.loc().clone().unwrap().line_col),
                         );
                     }
@@ -631,13 +635,17 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                 cond, conseq, alt, ..
             } => {
                 let cond_ty = self.visit_expr(cond);
-                    //have to clone before the "if let" block
+                //have to clone before the "if let" block
                 let cond_ty_clone = cond_ty.clone();
                 if let Some(ty) = cond_ty {
                     if ty != DataType::Boolean {
                         self.err.type_check_error(
                             false,
-                            format!("Condition must be of type boolean, found {:?}", cond_ty_clone.unwrap()).to_owned(),
+                            format!(
+                                "Condition must be of type boolean, found {:?}",
+                                cond_ty_clone.unwrap()
+                            )
+                            .to_owned(),
                             &Some(cond.loc().clone().unwrap().line_col),
                         );
                     }
