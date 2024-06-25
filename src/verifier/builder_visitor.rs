@@ -73,7 +73,7 @@ impl SymbolTableBuilder<'_> {
 
     fn add_provider(&mut self, provider: &Provider) {
         if self.table.lookup(&provider.name).is_some() {
-            // This should never be the case since it's controlled by the compiler!
+            // This should never be the case since it's controlled by the compiler! - THIS BREAKS WITH WHAMM
             self.err
                 .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
         }
@@ -134,12 +134,8 @@ impl SymbolTableBuilder<'_> {
         let id = self.table.put(package.name.clone(), package_rec);
 
         // Add package to current provider record
-        match self
-            .table
-            .get_record_mut(&self.curr_provider.unwrap())
-            .unwrap()
-        {
-            Record::Provider { packages, .. } => {
+        match self.table.get_record_mut(&self.curr_provider.unwrap()) {
+            Some(Record::Provider { packages, .. }) => {
                 packages.push(id);
             }
             _ => {
@@ -243,21 +239,31 @@ impl SymbolTableBuilder<'_> {
     }
 
     fn add_fn(&mut self, f: &mut Fn) {
-        let f_name = &f.name;
-        if let Some(other_fn_id) = self.table.lookup(&f_name.name) {
+        let f_id: &parser_types::FnId = &f.name;
+        if let Some(other_fn_id) = self.table.lookup(&f_id.name) {
             if let Some(other_rec) = self.table.get_record(other_fn_id) {
-                if let (Some(curr_loc), Some(other_loc)) = (&f_name.loc, other_rec.loc()) {
+                if let (Some(curr_loc), Some(other_loc)) = (&f_id.loc, other_rec.loc()) {
                     self.err.duplicate_identifier_error(
                         false,
-                        f_name.name.clone(),
+                        f_id.name.clone(),
                         Some(curr_loc.line_col.clone()),
                         Some(other_loc.line_col.clone()),
                     );
                 } else {
-                    // This should never be the case since it's controlled by the compiler!
-                    self.err
-                        .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
-                    unreachable!()
+                    // If there is another fn with the same name as a compiler generated fn, throw a duplicate id error
+                    match &f_id.loc {
+                        Some(loc) => {
+                            self.err.compiler_fn_overload_error(
+                                false,
+                                f_id.name.clone(),
+                                Some(loc.line_col.clone()),
+                            );
+                        }
+                        None => {
+                            self.err
+                                .compiler_fn_overload_error(false, f_id.name.clone(), None);
+                        }
+                    }
                 }
             } else {
                 // This should never be the case since it's controlled by the compiler!

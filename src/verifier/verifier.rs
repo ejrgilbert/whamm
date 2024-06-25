@@ -30,6 +30,7 @@ pub fn build_symbol_table(ast: &mut Whamm, err: &mut ErrorGen) -> SymbolTable {
 struct TypeChecker<'a> {
     table: &'a mut SymbolTable,
     err: &'a mut ErrorGen,
+    in_script_global: bool,
 }
 
 impl TypeChecker<'_> {
@@ -77,11 +78,14 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
 
     fn visit_script(&mut self, script: &Script) -> Option<DataType> {
         self.table.enter_named_scope(&script.name);
-
-        // TODO: type check user provided functions
-        // whamm.fns.iter().for_each(|function| {
-        //     self.visit_fn(&mut function.1);
-        // });
+        self.in_script_global = true;
+        script.global_stmts.iter().for_each(|stmt| {
+            self.visit_stmt(stmt);
+        });
+        self.in_script_global = false;
+        script.fns.iter().for_each(|function| {
+            self.visit_fn(function);
+        });
 
         script.providers.iter().for_each(|(_, provider)| {
             self.visit_provider(provider);
@@ -162,79 +166,208 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         // type check body
 
         self.table.enter_named_scope(&function.name.name);
-        self.visit_block(&function.body);
+        let mut check_ret_type = self.visit_block(&function.body);
         let _ = self.table.exit_scope();
-
-        // return type
-        todo!();
+        if check_ret_type.is_none() {
+            check_ret_type = Some(DataType::Tuple { ty_info: vec![] });
+        }
+        //figure out how to deal with void functions (return type is ())
+        if check_ret_type != function.return_ty {
+            self.err.type_check_error(
+                false,
+                format!(
+                    "The function signature for '{}' returns '{:?}', but the body returns '{:?}'",
+                    function.name.name, function.return_ty, check_ret_type
+                ),
+                &function.name.loc.clone().map(|l| l.line_col),
+            );
+        }
+        //return the type of the fn
+        function.return_ty.clone()
     }
 
     fn visit_block(&mut self, block: &Block) -> Option<DataType> {
-        // TODO: finish user def function type checking
+        let mut ret_type = None;
         for stmt in &block.stmts {
-            self.visit_stmt(stmt);
+            //add a check for return statement type matching the function return type if provided
+            let temp = self.visit_stmt(stmt);
+            if temp.is_some() && ret_type.is_none() {
+                ret_type = temp;
+            } else if ret_type.is_some() {
+                self.err.add_typecheck_warn(
+                    "Unreachable code in block".to_string(),
+                    stmt.loc().clone().map(|l| l.line_col),
+                );
+            }
         }
-        todo!()
+        ret_type
     }
 
     fn visit_stmt(&mut self, stmt: &Statement) -> Option<DataType> {
-        match stmt {
-            Statement::Assign { var_id, expr, .. } => {
-                // change type in symbol table?
-                let lhs_loc = var_id.loc().clone().unwrap();
-                let rhs_loc = expr.loc().clone().unwrap();
-                let lhs_ty_op = self.visit_expr(var_id);
-                let rhs_ty_op = self.visit_expr(expr);
-
-                if let (Some(lhs_ty), Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {
-                    if lhs_ty == rhs_ty {
-                        None
+        if self.in_script_global {
+            match stmt {
+                //allow declarations and assignment
+                Statement::Decl { var_id, .. } => {
+                    if let Expr::VarId { .. } = var_id {
+                        //no need to add local because its already in there
                     } else {
-                        // using a struct in parser to merge two locations
+                        self.err.unexpected_error(
+                            true,
+                            Some(format!(
+                                "{} \
+                Variable declaration var_id is not the correct Expr variant!!",
+                                UNEXPECTED_ERR_MSG
+                            )),
+                            var_id.loc().clone().map(|l| l.line_col),
+                        );
+                    }
+                    None
+                }
+                Statement::Assign { var_id, expr, .. } => {
+                    // change type in symbol table?
+                    let lhs_loc = var_id.loc().clone().unwrap();
+                    let rhs_loc = expr.loc().clone().unwrap();
+                    let lhs_ty_op = self.visit_expr(var_id);
+                    let rhs_ty_op = self.visit_expr(expr);
+
+                    if let (Some(lhs_ty), Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {
+                        if lhs_ty == rhs_ty {
+                            None
+                        } else {
+                            // using a struct in parser to merge two locations
+                            let loc = Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
+                            self.err.type_check_error(
+                                false,
+                                format! {"Type Mismatch, lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty},
+                                &Some(loc.line_col),
+                            );
+
+                            None
+                        }
+                    } else {
                         let loc = Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
                         self.err.type_check_error(
                             false,
-                            format! {"Type Mismatch, lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty},
+                            "Can't get type of lhs or rhs of this assignment".to_string(),
                             &Some(loc.line_col),
                         );
-
                         None
                     }
-                } else {
-                    let loc = Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
+                }
+                _ => {
                     self.err.type_check_error(
                         false,
-                        "Can't get type of lhs or rhs of this assignment".to_string(),
-                        &Some(loc.line_col),
+                        "Only variable declarations and assignment are allowed in the global scope"
+                            .to_owned(),
+                        &stmt.loc().clone().map(|l| l.line_col),
                     );
                     None
                 }
             }
-            Statement::Expr { expr, .. } => {
-                self.visit_expr(expr);
-                None
-            }
-            Statement::Decl { ty, var_id, .. } => {
-                if let Expr::VarId { name, .. } = var_id {
-                    self.add_local(ty.to_owned(), name.to_owned(), false);
-                } else {
-                    self.err.unexpected_error(
-                        true,
-                        Some(format!(
-                            "{} \
-                Variable declaration var_id is not the correct Expr variant!!",
-                            UNEXPECTED_ERR_MSG
-                        )),
-                        var_id.loc().clone().map(|l| l.line_col),
-                    );
-                }
-                None
-            }
-            Statement::Return { expr, loc: _loc } => {
-                let _ret_ty_op = self.visit_expr(expr);
-                // TODO: type check Return statement (to do with user defined functions)
+        } else {
+            match stmt {
+                Statement::Assign { var_id, expr, .. } => {
+                    // change type in symbol table?
+                    let lhs_loc = var_id.loc().clone().unwrap();
+                    let rhs_loc = expr.loc().clone().unwrap();
+                    let lhs_ty_op = self.visit_expr(var_id);
+                    let rhs_ty_op = self.visit_expr(expr);
 
-                None
+                    if let (Some(lhs_ty), Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {
+                        if lhs_ty == rhs_ty {
+                            None
+                        } else {
+                            // using a struct in parser to merge two locations
+                            let loc = Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
+                            self.err.type_check_error(
+                                false,
+                                format! {"Type Mismatch, lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty},
+                                &Some(loc.line_col),
+                            );
+
+                            None
+                        }
+                    } else {
+                        let loc = Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
+                        self.err.type_check_error(
+                            false,
+                            "Can't get type of lhs or rhs of this assignment".to_string(),
+                            &Some(loc.line_col),
+                        );
+                        None
+                    }
+                }
+                Statement::Expr { expr, .. } => {
+                    self.visit_expr(expr);
+                    None
+                }
+                Statement::Decl { ty, var_id, .. } => {
+                    if let Expr::VarId { name, .. } = var_id {
+                        self.add_local(ty.to_owned(), name.to_owned(), false);
+                    } else {
+                        self.err.unexpected_error(
+                            true,
+                            Some(format!(
+                                "{} \
+                    Variable declaration var_id is not the correct Expr variant!!",
+                                UNEXPECTED_ERR_MSG
+                            )),
+                            var_id.loc().clone().map(|l| l.line_col),
+                        );
+                    }
+                    None
+                }
+                Statement::Return { expr, loc: _loc } => self.visit_expr(expr),
+                Statement::If {
+                    cond, conseq, alt, ..
+                } => {
+                    let cond_ty = self.visit_expr(cond);
+                    if cond_ty != Some(DataType::Boolean) {
+                        self.err.type_check_error(
+                            false,
+                            format!(
+                                "Condition must be of type boolean, found {:?}",
+                                cond_ty.unwrap()
+                            )
+                            .to_owned(),
+                            &Some(cond.loc().clone().unwrap().line_col),
+                        );
+                    }
+                    let ret_ty_conseq = self.visit_block(conseq);
+                    let ret_ty_alt = self.visit_block(alt);
+                    if ret_ty_conseq == ret_ty_alt {
+                        ret_ty_conseq
+                    } else {
+                        //check if it is assume good
+                        let empty_tuple = Some(DataType::Tuple { ty_info: vec![] });
+                        match (ret_ty_conseq, ret_ty_alt) {
+                            (None, _) | (_, None) => return None,
+                            (Some(DataType::AssumeGood), _) | (_, Some(DataType::AssumeGood)) => {
+                                return Some(DataType::AssumeGood)
+                            }
+                            (conseq, _) if conseq == empty_tuple.clone() => {
+                                return empty_tuple.clone()
+                            }
+                            (_, alt) if alt == empty_tuple.clone() => return empty_tuple.clone(),
+                            (_, _) => {}
+                        }
+                        //check that they are not returning differnt types if neither is () or None
+                        //error here
+                        self.err.type_check_error(
+                            false,
+                            "Return type of if and else blocks do not match".to_owned(),
+                            &Some(
+                                Location::from(
+                                    &conseq.loc().clone().unwrap().line_col,
+                                    &alt.loc().clone().unwrap().line_col,
+                                    None,
+                                )
+                                .line_col,
+                            ),
+                        );
+                        Some(DataType::AssumeGood)
+                    }
+                }
             }
         }
     }
@@ -381,11 +514,21 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                     Some(DataType::AssumeGood)
                 }
             }
+            //disallow calls when the in the global state of the script
             Expr::Call {
                 fn_target,
                 args,
                 loc,
             } => {
+                if self.in_script_global {
+                    self.err.type_check_error(
+                        false,
+                        "Function calls are not allowed in the global state of the script"
+                            .to_owned(),
+                        &loc.clone().map(|l| l.line_col),
+                    );
+                    return Some(DataType::AssumeGood);
+                }
                 // lookup type of function
                 let mut actual_param_tys = vec![];
 
@@ -425,6 +568,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                         addr: _,
                     }) = self.table.get_record(id)
                     {
+                        //check if the
                         // look up param
                         let mut expected_param_tys = vec![];
                         for param in params {
@@ -491,11 +635,17 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                 cond, conseq, alt, ..
             } => {
                 let cond_ty = self.visit_expr(cond);
+                //have to clone before the "if let" block
+                let cond_ty_clone = cond_ty.clone();
                 if let Some(ty) = cond_ty {
                     if ty != DataType::Boolean {
                         self.err.type_check_error(
                             false,
-                            "Condition must be of type boolean".to_owned(),
+                            format!(
+                                "Condition must be of type boolean, found {:?}",
+                                cond_ty_clone.unwrap()
+                            )
+                            .to_owned(),
                             &Some(cond.loc().clone().unwrap().line_col),
                         );
                     }
@@ -594,7 +744,11 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
 }
 
 pub fn type_check(ast: &Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> bool {
-    let mut type_checker = TypeChecker { table: st, err };
+    let mut type_checker = TypeChecker {
+        table: st,
+        err,
+        in_script_global: false,
+    };
     type_checker.visit_whamm(ast);
     // note that parser errors might propagate here
     !err.has_errors

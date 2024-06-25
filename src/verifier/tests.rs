@@ -16,8 +16,36 @@ pub fn setup_logger() {
 // = Helper Functions =
 // ====================
 
-const VALID_SCRIPTS: &[&str] =
-    &["wasm:bytecode:call:alt { new_target_fn_name = redirect_to_fault_injector; }"];
+const VALID_SCRIPTS: &[&str] = &[
+    "wasm:bytecode:call:alt { new_target_fn_name = redirect_to_fault_injector; }",
+    r#"
+        bool a;
+        i32 b;
+        nested_fn(i32 a) -> i32 {
+            return a;
+        }
+        dummy_fn() {
+            b = nested_fn(5);
+            a = strcmp((b, 8), "bookings");
+        }
+        wasm::call:alt {
+            dummy_fn();
+        }   
+    "#,
+    r#"
+        bool a;
+        i32 b;
+        nested_fn(i32 a) -> i32 {
+            return a;
+        }
+        dummy_fn() {
+            b = nested_fn();
+        }
+        wasm::call:alt {
+            dummy_fn();
+        }   
+    "#,
+];
 
 const TYPE_ERROR_SCRIPTS: &[&str] = &[
     // predicate
@@ -126,6 +154,78 @@ wasm::call:alt /
 
 }
     "#,
+    r#"
+        bool a;
+        i32 b;
+        strcmp(){
+            a = false;
+        }
+        nested_fn(i32 a) -> i32 {
+            return a;
+        }
+        dummy_fn() {
+            b = nested_fn(5);
+            a = strcmp((b, 8), "bookings");
+        }
+        wasm::call:alt {
+            dummy_fn();
+        }   
+    "#,
+    r#"
+        bool a;
+        i32 b;
+        nested_fn(i32 a) -> i32 {
+            return a;
+        }
+        nested_fn(i32 a) -> i32 {
+            return a;
+        }
+        dummy_fn() {
+            b = nested_fn(5);
+            a = strcmp((b, 8), "bookings");
+        }
+        wasm::call:alt {
+            dummy_fn();
+        }   
+    "#,
+    r#"
+        i32 a;
+        nested_fn() -> bool {
+            return "hi";
+            return 1;
+        }
+        dummy_fn() {
+            a = nested_fn();
+        }
+        wasm::call:alt {
+            dummy_fn();
+        }   
+    "#,
+    r#"
+    my_fn(i32 a) -> i32 {
+        if(a > 5){
+            return 1;
+        }
+        else{
+            return true;
+        };
+        a = 5;
+    }
+    wasm::call:alt{
+        bool a = true;
+        i32 b = 5;
+        if(a){
+            b = 6;
+        }
+        else{
+            b = 7;
+        };
+        if(b){
+        };
+        if(b == 5){
+        };
+    }
+    "#,
 ];
 
 // =============
@@ -224,3 +324,58 @@ pub fn test_type_errors() {
         assert!(!&res);
     }
 }
+
+#[test]
+pub fn test_template() {
+    setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let script = r#"
+        i32 a;
+        a = nested_fn();
+        nested_fn() -> bool {
+            return "hi";
+            return 1;
+        }
+        dummy_fn() {
+            a = nested_fn();
+        }
+        wasm::call:alt {
+            dummy_fn();
+        }   
+    "#;
+    match tests::get_ast(script, &mut err) {
+        Some(mut ast) => {
+            let mut table = verifier::build_symbol_table(&mut ast, &mut err);
+            let res = verifier::type_check(&ast, &mut table, &mut err);
+            err.report();
+            assert!(err.has_errors);
+            assert!(err.has_warnings);
+            assert!(!res);
+        }
+        None => {
+            error!("Could not get ast from script: {}", script);
+            panic!();
+        }
+    };
+}
+
+//TODO: uncomment after BEGIN is working
+
+//WE DONT HAVE BEGIN WORKING YET
+// #[test]
+// pub fn test_whamm_module() {
+//     setup_logger();
+//     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+
+//     let script = r#"
+//         BEGIN {
+//             i32 a;
+//         }
+//     "#;
+//     info!("Typechecking: {}", script);
+//     let res = is_valid_script(script, &mut err);
+
+//     err.report();
+//     assert!(!err.has_errors);
+//     assert!(res);
+// }

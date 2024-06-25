@@ -150,6 +150,11 @@ wasm:bytecode:br:before {
 }
     "#,
     r#"
+wasm:bytecode:br:before {
+    i = -10;
+}
+    "#,
+    r#"
     wasm:bytecode:br:before {
         call_new();
     }
@@ -205,6 +210,23 @@ wasm:bytecode:br:before {
     i = 0; /**/
 }
     "#,
+    // If/else stmts
+    r#"
+        wasm::call:alt{
+            bool a = true;
+            if(a){
+                i = 0;
+            } else {
+                i = 1;
+            };
+            if(a){
+                i = 0;
+            } elif(b) {
+                i = 1;
+            };
+        }
+    
+    "#,
 ];
 
 const INVALID_SCRIPTS: &[&str] = &[
@@ -254,6 +276,32 @@ map<i32, i32> count;
     wasm:bytecode:br:before {
     }
         "#,
+    // invalid if/else
+    r#"
+        wasm::call:alt{
+            else {
+                i = 0;
+            };
+        }
+    "#,
+    r#"
+        wasm::call:alt{
+            if(a){
+                i = 0;
+            } else {
+                i = 1;
+            };
+            else {
+                i = 0;
+            };
+        }
+    "#,
+    r#"
+        wasm::call:alt{
+            bool a = true;
+            elif(a){};
+        }
+    "#,
 ];
 
 const SPECIAL: &[&str] = &["BEGIN { }", "END { }", "wasm:::alt { }", "wasm:::alt { }"];
@@ -533,6 +581,30 @@ pub fn testing_block() {
     };
 }
 #[test]
+
+pub fn test_template() {
+    setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let script = r#"
+    wasm::call:alt{
+        //stuff you're testing here
+    }
+    "#;
+
+    match get_ast(script, &mut err) {
+        Some(ast) => {
+            print_ast(&ast);
+        }
+        None => {
+            error!("Could not get ast from script: {}", script);
+            if err.has_errors {
+                err.report();
+            }
+            assert!(!err.has_errors);
+        }
+    };
+}
+
 pub fn testing_global_def() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
