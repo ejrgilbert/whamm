@@ -82,6 +82,7 @@ impl WhammVisitor<String> for AsStrVisitor {
             self.decrease_indent();
         }
 
+
         s += &format!("Scripts:{}", NL);
         self.increase_indent();
         for script in whamm.scripts.iter() {
@@ -113,6 +114,15 @@ impl WhammVisitor<String> for AsStrVisitor {
             s += &format!("{} script globals:{}", self.get_indent(), NL);
             self.increase_indent();
             self.visit_globals(&script.globals);
+            self.decrease_indent();
+        }
+        //print global statments
+        if !script.global_stmts.is_empty() {
+            s += &format!("{} script global statements:{}", self.get_indent(), NL);
+            self.increase_indent();
+            for stmt in script.global_stmts.iter() {
+                s += &format!("{}{}{}", self.get_indent(), self.visit_stmt(stmt), NL);
+            }
             self.decrease_indent();
         }
 
