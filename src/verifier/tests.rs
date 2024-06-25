@@ -201,6 +201,31 @@ wasm::call:alt /
             dummy_fn();
         }   
     "#,
+    r#"
+    my_fn(i32 a) -> i32 {
+        if(a > 5){
+            return 1;
+        }
+        else{
+            return true;
+        };
+        a = 5;
+    }
+    wasm::call:alt{
+        bool a = true;
+        i32 b = 5;
+        if(a){
+            b = 6;
+        }
+        else{
+            b = 7;
+        };
+        if(b){
+        };
+        if(b == 5){
+        };
+    }
+    "#,
 ];
 
 // =============
@@ -304,29 +329,18 @@ pub fn test_template() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
-    my_fn(i32 a) -> i32 {
-        if(a > 5){
+        i32 a;
+        a = nested_fn();
+        nested_fn() -> bool {
+            return "hi";
             return 1;
         }
-        else{
-            return true;
-        };
-        a = 5;
-    }
-    wasm::call:alt{
-        bool a = true;
-        i32 b = 5;
-        if(a){
-            b = 6;
+        dummy_fn() {
+            a = nested_fn();
         }
-        else{
-            b = 7;
-        };
-        if(b){
-        };
-        if(b == 5){
-        };
-    }
+        wasm::call:alt {
+            dummy_fn();
+        }   
     "#;
     match tests::get_ast(script, &mut err) {
         Some(mut ast) => {

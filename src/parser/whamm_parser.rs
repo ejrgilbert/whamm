@@ -281,35 +281,7 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
                     path: None,
                 }),
             };
-            //before creating the output, check if there is a return statement in the body - NO LONGER NEEDED
-            //if there is not, add a return empty tuple
-            // let mut has_return = false;
-            // for stmt in &body.stmts {
-            //     #[allow(clippy::single_match)]
-            //     match stmt {
-            //         //ADD SUPPORT FOR IF/ELSE/LOOPS WHEN IMPLEMENTED
-            //         Statement::Return { .. } => {
-            //             has_return = true;
-            //             break;
-            //         }
-            //         _ => {}
-            //     }
-            // }
-            // if !has_return {
-            //     //add an empty tuple return statement to body.stmts
-            //     let empty_tuple = Expr::Primitive {
-            //         val: Value::Tuple {
-            //             ty: DataType::Tuple { ty_info: vec![] },
-            //             vals: vec![],
-            //         },
-            //         loc: None,
-            //     };
-            //     let return_stmt = Statement::Return {
-            //         expr: empty_tuple,
-            //         loc: None,
-            //     };
-            //     body.stmts.push(return_stmt);
-            // }
+            
             let output = types::Fn {
                 is_comp_provided: false,
                 name: fn_id,
@@ -789,7 +761,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                             trace!("Exiting return_stmt");
                             trace!("Exiting stmt_from_rule");
 
-                            let expr_line_col = if let Some(expr_loc) = expr.loc() {
+                            if let Some(expr_loc) = expr.loc() {
                                 expr_loc.line_col.clone()
                             } else {
                                 err.add_error(ErrorGen::get_unexpected_error(
@@ -805,7 +777,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                             output.push(Statement::Return {
                                 expr,
                                 loc: Some(Location {
-                                    line_col: expr_line_col.clone(),
+                                    line_col: ret_statement_line_col.clone(),
                                     path: None,
                                 }),
                             });
