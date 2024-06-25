@@ -121,12 +121,11 @@ impl WhammVisitor<String> for AsStrVisitor {
             s += &format!("{} script global statements:{}", self.get_indent(), NL);
             self.increase_indent();
             for stmt in script.global_stmts.iter() {
-
                 s += &format!("{} {};{}", self.get_indent(), self.visit_stmt(stmt), NL);
             }
             self.decrease_indent();
-        }      
-        
+        }
+
         // print providers
         s += &format!("{} script providers:{}", self.get_indent(), NL);
         for (name, provider) in script.providers.iter() {
