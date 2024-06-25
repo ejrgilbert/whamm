@@ -322,11 +322,10 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                     cond, conseq, alt, ..
                 } => {
                     let cond_ty = self.visit_expr(cond);
-                    print!("{:?}", cond_ty);
                     if cond_ty != Some(DataType::Boolean) {
                         self.err.type_check_error(
                             false,
-                            "Condition must be of type boolean".to_owned(),
+                            format!("Condition must be of type boolean, found {:?}", cond_ty.unwrap()).to_owned(),
                             &Some(cond.loc().clone().unwrap().line_col),
                         );
                     }

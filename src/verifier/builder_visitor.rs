@@ -239,29 +239,29 @@ impl SymbolTableBuilder<'_> {
     }
 
     fn add_fn(&mut self, f: &mut Fn) {
-        let f_name = &f.name;
-        if let Some(other_fn_id) = self.table.lookup(&f_name.name) {
+        let f_id: &parser_types::FnId = &f.name;
+        if let Some(other_fn_id) = self.table.lookup(&f_id.name) {
             if let Some(other_rec) = self.table.get_record(other_fn_id) {
-                if let (Some(curr_loc), Some(other_loc)) = (&f_name.loc, other_rec.loc()) {
+                if let (Some(curr_loc), Some(other_loc)) = (&f_id.loc, other_rec.loc()) {
                     self.err.duplicate_identifier_error(
                         false,
-                        f_name.name.clone(),
+                        f_id.name.clone(),
                         Some(curr_loc.line_col.clone()),
                         Some(other_loc.line_col.clone()),
                     );
                 } else {
                     // If there is another fn with the same name as a compiler generated fn, throw a duplicate id error
-                    match &f_name.loc {
+                    match &f_id.loc {
                         Some(loc) => {
                             self.err.compiler_fn_overload_error(
                                 false,
-                                f_name.name.clone(),
+                                f_id.name.clone(),
                                 Some(loc.line_col.clone()),
                             );
                         }
                         None => {
                             self.err
-                                .compiler_fn_overload_error(false, f_name.name.clone(), None);
+                                .compiler_fn_overload_error(false, f_id.name.clone(), None);
                         }
                     }
                 }
