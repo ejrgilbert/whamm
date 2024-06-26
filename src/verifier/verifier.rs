@@ -15,6 +15,7 @@ pub fn build_symbol_table(ast: &mut Whamm, err: &mut ErrorGen) -> SymbolTable {
     let mut visitor = SymbolTableBuilder {
         table: SymbolTable::new(),
         err,
+        comp_def: true,
         curr_whamm: None,
         curr_script: None,
         curr_provider: None,
@@ -566,6 +567,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                         params,
                         ret_ty,
                         addr: _,
+                        is_comp_provided: _,
                     }) = self.table.get_record(id)
                     {
                         //check if the
@@ -603,17 +605,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                             }
                         }
 
-                        return match ret_ty.clone() {
-                            Some(ty) => Some(ty),
-                            None => {
-                                self.err.type_check_error(
-                                    false,
-                                    "Return type of function not specified".to_owned(),
-                                    &loc.clone().map(|l| l.line_col),
-                                );
-                                Some(DataType::AssumeGood)
-                            }
-                        };
+                        return Some(ret_ty.clone());
                     } else {
                         self.err.type_check_error(
                             false,

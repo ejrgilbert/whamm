@@ -15,15 +15,14 @@ const UNEXPECTED_ERR_MSG: &str = "SymbolTableBuilder: Looks like you've found a 
 pub struct SymbolTableBuilder<'a> {
     pub table: SymbolTable,
     pub err: &'a mut ErrorGen,
-
+    pub comp_def: bool,
     pub curr_whamm: Option<usize>,  // indexes into this::table::records
     pub curr_script: Option<usize>, // indexes into this::table::records
     pub curr_provider: Option<usize>, // indexes into this::table::records
     pub curr_package: Option<usize>, // indexes into this::table::records
     pub curr_event: Option<usize>,  // indexes into this::table::records
     pub curr_probe: Option<usize>,  // indexes into this::table::records
-
-    pub curr_fn: Option<usize>, // indexes into this::table::records
+    pub curr_fn: Option<usize>,     // indexes into this::table::records
 }
 impl SymbolTableBuilder<'_> {
     fn add_script(&mut self, script: &Script) {
@@ -253,15 +252,37 @@ impl SymbolTableBuilder<'_> {
                     // If there is another fn with the same name as a compiler generated fn, throw a duplicate id error
                     match &f_id.loc {
                         Some(loc) => {
-                            self.err.compiler_fn_overload_error(
-                                false,
-                                f_id.name.clone(),
-                                Some(loc.line_col.clone()),
-                            );
+                            //add check if the record "other_rec" is a compiler provided function
+                            match other_rec {
+                                Record::Fn {
+                                    is_comp_provided, ..
+                                } => {
+                                    if *is_comp_provided {
+                                        self.err.compiler_fn_overload_error(
+                                            false,
+                                            f_id.name.clone(),
+                                            Some(loc.line_col.clone()),
+                                        );
+                                    } else {
+                                        self.err.unexpected_error(
+                                            true,
+                                            Some(UNEXPECTED_ERR_MSG.to_string()),
+                                            None,
+                                        );
+                                    }
+                                }
+                                _ => {
+                                    self.err.unexpected_error(
+                                        true,
+                                        Some(UNEXPECTED_ERR_MSG.to_string()),
+                                        None,
+                                    );
+                                }
+                            }
                         }
                         None => {
                             self.err
-                                .compiler_fn_overload_error(false, f_id.name.clone(), None);
+                                .unexpected_error(true, Some("No location found for function conflicting with compiler def function. User-def fn has no location, or 2 compiler-def functions with same ID".to_string()), None);
                         }
                     }
                 }
@@ -276,8 +297,9 @@ impl SymbolTableBuilder<'_> {
         // create record
         let fn_rec = Record::Fn {
             name: f.name.clone(),
+            is_comp_provided: self.comp_def,
             params: vec![],
-            ret_ty: f.return_ty.clone(),
+            ret_ty: f.return_ty.clone().unwrap(),
             addr: None,
         };
 
@@ -447,7 +469,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
 
     fn visit_script(&mut self, script: &mut Script) {
         trace!("Entering: visit_script");
-
+        self.comp_def = false;
         self.add_script(script);
 
         script.fns.iter_mut().for_each(|f| self.visit_fn(f));

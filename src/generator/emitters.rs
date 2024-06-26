@@ -2107,7 +2107,8 @@ impl Emitter for WasmRewritingEmitter {
             Statement::Expr { expr, .. } => self.emit_expr(expr),
             Statement::Return { .. } => unimplemented!(),
             Statement::If {
-                cond, conseq, alt, ..
+                // cond, conseq, alt, .. -- for eventual implimentation
+                ..
             } => {
                 unimplemented!()
             }

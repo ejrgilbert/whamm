@@ -330,18 +330,10 @@ pub fn test_template() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
-        i32 a;
-        a = nested_fn();
-        nested_fn() -> bool {
-            return "hi";
-            return 1;
-        }
-        dummy_fn() {
-            a = nested_fn();
-        }
+        strcmp () {}
         wasm::call:alt {
-            dummy_fn();
-        }   
+            strcmp();
+        }
     "#;
     match tests::get_ast(script, &mut err) {
         Some(mut ast) => {
@@ -349,7 +341,6 @@ pub fn test_template() {
             let res = verifier::type_check(&ast, &mut table, &mut err);
             err.report();
             assert!(err.has_errors);
-            assert!(err.has_warnings);
             assert!(!res);
         }
         None => {

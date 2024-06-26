@@ -381,7 +381,8 @@ pub enum Record {
         // TODO: should this be an option?
         // given that we are assuming function that return nothing
         // returns a unit type (empty tuple)
-        ret_ty: Option<DataType>,
+        ret_ty: DataType,
+        is_comp_provided: bool,
 
         /// The address of this function post-injection
         // TODO -- this representation SUCKS...specific to walrus bytecode injection...

@@ -132,7 +132,7 @@ impl DataType {
     pub fn print(&self, buffer: &mut Buffer) {
         match self {
             DataType::I32 => {
-                yellow(true, "int".to_string(), buffer);
+                yellow(true, "i32".to_string(), buffer);
             }
             DataType::Boolean => {
                 yellow(true, "bool".to_string(), buffer);
