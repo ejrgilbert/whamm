@@ -122,6 +122,7 @@ fn instrument_handwritten_wasm_call() {
         .arg("tests/apps/handwritten/add.wasm")
         .output()
         .expect("failed to execute process");
+    println!("{:?}", res.stdout);
     assert!(res.status.success());
 
     let file_data = fs::read("output/output.wasm").unwrap();
@@ -152,6 +153,7 @@ fn instrument_control_flow() {
         .arg("wasm_playground/control_flow/target/wasm32-unknown-unknown/debug/cf.wasm")
         .output()
         .expect("failed to execute process");
+    println!("{:?}", res.stdout);
     assert!(res.status.success());
 
     let file_data = fs::read("output/output.wasm").unwrap();
