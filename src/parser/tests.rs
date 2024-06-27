@@ -5,7 +5,6 @@ use glob::{glob, glob_with};
 
 use crate::common::error::ErrorGen;
 use crate::parser::print_visitor::AsStrVisitor;
-use crate::parser::rules::Provider;
 use log::{error, info, warn};
 
 // =================
@@ -413,7 +412,8 @@ wasm::call:alt /
             assert_eq!(1, package.len_events());
             let event = package.events().next().unwrap();
             assert_eq!("call", event.name());
-            assert_eq!(5, event.get_provided_globals().len());
+            // TODO -- change to 5 when add back: arg[0:9]+
+            assert_eq!(4, event.get_provided_globals().len());
             assert_eq!(0, event.get_provided_fns().len());
 
             assert_eq!(1, event.probes().len());
