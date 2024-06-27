@@ -57,7 +57,7 @@ impl TypeChecker<'_> {
     }
 }
 
-impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
+impl<'b> WhammVisitor<'b, Option<DataType>> for TypeChecker<'_> {
     fn visit_whamm(&mut self, whamm: &Whamm) -> Option<DataType> {
         // not printing events and globals now
         self.table.reset();
@@ -168,6 +168,10 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
 
         // return type
         todo!();
+    }
+
+    fn visit_formal_param(&mut self, _param: &(Expr, DataType)) -> Option<DataType> {
+        unimplemented!()
     }
 
     fn visit_block(&mut self, block: &Block) -> Option<DataType> {
@@ -545,6 +549,14 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         }
     }
 
+    fn visit_unop(&mut self, _unop: &UnOp) -> Option<DataType> {
+        unimplemented!()
+    }
+
+    fn visit_binop(&mut self, _binop: &BinOp) -> Option<DataType> {
+        unimplemented!()
+    }
+
     fn visit_datatype(&mut self, _datatype: &DataType) -> Option<DataType> {
         unimplemented!()
     }
@@ -579,18 +591,6 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                 Some(DataType::Tuple { ty_info: all_tys })
             }
         }
-    }
-
-    fn visit_formal_param(&mut self, _param: &(Expr, DataType)) -> Option<DataType> {
-        unimplemented!()
-    }
-
-    fn visit_binop(&mut self, _binop: &BinOp) -> Option<DataType> {
-        unimplemented!()
-    }
-
-    fn visit_unop(&mut self, _unop: &UnOp) -> Option<DataType> {
-        unimplemented!()
     }
 }
 
