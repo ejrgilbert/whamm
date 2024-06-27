@@ -393,9 +393,50 @@ pub fn test_type_errors() {
         assert!(!&res);
     }
 }
-
 #[test]
 pub fn test_template() {
+    setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let script = r#"
+        my_fn() {
+            i32 a = 5;
+            return;
+            i32 b;
+            i32 c;
+        }
+        wasm::call:alt {
+            my_fn();
+        }
+    "#;
+    match tests::get_ast(script, &mut err) {
+        Some(mut ast) => {
+            let mut table = verifier::build_symbol_table(&mut ast, &mut err);
+            let res = verifier::type_check(&ast, &mut table, &mut err);
+            err.report();
+            assert!(!err.has_errors);
+            assert!(res);
+        }
+        None => {
+            error!("Could not get ast from script: {}", script);
+            panic!();
+        }
+    };
+}
+#[test]
+pub fn test_expect_fatal() {
+    let result = std::panic::catch_unwind(|| {
+        expect_fatal_error();
+    });
+    match result {
+        Ok(_) => {
+            panic!("Expected a fatal error, but got Ok");
+        }
+        Err(_) => {
+            //this means the function properly exited with a fatal error
+        }
+    }
+}
+pub fn expect_fatal_error() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
@@ -405,7 +446,7 @@ pub fn test_template() {
         }
         i32 my_fn;
         i32 a;
-        // i32 wasm;
+        i32 wasm;
         wasm::call:alt {
             i32 b = my_fn(a);
             i32 my_fn;
@@ -426,7 +467,6 @@ pub fn test_template() {
         }
     };
 }
-
 //TODO: uncomment after BEGIN is working
 
 //WE DONT HAVE BEGIN WORKING YET

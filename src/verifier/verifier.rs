@@ -50,10 +50,7 @@ impl TypeChecker<'_> {
             if old_loc.is_none() {
                 //make sure old_rec is comp provided
                 if old_rec.is_comp_provided() {
-                    let new_loc = match loc {
-                        Some(l) => Some(l.line_col.clone()),
-                        None => None,
-                    };
+                    let new_loc = loc.as_ref().map(|l| l.line_col.clone());
                     if loc.is_none() {
                         // happens if new_loc is compiler-provided or is a user-def func without location -- both should throw unexpected error
                         self.err
@@ -250,18 +247,33 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
 
     fn visit_block(&mut self, block: &Block) -> Option<DataType> {
         let mut ret_type = None;
-        for stmt in &block.stmts {
-            //add a check for return statement type matching the function return type if provided
-            let temp = self.visit_stmt(stmt);
+        let num_statements = &block.stmts.len();
+        let start_of_range: usize;
+        for i in 0..*num_statements {
+            let temp = self.visit_stmt(&block.stmts[i]);
             if temp.is_some() && ret_type.is_none() {
                 ret_type = temp;
             } else if ret_type.is_some() {
-                self.err.add_typecheck_warn(
-                    "Unreachable code in block".to_string(),
-                    stmt.loc().clone().map(|l| l.line_col),
+                start_of_range = i;
+                //get the span for the first statement to the last one
+                let loc = Location::from(
+                    &block.stmts[start_of_range].loc().clone().unwrap().line_col,
+                    &block.stmts[*num_statements - 1]
+                        .loc()
+                        .clone()
+                        .unwrap()
+                        .line_col,
+                    None,
                 );
+                self.err.add_typecheck_warn(
+                    "Unreachable code detected, these statement(s) will not be executed"
+                        .to_string(),
+                    Some(loc.line_col),
+                );
+                return ret_type;
             }
         }
+        //add a check for return statement type matching the function return type if provided
         ret_type
     }
 

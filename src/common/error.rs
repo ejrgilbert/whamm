@@ -1,10 +1,8 @@
 use crate::common::terminal::{blue, red, white, yellow};
 use crate::parser::types::{Location, Rule};
-use log::error;
 use pest::error::ErrorVariant::ParsingError;
 use pest::error::{Error, LineColLocation};
 use std::borrow::Cow;
-use std::process::exit;
 use std::{cmp, mem};
 use termcolor::{Buffer, BufferWriter, ColorChoice, WriteColor};
 
@@ -75,21 +73,20 @@ impl ErrorGen {
             return;
         }
         self.report();
-        error!("{context}: Expected no errors.");
-        exit(1);
+        panic!("{context}: Reached a fatal statement. Exiting...");
     }
 
     pub fn check_has_errors(&mut self) {
         if self.has_errors {
             self.report();
-            exit(1);
+            panic!("Has errors. Exiting...");
         }
     }
 
     pub fn check_too_many(&mut self) {
         if self.too_many {
             self.report();
-            exit(1);
+            panic!("Too many errors. Exiting...");
         }
     }
 

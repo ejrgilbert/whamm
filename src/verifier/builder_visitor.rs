@@ -41,10 +41,7 @@ impl SymbolTableBuilder<'_> {
             if old_loc.is_none() {
                 //make sure old_rec is comp provided
                 if old_rec.is_comp_provided() {
-                    let new_loc = match loc {
-                        Some(l) => Some(l.line_col.clone()),
-                        None => None,
-                    };
+                    let new_loc = loc.as_ref().map(|l| l.line_col.clone());
                     if loc.is_none() {
                         // happens if new_loc is compiler-provided or is a user-def func without location -- both should throw unexpected error
                         self.err
@@ -63,7 +60,7 @@ impl SymbolTableBuilder<'_> {
                     //if new ID is compiler-provided, throw compiler overload error for the old record
                     if is_comp_provided_new {
                         self.err.compiler_fn_overload_error(
-                            false,
+                            true,
                             name.clone(),
                             old_loc.clone().map(|l| l.line_col),
                         );
@@ -465,7 +462,7 @@ impl SymbolTableBuilder<'_> {
                 ty,
                 name,
                 value: None,
-                is_comp_provided: is_comp_provided,
+                is_comp_provided,
                 addr: None,
                 loc,
             },
