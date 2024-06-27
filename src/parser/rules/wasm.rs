@@ -423,14 +423,16 @@ impl BytecodeEvent {
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call".to_string(),
                 fns: vec![],
-                globals: HashMap::from([(
-                    "arg[0:9]+".to_string(),
-                    ProvidedGlobal::new(
-                        "arg[0:9]+".to_string(),
-                        "To reference the arguments passed to the target function, can use any name matching this regex. For example, the first arg can be referenced with `arg0`.".to_string(),
-                        DataType::Null
-                    )
-                ), (
+                globals: HashMap::from([
+                //     (
+                //     "arg[0:9]+".to_string(),
+                //     ProvidedGlobal::new(
+                //         "arg[0:9]+".to_string(),
+                //         "To reference the arguments passed to the target function, can use any name matching this regex. For example, the first arg can be referenced with `arg0`.".to_string(),
+                //         DataType::Null
+                //     )
+                // ),
+                    (
                     "target_fn_type".to_string(),
                     ProvidedGlobal::new(
                         "target_fn_type".to_string(),
