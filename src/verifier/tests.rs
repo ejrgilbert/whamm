@@ -172,7 +172,7 @@ wasm::call:alt /
             let table = verifier::build_symbol_table(&mut ast, &mut err);
             println!("{:#?}", table);
 
-            // 7 scopes: whamm, strcmp, script, wasm, bytecode, call, alt
+            // 7 scopes: whamm, strcmp, script0, wasm, bytecode, call, alt
             let num_scopes = 7;
             // records: num_scopes PLUS (target_fn_type, target_imp_module, target_imp_name, new_target_fn_name,
             //          tos, wasm_bytecode_loc, str_addr, value)
@@ -180,6 +180,9 @@ wasm::call:alt /
 
             // asserts on very high level table structure
             assert_eq!(num_scopes, table.scopes.len());
+            
+            println!("==================\n{:#?}", table.records);
+            // TODO -- globals not getting added!
             assert_eq!(num_recs, table.records.len());
         }
         None => {

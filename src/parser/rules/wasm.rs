@@ -1,26 +1,22 @@
 use std::collections::HashMap;
 use termcolor::Buffer;
-use crate::common::error::WhammError;
-use crate::parser::rules::{Event, event_factory, FromStr, Mode, mode_factory, NameOptions, Package, Probe, WhammMode, WhammProbe};
+use crate::parser::rules::{Event, event_factory, EventInfo, FromStr, Mode, mode_factory, NameOptions, Package, PackageInfo, Probe, WhammMode, WhammProbe};
 use crate::parser::types::{DataType, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal, Statement};
 
-/// The base information needed for `WasmPackage`s, pulled out into a single struct.
-pub struct WasmPackageInfo {
-    // Statically defined, always the same
-    pub docs: String,
-    pub fns: Vec<ProvidedFunction>,               // Comp-provided
-    pub globals: HashMap<String, ProvidedGlobal>, // Comp-provided
-
-    // Tied to the user script
-    pub loc: Option<Location>
+pub enum WasmPackageKind {
+    Bytecode
+}
+impl WasmPackageKind {
+    fn name(&self) -> String {
+        match self {
+            Self::Bytecode => "bytecode".to_string()
+        }
+    }
 }
 
-pub enum WasmPackage {
-    Bytecode {
-        metadata: WasmPackageInfo,
-        /// The events of the probes that have been used in the Script.
-        events: HashMap<String, Box<BytecodeEvent>>,
-    }
+pub struct WasmPackage {
+    kind: WasmPackageKind,
+    info: PackageInfo
 }
 impl NameOptions for WasmPackage {
     fn get_name_options() -> Vec<String> {
@@ -46,8 +42,9 @@ impl WasmPackage {
     // ======================
 
     fn bytecode(loc: Option<Location>) -> Self {
-        Self::Bytecode {
-            metadata: WasmPackageInfo {
+        Self {
+            kind: WasmPackageKind::Bytecode,
+            info: PackageInfo {
                 docs: "This package within the wasm provider contains enables the \
                     instrumentation of WebAssembly bytecode instructions.".to_string(),
                 fns: vec![],
@@ -59,9 +56,9 @@ impl WasmPackage {
                         DataType::I32
                     )
                 )]),
-                loc
-            },
-            events: HashMap::new()
+                loc,
+                events: HashMap::new()
+            }
         }
     }
 }
@@ -72,257 +69,168 @@ impl Package for WasmPackage {
     // ==========================
     
     fn name(&self) -> String {
-        match self {
-            Self::Bytecode{..} => {
-                "bytecode".to_string()
-            }
-        }
+        self.kind.name()
     }
 
     fn docs(&self) -> &String {
-        match self {
-            Self::Bytecode{metadata: WasmPackageInfo { docs, ..}, ..} => {
-                docs
-            }
-        }
+        &self.info.docs
     }
 
     fn len_events(&self) -> usize {
-        match self {
-            Self::Bytecode{events, ..} => {
-                events.len()
-            }
-        }
+        self.info.events.len()
     }
 
     fn events(&self) -> Box<dyn Iterator<Item = &dyn Event> + '_> {
-        match self {
-            Self::Bytecode{events, ..} => {
-                Box::new(events.values().map(|p| p.as_ref() as &dyn Event))
-            }
-        }
+        Box::new(self.info.events.values().map(|e| e.as_ref() as &dyn Event))
     }
 
     fn events_mut(&mut self) -> Box<dyn Iterator<Item = &mut dyn Event> + '_> {
-        match self {
-            Self::Bytecode{events, ..} => {
-                Box::new(events.values_mut().map(|p| p.as_mut() as &mut dyn Event))
-            }
-        }
+        Box::new(self.info.events.values_mut().map(|e| e.as_mut() as &mut dyn Event))
     }
 
     fn print_event_docs(&self, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer) {
-        match self {
-            Self::Bytecode{events, ..} => {
-                for (.., event) in events.iter() {
-                    crate::parser::rules::print_event_docs(event.as_ref(), print_globals, print_functions, tabs, buffer);
-                }
-            }
+        for (.., event) in self.info.events.iter() {
+            crate::parser::rules::print_event_docs(event, print_globals, print_functions, tabs, buffer);
         }
     }
 
     fn print_mode_docs(&self, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer) {
-        match self {
-            Self::Bytecode{events, ..} => {
-                for (.., event) in events.iter() {
-                    event.print_mode_docs(print_globals, print_functions, tabs, buffer);
-                }
-            }
+        for (.., event) in self.info.events.iter() {
+            event.print_mode_docs(print_globals, print_functions, tabs, buffer);
         }
     }
 
     fn get_provided_fns(&self) -> &Vec<ProvidedFunction> {
-        match self {
-            Self::Bytecode{metadata: WasmPackageInfo { fns, ..}, ..} => {
-                fns
-            }
-        }
+       &self.info.fns
     }
 
     fn get_provided_fns_mut(&mut self) -> &mut Vec<ProvidedFunction> {
-        match self {
-            Self::Bytecode{metadata: WasmPackageInfo { fns, ..}, ..} => {
-                fns
-            }
-        }
+        &mut self.info.fns
     }
 
     fn get_provided_globals(&self) -> &HashMap<String, ProvidedGlobal> {
-        match self {
-            Self::Bytecode{metadata: WasmPackageInfo { globals, ..}, ..} => {
-                globals
-            }
-        }
+        &self.info.globals
     }
 
     fn assign_matching_events(&mut self, probe_spec: &ProbeSpec, loc: Option<Location>,
                               predicate: Option<Expr>,
                               body: Option<Vec<Statement>>) -> (bool, bool) {
         match self {
-            Self::Bytecode {events, ..} => {
-                event_factory(events, probe_spec, loc, predicate, body)
+            Self {kind: WasmPackageKind::Bytecode, ..} => {
+                event_factory::<BytecodeEvent>(&mut self.info.events, probe_spec, loc, predicate, body)
             },
         }
     }
 }
-/// The base information needed for `BytecodeEvent`s, pulled out into a single struct.
-pub struct BytecodeEventInfo {
-    // Statically defined, always the same
-    pub name: String,
-    pub docs: String,
-    pub fns: Vec<ProvidedFunction>,               // Comp-provided
-    pub globals: HashMap<String, ProvidedGlobal>, // Comp-provided
 
-    // Tied to the user script
-    pub loc: Option<Location>,
-    probe_map: HashMap<String, Vec<Box<dyn Probe>>>
+pub enum BytecodeEventKind {
+    Block,
+    Loop,
+    Call,
+    CallIndirect,
+    LocalGet,
+    LocalSet,
+    LocalTee,
+    GlobalGet,
+    GlobalSet,
+    Const,
+    Binop,
+    Unop,
+    Select,
+    Unreachable,
+    Br,
+    BrIf,
+    IfElse,
+    BrTable,
+    Drop,
+    Return,
+    MemorySize,
+    MemoryGrow,
+    MemoryInit,
+    DataDrop,
+    MemoryCopy,
+    MemoryFill,
+    Load,
+    Store,
+    AtomicRmw,
+    Cmpxchg,
+    AtomicNotify,
+    AtomicWait,
+    AtomicFence,
+    TableGet,
+    TableSet,
+    TableGrow,
+    TableSize,
+    TableFill,
+    RefNull,
+    RefIsNull,
+    RefFunc,
+    V128Bitselect,
+    I8x16Swizzle,
+    I8x16Shuffle,
+    LoadSimd,
+    TableInit,
+    ElemDrop,
+    TableCopy
+}
+impl BytecodeEventKind {
+    fn name(&self) -> String {
+        match self {
+            BytecodeEventKind::Block => "block".to_string(),
+            BytecodeEventKind::Loop => "loop".to_string(),
+            BytecodeEventKind::Call => "call".to_string(),
+            BytecodeEventKind::CallIndirect => "call_indirect".to_string(),
+            BytecodeEventKind::LocalGet => "local_get".to_string(),
+            BytecodeEventKind::LocalSet => "local_set".to_string(),
+            BytecodeEventKind::LocalTee => "local_tee".to_string(),
+            BytecodeEventKind::GlobalGet => "global_get".to_string(),
+            BytecodeEventKind::GlobalSet => "global_set".to_string(),
+            BytecodeEventKind::Const => "const".to_string(),
+            BytecodeEventKind::Binop => "binop".to_string(),
+            BytecodeEventKind::Unop => "unop".to_string(),
+            BytecodeEventKind::Select => "select".to_string(),
+            BytecodeEventKind::Unreachable => "unreachable".to_string(),
+            BytecodeEventKind::Br => "br".to_string(),
+            BytecodeEventKind::BrIf => "br_if".to_string(),
+            BytecodeEventKind::IfElse => "if_else".to_string(),
+            BytecodeEventKind::BrTable => "br_table".to_string(),
+            BytecodeEventKind::Drop => "drop".to_string(),
+            BytecodeEventKind::Return => "return".to_string(),
+            BytecodeEventKind::MemorySize => "memory_size".to_string(),
+            BytecodeEventKind::MemoryGrow => "memory_grow".to_string(),
+            BytecodeEventKind::MemoryInit => "memory_init".to_string(),
+            BytecodeEventKind::DataDrop => "data_drop".to_string(),
+            BytecodeEventKind::MemoryCopy => "memory_copy".to_string(),
+            BytecodeEventKind::MemoryFill => "memory_fill".to_string(),
+            BytecodeEventKind::Load => "load".to_string(),
+            BytecodeEventKind::Store => "store".to_string(),
+            BytecodeEventKind::AtomicRmw => "atomic_rmw".to_string(),
+            BytecodeEventKind::Cmpxchg => "cmpxchg".to_string(),
+            BytecodeEventKind::AtomicNotify => "atomic_notify".to_string(),
+            BytecodeEventKind::AtomicWait => "atomic_wait".to_string(),
+            BytecodeEventKind::AtomicFence => "atomic_fence".to_string(),
+            BytecodeEventKind::TableGet => "table_get".to_string(),
+            BytecodeEventKind::TableSet => "table_set".to_string(),
+            BytecodeEventKind::TableGrow => "table_grow".to_string(),
+            BytecodeEventKind::TableSize => "table_size".to_string(),
+            BytecodeEventKind::TableFill => "table_fill".to_string(),
+            BytecodeEventKind::RefNull => "ref_null".to_string(),
+            BytecodeEventKind::RefIsNull => "ref_is_null".to_string(),
+            BytecodeEventKind::RefFunc => "ref_func".to_string(),
+            BytecodeEventKind::V128Bitselect => "v128_bitselect".to_string(),
+            BytecodeEventKind::I8x16Swizzle => "i8x16_swizzle".to_string(),
+            BytecodeEventKind::I8x16Shuffle => "i8x16_shuffle".to_string(),
+            BytecodeEventKind::LoadSimd => "load_simd".to_string(),
+            BytecodeEventKind::TableInit => "table_init".to_string(),
+            BytecodeEventKind::ElemDrop => "elem_drop".to_string(),
+            BytecodeEventKind::TableCopy => "table_copy".to_string()
+        }
+    }
 }
 
-pub enum BytecodeEvent {
-    Block (
-        BytecodeEventInfo
-    ),
-    Loop (
-        BytecodeEventInfo
-    ),
-    Call (
-        BytecodeEventInfo
-    ),
-    CallIndirect (
-        BytecodeEventInfo
-    ),
-    LocalGet (
-        BytecodeEventInfo
-    ),
-    LocalSet (
-        BytecodeEventInfo
-    ),
-    LocalTee (
-        BytecodeEventInfo
-    ),
-    GlobalGet (
-        BytecodeEventInfo
-    ),
-    GlobalSet (
-        BytecodeEventInfo
-    ),
-    Const (
-        BytecodeEventInfo
-    ),
-    Binop (
-        BytecodeEventInfo
-    ),
-    Unop (
-        BytecodeEventInfo
-    ),
-    Select (
-        BytecodeEventInfo
-    ),
-    Unreachable (
-        BytecodeEventInfo
-    ),
-    Br (
-        BytecodeEventInfo
-    ),
-    BrIf (
-        BytecodeEventInfo
-    ),
-    IfElse (
-        BytecodeEventInfo
-    ),
-    BrTable (
-        BytecodeEventInfo
-    ),
-    Drop (
-        BytecodeEventInfo
-    ),
-    Return (
-        BytecodeEventInfo
-    ),
-    MemorySize (
-        BytecodeEventInfo
-    ),
-    MemoryGrow (
-        BytecodeEventInfo
-    ),
-    MemoryInit (
-        BytecodeEventInfo
-    ),
-    DataDrop (
-        BytecodeEventInfo
-    ),
-    MemoryCopy (
-        BytecodeEventInfo
-    ),
-    MemoryFill (
-        BytecodeEventInfo
-    ),
-    Load (
-        BytecodeEventInfo
-    ),
-    Store (
-        BytecodeEventInfo
-    ),
-    AtomicRmw (
-        BytecodeEventInfo
-    ),
-    Cmpxchg (
-        BytecodeEventInfo
-    ),
-    AtomicNotify (
-        BytecodeEventInfo
-    ),
-    AtomicWait (
-        BytecodeEventInfo
-    ),
-    AtomicFence (
-        BytecodeEventInfo
-    ),
-    TableGet (
-        BytecodeEventInfo
-    ),
-    TableSet (
-        BytecodeEventInfo
-    ),
-    TableGrow (
-        BytecodeEventInfo
-    ),
-    TableSize (
-        BytecodeEventInfo
-    ),
-    TableFill (
-        BytecodeEventInfo
-    ),
-    RefNull (
-        BytecodeEventInfo
-    ),
-    RefIsNull (
-        BytecodeEventInfo
-    ),
-    RefFunc (
-        BytecodeEventInfo
-    ),
-    V128Bitselect (
-        BytecodeEventInfo
-    ),
-    I8x16Swizzle (
-        BytecodeEventInfo
-    ),
-    I8x16Shuffle (
-        BytecodeEventInfo
-    ),
-    LoadSimd (
-        BytecodeEventInfo
-    ),
-    TableInit (
-        BytecodeEventInfo
-    ),
-    ElemDrop (
-        BytecodeEventInfo
-    ),
-    TableCopy (
-        BytecodeEventInfo
-    ),
+pub struct BytecodeEvent {
+    info: EventInfo,
+    kind: BytecodeEventKind
 }
 impl NameOptions for BytecodeEvent {
     fn get_name_options() -> Vec<String> {
@@ -436,152 +344,38 @@ impl FromStr for BytecodeEvent {
     }
 }
 impl BytecodeEvent {
-    // ================
-    // ---- Helper ----
-    // ================
-    
-    fn get_metadata(&self) -> &BytecodeEventInfo {
-        match self {
-            Self::Block(metadata) |
-            Self::Loop(metadata) |
-            Self::Call(metadata) |
-            Self::CallIndirect(metadata) |
-            Self::LocalGet(metadata) |
-            Self::LocalSet(metadata) |
-            Self::LocalTee(metadata) |
-            Self::GlobalGet(metadata) |
-            Self::GlobalSet(metadata) |
-            Self::Const(metadata) |
-            Self::Binop(metadata) |
-            Self::Unop(metadata) |
-            Self::Select(metadata) |
-            Self::Unreachable(metadata) |
-            Self::Br(metadata) |
-            Self::BrIf(metadata) |
-            Self::IfElse(metadata) |
-            Self::BrTable(metadata) |
-            Self::Drop(metadata) |
-            Self::Return(metadata) |
-            Self::MemorySize(metadata) |
-            Self::MemoryGrow(metadata) |
-            Self::MemoryInit(metadata) |
-            Self::DataDrop(metadata) |
-            Self::MemoryCopy(metadata) |
-            Self::MemoryFill(metadata) |
-            Self::Load(metadata) |
-            Self::Store(metadata) |
-            Self::AtomicRmw(metadata) |
-            Self::Cmpxchg(metadata) |
-            Self::AtomicNotify(metadata) |
-            Self::AtomicWait(metadata) |
-            Self::AtomicFence(metadata) |
-            Self::TableGet(metadata) |
-            Self::TableSet(metadata) |
-            Self::TableGrow(metadata) |
-            Self::TableSize(metadata) |
-            Self::TableFill(metadata) |
-            Self::RefNull(metadata) |
-            Self::RefIsNull(metadata) |
-            Self::RefFunc(metadata) |
-            Self::V128Bitselect(metadata) |
-            Self::I8x16Swizzle(metadata) |
-            Self::I8x16Shuffle(metadata) |
-            Self::LoadSimd(metadata) |
-            Self::TableInit(metadata) |
-            Self::ElemDrop(metadata) |
-            Self::TableCopy(metadata) => {
-                metadata
-            }
-        }
-    }
-
-    fn get_metadata_mut(&mut self) -> &mut BytecodeEventInfo {
-        match self {
-            Self::Block(metadata) |
-            Self::Loop(metadata) |
-            Self::Call(metadata) |
-            Self::CallIndirect(metadata) |
-            Self::LocalGet(metadata) |
-            Self::LocalSet(metadata) |
-            Self::LocalTee(metadata) |
-            Self::GlobalGet(metadata) |
-            Self::GlobalSet(metadata) |
-            Self::Const(metadata) |
-            Self::Binop(metadata) |
-            Self::Unop(metadata) |
-            Self::Select(metadata) |
-            Self::Unreachable(metadata) |
-            Self::Br(metadata) |
-            Self::BrIf(metadata) |
-            Self::IfElse(metadata) |
-            Self::BrTable(metadata) |
-            Self::Drop(metadata) |
-            Self::Return(metadata) |
-            Self::MemorySize(metadata) |
-            Self::MemoryGrow(metadata) |
-            Self::MemoryInit(metadata) |
-            Self::DataDrop(metadata) |
-            Self::MemoryCopy(metadata) |
-            Self::MemoryFill(metadata) |
-            Self::Load(metadata) |
-            Self::Store(metadata) |
-            Self::AtomicRmw(metadata) |
-            Self::Cmpxchg(metadata) |
-            Self::AtomicNotify(metadata) |
-            Self::AtomicWait(metadata) |
-            Self::AtomicFence(metadata) |
-            Self::TableGet(metadata) |
-            Self::TableSet(metadata) |
-            Self::TableGrow(metadata) |
-            Self::TableSize(metadata) |
-            Self::TableFill(metadata) |
-            Self::RefNull(metadata) |
-            Self::RefIsNull(metadata) |
-            Self::RefFunc(metadata) |
-            Self::V128Bitselect(metadata) |
-            Self::I8x16Swizzle(metadata) |
-            Self::I8x16Shuffle(metadata) |
-            Self::LoadSimd(metadata) |
-            Self::TableInit(metadata) |
-            Self::ElemDrop(metadata) |
-            Self::TableCopy(metadata) => {
-                metadata
-            }
-        }
-    }
-
     // ======================
     // ---- Constructors ----
     // ======================
     
     fn block(loc: Option<Location>) -> Self {
-        Self::Block(
-            BytecodeEventInfo {
-                name: "block".to_string(),
+        Self {
+            kind: BytecodeEventKind::Block,
+            info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/block".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn _loop(loc: Option<Location>) -> Self {
-        Self::Loop(
-            BytecodeEventInfo {
-                name: "loop".to_string(),
+        Self {
+            kind: BytecodeEventKind::Loop,
+            info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/loop".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn call(loc: Option<Location>) -> Self {
-        Self::Call (
-            BytecodeEventInfo {
-                name: "call".to_string(),
+        Self {
+            kind: BytecodeEventKind::Call,
+            info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call".to_string(),
                 fns: vec![],
                 globals: HashMap::from([(
@@ -628,7 +422,7 @@ impl BytecodeEvent {
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn call_indirect(loc: Option<Location>) -> Self {
         // TODO
@@ -666,16 +460,16 @@ impl BytecodeEvent {
         //         value: None
         //     }
         // ));
-        Self::CallIndirect(
-            BytecodeEventInfo {
-                name: "call_indirect".to_string(),
+        Self {
+            kind: BytecodeEventKind::CallIndirect,
+            info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn local_get(loc: Option<Location>) -> Self {
         // TODO
@@ -697,16 +491,16 @@ impl BytecodeEvent {
         //         value: None
         //     }
         // ));
-        Self::LocalGet(
-            BytecodeEventInfo {
-                name: "local_get".to_string(),
+        Self {
+            kind: BytecodeEventKind::LocalGet,
+            info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_get".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn local_set(loc: Option<Location>) -> Self {
         // TODO
@@ -728,16 +522,16 @@ impl BytecodeEvent {
         //         value: None
         //     }
         // ));
-        Self::LocalSet(
-            BytecodeEventInfo {
-                name: "local_set".to_string(),
+        Self {
+            kind: BytecodeEventKind::LocalSet,
+            info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_set".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn local_tee(loc: Option<Location>) -> Self {
         // TODO
@@ -759,16 +553,16 @@ impl BytecodeEvent {
         //         value: None
         //     }
         // ));
-        Self::LocalTee(
-            BytecodeEventInfo {
-                name: "local_tee".to_string(),
+        Self {
+            kind: BytecodeEventKind::LocalTee,
+            info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_tee".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn global_get(loc: Option<Location>) -> Self {
         // Unsure what intuitively makes sense to expose here
@@ -789,16 +583,16 @@ impl BytecodeEvent {
         //         value: None
         //     }
         // ));
-        Self::GlobalGet(
-            BytecodeEventInfo {
-                name: "global_get".to_string(),
+        Self {
+            kind: BytecodeEventKind::GlobalGet,
+            info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Global_get".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn global_set(loc: Option<Location>) -> Self {
         // Unsure what intuitively makes sense to expose here
@@ -819,16 +613,16 @@ impl BytecodeEvent {
         //         value: None
         //     }
         // ));
-        Self::GlobalSet(
-            BytecodeEventInfo {
-                name: "global_set".to_string(),
+        Self {
+            kind: BytecodeEventKind::GlobalSet,
+            info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Global_set".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn _const(loc: Option<Location>) -> Self {
         // Unsure what intuitively makes sense to expose here
@@ -852,16 +646,16 @@ impl BytecodeEvent {
         //     }
         // ));
         // TODO -- Should there be a way to check the actual value of this constant?
-        Self::Const(
-            BytecodeEventInfo {
-                name: "const".to_string(),
+        Self {
+            kind: BytecodeEventKind::Const,
+            info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Const".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn binop(loc: Option<Location>) -> Self {
         // Unsure what intuitively makes sense to expose here
@@ -886,9 +680,9 @@ impl BytecodeEvent {
         // ));
         // TODO -- No way to check lhs/rhs using walrus since due to lack of
         //     typing info at this point. Maybe wasmparser will support this.
-        Self::Binop(
-            BytecodeEventInfo {
-                name: "binop".to_string(),
+        Self {
+            kind: BytecodeEventKind::Binop,
+            info: EventInfo {
                 docs: "Consume two operands and produce one result of the respective type. \
                     The types of binary operations available to instrument depend on the operands \
                     of the respective instruction. \
@@ -899,7 +693,7 @@ impl BytecodeEvent {
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn unop(loc: Option<Location>) -> Self {
         // Unsure what intuitively makes sense to expose here
@@ -924,9 +718,9 @@ impl BytecodeEvent {
         // ));
         // TODO -- No way to check operand using walrus since due to lack of
         //     typing info at this point. Maybe wasmparser will support this.
-        Self::Unop(
-            BytecodeEventInfo {
-                name: "unop".to_string(),
+        Self {
+            kind: BytecodeEventKind::Unop,
+            info: EventInfo {
                 docs: "Consume one operand and produce one result of the respective type. \
                     The types of unary operations available to instrument depend on the operands \
                     of the respective instruction. \
@@ -937,67 +731,53 @@ impl BytecodeEvent {
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn select(loc: Option<Location>) -> Self {
         // TODO -- No way to check lhs/rhs using walrus since due to lack of
         //     typing info at this point. Maybe wasmparser will support this.
-        Self::Select(
-            BytecodeEventInfo {
-                name: "select".to_string(),
+        Self {
+            kind: BytecodeEventKind::Select,
+            info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/Select".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn unreachable(loc: Option<Location>) -> Self {
-        Self::Unreachable(
-            BytecodeEventInfo {
-                name: "unreachable".to_string(),
+        Self {
+            kind: BytecodeEventKind::Unreachable,
+            info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/unreachable".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn br(loc: Option<Location>) -> Self {
-        Self::Br(
-            BytecodeEventInfo {
-                name: "br".to_string(),
+        Self {
+            kind: BytecodeEventKind::Br,
+            info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br".to_string(),
                 fns: vec![],
-                globals: HashMap::from([(
-                    "label_id".to_string(),
-                    ProvidedGlobal::new(
-                        "label_id".to_string(),
-                        "The ID of the block to unconditionally break out of.".to_string(),
-                        DataType::U32
-                    )
-                )]),
+                globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn br_if(loc: Option<Location>) -> Self {
-        Self::BrIf(
-            BytecodeEventInfo {
-                name: "br_if".to_string(),
+        Self {
+            kind: BytecodeEventKind::BrIf,
+            info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br".to_string(),
                 fns: vec![],
                 globals: HashMap::from([(
-                    "label_id".to_string(),
-                    ProvidedGlobal::new(
-                        "label_id".to_string(),
-                        "The ID of the block to unconditionally break out of.".to_string(),
-                        DataType::U32
-                    )
-                ), (
                     "condition".to_string(),
                     ProvidedGlobal::new(
                         "condition".to_string(),
@@ -1008,55 +788,55 @@ impl BytecodeEvent {
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn if_else(loc: Option<Location>) -> Self {
-        Self::IfElse(
-            BytecodeEventInfo {
-                name: "if_else".to_string(),
+        Self {
+            kind: BytecodeEventKind::IfElse,
+            info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn br_table(loc: Option<Location>) -> Self {
-        Self::BrTable(
-            BytecodeEventInfo {
-                name: "br_table".to_string(),
+        Self {
+            kind: BytecodeEventKind::BrTable,
+            info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn drop(loc: Option<Location>) -> Self {
-        Self::Drop(
-            BytecodeEventInfo {
-                name: "drop".to_string(),
+        Self {
+            kind: BytecodeEventKind::Drop,
+            info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/Drop".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn _return(loc: Option<Location>) -> Self {
-        Self::Return(
-            BytecodeEventInfo {
-                name: "return".to_string(),
+        Self {
+            kind: BytecodeEventKind::Return,
+            info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/return".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn memory_size(loc: Option<Location>) -> Self {
         // I'm worried about what instrumenting things like this looks like...
@@ -1078,16 +858,16 @@ impl BytecodeEvent {
         //         value: None
         //     }
         // ));
-        Self::MemorySize(
-            BytecodeEventInfo {
-                name: "memory_size".to_string(),
+        Self {
+            kind: BytecodeEventKind::MemorySize,
+            info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Size".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn memory_grow(loc: Option<Location>) -> Self {
         // I'm worried about what instrumenting things like this looks like...
@@ -1114,16 +894,16 @@ impl BytecodeEvent {
         //         value: None
         //     }
         // ));
-        Self::MemoryGrow(
-            BytecodeEventInfo {
-                name: "memory_grow".to_string(),
+        Self {
+            kind: BytecodeEventKind::MemoryGrow,
+            info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Grow".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn memory_init(loc: Option<Location>) -> Self {
         // I'm worried about what instrumenting things like this looks like...
@@ -1162,16 +942,16 @@ impl BytecodeEvent {
         //         value: None
         //     }
         // ));
-        Self::MemoryInit(
-            BytecodeEventInfo {
-                name: "memory_init".to_string(),
+        Self {
+            kind: BytecodeEventKind::MemoryInit,
+            info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-memory".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn data_drop(loc: Option<Location>) -> Self {
         // Unsure what intuitively makes sense to expose here
@@ -1192,16 +972,16 @@ impl BytecodeEvent {
         //         value: None
         //     }
         // ));
-        Self::DataDrop(
-            BytecodeEventInfo {
-                name: "data_drop".to_string(),
+        Self {
+            kind: BytecodeEventKind::DataDrop,
+            info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-memory".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn memory_copy(loc: Option<Location>) -> Self {
         // I'm worried about what instrumenting things like this looks like...
@@ -1245,16 +1025,16 @@ impl BytecodeEvent {
         //         value: None
         //     }
         // ));
-        Self::MemoryCopy(
-            BytecodeEventInfo {
-                name: "memory_copy".to_string(),
+        Self {
+            kind: BytecodeEventKind::MemoryCopy,
+            info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Copy".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn memory_fill(loc: Option<Location>) -> Self {
         // TODO
@@ -1263,16 +1043,16 @@ impl BytecodeEvent {
         // i32.const 255 ;; The value to set each byte to (must be < 256)
         // i32.const 100 ;; The number of bytes to update
         // memory.fill ;; Fill default memory
-        Self::MemoryFill(
-            BytecodeEventInfo {
-                name: "memory_fill".to_string(),
+        Self {
+            kind: BytecodeEventKind::MemoryFill,
+            info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Fill".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn load(loc: Option<Location>) -> Self {
         // TODO
@@ -1345,297 +1125,289 @@ impl BytecodeEvent {
         //         value: None
         //     }
         // ));
-        Self::Load(
-            BytecodeEventInfo {
-                name: "load".to_string(),
+        Self {
+            kind: BytecodeEventKind::Load,
+            info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn store(loc: Option<Location>) -> Self {
-        Self::Store(
-            BytecodeEventInfo {
-                name: "store".to_string(),
+        Self {
+            kind: BytecodeEventKind::Store,
+            info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn atomic_rmw(loc: Option<Location>) -> Self {
-        Self::AtomicRmw(
-            BytecodeEventInfo {
-                name: "atomic_rmw".to_string(),
+        Self {
+            kind: BytecodeEventKind::AtomicRmw,
+            info: EventInfo {
                 docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#read-modify-write".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn cmpxchg(loc: Option<Location>) -> Self {
-        Self::Cmpxchg(
-            BytecodeEventInfo {
-                name: "cmpxchg".to_string(),
+        Self {
+            kind: BytecodeEventKind::Cmpxchg,
+            info: EventInfo {
                 docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#compare-exchange".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn atomic_notify(loc: Option<Location>) -> Self {
-        Self::AtomicNotify(
-            BytecodeEventInfo {
-                name: "atomic_notify".to_string(),
+        Self {
+            kind: BytecodeEventKind::AtomicNotify,
+            info: EventInfo {
                 docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#wait-and-notify-operators".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn atomic_wait(loc: Option<Location>) -> Self {
-        Self::AtomicWait(
-            BytecodeEventInfo {
-                name: "atomic_wait".to_string(),
+        Self {
+            kind: BytecodeEventKind::AtomicWait,
+            info: EventInfo {
                 docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#wait-and-notify-operators".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn atomic_fence(loc: Option<Location>) -> Self {
-        Self::AtomicFence(
-            BytecodeEventInfo {
-                name: "atomic_fence".to_string(),
+        Self {
+            kind: BytecodeEventKind::AtomicFence,
+            info: EventInfo {
                 docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#fence-operator".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn table_get(loc: Option<Location>) -> Self {
-        Self::TableGet(
-            BytecodeEventInfo {
-                name: "table_get".to_string(),
+        Self {
+            kind: BytecodeEventKind::TableGet,
+            info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn table_set(loc: Option<Location>) -> Self {
-        Self::TableSet(
-            BytecodeEventInfo {
-                name: "table_set".to_string(),
+        Self {
+            kind: BytecodeEventKind::TableSet,
+            info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn table_grow(loc: Option<Location>) -> Self {
-        Self::TableGrow(
-            BytecodeEventInfo {
-                name: "table_grow".to_string(),
+        Self {
+            kind: BytecodeEventKind::TableGrow,
+            info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn table_size(loc: Option<Location>) -> Self {
-        Self::TableSize(
-            BytecodeEventInfo {
-                name: "table_size".to_string(),
+        Self {
+            kind: BytecodeEventKind::TableSize,
+            info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn table_fill(loc: Option<Location>) -> Self {
-        Self::TableFill(
-            BytecodeEventInfo {
-                name: "table_fill".to_string(),
+        Self {
+            kind: BytecodeEventKind::TableFill,
+            info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn ref_null(loc: Option<Location>) -> Self {
-        Self::RefNull(
-            BytecodeEventInfo {
-                name: "ref_null".to_string(),
+        Self {
+            kind: BytecodeEventKind::RefNull,
+            info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-ref".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn ref_is_null(loc: Option<Location>) -> Self {
-        Self::RefIsNull(
-            BytecodeEventInfo {
-                name: "ref_is_null".to_string(),
+        Self {
+            kind: BytecodeEventKind::RefIsNull,
+            info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-ref".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn ref_func(loc: Option<Location>) -> Self {
-        Self::RefFunc(
-            BytecodeEventInfo {
-                name: "ref_func".to_string(),
+        Self {
+            kind: BytecodeEventKind::RefFunc,
+            info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-ref".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn v128_bitselect(loc: Option<Location>) -> Self {
-        Self::V128Bitselect(
-            BytecodeEventInfo {
-                name: "v128_bitselect".to_string(),
+        Self {
+            kind: BytecodeEventKind::V128Bitselect,
+            info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-vec".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn i8x16_swizzle(loc: Option<Location>) -> Self {
-        Self::I8x16Swizzle(
-            BytecodeEventInfo {
-                name: "i8x16_swizzle".to_string(),
+        Self {
+            kind: BytecodeEventKind::I8x16Swizzle,
+            info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-vec".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn i8x16_shuffle(loc: Option<Location>) -> Self {
-        Self::I8x16Shuffle(
-            BytecodeEventInfo {
-                name: "i8x16_shuffle".to_string(),
+        Self {
+            kind: BytecodeEventKind::I8x16Shuffle,
+            info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-vec".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn load_simd(loc: Option<Location>) -> Self {
-        Self::LoadSimd(
-            BytecodeEventInfo {
-                name: "load_simd".to_string(),
+        Self {
+            kind: BytecodeEventKind::LoadSimd,
+            info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-vec".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn table_init(loc: Option<Location>) -> Self {
-        Self::TableInit(
-            BytecodeEventInfo {
-                name: "table_init".to_string(),
+        Self {
+            kind: BytecodeEventKind::TableInit,
+            info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn elem_drop(loc: Option<Location>) -> Self {
-        Self::ElemDrop(
-            BytecodeEventInfo {
-                name: "elem_drop".to_string(),
+        Self {
+            kind: BytecodeEventKind::ElemDrop,
+            info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
     fn table_copy(loc: Option<Location>) -> Self {
-        Self::TableCopy(
-            BytecodeEventInfo {
-                name: "table_copy".to_string(),
+        Self {
+            kind: BytecodeEventKind::TableCopy,
+            info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
                 probe_map: HashMap::new()
             }
-        )
+        }
     }
 }
 impl Event for BytecodeEvent {
-    fn name(&self) -> &String {
-        let metadata = self.get_metadata();
-
-        &metadata.name
+    fn name(&self) -> String {
+        self.kind.name()
     }
 
     fn docs(&self) -> &String {
-        let metadata = self.get_metadata();
-
-        &metadata.docs
+        &self.info.docs
     }
 
     fn probes(&self) -> &HashMap<String, Vec<Box<dyn Probe>>> {
-        let metadata = self.get_metadata();
-
-        &metadata.probe_map
+        &self.info.probe_map
     }
 
     fn probes_mut(&mut self) -> &mut HashMap<String, Vec<Box<dyn Probe>>> {
-        let metadata = self.get_metadata_mut();
-
-        &mut metadata.probe_map    
+        &mut self.info.probe_map
     }
 
     fn print_mode_docs(&self, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer) {
-        for (.., probes) in self.probes().iter() {
+        for (.., probes) in self.info.probe_map.iter() {
             if let Some(probe) = probes.iter().next() {
                 // only print out the docs for some probe type one time!
                 probe.print_mode_docs(print_globals, print_functions, tabs, buffer);
@@ -1644,21 +1416,15 @@ impl Event for BytecodeEvent {
     }
 
     fn get_provided_fns(&self) -> &Vec<ProvidedFunction> {
-        let metadata = self.get_metadata();
-
-        &metadata.fns
+        &self.info.fns
     }
 
     fn get_provided_fns_mut(&mut self) -> &mut Vec<ProvidedFunction> {
-        let metadata = self.get_metadata_mut();
-
-        &mut metadata.fns
+        &mut self.info.fns
     }
 
     fn get_provided_globals(&self) -> &HashMap<String, ProvidedGlobal> {
-        let metadata = self.get_metadata();
-        
-        &metadata.globals
+        &self.info.globals
     }
 
     fn assign_matching_modes(&mut self, probe_spec: &ProbeSpec, loc: Option<Location>,  predicate: Option<Expr>,
