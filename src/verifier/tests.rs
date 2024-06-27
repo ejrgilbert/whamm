@@ -283,9 +283,18 @@ wasm::call:alt /
             i32 b = my_fn(a);
         }
     "#,
-
-
-
+    r#"
+        my_fn(i32 a) -> i32 {
+            bool a;
+            return a;
+        }
+        i32 my_fn;
+        wasm::call:alt {
+            i32 b = my_fn(a);
+            i32 my_fn;
+            i32 strcmp;
+        }
+    "#,
 ];
 
 // =============
@@ -391,12 +400,14 @@ pub fn test_template() {
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
         my_fn(i32 a) -> i32 {
+            bool a;
             return a;
         }
-        i32 a = 5;
-        i32 a;
+        i32 my_fn;
         wasm::call:alt {
             i32 b = my_fn(a);
+            i32 my_fn;
+            i32 strcmp;
         }
     "#;
     match tests::get_ast(script, &mut err) {

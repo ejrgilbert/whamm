@@ -185,7 +185,7 @@ impl ErrorGen {
         let err_loc = loc.map(|err_line_col| CodeLocation {
             is_err: true,
             message: Some(format!(
-                "definition for `{}` is provided by compiler. Overloading is not supported",
+                "`{}` is an identifier used by compiler. Neither overloading nor overriding is  supported",
                 duplicated_id
             )),
             line_col: err_line_col,

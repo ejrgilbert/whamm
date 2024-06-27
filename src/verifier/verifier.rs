@@ -35,11 +35,73 @@ struct TypeChecker<'a> {
 }
 
 impl TypeChecker<'_> {
-    fn add_local(&mut self, ty: DataType, name: String, is_comp_provided: bool, loc: &Option<Location>) {
+    fn add_local(
+        &mut self,
+        ty: DataType,
+        name: String,
+        is_comp_provided: bool,
+        loc: &Option<Location>,
+    ) {
         if self.table.lookup(&name).is_some() {
             // If this happens, then the user is attempting to redeclare a variable already in scope
-            let old_loc = self.table.get_record(self.table.lookup(&name).unwrap()).unwrap().loc();
-            self.err.duplicate_identifier_error(false, name, old_loc.clone().map(|l| l.line_col), loc.clone().map(|l| l.line_col));
+            let old_rec = self
+                .table
+                .get_record(self.table.lookup(&name).unwrap())
+                .unwrap();
+            let old_loc = old_rec.loc();
+            if old_loc.is_none() {
+                match old_rec {
+                    Record::Var { .. } => {
+                        if !is_comp_provided {
+                            self.err.compiler_fn_overload_error(
+                                false,
+                                name.clone(),
+                                loc.clone().map(|l| l.line_col),
+                            );
+                        } else {
+                            self.err.unexpected_error(
+                                true,
+                                Some(
+                                    "Conflicting Compiler Definitions for the same name in table"
+                                        .to_string(),
+                                ),
+                                None,
+                            )
+                        }
+                    }
+                    Record::Fn { .. } => {
+                        if !is_comp_provided {
+                            self.err.compiler_fn_overload_error(
+                                false,
+                                name.clone(),
+                                loc.clone().map(|l| l.line_col),
+                            );
+                        } else {
+                            self.err.unexpected_error(
+                                true,
+                                Some(
+                                    "Conflicting Compiler Definitions for the same name in table"
+                                        .to_string(),
+                                ),
+                                None,
+                            )
+                        }
+                    }
+                    _ => {
+                        self.err.compiler_fn_overload_error(
+                            false,
+                            name.clone(),
+                            loc.clone().map(|l| l.line_col),
+                        );
+                    }
+                }
+            }
+            self.err.duplicate_identifier_error(
+                false,
+                name,
+                old_loc.clone().map(|l| l.line_col),
+                loc.clone().map(|l| l.line_col),
+            );
             return;
         }
 
@@ -302,7 +364,9 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                     self.visit_expr(expr);
                     None
                 }
-                Statement::Decl { ty, var_id, loc, .. } => {
+                Statement::Decl {
+                    ty, var_id, loc, ..
+                } => {
                     if let Expr::VarId { name, .. } = var_id {
                         self.add_local(ty.to_owned(), name.to_owned(), false, loc);
                     } else {

@@ -1,4 +1,5 @@
 use crate::parser::types as parser_types;
+use crate::verifier::builder_visitor::parser_types::Location;
 use crate::verifier::types::{Record, ScopeType, SymbolTable};
 use parser_types::{
     BinOp, Block, DataType, Event, Expr, Fn, Package, Probe, Provider, Script, Statement, UnOp,
@@ -396,12 +397,76 @@ impl SymbolTableBuilder<'_> {
     }
 
     /// Insert `global` record into scope
-    fn add_global(&mut self, ty: DataType, name: String, is_comp_provided: bool) {
+    fn add_global(
+        &mut self,
+        ty: DataType,
+        name: String,
+        is_comp_provided_new: bool,
+        loc: Option<Location>,
+    ) {
         if self.table.lookup(&name).is_some() {
-            // This should never be the case since it's controlled by the compiler!
-            self.err
-                .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
-            unreachable!()
+            //This happens if the user attempts to redeclare something compiler defined or they defined
+            let old_rec = self
+                .table
+                .get_record(self.table.lookup(&name).unwrap())
+                .unwrap();
+            let old_loc = old_rec.loc();
+            //if there is no old_loc and the old var/fn is NOT marked as is_comp_provided, then we have an issue
+            //Or it could be a script/provider/package/event/probe name
+            if old_loc.is_none() {
+                match old_rec {
+                    Record::Var {
+                        is_comp_provided, ..
+                    } => {
+                        if *is_comp_provided && !is_comp_provided_new {
+                            self.err.compiler_fn_overload_error(
+                                false,
+                                name.clone(),
+                                loc.clone().map(|l| l.line_col),
+                            );
+                        } else {
+                            self.err.unexpected_error(true, Some("Conflicting Compiler Definitions for the same name in table, or no loc for non-compiler def fn in table".to_string()), None)
+                        }
+                    }
+                    Record::Fn {
+                        is_comp_provided, ..
+                    } => {
+                        if *is_comp_provided && !is_comp_provided_new {
+                            self.err.compiler_fn_overload_error(
+                                false,
+                                name.clone(),
+                                loc.clone().map(|l| l.line_col),
+                            );
+                        } else {
+                            self.err.unexpected_error(
+                                true,
+                                Some(
+                                    "Conflicting Compiler Definitions for the same name in table"
+                                        .to_string(),
+                                ),
+                                None,
+                            )
+                        }
+                    }
+                    _ => {
+                        self.err.compiler_fn_overload_error(
+                            false,
+                            name.clone(),
+                            loc.clone().map(|l| l.line_col),
+                        );
+                    }
+                }
+            }
+            //if the old_loc is NOT none, then its user-def being used twice
+            else {
+                self.err.duplicate_identifier_error(
+                    false,
+                    name.clone(),
+                    loc.clone().map(|l| l.line_col),
+                    old_loc.clone().map(|l| l.line_col),
+                );
+            }
+            return;
         }
 
         // Add global to scope
@@ -411,9 +476,9 @@ impl SymbolTableBuilder<'_> {
                 ty,
                 name,
                 value: None,
-                is_comp_provided,
+                is_comp_provided: is_comp_provided_new,
                 addr: None,
-                loc: None,
+                loc,
             },
         );
 
@@ -426,7 +491,7 @@ impl SymbolTableBuilder<'_> {
         globals: &HashMap<String, (ProvidedFunctionality, Global)>,
     ) {
         for (name, (.., global)) in globals.iter() {
-            self.add_global(global.ty.clone(), name.clone(), true);
+            self.add_global(global.ty.clone(), name.clone(), true, None);
         }
     }
 }
@@ -633,7 +698,10 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
             );
         }
 
-        if let Statement::Decl { ty, var_id, .. } = stmt {
+        if let Statement::Decl {
+            ty, var_id, loc, ..
+        } = stmt
+        {
             if let Expr::VarId {
                 name,
                 is_comp_provided,
@@ -641,7 +709,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
             } = &var_id
             {
                 // Add symbol to table
-                self.add_global(ty.clone(), name.clone(), *is_comp_provided);
+                self.add_global(ty.clone(), name.clone(), *is_comp_provided, loc.clone());
             } else {
                 self.err.unexpected_error(
                     true,
