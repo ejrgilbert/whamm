@@ -130,7 +130,7 @@ fn run_instr(
         context_name: "".to_string(),
         err: &mut err,
     };
-    init.run(&mut whamm);
+    init.run(&whamm);
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
 
@@ -263,9 +263,10 @@ fn get_script_ast(script_path: &String, err: &mut ErrorGen) -> Whamm {
     }
 }
 
-fn build_behavior(whamm: &Whamm, err: &mut ErrorGen) -> (BehaviorTree, SimpleAST) {
+fn build_behavior<'a>(whamm: &'a Whamm, err: &mut ErrorGen) -> (BehaviorTree, SimpleAST<'a>) {
     // Build the behavior tree from the AST
-    let (mut behavior, simple_ast) = build_behavior_tree(whamm, err);
+    let mut simple_ast = SimpleAST::new();
+    let mut behavior = build_behavior_tree(whamm, &mut simple_ast, err);
     err.check_too_many();
     behavior.reset();
 

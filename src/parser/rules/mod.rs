@@ -585,7 +585,7 @@ impl Provider for WhammProvider {
     fn assign_matching_packages(&mut self, probe_spec: &ProbeSpec, loc: Option<Location>,
                                 predicate: Option<Expr>,
                                 body: Option<Vec<Statement>>) -> (bool, bool, bool) {
-        
+
         match self {
             Self {kind: WhammProviderKind::Core, ..} => {
                 package_factory::<CorePackage>(&mut self.info.packages, probe_spec, loc, predicate, body)

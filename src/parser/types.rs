@@ -1,4 +1,3 @@
-use glob::Pattern;
 use pest::error::LineColLocation;
 use std::collections::HashMap;
 use termcolor::{Buffer, ColorChoice, WriteColor};
@@ -893,24 +892,6 @@ impl Script {
     }
 }
 
-fn matches_globs(s: &str, globs: &[Pattern]) -> bool {
-    for glob in globs.iter() {
-        if glob.matches(s) {
-            return true;
-        }
-    }
-    false
-}
-
-fn get_globs(patt: &str) -> Vec<Pattern> {
-    let mut globs = vec![];
-    for p in patt.split('|') {
-        globs.push(Pattern::new(p).unwrap());
-    }
-
-    globs
-}
-
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct ProvidedFunctionality {
     pub name: String,
@@ -968,218 +949,6 @@ impl ProvidedFunction {
     }
 }
 
-pub struct OldProvider {
-    pub name: String,
-    pub fns: Vec<(ProvidedFunctionality, Fn)>, // Comp-provided
-    pub globals: HashMap<String, (ProvidedFunctionality, Global)>, // Comp-provided
-
-    /// The packages of the probes that have been used in the Script.
-    /// These will be sub-packages of this Provider.
-    pub packages: HashMap<String, OldPackage>,
-    pub loc: Option<Location>,
-}
-impl OldProvider {
-    pub fn new(name: String, loc: Option<Location>) -> Self {
-        OldProvider {
-            name,
-            fns: vec![],
-            globals: HashMap::new(),
-            packages: HashMap::new(),
-            loc,
-        }
-    }
-
-    /// Get the provider names that match the passed glob pattern
-    pub fn get_matches(
-        provided_probes: &ProvidedProbes,
-        prov_patt: &str,
-    ) -> Vec<(ProvidedFunctionality, String)> {
-        let globs = get_globs(&prov_patt.to_lowercase());
-
-        let mut matches = vec![];
-        for (provider_name, (info, _provider)) in provided_probes.iter() {
-            if matches_globs(&provider_name.to_lowercase(), &globs) {
-                matches.push((info.clone(), provider_name.clone()));
-            }
-        }
-
-        matches
-    }
-}
-
-pub struct OldPackage {
-    pub name: String,
-    pub fns: Vec<(ProvidedFunctionality, Fn)>, // Comp-provided
-    pub globals: HashMap<String, (ProvidedFunctionality, Global)>, // Comp-provided
-
-    /// The events of the probes that have been used in the Script.
-    /// These will be sub-events of this Package.
-    pub events: HashMap<String, OldEvent>,
-    pub loc: Option<Location>,
-}
-impl OldPackage {
-    pub fn new(name: String, loc: Option<Location>) -> Self {
-        OldPackage {
-            name,
-            fns: vec![],
-            globals: HashMap::new(),
-            events: HashMap::new(),
-            loc,
-        }
-    }
-
-    /// Get the Package names that match the passed glob pattern
-    pub fn get_matches(
-        provided_probes: &ProvidedProbes,
-        provider: &str,
-        mod_patt: &str,
-    ) -> Vec<(ProvidedFunctionality, String)> {
-        let globs = get_globs(&mod_patt.to_lowercase());
-
-        let mut matches = vec![];
-
-        for (mod_name, (info, _package)) in provided_probes.get(provider).unwrap().1.iter() {
-            if matches_globs(&mod_name.to_lowercase(), &globs) {
-                matches.push((info.clone(), mod_name.clone()));
-            }
-        }
-
-        matches
-    }
-}
-
-pub struct OldEvent {
-    pub name: String,
-    pub fns: Vec<(ProvidedFunctionality, Fn)>, // Comp-provided
-    pub globals: HashMap<String, (ProvidedFunctionality, Global)>, // Comp-provided
-    pub probe_map: HashMap<String, Vec<OldProbe>>,
-    pub loc: Option<Location>,
-}
-impl OldEvent {
-    pub fn new(name: String, loc: Option<Location>) -> Self {
-        Self {
-            name,
-            fns: vec![],
-            globals: HashMap::new(),
-            probe_map: HashMap::new(),
-            loc,
-        }
-    }
-
-    /// Get the Event names that match the passed glob pattern
-    pub fn get_matches(
-        provided_probes: &ProvidedProbes,
-        provider: &str,
-        package: &str,
-        func_patt: &str,
-    ) -> Vec<(ProvidedFunctionality, String)> {
-        let globs = get_globs(&func_patt.to_lowercase());
-
-        let mut matches = vec![];
-
-        for (fn_name, (info, _package)) in provided_probes
-            .get(provider)
-            .unwrap()
-            .1
-            .get(package)
-            .unwrap()
-            .1
-            .iter()
-        {
-            if matches_globs(&fn_name.to_lowercase(), &globs) {
-                matches.push((info.clone(), fn_name.clone()));
-            }
-        }
-
-        matches
-    }
-
-    pub fn insert_probe(&mut self, name: String, probe: OldProbe) {
-        // Does name exist yet?
-        match self.probe_map.get_mut(&name) {
-            Some(probes) => {
-                // Add probe to list
-                probes.push(probe);
-            }
-            None => {
-                self.probe_map.insert(name, vec![probe]);
-            }
-        };
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct OldProbe {
-    pub mode: String,
-    pub loc: Option<Location>,
-    pub fns: Vec<(ProvidedFunctionality, Fn)>, // Comp-provided
-    pub globals: HashMap<String, (ProvidedFunctionality, Global)>, // Comp-provided
-
-    pub predicate: Option<Expr>,
-    // TODO: Change to Blocks when we support general if statements
-    pub body: Option<Vec<Statement>>,
-}
-impl OldProbe {
-    pub fn new(
-        mode: String,
-        loc: Option<Location>,
-        predicate: Option<Expr>,
-        body: Option<Vec<Statement>>,
-    ) -> Self {
-        let fns = Self::get_provided_fns(&mode);
-        let globals = Self::get_provided_globals(&mode);
-        Self {
-            mode,
-            loc,
-            fns,
-            globals,
-
-            predicate,
-            body,
-        }
-    }
-
-    fn get_provided_fns(_mode: &str) -> Vec<(ProvidedFunctionality, Fn)> {
-        vec![]
-    }
-
-    fn get_provided_globals(_mode: &str) -> HashMap<String, (ProvidedFunctionality, Global)> {
-        HashMap::new()
-    }
-
-    /// Get the Probe modes that match the passed glob pattern
-    pub fn get_matches(
-        provided_probes: &ProvidedProbes,
-        provider: &str,
-        package: &str,
-        event: &str,
-        mode_patt: &str,
-    ) -> Vec<(ProvidedFunctionality, String)> {
-        let globs = get_globs(&mode_patt.to_lowercase());
-
-        let mut matches = vec![];
-
-        for (info, m_name) in provided_probes
-            .get(provider)
-            .unwrap()
-            .1
-            .get(package)
-            .unwrap()
-            .1
-            .get(event)
-            .unwrap()
-            .1
-            .iter()
-        {
-            if matches_globs(&m_name.to_lowercase(), &globs) {
-                matches.push((info.clone(), m_name.clone()));
-            }
-        }
-
-        matches
-    }
-}
-
 // =====================
 // ---- Expressions ----
 // =====================
@@ -1220,23 +989,27 @@ pub enum BinOp {
 // TODO add a default visit implementation
 // (take a look at the behavior tree visit trait) that would be good to add to
 // the AST visitor as well to make the visit ordering/conventions less annoying.
-pub trait WhammVisitor<T> {
-    fn visit_whamm(&mut self, whamm: &Whamm) -> T;
-    fn visit_script(&mut self, script: &Script) -> T;
-    fn visit_provider(&mut self, provider: &Box<dyn Provider>) -> T;
-    fn visit_package(&mut self, package: &dyn Package) -> T;
-    fn visit_event(&mut self, event: &dyn Event) -> T;
-    fn visit_probe(&mut self, probe: &Box<dyn Probe>) -> T;
+/// The lifetime parameter 'a is used primarily in the `behavior/builder_visitor.rs`
+/// in order to enable saving off data in the `Whamm` struct while it is being visited
+/// in some other data structure.
+/// The lifetime is necessary to mark where the pointers are actually pointing to!
+pub trait WhammVisitor<'a, T> {
+    fn visit_whamm(&mut self, whamm: &'a Whamm) -> T;
+    fn visit_script(&mut self, script: &'a Script) -> T;
+    fn visit_provider(&mut self, provider: &'a Box<dyn Provider>) -> T;
+    fn visit_package(&mut self, package: &'a dyn Package) -> T;
+    fn visit_event(&mut self, event: &'a dyn Event) -> T;
+    fn visit_probe(&mut self, probe: &'a Box<dyn Probe>) -> T;
     // fn visit_predicate(&mut self, predicate: &Expr) -> T;
-    fn visit_fn(&mut self, f: &Fn) -> T;
-    fn visit_formal_param(&mut self, param: &(Expr, DataType)) -> T;
-    fn visit_block(&mut self, block: &Block) -> T;
-    fn visit_stmt(&mut self, stmt: &Statement) -> T;
-    fn visit_expr(&mut self, expr: &Expr) -> T;
-    fn visit_unop(&mut self, unop: &UnOp) -> T;
-    fn visit_binop(&mut self, binop: &BinOp) -> T;
-    fn visit_datatype(&mut self, datatype: &DataType) -> T;
-    fn visit_value(&mut self, val: &Value) -> T;
+    fn visit_fn(&mut self, f: &'a Fn) -> T;
+    fn visit_formal_param(&mut self, param: &'a (Expr, DataType)) -> T;
+    fn visit_block(&mut self, block: &'a Block) -> T;
+    fn visit_stmt(&mut self, stmt: &'a Statement) -> T;
+    fn visit_expr(&mut self, expr: &'a Expr) -> T;
+    fn visit_unop(&mut self, unop: &'a UnOp) -> T;
+    fn visit_binop(&mut self, binop: &'a BinOp) -> T;
+    fn visit_datatype(&mut self, datatype: &'a DataType) -> T;
+    fn visit_value(&mut self, val: &'a Value) -> T;
 }
 
 /// To support setting constant-provided global vars

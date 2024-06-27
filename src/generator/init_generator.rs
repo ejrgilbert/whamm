@@ -4,7 +4,7 @@
 
 use crate::common::error::ErrorGen;
 use crate::generator::emitters::Emitter;
-use crate::parser::types::{BinOp, Block, DataType, Expr, Global, ProvidedFunction, ProvidedGlobal, Script, Statement, UnOp, Value, Whamm, WhammVisitorMut};
+use crate::parser::types::{BinOp, Block, DataType, Expr, Global, ProvidedFunction, ProvidedGlobal, Script, Statement, UnOp, Value, Whamm, WhammVisitor};
 use crate::parser::rules::{Provider, Package, Event, Probe};
 use log::{trace, warn};
 use std::collections::HashMap;
@@ -22,7 +22,7 @@ pub struct InitGenerator<'a> {
     pub err: &'a mut ErrorGen,
 }
 impl InitGenerator<'_> {
-    pub fn run(&mut self, whamm: &mut Whamm) -> bool {
+    pub fn run(&mut self, whamm: &Whamm) -> bool {
         // Reset the symbol table in the emitter just in case
         self.emitter.reset_children();
         // Generate globals and fns defined by `whamm` (this should modify the app_wasm)
@@ -68,20 +68,20 @@ impl InitGenerator<'_> {
         is_success
     }
 }
-impl WhammVisitorMut<bool> for InitGenerator<'_> {
-    fn visit_whamm(&mut self, whamm: &mut Whamm) -> bool {
+impl WhammVisitor<'_, bool> for InitGenerator<'_> {
+    fn visit_whamm(&mut self, whamm: &Whamm) -> bool {
         trace!("Entering: CodeGenerator::visit_whamm");
         self.context_name = "whamm".to_string();
         let mut is_success = true;
 
         // visit fns
-        whamm.fns.iter_mut().for_each(|ProvidedFunction { function, ..}| {
+        whamm.fns.iter().for_each(|ProvidedFunction { function, ..}| {
             is_success &= self.visit_fn(function);
         });
         // inject globals
         is_success &= self.visit_provided_globals(&whamm.globals);
         // visit scripts
-        whamm.scripts.iter_mut().for_each(|script| {
+        whamm.scripts.iter().for_each(|script| {
             is_success &= self.visit_script(script);
         });
 
@@ -91,7 +91,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         is_success
     }
 
-    fn visit_script(&mut self, script: &mut Script) -> bool {
+    fn visit_script(&mut self, script: &Script) -> bool {
         trace!("Entering: CodeGenerator::visit_script");
         if let Err(e) = self.emitter.enter_scope() {
             self.err.add_error(*e)
@@ -100,13 +100,13 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         let mut is_success = true;
 
         // visit fns
-        script.fns.iter_mut().for_each(|f| {
+        script.fns.iter().for_each(|f| {
             is_success &= self.visit_fn(f);
         });
         // inject globals
         is_success &= self.visit_globals(&script.globals);
         // visit providers
-        script.providers.iter_mut().for_each(|(_name, provider)| {
+        script.providers.iter().for_each(|(_name, provider)| {
             is_success &= self.visit_provider(provider);
         });
 
@@ -119,7 +119,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         is_success
     }
 
-    fn visit_provider(&mut self, provider: &mut Box<dyn Provider>) -> bool {
+    fn visit_provider(&mut self, provider: &Box<dyn Provider>) -> bool {
         trace!("Entering: CodeGenerator::visit_provider");
         if let Err(e) = self.emitter.enter_scope() {
             self.err.add_error(*e)
@@ -128,13 +128,13 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         let mut is_success = true;
 
         // visit fns
-        provider.get_provided_fns_mut().iter_mut().for_each(|ProvidedFunction { function, ..}| {
+        provider.get_provided_fns().iter().for_each(|ProvidedFunction { function, ..}| {
             is_success &= self.visit_fn(function);
         });
         // inject globals
         is_success &= self.visit_provided_globals(provider.get_provided_globals());
         // visit the packages
-        provider.packages_mut().for_each(|package| {
+        provider.packages().for_each(|package| {
             is_success &= self.visit_package(package);
         });
 
@@ -147,7 +147,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         is_success
     }
 
-    fn visit_package(&mut self, package: &mut dyn Package) -> bool {
+    fn visit_package(&mut self, package: &dyn Package) -> bool {
         trace!("Entering: CodeGenerator::visit_package");
         if let Err(e) = self.emitter.enter_scope() {
             self.err.add_error(*e)
@@ -156,13 +156,13 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         self.context_name += &format!(":{}", package.name());
 
         // visit fns
-        package.get_provided_fns_mut().iter_mut().for_each(|ProvidedFunction { function, ..}| {
+        package.get_provided_fns().iter().for_each(|ProvidedFunction { function, ..}| {
             is_success &= self.visit_fn(function);
         });
         // inject globals
         is_success &= self.visit_provided_globals(package.get_provided_globals());
         // visit the events
-        package.events_mut().for_each(|event| {
+        package.events().for_each(|event| {
             is_success &= self.visit_event(event);
         });
 
@@ -175,7 +175,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         is_success
     }
 
-    fn visit_event(&mut self, event: &mut dyn Event) -> bool {
+    fn visit_event(&mut self, event: &dyn Event) -> bool {
         trace!("Entering: CodeGenerator::visit_event");
         if let Err(e) = self.emitter.enter_scope() {
             self.err.add_error(*e)
@@ -185,32 +185,32 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         let mut is_success = true;
 
         // visit fns
-        event.get_provided_fns_mut().iter_mut().for_each(|ProvidedFunction { function, ..}| {
+        event.get_provided_fns().iter().for_each(|ProvidedFunction { function, ..}| {
             is_success &= self.visit_fn(function);
         });
         // inject globals
         is_success &= self.visit_provided_globals(&event.get_provided_globals());
 
         // 1. visit the BEFORE probes
-        if let Some(probes) = event.probes().get_mut(&"before".to_string()) {
-            probes.iter_mut().for_each(|probe| {
+        if let Some(probes) = event.probes().get(&"before".to_string()) {
+            probes.iter().for_each(|probe| {
                 is_success &= self.visit_probe(probe);
             });
         }
         // 2. visit the ALT probes
-        if let Some(probes) = event.probes().get_mut(&"alt".to_string()) {
+        if let Some(probes) = event.probes().get(&"alt".to_string()) {
             // only will emit one alt probe!
             // The last alt probe in the list will be emitted.
             if probes.len() > 1 {
                 warn!("Detected multiple `alt` probes, will only emit the last one and ignore the rest!")
             }
-            if let Some(probe) = probes.last_mut() {
+            if let Some(probe) = probes.last() {
                 is_success &= self.visit_probe(probe);
             }
         }
         // 3. visit the AFTER probes
-        if let Some(probes) = event.probes().get_mut(&"after".to_string()) {
-            probes.iter_mut().for_each(|probe| {
+        if let Some(probes) = event.probes().get(&"after".to_string()) {
+            probes.iter().for_each(|probe| {
                 is_success &= self.visit_probe(probe);
             });
         }
@@ -224,7 +224,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         is_success
     }
 
-    fn visit_probe(&mut self, probe: &mut Box<dyn Probe>) -> bool {
+    fn visit_probe(&mut self, probe: &Box<dyn Probe>) -> bool {
         trace!("Entering: CodeGenerator::visit_probe");
         if let Err(e) = self.emitter.enter_scope() {
             self.err.add_error(*e)
@@ -234,7 +234,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         let mut is_success = true;
 
         // visit fns
-        probe.get_mode_provided_fns_mut().iter_mut().for_each(|ProvidedFunction { function, ..}| {
+        probe.get_mode_provided_fns().iter().for_each(|ProvidedFunction { function, ..}| {
             is_success &= self.visit_fn(function);
         });
         // inject globals
@@ -249,7 +249,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         is_success
     }
 
-    fn visit_fn(&mut self, f: &mut crate::parser::types::Fn) -> bool {
+    fn visit_fn(&mut self, f: &crate::parser::types::Fn) -> bool {
         trace!("Entering: CodeGenerator::visit_fn");
         if let Err(e) = self.emitter.enter_scope() {
             self.err.add_error(*e)
@@ -268,7 +268,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         is_success
     }
 
-    fn visit_formal_param(&mut self, _param: &mut (Expr, DataType)) -> bool {
+    fn visit_formal_param(&mut self, _param: &(Expr, DataType)) -> bool {
         // never called
         unreachable!();
         // trace!("Entering: CodeGenerator::visit_formal_param");
@@ -281,7 +281,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         unreachable!();
     }
 
-    fn visit_stmt(&mut self, _stmt: &mut Statement) -> bool {
+    fn visit_stmt(&mut self, _stmt: &Statement) -> bool {
         // never called
         unreachable!();
         // trace!("Entering: CodeGenerator::visit_stmt");
@@ -290,7 +290,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         // is_success
     }
 
-    fn visit_expr(&mut self, _expr: &mut Expr) -> bool {
+    fn visit_expr(&mut self, _expr: &Expr) -> bool {
         // never called
         unreachable!();
         // trace!("Entering: CodeGenerator::visit_expr");
@@ -299,12 +299,12 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         // is_success
     }
 
-    fn visit_unop(&mut self, _unop: &mut UnOp) -> bool {
+    fn visit_unop(&mut self, _unop: &UnOp) -> bool {
         // never called
         unreachable!();
     }
 
-    fn visit_binop(&mut self, _binop: &mut BinOp) -> bool {
+    fn visit_binop(&mut self, _binop: &BinOp) -> bool {
         // never called
         unreachable!();
         // trace!("Entering: CodeGenerator::visit_binop");
@@ -313,7 +313,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         // is_success
     }
 
-    fn visit_datatype(&mut self, _datatype: &mut DataType) -> bool {
+    fn visit_datatype(&mut self, _datatype: &DataType) -> bool {
         // never called
         unreachable!();
         // trace!("Entering: CodeGenerator::visit_datatype");
@@ -322,7 +322,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_> {
         // is_success
     }
 
-    fn visit_value(&mut self, _val: &mut Value) -> bool {
+    fn visit_value(&mut self, _val: &Value) -> bool {
         // never called
         unreachable!();
         // trace!("Entering: CodeGenerator::visit_value");
