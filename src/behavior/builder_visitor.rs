@@ -15,12 +15,12 @@ use crate::parser::types::{Block, ProvidedGlobal};
 use log::trace;
 use regex::Regex;
 
-// type SimpleAstProbes =
-//     HashMap<String, HashMap<String, HashMap<String, HashMap<String, Vec<Box<dyn Probe>>>>>>;
+type SimpleAstProbes =
+    HashMap<String, HashMap<String, HashMap<String, HashMap<String, Vec<Box<dyn Probe>>>>>>;
 
 pub struct SimpleAST {
     pub global_stmts: Vec<Statement>,
-    // pub probes: SimpleAstProbes,
+    pub probes: SimpleAstProbes,
 }
 
 pub fn build_behavior_tree(ast: &Whamm, err: &mut ErrorGen) -> (BehaviorTree, SimpleAST) {
@@ -28,7 +28,7 @@ pub fn build_behavior_tree(ast: &Whamm, err: &mut ErrorGen) -> (BehaviorTree, Si
         tree: BehaviorTree::new(),
         ast: SimpleAST {
             global_stmts: vec![],
-            // probes: HashMap::new(),
+            probes: HashMap::new(),
         },
         err,
         context_name: "".to_string(),
@@ -56,56 +56,54 @@ impl BehaviorTreeBuilder<'_> {
     // = AST =
     // =======
 
-    // fn add_provider_to_ast(&mut self, provider_name: String) {
-    //     if !self.ast.probes.contains_key(&provider_name) {
-    //         self.ast
-    //             .probes
-    //             .insert(provider_name.clone(), HashMap::new());
-    //     }
-    //     self.curr_provider_name = provider_name;
-    // }
-    // 
-    // fn add_package_to_ast(&mut self, package_name: String) {
-    //     if let Some(provider) = self.ast.probes.get_mut(&self.curr_provider_name) {
-    //         if !provider.contains_key(&package_name) {
-    //             provider.insert(package_name.clone(), HashMap::new());
-    //         }
-    //     } else {
-    //         unreachable!()
-    //     }
-    //     self.curr_package_name = package_name;
-    // }
-    // 
-    // fn add_event_to_ast(&mut self, event_name: String) {
-    //     if let Some(provider) = self.ast.probes.get_mut(&self.curr_provider_name) {
-    //         if let Some(package) = provider.get_mut(&self.curr_package_name) {
-    //             if !package.contains_key(&event_name) {
-    //                 package.insert(event_name.clone(), HashMap::new());
-    //             }
-    //         }
-    //     } else {
-    //         unreachable!()
-    //     }
-    //     self.curr_event_name = event_name;
-    // }
+    fn add_provider_to_ast(&mut self, provider_name: String) {
+        if !self.ast.probes.contains_key(&provider_name) {
+            self.ast
+                .probes
+                .insert(provider_name.clone(), HashMap::new());
+        }
+        self.curr_provider_name = provider_name;
+    }
+    
+    fn add_package_to_ast(&mut self, package_name: String) {
+        if let Some(provider) = self.ast.probes.get_mut(&self.curr_provider_name) {
+            if !provider.contains_key(&package_name) {
+                provider.insert(package_name.clone(), HashMap::new());
+            }
+        } else {
+            unreachable!()
+        }
+        self.curr_package_name = package_name;
+    }
+    
+    fn add_event_to_ast(&mut self, event_name: String) {
+        if let Some(provider) = self.ast.probes.get_mut(&self.curr_provider_name) {
+            if let Some(package) = provider.get_mut(&self.curr_package_name) {
+                if !package.contains_key(&event_name) {
+                    package.insert(event_name.clone(), HashMap::new());
+                }
+            }
+        } else {
+            unreachable!()
+        }
+        self.curr_event_name = event_name;
+    }
 
-    // fn add_probe_to_ast(&mut self, probe: &dyn Probe) {
-    //     if let Some(provider) = self.ast.probes.get_mut(&self.curr_provider_name) {
-    //         if let Some(package) = provider.get_mut(&self.curr_package_name) {
-    //             if let Some(event) = package.get_mut(&self.curr_event_name) {
-    //                 if let Some(probes) = event.get_mut(&probe.mode_name()) {
-    //                     // probes.push((*probe).clone());
-    //                     todo!()
-    //                 } else {
-    //                     // event.insert(probe.mode_name().clone(), vec![(*probe).clone()]);
-    //                     todo!()
-    //                 }
-    //             }
-    //         }
-    //     } else {
-    //         unreachable!()
-    //     }
-    // }
+    fn add_probe_to_ast(&mut self, probe: &dyn Probe) {
+        if let Some(provider) = self.ast.probes.get_mut(&self.curr_provider_name) {
+            if let Some(package) = provider.get_mut(&self.curr_package_name) {
+                if let Some(event) = package.get_mut(&self.curr_event_name) {
+                    if let Some(probes) = event.get_mut(&probe.mode_name()) {
+                        probes.push((*probe).clone());
+                    } else {
+                        event.insert(probe.mode_name().clone(), vec![(*probe).clone()]);
+                    }
+                }
+            }
+        } else {
+            unreachable!()
+        }
+    }
 
     // ================
     // = BehaviorTree =
@@ -182,7 +180,7 @@ impl BehaviorTreeBuilder<'_> {
             if let Some(probe) = probes.first() {
                 // just grab the first one and emit behavior (the behavior includes a loop
                 // over all probes of this type)
-                self.visit_probe(probe.as_ref());
+                self.visit_probe(probe);
             }
         }
     }
@@ -350,7 +348,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_> {
         script
             .providers
             .iter()
-            .for_each(|(_name, provider)| self.visit_provider(provider.as_ref()));
+            .for_each(|(_name, provider)| self.visit_provider(provider));
 
         self.tree.exit_scope(self.err);
 
@@ -359,7 +357,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_> {
         self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
     }
 
-    fn visit_provider(&mut self, provider: &dyn Provider) {
+    fn visit_provider(&mut self, provider: &Box<dyn Provider>) {
         trace!("Entering: BehaviorTreeBuilder::visit_provider");
         self.context_name += &format!(":{}", provider.name());
         // self.add_provider_to_ast(provider.name());
@@ -445,7 +443,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_> {
         self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
     }
 
-    fn visit_probe(&mut self, probe: &dyn Probe) {
+    fn visit_probe(&mut self, probe: &Box<dyn Probe>) {
         trace!("Entering: BehaviorTreeBuilder::visit_probe");
         self.context_name += &format!(":{}", probe.mode_name());
         // self.add_probe_to_ast(probe);
@@ -460,7 +458,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_> {
         );
 
         if self.is_in_context(r"whamm:script([0-9]+):wasm:bytecode:(.*)") {
-            self.visit_bytecode_probe(probe);
+            self.visit_bytecode_probe(probe.as_ref());
         } else {
             self.err.unexpected_error(
                 true,

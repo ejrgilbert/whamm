@@ -131,7 +131,7 @@ impl WhammVisitor<String> for AsStrVisitor {
             s += &format!("{} `{}` {{{}", self.get_indent(), name, NL);
 
             self.increase_indent();
-            s += &self.visit_provider(provider.as_ref()).to_string();
+            s += &self.visit_provider(provider).to_string();
             self.decrease_indent();
 
             s += &format!("{} }}{}", self.get_indent(), NL);
@@ -141,7 +141,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         s
     }
 
-    fn visit_provider(&mut self, provider: &dyn Provider) -> String {
+    fn visit_provider(&mut self, provider: &Box<dyn Provider>) -> String {
         let mut s = "".to_string();
 
         // print fns
@@ -257,7 +257,7 @@ impl WhammVisitor<String> for AsStrVisitor {
                 s += &format!("({}", NL);
                 s += &probes
                     .iter()
-                    .map(|probe| self.visit_probe(probe.as_ref()))
+                    .map(|probe| self.visit_probe(probe))
                     .collect::<String>();
                 s += &format!("){}", NL);
                 self.decrease_indent();
@@ -267,7 +267,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         s
     }
 
-    fn visit_probe(&mut self, probe: &dyn Probe) -> String {
+    fn visit_probe(&mut self, probe: &Box<dyn Probe>) -> String {
         let mut s = "".to_string();
 
         s += &format!("{} `{}` probe {{{}", self.get_indent(), probe.mode_name(), NL);

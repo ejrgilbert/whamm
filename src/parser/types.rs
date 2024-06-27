@@ -661,7 +661,7 @@ impl ProbeSpec {
 pub struct Script {
     pub name: String,
     /// The rules of the probes that have been used in the Script.
-    pub providers: HashMap<String, Box<WhammProvider>>,
+    pub providers: HashMap<String, Box<dyn Provider>>,
     pub fns: Vec<Fn>,                     // User-provided
     pub globals: HashMap<String, Global>, // User-provided, should be VarId
     pub global_stmts: Vec<Statement>,
@@ -714,15 +714,15 @@ impl Script {
         long_line(&mut buffer);
         white(true, "\n\n".to_string(), &mut buffer);
         
-        let mut providers: HashMap<String, Box<WhammProvider>> = HashMap::new();
-        let (matched_providers, matched_packages, matched_events, matched_modes) = provider_factory(&mut providers, probe_spec, None, None, None)?;
+        let mut providers: HashMap<String, Box<dyn Provider>> = HashMap::new();
+        let (matched_providers, matched_packages, matched_events, matched_modes) = provider_factory::<WhammProvider>(&mut providers, probe_spec, None, None, None)?;
 
         // Print the matched provider information
         if matched_providers {
             probe_spec.print_bold_provider(&mut buffer);
         }
         for (.., provider) in providers.iter() {
-            print_provider_docs(provider.as_ref(), print_globals, print_functions, &mut tabs, &mut buffer);
+            print_provider_docs(provider, print_globals, print_functions, &mut tabs, &mut buffer);
         }
         long_line(&mut buffer);
         white(true, "\n\n".to_string(), &mut buffer);
@@ -781,8 +781,7 @@ impl Script {
         predicate: Option<Expr>,
         body: Option<Vec<Statement>>
     ) -> Result<(), Box<WhammError>> {
-        let mut curr_providers = &mut self.providers;
-        let (matched_providers, matched_packages, matched_events, matched_modes): (bool, bool, bool, bool) = provider_factory(&mut curr_providers, probe_spec, None, predicate, body)?;
+        let (matched_providers, matched_packages, matched_events, matched_modes): (bool, bool, bool, bool) = provider_factory::<WhammProvider>(&mut self.providers, probe_spec, None, predicate, body)?;
         
         if !matched_providers {
             return if let Some(prov_patt) = &probe_spec.provider {
@@ -1224,10 +1223,10 @@ pub enum BinOp {
 pub trait WhammVisitor<T> {
     fn visit_whamm(&mut self, whamm: &Whamm) -> T;
     fn visit_script(&mut self, script: &Script) -> T;
-    fn visit_provider(&mut self, provider: &dyn Provider) -> T;
+    fn visit_provider(&mut self, provider: &Box<dyn Provider>) -> T;
     fn visit_package(&mut self, package: &dyn Package) -> T;
     fn visit_event(&mut self, event: &dyn Event) -> T;
-    fn visit_probe(&mut self, probe: &dyn Probe) -> T;
+    fn visit_probe(&mut self, probe: &Box<dyn Probe>) -> T;
     // fn visit_predicate(&mut self, predicate: &Expr) -> T;
     fn visit_fn(&mut self, f: &Fn) -> T;
     fn visit_formal_param(&mut self, param: &(Expr, DataType)) -> T;
@@ -1244,10 +1243,10 @@ pub trait WhammVisitor<T> {
 pub trait WhammVisitorMut<T> {
     fn visit_whamm(&mut self, whamm: &mut Whamm) -> T;
     fn visit_script(&mut self, script: &mut Script) -> T;
-    fn visit_provider(&mut self, provider: &mut dyn Provider) -> T;
+    fn visit_provider(&mut self, provider: &mut Box<dyn Provider>) -> T;
     fn visit_package(&mut self, package: &mut dyn Package) -> T;
     fn visit_event(&mut self, event: &mut dyn Event) -> T;
-    fn visit_probe(&mut self, probe: &mut dyn Probe) -> T;
+    fn visit_probe(&mut self, probe: &mut Box<dyn Probe>) -> T;
     // fn visit_predicate(&mut self, predicate: &mut Expr) -> T;
     fn visit_fn(&mut self, f: &mut Fn) -> T;
     fn visit_formal_param(&mut self, param: &mut (Expr, DataType)) -> T;
