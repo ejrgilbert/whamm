@@ -1,11 +1,11 @@
 use std::vec;
 
 use crate::common::error::ErrorGen;
+use crate::parser::rules::{Event, Package, Probe, Provider};
 use crate::parser::types::{
-    BinOp, Block, DataType, Expr, Fn, Location, Script, Statement,
-    UnOp, Value, Whamm, WhammVisitor, WhammVisitorMut,
+    BinOp, Block, DataType, Expr, Fn, Location, Script, Statement, UnOp, Value, Whamm,
+    WhammVisitor, WhammVisitorMut,
 };
-use crate::parser::rules::{Provider, Package, Event, Probe};
 use crate::verifier::builder_visitor::SymbolTableBuilder;
 use crate::verifier::types::{Record, SymbolTable};
 

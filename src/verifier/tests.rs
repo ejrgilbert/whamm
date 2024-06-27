@@ -356,7 +356,7 @@ wasm::call:alt /
 
             // asserts on very high level table structure
             assert_eq!(num_scopes, table.scopes.len());
-            
+
             println!("==================\n{:#?}", table.records);
             assert_eq!(num_recs, table.records.len());
         }

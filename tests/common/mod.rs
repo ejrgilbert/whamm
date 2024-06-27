@@ -93,17 +93,17 @@ fn parse_all_scripts(
 //     err: &mut ErrorGen,
 // ) -> Vec<(String, String, Whamm, SymbolTable, BehaviorTree, SimpleAST)> {
 //     let asts = parse_all_scripts(scripts, err);
-// 
+//
 //     // Build the symbol table from the AST
 //     let mut result = vec![];
 //     for (path, script_str, mut ast) in asts {
 //         let mut symbol_table = build_symbol_table(&mut ast, err);
 //         symbol_table.reset();
-// 
+//
 //         // Build the behavior tree from the AST
 //         let (mut behavior, simple_ast) = build_behavior_tree(&ast, err);
 //         behavior.reset();
-// 
+//
 //         result.push((
 //             path.into_os_string().into_string().unwrap(),
 //             script_str.clone(),
@@ -113,10 +113,10 @@ fn parse_all_scripts(
 //             simple_ast,
 //         ));
 //     }
-// 
+//
 //     result
 // }
-// 
+//
 // pub fn setup_fault_injection(
 //     variation: &str,
 //     err: &mut ErrorGen,
@@ -126,10 +126,10 @@ fn parse_all_scripts(
 //     if scripts.is_empty() {
 //         warn!("No test scripts found for `fault_injection/{variation}` test.");
 //     }
-// 
+//
 //     process_scripts(scripts, err)
 // }
-// 
+//
 // pub fn setup_wizard_monitors(
 //     err: &mut ErrorGen,
 // ) -> Vec<(String, String, Whamm, SymbolTable, BehaviorTree, SimpleAST)> {
@@ -138,10 +138,10 @@ fn parse_all_scripts(
 //     if scripts.is_empty() {
 //         warn!("No test scripts found for `wizard_monitors` test.");
 //     }
-// 
+//
 //     process_scripts(scripts, err)
 // }
-// 
+//
 // pub fn setup_replay(
 //     err: &mut ErrorGen,
 // ) -> Vec<(String, String, Whamm, SymbolTable, BehaviorTree, SimpleAST)> {
@@ -150,6 +150,6 @@ fn parse_all_scripts(
 //     if scripts.is_empty() {
 //         warn!("No test scripts found for `replay` test.");
 //     }
-// 
+//
 //     process_scripts(scripts, err)
 // }

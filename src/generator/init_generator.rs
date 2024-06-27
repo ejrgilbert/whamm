@@ -4,8 +4,11 @@
 
 use crate::common::error::ErrorGen;
 use crate::generator::emitters::Emitter;
-use crate::parser::types::{BinOp, Block, DataType, Expr, Global, ProvidedFunction, ProvidedGlobal, Script, Statement, UnOp, Value, Whamm, WhammVisitor};
-use crate::parser::rules::{Provider, Package, Event, Probe};
+use crate::parser::rules::{Event, Package, Probe, Provider};
+use crate::parser::types::{
+    BinOp, Block, DataType, Expr, Global, ProvidedFunction, ProvidedGlobal, Script, Statement,
+    UnOp, Value, Whamm, WhammVisitor,
+};
 use log::{trace, warn};
 use std::collections::HashMap;
 
@@ -47,12 +50,9 @@ impl InitGenerator<'_> {
 
         is_success
     }
-    fn visit_provided_globals(
-        &mut self,
-        globals: &HashMap<String, ProvidedGlobal>,
-    ) -> bool {
+    fn visit_provided_globals(&mut self, globals: &HashMap<String, ProvidedGlobal>) -> bool {
         let mut is_success = true;
-        for (name, ProvidedGlobal {global, ..}) in globals.iter() {
+        for (name, ProvidedGlobal { global, .. }) in globals.iter() {
             // do not inject globals into Wasm that are used/defined by the compiler
             if !global.is_comp_provided {
                 match self
@@ -75,9 +75,12 @@ impl WhammVisitor<'_, bool> for InitGenerator<'_> {
         let mut is_success = true;
 
         // visit fns
-        whamm.fns.iter().for_each(|ProvidedFunction { function, ..}| {
-            is_success &= self.visit_fn(function);
-        });
+        whamm
+            .fns
+            .iter()
+            .for_each(|ProvidedFunction { function, .. }| {
+                is_success &= self.visit_fn(function);
+            });
         // inject globals
         is_success &= self.visit_provided_globals(&whamm.globals);
         // visit scripts
@@ -128,9 +131,12 @@ impl WhammVisitor<'_, bool> for InitGenerator<'_> {
         let mut is_success = true;
 
         // visit fns
-        provider.get_provided_fns().iter().for_each(|ProvidedFunction { function, ..}| {
-            is_success &= self.visit_fn(function);
-        });
+        provider
+            .get_provided_fns()
+            .iter()
+            .for_each(|ProvidedFunction { function, .. }| {
+                is_success &= self.visit_fn(function);
+            });
         // inject globals
         is_success &= self.visit_provided_globals(provider.get_provided_globals());
         // visit the packages
@@ -156,9 +162,12 @@ impl WhammVisitor<'_, bool> for InitGenerator<'_> {
         self.context_name += &format!(":{}", package.name());
 
         // visit fns
-        package.get_provided_fns().iter().for_each(|ProvidedFunction { function, ..}| {
-            is_success &= self.visit_fn(function);
-        });
+        package
+            .get_provided_fns()
+            .iter()
+            .for_each(|ProvidedFunction { function, .. }| {
+                is_success &= self.visit_fn(function);
+            });
         // inject globals
         is_success &= self.visit_provided_globals(package.get_provided_globals());
         // visit the events
@@ -185,9 +194,12 @@ impl WhammVisitor<'_, bool> for InitGenerator<'_> {
         let mut is_success = true;
 
         // visit fns
-        event.get_provided_fns().iter().for_each(|ProvidedFunction { function, ..}| {
-            is_success &= self.visit_fn(function);
-        });
+        event
+            .get_provided_fns()
+            .iter()
+            .for_each(|ProvidedFunction { function, .. }| {
+                is_success &= self.visit_fn(function);
+            });
         // inject globals
         is_success &= self.visit_provided_globals(&event.get_provided_globals());
 
@@ -234,9 +246,12 @@ impl WhammVisitor<'_, bool> for InitGenerator<'_> {
         let mut is_success = true;
 
         // visit fns
-        probe.get_mode_provided_fns().iter().for_each(|ProvidedFunction { function, ..}| {
-            is_success &= self.visit_fn(function);
-        });
+        probe
+            .get_mode_provided_fns()
+            .iter()
+            .for_each(|ProvidedFunction { function, .. }| {
+                is_success &= self.visit_fn(function);
+            });
         // inject globals
         is_success &= self.visit_provided_globals(&probe.get_mode_provided_globals());
 

@@ -5,8 +5,8 @@ use glob::{glob, glob_with};
 
 use crate::common::error::ErrorGen;
 use crate::parser::print_visitor::AsStrVisitor;
-use log::{error, info, warn};
 use crate::parser::rules::Provider;
+use log::{error, info, warn};
 
 // =================
 // = Setup Logging =

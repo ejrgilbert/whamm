@@ -1,42 +1,44 @@
+use crate::parser::rules::{
+    event_factory, mode_factory, Event, EventInfo, FromStr, Mode, NameOptions, Package,
+    PackageInfo, Probe, WhammMode, WhammProbe,
+};
+use crate::parser::types::{
+    DataType, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal, Statement,
+};
 use std::collections::HashMap;
 use termcolor::Buffer;
-use crate::parser::rules::{Event, event_factory, EventInfo, FromStr, Mode, mode_factory, NameOptions, Package, PackageInfo, Probe, WhammMode, WhammProbe};
-use crate::parser::types::{DataType, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal, Statement};
 
 pub enum WasmPackageKind {
-    Bytecode
+    Bytecode,
 }
 impl WasmPackageKind {
     fn name(&self) -> String {
         match self {
-            Self::Bytecode => "bytecode".to_string()
+            Self::Bytecode => "bytecode".to_string(),
         }
     }
 }
 
 pub struct WasmPackage {
     kind: WasmPackageKind,
-    info: PackageInfo
+    info: PackageInfo,
 }
 impl NameOptions for WasmPackage {
     fn get_name_options() -> Vec<String> {
         // Violates DRY principle, but works for now.
         // Maybe make this better some other time.
-        vec![
-            "bytecode".to_string()
-        ]
+        vec!["bytecode".to_string()]
     }
 }
 impl FromStr for WasmPackage {
     fn from_str(name: String, loc: Option<Location>) -> Self {
         match name.as_str() {
             "bytecode" => Self::bytecode(loc),
-            _ => panic!("unsupported WasmPackage: {name}")
+            _ => panic!("unsupported WasmPackage: {name}"),
         }
     }
 }
 impl WasmPackage {
-
     // ======================
     // ---- Constructors ----
     // ======================
@@ -46,28 +48,29 @@ impl WasmPackage {
             kind: WasmPackageKind::Bytecode,
             info: PackageInfo {
                 docs: "This package within the wasm provider contains enables the \
-                    instrumentation of WebAssembly bytecode instructions.".to_string(),
+                    instrumentation of WebAssembly bytecode instructions."
+                    .to_string(),
                 fns: vec![],
                 globals: HashMap::from([(
                     "wasm_bytecode_loc".to_string(),
                     ProvidedGlobal::new(
                         "wasm_bytecode_loc".to_string(),
-                        "A unique identifier tied to the probe's location in the Wasm bytecode.".to_string(),
-                        DataType::I32
-                    )
+                        "A unique identifier tied to the probe's location in the Wasm bytecode."
+                            .to_string(),
+                        DataType::I32,
+                    ),
                 )]),
                 loc,
-                events: HashMap::new()
-            }
+                events: HashMap::new(),
+            },
         }
     }
 }
 impl Package for WasmPackage {
-    
     // ==========================
     // ---- Instance Methods ----
     // ==========================
-    
+
     fn name(&self) -> String {
         self.kind.name()
     }
@@ -93,23 +96,46 @@ impl Package for WasmPackage {
     }
 
     fn events_mut(&mut self) -> Box<dyn Iterator<Item = &mut dyn Event> + '_> {
-        Box::new(self.info.events.values_mut().map(|e| e.as_mut() as &mut dyn Event))
+        Box::new(
+            self.info
+                .events
+                .values_mut()
+                .map(|e| e.as_mut() as &mut dyn Event),
+        )
     }
 
-    fn print_event_docs(&self, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer) {
+    fn print_event_docs(
+        &self,
+        print_globals: bool,
+        print_functions: bool,
+        tabs: &mut usize,
+        buffer: &mut Buffer,
+    ) {
         for (.., event) in self.info.events.iter() {
-            crate::parser::rules::print_event_docs(event, print_globals, print_functions, tabs, buffer);
+            crate::parser::rules::print_event_docs(
+                event,
+                print_globals,
+                print_functions,
+                tabs,
+                buffer,
+            );
         }
     }
 
-    fn print_mode_docs(&self, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer) {
+    fn print_mode_docs(
+        &self,
+        print_globals: bool,
+        print_functions: bool,
+        tabs: &mut usize,
+        buffer: &mut Buffer,
+    ) {
         for (.., event) in self.info.events.iter() {
             event.print_mode_docs(print_globals, print_functions, tabs, buffer);
         }
     }
 
     fn get_provided_fns(&self) -> &Vec<ProvidedFunction> {
-       &self.info.fns
+        &self.info.fns
     }
 
     fn get_provided_fns_mut(&mut self) -> &mut Vec<ProvidedFunction> {
@@ -120,13 +146,24 @@ impl Package for WasmPackage {
         &self.info.globals
     }
 
-    fn assign_matching_events(&mut self, probe_spec: &ProbeSpec, loc: Option<Location>,
-                              predicate: Option<Expr>,
-                              body: Option<Vec<Statement>>) -> (bool, bool) {
+    fn assign_matching_events(
+        &mut self,
+        probe_spec: &ProbeSpec,
+        loc: Option<Location>,
+        predicate: Option<Expr>,
+        body: Option<Vec<Statement>>,
+    ) -> (bool, bool) {
         match self {
-            Self {kind: WasmPackageKind::Bytecode, ..} => {
-                event_factory::<BytecodeEvent>(&mut self.info.events, probe_spec, loc, predicate, body)
-            },
+            Self {
+                kind: WasmPackageKind::Bytecode,
+                ..
+            } => event_factory::<BytecodeEvent>(
+                &mut self.info.events,
+                probe_spec,
+                loc,
+                predicate,
+                body,
+            ),
         }
     }
 }
@@ -179,7 +216,7 @@ pub enum BytecodeEventKind {
     LoadSimd,
     TableInit,
     ElemDrop,
-    TableCopy
+    TableCopy,
 }
 impl BytecodeEventKind {
     fn name(&self) -> String {
@@ -231,14 +268,14 @@ impl BytecodeEventKind {
             BytecodeEventKind::LoadSimd => "load_simd".to_string(),
             BytecodeEventKind::TableInit => "table_init".to_string(),
             BytecodeEventKind::ElemDrop => "elem_drop".to_string(),
-            BytecodeEventKind::TableCopy => "table_copy".to_string()
+            BytecodeEventKind::TableCopy => "table_copy".to_string(),
         }
     }
 }
 
 pub struct BytecodeEvent {
     info: EventInfo,
-    kind: BytecodeEventKind
+    kind: BytecodeEventKind,
 }
 impl NameOptions for BytecodeEvent {
     fn get_name_options() -> Vec<String> {
@@ -292,7 +329,7 @@ impl NameOptions for BytecodeEvent {
             "load_simd".to_string(),
             "table_init".to_string(),
             "elem_drop".to_string(),
-            "table_copy".to_string()
+            "table_copy".to_string(),
         ]
     }
 }
@@ -347,7 +384,7 @@ impl FromStr for BytecodeEvent {
             "table_init" => Self::table_init(loc),
             "elem_drop" => Self::elem_drop(loc),
             "table_copy" => Self::table_copy(loc),
-            _ => panic!("unsupported BytecodeEvent: {name}")
+            _ => panic!("unsupported BytecodeEvent: {name}"),
         }
     }
 }
@@ -355,7 +392,7 @@ impl BytecodeEvent {
     // ======================
     // ---- Constructors ----
     // ======================
-    
+
     fn block(loc: Option<Location>) -> Self {
         Self {
             kind: BytecodeEventKind::Block,
@@ -657,12 +694,14 @@ impl BytecodeEvent {
         Self {
             kind: BytecodeEventKind::Const,
             info: EventInfo {
-                docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Const".to_string(),
+                docs:
+                    "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Const"
+                        .to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
-                probe_map: HashMap::new()
-            }
+                probe_map: HashMap::new(),
+            },
         }
     }
     fn binop(loc: Option<Location>) -> Self {
@@ -695,12 +734,13 @@ impl BytecodeEvent {
                     The types of binary operations available to instrument depend on the operands \
                     of the respective instruction. \
                     A list of such operations is available here: \
-                    https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric".to_string(),
+                    https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric"
+                    .to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
-                probe_map: HashMap::new()
-            }
+                probe_map: HashMap::new(),
+            },
         }
     }
     fn unop(loc: Option<Location>) -> Self {
@@ -733,12 +773,13 @@ impl BytecodeEvent {
                     The types of unary operations available to instrument depend on the operands \
                     of the respective instruction. \
                     A list of such operations is available here: \
-                    https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric".to_string(),
+                    https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric"
+                    .to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
-                probe_map: HashMap::new()
-            }
+                probe_map: HashMap::new(),
+            },
         }
     }
     fn select(loc: Option<Location>) -> Self {
@@ -771,12 +812,14 @@ impl BytecodeEvent {
         Self {
             kind: BytecodeEventKind::Br,
             info: EventInfo {
-                docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br".to_string(),
+                docs:
+                    "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
+                        .to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
-                probe_map: HashMap::new()
-            }
+                probe_map: HashMap::new(),
+            },
         }
     }
     fn br_if(loc: Option<Location>) -> Self {
@@ -814,12 +857,14 @@ impl BytecodeEvent {
         Self {
             kind: BytecodeEventKind::BrTable,
             info: EventInfo {
-                docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br".to_string(),
+                docs:
+                    "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
+                        .to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
-                probe_map: HashMap::new()
-            }
+                probe_map: HashMap::new(),
+            },
         }
     }
     fn drop(loc: Option<Location>) -> Self {
@@ -869,12 +914,13 @@ impl BytecodeEvent {
         Self {
             kind: BytecodeEventKind::MemorySize,
             info: EventInfo {
-                docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Size".to_string(),
+                docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Size"
+                    .to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
-                probe_map: HashMap::new()
-            }
+                probe_map: HashMap::new(),
+            },
         }
     }
     fn memory_grow(loc: Option<Location>) -> Self {
@@ -905,12 +951,13 @@ impl BytecodeEvent {
         Self {
             kind: BytecodeEventKind::MemoryGrow,
             info: EventInfo {
-                docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Grow".to_string(),
+                docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Grow"
+                    .to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
-                probe_map: HashMap::new()
-            }
+                probe_map: HashMap::new(),
+            },
         }
     }
     fn memory_init(loc: Option<Location>) -> Self {
@@ -957,8 +1004,8 @@ impl BytecodeEvent {
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
-                probe_map: HashMap::new()
-            }
+                probe_map: HashMap::new(),
+            },
         }
     }
     fn data_drop(loc: Option<Location>) -> Self {
@@ -987,8 +1034,8 @@ impl BytecodeEvent {
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
-                probe_map: HashMap::new()
-            }
+                probe_map: HashMap::new(),
+            },
         }
     }
     fn memory_copy(loc: Option<Location>) -> Self {
@@ -1036,12 +1083,13 @@ impl BytecodeEvent {
         Self {
             kind: BytecodeEventKind::MemoryCopy,
             info: EventInfo {
-                docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Copy".to_string(),
+                docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Copy"
+                    .to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
-                probe_map: HashMap::new()
-            }
+                probe_map: HashMap::new(),
+            },
         }
     }
     fn memory_fill(loc: Option<Location>) -> Self {
@@ -1054,12 +1102,13 @@ impl BytecodeEvent {
         Self {
             kind: BytecodeEventKind::MemoryFill,
             info: EventInfo {
-                docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Fill".to_string(),
+                docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Fill"
+                    .to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
-                probe_map: HashMap::new()
-            }
+                probe_map: HashMap::new(),
+            },
         }
     }
     fn load(loc: Option<Location>) -> Self {
@@ -1136,24 +1185,26 @@ impl BytecodeEvent {
         Self {
             kind: BytecodeEventKind::Load,
             info: EventInfo {
-                docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load".to_string(),
+                docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+                    .to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
-                probe_map: HashMap::new()
-            }
+                probe_map: HashMap::new(),
+            },
         }
     }
     fn store(loc: Option<Location>) -> Self {
         Self {
             kind: BytecodeEventKind::Store,
             info: EventInfo {
-                docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store".to_string(),
+                docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
+                    .to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
-                probe_map: HashMap::new()
-            }
+                probe_map: HashMap::new(),
+            },
         }
     }
     fn atomic_rmw(loc: Option<Location>) -> Self {
@@ -1224,8 +1275,8 @@ impl BytecodeEvent {
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
-                probe_map: HashMap::new()
-            }
+                probe_map: HashMap::new(),
+            },
         }
     }
     fn table_set(loc: Option<Location>) -> Self {
@@ -1236,8 +1287,8 @@ impl BytecodeEvent {
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
-                probe_map: HashMap::new()
-            }
+                probe_map: HashMap::new(),
+            },
         }
     }
     fn table_grow(loc: Option<Location>) -> Self {
@@ -1248,8 +1299,8 @@ impl BytecodeEvent {
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
-                probe_map: HashMap::new()
-            }
+                probe_map: HashMap::new(),
+            },
         }
     }
     fn table_size(loc: Option<Location>) -> Self {
@@ -1260,8 +1311,8 @@ impl BytecodeEvent {
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
-                probe_map: HashMap::new()
-            }
+                probe_map: HashMap::new(),
+            },
         }
     }
     fn table_fill(loc: Option<Location>) -> Self {
@@ -1272,8 +1323,8 @@ impl BytecodeEvent {
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
-                probe_map: HashMap::new()
-            }
+                probe_map: HashMap::new(),
+            },
         }
     }
     fn ref_null(loc: Option<Location>) -> Self {
@@ -1284,8 +1335,8 @@ impl BytecodeEvent {
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
-                probe_map: HashMap::new()
-            }
+                probe_map: HashMap::new(),
+            },
         }
     }
     fn ref_is_null(loc: Option<Location>) -> Self {
@@ -1296,8 +1347,8 @@ impl BytecodeEvent {
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
-                probe_map: HashMap::new()
-            }
+                probe_map: HashMap::new(),
+            },
         }
     }
     fn ref_func(loc: Option<Location>) -> Self {
@@ -1308,8 +1359,8 @@ impl BytecodeEvent {
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
-                probe_map: HashMap::new()
-            }
+                probe_map: HashMap::new(),
+            },
         }
     }
     fn v128_bitselect(loc: Option<Location>) -> Self {
@@ -1320,8 +1371,8 @@ impl BytecodeEvent {
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
-                probe_map: HashMap::new()
-            }
+                probe_map: HashMap::new(),
+            },
         }
     }
     fn i8x16_swizzle(loc: Option<Location>) -> Self {
@@ -1332,8 +1383,8 @@ impl BytecodeEvent {
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
-                probe_map: HashMap::new()
-            }
+                probe_map: HashMap::new(),
+            },
         }
     }
     fn i8x16_shuffle(loc: Option<Location>) -> Self {
@@ -1344,8 +1395,8 @@ impl BytecodeEvent {
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
-                probe_map: HashMap::new()
-            }
+                probe_map: HashMap::new(),
+            },
         }
     }
     fn load_simd(loc: Option<Location>) -> Self {
@@ -1356,8 +1407,8 @@ impl BytecodeEvent {
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
-                probe_map: HashMap::new()
-            }
+                probe_map: HashMap::new(),
+            },
         }
     }
     fn table_init(loc: Option<Location>) -> Self {
@@ -1368,8 +1419,8 @@ impl BytecodeEvent {
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
-                probe_map: HashMap::new()
-            }
+                probe_map: HashMap::new(),
+            },
         }
     }
     fn elem_drop(loc: Option<Location>) -> Self {
@@ -1380,8 +1431,8 @@ impl BytecodeEvent {
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
-                probe_map: HashMap::new()
-            }
+                probe_map: HashMap::new(),
+            },
         }
     }
     fn table_copy(loc: Option<Location>) -> Self {
@@ -1392,8 +1443,8 @@ impl BytecodeEvent {
                 fns: vec![],
                 globals: HashMap::new(),
                 loc,
-                probe_map: HashMap::new()
-            }
+                probe_map: HashMap::new(),
+            },
         }
     }
 }
@@ -1418,7 +1469,13 @@ impl Event for BytecodeEvent {
         &mut self.info.probe_map
     }
 
-    fn print_mode_docs(&self, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer) {
+    fn print_mode_docs(
+        &self,
+        print_globals: bool,
+        print_functions: bool,
+        tabs: &mut usize,
+        buffer: &mut Buffer,
+    ) {
         for (.., probes) in self.info.probe_map.iter() {
             if let Some(probe) = probes.iter().next() {
                 // only print out the docs for some probe type one time!
@@ -1439,15 +1496,25 @@ impl Event for BytecodeEvent {
         &self.info.globals
     }
 
-    fn assign_matching_modes(&mut self, probe_spec: &ProbeSpec, loc: Option<Location>,  predicate: Option<Expr>,
-                             body: Option<Vec<Statement>>) -> bool {
+    fn assign_matching_modes(
+        &mut self,
+        probe_spec: &ProbeSpec,
+        loc: Option<Location>,
+        predicate: Option<Expr>,
+        body: Option<Vec<Statement>>,
+    ) -> bool {
         let mut matched_modes = false;
         let probes = self.probes_mut();
         let modes: Vec<Box<WhammMode>> = mode_factory(probe_spec, loc.clone());
         for mode in modes {
             matched_modes = true;
             let modes = probes.entry(mode.name()).or_default();
-            modes.push(Box::new(WhammProbe::new(*mode, loc.clone(), predicate.clone(), body.clone())));
+            modes.push(Box::new(WhammProbe::new(
+                *mode,
+                loc.clone(),
+                predicate.clone(),
+                body.clone(),
+            )));
         }
         matched_modes
     }
