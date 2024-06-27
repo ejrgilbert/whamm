@@ -4,9 +4,9 @@ use cli::{Cmd, WhammCli};
 
 use crate::behavior::builder_visitor::*;
 use crate::common::error::ErrorGen;
-// use crate::generator::emitters::{Emitter, WasmRewritingEmitter};
-// use crate::generator::init_generator::InitGenerator;
-// use crate::generator::instr_generator::InstrGenerator;
+use crate::generator::emitters::{Emitter, WasmRewritingEmitter};
+use crate::generator::init_generator::InitGenerator;
+use crate::generator::instr_generator::InstrGenerator;
 use crate::parser::whamm_parser::*;
 
 pub mod behavior;
@@ -117,45 +117,45 @@ fn run_instr(
     let _config = walrus::ModuleConfig::new();
     let app_wasm = Module::from_file(app_wasm_path).unwrap();
 
-    // // Configure the emitter based on target instrumentation code format
-    // let mut emitter = if emit_virgil {
-    //     unimplemented!();
-    // } else {
-    //     WasmRewritingEmitter::new(app_wasm, symbol_table)
-    // };
-    // 
-    // // Phase 0 of instrumentation (emit globals and provided fns)
-    // let mut init = InitGenerator {
-    //     emitter: Box::new(&mut emitter),
-    //     context_name: "".to_string(),
-    //     err: &mut err,
-    // };
-    // init.run(&mut whamm);
-    // // If there were any errors encountered, report and exit!
-    // err.check_has_errors();
-    // 
-    // // Phase 1 of instrumentation (actually emits the instrumentation code)
-    // // This structure is necessary since we need to have the fns/globals injected (a single time)
-    // // and ready to use in every body/predicate.
-    // let mut instr = InstrGenerator {
-    //     tree: &behavior_tree,
-    //     emitter: Box::new(&mut emitter),
-    //     ast: simple_ast,
-    //     err: &mut err,
-    //     context_name: "".to_string(),
-    //     curr_provider_name: "".to_string(),
-    //     curr_package_name: "".to_string(),
-    //     curr_event_name: "".to_string(),
-    //     curr_probe_mode: "".to_string(),
-    //     curr_probe: None,
-    // };
-    // instr.run(&behavior_tree);
-    // // If there were any errors encountered, report and exit!
-    // err.check_has_errors();
-    // 
-    // if let Err(e) = emitter.dump_to_file(output_wasm_path) {
-    //     err.add_error(*e)
-    // }
+    // Configure the emitter based on target instrumentation code format
+    let mut emitter = if emit_virgil {
+        unimplemented!();
+    } else {
+        WasmRewritingEmitter::new(app_wasm, symbol_table)
+    };
+    
+    // Phase 0 of instrumentation (emit globals and provided fns)
+    let mut init = InitGenerator {
+        emitter: Box::new(&mut emitter),
+        context_name: "".to_string(),
+        err: &mut err,
+    };
+    init.run(&mut whamm);
+    // If there were any errors encountered, report and exit!
+    err.check_has_errors();
+    
+    // Phase 1 of instrumentation (actually emits the instrumentation code)
+    // This structure is necessary since we need to have the fns/globals injected (a single time)
+    // and ready to use in every body/predicate.
+    let mut instr = InstrGenerator {
+        tree: &behavior_tree,
+        emitter: Box::new(&mut emitter),
+        ast: simple_ast,
+        err: &mut err,
+        context_name: "".to_string(),
+        curr_provider_name: "".to_string(),
+        curr_package_name: "".to_string(),
+        curr_event_name: "".to_string(),
+        curr_probe_mode: "".to_string(),
+        curr_probe: None,
+    };
+    instr.run(&behavior_tree);
+    // If there were any errors encountered, report and exit!
+    err.check_has_errors();
+    
+    if let Err(e) = emitter.dump_to_file(output_wasm_path) {
+        err.add_error(*e)
+    }
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
 }
