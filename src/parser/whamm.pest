@@ -3,7 +3,7 @@
 // ==============================
 
 // supports top-level global declarations/initial assignments and probe definitions
-script = { SOI ~ (statement | fn_def)* ~ probe_def ~ (fn_def | probe_def)* ~ EOI }
+script = { SOI ~ (statement | fn_def)* ~ probe_def ~ ( statement | fn_def | probe_def )* ~ EOI }
  
 // TODO -- support comma separated list of specs: https://docs.oracle.com/cd/E23824_01/html/E22973/glghi.html#scrolltoc
 probe_def = { PROBE_SPEC ~ PUSH(predicate?) ~ "{" ~ statement* ~ "}" }
@@ -62,7 +62,8 @@ TYPE = _{ TY_I32 | TY_BOOL | TY_STRING | TY_TUPLE | TY_MAP }
 // ====================
 // ---- Statements ----
 // ====================
-    //has to be "_stmt" because of rust rules
+
+//has to be "_stmt" because of rust rules
 if_stmt = { "if" ~ "(" ~ expr ~ ")" ~ block ~ (else_stmt | elif) ? }
 elif = { "elif" ~ "(" ~ expr ~ ")" ~ block ~ (else_stmt | elif) ? }
 else_stmt = { "else" ~  block }

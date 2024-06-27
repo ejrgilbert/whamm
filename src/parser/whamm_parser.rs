@@ -506,7 +506,7 @@ fn alt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
         _ => {
             err.parse_error(
                 true,
-                Some("Error parsing if/else - alteranative contained something other than else or elif".to_string()),
+                Some("Error parsing if/else - alternative contained something other than else or elif".to_string()),
                 Some(LineColLocation::from(pair.as_span())),
                 vec![Rule::block],
                 vec![pair.as_rule()],
@@ -846,7 +846,6 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
             };
         }
         Rule::if_stmt => {
-            //TODO test this
             let mut output = vec![];
             trace!("entering the if stmt");
             let if_stmt_line_col: LineColLocation = LineColLocation::from(pair.as_span());

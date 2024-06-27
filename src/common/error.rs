@@ -73,7 +73,7 @@ impl ErrorGen {
             return;
         }
         self.report();
-        panic!("{context}: Reached a fatal statement. Exiting...");
+        panic!("{context}: Reached a fatal error or warning. Exiting...");
     }
 
     pub fn check_has_errors(&mut self) {
@@ -182,7 +182,7 @@ impl ErrorGen {
         let err_loc = loc.map(|err_line_col| CodeLocation {
             is_err: true,
             message: Some(format!(
-                "`{}` is an identifier used by compiler. Neither overloading nor overriding is  supported",
+                "`{}` is an identifier used by compiler. Neither overloading nor overriding is supported",
                 duplicated_id
             )),
             line_col: err_line_col,

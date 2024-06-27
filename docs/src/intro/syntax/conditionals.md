@@ -3,7 +3,7 @@ Conditional statements are useful for controlling the way a program executes
 
 ## Syntax ## 
 `whamm!` supports 3 different signifiers for conditional statements:
-All if/else blocks must begin with and if statement, which is then followed by any number of "elif" statments and either 0 or 1 "else" statment. Finally, the whole chain must be closed with a ";". 
+All `if`/`else` blocks must begin with an `if` statement, which is then followed by any number of `elif` statments and either 0 or 1 `else` statments. Finally, the whole chain must be closed with a `;`. 
 
 ### Formal Syntax ### 
 "if" ~ "(" ~ expr ~ ")" ~ "{" ~ statement* ~ "}" ~ (else | elif) ? ~ ";"
@@ -30,7 +30,7 @@ if (a == 4){
 }; 
 ```
 ```
-//This is an example in a function
+//This is an example in a function that returns a bool
 my_fn (i32 param) -> bool {
     return (param/10 == 0);    
 }

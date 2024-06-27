@@ -16,7 +16,7 @@ const UNEXPECTED_ERR_MSG: &str = "SymbolTableBuilder: Looks like you've found a 
 pub struct SymbolTableBuilder<'a> {
     pub table: SymbolTable,
     pub err: &'a mut ErrorGen,
-    pub comp_def: bool,
+    pub is_compiler_defined: bool,
     pub curr_whamm: Option<usize>,  // indexes into this::table::records
     pub curr_script: Option<usize>, // indexes into this::table::records
     pub curr_provider: Option<usize>, // indexes into this::table::records
@@ -345,7 +345,7 @@ impl SymbolTableBuilder<'_> {
         // create record
         let fn_rec = Record::Fn {
             name: f.name.clone(),
-            is_comp_provided: self.comp_def,
+            is_comp_provided: self.is_compiler_defined,
             params: vec![],
             ret_ty: f.return_ty.clone().unwrap(),
             addr: None,

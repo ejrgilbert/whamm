@@ -7,10 +7,10 @@ Some functions will be automatically defined by the compiler based on the provid
 ## Function Definitions ## 
 Before being able to call a function, you must define it. We allow functions to be declared anywhere in a script that is not nested within another function, if/else block, or probe.
 
-Formal Syntax: ID ~ "(" ~ (( type ~ ID ) ~ ("," ~ type ~ ID )*) ? ~ ")" ~ ("->" ~ type) ? ~ block 
+Formal Syntax: `ID ~ "(" ~ (( type ~ ID ) ~ ("," ~ type ~ ID )*) ? ~ ")" ~ ("->" ~ type) ? ~ block` 
 
-If there is no declared return type, denoted by "->" followed by a type before the block, the default return type is "()" -- this is effectively "void" or "empty tuple"
-You need a return statement for all possible flows through a function if it has a non-void return type
+If there is no declared return type, denoted by "->" followed by a `type` before the block, the default return type is `()` -- this is effectively "void" or "empty tuple"
+It is required to have a `return` statement for all possible flows through a function if it has a non-void return type and to return a value whose type must match the return type of the function.
 
 Examples of Function Definitions:
 ```
@@ -44,7 +44,20 @@ larger_than_5(i32 num) -> bool {
     return num > 5;
 }
 ```
-
+```
+//Here is an example of functions using if/else logic and function calls (see below)
+i32 my_var = 5;
+my_function(bool param) -> i32 {
+    if(param){
+        my_var++;
+        return 0;
+    }else{
+        my_var--;
+        return my_var;
+    }
+    //as all possible flows through the function have a return statement, all later code will be unreachable and does not require a return statement.
+}
+```
 ## Function Calls ##
 After a function is declared, either via the compiler or inside the script, they can be used within other functions and within probes. When called, functions execute the code specified in their definition and return a value with type matching the type of that function
 
