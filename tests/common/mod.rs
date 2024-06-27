@@ -98,7 +98,7 @@ fn process_scripts(
             path.into_os_string().into_string().unwrap(),
             script_str.clone(),
             ast,
-            symbol_table
+            symbol_table,
         ));
     }
 
@@ -118,9 +118,7 @@ pub fn setup_fault_injection(
     process_scripts(scripts, err)
 }
 
-pub fn setup_wizard_monitors(
-    err: &mut ErrorGen,
-) -> Vec<(String, String, Whamm, SymbolTable)> {
+pub fn setup_wizard_monitors(err: &mut ErrorGen) -> Vec<(String, String, Whamm, SymbolTable)> {
     setup_logger();
     let scripts = get_test_scripts("wizard_monitors");
     if scripts.is_empty() {
@@ -130,9 +128,7 @@ pub fn setup_wizard_monitors(
     process_scripts(scripts, err)
 }
 
-pub fn setup_replay(
-    err: &mut ErrorGen,
-) -> Vec<(String, String, Whamm, SymbolTable)> {
+pub fn setup_replay(err: &mut ErrorGen) -> Vec<(String, String, Whamm, SymbolTable)> {
     setup_logger();
     let scripts = get_test_scripts("replay");
     if scripts.is_empty() {
