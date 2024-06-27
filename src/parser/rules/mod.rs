@@ -171,7 +171,9 @@ pub fn print_provider_docs<P: Provider>(provider: &P, print_globals: bool, print
 
 pub trait Package {
     fn name(&self) -> String;
+    fn loc(&self) -> &Option<Location>;
     fn docs(&self) -> &String;
+    fn has_events(&self) -> bool;
     fn len_events(&self) -> usize;
     fn events(&self) -> Box<dyn Iterator<Item = &dyn Event> + '_>;
     fn events_mut(&mut self) -> Box<dyn Iterator<Item = &mut dyn Event> + '_>;
@@ -283,6 +285,7 @@ pub trait Probe {
 }
 pub trait Event {
     fn name(&self) -> String;
+    fn loc(&self) -> &Option<Location>;
     fn docs(&self) -> &String;
     fn probes(&self) -> &HashMap<String, Vec<Box<dyn Probe>>>;
     fn probes_mut(&mut self) -> &mut HashMap<String, Vec<Box<dyn Probe>>>;

@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 use termcolor::Buffer;
-use crate::parser::rules::{Event, event_factory, EventInfo, FromStr, Mode, mode_factory, ModeInfo, NameOptions, Package, PackageInfo, print_mode_docs, Probe, WhammProbe};
-use crate::parser::rules::wasm::{BytecodeEvent, WasmPackageKind};
-use crate::parser::types::{DataType, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal, Statement};
+use crate::parser::rules::{Event, event_factory, EventInfo, FromStr, Mode, mode_factory, ModeInfo, NameOptions, Package, PackageInfo, print_mode_docs, Probe};
+use crate::parser::types::{Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal, Statement};
 
 pub enum CorePackageKind {
     Default
@@ -60,8 +59,16 @@ impl Package for CorePackage {
         self.kind.name()
     }
 
+    fn loc(&self) -> &Option<Location> {
+        &self.info.loc
+    }
+
     fn docs(&self) -> &String {
         &self.info.docs
+    }
+
+    fn has_events(&self) -> bool {
+        !self.info.events.is_empty()
     }
 
     fn len_events(&self) -> usize {
@@ -166,6 +173,10 @@ impl CoreEvent {
 impl Event for CoreEvent {
     fn name(&self) -> String {
         self.kind.name()
+    }
+
+    fn loc(&self) -> &Option<Location> {
+        &self.info.loc
     }
 
     fn docs(&self) -> &String {
