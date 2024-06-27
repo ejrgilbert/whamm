@@ -32,15 +32,13 @@ fn instrument_dfinity_with_fault_injection() {
     let processed_scripts = common::setup_fault_injection("dfinity", &mut err);
     assert!(!processed_scripts.is_empty());
     err.fatal_report("Integration Test");
-    
-    for (script_path, script_text, whamm, symbol_table) in
-        processed_scripts
-    {
+
+    for (script_path, script_text, whamm, symbol_table) in processed_scripts {
         // Build the behavior tree from the AST
         let mut simple_ast = SimpleAST::new();
         let mut behavior = build_behavior_tree(&whamm, &mut simple_ast, &mut err);
         behavior.reset();
-        
+
         let app_wasm = get_wasm_module();
         let mut err = ErrorGen::new(script_path.clone(), script_text, 0);
         let mut emitter = WasmRewritingEmitter::new(app_wasm, symbol_table);
@@ -52,7 +50,7 @@ fn instrument_dfinity_with_fault_injection() {
         };
         assert!(init.run(&whamm));
         err.fatal_report("Integration Test");
-        
+
         // Phase 1 of instrumentation (actually emits the instrumentation code)
         // This structure is necessary since we need to have the fns/globals injected (a single time)
         // and ready to use in every body/predicate.
@@ -71,23 +69,23 @@ fn instrument_dfinity_with_fault_injection() {
         // TODO add assertions here once I have error logic in place to check that it worked!
         instr.run(&behavior);
         err.fatal_report("Integration Test");
-        
+
         if !Path::new(OUT_BASE_DIR).exists() {
             if let Err(err) = fs::create_dir(OUT_BASE_DIR) {
                 error!("{}", err.to_string());
                 panic!("Could not create base output path.");
             }
         }
-        
+
         let out_wasm_path = format!("{OUT_BASE_DIR}/{OUT_WASM_NAME}");
         if let Err(e) = emitter.dump_to_file(out_wasm_path.clone()) {
             err.add_error(*e)
         }
         err.fatal_report("Integration Test");
-        
+
         let mut wasm2wat = Command::new("wasm2wat");
         wasm2wat.stdout(Stdio::null()).arg(out_wasm_path);
-        
+
         // wasm2wat verification check
         match wasm2wat.status() {
             Ok(code) => {
