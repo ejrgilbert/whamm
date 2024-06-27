@@ -2,7 +2,7 @@ extern crate core;
 
 use cli::{Cmd, WhammCli};
 
-// use crate::behavior::builder_visitor::*;
+use crate::behavior::builder_visitor::*;
 use crate::common::error::ErrorGen;
 // use crate::generator::emitters::{Emitter, WasmRewritingEmitter};
 // use crate::generator::init_generator::InitGenerator;
@@ -12,7 +12,7 @@ use crate::parser::whamm_parser::*;
 pub mod behavior;
 mod cli;
 pub mod common;
-// pub mod generator;
+pub mod generator;
 pub mod parser;
 pub mod verifier;
 // pub mod emitter;
@@ -26,8 +26,8 @@ use std::path::PathBuf;
 use std::process::exit;
 use walrus::Module;
 
-// use crate::behavior::tree::BehaviorTree;
-// use crate::behavior::visualize::visualization_to_file;
+use crate::behavior::tree::BehaviorTree;
+use crate::behavior::visualize::visualization_to_file;
 use crate::parser::types::Whamm;
 use crate::verifier::types::SymbolTable;
 use crate::verifier::verifier::{build_symbol_table, type_check};
@@ -108,14 +108,14 @@ fn run_instr(
     // Process the script
     let mut whamm = get_script_ast(&script_path, &mut err);
     let symbol_table = get_symbol_table(&mut whamm, run_verifier, &mut err);
-    // let (behavior_tree, simple_ast) = build_behavior(&whamm, &mut err);
-    // 
-    // // If there were any errors encountered, report and exit!
-    // err.check_has_errors();
-    // 
-    // // Read app Wasm into Walrus module
-    // let _config = walrus::ModuleConfig::new();
-    // let app_wasm = Module::from_file(app_wasm_path).unwrap();
+    let (behavior_tree, simple_ast) = build_behavior(&whamm, &mut err);
+    
+    // If there were any errors encountered, report and exit!
+    err.check_has_errors();
+    
+    // Read app Wasm into Walrus module
+    let _config = walrus::ModuleConfig::new();
+    let app_wasm = Module::from_file(app_wasm_path).unwrap();
 
     // // Configure the emitter based on target instrumentation code format
     // let mut emitter = if emit_virgil {
@@ -203,27 +203,27 @@ fn run_vis_script(script_path: String, run_verifier: bool, output_path: String) 
     // building the symbol table is necessary since it does some minor manipulations of the AST
     // (adds declared globals to the script AST node)
     let _symbol_table = get_symbol_table(&mut whamm, run_verifier, &mut err);
-    // let (behavior_tree, ..) = build_behavior(&whamm, &mut err);
-    // 
-    // // if there are any errors, should report and exit!
-    // err.check_has_errors();
-    // 
-    // if !PathBuf::from(&output_path).exists() {
-    //     std::fs::create_dir_all(PathBuf::from(&output_path).parent().unwrap()).unwrap();
-    // }
-    // 
-    // let path = match get_pb(&PathBuf::from(output_path.clone())) {
-    //     Ok(pb) => pb,
-    //     Err(_) => exit(1),
-    // };
-    // 
-    // if visualization_to_file(&behavior_tree, path).is_ok() {
-    //     if let Err(err) = opener::open(output_path.clone()) {
-    //         error!("Could not open visualization tree at: {}", output_path);
-    //         error!("{:?}", err)
-    //     }
-    // }
-    // exit(0);
+    let (behavior_tree, ..) = build_behavior(&whamm, &mut err);
+    
+    // if there are any errors, should report and exit!
+    err.check_has_errors();
+    
+    if !PathBuf::from(&output_path).exists() {
+        std::fs::create_dir_all(PathBuf::from(&output_path).parent().unwrap()).unwrap();
+    }
+    
+    let path = match get_pb(&PathBuf::from(output_path.clone())) {
+        Ok(pb) => pb,
+        Err(_) => exit(1),
+    };
+    
+    if visualization_to_file(&behavior_tree, path).is_ok() {
+        if let Err(err) = opener::open(output_path.clone()) {
+            error!("Could not open visualization tree at: {}", output_path);
+            error!("{:?}", err)
+        }
+    }
+    exit(0);
 }
 
 fn get_symbol_table(ast: &mut Whamm, run_verifier: bool, err: &mut ErrorGen) -> SymbolTable {
@@ -263,14 +263,14 @@ fn get_script_ast(script_path: &String, err: &mut ErrorGen) -> Whamm {
     }
 }
 
-// fn build_behavior(whamm: &Whamm, err: &mut ErrorGen) -> (BehaviorTree, SimpleAST) {
-//     // Build the behavior tree from the AST
-//     let (mut behavior, simple_ast) = build_behavior_tree(whamm, err);
-//     err.check_too_many();
-//     behavior.reset();
-// 
-//     (behavior, simple_ast)
-// }
+fn build_behavior(whamm: &Whamm, err: &mut ErrorGen) -> (BehaviorTree, SimpleAST) {
+    // Build the behavior tree from the AST
+    let (mut behavior, simple_ast) = build_behavior_tree(whamm, err);
+    err.check_too_many();
+    behavior.reset();
+
+    (behavior, simple_ast)
+}
 
 pub(crate) fn get_pb(file_pb: &PathBuf) -> Result<PathBuf, String> {
     if file_pb.is_relative() {

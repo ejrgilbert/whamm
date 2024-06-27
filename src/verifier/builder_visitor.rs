@@ -488,7 +488,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
 
         self.add_provider(provider);
         provider.get_provided_fns_mut().iter_mut().for_each(|f| self.visit_fn(&mut f.function));
-        // self.visit_provided_globals(&provider.globals);
+        self.visit_provided_globals(provider.get_provided_globals());
         provider
             .packages_mut()
             .for_each(|package| self.visit_package(package));
@@ -505,7 +505,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
 
         self.add_package(package);
         package.get_provided_fns_mut().iter_mut().for_each(|f| self.visit_fn(&mut f.function));
-        // self.visit_provided_globals(&package.globals);
+        self.visit_provided_globals(package.get_provided_globals());
         package
             .events_mut()
             .for_each(|event| self.visit_event(event));
@@ -522,7 +522,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
 
         self.add_event(event);
         event.get_provided_fns_mut().iter_mut().for_each(|f| self.visit_fn(&mut f.function));
-        // self.visit_provided_globals(&event.globals);
+        self.visit_provided_globals(event.get_provided_globals());
 
         // visit probe_map
         event.probes_mut().iter_mut().for_each(|probes| {
@@ -543,7 +543,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
 
         self.add_probe(probe);
         probe.get_mode_provided_fns_mut().iter_mut().for_each(|f| self.visit_fn(&mut f.function));
-        // self.visit_provided_globals(&probe.globals);
+        self.visit_provided_globals(probe.get_mode_provided_globals());
 
         // Will not visit predicate/body at this stage
 

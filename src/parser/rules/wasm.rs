@@ -76,6 +76,14 @@ impl Package for WasmPackage {
         &self.info.docs
     }
 
+    fn loc(&self) -> &Option<Location> {
+        &self.info.loc
+    }
+
+    fn has_events(&self) -> bool {
+        !self.info.events.is_empty()
+    }
+
     fn len_events(&self) -> usize {
         self.info.events.len()
     }
@@ -1392,6 +1400,10 @@ impl BytecodeEvent {
 impl Event for BytecodeEvent {
     fn name(&self) -> String {
         self.kind.name()
+    }
+
+    fn loc(&self) -> &Option<Location> {
+        &self.info.loc
     }
 
     fn docs(&self) -> &String {
