@@ -1,12 +1,11 @@
 use crate::behavior::tree::{ActionWithChildType, BehaviorTree, DecoratorType};
 
+use crate::parser::rules::{Event, Package, Probe, Provider};
 use crate::parser::types as parser_types;
 use parser_types::{
-    BinOp, DataType, Expr, Fn, Script, Statement, UnOp, Value,
-    Whamm, WhammVisitor,
+    BinOp, DataType, Expr, Fn, Script, Statement, UnOp, Value, Whamm, WhammVisitor,
 };
 use std::collections::HashMap;
-use crate::parser::rules::{Provider, Package, Event, Probe};
 
 use crate::behavior::tree::DecoratorType::{HasAltCall, PredIs};
 use crate::behavior::tree::ParamActionType;
@@ -21,7 +20,7 @@ type SimpleAstProbes<'a> =
 pub struct SimpleAST<'a> {
     pub global_stmts: Vec<Statement>,
     /// This points to probes defined in the `Whamm` AST node!
-    pub probes: SimpleAstProbes<'a>
+    pub probes: SimpleAstProbes<'a>,
 }
 impl Default for SimpleAST<'_> {
     fn default() -> Self {
@@ -32,7 +31,7 @@ impl SimpleAST<'_> {
     pub fn new() -> Self {
         Self {
             global_stmts: vec![],
-            probes: HashMap::new()
+            probes: HashMap::new(),
         }
     }
     pub(crate) fn get_probes_from_ast(
@@ -61,17 +60,16 @@ impl SimpleAST<'_> {
         name: &String,
         idx: &usize,
     ) -> Option<&Box<&dyn Probe>> {
-        self.get_probes_from_ast(
-            curr_provider_name,
-            curr_package_name,
-            curr_event_name,
-            name,
-        )
+        self.get_probes_from_ast(curr_provider_name, curr_package_name, curr_event_name, name)
             .get(*idx)
     }
 }
 
-pub fn build_behavior_tree<'a>(ast: &'a Whamm, simple_ast: &mut SimpleAST<'a>, err: &mut ErrorGen) -> BehaviorTree {
+pub fn build_behavior_tree<'a>(
+    ast: &'a Whamm,
+    simple_ast: &mut SimpleAST<'a>,
+    err: &mut ErrorGen,
+) -> BehaviorTree {
     let mut visitor = BehaviorTreeBuilder {
         tree: BehaviorTree::new(),
         ast: simple_ast,
@@ -109,7 +107,7 @@ impl<'b> BehaviorTreeBuilder<'_, 'b, '_> {
         }
         self.curr_provider_name = provider_name;
     }
-    
+
     fn add_package_to_ast(&mut self, package_name: String) {
         if let Some(provider) = self.ast.probes.get_mut(&self.curr_provider_name) {
             if !provider.contains_key(&package_name) {
@@ -120,7 +118,7 @@ impl<'b> BehaviorTreeBuilder<'_, 'b, '_> {
         }
         self.curr_package_name = package_name;
     }
-    
+
     fn add_event_to_ast(&mut self, event_name: String) {
         if let Some(provider) = self.ast.probes.get_mut(&self.curr_provider_name) {
             if let Some(package) = provider.get_mut(&self.curr_package_name) {
@@ -154,15 +152,12 @@ impl<'b> BehaviorTreeBuilder<'_, 'b, '_> {
     // = BehaviorTree =
     // ================
 
-    fn visit_provided_globals(
-        &mut self,
-        globals: &HashMap<String, ProvidedGlobal>,
-    ) {
+    fn visit_provided_globals(&mut self, globals: &HashMap<String, ProvidedGlobal>) {
         if !globals.is_empty() {
             self.tree.sequence(self.err);
 
             // visit globals
-            for (_name, ProvidedGlobal {global, ..}) in globals.iter() {
+            for (_name, ProvidedGlobal { global, .. }) in globals.iter() {
                 if global.is_comp_provided {
                     if let Expr::VarId { name, .. } = &global.var_name {
                         self.tree
@@ -448,7 +443,7 @@ impl<'b> WhammVisitor<'b, ()> for BehaviorTreeBuilder<'_, 'b, '_> {
         self.add_package_to_ast(package.name());
         package.events().for_each(|event| {
             self.add_event_to_ast(event.name());
-        
+
             // Handle AST separately since we don't visit every probe
             event.probes().iter().for_each(|(_mode, probe_list)| {
                 probe_list

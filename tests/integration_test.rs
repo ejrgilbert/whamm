@@ -36,63 +36,63 @@ fn instrument_dfinity_with_fault_injection() {
     // {
     //     let app_wasm = get_wasm_module();
     //     let mut err = ErrorGen::new(script_path.clone(), script_text, 0);
-        // let mut emitter = WasmRewritingEmitter::new(app_wasm, symbol_table);
-        // // Phase 0 of instrumentation (emit globals and provided fns)
-        // let mut init = InitGenerator {
-        //     emitter: Box::new(&mut emitter),
-        //     context_name: "".to_string(),
-        //     err: &mut err,
-        // };
-        // assert!(init.run(&mut whamm));
-        // err.fatal_report("Integration Test");
-        //
-        // // Phase 1 of instrumentation (actually emits the instrumentation code)
-        // // This structure is necessary since we need to have the fns/globals injected (a single time)
-        // // and ready to use in every body/predicate.
-        // let mut instr = InstrGenerator {
-        //     tree: &behavior,
-        //     emitter: Box::new(&mut emitter),
-        //     ast: simple_ast,
-        //     context_name: "".to_string(),
-        //     curr_provider_name: "".to_string(),
-        //     curr_package_name: "".to_string(),
-        //     curr_event_name: "".to_string(),
-        //     curr_probe_mode: "".to_string(),
-        //     curr_probe: None,
-        //     err: &mut err,
-        // };
-        // // TODO add assertions here once I have error logic in place to check that it worked!
-        // instr.run(&behavior);
-        // err.fatal_report("Integration Test");
-        //
-        // if !Path::new(OUT_BASE_DIR).exists() {
-        //     if let Err(err) = fs::create_dir(OUT_BASE_DIR) {
-        //         error!("{}", err.to_string());
-        //         panic!("Could not create base output path.");
-        //     }
-        // }
-        //
-        // let out_wasm_path = format!("{OUT_BASE_DIR}/{OUT_WASM_NAME}");
-        // if let Err(e) = emitter.dump_to_file(out_wasm_path.clone()) {
-        //     err.add_error(*e)
-        // }
-        // err.fatal_report("Integration Test");
-        //
-        // let mut wasm2wat = Command::new("wasm2wat");
-        // wasm2wat.stdout(Stdio::null()).arg(out_wasm_path);
-        //
-        // // wasm2wat verification check
-        // match wasm2wat.status() {
-        //     Ok(code) => {
-        //         if !code.success() {
-        //             panic!("`wasm2wat` verification check failed!");
-        //         }
-        //     }
-        //     Err(err) => {
-        //         error!("{}", err.to_string());
-        //         panic!("`wasm2wat` verification check failed!");
-        //     }
-        // };
+    // let mut emitter = WasmRewritingEmitter::new(app_wasm, symbol_table);
+    // // Phase 0 of instrumentation (emit globals and provided fns)
+    // let mut init = InitGenerator {
+    //     emitter: Box::new(&mut emitter),
+    //     context_name: "".to_string(),
+    //     err: &mut err,
+    // };
+    // assert!(init.run(&mut whamm));
+    // err.fatal_report("Integration Test");
+    //
+    // // Phase 1 of instrumentation (actually emits the instrumentation code)
+    // // This structure is necessary since we need to have the fns/globals injected (a single time)
+    // // and ready to use in every body/predicate.
+    // let mut instr = InstrGenerator {
+    //     tree: &behavior,
+    //     emitter: Box::new(&mut emitter),
+    //     ast: simple_ast,
+    //     context_name: "".to_string(),
+    //     curr_provider_name: "".to_string(),
+    //     curr_package_name: "".to_string(),
+    //     curr_event_name: "".to_string(),
+    //     curr_probe_mode: "".to_string(),
+    //     curr_probe: None,
+    //     err: &mut err,
+    // };
+    // // TODO add assertions here once I have error logic in place to check that it worked!
+    // instr.run(&behavior);
+    // err.fatal_report("Integration Test");
+    //
+    // if !Path::new(OUT_BASE_DIR).exists() {
+    //     if let Err(err) = fs::create_dir(OUT_BASE_DIR) {
+    //         error!("{}", err.to_string());
+    //         panic!("Could not create base output path.");
+    //     }
+    // }
+    //
+    // let out_wasm_path = format!("{OUT_BASE_DIR}/{OUT_WASM_NAME}");
+    // if let Err(e) = emitter.dump_to_file(out_wasm_path.clone()) {
+    //     err.add_error(*e)
+    // }
+    // err.fatal_report("Integration Test");
+    //
+    // let mut wasm2wat = Command::new("wasm2wat");
+    // wasm2wat.stdout(Stdio::null()).arg(out_wasm_path);
+    //
+    // // wasm2wat verification check
+    // match wasm2wat.status() {
+    //     Ok(code) => {
+    //         if !code.success() {
+    //             panic!("`wasm2wat` verification check failed!");
+    //         }
+    //     }
+    //     Err(err) => {
+    //         error!("{}", err.to_string());
+    //         panic!("`wasm2wat` verification check failed!");
+    //     }
+    // };
     // }
 }
 

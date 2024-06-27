@@ -1,42 +1,44 @@
+use crate::parser::rules::{
+    event_factory, mode_factory, print_mode_docs, Event, EventInfo, FromStr, Mode, ModeInfo,
+    NameOptions, Package, PackageInfo, Probe,
+};
+use crate::parser::types::{
+    Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal, Statement,
+};
 use std::collections::HashMap;
 use termcolor::Buffer;
-use crate::parser::rules::{Event, event_factory, EventInfo, FromStr, Mode, mode_factory, ModeInfo, NameOptions, Package, PackageInfo, print_mode_docs, Probe};
-use crate::parser::types::{Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal, Statement};
 
 pub enum CorePackageKind {
-    Default
+    Default,
 }
 impl CorePackageKind {
     fn name(&self) -> String {
         match self {
-            Self::Default => "".to_string()
+            Self::Default => "".to_string(),
         }
     }
 }
 
 pub struct CorePackage {
     kind: CorePackageKind,
-    info: PackageInfo
+    info: PackageInfo,
 }
 impl NameOptions for CorePackage {
     fn get_name_options() -> Vec<String> {
         // Violates DRY principle, but works for now.
         // Maybe make this better some other time.
-        vec![
-            "default".to_string()
-        ]
+        vec!["default".to_string()]
     }
 }
 impl FromStr for CorePackage {
     fn from_str(name: String, loc: Option<Location>) -> Self {
         match name.as_str() {
             "default" => Self::default(loc),
-            _ => panic!("unsupported CorePackage: {name}")
+            _ => panic!("unsupported CorePackage: {name}"),
         }
     }
 }
 impl CorePackage {
-
     // ======================
     // ---- Constructors ----
     // ======================
@@ -49,8 +51,8 @@ impl CorePackage {
                 fns: vec![],
                 globals: HashMap::new(),
                 loc: None,
-                events: HashMap::new()
-            }
+                events: HashMap::new(),
+            },
         }
     }
 }
@@ -80,17 +82,39 @@ impl Package for CorePackage {
     }
 
     fn events_mut(&mut self) -> Box<dyn Iterator<Item = &mut dyn Event> + '_> {
-        Box::new(self.info.events.values_mut().map(|e| e.as_mut() as &mut dyn Event))
-
+        Box::new(
+            self.info
+                .events
+                .values_mut()
+                .map(|e| e.as_mut() as &mut dyn Event),
+        )
     }
 
-    fn print_event_docs(&self, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer) {
+    fn print_event_docs(
+        &self,
+        print_globals: bool,
+        print_functions: bool,
+        tabs: &mut usize,
+        buffer: &mut Buffer,
+    ) {
         for (.., event) in self.info.events.iter() {
-            crate::parser::rules::print_event_docs(event, print_globals, print_functions, tabs, buffer);
+            crate::parser::rules::print_event_docs(
+                event,
+                print_globals,
+                print_functions,
+                tabs,
+                buffer,
+            );
         }
     }
 
-    fn print_mode_docs(&self, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer) {
+    fn print_mode_docs(
+        &self,
+        print_globals: bool,
+        print_functions: bool,
+        tabs: &mut usize,
+        buffer: &mut Buffer,
+    ) {
         for (.., event) in self.info.events.iter() {
             event.print_mode_docs(print_globals, print_functions, tabs, buffer);
         }
@@ -108,51 +132,55 @@ impl Package for CorePackage {
         &self.info.globals
     }
 
-    fn assign_matching_events(&mut self, probe_spec: &ProbeSpec, loc: Option<Location>,
-                              predicate: Option<Expr>,
-                              body: Option<Vec<Statement>>) -> (bool, bool) {
+    fn assign_matching_events(
+        &mut self,
+        probe_spec: &ProbeSpec,
+        loc: Option<Location>,
+        predicate: Option<Expr>,
+        body: Option<Vec<Statement>>,
+    ) -> (bool, bool) {
         match self {
-            Self {kind: CorePackageKind::Default, ..} => {
+            Self {
+                kind: CorePackageKind::Default,
+                ..
+            } => {
                 event_factory::<CoreEvent>(&mut self.info.events, probe_spec, loc, predicate, body)
-            },
+            }
         }
     }
 }
 
 pub enum CoreEventKind {
-    Default
+    Default,
 }
 impl CoreEventKind {
     fn name(&self) -> String {
         match self {
-            Self::Default => "".to_string()
+            Self::Default => "".to_string(),
         }
     }
 }
 
 pub struct CoreEvent {
     kind: CoreEventKind,
-    info: EventInfo
+    info: EventInfo,
 }
 impl NameOptions for CoreEvent {
     fn get_name_options() -> Vec<String> {
         // Violates DRY principle, but works for now.
         // Maybe make this better some other time.
-        vec![
-            "default".to_string()
-        ]
+        vec!["default".to_string()]
     }
 }
 impl FromStr for CoreEvent {
     fn from_str(name: String, loc: Option<Location>) -> Self {
         match name.as_str() {
             "default" => Self::default(loc),
-            _ => panic!("unsupported CoreEvent: {name}")
+            _ => panic!("unsupported CoreEvent: {name}"),
         }
     }
 }
 impl CoreEvent {
-
     // ======================
     // ---- Constructors ----
     // ======================
@@ -165,8 +193,8 @@ impl CoreEvent {
                 fns: vec![],
                 globals: HashMap::new(),
                 loc: None,
-                probe_map: HashMap::new()
-            }
+                probe_map: HashMap::new(),
+            },
         }
     }
 }
@@ -191,7 +219,13 @@ impl Event for CoreEvent {
         &mut self.info.probe_map
     }
 
-    fn print_mode_docs(&self, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer) {
+    fn print_mode_docs(
+        &self,
+        print_globals: bool,
+        print_functions: bool,
+        tabs: &mut usize,
+        buffer: &mut Buffer,
+    ) {
         for (.., probes) in self.info.probe_map.iter() {
             if let Some(probe) = probes.iter().next() {
                 // only print out the docs for some probe type one time!
@@ -212,16 +246,25 @@ impl Event for CoreEvent {
         &self.info.globals
     }
 
-    fn assign_matching_modes(&mut self, probe_spec: &ProbeSpec, loc: Option<Location>,
-                             predicate: Option<Expr>,
-                             body: Option<Vec<Statement>>) -> bool {
+    fn assign_matching_modes(
+        &mut self,
+        probe_spec: &ProbeSpec,
+        loc: Option<Location>,
+        predicate: Option<Expr>,
+        body: Option<Vec<Statement>>,
+    ) -> bool {
         let mut matched_modes = false;
         let probes = self.probes_mut();
         let modes: Vec<Box<CoreMode>> = mode_factory(probe_spec, loc.clone());
         for mode in modes {
             matched_modes = true;
             let modes = probes.entry(mode.name()).or_default();
-            modes.push(Box::new(CoreProbe::new(*mode, loc.clone(), predicate.clone(), body.clone())));
+            modes.push(Box::new(CoreProbe::new(
+                *mode,
+                loc.clone(),
+                predicate.clone(),
+                body.clone(),
+            )));
         }
         matched_modes
     }
@@ -229,29 +272,26 @@ impl Event for CoreEvent {
 
 pub enum CoreModeKind {
     Begin,
-    End
+    End,
 }
 impl CoreModeKind {
     fn name(&self) -> String {
         match self {
             Self::Begin => "begin".to_string(),
-            Self::End => "end".to_string()
+            Self::End => "end".to_string(),
         }
     }
 }
 
 pub struct CoreMode {
     kind: CoreModeKind,
-    info: ModeInfo
+    info: ModeInfo,
 }
 impl NameOptions for CoreMode {
     fn get_name_options() -> Vec<String> {
         // Violates DRY principle, but works for now.
         // Maybe make this better some other time.
-        vec![
-            "begin".to_string(),
-            "end".to_string()
-        ]
+        vec!["begin".to_string(), "end".to_string()]
     }
 }
 impl FromStr for CoreMode {
@@ -259,12 +299,11 @@ impl FromStr for CoreMode {
         match name.as_str() {
             "begin" => Self::begin(loc),
             "end" => Self::end(loc),
-            _ => panic!("unsupported CoreMode: {name}")
+            _ => panic!("unsupported CoreMode: {name}"),
         }
     }
 }
 impl CoreMode {
-
     // ======================
     // ---- Constructors ----
     // ======================
@@ -276,8 +315,8 @@ impl CoreMode {
                 docs: "Run this logic on application startup.".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
-                loc
-            }
+                loc,
+            },
         }
     }
     fn end(loc: Option<Location>) -> Self {
@@ -287,8 +326,8 @@ impl CoreMode {
                 docs: "Run this logic when the application exits.".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
-                loc
-            }
+                loc,
+            },
         }
     }
 }
@@ -319,7 +358,7 @@ struct CoreProbe {
     pub loc: Option<Location>,
 
     pub predicate: Option<Expr>,
-    pub body: Option<Vec<Statement>>
+    pub body: Option<Vec<Statement>>,
 }
 impl Probe for CoreProbe {
     fn mode_name(&self) -> String {
@@ -339,8 +378,14 @@ impl Probe for CoreProbe {
     fn body_mut(&mut self) -> &mut Option<Vec<Statement>> {
         &mut self.body
     }
-    
-    fn print_mode_docs(&self, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer) {
+
+    fn print_mode_docs(
+        &self,
+        print_globals: bool,
+        print_functions: bool,
+        tabs: &mut usize,
+        buffer: &mut Buffer,
+    ) {
         print_mode_docs(&self.mode, print_globals, print_functions, tabs, buffer);
     }
 
@@ -357,12 +402,17 @@ impl Probe for CoreProbe {
     }
 }
 impl CoreProbe {
-    fn new(mode: CoreMode, loc: Option<Location>, predicate: Option<Expr>, body: Option<Vec<Statement>>) -> Self {
+    fn new(
+        mode: CoreMode,
+        loc: Option<Location>,
+        predicate: Option<Expr>,
+        body: Option<Vec<Statement>>,
+    ) -> Self {
         Self {
             mode,
             loc,
             predicate,
-            body
+            body,
         }
     }
 }

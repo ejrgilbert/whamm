@@ -31,11 +31,7 @@ pub fn print_info(spec: String, print_globals: bool, print_functions: bool, err:
             let mut whamm = Whamm::new();
             let id = whamm.add_script(Script::new());
             let script: &mut Script = whamm.scripts.get_mut(id).unwrap();
-            if let Err(e) = script.print_info(
-                &probe_spec,
-                print_globals,
-                print_functions,
-            ) {
+            if let Err(e) = script.print_info(&probe_spec, print_globals, print_functions) {
                 err.add_error(*e);
             }
         }
@@ -206,11 +202,7 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
 
             // Add probe definition to the script
             let script: &mut Script = whamm.scripts.get_mut(script_count).unwrap();
-            if let Err(e) = script.add_probe(
-                &probe_spec,
-                this_predicate,
-                this_body,
-            ) {
+            if let Err(e) = script.add_probe(&probe_spec, this_predicate, this_body) {
                 err.add_error(*e);
             }
 

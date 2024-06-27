@@ -2,10 +2,10 @@ use pest::error::LineColLocation;
 use std::collections::HashMap;
 use termcolor::{Buffer, ColorChoice, WriteColor};
 
-use crate::parser::rules::{print_provider_docs, provider_factory, Provider, Package, Event, Probe, WhammProvider};
 use crate::common::error::{ErrorGen, WhammError};
-use crate::common::terminal::{
-    green, grey_italics, long_line, magenta, white, yellow,
+use crate::common::terminal::{green, grey_italics, long_line, magenta, white, yellow};
+use crate::parser::rules::{
+    print_provider_docs, provider_factory, Event, Package, Probe, Provider, WhammProvider,
 };
 use pest::pratt_parser::PrattParser;
 use pest_derive::Parser;
@@ -374,7 +374,7 @@ pub(crate) fn print_global_vars(
     if !globals.is_empty() {
         white(true, format!("{}GLOBALS:\n", " ".repeat(*tabs * 4)), buffer);
         *tabs += 1;
-        for (.., ProvidedGlobal{docs, global, ..}) in globals.iter() {
+        for (.., ProvidedGlobal { docs, global, .. }) in globals.iter() {
             white(false, " ".repeat(*tabs * 4).to_string(), buffer);
             global.print(buffer);
 
@@ -399,7 +399,7 @@ pub(crate) fn print_fns(tabs: &mut usize, functions: &[ProvidedFunction], buffer
             buffer,
         );
         *tabs += 1;
-        for ProvidedFunction{ docs, function , .. } in functions.iter() {
+        for ProvidedFunction { docs, function, .. } in functions.iter() {
             green(true, " ".repeat(*tabs * 4).to_string(), buffer);
             function.print(buffer);
             green(true, "\n".to_string(), buffer);
@@ -432,7 +432,7 @@ pub type ProvidedProbes = HashMap<
 
 pub struct Whamm {
     pub provided_probes: ProvidedProbes,
-    pub fns: Vec<ProvidedFunction>, // Comp-provided
+    pub fns: Vec<ProvidedFunction>,               // Comp-provided
     pub globals: HashMap<String, ProvidedGlobal>, // Comp-provided
 
     pub scripts: Vec<Script>,
@@ -475,12 +475,12 @@ impl Whamm {
                 DataType::Str,
             ),
         ];
-        
+
         let strcmp = ProvidedFunction::new(
             "strcmp".to_string(),
             "Compare two wasm strings and return whether they are equivalent.".to_string(),
             strcmp_params,
-            Some(DataType::Boolean)
+            Some(DataType::Boolean),
         );
 
         vec![strcmp]
@@ -542,7 +542,7 @@ impl ProbeSpec {
             self.mode = Some(part);
         }
     }
-    
+
     pub fn print_bold_provider(&self, buffer: &mut Buffer) {
         magenta(
             true,
@@ -559,11 +559,7 @@ impl ProbeSpec {
             }
         }
         white(true, "\n".to_string(), buffer);
-        grey_italics(
-            true,
-            "matches the following rules:\n\n".to_string(),
-            buffer,
-        );
+        grey_italics(true, "matches the following rules:\n\n".to_string(), buffer);
     }
 
     pub fn print_bold_package(&self, buffer: &mut Buffer) {
@@ -601,11 +597,7 @@ impl ProbeSpec {
             ),
             buffer,
         );
-        magenta(
-            true,
-            self.event.as_ref().unwrap().name.to_string(),
-            buffer,
-        );
+        magenta(true, self.event.as_ref().unwrap().name.to_string(), buffer);
         if let Some(mode_patt) = &self.mode {
             white(true, format!(":{}", &mode_patt.name), buffer);
         }
@@ -633,11 +625,7 @@ impl ProbeSpec {
             format!("{}\n", self.mode.as_ref().unwrap().name),
             buffer,
         );
-        grey_italics(
-            true,
-            "matches the following modes:\n\n".to_string(),
-            buffer,
-        );
+        grey_italics(true, "matches the following modes:\n\n".to_string(), buffer);
     }
 }
 
@@ -696,16 +684,23 @@ impl Script {
 
         long_line(&mut buffer);
         white(true, "\n\n".to_string(), &mut buffer);
-        
+
         let mut providers: HashMap<String, Box<dyn Provider>> = HashMap::new();
-        let (matched_providers, matched_packages, matched_events, matched_modes) = provider_factory::<WhammProvider>(&mut providers, probe_spec, None, None, None)?;
+        let (matched_providers, matched_packages, matched_events, matched_modes) =
+            provider_factory::<WhammProvider>(&mut providers, probe_spec, None, None, None)?;
 
         // Print the matched provider information
         if matched_providers {
             probe_spec.print_bold_provider(&mut buffer);
         }
         for (.., provider) in providers.iter() {
-            print_provider_docs(provider, print_globals, print_functions, &mut tabs, &mut buffer);
+            print_provider_docs(
+                provider,
+                print_globals,
+                print_functions,
+                &mut tabs,
+                &mut buffer,
+            );
         }
         long_line(&mut buffer);
         white(true, "\n\n".to_string(), &mut buffer);
@@ -729,7 +724,7 @@ impl Script {
         }
         long_line(&mut buffer);
         white(true, "\n\n".to_string(), &mut buffer);
-        
+
         // Print the matched mode information
         if matched_modes {
             probe_spec.print_bold_mode(&mut buffer);
@@ -760,10 +755,21 @@ impl Script {
         &mut self,
         probe_spec: &ProbeSpec,
         predicate: Option<Expr>,
-        body: Option<Vec<Statement>>
+        body: Option<Vec<Statement>>,
     ) -> Result<(), Box<WhammError>> {
-        let (matched_providers, matched_packages, matched_events, matched_modes): (bool, bool, bool, bool) = provider_factory::<WhammProvider>(&mut self.providers, probe_spec, None, predicate, body)?;
-        
+        let (matched_providers, matched_packages, matched_events, matched_modes): (
+            bool,
+            bool,
+            bool,
+            bool,
+        ) = provider_factory::<WhammProvider>(
+            &mut self.providers,
+            probe_spec,
+            None,
+            predicate,
+            body,
+        )?;
+
         if !matched_providers {
             return if let Some(prov_patt) = &probe_spec.provider {
                 Err(Box::new(ErrorGen::get_parse_error(
@@ -784,9 +790,9 @@ impl Script {
                     )),
                     None,
                 )))
-            }
+            };
         }
-        
+
         if !matched_packages {
             return if let Some(prov_patt) = &probe_spec.package {
                 Err(Box::new(ErrorGen::get_parse_error(
@@ -807,7 +813,7 @@ impl Script {
                     )),
                     None,
                 )))
-            }
+            };
         }
 
         if !matched_events {
@@ -830,7 +836,7 @@ impl Script {
                     )),
                     None,
                 )))
-            }
+            };
         }
 
         if !matched_modes {
@@ -853,19 +859,19 @@ impl Script {
                     )),
                     None,
                 )))
-            }
+            };
         }
-        
+
         // // insert the matched providers into this script instance!
         // for (.., provider) in curr_providers {
         //     if let Some(prov) = self.providers.get(&provider.name()) {
         //         // Add the probe to this provider already in the script instance
         //         // TODO -- also check for package/event/mode availability
-        //         
+        //
         //     } else {
         //         // Add the probe to the new provider
         //         // TODO
-        //         
+        //
         //         // Add the new provider to the script instance
         //         self.providers.insert(provider.name(), provider);
         //     }
@@ -883,7 +889,7 @@ pub struct ProvidedFunctionality {
 pub struct ProvidedGlobal {
     pub name: String,
     pub docs: String,
-    pub global: Global
+    pub global: Global,
 }
 impl ProvidedGlobal {
     pub fn new(name: String, docs: String, ty: DataType) -> Self {
@@ -896,10 +902,10 @@ impl ProvidedGlobal {
                 var_name: Expr::VarId {
                     is_comp_provided: true,
                     name,
-                    loc: None
+                    loc: None,
                 },
-                value: None
-            }
+                value: None,
+            },
         }
     }
 }
@@ -907,26 +913,28 @@ impl ProvidedGlobal {
 pub struct ProvidedFunction {
     pub name: String,
     pub docs: String,
-    pub function: Fn
+    pub function: Fn,
 }
 impl ProvidedFunction {
-    pub fn new(name: String, docs: String, params: Vec<(Expr, DataType)>, return_ty: Option<DataType>) -> Self {
+    pub fn new(
+        name: String,
+        docs: String,
+        params: Vec<(Expr, DataType)>,
+        return_ty: Option<DataType>,
+    ) -> Self {
         Self {
             name: name.clone(),
             docs,
             function: Fn {
                 is_comp_provided: true,
-                name: FnId {
-                    name,
-                    loc: None,
-                },
+                name: FnId { name, loc: None },
                 params,
                 return_ty,
                 body: Block {
                     stmts: vec![],
                     loc: None,
                 },
-            }
+            },
         }
     }
 }
