@@ -8,7 +8,7 @@ use log::{error, info, warn};
 // use whamm::behavior::builder_visitor::{build_behavior_tree, SimpleAST};
 // use whamm::behavior::tree::BehaviorTree;
 use whamm::common::error::ErrorGen;
-use whamm::verifier::types::SymbolTable;
+// use whamm::verifier::types::SymbolTable;
 
 // =================
 // = Setup Logging =

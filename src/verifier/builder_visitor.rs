@@ -2,10 +2,7 @@ use crate::parser::types as parser_types;
 use crate::verifier::builder_visitor::parser_types::Location;
 use crate::verifier::types::{Record, ScopeType, SymbolTable};
 use crate::verifier::verifier::check_duplicate_id;
-use parser_types::{
-    BinOp, Block, DataType, Expr, Fn, Script, Statement, UnOp, Value,
-    Whamm,
-};
+use parser_types::{BinOp, Block, DataType, Expr, Fn, Script, Statement, UnOp, Value, Whamm};
 use std::collections::HashMap;
 
 use crate::common::error::ErrorGen;

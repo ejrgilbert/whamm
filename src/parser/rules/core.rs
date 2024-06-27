@@ -1,15 +1,23 @@
 use std::collections::HashMap;
 use termcolor::Buffer;
-use crate::parser::rules::{Event, event_factory, FromStr, Mode, mode_factory, ModeInfo, NameOptions, Package, print_mode_docs, Probe};
-use crate::parser::types::{Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal, Statement};
+use crate::parser::rules::{Event, event_factory, EventInfo, FromStr, Mode, mode_factory, ModeInfo, NameOptions, Package, PackageInfo, print_mode_docs, Probe, WhammProbe};
+use crate::parser::rules::wasm::{BytecodeEvent, WasmPackageKind};
+use crate::parser::types::{DataType, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal, Statement};
 
-pub enum CorePackage {
-    Default {
-        docs: String,
-        fns: Vec<ProvidedFunction>, // Comp-provided
-        globals: HashMap<String, ProvidedGlobal>, // Comp-provided
-        events: HashMap<String, Box<CoreEvent>>
+pub enum CorePackageKind {
+    Default
+}
+impl CorePackageKind {
+    fn name(&self) -> String {
+        match self {
+            Self::Default => "".to_string()
+        }
     }
+}
+
+pub struct CorePackage {
+    kind: CorePackageKind,
+    info: PackageInfo
 }
 impl NameOptions for CorePackage {
     fn get_name_options() -> Vec<String> {
@@ -35,118 +43,89 @@ impl CorePackage {
     // ======================
 
     fn default(_loc: Option<Location>) -> Self {
-        Self::Default {
-            docs: "".to_string(),
-            fns: vec![],
-            globals: HashMap::new(),
-            events: HashMap::new()
+        Self {
+            kind: CorePackageKind::Default,
+            info: PackageInfo {
+                docs: "".to_string(),
+                fns: vec![],
+                globals: HashMap::new(),
+                loc: None,
+                events: HashMap::new()
+            }
         }
     }
 }
 impl Package for CorePackage {
     fn name(&self) -> String {
-        match self {
-            Self::Default{..} => {
-                "".to_string()
-            }
-        }
+        self.kind.name()
     }
 
     fn docs(&self) -> &String {
-        match self {
-            Self::Default {docs, ..} => {
-                docs
-            }
-        }
+        &self.info.docs
     }
 
     fn len_events(&self) -> usize {
-        match self {
-            Self::Default{events, ..} => {
-                events.len()
-            }
-        }
+        self.info.events.len()
     }
 
     fn events(&self) -> Box<dyn Iterator<Item = &dyn Event> + '_> {
-        match self {
-            Self::Default{events, ..} => {
-                Box::new(events.values().map(|p| p.as_ref() as &dyn Event))
-            }
-        }
+        Box::new(self.info.events.values().map(|e| e.as_ref() as &dyn Event))
     }
 
     fn events_mut(&mut self) -> Box<dyn Iterator<Item = &mut dyn Event> + '_> {
-        match self {
-            Self::Default{events, ..} => {
-                Box::new(events.values_mut().map(|p| p.as_mut() as &mut dyn Event))
-            }
-        }
+        Box::new(self.info.events.values_mut().map(|e| e.as_mut() as &mut dyn Event))
+
     }
 
     fn print_event_docs(&self, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer) {
-        match self {
-            Self::Default{events, ..} => {
-                for (.., event) in events.iter() {
-                    crate::parser::rules::print_event_docs(event.as_ref(), print_globals, print_functions, tabs, buffer);
-                }
-            }
+        for (.., event) in self.info.events.iter() {
+            crate::parser::rules::print_event_docs(event, print_globals, print_functions, tabs, buffer);
         }
     }
 
     fn print_mode_docs(&self, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer) {
-        match self {
-            Self::Default{events, ..} => {
-                for (.., event) in events.iter() {
-                    event.print_mode_docs(print_globals, print_functions, tabs, buffer);
-                }
-            }
+        for (.., event) in self.info.events.iter() {
+            event.print_mode_docs(print_globals, print_functions, tabs, buffer);
         }
     }
 
     fn get_provided_fns(&self) -> &Vec<ProvidedFunction> {
-        match self {
-            Self::Default { fns, ..} => {
-                fns
-            }
-        }
+        &self.info.fns
     }
 
     fn get_provided_fns_mut(&mut self) -> &mut Vec<ProvidedFunction> {
-        match self {
-            Self::Default { fns, ..} => {
-                fns
-            }
-        }
+        &mut self.info.fns
     }
 
     fn get_provided_globals(&self) -> &HashMap<String, ProvidedGlobal> {
-        match self {
-            Self::Default { globals, ..} => {
-                globals
-            }
-        }
+        &self.info.globals
     }
 
     fn assign_matching_events(&mut self, probe_spec: &ProbeSpec, loc: Option<Location>,
                               predicate: Option<Expr>,
                               body: Option<Vec<Statement>>) -> (bool, bool) {
         match self {
-            Self::Default {events, ..} => {
-                event_factory(events, probe_spec, loc, predicate, body)
+            Self {kind: CorePackageKind::Default, ..} => {
+                event_factory::<CoreEvent>(&mut self.info.events, probe_spec, loc, predicate, body)
             },
         }
     }
 }
 
-pub enum CoreEvent {
-    Default {
-        name: String,
-        docs: String,
-        fns: Vec<ProvidedFunction>, // Comp-provided
-        globals: HashMap<String, ProvidedGlobal>, // Comp-provided
-        probe_map: HashMap<String, Vec<Box<dyn Probe>>>
+pub enum CoreEventKind {
+    Default
+}
+impl CoreEventKind {
+    fn name(&self) -> String {
+        match self {
+            Self::Default => "".to_string()
+        }
     }
+}
+
+pub struct CoreEvent {
+    kind: CoreEventKind,
+    info: EventInfo
 }
 impl NameOptions for CoreEvent {
     fn get_name_options() -> Vec<String> {
@@ -158,109 +137,101 @@ impl NameOptions for CoreEvent {
     }
 }
 impl FromStr for CoreEvent {
-    fn from_str(name: String, _loc: Option<Location>) -> Self {
+    fn from_str(name: String, loc: Option<Location>) -> Self {
         match name.as_str() {
-            "default" => Self::Default {
-                name: "".to_string(),
-                docs: "".to_string(),
-                fns: vec![],
-                globals: HashMap::new(),
-                probe_map: HashMap::new()
-            },
+            "default" => Self::default(loc),
             _ => panic!("unsupported CoreEvent: {name}")
         }
     }
 }
-impl Event for CoreEvent {
-    fn name(&self) -> &String {
-        match self {
-            Self::Default{name, ..} => {
-                name
+impl CoreEvent {
+
+    // ======================
+    // ---- Constructors ----
+    // ======================
+
+    fn default(_loc: Option<Location>) -> Self {
+        Self {
+            kind: CoreEventKind::Default,
+            info: EventInfo {
+                docs: "".to_string(),
+                fns: vec![],
+                globals: HashMap::new(),
+                loc: None,
+                probe_map: HashMap::new()
             }
         }
+    }
+}
+impl Event for CoreEvent {
+    fn name(&self) -> String {
+        self.kind.name()
     }
 
     fn docs(&self) -> &String {
-        match self {
-            Self::Default{docs, ..} => {
-                docs
-            }
-        }
+        &self.info.docs
     }
 
     fn probes(&self) -> &HashMap<String, Vec<Box<dyn Probe>>> {
-        match self {
-            Self::Default{probe_map, ..} => {
-                probe_map
-            }
-        }
+        &self.info.probe_map
     }
 
     fn probes_mut(&mut self) -> &mut HashMap<String, Vec<Box<dyn Probe>>> {
-        match self {
-            Self::Default{probe_map, ..} => {
-                probe_map
-            }
-        }
+        &mut self.info.probe_map
     }
 
     fn print_mode_docs(&self, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer) {
-        match self {
-            Self::Default{probe_map, ..} => {
-                for (.., probes) in probe_map.iter() {
-                    if let Some(probe) = probes.iter().next() {
-                        // only print out the docs for some probe type one time!
-                        probe.print_mode_docs(print_globals, print_functions, tabs, buffer);
-                    }
-                }
+        for (.., probes) in self.info.probe_map.iter() {
+            if let Some(probe) = probes.iter().next() {
+                // only print out the docs for some probe type one time!
+                probe.print_mode_docs(print_globals, print_functions, tabs, buffer);
             }
         }
     }
 
     fn get_provided_fns(&self) -> &Vec<ProvidedFunction> {
-        match self {
-            Self::Default{fns, ..} => {
-                fns
-            }
-        }
+        &self.info.fns
     }
 
     fn get_provided_fns_mut(&mut self) -> &mut Vec<ProvidedFunction> {
-        match self {
-            Self::Default{fns, ..} => {
-                fns
-            }
-        }
+        &mut self.info.fns
     }
 
     fn get_provided_globals(&self) -> &HashMap<String, ProvidedGlobal> {
-        match self {
-            Self::Default{globals, ..} => {
-                globals
-            }
-        }
+        &self.info.globals
     }
 
     fn assign_matching_modes(&mut self, probe_spec: &ProbeSpec, loc: Option<Location>,
                              predicate: Option<Expr>,
                              body: Option<Vec<Statement>>) -> bool {
         let mut matched_modes = false;
-        match self {
-            Self::Default{ref mut probe_map, ..} => {
-                let modes: Vec<Box<CoreMode>> = mode_factory(probe_spec, loc.clone());
-                for mode in modes {
-                    matched_modes = true;
-                    probe_map.insert(mode.name(), vec![Box::new(CoreProbe::new(*mode, loc.clone(), predicate.clone(), body.clone()))]);
-                }
-            }
+        let probes = self.probes_mut();
+        let modes: Vec<Box<CoreMode>> = mode_factory(probe_spec, loc.clone());
+        for mode in modes {
+            matched_modes = true;
+            let modes = probes.entry(mode.name()).or_default();
+            modes.push(Box::new(CoreProbe::new(*mode, loc.clone(), predicate.clone(), body.clone())));
         }
         matched_modes
     }
 }
 
-enum CoreMode {
-    Begin (ModeInfo),
-    End (ModeInfo)
+pub enum CoreModeKind {
+    Begin,
+    End
+}
+impl CoreModeKind {
+    fn name(&self) -> String {
+        match self {
+            Self::Begin => "begin".to_string(),
+            Self::End => "end".to_string()
+        }
+    }
+}
+
+pub struct CoreMode {
+    kind: CoreModeKind,
+    info: ModeInfo
 }
 impl NameOptions for CoreMode {
     fn get_name_options() -> Vec<String> {
@@ -288,68 +259,47 @@ impl CoreMode {
     // ======================
 
     fn begin(loc: Option<Location>) -> Self {
-        Self::Begin ( ModeInfo {
-            docs: "Run this logic on application startup.".to_string(),
-            fns: vec![],
-            globals: HashMap::new(),
-            loc
-        })
+        Self {
+            kind: CoreModeKind::Begin,
+            info: ModeInfo {
+                docs: "Run this logic on application startup.".to_string(),
+                fns: vec![],
+                globals: HashMap::new(),
+                loc
+            }
+        }
     }
     fn end(loc: Option<Location>) -> Self {
-        Self::End ( ModeInfo {
-            docs: "Run this logic when the application exits.".to_string(),
-            fns: vec![],
-            globals: HashMap::new(),
-            loc
-        })
+        Self {
+            kind: CoreModeKind::End,
+            info: ModeInfo {
+                docs: "Run this logic when the application exits.".to_string(),
+                fns: vec![],
+                globals: HashMap::new(),
+                loc
+            }
+        }
     }
 }
 impl Mode for CoreMode {
     fn name(&self) -> String {
-        match self {
-            Self::Begin(..) => {
-                "begin".to_string()
-            },
-            Self::End(..) => {
-                "end".to_string()
-            }
-        }
+        self.kind.name()
     }
 
     fn docs(&self) -> &String {
-        match self {
-            Self::Begin(ModeInfo { docs, ..}) |
-            Self::End(ModeInfo { docs, ..}) => {
-                docs
-            }
-        }
+        &self.info.docs
     }
 
     fn get_provided_fns(&self) -> &Vec<ProvidedFunction> {
-        match self {
-            Self::Begin(ModeInfo { fns, ..}) |
-            Self::End(ModeInfo { fns, ..}) => {
-                fns
-            }
-        }
+        &self.info.fns
     }
 
     fn get_provided_fns_mut(&mut self) -> &mut Vec<ProvidedFunction> {
-        match self {
-            Self::Begin(ModeInfo { fns, ..}) |
-            Self::End(ModeInfo { fns, ..}) => {
-                fns
-            }
-        }
+        &mut self.info.fns
     }
 
     fn get_provided_globals(&self) -> &HashMap<String, ProvidedGlobal> {
-        match self {
-            Self::Begin(ModeInfo { globals, ..}) |
-            Self::End(ModeInfo { globals, ..}) => {
-                globals
-            }
-        }
+        &self.info.globals
     }
 }
 

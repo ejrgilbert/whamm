@@ -17,7 +17,6 @@ pub fn setup_logger() {
 }
 
 const VALID_SCRIPTS: &[&str] = &[
-    ":::alt { }",
     // Ternary
     r#"
 wasm:bytecode:br:before {
@@ -33,7 +32,7 @@ wasm:bytecode:br:before {
     // Regexes
     "wasm:byt*:call:before { }",
     "wasm::call:after { }",
-    // ":::alt { }", // todo uncomment
+    ":::alt { }",
     "wasm::: { }",
     ":bytecode:: { }",
     "::call: { }",

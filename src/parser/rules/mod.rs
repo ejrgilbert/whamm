@@ -184,10 +184,24 @@ pub trait Package {
                               predicate: Option<Expr>,
                               body: Option<Vec<Statement>>) -> (bool, bool);
 }
+
+/// The base information needed for `Package`s, pulled out into a single struct.
+pub struct PackageInfo {
+    // Statically defined, always the same
+    pub docs: String,
+    pub fns: Vec<ProvidedFunction>,               // Comp-provided
+    pub globals: HashMap<String, ProvidedGlobal>, // Comp-provided
+
+    // Tied to the user script
+    pub loc: Option<Location>,
+    /// The events of the probes that have been used in the Script.
+    pub events: HashMap<String, Box<dyn Event>>,
+}
+
 /// 0: Box<Self> the matched package instance
 /// 2: bool, whether there were matched events
 /// 3: bool, whether there were matched modes
-fn package_factory<P: Package + NameOptions + FromStr>(curr_packages: &mut HashMap<String, Box<P>>,
+fn package_factory<P: Package + NameOptions + FromStr + 'static>(curr_packages: &mut HashMap<String, Box<dyn Package>>,
                                                        probe_spec: &ProbeSpec, loc: Option<Location>,
                                                        predicate: Option<Expr>,
                                                        body: Option<Vec<Statement>>) -> (bool, bool, bool) {
@@ -224,8 +238,7 @@ fn package_factory<P: Package + NameOptions + FromStr>(curr_packages: &mut HashM
         (false, false, false)
     }
 }
-fn print_package_docs<P>(package: &Box<P>, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer)
-        where P: Package {
+fn print_package_docs(package: &Box<dyn Package>, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer) {
     let name = package.name();
     let docs = package.docs();
 
@@ -269,7 +282,7 @@ pub trait Probe {
     fn get_mode_provided_globals(&self) -> &HashMap<String, ProvidedGlobal>;
 }
 pub trait Event {
-    fn name(&self) -> &String;
+    fn name(&self) -> String;
     fn docs(&self) -> &String;
     fn probes(&self) -> &HashMap<String, Vec<Box<dyn Probe>>>;
     fn probes_mut(&mut self) -> &mut HashMap<String, Vec<Box<dyn Probe>>>;
@@ -282,9 +295,21 @@ pub trait Event {
                              body: Option<Vec<Statement>>) -> bool;
 }
 
+/// The base information needed for `Event`s, pulled out into a single struct.
+pub struct EventInfo {
+    // Statically defined, always the same
+    pub docs: String,
+    pub fns: Vec<ProvidedFunction>,               // Comp-provided
+    pub globals: HashMap<String, ProvidedGlobal>, // Comp-provided
+
+    // Tied to the user script
+    pub loc: Option<Location>,
+    pub probe_map: HashMap<String, Vec<Box<dyn Probe>>>
+}
+
 /// 0: Box<Self> the matched event instance
 /// 3: bool, whether there were matched modes
-fn event_factory<E: Event + NameOptions + FromStr>(curr_events: &mut HashMap<String, Box<E>>, probe_spec: &ProbeSpec, loc: Option<Location>,
+fn event_factory<E: Event + NameOptions + FromStr + 'static>(curr_events: &mut HashMap<String, Box<dyn Event>>, probe_spec: &ProbeSpec, loc: Option<Location>,
                                                    predicate: Option<Expr>,
                                                    body: Option<Vec<Statement>>) -> (bool, bool) {
     if let Some(SpecPart {name: event_patt, ..}) = &probe_spec.event {
@@ -318,7 +343,7 @@ fn event_factory<E: Event + NameOptions + FromStr>(curr_events: &mut HashMap<Str
         (false, false)
     }
 }
-fn print_event_docs<E: Event>(event: &E, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer) {
+fn print_event_docs(event: &Box<dyn Event>, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer) {
     let name = event.name();
     let docs = event.docs();
 
@@ -425,24 +450,32 @@ pub struct ProviderInfo {
     pub globals: HashMap<String, ProvidedGlobal>, // Comp-provided
 
     // Tied to the user script
-    pub loc: Option<Location>
+    pub loc: Option<Location>,
+    /// The packages of the probes that have been used in the Script.
+    pub packages: HashMap<String, Box<dyn Package>>,
+}
+
+pub enum WhammProviderKind {
+    Core,
+    Wasm
+}
+impl WhammProviderKind {
+    fn name(&self) -> String {
+        match self {
+            Self::Core => "core".to_string(),
+            Self::Wasm => "wasm".to_string()
+        }
+    }
 }
 
 /// The base providers provided by `whamm!`.
 /// Custom providers can be created by following the conventions shown in this pattern.
 /// TODO -- unsure how to enable custom providers, but trying to set up to ease supporting
 ///         this in the future. Now, the use of `WhammProvider` is hardcoded everywhere.
-pub enum WhammProvider {
-    Wasm {
-        metadata: ProviderInfo,
-        /// The packages of the probes that have been used in the Script.
-        packages: HashMap<String, Box<WasmPackage>>,
-    },
-    Core {
-        metadata: ProviderInfo,
-        /// The packages of the probes that have been used in the Script.
-        packages: HashMap<String, Box<CorePackage>>,
-    }
+
+pub struct WhammProvider {
+    kind: WhammProviderKind,
+    info: ProviderInfo
 }
 impl NameOptions for WhammProvider {
     fn get_name_options() -> Vec<String> {
@@ -465,174 +498,95 @@ impl FromStr for WhammProvider {
 }
 impl WhammProvider {
     fn core(loc: Option<Location>) -> Self {
-        Self::Core {
-            metadata: ProviderInfo {
+        Self {
+            kind: WhammProviderKind::Core,
+            info: ProviderInfo {
                 docs: "Provides the core probe definitions of `whamm`.".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
-                loc
-            },
-            packages: HashMap::new()
+                loc,
+                packages: HashMap::new()
+            }
         }
     }
     fn wasm(loc: Option<Location>) -> Self {
-        Self::Wasm {
-            metadata: ProviderInfo {
+        Self {
+            kind: WhammProviderKind::Wasm,
+            info: ProviderInfo {
                 docs: "This provides various events to instrument that are specific to WebAssembly.".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
-                loc
-            },
-            packages: HashMap::new()
+                loc,
+                packages: HashMap::new()
+            }
         }
     }
 }
 impl Provider for WhammProvider {
     fn name(&self) -> String {
-        match self {
-            Self::Core{..} => {
-                "core".to_string()
-            },
-            Self::Wasm{..} => {
-                "wasm".to_string()
-            }
-        }
+        self.kind.name()
     }
 
     fn docs(&self) -> &String {
-        match self {
-            Self::Core{metadata: ProviderInfo { docs, ..}, ..} |
-            Self::Wasm{metadata: ProviderInfo { docs, ..}, ..} => {
-                docs
-            }
-        }
+        &self.info.docs
     }
 
     fn has_packages(&self) -> bool {
-        match self {
-            Self::Core{packages, ..} => {
-                !packages.is_empty()
-            }
-            Self::Wasm{packages, ..} => {
-                !packages.is_empty()
-            }
-        }
+        !self.info.packages.is_empty()
     }
 
     fn len_packages(&self) -> usize {
-        match self {
-            Self::Core{packages, ..} => {
-                packages.len()
-            }
-            Self::Wasm{packages, ..} => {
-                packages.len()
-            }
-        }
+        self.info.packages.len()
     }
 
     fn packages(&self) -> Box<dyn Iterator<Item = &dyn Package> + '_> {
-        match self {
-            Self::Wasm { packages, .. } => {
-                Box::new(packages.values().map(|p| p.as_ref() as &dyn Package))
-            }
-            Self::Core { packages, .. } => {
-                Box::new(packages.values().map(|p| p.as_ref() as &dyn Package))
-            }
-        }
+        Box::new(self.info.packages.values().map(|p| p.as_ref() as &dyn Package))
     }
 
     fn packages_mut(&mut self) -> Box<dyn Iterator<Item = &mut dyn Package> + '_> {
-        match self {
-            Self::Wasm { packages, .. } => {
-                Box::new(packages.values_mut().map(|p| p.as_mut() as &mut dyn Package))
-            }
-            Self::Core { packages, .. } => {
-                Box::new(packages.values_mut().map(|p| p.as_mut() as &mut dyn Package))
-            }
-        }
+        Box::new(self.info.packages.values_mut().map(|p| p.as_mut() as &mut dyn Package))
     }
 
     fn print_package_docs(&self, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer) {
-        match self {
-            Self::Core{packages, ..} => {
-                for (.., package) in packages.iter() {
-                    print_package_docs(package, print_globals, print_functions, tabs, buffer);
-                }
-            }
-            Self::Wasm{packages, ..} => {
-                for (.., package) in packages.iter() {
-                    print_package_docs(package, print_globals, print_functions, tabs, buffer);
-                }
-            }
+        for (.., package) in self.info.packages.iter() {
+            print_package_docs(package, print_globals, print_functions, tabs, buffer);
         }
     }
 
     fn print_event_docs(&self, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer) {
-        match self {
-            Self::Core{packages, ..} => {
-                for (.., package) in packages.iter() {
-                    package.print_event_docs(print_globals, print_functions, tabs, buffer);
-                }
-            }
-            Self::Wasm{packages, ..} => {
-                for (.., package) in packages.iter() {
-                    package.print_event_docs(print_globals, print_functions, tabs, buffer);
-                }
-            }
+        for (.., package) in self.info.packages.iter() {
+            package.print_event_docs(print_globals, print_functions, tabs, buffer);
         }
     }
 
     fn print_mode_docs(&self, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer) {
-        match self {
-            Self::Core{packages, ..} => {
-                for (.., package) in packages.iter() {
-                    package.print_mode_docs(print_globals, print_functions, tabs, buffer);
-                }
-            }
-            Self::Wasm{packages, ..} => {
-                for (.., package) in packages.iter() {
-                    package.print_mode_docs(print_globals, print_functions, tabs, buffer);
-                }
-            }
+        for (.., package) in self.info.packages.iter() {
+            package.print_mode_docs(print_globals, print_functions, tabs, buffer);
         }
     }
 
     fn get_provided_fns(&self) -> &Vec<ProvidedFunction> {
-        match self {
-            Self::Wasm{metadata: ProviderInfo {fns, ..}, ..} |
-            Self::Core{metadata: ProviderInfo {fns, ..}, ..} => {
-                fns
-            }
-        }
+        &self.info.fns
     }
 
     fn get_provided_fns_mut(&mut self) -> &mut Vec<ProvidedFunction> {
-        match self {
-            Self::Wasm{metadata: ProviderInfo {fns, ..}, ..} |
-            Self::Core{metadata: ProviderInfo {fns, ..}, ..} => {
-                fns
-            }
-        }
+        &mut self.info.fns
     }
 
     fn get_provided_globals(&self) -> &HashMap<String, ProvidedGlobal> {
-        match self {
-            Self::Wasm{metadata: ProviderInfo {globals, ..}, ..} |
-            Self::Core{metadata: ProviderInfo {globals, ..}, ..} => {
-                globals
-            }
-        }
+        &self.info.globals
     }
 
     fn assign_matching_packages(&mut self, probe_spec: &ProbeSpec, loc: Option<Location>,
                                 predicate: Option<Expr>,
                                 body: Option<Vec<Statement>>) -> (bool, bool, bool) {
+        
         match self {
-            Self::Core {packages, ..} => {
-                package_factory(packages, probe_spec, loc, predicate, body)
+            Self {kind: WhammProviderKind::Core, ..} => {
+                package_factory::<CorePackage>(&mut self.info.packages, probe_spec, loc, predicate, body)
             },
-            Self::Wasm {packages, ..} => {
-                package_factory(packages, probe_spec, loc, predicate, body)
+            Self {kind: WhammProviderKind::Wasm, ..} => {
+                package_factory::<WasmPackage>(&mut self.info.packages, probe_spec, loc, predicate, body)
             }
         }
     }
@@ -649,13 +603,27 @@ pub struct ModeInfo {
     pub loc: Option<Location>
 }
 
+pub enum WhammModeKind {
+    Before,
+    After,
+    Alt
+}
+impl WhammModeKind {
+    fn name(&self) -> String {
+        match self {
+            Self::Before => "before".to_string(),
+            Self::After => "after".to_string(),
+            Self::Alt => "alt".to_string()
+        }
+    }
+}
+
 /// The base modes provided by `whamm!` for an Event, these can be changed if desired.
 /// To do so, the type of enum for a Probe's possible modes will need to be changed.
 /// This means the Event's probes HashMap will need to point to a custom Probe type.
-pub enum WhammMode {
-    Before (ModeInfo),
-    After (ModeInfo),
-    Alt (ModeInfo)
+pub struct WhammMode {
+    kind: WhammModeKind,
+    info: ModeInfo
 }
 impl NameOptions for WhammMode {
     fn get_name_options() -> Vec<String> {
@@ -685,86 +653,61 @@ impl WhammMode {
     // ======================
     
     fn before(loc: Option<Location>) -> Self {
-        Self::Before ( ModeInfo {
-            docs: "This mode will cause the instrumentation logic to run *before* the \
+        Self {
+            kind: WhammModeKind::Before,
+            info: ModeInfo {
+                docs: "This mode will cause the instrumentation logic to run *before* the \
                     probed event (if the predicate evaluates to `true`).".to_string(),
-            fns: vec![],
-            globals: HashMap::new(),
-            loc
-        })
+                fns: vec![],
+                globals: HashMap::new(),
+                loc
+            }
+        }
     }
     fn after(loc: Option<Location>) -> Self {
-        Self::After ( ModeInfo {
-            docs: "This mode will cause the instrumentation logic to run *after* the \
+        Self {
+            kind: WhammModeKind::After,
+            info: ModeInfo {
+                docs: "This mode will cause the instrumentation logic to run *after* the \
                     probed event (if the predicate evaluates to `true`).".to_string(),
-            fns: vec![],
-            globals: HashMap::new(),
-            loc
-        })
+                fns: vec![],
+                globals: HashMap::new(),
+                loc
+            }
+        }
     }
     fn alt(loc: Option<Location>) -> Self {
-        Self::Alt ( ModeInfo {
-            docs: "This mode will cause the instrumentation logic to run *instead of* the \
+        Self {
+            kind: WhammModeKind::Alt,
+            info: ModeInfo {
+                docs: "This mode will cause the instrumentation logic to run *instead of* the \
                     probed event (if the predicate evaluates to `true`).".to_string(),
-            fns: vec![],
-            globals: HashMap::new(),
-            loc
-        })
+                fns: vec![],
+                globals: HashMap::new(),
+                loc
+            }
+        }
     }
 }
 impl Mode for WhammMode {
     fn name(&self) -> String {
-        match self {
-            Self::Before(..) => {
-                "before".to_string()
-            }
-            Self::After(..) => {
-                "after".to_string()
-            }
-            Self::Alt(..) => {
-                "alt".to_string()
-            }
-        }
+        self.kind.name()
     }
 
     fn docs(&self) -> &String {
-        match self {
-            Self::Before(ModeInfo { docs, ..}) |
-            Self::After(ModeInfo { docs, ..}) |
-            Self::Alt(ModeInfo { docs, ..}) => {
-                docs
-            }
-        }
+        &self.info.docs
     }
 
     fn get_provided_fns(&self) -> &Vec<ProvidedFunction> {
-        match self {
-            Self::Before(ModeInfo { fns, ..}) |
-            Self::After(ModeInfo { fns, ..}) |
-            Self::Alt(ModeInfo { fns, ..}) => {
-                fns
-            }
-        }
+        &self.info.fns
     }
 
     fn get_provided_fns_mut(&mut self) -> &mut Vec<ProvidedFunction> {
-        match self {
-            Self::Before(ModeInfo { fns, ..}) |
-            Self::After(ModeInfo { fns, ..}) |
-            Self::Alt(ModeInfo { fns, ..}) => {
-                fns
-            }
-        }
+        &mut self.info.fns
     }
 
     fn get_provided_globals(&self) -> &HashMap<String, ProvidedGlobal> {
-        match self {
-            Self::Before(ModeInfo { globals, ..}) |
-            Self::After(ModeInfo { globals, ..}) |
-            Self::Alt(ModeInfo { globals, ..}) => {
-                globals
-            }
-        }
+        &self.info.globals
     }
 }
 
