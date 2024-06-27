@@ -325,12 +325,19 @@ impl Probe for CoreProbe {
     fn mode_name(&self) -> String {
         self.mode.name()
     }
+    fn predicate_mut(&mut self) -> &mut Option<Expr> {
+        &mut self.predicate
+    }
     fn predicate(&self) -> &Option<Expr> {
         &self.predicate
     }
 
     fn body(&self) -> &Option<Vec<Statement>> {
         &self.body
+    }
+
+    fn body_mut(&mut self) -> &mut Option<Vec<Statement>> {
+        &mut self.body
     }
     
     fn print_mode_docs(&self, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer) {

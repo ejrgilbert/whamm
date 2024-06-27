@@ -43,7 +43,7 @@ pub trait Provider {
 /// 1: bool, whether there were matched packages
 /// 2: bool, whether there were matched events
 /// 3: bool, whether there were matched modes
-pub fn provider_factory<P: Provider + NameOptions + FromStr>(curr_providers: &mut HashMap<String, Box<P>>,
+pub fn provider_factory<P: Provider + NameOptions + FromStr + 'static>(curr_providers: &mut HashMap<String, Box<dyn Provider>>,
                                                              probe_spec: &ProbeSpec,
                                                              loc: Option<Location>,
                                                              predicate: Option<Expr>,
@@ -133,7 +133,7 @@ pub fn provider_factory<P: Provider + NameOptions + FromStr>(curr_providers: &mu
     }
 }
 
-pub fn print_provider_docs<P: Provider>(provider: &P, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer) {
+pub fn print_provider_docs(provider: &Box<dyn Provider>, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer) {
     let name = provider.name();
     let docs = provider.docs();
 
@@ -277,7 +277,9 @@ fn print_package_docs(package: &Box<dyn Package>, print_globals: bool, print_fun
 pub trait Probe {
     fn mode_name(&self) -> String;
     fn predicate(&self) -> &Option<Expr>;
+    fn predicate_mut(&mut self) -> &mut Option<Expr>;
     fn body(&self) -> &Option<Vec<Statement>>;
+    fn body_mut(&mut self) -> &mut Option<Vec<Statement>>;
     fn print_mode_docs(&self, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer);
     fn get_mode_provided_fns(&self) -> &Vec<ProvidedFunction>;
     fn get_mode_provided_fns_mut(&mut self) -> &mut Vec<ProvidedFunction>;
@@ -730,9 +732,16 @@ impl Probe for WhammProbe {
     fn predicate(&self) -> &Option<Expr> {
         &self.predicate
     }
+    fn predicate_mut(&mut self) -> &mut Option<Expr> {
+        &mut self.predicate
+    }
 
     fn body(&self) -> &Option<Vec<Statement>> {
         &self.body
+    }
+
+    fn body_mut(&mut self) -> &mut Option<Vec<Statement>> {
+        &mut self.body
     }
 
     fn print_mode_docs(&self, print_globals: bool, print_functions: bool, tabs: &mut usize, buffer: &mut Buffer) {

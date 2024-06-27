@@ -85,14 +85,14 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         // });
 
         script.providers.iter().for_each(|(_, provider)| {
-            self.visit_provider(provider.as_ref());
+            self.visit_provider(provider);
         });
 
         let _ = self.table.exit_scope();
         None
     }
 
-    fn visit_provider(&mut self, provider: &dyn Provider) -> Option<DataType> {
+    fn visit_provider(&mut self, provider: &Box<dyn Provider>) -> Option<DataType> {
         let _ = self.table.enter_scope();
 
         provider.packages().for_each(|package| {
@@ -120,7 +120,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
 
         event.probes().iter().for_each(|(_, probe)| {
             probe.iter().for_each(|probe| {
-                self.visit_probe(probe.as_ref());
+                self.visit_probe(probe);
             });
         });
 
@@ -129,7 +129,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         None
     }
 
-    fn visit_probe(&mut self, probe: &dyn Probe) -> Option<DataType> {
+    fn visit_probe(&mut self, probe: &Box<dyn Probe>) -> Option<DataType> {
         let _ = self.table.enter_scope();
 
         // type check predicate

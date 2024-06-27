@@ -474,7 +474,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         script
             .providers
             .iter_mut()
-            .for_each(|(_name, provider)| self.visit_provider(provider.as_mut()));
+            .for_each(|(_name, provider)| self.visit_provider(provider));
 
         trace!("Exiting: visit_script");
         if let Err(e) = self.table.exit_scope() {
@@ -483,10 +483,10 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         self.curr_script = None;
     }
 
-    fn visit_provider(&mut self, provider: &mut dyn Provider) {
+    fn visit_provider(&mut self, provider: &mut Box<dyn Provider>) {
         trace!("Entering: visit_provider");
 
-        self.add_provider(provider);
+        self.add_provider(provider.as_ref());
         provider.get_provided_fns_mut().iter_mut().for_each(|f| self.visit_fn(&mut f.function));
         self.visit_provided_globals(provider.get_provided_globals());
         provider
@@ -527,7 +527,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         // visit probe_map
         event.probes_mut().iter_mut().for_each(|probes| {
             probes.1.iter_mut().for_each(|probe| {
-                self.visit_probe(probe.as_mut());
+                self.visit_probe(probe);
             });
         });
 
@@ -538,10 +538,10 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         self.curr_event = None;
     }
 
-    fn visit_probe(&mut self, probe: &mut dyn Probe) {
+    fn visit_probe(&mut self, probe: &mut Box<dyn Probe>) {
         trace!("Entering: visit_probe");
 
-        self.add_probe(probe);
+        self.add_probe(probe.as_ref());
         probe.get_mode_provided_fns_mut().iter_mut().for_each(|f| self.visit_fn(&mut f.function));
         self.visit_provided_globals(probe.get_mode_provided_globals());
 

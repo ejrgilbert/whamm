@@ -6,7 +6,7 @@ use crate::behavior::tree::{BehaviorTree, Node};
 use crate::common::error::ErrorGen;
 use crate::generator::emitters::Emitter;
 use crate::generator::types::ExprFolder;
-use crate::parser::types::Probe;
+use crate::parser::rules::Probe;
 use convert_case::{Case, Casing};
 use log::warn;
 
@@ -31,7 +31,7 @@ pub struct InstrGenerator<'a, 'b> {
     pub curr_package_name: String,
     pub curr_event_name: String,
     pub curr_probe_mode: String,
-    pub curr_probe: Option<Probe>,
+    pub curr_probe: Option<Box<dyn Probe>>,
 }
 impl InstrGenerator<'_, '_> {
     pub fn run(&mut self, behavior: &BehaviorTree) -> bool {
@@ -227,7 +227,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         } = node
         {
             if let Some(probe) = &self.curr_probe {
-                if let Some(pred) = &probe.predicate {
+                if let Some(pred) = &probe.predicate() {
                     if let Some(pred_as_bool) = ExprFolder::get_single_bool(pred) {
                         // predicate has been reduced to a boolean value
                         if pred_as_bool == *val {
@@ -443,8 +443,8 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                     ) {
                         // make a clone of the current probe per instruction traversal
                         // this will reset the clone pred/body for each instruction!
-                        let mut probe_cloned = probe.clone();
-                        if let Some(pred) = &mut probe_cloned.predicate {
+                        let mut probe_cloned = (*probe).clone();
+                        if let Some(pred) = &mut probe_cloned.predicate_mut() {
                             // Fold predicate
                             is_success &= self.emitter.fold_expr(pred);
 
@@ -484,8 +484,8 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                 // make a clone of the first probe per instruction traversal
                 // this will reset the clone pred/body for each instruction!
                 if let Some(probe) = probe_list.first() {
-                    let mut probe_cloned = probe.clone();
-                    if let Some(pred) = &mut probe_cloned.predicate {
+                    let mut probe_cloned = (*probe).clone();
+                    if let Some(pred) = &mut probe_cloned.predicate_mut() {
                         // Fold predicate
                         is_success &= self.emitter.fold_expr(pred);
 
@@ -643,7 +643,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         } = node
         {
             if let Some(probe) = &mut self.curr_probe {
-                if let Some(pred) = &mut probe.predicate {
+                if let Some(pred) = &mut probe.predicate_mut() {
                     match self.emitter.emit_expr(pred) {
                         Err(e) => self.err.add_error(*e),
                         Ok(res) => is_success &= res,
@@ -678,7 +678,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         } = node
         {
             if let Some(probe) = &mut self.curr_probe {
-                if let Some(body) = &mut probe.body {
+                if let Some(body) = &mut probe.body_mut() {
                     if self.curr_probe_mode == "after" {
                         // tell the emitter to point to location after instruction-of-interest
                         self.emitter.incr_loc_pointer();
@@ -763,7 +763,7 @@ fn get_probes_from_ast<'a>(
     curr_package_name: &String,
     curr_event_name: &String,
     name: &String,
-) -> &'a Vec<Probe> {
+) -> &'a Vec<Box<dyn Probe>> {
     if let Some(provider) = ast.probes.get(curr_provider_name) {
         if let Some(package) = provider.get(curr_package_name) {
             if let Some(event) = package.get(curr_event_name) {
@@ -783,7 +783,7 @@ fn get_probe_at_idx<'a>(
     curr_event_name: &String,
     name: &String,
     idx: &usize,
-) -> Option<&'a Probe> {
+) -> Option<&'a Box<dyn Probe>> {
     get_probes_from_ast(
         ast,
         curr_provider_name,

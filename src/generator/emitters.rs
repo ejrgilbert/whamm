@@ -1,5 +1,3 @@
-// use crate::emitter::rewriting::providers::wasm;
-
 use crate::common::error::{ErrorGen, WhammError};
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{BinOp, DataType, Expr, Fn, Statement, UnOp, Value};
@@ -11,6 +9,64 @@ use walrus::{
     ActiveData, ActiveDataLocation, DataKind, FunctionBuilder, FunctionId, FunctionKind,
     ImportedFunction, InitExpr, InstrSeqBuilder, LocalFunction, MemoryId, ModuleData, ValType,
 };
+
+// =================================================
+// ==== Emitter Trait --> Used By All Emitters! ====
+// =================================================
+
+pub trait Emitter {
+    fn enter_scope(&mut self) -> Result<(), Box<WhammError>>;
+    fn enter_named_scope(&mut self, scope_name: &str) -> bool;
+    fn exit_scope(&mut self) -> Result<(), Box<WhammError>>;
+    fn reset_children(&mut self);
+
+    fn init_instr_iter(&mut self, instrs_of_interest: &[String]) -> Result<(), Box<WhammError>>;
+    fn has_next_instr(&self) -> bool;
+    fn next_instr(&mut self) -> bool;
+    fn curr_instr_is_of_type(&mut self, instr_names: &[String]) -> bool;
+    fn curr_instr_type(&mut self) -> String;
+    fn incr_loc_pointer(&mut self);
+
+    fn has_params(&mut self) -> Result<bool, Box<WhammError>>;
+    fn save_params(&mut self) -> bool;
+    fn emit_params(&mut self) -> Result<bool, Box<WhammError>>;
+    fn define_compiler_var(
+        &mut self,
+        context: &str,
+        var_name: &str,
+    ) -> Result<bool, Box<WhammError>>;
+    // fn emit_event(&mut self, context: &str, event: &mut Event) -> bool;
+    fn fold_expr(&mut self, expr: &mut Expr) -> bool;
+    fn emit_expr(&mut self, expr: &mut Expr) -> Result<bool, Box<WhammError>>;
+
+    fn emit_fn(&mut self, context_name: &str, f: &Fn) -> Result<bool, Box<WhammError>>;
+    fn emit_formal_param(&mut self, param: &(Expr, DataType)) -> bool;
+    fn emit_global(
+        &mut self,
+        name: String,
+        ty: DataType,
+        val: &Option<Value>,
+    ) -> Result<bool, Box<WhammError>>;
+    fn remove_orig(&mut self) -> bool;
+    fn emit_orig(&mut self) -> bool;
+    fn emit_if(&mut self) -> bool;
+    fn emit_if_else(&mut self) -> bool;
+    /// Will configure the emitter to emit subsequent expression as the condition of an if or if/else stmt
+    fn emit_condition(&mut self) -> bool;
+    /// Will configure the emitter to emit subsequent statements into the consequent body of an if or if/else stmt
+    fn emit_consequent(&mut self) -> bool;
+    /// Will configure the emitter to emit subsequent statements into the alternate body of an if/else stmt
+    fn emit_alternate(&mut self) -> bool;
+    /// Will configure the emitter to emit subsequent statements in the outer block of some branching logic
+    fn finish_branch(&mut self) -> bool;
+    fn emit_global_stmts(&mut self, stmts: &mut Vec<Statement>) -> Result<bool, Box<WhammError>>;
+    fn emit_body(&mut self, body: &mut Vec<Statement>) -> Result<bool, Box<WhammError>>;
+    fn has_alt_call(&mut self) -> bool; // TODO -- remove need for this
+    fn emit_alt_call(&mut self) -> Result<bool, Box<WhammError>>; // TODO -- remove need for this
+    fn emit_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>>;
+
+    fn dump_to_file(&mut self, output_wasm_path: String) -> Result<bool, Box<WhammError>>;
+}
 
 // =================================================================================
 // ================ WasmRewritingEmitter - HELPER FUNCTIONS ========================
@@ -28,7 +84,6 @@ const UNEXPECTED_ERR_MSG: &str =
 fn data_type_to_val_type(ty: &DataType) -> (ValType, InitExpr) {
     match ty {
         DataType::I32 => (ValType::I32, InitExpr::Value(walrus::ir::Value::I32(0))),
-        DataType::U32 => (ValType::I32, InitExpr::Value(walrus::ir::Value::I32(0))),
         DataType::Boolean => (ValType::I32, InitExpr::Value(walrus::ir::Value::I32(0))),
         DataType::Null => unimplemented!(),
         DataType::Str => unimplemented!(),
@@ -532,84 +587,6 @@ fn emit_value(
     Ok(is_success)
 }
 
-fn get_instr_info(app_wasm: &walrus::Module, instr: &Instr, instr_name: &String) -> InstrInfo {
-    let instr_args = vec![];
-    match instr {
-        Instr::Call(func) => {
-            let func = app_wasm.funcs.get(func.func);
-            // get information about the function call
-            let (func_info, params) = get_func_info(app_wasm, func);
-
-            InstrInfo {
-                instr_name: instr_name.to_owned(),
-                instr_args: params,
-                called_func_info: Some(func_info),
-            }
-        }
-        Instr::CallIndirect(_) => todo!(),
-        Instr::LocalGet(_) => todo!(),
-        Instr::LocalSet(_) => todo!(),
-        Instr::LocalTee(_) => todo!(),
-        Instr::GlobalGet(_) => todo!(),
-        Instr::GlobalSet(_) => todo!(),
-        Instr::Drop(_) => todo!(),
-        Instr::Const(_) => todo!(),
-        Instr::Binop(_) => todo!(),
-        Instr::Unop(_) => todo!(),
-        Instr::Select(_) => todo!(),
-        Instr::Br(_) => {
-            // label_id
-            todo!()
-        },
-        Instr::BrIf(_) => {
-            // label_id
-            // condition
-            todo!()
-        },
-        Instr::IfElse(_) => todo!(),
-        Instr::BrTable(_) => todo!(),
-        Instr::Return(_) => todo!(),
-        Instr::MemorySize(_) => todo!(),
-        Instr::MemoryGrow(_) => todo!(),
-        Instr::MemoryInit(_) => todo!(),
-        Instr::DataDrop(_) => todo!(),
-        Instr::MemoryCopy(_) => todo!(),
-        Instr::MemoryFill(_) => todo!(),
-        Instr::Load(_) => todo!(),
-        Instr::Store(_) => todo!(),
-        Instr::TableGet(_) => todo!(),
-        Instr::TableSet(_) => todo!(),
-        Instr::TableGrow(_) => todo!(),
-        Instr::TableSize(_) => todo!(),
-        Instr::TableFill(_) => todo!(),
-        Instr::TableInit(_) => todo!(),
-        Instr::TableCopy(_) => todo!(),
-        Instr::ElemDrop(_) => todo!(),
-        Instr::RefNull(_) => todo!(),
-        Instr::RefIsNull(_) => todo!(),
-        Instr::RefFunc(_) => todo!(),
-        Instr::V128Bitselect(_) => todo!(),
-        Instr::I8x16Swizzle(_) => todo!(),
-        Instr::I8x16Shuffle(_) => todo!(),
-        Instr::LoadSimd(_) => todo!(),
-        Instr::AtomicRmw(_) => todo!(),
-        Instr::Cmpxchg(_) => todo!(),
-        Instr::AtomicNotify(_) => todo!(),
-        Instr::AtomicWait(_) => todo!(),
-        Instr::AtomicFence(_) => todo!(),
-        Instr::Block(_) |
-        Instr::Loop(_) |
-        Instr::Unreachable(_) => {
-            // no arguments to these instructions
-            InstrInfo {
-                instr_name: instr_name.to_owned(),
-                instr_args,
-                called_func_info: None,
-            }
-        }
-    }
-}
-
 fn get_func_info(app_wasm: &walrus::Module, func: &walrus::Function) -> (FuncInfo, Vec<ValType>) {
     match &func.kind {
         FunctionKind::Import(ImportedFunction {
@@ -726,20 +703,28 @@ impl InstrIter {
                 let instr_name = instr_as_str.split('(').next().unwrap().to_lowercase();
 
                 if instrs_of_interest.contains(&instr_name) {
-                    // TODO -- extend FuncInfo to be InstrInfo, if instr takes param...save off that info
-                    let instr_info = get_instr_info(app_wasm, instr, &instr_name);
-                    
+                    let (func_info, params) = if let Instr::Call(func) = instr {
+                        let func = app_wasm.funcs.get(func.func);
+                        // get information about the function call
+                        let (func_info, params) = get_func_info(app_wasm, func);
+                        (Some(func_info), params)
+                    } else {
+                        (None, vec![])
+                    };
+
                     // add current instr
                     self.instr_locs.push(ProbeLoc {
                         // wasm_func_name: func_name.clone(),
                         wasm_func_id: *func_id,
                         instr_seq_id,
                         index,
+                        instr_name: instr_name.clone(),
                         instr: instr.clone(),
-                        instr_info,
+                        instr_params: params,
                         instr_created_args: vec![],
                         instr_alt_call: None,
                         // instr_symbols: HashMap::new()
+                        func_info,
                     });
                 }
 
@@ -809,49 +794,26 @@ impl InstrIter {
 // Note that blocks can be indefinitely nested.
 #[derive(Debug)]
 struct ProbeLoc {
-    // the location of this probe in the bytecode
     // wasm_func_name: Option<String>,
     wasm_func_id: FunctionId,
     instr_seq_id: InstrSeqId,
     index: usize,
 
-    // the information about the instruction at this location
+    instr_name: String,
     instr: Instr,
-    instr_info: InstrInfo,
+    func_info: Option<FuncInfo>,
+    instr_params: Vec<ValType>,
     instr_created_args: Vec<(String, usize)>,
 
     // Save off the compiler-defined constants for this instruction
-    // instr_symbols: HashMap<String, Record>, // TODO -- do I need this? (could be used to "reset" the symbol table!) Which is necessary in the context of arg* in a call bytecode rule
+    // instr_symbols: HashMap<String, Record>,
     instr_alt_call: Option<FunctionId>,
 }
-
-/**
-Elizabeth's thoughts:
-
-For each instruction, I know what globals are set from the stack vs. statically defined.
-Might need to add this context to `info` output, make visible to the end-user!
-All dynamically defined information needs to be put in instr_params.
-BOTH types should be saved off to instr_symbols, this enables the symboltable to be reset after visiting an instruction.
-(only needs to be done for a call!)
-*/
-
-#[derive(Debug)]
-struct InstrInfo {
-    instr_name: String,
-    // this would be the args to an instruction OR
-    // the parameters to the called function target
-    // no custom naming per instruction type here...
-    // just use `arg0`...`argN` in script
-    instr_args: Vec<ValType>,
-    // (only populated if the instruction is a `call`)
-    called_func_info: Option<FuncInfo>
-}
-
 #[derive(Debug)]
 struct FuncInfo {
     func_kind: String,
     module: String,
-    name: String
+    name: String,
 }
 
 struct EmittingInstrTracker {
@@ -932,7 +894,7 @@ impl WasmRewritingEmitter {
         let var_name = "target_imp_name".to_string();
 
         if let Some(curr_instr) = self.instr_iter.curr() {
-            if let Some(func_info) = &curr_instr.instr_info.called_func_info {
+            if let Some(func_info) = &curr_instr.func_info {
                 if func_info.name.contains("call_perform") {
                     // For debugging, set breakpoint here!
                     println!("{}", func_info.name);
@@ -968,7 +930,7 @@ impl WasmRewritingEmitter {
         let var_name = "target_fn_type".to_string();
 
         if let Some(curr_instr) = self.instr_iter.curr() {
-            if let Some(func_info) = &curr_instr.instr_info.called_func_info {
+            if let Some(func_info) = &curr_instr.func_info {
                 // if func_info.name.contains("call_new") {
                 //     // For debugging, set breakpoint here!
                 //     println!("{}", func_info.name);
@@ -1002,7 +964,7 @@ impl WasmRewritingEmitter {
     fn define_target_imp_module(&mut self) -> Result<bool, Box<WhammError>> {
         let var_name = "target_imp_module".to_string();
         if let Some(curr_instr) = self.instr_iter.curr() {
-            if let Some(func_info) = &curr_instr.instr_info.called_func_info {
+            if let Some(func_info) = &curr_instr.func_info {
                 // if func_info.name.contains("call_new") {
                 //     // For debugging, set breakpoint here!
                 //     println!("{}", func_info.name);
@@ -1494,7 +1456,7 @@ impl Emitter for WasmRewritingEmitter {
     /// bool -> whether the current instruction is one of the passed list of types
     fn curr_instr_is_of_type(&mut self, instr_names: &[String]) -> bool {
         if let Some(instr) = self.instr_iter.curr() {
-            return instr_names.contains(&instr.instr_info.instr_name);
+            return instr_names.contains(&instr.instr_name);
         }
         false
     }
@@ -1502,7 +1464,7 @@ impl Emitter for WasmRewritingEmitter {
     /// bool -> whether the current instruction is one of the passed list of types
     fn curr_instr_type(&mut self) -> String {
         if let Some(instr) = self.instr_iter.curr() {
-            return instr.instr_info.instr_name.clone();
+            return instr.instr_name.clone();
         }
         unreachable!()
     }
@@ -1516,7 +1478,7 @@ impl Emitter for WasmRewritingEmitter {
 
     fn has_params(&mut self) -> Result<bool, Box<WhammError>> {
         if let Some(curr_instr) = self.instr_iter.curr_mut() {
-            return Ok(!curr_instr.instr_info.instr_args.is_empty());
+            return Ok(!curr_instr.instr_params.is_empty());
         }
         Err(Box::new(ErrorGen::get_unexpected_error(
             true,
@@ -1544,7 +1506,8 @@ impl Emitter for WasmRewritingEmitter {
                 // So, we can just save off the first * items in the stack as the args
                 // to the call.
                 let mut arg_recs = vec![]; // vec to retain order!
-                curr_loc.instr_info.instr_args
+                curr_loc
+                    .instr_params
                     .iter()
                     .enumerate()
                     .for_each(|(num, param_ty)| {

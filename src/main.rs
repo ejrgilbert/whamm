@@ -109,10 +109,10 @@ fn run_instr(
     let mut whamm = get_script_ast(&script_path, &mut err);
     let symbol_table = get_symbol_table(&mut whamm, run_verifier, &mut err);
     let (behavior_tree, simple_ast) = build_behavior(&whamm, &mut err);
-    
+
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
-    
+
     // Read app Wasm into Walrus module
     let _config = walrus::ModuleConfig::new();
     let app_wasm = Module::from_file(app_wasm_path).unwrap();
@@ -123,7 +123,7 @@ fn run_instr(
     } else {
         WasmRewritingEmitter::new(app_wasm, symbol_table)
     };
-    
+
     // Phase 0 of instrumentation (emit globals and provided fns)
     let mut init = InitGenerator {
         emitter: Box::new(&mut emitter),
@@ -133,7 +133,7 @@ fn run_instr(
     init.run(&mut whamm);
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
-    
+
     // Phase 1 of instrumentation (actually emits the instrumentation code)
     // This structure is necessary since we need to have the fns/globals injected (a single time)
     // and ready to use in every body/predicate.
@@ -152,7 +152,7 @@ fn run_instr(
     instr.run(&behavior_tree);
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
-    
+
     if let Err(e) = emitter.dump_to_file(output_wasm_path) {
         err.add_error(*e)
     }
@@ -204,19 +204,19 @@ fn run_vis_script(script_path: String, run_verifier: bool, output_path: String) 
     // (adds declared globals to the script AST node)
     let _symbol_table = get_symbol_table(&mut whamm, run_verifier, &mut err);
     let (behavior_tree, ..) = build_behavior(&whamm, &mut err);
-    
+
     // if there are any errors, should report and exit!
     err.check_has_errors();
-    
+
     if !PathBuf::from(&output_path).exists() {
         std::fs::create_dir_all(PathBuf::from(&output_path).parent().unwrap()).unwrap();
     }
-    
+
     let path = match get_pb(&PathBuf::from(output_path.clone())) {
         Ok(pb) => pb,
         Err(_) => exit(1),
     };
-    
+
     if visualization_to_file(&behavior_tree, path).is_ok() {
         if let Err(err) = opener::open(output_path.clone()) {
             error!("Could not open visualization tree at: {}", output_path);
