@@ -45,6 +45,21 @@ const VALID_SCRIPTS: &[&str] = &[
             dummy_fn();
         }   
     "#,
+    r#"
+        bool a = strcmp((1, 2), "bookings");
+        wasm::call:alt {
+            a = strcmp((1, 2), "bookings");
+        }
+    "#,
+    r#"
+        my_fn(i32 a) -> i32 {
+            return a;
+        }
+        i32 a = 5;
+        wasm::call:alt {
+            i32 b = my_fn(a);
+        }
+    "#,
 ];
 
 const TYPE_ERROR_SCRIPTS: &[&str] = &[
@@ -226,6 +241,51 @@ wasm::call:alt /
         };
     }
     "#,
+    r#"
+        strcmp () {}
+        wasm::call:alt {
+            strcmp();
+        }
+    "#,
+    r#"
+        bool a = true;
+        if(a) {
+            i32 b = 5;
+        };
+        wasm::call:alt {
+        }
+    "#,
+    r#"
+        my_func() -> bool {
+            return true;
+        }
+        bool a = my_func();
+        wasm::call:alt {
+        }
+    "#,
+    r#"
+        my_fn(i32 a) -> i32 {
+            return a;
+        }
+        wasm::call:alt {
+            i32 a = 5;
+            i32 a;
+            i32 b = my_fn(a);
+        }
+    "#,
+    r#"
+        my_fn(i32 a) -> i32 {
+            return a;
+        }
+        wasm::call:alt {
+            i32 a = 5;
+            i32 a;
+            i32 b = my_fn(a);
+        }
+    "#,
+
+
+
 ];
 
 // =============
@@ -330,9 +390,13 @@ pub fn test_template() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
-        strcmp () {}
+        my_fn(i32 a) -> i32 {
+            return a;
+        }
+        i32 a = 5;
+        i32 a;
         wasm::call:alt {
-            strcmp();
+            i32 b = my_fn(a);
         }
     "#;
     match tests::get_ast(script, &mut err) {

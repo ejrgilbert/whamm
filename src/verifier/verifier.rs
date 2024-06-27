@@ -35,12 +35,12 @@ struct TypeChecker<'a> {
 }
 
 impl TypeChecker<'_> {
-    fn add_local(&mut self, ty: DataType, name: String, is_comp_provided: bool) {
+    fn add_local(&mut self, ty: DataType, name: String, is_comp_provided: bool, loc: &Option<Location>) {
         if self.table.lookup(&name).is_some() {
-            // This should never be the case since it's controlled by the compiler!
-            self.err
-                .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
-            unreachable!()
+            // If this happens, then the user is attempting to redeclare a variable already in scope
+            let old_loc = self.table.get_record(self.table.lookup(&name).unwrap()).unwrap().loc();
+            self.err.duplicate_identifier_error(false, name, old_loc.clone().map(|l| l.line_col), loc.clone().map(|l| l.line_col));
+            return;
         }
 
         // Add local to scope
@@ -52,7 +52,7 @@ impl TypeChecker<'_> {
                 value: None,
                 is_comp_provided,
                 addr: None,
-                loc: None,
+                loc: loc.clone(),
             },
         );
     }
@@ -302,9 +302,9 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                     self.visit_expr(expr);
                     None
                 }
-                Statement::Decl { ty, var_id, .. } => {
+                Statement::Decl { ty, var_id, loc, .. } => {
                     if let Expr::VarId { name, .. } = var_id {
-                        self.add_local(ty.to_owned(), name.to_owned(), false);
+                        self.add_local(ty.to_owned(), name.to_owned(), false, loc);
                     } else {
                         self.err.unexpected_error(
                             true,
@@ -521,15 +521,6 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                 args,
                 loc,
             } => {
-                if self.in_script_global {
-                    self.err.type_check_error(
-                        false,
-                        "Function calls are not allowed in the global state of the script"
-                            .to_owned(),
-                        &loc.clone().map(|l| l.line_col),
-                    );
-                    return Some(DataType::AssumeGood);
-                }
                 // lookup type of function
                 let mut actual_param_tys = vec![];
 
@@ -567,9 +558,19 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                         params,
                         ret_ty,
                         addr: _,
-                        is_comp_provided: _,
+                        is_comp_provided,
                     }) = self.table.get_record(id)
                     {
+                        //check if in global state and if is_comp_provided is false --> not allowed if both are the case
+                        if self.in_script_global && !is_comp_provided {
+                            self.err.type_check_error(
+                                false,
+                                "Function calls to user def functions are not allowed in the global state of the script"
+                                    .to_owned(),
+                                &loc.clone().map(|l| l.line_col),
+                            );
+                            //continue to check for other errors even after emmitting this one
+                        }
                         //check if the
                         // look up param
                         let mut expected_param_tys = vec![];
