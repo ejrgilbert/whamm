@@ -26,11 +26,67 @@ pub struct SymbolTableBuilder<'a> {
     pub curr_fn: Option<usize>,     // indexes into this::table::records
 }
 impl SymbolTableBuilder<'_> {
+    fn check_duplicate_id(
+        &mut self,
+        name: &String,
+        loc: &Option<Location>,
+        is_comp_provided_new: bool,
+    ) -> bool {
+        if self.table.lookup(name).is_some() {
+            let old_rec = self
+                .table
+                .get_record(self.table.lookup(name).unwrap())
+                .unwrap();
+            let old_loc = old_rec.loc();
+            if old_loc.is_none() {
+                //make sure old_rec is comp provided
+                if old_rec.is_comp_provided() {
+                    let new_loc = match loc {
+                        Some(l) => Some(l.line_col.clone()),
+                        None => None,
+                    };
+                    if loc.is_none() {
+                        // happens if new_loc is compiler-provided or is a user-def func without location -- both should throw unexpected error
+                        self.err
+                            .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+                    } else {
+                        self.err
+                            .compiler_fn_overload_error(false, name.clone(), new_loc);
+                    }
+                } else {
+                    self.err
+                        .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+                }
+            } else {
+                if loc.is_none() {
+                    // happens if new ID is compiler-provided or is a user-def func without location
+                    //if new ID is compiler-provided, throw compiler overload error for the old record
+                    if is_comp_provided_new {
+                        self.err.compiler_fn_overload_error(
+                            false,
+                            name.clone(),
+                            old_loc.clone().map(|l| l.line_col),
+                        );
+                    } else {
+                        //otherwise throw unexpected error as user-def fn has no loc
+                        self.err
+                            .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+                    }
+                }
+                self.err.duplicate_identifier_error(
+                    false,
+                    name.clone(),
+                    loc.clone().map(|l| l.line_col),
+                    old_loc.clone().map(|l| l.line_col),
+                );
+            }
+            return true;
+        }
+        false
+    }
     fn add_script(&mut self, script: &Script) {
-        if self.table.lookup(&script.name).is_some() {
-            // This should never be the case since it's controlled by the compiler!
-            self.err
-                .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+        if self.check_duplicate_id(&script.name, &None, true) {
+            return;
         }
 
         // create record
@@ -72,10 +128,8 @@ impl SymbolTableBuilder<'_> {
     }
 
     fn add_provider(&mut self, provider: &Provider) {
-        if self.table.lookup(&provider.name).is_some() {
-            // This should never be the case since it's controlled by the compiler! - THIS BREAKS WITH WHAMM
-            self.err
-                .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+        if self.check_duplicate_id(&provider.name, &None, true) {
+            return;
         }
 
         // create record
@@ -116,10 +170,8 @@ impl SymbolTableBuilder<'_> {
     }
 
     fn add_package(&mut self, package: &Package) {
-        if self.table.lookup(&package.name).is_some() {
-            // This should never be the case since it's controlled by the compiler!
-            self.err
-                .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+        if self.check_duplicate_id(&package.name, &None, true) {
+            return;
         }
 
         // create record
@@ -156,10 +208,8 @@ impl SymbolTableBuilder<'_> {
     }
 
     fn add_event(&mut self, event: &Event) {
-        if self.table.lookup(&event.name).is_some() {
-            // This should never be the case since it's controlled by the compiler!
-            self.err
-                .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+        if self.check_duplicate_id(&event.name, &None, true) {
+            return;
         }
 
         // create record
@@ -200,10 +250,8 @@ impl SymbolTableBuilder<'_> {
     }
 
     fn add_probe(&mut self, probe: &Probe) {
-        if self.table.lookup(&probe.mode).is_some() {
-            // This should never be the case since it's controlled by the compiler!
-            self.err
-                .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+        if self.check_duplicate_id(&probe.mode, &None, true) {
+            return;
         }
 
         // create record
@@ -240,6 +288,8 @@ impl SymbolTableBuilder<'_> {
 
     fn add_fn(&mut self, f: &mut Fn) {
         let f_id: &parser_types::FnId = &f.name;
+        //TODO - make work with if self.check_duplicate_id(&f_id.name, f_id.loc, f.is_comp_proivded){ return; }
+
         if let Some(other_fn_id) = self.table.lookup(&f_id.name) {
             if let Some(other_rec) = self.table.get_record(other_fn_id) {
                 if let (Some(curr_loc), Some(other_loc)) = (&f_id.loc, other_rec.loc()) {
@@ -302,6 +352,7 @@ impl SymbolTableBuilder<'_> {
             params: vec![],
             ret_ty: f.return_ty.clone().unwrap(),
             addr: None,
+            loc: f.name.loc.clone(),
         };
 
         // Add fn to scope
@@ -401,74 +452,12 @@ impl SymbolTableBuilder<'_> {
         &mut self,
         ty: DataType,
         name: String,
-        is_comp_provided_new: bool,
+        is_comp_provided: bool,
         loc: Option<Location>,
     ) {
-        if self.table.lookup(&name).is_some() {
-            //This happens if the user attempts to redeclare something compiler defined or they defined
-            let old_rec = self
-                .table
-                .get_record(self.table.lookup(&name).unwrap())
-                .unwrap();
-            let old_loc = old_rec.loc();
-            //if there is no old_loc and the old var/fn is NOT marked as is_comp_provided, then we have an issue
-            //Or it could be a script/provider/package/event/probe name
-            if old_loc.is_none() {
-                match old_rec {
-                    Record::Var {
-                        is_comp_provided, ..
-                    } => {
-                        if *is_comp_provided && !is_comp_provided_new {
-                            self.err.compiler_fn_overload_error(
-                                false,
-                                name.clone(),
-                                loc.clone().map(|l| l.line_col),
-                            );
-                        } else {
-                            self.err.unexpected_error(true, Some("Conflicting Compiler Definitions for the same name in table, or no loc for non-compiler def fn in table".to_string()), None)
-                        }
-                    }
-                    Record::Fn {
-                        is_comp_provided, ..
-                    } => {
-                        if *is_comp_provided && !is_comp_provided_new {
-                            self.err.compiler_fn_overload_error(
-                                false,
-                                name.clone(),
-                                loc.clone().map(|l| l.line_col),
-                            );
-                        } else {
-                            self.err.unexpected_error(
-                                true,
-                                Some(
-                                    "Conflicting Compiler Definitions for the same name in table"
-                                        .to_string(),
-                                ),
-                                None,
-                            )
-                        }
-                    }
-                    _ => {
-                        self.err.compiler_fn_overload_error(
-                            false,
-                            name.clone(),
-                            loc.clone().map(|l| l.line_col),
-                        );
-                    }
-                }
-            }
-            //if the old_loc is NOT none, then its user-def being used twice
-            else {
-                self.err.duplicate_identifier_error(
-                    false,
-                    name.clone(),
-                    loc.clone().map(|l| l.line_col),
-                    old_loc.clone().map(|l| l.line_col),
-                );
-            }
+        if self.check_duplicate_id(&name, &loc, is_comp_provided) {
             return;
         }
-
         // Add global to scope
         let id = self.table.put(
             name.clone(),
@@ -476,7 +465,7 @@ impl SymbolTableBuilder<'_> {
                 ty,
                 name,
                 value: None,
-                is_comp_provided: is_comp_provided_new,
+                is_comp_provided: is_comp_provided,
                 addr: None,
                 loc,
             },

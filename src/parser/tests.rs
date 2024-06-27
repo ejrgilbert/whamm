@@ -604,7 +604,7 @@ pub fn test_template() {
         }
     };
 }
-
+#[test]
 pub fn testing_global_def() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);

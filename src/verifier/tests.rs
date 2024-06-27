@@ -404,6 +404,8 @@ pub fn test_template() {
             return a;
         }
         i32 my_fn;
+        i32 a;
+        // i32 wasm;
         wasm::call:alt {
             i32 b = my_fn(a);
             i32 my_fn;

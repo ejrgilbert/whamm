@@ -35,6 +35,64 @@ struct TypeChecker<'a> {
 }
 
 impl TypeChecker<'_> {
+    fn check_duplicate_id(
+        &mut self,
+        name: &String,
+        loc: &Option<Location>,
+        is_comp_provided_new: bool,
+    ) -> bool {
+        if self.table.lookup(name).is_some() {
+            let old_rec = self
+                .table
+                .get_record(self.table.lookup(name).unwrap())
+                .unwrap();
+            let old_loc = old_rec.loc();
+            if old_loc.is_none() {
+                //make sure old_rec is comp provided
+                if old_rec.is_comp_provided() {
+                    let new_loc = match loc {
+                        Some(l) => Some(l.line_col.clone()),
+                        None => None,
+                    };
+                    if loc.is_none() {
+                        // happens if new_loc is compiler-provided or is a user-def func without location -- both should throw unexpected error
+                        self.err
+                            .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+                    } else {
+                        self.err
+                            .compiler_fn_overload_error(false, name.clone(), new_loc);
+                    }
+                } else {
+                    self.err
+                        .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+                }
+            } else {
+                if loc.is_none() {
+                    // happens if new ID is compiler-provided or is a user-def func without location
+                    //if new ID is compiler-provided, throw compiler overload error for the old record
+                    if is_comp_provided_new {
+                        self.err.compiler_fn_overload_error(
+                            false,
+                            name.clone(),
+                            old_loc.clone().map(|l| l.line_col),
+                        );
+                    } else {
+                        //otherwise throw unexpected error as user-def fn has no loc
+                        self.err
+                            .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+                    }
+                }
+                self.err.duplicate_identifier_error(
+                    false,
+                    name.clone(),
+                    loc.clone().map(|l| l.line_col),
+                    old_loc.clone().map(|l| l.line_col),
+                );
+            }
+            return true;
+        }
+        false
+    }
     fn add_local(
         &mut self,
         ty: DataType,
@@ -42,66 +100,7 @@ impl TypeChecker<'_> {
         is_comp_provided: bool,
         loc: &Option<Location>,
     ) {
-        if self.table.lookup(&name).is_some() {
-            // If this happens, then the user is attempting to redeclare a variable already in scope
-            let old_rec = self
-                .table
-                .get_record(self.table.lookup(&name).unwrap())
-                .unwrap();
-            let old_loc = old_rec.loc();
-            if old_loc.is_none() {
-                match old_rec {
-                    Record::Var { .. } => {
-                        if !is_comp_provided {
-                            self.err.compiler_fn_overload_error(
-                                false,
-                                name.clone(),
-                                loc.clone().map(|l| l.line_col),
-                            );
-                        } else {
-                            self.err.unexpected_error(
-                                true,
-                                Some(
-                                    "Conflicting Compiler Definitions for the same name in table"
-                                        .to_string(),
-                                ),
-                                None,
-                            )
-                        }
-                    }
-                    Record::Fn { .. } => {
-                        if !is_comp_provided {
-                            self.err.compiler_fn_overload_error(
-                                false,
-                                name.clone(),
-                                loc.clone().map(|l| l.line_col),
-                            );
-                        } else {
-                            self.err.unexpected_error(
-                                true,
-                                Some(
-                                    "Conflicting Compiler Definitions for the same name in table"
-                                        .to_string(),
-                                ),
-                                None,
-                            )
-                        }
-                    }
-                    _ => {
-                        self.err.compiler_fn_overload_error(
-                            false,
-                            name.clone(),
-                            loc.clone().map(|l| l.line_col),
-                        );
-                    }
-                }
-            }
-            self.err.duplicate_identifier_error(
-                false,
-                name,
-                old_loc.clone().map(|l| l.line_col),
-                loc.clone().map(|l| l.line_col),
-            );
+        if self.check_duplicate_id(&name, loc, is_comp_provided) {
             return;
         }
 
@@ -623,6 +622,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                         ret_ty,
                         addr: _,
                         is_comp_provided,
+                        loc,
                     }) = self.table.get_record(id)
                     {
                         //check if in global state and if is_comp_provided is false --> not allowed if both are the case

@@ -389,6 +389,7 @@ pub enum Record {
         //         can't find another way though since I can't encode a FunctionId through the API
         //         ...maybe use type parameters?
         addr: Option<FunctionId>,
+        loc: Option<Location>,
     },
     Var {
         ty: DataType,
@@ -407,6 +408,17 @@ impl Record {
             Record::Fn { name, .. } => &name.loc,
             Record::Var { loc, .. } => loc,
             _ => &None,
+        }
+    }
+    pub fn is_comp_provided(&self) -> bool {
+        match self {
+            Record::Fn {
+                is_comp_provided, ..
+            } => *is_comp_provided,
+            Record::Var {
+                is_comp_provided, ..
+            } => *is_comp_provided,
+            _ => true,
         }
     }
 }
