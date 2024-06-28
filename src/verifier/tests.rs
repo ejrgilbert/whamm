@@ -469,6 +469,36 @@ pub fn expect_fatal_error() {
         }
     };
 }
+#[test] 
+pub fn test_recursive_calls(){
+    setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let script = r#"
+        make5(i32 a) -> i32 {
+            if(a<5){
+                return make5(a+1);
+            };
+            return a;
+        }
+        wasm::call:alt {
+            i32 a = 0;
+            i32 b = make5(a);
+        }
+    "#;
+    match tests::get_ast(script, &mut err) {
+        Some(mut ast) => {
+            let mut table = verifier::build_symbol_table(&mut ast, &mut err);
+            let res = verifier::type_check(&ast, &mut table, &mut err);
+            err.report();
+            assert!(!err.has_errors);
+            assert!(res);
+        }
+        None => {
+            error!("Could not get ast from script: {}", script);
+            panic!();
+        }
+    };
+}
 //TODO: uncomment after BEGIN is working
 
 //WE DONT HAVE BEGIN WORKING YET
