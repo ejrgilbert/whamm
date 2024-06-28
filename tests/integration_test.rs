@@ -114,10 +114,9 @@ fn instrument_handwritten_wasm_call() {
         .arg("tests/scripts/instr.mm")
         .arg("--app")
         .arg("tests/apps/handwritten/add.wasm")
-        .status()
-        .expect("0");
-    print!("{:?}", res);
-    assert!(res.success());
+        .output()
+        .expect("failed to execute process");
+    assert!(res.status.success());
 
     let file_data = fs::read("output/output.wasm").unwrap();
     let wat_data = wasm2wat(file_data).unwrap();
@@ -134,9 +133,9 @@ fn instrument_control_flow() {
         .arg("--target")
         .arg("wasm32-unknown-unknown")
         .current_dir("wasm_playground/control_flow")
-        .status()
-        .expect("0");
-    assert!(a.success());
+        .output()
+        .expect("failed to execute process");
+    assert!(a.status.success());
 
     let res = Command::new(executable)
         .arg("instr")
@@ -144,9 +143,9 @@ fn instrument_control_flow() {
         .arg("tests/scripts/instr.mm")
         .arg("--app")
         .arg("wasm_playground/control_flow/target/wasm32-unknown-unknown/debug/cf.wasm")
-        .status()
-        .expect("0");
-    assert!(res.success());
+        .output()
+        .expect("failed to execute process");
+    assert!(res.status.success());
 
     let file_data = fs::read("output/output.wasm").unwrap();
     let wat_data = wasm2wat(file_data).unwrap();
