@@ -19,7 +19,7 @@ fn get_instr_info(app_wasm: &walrus::Module, instr: &Instr, instr_name: &String)
             // get information about the function call
             let (func_info, params) = crate::emitter::rewriting::emitter::get_func_info(app_wasm, func);
 
-            crate::emitter::rewriting::emitter::InstrInfo {
+            crate::emitter::rewriting::InstrInfo {
                 instr_name: instr_name.to_owned(),
                 instr_args: params,
                 called_func_info: Some(func_info),

@@ -1,4 +1,4 @@
-mod providers;
+mod rules;
 
 use crate::common::error::{ErrorGen, WhammError};
 use crate::generator::types::ExprFolder;
