@@ -225,7 +225,7 @@ wasm:bytecode:br:before {
     // valid "variants" of reserved keywords
     "wasm:bytecode:call:alt { i32 arg; }",
     "wasm:bytecode:call:alt { arg = 1; }",
-    "wasm:bytecode:call:alt { arg0 = 1; }"
+    "wasm:bytecode:call:alt { arg0 = 1; }",
 ];
 
 const FATAL_SCRIPTS: &[&str] = &[
