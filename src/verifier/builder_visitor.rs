@@ -520,7 +520,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
 
     fn visit_script(&mut self, script: &mut Script) {
         trace!("Entering: visit_script");
-        self.comp_def = false;
+        self.is_compiler_defined = false;
         self.add_script(script);
 
         script.fns.iter_mut().for_each(|f| self.visit_fn(f));
