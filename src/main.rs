@@ -114,6 +114,10 @@ fn run_instr(
 
     // Read app Wasm into Walrus module
     let _config = walrus::ModuleConfig::new();
+    if !PathBuf::from(&app_wasm_path).exists() {
+        error!("Wasm module does not exist at: {}", app_wasm_path);
+        exit(1);
+    }
     let app_wasm = Module::from_file(app_wasm_path).unwrap();
 
     // Configure the emitter based on target instrumentation code format
