@@ -317,8 +317,8 @@ pub struct FnId {
 
 #[derive(Clone, Debug)]
 pub struct Fn {
-    pub(crate) is_comp_provided: bool,
-    pub(crate) name: FnId,
+    pub is_comp_provided: bool,
+    pub name: FnId,
     pub(crate) params: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
     pub(crate) return_ty: Option<DataType>,
     pub(crate) body: Block,
