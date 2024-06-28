@@ -27,6 +27,9 @@ pub struct SymbolTableBuilder<'a> {
 }
 impl SymbolTableBuilder<'_> {
     fn add_script(&mut self, script: &Script) {
+        /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
+        In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
+        just in case it is non-fatal to avoid having 2 strings w/same name in record */
         if check_duplicate_id(&script.name, &None, true, &self.table, self.err) {
             return;
         }
@@ -68,10 +71,10 @@ impl SymbolTableBuilder<'_> {
             .set_curr_scope_info(script.name.clone(), ScopeType::Script);
         self.table.set_curr_script(id);
     }
-    /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
-    In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
-    just in case it is non-fatal to avoid having 2 strings w/same name in record */
     fn add_provider(&mut self, provider: &Provider) {
+        /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
+        In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
+        just in case it is non-fatal to avoid having 2 strings w/same name in record */
         if check_duplicate_id(&provider.name, &None, true, &self.table, self.err) {
             return;
         }
@@ -241,7 +244,7 @@ impl SymbolTableBuilder<'_> {
 
     fn add_fn(&mut self, f: &mut Fn) {
         let f_id: &parser_types::FnId = &f.name;
-        //if there is another id with the same name in the table
+        //if there is another id with the same name in the table -> should cause an error because 2 functions with the same name
         if let Some(other_fn_id) = self.table.lookup(&f_id.name) {
             //check if the other id has a record
             if let Some(other_rec) = self.table.get_record(other_fn_id) {

@@ -469,8 +469,8 @@ pub fn expect_fatal_error() {
         }
     };
 }
-#[test] 
-pub fn test_recursive_calls(){
+#[test]
+pub fn test_recursive_calls() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
