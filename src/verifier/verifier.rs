@@ -26,19 +26,73 @@ pub fn build_symbol_table(ast: &mut Whamm, err: &mut ErrorGen) -> SymbolTable {
     visitor.visit_whamm(ast);
     visitor.table
 }
-
+pub fn check_duplicate_id(
+    name: &String,
+    loc: &Option<Location>,
+    is_comp_provided_new: bool,
+    table: &SymbolTable,
+    err: &mut ErrorGen,
+) -> bool {
+    if table.lookup(name).is_some() {
+        let old_rec = table.get_record(table.lookup(name).unwrap()).unwrap();
+        let old_loc = old_rec.loc();
+        if old_loc.is_none() {
+            //make sure old_rec is comp provided
+            if old_rec.is_comp_provided() {
+                let new_loc = loc.as_ref().map(|l| l.line_col.clone());
+                if loc.is_none() {
+                    // happens if new_loc is compiler-provided or is a user-def func without location -- both should throw unexpected error
+                    err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+                } else {
+                    err.compiler_fn_overload_error(false, name.clone(), new_loc);
+                }
+            } else {
+                err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+            }
+        } else if loc.is_none() {
+            // happens if new ID is compiler-provided or is a user-def func without location
+            //if new ID is compiler-provided, throw compiler overload error for the old record
+            if is_comp_provided_new {
+                err.compiler_fn_overload_error(
+                    false,
+                    name.clone(),
+                    old_loc.clone().map(|l| l.line_col),
+                );
+            } else {
+                //otherwise throw unexpected error as user-def fn has no loc
+                err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+            }
+        } else {
+            err.duplicate_identifier_error(
+                false,
+                name.clone(),
+                loc.clone().map(|l| l.line_col),
+                old_loc.clone().map(|l| l.line_col),
+            );
+        }
+        return true;
+    }
+    false
+}
 struct TypeChecker<'a> {
     table: &'a mut SymbolTable,
     err: &'a mut ErrorGen,
+    in_script_global: bool,
 }
 
 impl TypeChecker<'_> {
-    fn add_local(&mut self, ty: DataType, name: String, is_comp_provided: bool) {
-        if self.table.lookup(&name).is_some() {
-            // This should never be the case since it's controlled by the compiler!
-            self.err
-                .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
-            unreachable!()
+    fn add_local(
+        &mut self,
+        ty: DataType,
+        name: String,
+        is_comp_provided: bool,
+        loc: &Option<Location>,
+    ) {
+        /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
+        In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
+        just in case it is non-fatal to avoid having 2 strings w/same name in record */
+        if check_duplicate_id(&name, loc, is_comp_provided, self.table, self.err) {
+            return;
         }
 
         // Add local to scope
@@ -50,7 +104,7 @@ impl TypeChecker<'_> {
                 value: None,
                 is_comp_provided,
                 addr: None,
-                loc: None,
+                loc: loc.clone(),
             },
         );
     }
@@ -77,11 +131,14 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
 
     fn visit_script(&mut self, script: &Script) -> Option<DataType> {
         self.table.enter_named_scope(&script.name);
-
-        // TODO: type check user provided functions
-        // whamm.fns.iter().for_each(|function| {
-        //     self.visit_fn(&mut function.1);
-        // });
+        self.in_script_global = true;
+        script.global_stmts.iter().for_each(|stmt| {
+            self.visit_stmt(stmt);
+        });
+        self.in_script_global = false;
+        script.fns.iter().for_each(|function| {
+            self.visit_fn(function);
+        });
 
         script.providers.iter().for_each(|(_, provider)| {
             self.visit_provider(provider);
@@ -162,22 +219,74 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         // type check body
 
         self.table.enter_named_scope(&function.name.name);
-        self.visit_block(&function.body);
+        let mut check_ret_type = self.visit_block(&function.body);
         let _ = self.table.exit_scope();
-
-        // return type
-        todo!();
+        if check_ret_type.is_none() {
+            check_ret_type = Some(DataType::Tuple { ty_info: vec![] });
+        }
+        //figure out how to deal with void functions (return type is ())
+        if check_ret_type != function.return_ty {
+            self.err.type_check_error(
+                false,
+                format!(
+                    "The function signature for '{}' returns '{:?}', but the body returns '{:?}'",
+                    function.name.name, function.return_ty, check_ret_type
+                ),
+                &function.name.loc.clone().map(|l| l.line_col),
+            );
+        }
+        //return the type of the fn
+        function.return_ty.clone()
     }
 
     fn visit_block(&mut self, block: &Block) -> Option<DataType> {
-        // TODO: finish user def function type checking
-        for stmt in &block.stmts {
-            self.visit_stmt(stmt);
+        let mut ret_type = None;
+        let num_statements = block.stmts.len();
+        let start_of_range: usize;
+        for i in 0..num_statements {
+            let temp = self.visit_stmt(&block.stmts[i]);
+            if temp.is_some() && ret_type.is_none() {
+                ret_type = temp;
+            } else if ret_type.is_some() {
+                start_of_range = i;
+                //get the span for the first statement to the last one
+                let loc = Location::from(
+                    &block.stmts[start_of_range].loc().clone().unwrap().line_col,
+                    &block.stmts[num_statements - 1]
+                        .loc()
+                        .clone()
+                        .unwrap()
+                        .line_col,
+                    None,
+                );
+                self.err.add_typecheck_warn(
+                    "Unreachable code detected, these statement(s) will not be executed"
+                        .to_string(),
+                    Some(loc.line_col),
+                );
+                return ret_type;
+            }
         }
-        todo!()
+        //add a check for return statement type matching the function return type if provided
+        ret_type
     }
 
     fn visit_stmt(&mut self, stmt: &Statement) -> Option<DataType> {
+        if self.in_script_global {
+            match stmt {
+                //allow declarations and assignment
+                Statement::Decl { .. } | Statement::Assign { .. } => {}
+                _ => {
+                    self.err.type_check_error(
+                        false,
+                        "Only variable declarations and assignment are allowed in the global scope"
+                            .to_owned(),
+                        &stmt.loc().clone().map(|l| l.line_col),
+                    );
+                    return None;
+                }
+            }
+        }
         match stmt {
             Statement::Assign { var_id, expr, .. } => {
                 // change type in symbol table?
@@ -214,15 +323,19 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                 self.visit_expr(expr);
                 None
             }
-            Statement::Decl { ty, var_id, .. } => {
+            Statement::Decl {
+                ty, var_id, loc, ..
+            } => {
                 if let Expr::VarId { name, .. } = var_id {
-                    self.add_local(ty.to_owned(), name.to_owned(), false);
+                    if !self.in_script_global {
+                        self.add_local(ty.to_owned(), name.to_owned(), false, loc);
+                    }
                 } else {
                     self.err.unexpected_error(
                         true,
                         Some(format!(
                             "{} \
-                Variable declaration var_id is not the correct Expr variant!!",
+                    Variable declaration var_id is not the correct Expr variant!!",
                             UNEXPECTED_ERR_MSG
                         )),
                         var_id.loc().clone().map(|l| l.line_col),
@@ -230,11 +343,54 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                 }
                 None
             }
-            Statement::Return { expr, loc: _loc } => {
-                let _ret_ty_op = self.visit_expr(expr);
-                // TODO: type check Return statement (to do with user defined functions)
-
-                None
+            Statement::Return { expr, loc: _loc } => self.visit_expr(expr),
+            Statement::If {
+                cond, conseq, alt, ..
+            } => {
+                let cond_ty = self.visit_expr(cond);
+                if cond_ty != Some(DataType::Boolean) {
+                    self.err.type_check_error(
+                        false,
+                        format!(
+                            "Condition must be of type boolean, found {:?}",
+                            cond_ty.unwrap()
+                        )
+                        .to_owned(),
+                        &Some(cond.loc().clone().unwrap().line_col),
+                    );
+                }
+                let ret_ty_conseq = self.visit_block(conseq);
+                let ret_ty_alt = self.visit_block(alt);
+                if ret_ty_conseq == ret_ty_alt {
+                    ret_ty_conseq
+                } else {
+                    //check if it is assume good
+                    let empty_tuple = Some(DataType::Tuple { ty_info: vec![] });
+                    match (ret_ty_conseq, ret_ty_alt) {
+                        (None, _) | (_, None) => return None,
+                        (Some(DataType::AssumeGood), _) | (_, Some(DataType::AssumeGood)) => {
+                            return Some(DataType::AssumeGood)
+                        }
+                        (conseq, _) if conseq == empty_tuple.clone() => return empty_tuple.clone(),
+                        (_, alt) if alt == empty_tuple.clone() => return empty_tuple.clone(),
+                        (_, _) => {}
+                    }
+                    //check that they are not returning different types if neither is () or None
+                    //error here
+                    self.err.type_check_error(
+                        false,
+                        "Return type of if and else blocks do not match".to_owned(),
+                        &Some(
+                            Location::from(
+                                &conseq.loc().clone().unwrap().line_col,
+                                &alt.loc().clone().unwrap().line_col,
+                                None,
+                            )
+                            .line_col,
+                        ),
+                    );
+                    Some(DataType::AssumeGood)
+                }
             }
         }
     }
@@ -381,6 +537,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                     Some(DataType::AssumeGood)
                 }
             }
+            //disallow calls when the in the global state of the script
             Expr::Call {
                 fn_target,
                 args,
@@ -423,8 +580,21 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                         params,
                         ret_ty,
                         addr: _,
+                        is_comp_provided,
+                        loc,
                     }) = self.table.get_record(id)
                     {
+                        //check if in global state and if is_comp_provided is false --> not allowed if both are the case
+                        if self.in_script_global && !is_comp_provided {
+                            self.err.type_check_error(
+                                false,
+                                "Function calls to user def functions are not allowed in the global state of the script"
+                                    .to_owned(),
+                                &loc.clone().map(|l| l.line_col),
+                            );
+                            //continue to check for other errors even after emmitting this one
+                        }
+                        //check if the
                         // look up param
                         let mut expected_param_tys = vec![];
                         for param in params {
@@ -459,17 +629,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                             }
                         }
 
-                        return match ret_ty.clone() {
-                            Some(ty) => Some(ty),
-                            None => {
-                                self.err.type_check_error(
-                                    false,
-                                    "Return type of function not specified".to_owned(),
-                                    &loc.clone().map(|l| l.line_col),
-                                );
-                                Some(DataType::AssumeGood)
-                            }
-                        };
+                        return Some(ret_ty.clone());
                     } else {
                         self.err.type_check_error(
                             false,
@@ -491,11 +651,17 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                 cond, conseq, alt, ..
             } => {
                 let cond_ty = self.visit_expr(cond);
+                //have to clone before the "if let" block
+                let cond_ty_clone = cond_ty.clone();
                 if let Some(ty) = cond_ty {
                     if ty != DataType::Boolean {
                         self.err.type_check_error(
                             false,
-                            "Condition must be of type boolean".to_owned(),
+                            format!(
+                                "Condition must be of type boolean, found {:?}",
+                                cond_ty_clone.unwrap()
+                            )
+                            .to_owned(),
                             &Some(cond.loc().clone().unwrap().line_col),
                         );
                     }
@@ -594,7 +760,11 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
 }
 
 pub fn type_check(ast: &Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> bool {
-    let mut type_checker = TypeChecker { table: st, err };
+    let mut type_checker = TypeChecker {
+        table: st,
+        err,
+        in_script_global: false,
+    };
     type_checker.visit_whamm(ast);
     // note that parser errors might propagate here
     !err.has_errors

@@ -1,5 +1,7 @@
 use crate::parser::types as parser_types;
+use crate::verifier::builder_visitor::parser_types::Location;
 use crate::verifier::types::{Record, ScopeType, SymbolTable};
+use crate::verifier::verifier::check_duplicate_id;
 use parser_types::{
     BinOp, Block, DataType, Event, Expr, Fn, Package, Probe, Provider, Script, Statement, UnOp,
     Value, Whamm,
@@ -15,22 +17,21 @@ const UNEXPECTED_ERR_MSG: &str = "SymbolTableBuilder: Looks like you've found a 
 pub struct SymbolTableBuilder<'a> {
     pub table: SymbolTable,
     pub err: &'a mut ErrorGen,
-
     pub curr_whamm: Option<usize>,  // indexes into this::table::records
     pub curr_script: Option<usize>, // indexes into this::table::records
     pub curr_provider: Option<usize>, // indexes into this::table::records
     pub curr_package: Option<usize>, // indexes into this::table::records
     pub curr_event: Option<usize>,  // indexes into this::table::records
     pub curr_probe: Option<usize>,  // indexes into this::table::records
-
-    pub curr_fn: Option<usize>, // indexes into this::table::records
+    pub curr_fn: Option<usize>,     // indexes into this::table::records
 }
 impl SymbolTableBuilder<'_> {
     fn add_script(&mut self, script: &Script) {
-        if self.table.lookup(&script.name).is_some() {
-            // This should never be the case since it's controlled by the compiler!
-            self.err
-                .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+        /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
+        In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
+        just in case it is non-fatal to avoid having 2 strings w/same name in record */
+        if check_duplicate_id(&script.name, &None, true, &self.table, self.err) {
+            return;
         }
 
         // create record
@@ -70,12 +71,12 @@ impl SymbolTableBuilder<'_> {
             .set_curr_scope_info(script.name.clone(), ScopeType::Script);
         self.table.set_curr_script(id);
     }
-
     fn add_provider(&mut self, provider: &Provider) {
-        if self.table.lookup(&provider.name).is_some() {
-            // This should never be the case since it's controlled by the compiler!
-            self.err
-                .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+        /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
+        In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
+        just in case it is non-fatal to avoid having 2 strings w/same name in record */
+        if check_duplicate_id(&provider.name, &None, true, &self.table, self.err) {
+            return;
         }
 
         // create record
@@ -116,10 +117,11 @@ impl SymbolTableBuilder<'_> {
     }
 
     fn add_package(&mut self, package: &Package) {
-        if self.table.lookup(&package.name).is_some() {
-            // This should never be the case since it's controlled by the compiler!
-            self.err
-                .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+        /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
+        In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
+        just in case it is non-fatal to avoid having 2 strings w/same name in record */
+        if check_duplicate_id(&package.name, &None, true, &self.table, self.err) {
+            return;
         }
 
         // create record
@@ -134,12 +136,8 @@ impl SymbolTableBuilder<'_> {
         let id = self.table.put(package.name.clone(), package_rec);
 
         // Add package to current provider record
-        match self
-            .table
-            .get_record_mut(&self.curr_provider.unwrap())
-            .unwrap()
-        {
-            Record::Provider { packages, .. } => {
+        match self.table.get_record_mut(&self.curr_provider.unwrap()) {
+            Some(Record::Provider { packages, .. }) => {
                 packages.push(id);
             }
             _ => {
@@ -160,10 +158,11 @@ impl SymbolTableBuilder<'_> {
     }
 
     fn add_event(&mut self, event: &Event) {
-        if self.table.lookup(&event.name).is_some() {
-            // This should never be the case since it's controlled by the compiler!
-            self.err
-                .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+        /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
+        In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
+        just in case it is non-fatal to avoid having 2 strings w/same name in record */
+        if check_duplicate_id(&event.name, &None, true, &self.table, self.err) {
+            return;
         }
 
         // create record
@@ -204,10 +203,11 @@ impl SymbolTableBuilder<'_> {
     }
 
     fn add_probe(&mut self, probe: &Probe) {
-        if self.table.lookup(&probe.mode).is_some() {
-            // This should never be the case since it's controlled by the compiler!
-            self.err
-                .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+        /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
+        In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
+        just in case it is non-fatal to avoid having 2 strings w/same name in record */
+        if check_duplicate_id(&probe.mode, &None, true, &self.table, self.err) {
+            return;
         }
 
         // create record
@@ -243,36 +243,66 @@ impl SymbolTableBuilder<'_> {
     }
 
     fn add_fn(&mut self, f: &mut Fn) {
-        let f_name = &f.name;
-        if let Some(other_fn_id) = self.table.lookup(&f_name.name) {
+        let f_id: &parser_types::FnId = &f.name;
+        //if there is another id with the same name in the table -> should cause an error because 2 functions with the same name
+        if let Some(other_fn_id) = self.table.lookup(&f_id.name) {
+            //check if the other id has a record
             if let Some(other_rec) = self.table.get_record(other_fn_id) {
-                if let (Some(curr_loc), Some(other_loc)) = (&f_name.loc, other_rec.loc()) {
-                    self.err.duplicate_identifier_error(
-                        false,
-                        f_name.name.clone(),
-                        Some(curr_loc.line_col.clone()),
-                        Some(other_loc.line_col.clone()),
-                    );
-                } else {
-                    // This should never be the case since it's controlled by the compiler!
-                    self.err
-                        .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
-                    unreachable!()
+                let curr_loc = &f_id.loc;
+                let other_loc = other_rec.loc();
+                match (curr_loc, other_loc) {
+                    //case for both having loc -> both user def
+                    (Some(curr_loc), Some(other_loc)) => {
+                        self.err.duplicate_identifier_error(
+                            false,
+                            f_id.name.clone(),
+                            Some(curr_loc.line_col.clone()),
+                            Some(other_loc.line_col.clone()),
+                        );
+                    }
+                    //case for curr having a location and other doesn't -> either other is comp_def or there is compiler error
+                    (Some(curr_loc), None) => {
+                        //make sure it is actually comp def
+                        if other_rec.is_comp_provided() {
+                            self.err.compiler_fn_overload_error(
+                                false,
+                                f_id.name.clone(),
+                                Some(curr_loc.line_col.clone()),
+                            );
+                        } else {
+                            //case for no location but not comp def
+                            self.err.unexpected_error(
+                                true,
+                                Some(UNEXPECTED_ERR_MSG.to_string()),
+                                None,
+                            );
+                        }
+                    }
+                    //case for curr not having a loc -> shouldn't happen: either user def without a loc or 2 comp def with same name
+                    (None, _) => {
+                        self.err.unexpected_error(
+                            true,
+                            Some("No location found for function conflicting with compiler def function. User-def fn has no location, or 2 compiler-def functions with same ID".to_string()),
+                            None,
+                        );
+                    }
                 }
             } else {
-                // This should never be the case since it's controlled by the compiler!
+                // This should never be the case -> ID is in the table but doesn't have a record associated with it
                 self.err
                     .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
                 unreachable!()
             };
         }
-
+        //This MUST run if the above wasn't a fatal error -> otherwise there are scoping errors
         // create record
         let fn_rec = Record::Fn {
             name: f.name.clone(),
+            is_comp_provided: f.is_comp_provided,
             params: vec![],
-            ret_ty: f.return_ty.clone(),
+            ret_ty: f.return_ty.clone().unwrap(),
             addr: None,
+            loc: f.name.loc.clone(),
         };
 
         // Add fn to scope
@@ -368,14 +398,19 @@ impl SymbolTableBuilder<'_> {
     }
 
     /// Insert `global` record into scope
-    fn add_global(&mut self, ty: DataType, name: String, is_comp_provided: bool) {
-        if self.table.lookup(&name).is_some() {
-            // This should never be the case since it's controlled by the compiler!
-            self.err
-                .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
-            unreachable!()
+    fn add_global(
+        &mut self,
+        ty: DataType,
+        name: String,
+        is_comp_provided: bool,
+        loc: Option<Location>,
+    ) {
+        /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
+        In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
+        just in case it is non-fatal to avoid having 2 strings w/same name in record */
+        if check_duplicate_id(&name, &loc, is_comp_provided, &self.table, self.err) {
+            return;
         }
-
         // Add global to scope
         let id = self.table.put(
             name.clone(),
@@ -385,7 +420,7 @@ impl SymbolTableBuilder<'_> {
                 value: None,
                 is_comp_provided,
                 addr: None,
-                loc: None,
+                loc,
             },
         );
 
@@ -398,7 +433,7 @@ impl SymbolTableBuilder<'_> {
         globals: &HashMap<String, (ProvidedFunctionality, Global)>,
     ) {
         for (name, (.., global)) in globals.iter() {
-            self.add_global(global.ty.clone(), name.clone(), true);
+            self.add_global(global.ty.clone(), name.clone(), true, None);
         }
     }
 }
@@ -441,7 +476,6 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
 
     fn visit_script(&mut self, script: &mut Script) {
         trace!("Entering: visit_script");
-
         self.add_script(script);
 
         script.fns.iter_mut().for_each(|f| self.visit_fn(f));
@@ -605,7 +639,10 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
             );
         }
 
-        if let Statement::Decl { ty, var_id, .. } = stmt {
+        if let Statement::Decl {
+            ty, var_id, loc, ..
+        } = stmt
+        {
             if let Expr::VarId {
                 name,
                 is_comp_provided,
@@ -613,7 +650,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
             } = &var_id
             {
                 // Add symbol to table
-                self.add_global(ty.clone(), name.clone(), *is_comp_provided);
+                self.add_global(ty.clone(), name.clone(), *is_comp_provided, loc.clone());
             } else {
                 self.err.unexpected_error(
                     true,

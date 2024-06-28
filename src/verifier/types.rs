@@ -378,16 +378,17 @@ pub enum Record {
     Fn {
         name: FnId,
         params: Vec<usize>,
-        // TODO: should this be an option?
         // given that we are assuming function that return nothing
         // returns a unit type (empty tuple)
-        ret_ty: Option<DataType>,
+        ret_ty: DataType,
+        is_comp_provided: bool,
 
         /// The address of this function post-injection
         // TODO -- this representation SUCKS...specific to walrus bytecode injection...
         //         can't find another way though since I can't encode a FunctionId through the API
         //         ...maybe use type parameters?
         addr: Option<FunctionId>,
+        loc: Option<Location>,
     },
     Var {
         ty: DataType,
@@ -406,6 +407,17 @@ impl Record {
             Record::Fn { name, .. } => &name.loc,
             Record::Var { loc, .. } => loc,
             _ => &None,
+        }
+    }
+    pub fn is_comp_provided(&self) -> bool {
+        match self {
+            Record::Fn {
+                is_comp_provided, ..
+            } => *is_comp_provided,
+            Record::Var {
+                is_comp_provided, ..
+            } => *is_comp_provided,
+            _ => true,
         }
     }
 }

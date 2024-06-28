@@ -16,8 +16,59 @@ pub fn setup_logger() {
 // = Helper Functions =
 // ====================
 
-const VALID_SCRIPTS: &[&str] =
-    &["wasm:bytecode:call:alt { new_target_fn_name = redirect_to_fault_injector; }"];
+const VALID_SCRIPTS: &[&str] = &[
+    "wasm:bytecode:call:alt { new_target_fn_name = redirect_to_fault_injector; }",
+    r#"
+        bool a;
+        i32 b;
+        nested_fn(i32 a) -> i32 {
+            return a;
+        }
+        dummy_fn() {
+            b = nested_fn(5);
+            a = strcmp((b, 8), "bookings");
+        }
+        wasm::call:alt {
+            dummy_fn();
+        }   
+    "#,
+    r#"
+        i32 i;
+        wasm:bytecode:call:before /
+            target_imp_name == "add"
+        /{
+            i = 1;
+        }
+    "#,
+    r#"
+        bool a;
+        i32 b;
+        nested_fn(i32 a) -> i32 {
+            return a;
+        }
+        dummy_fn() {
+            b = nested_fn();
+        }
+        wasm::call:alt {
+            dummy_fn();
+        }   
+    "#,
+    r#"
+        bool a = strcmp((1, 2), "bookings");
+        wasm::call:alt {
+            a = strcmp((1, 2), "bookings");
+        }
+    "#,
+    r#"
+        my_fn(i32 a) -> i32 {
+            return a;
+        }
+        i32 a = 5;
+        wasm::call:alt {
+            i32 b = my_fn(a);
+        }
+    "#,
+];
 
 const TYPE_ERROR_SCRIPTS: &[&str] = &[
     // predicate
@@ -62,7 +113,7 @@ wasm::call:alt {
     x = "str";
 }
     "#,
-    // Ternary (TODO: We do not emit code for tenary yet)
+    // Ternary (TODO: We do not emit code for ternary yet)
     r#"
 i32 i;
 wasm::call:alt {
@@ -100,7 +151,7 @@ wasm::call:alt /
     r#"
 i32 u;
 wasm::call:alt {
-    u = argdadf;
+    u = argasdf;
 }
     "#,
     // long type check error
@@ -125,6 +176,132 @@ wasm::call:alt /
 / {
 
 }
+    "#,
+    r#"
+        bool a;
+        i32 b;
+        strcmp(){
+            a = false;
+        }
+        nested_fn(i32 a) -> i32 {
+            return a;
+        }
+        dummy_fn() {
+            b = nested_fn(5);
+            a = strcmp((b, 8), "bookings");
+        }
+        wasm::call:alt {
+            dummy_fn();
+        }   
+    "#,
+    r#"
+        bool a;
+        i32 b;
+        nested_fn(i32 a) -> i32 {
+            return a;
+        }
+        nested_fn(i32 a) -> i32 {
+            return a;
+        }
+        dummy_fn() {
+            b = nested_fn(5);
+            a = strcmp((b, 8), "bookings");
+        }
+        wasm::call:alt {
+            dummy_fn();
+        }   
+    "#,
+    r#"
+        i32 a;
+        nested_fn() -> bool {
+            return "hi";
+            return 1;
+        }
+        dummy_fn() {
+            a = nested_fn();
+        }
+        wasm::call:alt {
+            dummy_fn();
+        }   
+    "#,
+    r#"
+    my_fn(i32 a) -> i32 {
+        if(a > 5){
+            return 1;
+        }
+        else{
+            return true;
+        };
+        a = 5;
+    }
+    wasm::call:alt{
+        bool a = true;
+        i32 b = 5;
+        if(a){
+            b = 6;
+        }
+        else{
+            b = 7;
+        };
+        if(b){
+        };
+        if(b == 5){
+        };
+    }
+    "#,
+    r#"
+        strcmp () {}
+        wasm::call:alt {
+            strcmp();
+        }
+    "#,
+    r#"
+        bool a = true;
+        if(a) {
+            i32 b = 5;
+        };
+        wasm::call:alt {
+        }
+    "#,
+    r#"
+        my_func() -> bool {
+            return true;
+        }
+        bool a = my_func();
+        wasm::call:alt {
+        }
+    "#,
+    r#"
+        my_fn(i32 a) -> i32 {
+            return a;
+        }
+        wasm::call:alt {
+            i32 a = 5;
+            i32 a;
+            i32 b = my_fn(a);
+        }
+    "#,
+    r#"
+        my_fn(i32 a) -> i32 {
+            return a;
+        }
+        wasm::call:alt {
+            i32 a = 5;
+            i32 a;
+            i32 b = my_fn(a);
+        }
+    "#,
+    r#"
+        my_fn(i32 a) -> i32 {
+            bool a;
+            return a;
+        }
+        i32 my_fn;
+        wasm::call:alt {
+            i32 b = my_fn(a);
+            i32 my_fn;
+            i32 strcmp;
+        }
     "#,
 ];
 
@@ -224,3 +401,121 @@ pub fn test_type_errors() {
         assert!(!&res);
     }
 }
+#[test]
+pub fn test_template() {
+    setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let script = r#"
+        bool a;
+        wasm::call:alt {
+        }
+    "#;
+    match tests::get_ast(script, &mut err) {
+        Some(mut ast) => {
+            let mut table = verifier::build_symbol_table(&mut ast, &mut err);
+            let res = verifier::type_check(&ast, &mut table, &mut err);
+            err.report();
+            assert!(!err.has_errors);
+            assert!(res);
+        }
+        None => {
+            error!("Could not get ast from script: {}", script);
+            panic!();
+        }
+    };
+}
+#[test]
+pub fn test_expect_fatal() {
+    let result = std::panic::catch_unwind(|| {
+        expect_fatal_error();
+    });
+    match result {
+        Ok(_) => {
+            panic!("Expected a fatal error, but got Ok");
+        }
+        Err(_) => {
+            //this means the function properly exited with a fatal error
+        }
+    }
+}
+pub fn expect_fatal_error() {
+    setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let script = r#"
+        my_fn(i32 a) -> i32 {
+            bool a;
+            return a;
+        }
+        i32 my_fn;
+        i32 a;
+        i32 wasm;
+        wasm::call:alt {
+            i32 b = my_fn(a);
+            i32 my_fn;
+            i32 strcmp;
+        }
+    "#;
+    match tests::get_ast(script, &mut err) {
+        Some(mut ast) => {
+            let mut table = verifier::build_symbol_table(&mut ast, &mut err);
+            let res = verifier::type_check(&ast, &mut table, &mut err);
+            err.report();
+            assert!(err.has_errors);
+            assert!(!res);
+        }
+        None => {
+            error!("Could not get ast from script: {}", script);
+            panic!();
+        }
+    };
+}
+#[test]
+pub fn test_recursive_calls() {
+    setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let script = r#"
+        make5(i32 a) -> i32 {
+            if(a<5){
+                return make5(a+1);
+            };
+            return a;
+        }
+        wasm::call:alt {
+            i32 a = 0;
+            i32 b = make5(a);
+        }
+    "#;
+    match tests::get_ast(script, &mut err) {
+        Some(mut ast) => {
+            let mut table = verifier::build_symbol_table(&mut ast, &mut err);
+            let res = verifier::type_check(&ast, &mut table, &mut err);
+            err.report();
+            assert!(!err.has_errors);
+            assert!(res);
+        }
+        None => {
+            error!("Could not get ast from script: {}", script);
+            panic!();
+        }
+    };
+}
+//TODO: uncomment after BEGIN is working
+
+//WE DONT HAVE BEGIN WORKING YET
+// #[test]
+// pub fn test_whamm_module() {
+//     setup_logger();
+//     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+
+//     let script = r#"
+//         BEGIN {
+//             i32 a;
+//         }
+//     "#;
+//     info!("Typechecking: {}", script);
+//     let res = is_valid_script(script, &mut err);
+
+//     err.report();
+//     assert!(!err.has_errors);
+//     assert!(res);
+// }

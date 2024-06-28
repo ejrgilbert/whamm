@@ -132,7 +132,7 @@ impl DataType {
     pub fn print(&self, buffer: &mut Buffer) {
         match self {
             DataType::I32 => {
-                yellow(true, "int".to_string(), buffer);
+                yellow(true, "i32".to_string(), buffer);
             }
             DataType::Boolean => {
                 yellow(true, "bool".to_string(), buffer);
@@ -202,6 +202,15 @@ pub struct Block {
     pub stmts: Vec<Statement>,
     pub loc: Option<Location>,
 }
+impl Block {
+    pub fn loc(&self) -> &Option<Location> {
+        &self.loc
+    }
+    pub fn line_col(&self) -> Option<LineColLocation> {
+        self.loc().as_ref().map(|loc| loc.line_col.clone())
+    }
+}
+
 // Statements
 #[derive(Clone, Debug)]
 pub enum Statement {
@@ -225,11 +234,18 @@ pub enum Statement {
         expr: Expr,
         loc: Option<Location>,
     },
+    If {
+        cond: Expr,
+        conseq: Block,
+        alt: Block,
+        loc: Option<Location>,
+    },
 }
 impl Statement {
     pub fn loc(&self) -> &Option<Location> {
         match self {
             Statement::Decl { loc, .. }
+            | Statement::If { loc, .. }
             | Statement::Return { loc, .. }
             | Statement::Assign { loc, .. }
             | Statement::Expr { loc, .. } => loc,
@@ -1503,7 +1519,9 @@ impl Script {
     }
 
     pub fn add_global_stmts(&mut self, global_statements: Vec<Statement>) {
-        self.global_stmts = global_statements;
+        for stmt in global_statements.iter() {
+            self.global_stmts.push(stmt.clone());
+        }
     }
 
     /// Iterates over all the matched providers, packages, events, and probe mode names

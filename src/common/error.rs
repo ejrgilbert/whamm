@@ -1,10 +1,8 @@
-use crate::common::terminal::{blue, red, white};
+use crate::common::terminal::{blue, red, white, yellow};
 use crate::parser::types::{Location, Rule};
-use log::error;
 use pest::error::ErrorVariant::ParsingError;
 use pest::error::{Error, LineColLocation};
 use std::borrow::Cow;
-use std::process::exit;
 use std::{cmp, mem};
 use termcolor::{Buffer, BufferWriter, ColorChoice, WriteColor};
 
@@ -16,9 +14,11 @@ pub struct ErrorGen {
     script_text: String,
     max_errors: i32,
     errors: Vec<WhammError>,
+    warnings: Vec<WhammWarning>,
     num_errors: i32,
     pub too_many: bool,
     pub has_errors: bool,
+    pub has_warnings: bool,
 }
 impl ErrorGen {
     pub fn new(script_path: String, script_text: String, max_errors: i32) -> Self {
@@ -27,9 +27,11 @@ impl ErrorGen {
             script_text,
             max_errors,
             errors: vec![],
+            warnings: vec![],
             num_errors: 0,
             too_many: false,
             has_errors: false,
+            has_warnings: false,
         }
     }
 
@@ -56,6 +58,9 @@ impl ErrorGen {
     }
 
     pub fn report(&mut self) {
+        self.warnings.iter_mut().for_each(|warning| {
+            warning.report(&self.script_text, &self.script_path);
+        });
         // Report the most-recent error first
         self.errors.iter_mut().for_each(|error| {
             error.report(&self.script_text, &self.script_path);
@@ -68,21 +73,20 @@ impl ErrorGen {
             return;
         }
         self.report();
-        error!("{context}: Expected no errors.");
-        exit(1);
+        panic!("{context}: Reached a fatal error or warning. Exiting...");
     }
 
     pub fn check_has_errors(&mut self) {
         if self.has_errors {
             self.report();
-            exit(1);
+            panic!("Has errors. Exiting...");
         }
     }
 
     pub fn check_too_many(&mut self) {
         if self.too_many {
             self.report();
-            exit(1);
+            panic!("Too many errors. Exiting...");
         }
     }
 
@@ -170,7 +174,31 @@ impl ErrorGen {
             info_loc,
         }
     }
+    pub fn get_compiler_fn_overload_error(
+        fatal: bool,
+        duplicated_id: String,
+        loc: Option<LineColLocation>,
+    ) -> WhammError {
+        let err_loc = loc.map(|err_line_col| CodeLocation {
+            is_err: true,
+            message: Some(format!(
+                "`{}` is an identifier used by compiler. Neither overloading nor overriding is supported",
+                duplicated_id
+            )),
+            line_col: err_line_col,
+            line_str: None,
+            line2_str: None,
+        });
 
+        WhammError {
+            fatal,
+            ty: ErrorType::DuplicateIdentifierError {
+                duplicated_id: duplicated_id.clone(),
+            },
+            err_loc,
+            info_loc: None,
+        }
+    }
     pub fn get_duplicate_identifier_error_from_loc(
         fatal: bool,
         duplicated_id: String,
@@ -181,7 +209,15 @@ impl ErrorGen {
         let info_loc = info_loc.as_ref().map(|info_loc| info_loc.line_col.clone());
         Self::get_duplicate_identifier_error(fatal, duplicated_id, err_loc, info_loc)
     }
-
+    pub fn compiler_fn_overload_error(
+        &mut self,
+        fatal: bool,
+        duplicated_id: String,
+        loc: Option<LineColLocation>,
+    ) {
+        let err = Self::get_compiler_fn_overload_error(fatal, duplicated_id, loc);
+        self.add_error(err);
+    }
     pub fn duplicate_identifier_error(
         &mut self,
         fatal: bool,
@@ -193,7 +229,6 @@ impl ErrorGen {
             Self::get_duplicate_identifier_error(fatal, duplicated_id, err_line_col, info_line_col);
         self.add_error(err);
     }
-
     pub fn get_type_check_error(
         fatal: bool,
         message: String,
@@ -348,6 +383,26 @@ impl ErrorGen {
         if self.num_errors >= self.max_errors {
             self.too_many = true;
         }
+    }
+
+    pub fn add_warn(&mut self, warn: WhammWarning) {
+        self.warnings.push(warn);
+        self.has_warnings = true;
+    }
+    pub fn add_typecheck_warn(&mut self, message: String, loc: Option<LineColLocation>) {
+        let loc = loc.as_ref().map(|loc| CodeLocation {
+            is_err: false,
+            message: Some(message.clone()),
+            line_col: loc.clone(),
+            line_str: None,
+            line2_str: None,
+        });
+        let warn = WhammWarning {
+            ty: WarnType::TypeCheckWarning { message },
+            warn_loc: loc,
+            info_loc: None,
+        };
+        self.add_warn(warn);
     }
 }
 
@@ -523,6 +578,102 @@ pub struct WhammError {
     pub info_loc: Option<CodeLocation>,
     pub ty: ErrorType,
 }
+pub struct WhammWarning {
+    pub ty: WarnType,
+    pub warn_loc: Option<CodeLocation>,
+    pub info_loc: Option<CodeLocation>,
+}
+impl WhammWarning {
+    pub fn report(&mut self, script: &str, script_path: &String) {
+        let spacing = self.spacing();
+        let message = self.ty.message();
+
+        let writer = BufferWriter::stderr(ColorChoice::Always);
+        let mut buffer = writer.buffer();
+
+        yellow(true, format!("warning[{}]", self.ty.name()), &mut buffer);
+        white(true, format!(": {}\n", message), &mut buffer);
+
+        if let Some(warn_loc) = &mut self.warn_loc {
+            if warn_loc.message.is_none() {
+                warn_loc.message = Some(message.clone().to_string());
+            }
+
+            print_preamble(&warn_loc.line_col, script_path, &spacing, &mut buffer);
+            print_empty(&spacing, &mut buffer);
+            let warn_start = match &warn_loc.line_col {
+                LineColLocation::Pos((line, _)) => line,
+                LineColLocation::Span((start_line, _), ..) => start_line,
+            };
+            if let Some(info_loc) = &mut self.info_loc {
+                let info_start = match &info_loc.line_col {
+                    LineColLocation::Pos((line, _)) => line,
+                    LineColLocation::Span((start_line, _), ..) => start_line,
+                };
+
+                if info_start < warn_start {
+                    // print info first
+                    info_loc.print(script, &spacing, &mut buffer);
+                    warn_loc.print(script, &spacing, &mut buffer);
+                } else {
+                    // print err first
+                    warn_loc.print(script, &spacing, &mut buffer);
+                    info_loc.print(script, &spacing, &mut buffer);
+                }
+            } else {
+                // only print err
+                warn_loc.print(script, &spacing, &mut buffer);
+            }
+            print_empty(&spacing, &mut buffer);
+        } else {
+            // This error isn't tied to a specific code location
+            blue(false, " --> ".to_string(), &mut buffer);
+            blue(false, format!("{script_path}\n\n"), &mut buffer);
+        }
+        writer
+            .print(&buffer)
+            .expect("Uh oh, something went wrong while printing to terminal");
+        buffer
+            .reset()
+            .expect("Uh oh, something went wrong while printing to terminal");
+    }
+    fn spacing(&self) -> String {
+        let largest_err_line_no = if let Some(warn_loc) = &self.warn_loc {
+            match &warn_loc.line_col {
+                LineColLocation::Pos((line, _)) => line,
+                LineColLocation::Span((start_line, _), (end_line, _)) => {
+                    cmp::max(start_line, end_line)
+                }
+            }
+        } else {
+            // No err_line, return empty string
+            return "".to_string();
+        };
+        let largest_info_line_no = if let Some(info_loc) = &self.info_loc {
+            match &info_loc.line_col {
+                LineColLocation::Pos((line, _)) => line,
+                LineColLocation::Span((start_line, _), (end_line, _)) => {
+                    cmp::max(start_line, end_line)
+                }
+            }
+        } else {
+            // Assuming if we get here, there IS an err_line_no set; just
+            // return a "short" number
+            &0
+        };
+        let largest_line_no = cmp::max(largest_err_line_no, largest_info_line_no);
+
+        // calculate the length of the longest line number (in chars)
+        let line_str_len = format!("{}", largest_line_no).len();
+
+        let mut spacing = String::new();
+        for _ in 0..line_str_len {
+            spacing.push(' ');
+        }
+
+        spacing
+    }
+}
 impl WhammError {
     pub fn is_fatal(&self) -> bool {
         self.fatal
@@ -620,7 +771,30 @@ impl WhammError {
         spacing
     }
 }
-
+pub enum WarnType {
+    TypeCheckWarning { message: String },
+    Warning { message: Option<String> },
+}
+impl WarnType {
+    pub fn name(&self) -> &str {
+        match self {
+            WarnType::TypeCheckWarning { .. } => "TypeCheckWarning",
+            WarnType::Warning { .. } => "GeneralWarning",
+        }
+    }
+    pub fn message(&self) -> Cow<'_, str> {
+        match self {
+            WarnType::TypeCheckWarning { ref message } => Cow::Borrowed(message),
+            WarnType::Warning { ref message } => {
+                if let Some(msg) = message {
+                    Cow::Borrowed(msg)
+                } else {
+                    Cow::Borrowed("An warning occurred.")
+                }
+            }
+        }
+    }
+}
 pub enum ErrorType {
     DuplicateIdentifierError {
         duplicated_id: String,

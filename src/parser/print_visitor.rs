@@ -115,6 +115,16 @@ impl WhammVisitor<String> for AsStrVisitor {
             self.visit_globals(&script.globals);
             self.decrease_indent();
         }
+        //print global statments
+
+        if !script.global_stmts.is_empty() {
+            s += &format!("{} script global statements:{}", self.get_indent(), NL);
+            self.increase_indent();
+            for stmt in script.global_stmts.iter() {
+                s += &format!("{} {};{}", self.get_indent(), self.visit_stmt(stmt), NL);
+            }
+            self.decrease_indent();
+        }
 
         // print providers
         s += &format!("{} script providers:{}", self.get_indent(), NL);
@@ -376,6 +386,22 @@ impl WhammVisitor<String> for AsStrVisitor {
             Statement::Expr { expr, .. } => self.visit_expr(expr),
             Statement::Return { expr, .. } => {
                 format!("return {}", self.visit_expr(expr))
+            }
+            Statement::If {
+                cond, conseq, alt, ..
+            } => {
+                let mut s = "".to_string();
+                s += &format!("if ({}) {{{}", self.visit_expr(cond), NL);
+                self.increase_indent();
+                s += &self.visit_block(conseq);
+                self.decrease_indent();
+                s += &format!("{} }}", self.get_indent());
+                s += &format!(" else {{{}", NL);
+                self.increase_indent();
+                s += &self.visit_block(alt);
+                self.decrease_indent();
+                s += &format!("{} }}", self.get_indent());
+                s
             }
         }
     }

@@ -146,11 +146,6 @@ BEGIN { }
     "#,
     r#"
 wasm:bytecode:br:before {
-    i = 0;
-}
-    "#,
-    r#"
-wasm:bytecode:br:before {
     i = -10;
 }
     "#,
@@ -210,6 +205,23 @@ wasm:bytecode:br:before {
     i = 0; /**/
 }
     "#,
+    // If/else stmts
+    r#"
+        wasm::call:alt{
+            bool a = true;
+            if(a){
+                i = 0;
+            } else {
+                i = 1;
+            };
+            if(a){
+                i = 0;
+            } elif(b) {
+                i = 1;
+            };
+        }
+    
+    "#,
 ];
 
 const INVALID_SCRIPTS: &[&str] = &[
@@ -259,6 +271,32 @@ map<i32, i32> count;
     wasm:bytecode:br:before {
     }
         "#,
+    // invalid if/else
+    r#"
+        wasm::call:alt{
+            else {
+                i = 0;
+            };
+        }
+    "#,
+    r#"
+        wasm::call:alt{
+            if(a){
+                i = 0;
+            } else {
+                i = 1;
+            };
+            else {
+                i = 0;
+            };
+        }
+    "#,
+    r#"
+        wasm::call:alt{
+            bool a = true;
+            elif(a){};
+        }
+    "#,
 ];
 
 const SPECIAL: &[&str] = &["BEGIN { }", "END { }", "wasm:::alt { }", "wasm:::alt { }"];
@@ -475,6 +513,40 @@ pub fn testing_strcmp() {
         }
     };
 }
+
+#[test]
+fn test_global_stmts() {
+    setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let script = r#"
+        i32 a;
+        a = 1;
+        dummy_fn() {
+            a = strcmp((arg0, arg1), "bookings");
+            strcmp((arg0, arg1), "bookings");
+        }
+        BEGIN{
+            strcmp((arg0, arg1), "bookings");
+        }
+        END {
+            a = 2;
+        }
+    "#;
+
+    match get_ast(script, &mut err) {
+        Some(ast) => {
+            print_ast(&ast);
+        }
+        None => {
+            error!("Could not get ast from script: {}", script);
+            if err.has_errors {
+                err.report();
+            }
+            assert!(!err.has_errors);
+        }
+    };
+}
+
 #[test]
 pub fn testing_block() {
     setup_logger();
@@ -503,7 +575,37 @@ pub fn testing_block() {
         }
     };
 }
+#[test]
+pub fn testing_global_def() {
+    setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let script = r#"
+        dummy_fn() {
+            a = strcmp((arg0, arg1), "bookings");
+            strcmp((arg0, arg1), "bookings");
+        }
+        i32 i;
+        i = 5; 
+        i32 j = 5;
+        BEGIN{
+            strcmp((arg0, arg1), "bookings");
+        }
+    
+    "#;
 
+    match get_ast(script, &mut err) {
+        Some(ast) => {
+            print_ast(&ast);
+        }
+        None => {
+            error!("Could not get ast from script: {}", script);
+            if err.has_errors {
+                err.report();
+            }
+            assert!(!err.has_errors);
+        }
+    };
+}
 // ===================
 // = Full File Tests =
 // ===================
