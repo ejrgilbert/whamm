@@ -216,7 +216,7 @@ impl Block {
 }
 
 // Statements
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
 pub enum Statement {
     Decl {
         ty: DataType,
