@@ -1,6 +1,7 @@
 use crate::parser::types as parser_types;
 use crate::verifier::builder_visitor::parser_types::Location;
 use crate::verifier::types::{Record, ScopeType, SymbolTable};
+use crate::verifier::verifier::check_duplicate_id;
 use parser_types::{
     BinOp, Block, DataType, Event, Expr, Fn, Package, Probe, Provider, Script, Statement, UnOp,
     Value, Whamm,
@@ -26,63 +27,8 @@ pub struct SymbolTableBuilder<'a> {
     pub curr_fn: Option<usize>,     // indexes into this::table::records
 }
 impl SymbolTableBuilder<'_> {
-    fn check_duplicate_id(
-        &mut self,
-        name: &String,
-        loc: &Option<Location>,
-        is_comp_provided_new: bool,
-    ) -> bool {
-        if self.table.lookup(name).is_some() {
-            let old_rec = self
-                .table
-                .get_record(self.table.lookup(name).unwrap())
-                .unwrap();
-            let old_loc = old_rec.loc();
-            if old_loc.is_none() {
-                //make sure old_rec is comp provided
-                if old_rec.is_comp_provided() {
-                    let new_loc = loc.as_ref().map(|l| l.line_col.clone());
-                    if loc.is_none() {
-                        // happens if new_loc is compiler-provided or is a user-def func without location -- both should throw unexpected error
-                        self.err
-                            .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
-                    } else {
-                        self.err
-                            .compiler_fn_overload_error(false, name.clone(), new_loc);
-                    }
-                } else {
-                    self.err
-                        .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
-                }
-            } else {
-                if loc.is_none() {
-                    // happens if new ID is compiler-provided or is a user-def func without location
-                    //if new ID is compiler-provided, throw compiler overload error for the old record
-                    if is_comp_provided_new {
-                        self.err.compiler_fn_overload_error(
-                            true,
-                            name.clone(),
-                            old_loc.clone().map(|l| l.line_col),
-                        );
-                    } else {
-                        //otherwise throw unexpected error as user-def fn has no loc
-                        self.err
-                            .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
-                    }
-                }
-                self.err.duplicate_identifier_error(
-                    false,
-                    name.clone(),
-                    loc.clone().map(|l| l.line_col),
-                    old_loc.clone().map(|l| l.line_col),
-                );
-            }
-            return true;
-        }
-        false
-    }
     fn add_script(&mut self, script: &Script) {
-        if self.check_duplicate_id(&script.name, &None, true) {
+        if check_duplicate_id(&script.name, &None, true, &self.table, self.err) {
             return;
         }
 
@@ -125,7 +71,7 @@ impl SymbolTableBuilder<'_> {
     }
 
     fn add_provider(&mut self, provider: &Provider) {
-        if self.check_duplicate_id(&provider.name, &None, true) {
+        if check_duplicate_id(&provider.name, &None, true, &self.table, self.err) {
             return;
         }
 
@@ -167,7 +113,7 @@ impl SymbolTableBuilder<'_> {
     }
 
     fn add_package(&mut self, package: &Package) {
-        if self.check_duplicate_id(&package.name, &None, true) {
+        if check_duplicate_id(&package.name, &None, true, &self.table, self.err) {
             return;
         }
 
@@ -205,7 +151,7 @@ impl SymbolTableBuilder<'_> {
     }
 
     fn add_event(&mut self, event: &Event) {
-        if self.check_duplicate_id(&event.name, &None, true) {
+        if check_duplicate_id(&event.name, &None, true, &self.table, self.err) {
             return;
         }
 
@@ -247,7 +193,7 @@ impl SymbolTableBuilder<'_> {
     }
 
     fn add_probe(&mut self, probe: &Probe) {
-        if self.check_duplicate_id(&probe.mode, &None, true) {
+        if check_duplicate_id(&probe.mode, &None, true, &self.table, self.err) {
             return;
         }
 
@@ -285,8 +231,6 @@ impl SymbolTableBuilder<'_> {
 
     fn add_fn(&mut self, f: &mut Fn) {
         let f_id: &parser_types::FnId = &f.name;
-        //TODO - make work with if self.check_duplicate_id(&f_id.name, f_id.loc, f.is_comp_proivded){ return; }
-
         if let Some(other_fn_id) = self.table.lookup(&f_id.name) {
             if let Some(other_rec) = self.table.get_record(other_fn_id) {
                 if let (Some(curr_loc), Some(other_loc)) = (&f_id.loc, other_rec.loc()) {
@@ -312,6 +256,7 @@ impl SymbolTableBuilder<'_> {
                                             Some(loc.line_col.clone()),
                                         );
                                     } else {
+                                        //this is the case where other_rec doesnt have a location but is not compiler provided
                                         self.err.unexpected_error(
                                             true,
                                             Some(UNEXPECTED_ERR_MSG.to_string()),
@@ -345,7 +290,7 @@ impl SymbolTableBuilder<'_> {
         // create record
         let fn_rec = Record::Fn {
             name: f.name.clone(),
-            is_comp_provided: self.is_compiler_defined,
+            is_comp_provided: f.is_comp_provided,
             params: vec![],
             ret_ty: f.return_ty.clone().unwrap(),
             addr: None,
@@ -452,7 +397,7 @@ impl SymbolTableBuilder<'_> {
         is_comp_provided: bool,
         loc: Option<Location>,
     ) {
-        if self.check_duplicate_id(&name, &loc, is_comp_provided) {
+        if check_duplicate_id(&name, &loc, is_comp_provided, &self.table, self.err) {
             return;
         }
         // Add global to scope

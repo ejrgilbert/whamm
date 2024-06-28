@@ -27,7 +27,54 @@ pub fn build_symbol_table(ast: &mut Whamm, err: &mut ErrorGen) -> SymbolTable {
     visitor.visit_whamm(ast);
     visitor.table
 }
-
+pub fn check_duplicate_id(
+    name: &String,
+    loc: &Option<Location>,
+    is_comp_provided_new: bool,
+    table: &SymbolTable,
+    err: &mut ErrorGen,
+) -> bool {
+    if table.lookup(name).is_some() {
+        let old_rec = table.get_record(table.lookup(name).unwrap()).unwrap();
+        let old_loc = old_rec.loc();
+        if old_loc.is_none() {
+            //make sure old_rec is comp provided
+            if old_rec.is_comp_provided() {
+                let new_loc = loc.as_ref().map(|l| l.line_col.clone());
+                if loc.is_none() {
+                    // happens if new_loc is compiler-provided or is a user-def func without location -- both should throw unexpected error
+                    err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+                } else {
+                    err.compiler_fn_overload_error(false, name.clone(), new_loc);
+                }
+            } else {
+                err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+            }
+        } else if loc.is_none() {
+            // happens if new ID is compiler-provided or is a user-def func without location
+            //if new ID is compiler-provided, throw compiler overload error for the old record
+            if is_comp_provided_new {
+                err.compiler_fn_overload_error(
+                    false,
+                    name.clone(),
+                    old_loc.clone().map(|l| l.line_col),
+                );
+            } else {
+                //otherwise throw unexpected error as user-def fn has no loc
+                err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+            }
+        } else {
+            err.duplicate_identifier_error(
+                false,
+                name.clone(),
+                loc.clone().map(|l| l.line_col),
+                old_loc.clone().map(|l| l.line_col),
+            );
+        }
+        return true;
+    }
+    false
+}
 struct TypeChecker<'a> {
     table: &'a mut SymbolTable,
     err: &'a mut ErrorGen,
@@ -35,61 +82,6 @@ struct TypeChecker<'a> {
 }
 
 impl TypeChecker<'_> {
-    fn check_duplicate_id(
-        &mut self,
-        name: &String,
-        loc: &Option<Location>,
-        is_comp_provided_new: bool,
-    ) -> bool {
-        if self.table.lookup(name).is_some() {
-            let old_rec = self
-                .table
-                .get_record(self.table.lookup(name).unwrap())
-                .unwrap();
-            let old_loc = old_rec.loc();
-            if old_loc.is_none() {
-                //make sure old_rec is comp provided
-                if old_rec.is_comp_provided() {
-                    let new_loc = loc.as_ref().map(|l| l.line_col.clone());
-                    if loc.is_none() {
-                        // happens if new_loc is compiler-provided or is a user-def func without location -- both should throw unexpected error
-                        self.err
-                            .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
-                    } else {
-                        self.err
-                            .compiler_fn_overload_error(false, name.clone(), new_loc);
-                    }
-                } else {
-                    self.err
-                        .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
-                }
-            } else {
-                if loc.is_none() {
-                    // happens if new ID is compiler-provided or is a user-def func without location
-                    //if new ID is compiler-provided, throw compiler overload error for the old record
-                    if is_comp_provided_new {
-                        self.err.compiler_fn_overload_error(
-                            false,
-                            name.clone(),
-                            old_loc.clone().map(|l| l.line_col),
-                        );
-                    } else {
-                        //otherwise throw unexpected error as user-def fn has no loc
-                        self.err
-                            .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
-                    }
-                }
-                self.err.duplicate_identifier_error(
-                    false,
-                    name.clone(),
-                    loc.clone().map(|l| l.line_col),
-                    old_loc.clone().map(|l| l.line_col),
-                );
-            }
-            return true;
-        }
-        false
-    }
     fn add_local(
         &mut self,
         ty: DataType,
@@ -97,7 +89,7 @@ impl TypeChecker<'_> {
         is_comp_provided: bool,
         loc: &Option<Location>,
     ) {
-        if self.check_duplicate_id(&name, loc, is_comp_provided) {
+        if check_duplicate_id(&name, loc, is_comp_provided, self.table, self.err) {
             return;
         }
 
@@ -247,9 +239,9 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
 
     fn visit_block(&mut self, block: &Block) -> Option<DataType> {
         let mut ret_type = None;
-        let num_statements = &block.stmts.len();
+        let num_statements = block.stmts.len();
         let start_of_range: usize;
-        for i in 0..*num_statements {
+        for i in 0..num_statements {
             let temp = self.visit_stmt(&block.stmts[i]);
             if temp.is_some() && ret_type.is_none() {
                 ret_type = temp;
@@ -258,7 +250,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                 //get the span for the first statement to the last one
                 let loc = Location::from(
                     &block.stmts[start_of_range].loc().clone().unwrap().line_col,
-                    &block.stmts[*num_statements - 1]
+                    &block.stmts[num_statements - 1]
                         .loc()
                         .clone()
                         .unwrap()
@@ -281,53 +273,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         if self.in_script_global {
             match stmt {
                 //allow declarations and assignment
-                Statement::Decl { var_id, .. } => {
-                    if let Expr::VarId { .. } = var_id {
-                        //no need to add local because its already in there
-                    } else {
-                        self.err.unexpected_error(
-                            true,
-                            Some(format!(
-                                "{} \
-                Variable declaration var_id is not the correct Expr variant!!",
-                                UNEXPECTED_ERR_MSG
-                            )),
-                            var_id.loc().clone().map(|l| l.line_col),
-                        );
-                    }
-                    None
-                }
-                Statement::Assign { var_id, expr, .. } => {
-                    // change type in symbol table?
-                    let lhs_loc = var_id.loc().clone().unwrap();
-                    let rhs_loc = expr.loc().clone().unwrap();
-                    let lhs_ty_op = self.visit_expr(var_id);
-                    let rhs_ty_op = self.visit_expr(expr);
-
-                    if let (Some(lhs_ty), Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {
-                        if lhs_ty == rhs_ty {
-                            None
-                        } else {
-                            // using a struct in parser to merge two locations
-                            let loc = Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
-                            self.err.type_check_error(
-                                false,
-                                format! {"Type Mismatch, lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty},
-                                &Some(loc.line_col),
-                            );
-
-                            None
-                        }
-                    } else {
-                        let loc = Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
-                        self.err.type_check_error(
-                            false,
-                            "Can't get type of lhs or rhs of this assignment".to_string(),
-                            &Some(loc.line_col),
-                        );
-                        None
-                    }
-                }
+                Statement::Decl { .. } | Statement::Assign { .. } => {}
                 _ => {
                     self.err.type_check_error(
                         false,
@@ -335,114 +281,113 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                             .to_owned(),
                         &stmt.loc().clone().map(|l| l.line_col),
                     );
-                    None
+                    return None;
                 }
             }
-        } else {
-            match stmt {
-                Statement::Assign { var_id, expr, .. } => {
-                    // change type in symbol table?
-                    let lhs_loc = var_id.loc().clone().unwrap();
-                    let rhs_loc = expr.loc().clone().unwrap();
-                    let lhs_ty_op = self.visit_expr(var_id);
-                    let rhs_ty_op = self.visit_expr(expr);
+        }
+        match stmt {
+            Statement::Assign { var_id, expr, .. } => {
+                // change type in symbol table?
+                let lhs_loc = var_id.loc().clone().unwrap();
+                let rhs_loc = expr.loc().clone().unwrap();
+                let lhs_ty_op = self.visit_expr(var_id);
+                let rhs_ty_op = self.visit_expr(expr);
 
-                    if let (Some(lhs_ty), Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {
-                        if lhs_ty == rhs_ty {
-                            None
-                        } else {
-                            // using a struct in parser to merge two locations
-                            let loc = Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
-                            self.err.type_check_error(
-                                false,
-                                format! {"Type Mismatch, lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty},
-                                &Some(loc.line_col),
-                            );
-
-                            None
-                        }
+                if let (Some(lhs_ty), Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {
+                    if lhs_ty == rhs_ty {
+                        None
                     } else {
+                        // using a struct in parser to merge two locations
                         let loc = Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
                         self.err.type_check_error(
                             false,
-                            "Can't get type of lhs or rhs of this assignment".to_string(),
+                            format! {"Type Mismatch, lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty},
                             &Some(loc.line_col),
                         );
+
                         None
                     }
-                }
-                Statement::Expr { expr, .. } => {
-                    self.visit_expr(expr);
+                } else {
+                    let loc = Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
+                    self.err.type_check_error(
+                        false,
+                        "Can't get type of lhs or rhs of this assignment".to_string(),
+                        &Some(loc.line_col),
+                    );
                     None
                 }
-                Statement::Decl {
-                    ty, var_id, loc, ..
-                } => {
-                    if let Expr::VarId { name, .. } = var_id {
+            }
+            Statement::Expr { expr, .. } => {
+                self.visit_expr(expr);
+                None
+            }
+            Statement::Decl {
+                ty, var_id, loc, ..
+            } => {
+                if let Expr::VarId { name, .. } = var_id {
+                    if !self.in_script_global {
                         self.add_local(ty.to_owned(), name.to_owned(), false, loc);
-                    } else {
-                        self.err.unexpected_error(
-                            true,
-                            Some(format!(
-                                "{} \
+                    }
+                } else {
+                    self.err.unexpected_error(
+                        true,
+                        Some(format!(
+                            "{} \
                     Variable declaration var_id is not the correct Expr variant!!",
-                                UNEXPECTED_ERR_MSG
-                            )),
-                            var_id.loc().clone().map(|l| l.line_col),
-                        );
-                    }
-                    None
+                            UNEXPECTED_ERR_MSG
+                        )),
+                        var_id.loc().clone().map(|l| l.line_col),
+                    );
                 }
-                Statement::Return { expr, loc: _loc } => self.visit_expr(expr),
-                Statement::If {
-                    cond, conseq, alt, ..
-                } => {
-                    let cond_ty = self.visit_expr(cond);
-                    if cond_ty != Some(DataType::Boolean) {
-                        self.err.type_check_error(
-                            false,
-                            format!(
-                                "Condition must be of type boolean, found {:?}",
-                                cond_ty.unwrap()
-                            )
-                            .to_owned(),
-                            &Some(cond.loc().clone().unwrap().line_col),
-                        );
-                    }
-                    let ret_ty_conseq = self.visit_block(conseq);
-                    let ret_ty_alt = self.visit_block(alt);
-                    if ret_ty_conseq == ret_ty_alt {
-                        ret_ty_conseq
-                    } else {
-                        //check if it is assume good
-                        let empty_tuple = Some(DataType::Tuple { ty_info: vec![] });
-                        match (ret_ty_conseq, ret_ty_alt) {
-                            (None, _) | (_, None) => return None,
-                            (Some(DataType::AssumeGood), _) | (_, Some(DataType::AssumeGood)) => {
-                                return Some(DataType::AssumeGood)
-                            }
-                            (conseq, _) if conseq == empty_tuple.clone() => {
-                                return empty_tuple.clone()
-                            }
-                            (_, alt) if alt == empty_tuple.clone() => return empty_tuple.clone(),
-                            (_, _) => {}
+                None
+            }
+            Statement::Return { expr, loc: _loc } => self.visit_expr(expr),
+            Statement::If {
+                cond, conseq, alt, ..
+            } => {
+                let cond_ty = self.visit_expr(cond);
+                if cond_ty != Some(DataType::Boolean) {
+                    self.err.type_check_error(
+                        false,
+                        format!(
+                            "Condition must be of type boolean, found {:?}",
+                            cond_ty.unwrap()
+                        )
+                        .to_owned(),
+                        &Some(cond.loc().clone().unwrap().line_col),
+                    );
+                }
+                let ret_ty_conseq = self.visit_block(conseq);
+                let ret_ty_alt = self.visit_block(alt);
+                if ret_ty_conseq == ret_ty_alt {
+                    ret_ty_conseq
+                } else {
+                    //check if it is assume good
+                    let empty_tuple = Some(DataType::Tuple { ty_info: vec![] });
+                    match (ret_ty_conseq, ret_ty_alt) {
+                        (None, _) | (_, None) => return None,
+                        (Some(DataType::AssumeGood), _) | (_, Some(DataType::AssumeGood)) => {
+                            return Some(DataType::AssumeGood)
                         }
-                        //check that they are not returning differnt types if neither is () or None
-                        //error here
-                        self.err.type_check_error(
-                            false,
-                            "Return type of if and else blocks do not match".to_owned(),
-                            &Some(
-                                Location::from(
-                                    &conseq.loc().clone().unwrap().line_col,
-                                    &alt.loc().clone().unwrap().line_col,
-                                    None,
-                                )
-                                .line_col,
-                            ),
-                        );
-                        Some(DataType::AssumeGood)
+                        (conseq, _) if conseq == empty_tuple.clone() => return empty_tuple.clone(),
+                        (_, alt) if alt == empty_tuple.clone() => return empty_tuple.clone(),
+                        (_, _) => {}
                     }
+                    //check that they are not returning differnt types if neither is () or None
+                    //error here
+                    self.err.type_check_error(
+                        false,
+                        "Return type of if and else blocks do not match".to_owned(),
+                        &Some(
+                            Location::from(
+                                &conseq.loc().clone().unwrap().line_col,
+                                &alt.loc().clone().unwrap().line_col,
+                                None,
+                            )
+                            .line_col,
+                        ),
+                    );
+                    Some(DataType::AssumeGood)
                 }
             }
         }

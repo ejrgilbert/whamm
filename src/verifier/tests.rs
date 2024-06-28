@@ -33,6 +33,14 @@ const VALID_SCRIPTS: &[&str] = &[
         }   
     "#,
     r#"
+        i32 i;
+        wasm:bytecode:call:before /
+            target_imp_name == "add"
+        /{
+            i = 1;
+        }
+    "#,
+    r#"
         bool a;
         i32 b;
         nested_fn(i32 a) -> i32 {
@@ -398,14 +406,8 @@ pub fn test_template() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
-        my_fn() {
-            i32 a = 5;
-            return;
-            i32 b;
-            i32 c;
-        }
+        bool a;
         wasm::call:alt {
-            my_fn();
         }
     "#;
     match tests::get_ast(script, &mut err) {
