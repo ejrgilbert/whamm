@@ -333,6 +333,9 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
 
                     let mut first_instr = true;
                     while first_instr || self.emitter.has_next_instr() {
+                        if first_instr {
+                            self.emitter.init_first_instr();
+                        }
                         if !&first_instr {
                             self.emitter.next_instr();
                         }

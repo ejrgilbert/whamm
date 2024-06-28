@@ -97,7 +97,7 @@ fn instrument_dfinity_with_fault_injection() {
 }
 
 #[test]
-fn instrument_handwritten_wasm() {
+fn instrument_handwritten_wasm_call() {
     // executable is located at target/debug/whamm
     let executable = "target/debug/whamm";
 
