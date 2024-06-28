@@ -879,21 +879,6 @@ impl Script {
                 )))
             };
         }
-
-        // // insert the matched providers into this script instance!
-        // for (.., provider) in curr_providers {
-        //     if let Some(prov) = self.providers.get(&provider.name()) {
-        //         // Add the probe to this provider already in the script instance
-        //         // TODO -- also check for package/event/mode availability
-        //
-        //     } else {
-        //         // Add the probe to the new provider
-        //         // TODO
-        //
-        //         // Add the new provider to the script instance
-        //         self.providers.insert(provider.name(), provider);
-        //     }
-        // }
         Ok(())
     }
 }
