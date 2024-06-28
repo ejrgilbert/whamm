@@ -8,7 +8,8 @@ use wabt::{wasm2wat, wat2wasm};
 use walrus::Module;
 use whamm::behavior::builder_visitor::{build_behavior_tree, SimpleAST};
 use whamm::common::error::ErrorGen;
-use whamm::generator::emitters::{Emitter, WasmRewritingEmitter};
+use whamm::emitter::rewriting::WasmRewritingEmitter;
+use whamm::emitter::Emitter;
 use whamm::generator::init_generator::InitGenerator;
 use whamm::generator::instr_generator::InstrGenerator;
 

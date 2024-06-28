@@ -11,6 +11,7 @@ use walrus::{
     ActiveData, ActiveDataLocation, DataKind, FunctionBuilder, FunctionId, FunctionKind,
     ImportedFunction, InitExpr, InstrSeqBuilder, LocalFunction, MemoryId, ModuleData, ValType,
 };
+use crate::emitter::Emitter;
 
 // =================================================================================
 // ================ WasmRewritingEmitter - HELPER FUNCTIONS ========================
@@ -1354,6 +1355,26 @@ impl Emitter for WasmRewritingEmitter {
         self.instr_iter.has_next()
     }
 
+    fn init_first_instr(&mut self) -> bool {
+        if let Some(first) = self.instr_iter.curr() {
+            self.emitting_instr = Some(EmittingInstrTracker {
+                orig_instr_idx: first.index,
+                curr_seq_id: first.instr_seq_id,
+                curr_idx: first.index,
+                main_seq_id: first.instr_seq_id,
+                main_idx: first.index,
+                outer_seq_id: None,
+                outer_idx: None,
+                then_seq_id: None,
+                then_idx: None,
+                else_seq_id: None,
+                else_idx: None,
+            });
+            return true;
+        }
+        false
+    }
+    
     /// bool -> whether it found a next instruction
     fn next_instr(&mut self) -> bool {
         if self.instr_iter.has_next() {
@@ -1603,6 +1624,7 @@ impl Emitter for WasmRewritingEmitter {
                             &mut tracker.curr_idx,
                         )?;
                     } else {
+                        // errors here when instrumenting 3 calls
                         return Err(Box::new(ErrorGen::get_unexpected_error(
                             true,
                             Some(format!(
