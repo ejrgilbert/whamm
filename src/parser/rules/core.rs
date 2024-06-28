@@ -99,7 +99,7 @@ impl Package for CorePackage {
     ) {
         for (.., event) in self.info.events.iter() {
             crate::parser::rules::print_event_docs(
-                event,
+                &**event,
                 print_globals,
                 print_functions,
                 tabs,
@@ -355,7 +355,8 @@ impl Mode for CoreMode {
 
 struct CoreProbe {
     pub mode: CoreMode,
-    pub loc: Option<Location>,
+    // Never read at the moment. If it is ever read, remove the "_"
+    pub _loc: Option<Location>,
 
     pub predicate: Option<Expr>,
     pub body: Option<Vec<Statement>>,
@@ -364,11 +365,11 @@ impl Probe for CoreProbe {
     fn mode_name(&self) -> String {
         self.mode.name()
     }
-    fn predicate_mut(&mut self) -> &mut Option<Expr> {
-        &mut self.predicate
-    }
     fn predicate(&self) -> &Option<Expr> {
         &self.predicate
+    }
+    fn predicate_mut(&mut self) -> &mut Option<Expr> {
+        &mut self.predicate
     }
 
     fn body(&self) -> &Option<Vec<Statement>> {
@@ -410,7 +411,7 @@ impl CoreProbe {
     ) -> Self {
         Self {
             mode,
-            loc,
+            _loc: loc,
             predicate,
             body,
         }

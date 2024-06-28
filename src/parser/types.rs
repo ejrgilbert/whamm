@@ -695,7 +695,7 @@ impl Script {
         }
         for (.., provider) in providers.iter() {
             print_provider_docs(
-                provider,
+                &**provider,
                 print_globals,
                 print_functions,
                 &mut tabs,

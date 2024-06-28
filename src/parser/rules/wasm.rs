@@ -113,7 +113,7 @@ impl Package for WasmPackage {
     ) {
         for (.., event) in self.info.events.iter() {
             crate::parser::rules::print_event_docs(
-                event,
+                &**event,
                 print_globals,
                 print_functions,
                 tabs,
