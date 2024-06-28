@@ -68,7 +68,9 @@ impl SymbolTableBuilder<'_> {
             .set_curr_scope_info(script.name.clone(), ScopeType::Script);
         self.table.set_curr_script(id);
     }
-
+    /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
+    In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
+    just in case it is non-fatal to avoid having 2 strings w/same name in record */
     fn add_provider(&mut self, provider: &Provider) {
         if check_duplicate_id(&provider.name, &None, true, &self.table, self.err) {
             return;
@@ -112,6 +114,9 @@ impl SymbolTableBuilder<'_> {
     }
 
     fn add_package(&mut self, package: &Package) {
+        /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
+        In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
+        just in case it is non-fatal to avoid having 2 strings w/same name in record */
         if check_duplicate_id(&package.name, &None, true, &self.table, self.err) {
             return;
         }
@@ -150,6 +155,9 @@ impl SymbolTableBuilder<'_> {
     }
 
     fn add_event(&mut self, event: &Event) {
+        /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
+        In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
+        just in case it is non-fatal to avoid having 2 strings w/same name in record */
         if check_duplicate_id(&event.name, &None, true, &self.table, self.err) {
             return;
         }
@@ -192,6 +200,9 @@ impl SymbolTableBuilder<'_> {
     }
 
     fn add_probe(&mut self, probe: &Probe) {
+        /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
+        In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
+        just in case it is non-fatal to avoid having 2 strings w/same name in record */
         if check_duplicate_id(&probe.mode, &None, true, &self.table, self.err) {
             return;
         }
@@ -230,62 +241,57 @@ impl SymbolTableBuilder<'_> {
 
     fn add_fn(&mut self, f: &mut Fn) {
         let f_id: &parser_types::FnId = &f.name;
+        //if there is another id with the same name in the table
         if let Some(other_fn_id) = self.table.lookup(&f_id.name) {
+            //check if the other id has a record
             if let Some(other_rec) = self.table.get_record(other_fn_id) {
-                if let (Some(curr_loc), Some(other_loc)) = (&f_id.loc, other_rec.loc()) {
-                    self.err.duplicate_identifier_error(
-                        false,
-                        f_id.name.clone(),
-                        Some(curr_loc.line_col.clone()),
-                        Some(other_loc.line_col.clone()),
-                    );
-                } else {
-                    // If there is another fn with the same name as a compiler generated fn, throw a duplicate id error
-                    match &f_id.loc {
-                        Some(loc) => {
-                            //add check if the record "other_rec" is a compiler provided function
-                            match other_rec {
-                                Record::Fn {
-                                    is_comp_provided, ..
-                                } => {
-                                    if *is_comp_provided {
-                                        self.err.compiler_fn_overload_error(
-                                            false,
-                                            f_id.name.clone(),
-                                            Some(loc.line_col.clone()),
-                                        );
-                                    } else {
-                                        //this is the case where other_rec doesn't have a location but is not compiler provided and is a fn
-                                        self.err.unexpected_error(
-                                            true,
-                                            Some(UNEXPECTED_ERR_MSG.to_string()),
-                                            None,
-                                        );
-                                    }
-                                }
-                                _ => {
-                                    self.err.unexpected_error(
-                                        true,
-                                        Some(UNEXPECTED_ERR_MSG.to_string()),
-                                        None,
-                                    );
-                                }
-                            }
+                let curr_loc = &f_id.loc;
+                let other_loc = other_rec.loc();
+                match (curr_loc, other_loc) {
+                    //case for both having loc -> both user def
+                    (Some(curr_loc), Some(other_loc)) => {
+                        self.err.duplicate_identifier_error(
+                            false,
+                            f_id.name.clone(),
+                            Some(curr_loc.line_col.clone()),
+                            Some(other_loc.line_col.clone()),
+                        );
+                    }
+                    //case for curr having a location and other doesn't -> either other is comp_def or there is compiler error
+                    (Some(curr_loc), None) => {
+                        //make sure it is actually comp def
+                        if other_rec.is_comp_provided() {
+                            self.err.compiler_fn_overload_error(
+                                false,
+                                f_id.name.clone(),
+                                Some(curr_loc.line_col.clone()),
+                            );
+                        } else {
+                            //case for no location but not comp def
+                            self.err.unexpected_error(
+                                true,
+                                Some(UNEXPECTED_ERR_MSG.to_string()),
+                                None,
+                            );
                         }
-                        None => {
-                            self.err
-                                .unexpected_error(true, Some("No location found for function conflicting with compiler def function. User-def fn has no location, or 2 compiler-def functions with same ID".to_string()), None);
-                        }
+                    }
+                    //case for curr not having a loc -> shouldn't happen: either user def without a loc or 2 comp def with same name
+                    (None, _) => {
+                        self.err.unexpected_error(
+                            true,
+                            Some("No location found for function conflicting with compiler def function. User-def fn has no location, or 2 compiler-def functions with same ID".to_string()),
+                            None,
+                        );
                     }
                 }
             } else {
-                // This should never be the case since it's controlled by the compiler!
+                // This should never be the case -> ID is in the table but doesn't have a record associated with it
                 self.err
                     .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
                 unreachable!()
             };
         }
-
+        //This MUST run if the above wasn't a fatal error -> otherwise there are scoping errors
         // create record
         let fn_rec = Record::Fn {
             name: f.name.clone(),
@@ -396,6 +402,9 @@ impl SymbolTableBuilder<'_> {
         is_comp_provided: bool,
         loc: Option<Location>,
     ) {
+        /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
+        In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
+        just in case it is non-fatal to avoid having 2 strings w/same name in record */
         if check_duplicate_id(&name, &loc, is_comp_provided, &self.table, self.err) {
             return;
         }

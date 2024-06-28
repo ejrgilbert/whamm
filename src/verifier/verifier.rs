@@ -88,6 +88,9 @@ impl TypeChecker<'_> {
         is_comp_provided: bool,
         loc: &Option<Location>,
     ) {
+        /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
+        In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
+        just in case it is non-fatal to avoid having 2 strings w/same name in record */
         if check_duplicate_id(&name, loc, is_comp_provided, self.table, self.err) {
             return;
         }
