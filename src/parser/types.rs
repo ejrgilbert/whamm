@@ -237,7 +237,7 @@ pub enum Statement {
     If {
         cond: Expr,
         conseq: Block,
-        alt: Block, 
+        alt: Block,
         loc: Option<Location>,
     },
 }
