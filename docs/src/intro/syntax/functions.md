@@ -1,5 +1,5 @@
 # Functions #
-Functions are essential in programming as they enable code modularity, reuse, and organization. By encapsulating specific tasks into discrete units, functions allow developers to write cleaner, more manageable code. They promote code reuse by allowing the same block of code to be executed from multiple places within a program, reducing redundancy and potential for errors, as well as enhancing readability and maintability. 
+Functions are essential in programming as they enable code modularity, reuse, and organization. By encapsulating specific tasks into discrete units, functions allow developers to write cleaner, more manageable code. They promote code reuse by allowing the same block of code to be executed from multiple places within a program, reducing redundancy and potential for errors, as well as enhancing readability and maintainability. 
 
 ## Compiler-Defined Functions ##
 Some functions will be automatically defined by the compiler based on the providers you have included in your script. These can be called just like user defined functions

@@ -372,7 +372,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                         (_, alt) if alt == empty_tuple.clone() => return empty_tuple.clone(),
                         (_, _) => {}
                     }
-                    //check that they are not returning differnt types if neither is () or None
+                    //check that they are not returning different types if neither is () or None
                     //error here
                     self.err.type_check_error(
                         false,

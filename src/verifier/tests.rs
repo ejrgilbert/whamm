@@ -113,7 +113,7 @@ wasm::call:alt {
     x = "str";
 }
     "#,
-    // Ternary (TODO: We do not emit code for tenary yet)
+    // Ternary (TODO: We do not emit code for ternary yet)
     r#"
 i32 i;
 wasm::call:alt {
@@ -151,7 +151,7 @@ wasm::call:alt /
     r#"
 i32 u;
 wasm::call:alt {
-    u = argdadf;
+    u = argasdf;
 }
     "#,
     // long type check error
