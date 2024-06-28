@@ -216,6 +216,13 @@ wasm:bytecode:br:before {
     "wasm:bytecode:call:alt { arg0 = 1; }",
 ];
 
+const FATAL_SCRIPTS: &[&str] = &[
+    // invalid probe specification
+    r#"
+core::br:before / i == 1 / { i = 0; }  // SHOULD FAIL HERE
+    "#,
+];
+
 const INVALID_SCRIPTS: &[&str] = &[
     // globals
     r#"
@@ -351,6 +358,26 @@ pub fn test_parse_valid_scripts() {
         VALID_SCRIPTS.iter().map(|s| s.to_string()).collect(),
         &mut err,
     );
+}
+
+#[test]
+pub fn test_parse_fatal_scripts() {
+    setup_logger();
+    for script in FATAL_SCRIPTS {
+        info!("Parsing: {}", script);
+        let result = std::panic::catch_unwind(|| {
+            let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+            is_valid_script(script, &mut err)
+        });
+        match result {
+            Ok(_) => {
+                panic!("Expected a fatal error, but got Ok");
+            }
+            Err(_) => {
+                //this means the function properly exited with a fatal error
+            }
+        }
+    }
 }
 
 #[test]
