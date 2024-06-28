@@ -22,6 +22,7 @@ pub trait Emitter {
 
     fn init_instr_iter(&mut self, instrs_of_interest: &[String]) -> Result<(), Box<WhammError>>;
     fn has_next_instr(&self) -> bool;
+    fn init_first_instr(&mut self) -> bool;
     fn next_instr(&mut self) -> bool;
     fn curr_instr_is_of_type(&mut self, instr_names: &[String]) -> bool;
     fn curr_instr_type(&mut self) -> String;
@@ -815,6 +816,7 @@ struct FuncInfo {
     module: String,
     name: String,
 }
+
 struct EmittingInstrTracker {
     // To keep track of the location of the original instruction while we're instrumenting!
     orig_instr_idx: usize,
@@ -1409,6 +1411,26 @@ impl Emitter for WasmRewritingEmitter {
         self.instr_iter.has_next()
     }
 
+    fn init_first_instr(&mut self) -> bool {
+        if let Some(first) = self.instr_iter.curr() {
+            self.emitting_instr = Some(EmittingInstrTracker {
+                orig_instr_idx: first.index,
+                curr_seq_id: first.instr_seq_id,
+                curr_idx: first.index,
+                main_seq_id: first.instr_seq_id,
+                main_idx: first.index,
+                outer_seq_id: None,
+                outer_idx: None,
+                then_seq_id: None,
+                then_idx: None,
+                else_seq_id: None,
+                else_idx: None,
+            });
+            return true;
+        }
+        false
+    }
+
     /// bool -> whether it found a next instruction
     fn next_instr(&mut self) -> bool {
         if self.instr_iter.has_next() {
@@ -1658,6 +1680,7 @@ impl Emitter for WasmRewritingEmitter {
                             &mut tracker.curr_idx,
                         )?;
                     } else {
+                        // have an error at this place when for 3 calls
                         return Err(Box::new(ErrorGen::get_unexpected_error(
                             true,
                             Some(format!(
