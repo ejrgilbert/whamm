@@ -237,7 +237,7 @@ pub enum Statement {
     If {
         cond: Expr,
         conseq: Block,
-        alt: Block, //should be either an elif or else - boxed for determined size
+        alt: Block, 
         loc: Option<Location>,
     },
 }
