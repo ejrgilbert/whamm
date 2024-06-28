@@ -17,7 +17,6 @@ const UNEXPECTED_ERR_MSG: &str = "SymbolTableBuilder: Looks like you've found a 
 pub struct SymbolTableBuilder<'a> {
     pub table: SymbolTable,
     pub err: &'a mut ErrorGen,
-    pub is_compiler_defined: bool,
     pub curr_whamm: Option<usize>,  // indexes into this::table::records
     pub curr_script: Option<usize>, // indexes into this::table::records
     pub curr_provider: Option<usize>, // indexes into this::table::records
@@ -465,7 +464,6 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
 
     fn visit_script(&mut self, script: &mut Script) {
         trace!("Entering: visit_script");
-        self.is_compiler_defined = false;
         self.add_script(script);
 
         script.fns.iter_mut().for_each(|f| self.visit_fn(f));

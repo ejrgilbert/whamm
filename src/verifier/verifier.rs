@@ -15,7 +15,6 @@ pub fn build_symbol_table(ast: &mut Whamm, err: &mut ErrorGen) -> SymbolTable {
     let mut visitor = SymbolTableBuilder {
         table: SymbolTable::new(),
         err,
-        is_compiler_defined: true,
         curr_whamm: None,
         curr_script: None,
         curr_provider: None,
