@@ -255,7 +255,7 @@ impl SymbolTableBuilder<'_> {
                                             Some(loc.line_col.clone()),
                                         );
                                     } else {
-                                        //this is the case where other_rec doesnt have a location but is not compiler provided
+                                        //this is the case where other_rec doesn't have a location but is not compiler provided
                                         self.err.unexpected_error(
                                             true,
                                             Some(UNEXPECTED_ERR_MSG.to_string()),
