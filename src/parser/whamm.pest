@@ -78,8 +78,8 @@ declaration = { TYPE ~ ID }
 assignment = { ID ~ "=" ~ (ternary | expr) }
 initialize = { TYPE ~ ID ~ "=" ~ (ternary | expr) }
 statement = { ( ( initialize | if_stmt | fn_call | declaration | assignment | incrementor | decrementor | ret ) ~ ";" )+ }
-incrementor = { ID ~ "++"}
-decrementor = { ID ~ "--"}
+incrementor = { (get_map | ID) ~ "++"}
+decrementor = { (get_map | ID) ~ "--"}
 // =====================
 // ---- Expressions ----
 // =====================
@@ -93,9 +93,10 @@ UNOP = _{ neg }
     neg = { "!" }
 
 val = _{ BOOL | ID | I32 | STRING | tuple}
-operand = _{ fn_call | "(" ~ expr ~ ")" | val }
+operand = _{ fn_call | "(" ~ expr ~ ")" | val | get_map }
 
 tuple = { "(" ~ ")" | "(" ~ (val) ~ ( "," ~ val )* ~ ")" }
+get_map = { ID ~ "[" ~ expr ~ "]"}
 
 BINOP = _{ LOGOP | RELOP | SUMOP | MULOP }
     // Logical operators

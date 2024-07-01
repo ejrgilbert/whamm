@@ -403,6 +403,14 @@ impl WhammVisitor<String> for AsStrVisitor {
                 s += &format!("{} }}", self.get_indent());
                 s
             }
+            Statement::SetMap { map, key, val, .. } => {
+                format!(
+                    "{}[{}] = {}",
+                    self.visit_expr(map),
+                    self.visit_expr(key),
+                    self.visit_expr(val)
+                )
+            }
         }
     }
 
@@ -450,6 +458,11 @@ impl WhammVisitor<String> for AsStrVisitor {
             Expr::UnOp { op, expr, .. } => {
                 let mut s = "".to_string();
                 s += &format!("{}{}", self.visit_unop(op), self.visit_expr(expr));
+                s
+            }
+            Expr::GetMap { map, key, .. } => {
+                let mut s = "".to_string();
+                s += &format!("{}[{}]", self.visit_expr(map), self.visit_expr(key));
                 s
             }
         }

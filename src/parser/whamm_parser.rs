@@ -1188,6 +1188,34 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                 }),
             });
         }
+        Rule::get_map => {
+            let loc = LineColLocation::from(pair.clone().as_span());
+            let mut pairs = pair.into_inner();
+            let map = pairs.next().unwrap();
+            let key = pairs.next().unwrap();
+
+            //this SHOULD be a VarId
+            let map_expr = match expr_primary(map) {
+                Ok(expr) => expr,
+                Err(errors) => {
+                    return Err(errors);
+                }
+            };
+            let key_expr = match expr_primary(key) {
+                Ok(expr) => expr,
+                Err(errors) => {
+                    return Err(errors);
+                }
+            };
+            Ok(Expr::GetMap {
+                map: Box::new(map_expr),
+                key: Box::new(key_expr),
+                loc: Some(Location {
+                    line_col: loc,
+                    path: None,
+                }),
+            })
+        }
         _ => expr_from_pair(pair),
     }
 }
