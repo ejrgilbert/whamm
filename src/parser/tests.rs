@@ -222,6 +222,17 @@ wasm:bytecode:br:before {
         }
     
     "#,
+    //maps
+    r#"
+        map<i32, i32> count;
+        my_fn() -> i32{
+            count[0] = 0;
+            return count[0];
+        }
+        BEGIN {
+            count[1] = my_fn();
+        }
+    "#,
 ];
 
 const INVALID_SCRIPTS: &[&str] = &[
@@ -591,6 +602,34 @@ pub fn testing_global_def() {
             strcmp((arg0, arg1), "bookings");
         }
     
+    "#;
+
+    match get_ast(script, &mut err) {
+        Some(ast) => {
+            print_ast(&ast);
+        }
+        None => {
+            error!("Could not get ast from script: {}", script);
+            if err.has_errors {
+                err.report();
+            }
+            assert!(!err.has_errors);
+        }
+    };
+}
+#[test]
+pub fn testing_map() {
+    setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let script = r#"
+        map<i32, i32> count;
+        my_fn() -> i32{
+            count[0] = 0;
+            return count[0];
+        }
+        BEGIN {
+            count[1] = my_fn();
+        }
     "#;
 
     match get_ast(script, &mut err) {

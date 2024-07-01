@@ -513,7 +513,11 @@ impl WhammVisitor<String> for AsStrVisitor {
                 s += ")";
                 s
             }
-            DataType::Map { .. } => "map".to_string(),
+            DataType::Map { key_ty, val_ty, .. } => format!(
+                "map<{}, {}>",
+                self.visit_datatype(key_ty),
+                self.visit_datatype(val_ty)
+            ),
             DataType::AssumeGood => "unknown".to_string(),
         }
     }
