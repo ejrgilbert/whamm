@@ -499,6 +499,38 @@ pub fn test_recursive_calls() {
         }
     };
 }
+#[test]
+pub fn testing_map() {
+    setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let script = r#"
+        map<i32, i32> count;
+        my_fn() -> i32 {
+            count[0] = true;
+            return count[0];
+        }
+        wasm::call:alt {
+            count[1] = count[3];
+            i32 a = my_fn();
+        }
+    "#;
+
+    match tests::get_ast(script, &mut err) {
+        Some(mut ast) => {
+            let mut table = verifier::build_symbol_table(&mut ast, &mut err);
+            let res = verifier::type_check(&ast, &mut table, &mut err);
+            err.report();
+            assert!(err.has_errors);
+            assert!(!res);
+        }
+        None => {
+            error!("Could not get ast from script: {}", script);
+            if err.has_errors {
+                err.report();
+            }
+        }
+    };
+}
 //TODO: uncomment after BEGIN is working
 
 //WE DONT HAVE BEGIN WORKING YET

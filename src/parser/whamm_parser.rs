@@ -562,21 +562,43 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
         Rule::assignment => {
             trace!("Entering assignment");
             let mut pair = pair.into_inner();
+            let mut is_map = false;
             let var_id_rule = pair.next().unwrap();
             let expr_rule = pair.next().unwrap();
-
             let var_id_line_col = LineColLocation::from(var_id_rule.as_span());
-
-            let var_id = Expr::VarId {
-                is_comp_provided: false,
-                name: var_id_rule.as_str().parse().unwrap(),
-                loc: Some(Location {
-                    line_col: var_id_line_col.clone(),
-                    path: None,
-                }),
+            let var_id: Expr;
+            let mut key_assigned: Expr = Expr::Primitive {
+                val: Value::Integer {
+                    ty: DataType::I32,
+                    val: 0,
+                },
+                loc: None,
             };
+            match expr_primary(var_id_rule.clone()) {
+                Ok(expr) => match expr {
+                    Expr::GetMap { map, key, .. } => {
+                        is_map = true;
+                        var_id = *map;
+                        key_assigned = *key;
+                    }
+                    _ => {
+                        var_id = Expr::VarId {
+                            is_comp_provided: false,
+                            name: var_id_rule.as_str().parse().unwrap(),
+                            loc: Some(Location {
+                                line_col: var_id_line_col.clone(),
+                                path: None,
+                            }),
+                        };
+                    }
+                },
+                Err(errors) => {
+                    err.add_errors(errors);
+                    return vec![];
+                }
+            }
             let mut output = vec![];
-            return match expr_from_pair(expr_rule) {
+            return match expr_primary(expr_rule) {
                 Err(errors) => {
                     err.add_errors(errors);
 
@@ -599,12 +621,22 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                         ));
                         return output;
                     };
-                    output.push(Statement::Assign {
-                        var_id,
-                        expr,
-                        loc: Some(Location::from(&var_id_line_col, &expr_line_col, None)),
-                    });
-                    output
+                    if is_map {
+                        output.push(Statement::SetMap {
+                            map: var_id,
+                            key: key_assigned,
+                            val: expr,
+                            loc: Some(Location::from(&var_id_line_col, &expr_line_col, None)),
+                        });
+                        output
+                    } else {
+                        output.push(Statement::Assign {
+                            var_id,
+                            expr,
+                            loc: Some(Location::from(&var_id_line_col, &expr_line_col, None)),
+                        });
+                        output
+                    }
                 }
             };
         }
@@ -851,7 +883,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
             let if_stmt_line_col: LineColLocation = LineColLocation::from(pair.as_span());
             let mut pair = pair.into_inner();
             let cond_rule = pair.next().unwrap();
-            let cond = match expr_from_pair(cond_rule) {
+            let cond = match expr_primary(cond_rule) {
                 Ok(expr) => expr,
                 Err(errors) => {
                     err.add_errors(errors);
@@ -860,7 +892,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
             };
             let block_rule = pair.next().unwrap();
             let block = block_from_rule(block_rule, err);
-            let next_pair = pair.next();
+            let next_pair: Option<Pair<Rule>> = pair.next();
             match next_pair {
                 Some(_) => {
                     let alt = alt_from_rule(next_pair.unwrap(), err);

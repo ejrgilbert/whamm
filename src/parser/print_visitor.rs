@@ -405,7 +405,7 @@ impl WhammVisitor<String> for AsStrVisitor {
             }
             Statement::SetMap { map, key, val, .. } => {
                 format!(
-                    "{}[{}] = {}",
+                    "(map) {}[{}] = {}",
                     self.visit_expr(map),
                     self.visit_expr(key),
                     self.visit_expr(val)
@@ -462,7 +462,7 @@ impl WhammVisitor<String> for AsStrVisitor {
             }
             Expr::GetMap { map, key, .. } => {
                 let mut s = "".to_string();
-                s += &format!("{}[{}]", self.visit_expr(map), self.visit_expr(key));
+                s += &format!("(map) {}[{}]", self.visit_expr(map), self.visit_expr(key));
                 s
             }
         }
