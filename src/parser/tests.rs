@@ -233,6 +233,12 @@ wasm:bytecode:br:before {
             count[1] = my_fn();
         }
     "#,
+    r#"
+        map<i32, i32> count;
+        BEGIN {
+            count[1] = 1+1;
+        }
+    "#,
 ];
 
 const INVALID_SCRIPTS: &[&str] = &[
@@ -306,6 +312,26 @@ map<i32, i32> count;
         wasm::call:alt{
             bool a = true;
             elif(a){};
+        }
+    "#,
+    r#"
+        map<i32> count;
+        my_fn() -> i32{
+            count[0] = 0;
+            return count[0];
+        }
+        BEGIN {
+            count[1] = my_fn();
+        }
+    "#,
+    r#"
+        map<i32, i32> count;
+        my_fn() -> i32{
+            count[0] = 0;
+            return count[0];
+        }
+        BEGIN {
+            count[] = my_fn();
         }
     "#,
 ];
