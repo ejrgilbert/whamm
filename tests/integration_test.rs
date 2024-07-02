@@ -1,6 +1,7 @@
 mod common;
 
 use log::error;
+use orca::ir::Module as WasmModule;
 use std::fs;
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -17,85 +18,85 @@ const APP_WASM_PATH: &str = "tests/apps/dfinity/users.wasm";
 const OUT_BASE_DIR: &str = "target";
 const OUT_WASM_NAME: &str = "out.wasm";
 
-// fn get_wasm_module() -> Module {
-//     // Read app Wasm into Walrus module
-//     let _config = walrus::ModuleConfig::new();
-//     Module::from_file(APP_WASM_PATH).unwrap()
-// }
-
 /// This test just confirms that a wasm module can be instrumented with the preconfigured
 /// scripts without errors occurring.
-// #[test]
-// fn instrument_dfinity_with_fault_injection() {
-//     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-//     let processed_scripts = common::setup_fault_injection("dfinity", &mut err);
-//     assert!(!processed_scripts.is_empty());
-//     err.fatal_report("Integration Test");
+#[test]
+fn instrument_dfinity_with_fault_injection() {
+    common::setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let processed_scripts = common::setup_fault_injection("dfinity", &mut err);
+    assert!(!processed_scripts.is_empty());
+    err.fatal_report("Integration Test");
 
-//     for (script_path, script_text, mut whamm, symbol_table, behavior, simple_ast) in
-//         processed_scripts
-//     {
-//         let app_wasm = get_wasm_module();
-//         let mut err = ErrorGen::new(script_path.clone(), script_text, 0);
-//         let mut emitter = WasmRewritingEmitter::new(app_wasm, symbol_table);
-//         // Phase 0 of instrumentation (emit globals and provided fns)
-//         let mut init = InitGenerator {
-//             emitter: Box::new(&mut emitter),
-//             context_name: "".to_string(),
-//             err: &mut err,
-//         };
-//         assert!(init.run(&mut whamm));
-//         err.fatal_report("Integration Test");
+    for (script_path, script_text, whamm, symbol_table) in processed_scripts {
+        // Build the behavior tree from the AST
+        let mut simple_ast = SimpleAST::new();
+        let mut behavior = build_behavior_tree(&whamm, &mut simple_ast, &mut err);
+        behavior.reset();
 
-//         // Phase 1 of instrumentation (actually emits the instrumentation code)
-//         // This structure is necessary since we need to have the fns/globals injected (a single time)
-//         // and ready to use in every body/predicate.
-//         let mut instr = InstrGenerator {
-//             tree: &behavior,
-//             emitter: Box::new(&mut emitter),
-//             ast: simple_ast,
-//             context_name: "".to_string(),
-//             curr_provider_name: "".to_string(),
-//             curr_package_name: "".to_string(),
-//             curr_event_name: "".to_string(),
-//             curr_probe_mode: "".to_string(),
-//             curr_probe: None,
-//             err: &mut err,
-//         };
-//         // TODO add assertions here once I have error logic in place to check that it worked!
-//         instr.run(&behavior);
-//         err.fatal_report("Integration Test");
+        let buff = std::fs::read(APP_WASM_PATH).unwrap();
+        let app_wasm = WasmModule::parse(&buff, false).expect("Failed to parse Wasm module");
 
-//         if !Path::new(OUT_BASE_DIR).exists() {
-//             if let Err(err) = fs::create_dir(OUT_BASE_DIR) {
-//                 error!("{}", err.to_string());
-//                 panic!("Could not create base output path.");
-//             }
-//         }
+        let mut err = ErrorGen::new(script_path.clone(), script_text, 0);
+        let mut emitter = WasmRewritingEmitter::new(app_wasm, symbol_table);
+        // Phase 0 of instrumentation (emit globals and provided fns)
+        let mut init = InitGenerator {
+            emitter: Box::new(&mut emitter),
+            context_name: "".to_string(),
+            err: &mut err,
+        };
+        assert!(init.run(&whamm));
+        err.fatal_report("Integration Test");
 
-//         let out_wasm_path = format!("{OUT_BASE_DIR}/{OUT_WASM_NAME}");
-//         if let Err(e) = emitter.dump_to_file(out_wasm_path.clone()) {
-//             err.add_error(*e)
-//         }
-//         err.fatal_report("Integration Test");
+        // Phase 1 of instrumentation (actually emits the instrumentation code)
+        // This structure is necessary since we need to have the fns/globals injected (a single time)
+        // and ready to use in every body/predicate.
+        let mut instr = InstrGenerator {
+            tree: &behavior,
+            emitter: Box::new(&mut emitter),
+            ast: simple_ast,
+            context_name: "".to_string(),
+            curr_provider_name: "".to_string(),
+            curr_package_name: "".to_string(),
+            curr_event_name: "".to_string(),
+            curr_probe_mode: "".to_string(),
+            curr_probe: None,
+            err: &mut err,
+        };
+        // TODO add assertions here once I have error logic in place to check that it worked!
+        instr.run(&behavior);
+        err.fatal_report("Integration Test");
 
-//         let mut wasm2wat = Command::new("wasm2wat");
-//         wasm2wat.stdout(Stdio::null()).arg(out_wasm_path);
+        if !Path::new(OUT_BASE_DIR).exists() {
+            if let Err(err) = fs::create_dir(OUT_BASE_DIR) {
+                error!("{}", err.to_string());
+                panic!("Could not create base output path.");
+            }
+        }
 
-//         // wasm2wat verification check
-//         match wasm2wat.status() {
-//             Ok(code) => {
-//                 if !code.success() {
-//                     panic!("`wasm2wat` verification check failed!");
-//                 }
-//             }
-//             Err(err) => {
-//                 error!("{}", err.to_string());
-//                 panic!("`wasm2wat` verification check failed!");
-//             }
-//         };
-//     }
-// }
+        let out_wasm_path = format!("{OUT_BASE_DIR}/{OUT_WASM_NAME}");
+        if let Err(e) = emitter.dump_to_file(out_wasm_path.clone()) {
+            err.add_error(*e)
+        }
+        err.fatal_report("Integration Test");
+
+        let mut wasm2wat = Command::new("wasm2wat");
+        wasm2wat.stdout(Stdio::null()).arg(out_wasm_path);
+
+        // wasm2wat verification check
+        match wasm2wat.status() {
+            Ok(code) => {
+                if !code.success() {
+                    panic!("`wasm2wat` verification check failed!");
+                }
+            }
+            Err(err) => {
+                error!("{}", err.to_string());
+                panic!("`wasm2wat` verification check failed!");
+            }
+        };
+    }
+}
 
 #[test]
 fn instrument_handwritten_wasm_call() {
