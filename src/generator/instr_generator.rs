@@ -332,12 +332,17 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_, '_> {
                     }
                     self.set_context_info(context);
 
-                    let mut first_instr = true;
+                    let mut first_instr = self.emitter.init_first_instr();
+
+                    // nothing to instrument
+                    if !first_instr {
+                        eprintln!("No instructions to instrument in the bytecode package!");
+                        return true;
+                    }
+
                     while first_instr || self.emitter.has_next_instr() {
-                        if first_instr {
-                            self.emitter.init_first_instr();
-                        }
-                        if !&first_instr {
+                        if !first_instr {
+                            // move to the next instruction
                             self.emitter.next_instr();
                         }
 
