@@ -20,11 +20,11 @@ use clap::Parser;
 use graphviz_rust::cmd::{CommandArg, Format};
 use graphviz_rust::exec_dot;
 use log::{error, info};
+use orca::ir::Module as WasmModule;
 use project_root::get_project_root;
 use std::path::PathBuf;
 use std::process::exit;
 use walrus::Module;
-use orca::ir::Module as WasmModule;
 
 use crate::behavior::tree::BehaviorTree;
 use crate::behavior::visualize::visualization_to_file;
@@ -113,19 +113,9 @@ fn run_instr(
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
 
-<<<<<<< task/wasm-parse-emitter
     // Read app Wasm into Orca module
     let buff = std::fs::read(app_wasm_path).unwrap();
     let app_wasm = WasmModule::parse(&buff, false).expect("Failed to parse Wasm module");
-=======
-    // Read app Wasm into Walrus module
-    let _config = walrus::ModuleConfig::new();
-    if !PathBuf::from(&app_wasm_path).exists() {
-        error!("Wasm module does not exist at: {}", app_wasm_path);
-        exit(1);
-    }
-    let app_wasm = Module::from_file(app_wasm_path).unwrap();
->>>>>>> master
 
     // Configure the emitter based on target instrumentation code format
     let mut emitter = if emit_virgil {
