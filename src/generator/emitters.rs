@@ -1753,10 +1753,12 @@ impl Emitter for WasmRewritingEmitter<'_> {
 
         let res = self.app_wasm.clone().encode();
         match res {
-            Ok(bytes) => {
+            Ok(module) => {
                 let mut file = std::fs::File::create(&output_wasm_path).unwrap();
                 use std::io::Write;
+                let bytes = module.finish();
                 file.write_all(&bytes).unwrap();
+                
                 Ok(true)
             }
             Err(err) => Err(Box::new(ErrorGen::get_unexpected_error(

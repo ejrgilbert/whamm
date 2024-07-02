@@ -115,7 +115,7 @@ fn run_instr(
 
     // Read app Wasm into Orca module
     let buff = std::fs::read(app_wasm_path).unwrap();
-    let app_wasm = WasmModule::parse(&buff, false).expect("Failed to parse Wasm module");
+    let app_wasm = WasmModule::parse_only_module(&buff, false).unwrap();
 
     // Configure the emitter based on target instrumentation code format
     let mut emitter = if emit_virgil {
