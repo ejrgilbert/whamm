@@ -35,7 +35,8 @@ fn instrument_dfinity_with_fault_injection() {
         behavior.reset();
 
         let buff = std::fs::read(APP_WASM_PATH).unwrap();
-        let app_wasm = WasmModule::parse_only_module(&buff, false).expect("Failed to parse Wasm module");
+        let app_wasm =
+            WasmModule::parse_only_module(&buff, false).expect("Failed to parse Wasm module");
 
         let mut err = ErrorGen::new(script_path.clone(), script_text, 0);
         let mut emitter = WasmRewritingEmitter::new(app_wasm, symbol_table);

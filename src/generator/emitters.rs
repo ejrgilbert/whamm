@@ -1758,7 +1758,7 @@ impl Emitter for WasmRewritingEmitter<'_> {
                 use std::io::Write;
                 let bytes = module.finish();
                 file.write_all(&bytes).unwrap();
-                
+
                 Ok(true)
             }
             Err(err) => Err(Box::new(ErrorGen::get_unexpected_error(
