@@ -1746,7 +1746,7 @@ impl Emitter for WasmRewritingEmitter<'_> {
                 unimplemented!()
             }
         }
-    }
+    } 
 
     fn dump_to_file(&mut self, output_wasm_path: String) -> Result<bool, Box<WhammError>> {
         // clone for now
