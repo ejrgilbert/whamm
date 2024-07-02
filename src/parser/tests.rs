@@ -146,11 +146,6 @@ BEGIN { }
     "#,
     r#"
 wasm:bytecode:br:before {
-    i = 0;
-}
-    "#,
-    r#"
-wasm:bytecode:br:before {
     i = -10;
 }
     "#,
@@ -210,6 +205,34 @@ wasm:bytecode:br:before {
     i = 0; /**/
 }
     "#,
+    // If/else stmts
+    r#"
+        wasm::call:alt{
+            bool a = true;
+            if(a){
+                i = 0;
+            } else {
+                i = 1;
+            };
+            if(a){
+                i = 0;
+            } elif(b) {
+                i = 1;
+            };
+        }
+    
+    "#,
+    // valid "variants" of reserved keywords
+    "wasm:bytecode:call:alt { i32 arg; }",
+    "wasm:bytecode:call:alt { arg = 1; }",
+    "wasm:bytecode:call:alt { arg0 = 1; }",
+];
+
+const FATAL_SCRIPTS: &[&str] = &[
+    // invalid probe specification
+    r#"
+core::br:before / i == 1 / { i = 0; }  // SHOULD FAIL HERE
+    "#,
 ];
 
 const INVALID_SCRIPTS: &[&str] = &[
@@ -259,6 +282,36 @@ map<i32, i32> count;
     wasm:bytecode:br:before {
     }
         "#,
+    // invalid if/else
+    r#"
+        wasm::call:alt{
+            else {
+                i = 0;
+            };
+        }
+    "#,
+    r#"
+        wasm::call:alt{
+            if(a){
+                i = 0;
+            } else {
+                i = 1;
+            };
+            else {
+                i = 0;
+            };
+        }
+    "#,
+    r#"
+        wasm::call:alt{
+            bool a = true;
+            elif(a){};
+        }
+    // reserved keywords
+    "wasm:bytecode:call:alt { i32 arg0; }",
+    r#"
+map<i32, i32> arg0;
+    "#,
 ];
 
 const SPECIAL: &[&str] = &["BEGIN { }", "END { }", "wasm:::alt { }", "wasm:::alt { }"];
@@ -345,6 +398,26 @@ pub fn test_parse_valid_scripts() {
 }
 
 #[test]
+pub fn test_parse_fatal_scripts() {
+    setup_logger();
+    for script in FATAL_SCRIPTS {
+        info!("Parsing: {}", script);
+        let result = std::panic::catch_unwind(|| {
+            let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+            is_valid_script(script, &mut err)
+        });
+        match result {
+            Ok(_) => {
+                panic!("Expected a fatal error, but got Ok");
+            }
+            Err(_) => {
+                //this means the function properly exited with a fatal error
+            }
+        }
+    }
+}
+
+#[test]
 pub fn test_parse_invalid_scripts() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
@@ -390,36 +463,37 @@ wasm::call:alt /
             // provider
             assert_eq!(1, script.providers.len());
             let provider = script.providers.get("wasm").unwrap();
-            assert_eq!("wasm", provider.name);
-            assert_eq!(0, provider.globals.len());
-            assert_eq!(0, provider.fns.len());
+            assert_eq!("wasm", provider.name());
+            assert_eq!(0, provider.get_provided_globals().len());
+            assert_eq!(0, provider.get_provided_fns().len());
 
-            assert_eq!(1, provider.packages.len());
-            let package = provider.packages.get("bytecode").unwrap();
-            assert_eq!("bytecode", package.name);
-            assert_eq!(2, package.globals.len());
-            assert_eq!(0, package.fns.len());
+            assert_eq!(1, provider.len_packages());
+            let package = provider.packages().next().unwrap();
+            assert_eq!("bytecode", package.name());
+            assert_eq!(1, package.get_provided_globals().len());
+            assert_eq!(0, package.get_provided_fns().len());
 
-            assert_eq!(1, package.events.len());
-            let event = package.events.get("call").unwrap();
-            assert_eq!("call", event.name);
-            assert_eq!(4, event.globals.len());
-            assert_eq!(0, event.fns.len());
+            assert_eq!(1, package.len_events());
+            let event = package.events().next().unwrap();
+            assert_eq!("call", event.name());
+            // TODO -- change to 5 when add back: arg[0:9]+
+            assert_eq!(4, event.get_provided_globals().len());
+            assert_eq!(0, event.get_provided_fns().len());
 
-            assert_eq!(1, event.probe_map.len());
-            assert_eq!(1, event.probe_map.get("alt").unwrap().len());
+            assert_eq!(1, event.probes().len());
+            assert_eq!(1, event.probes().get("alt").unwrap().len());
 
-            let probe = event.probe_map.get("alt").unwrap().first().unwrap();
-            assert_eq!(0, probe.globals.len());
-            assert_eq!(0, probe.fns.len());
-            assert_eq!("alt", probe.mode);
+            let probe = event.probes().get("alt").unwrap().first().unwrap();
+            assert_eq!(0, probe.get_mode_provided_globals().len());
+            assert_eq!(0, probe.get_mode_provided_fns().len());
+            assert_eq!("alt", probe.mode_name());
 
             // probe predicate
-            assert!(probe.predicate.is_some());
+            assert!(probe.predicate().is_some());
 
             // probe body
-            assert!(&probe.body.is_some());
-            assert_eq!(1, probe.body.as_ref().unwrap().len());
+            assert!(&probe.body().is_some());
+            assert_eq!(1, probe.body().as_ref().unwrap().len());
 
             print_ast(&ast);
 
@@ -475,6 +549,40 @@ pub fn testing_strcmp() {
         }
     };
 }
+
+#[test]
+fn test_global_stmts() {
+    setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let script = r#"
+        i32 a;
+        a = 1;
+        dummy_fn() {
+            a = strcmp((arg0, arg1), "bookings");
+            strcmp((arg0, arg1), "bookings");
+        }
+        BEGIN{
+            strcmp((arg0, arg1), "bookings");
+        }
+        END {
+            a = 2;
+        }
+    "#;
+
+    match get_ast(script, &mut err) {
+        Some(ast) => {
+            print_ast(&ast);
+        }
+        None => {
+            error!("Could not get ast from script: {}", script);
+            if err.has_errors {
+                err.report();
+            }
+            assert!(!err.has_errors);
+        }
+    };
+}
+
 #[test]
 pub fn testing_block() {
     setup_logger();
@@ -503,7 +611,37 @@ pub fn testing_block() {
         }
     };
 }
+#[test]
+pub fn testing_global_def() {
+    setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let script = r#"
+        dummy_fn() {
+            a = strcmp((arg0, arg1), "bookings");
+            strcmp((arg0, arg1), "bookings");
+        }
+        i32 i;
+        i = 5; 
+        i32 j = 5;
+        BEGIN{
+            strcmp((arg0, arg1), "bookings");
+        }
+    
+    "#;
 
+    match get_ast(script, &mut err) {
+        Some(ast) => {
+            print_ast(&ast);
+        }
+        None => {
+            error!("Could not get ast from script: {}", script);
+            if err.has_errors {
+                err.report();
+            }
+            assert!(!err.has_errors);
+        }
+    };
+}
 // ===================
 // = Full File Tests =
 // ===================

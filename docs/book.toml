@@ -1,13 +1,13 @@
 [book]
 title = "whamm!"
 description = "An introduction to the `whamm!` DSL."
-authors = ["ahuoguo", "ejrgilbert"]
+authors = ["ahuoguo", "ejrgilbert", "wavid-b"]
 language = "en"
 multilingual = false
 src = "src"
 
 [output.html]
-git-repository-url = "https://github.com/ejrgilbert/whamm/tree/master/docs"
+git-repository-url = "https://github.com/ejrgilbert/whamm/"
 edit-url-template = "https://github.com/ejrgilbert/whamm/edit/master/docs/{path}"
 # TODO -- add highlighting here (see https://github.com/pest-parser/book/blob/master/highlight-pest.js)
 #additional-js = ["highlight-pest.js"]

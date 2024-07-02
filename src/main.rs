@@ -113,9 +113,19 @@ fn run_instr(
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
 
+<<<<<<< task/wasm-parse-emitter
     // Read app Wasm into Orca module
     let buff = std::fs::read(app_wasm_path).unwrap();
     let app_wasm = WasmModule::parse(&buff, false).expect("Failed to parse Wasm module");
+=======
+    // Read app Wasm into Walrus module
+    let _config = walrus::ModuleConfig::new();
+    if !PathBuf::from(&app_wasm_path).exists() {
+        error!("Wasm module does not exist at: {}", app_wasm_path);
+        exit(1);
+    }
+    let app_wasm = Module::from_file(app_wasm_path).unwrap();
+>>>>>>> master
 
     // Configure the emitter based on target instrumentation code format
     let mut emitter = if emit_virgil {
@@ -130,7 +140,7 @@ fn run_instr(
         context_name: "".to_string(),
         err: &mut err,
     };
-    init.run(&mut whamm);
+    init.run(&whamm);
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
 
@@ -270,9 +280,10 @@ fn get_script_ast(script_path: &String, err: &mut ErrorGen) -> Whamm {
     }
 }
 
-fn build_behavior(whamm: &Whamm, err: &mut ErrorGen) -> (BehaviorTree, SimpleAST) {
+fn build_behavior<'a>(whamm: &'a Whamm, err: &mut ErrorGen) -> (BehaviorTree, SimpleAST<'a>) {
     // Build the behavior tree from the AST
-    let (mut behavior, simple_ast) = build_behavior_tree(whamm, err);
+    let mut simple_ast = SimpleAST::new();
+    let mut behavior = build_behavior_tree(whamm, &mut simple_ast, err);
     err.check_too_many();
     behavior.reset();
 

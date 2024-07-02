@@ -43,18 +43,18 @@ fn get_pred(whamm: &Whamm) -> &Expr {
         .providers
         .get("wasm")
         .unwrap()
-        .packages
-        .get("bytecode")
+        .packages()
+        .next()
         .unwrap()
-        .events
-        .get("call")
+        .events()
+        .next()
         .unwrap()
-        .probe_map
+        .probes()
         .get("alt")
         .unwrap()
         .first()
         .unwrap()
-        .predicate
+        .predicate()
         .as_ref()
         .unwrap()
 }

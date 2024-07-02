@@ -24,8 +24,8 @@ pub trait Emitter {
 
     fn init_instr_iter(&mut self, instrs_of_interest: &[String]) -> Result<(), Box<WhammError>>;
     fn has_next_instr(&self) -> bool;
+    fn init_first_instr(&mut self) -> bool;
     fn next_instr(&mut self) -> bool;
-    fn curr_instr_is_of_type(&mut self, instr_names: &[String]) -> bool;
     fn curr_instr_type(&mut self) -> String;
     fn incr_loc_pointer(&mut self);
 
@@ -86,6 +86,7 @@ const UNEXPECTED_ERR_MSG: &str =
 // Reliant on walrus
 fn data_type_to_val_type(ty: &DataType) -> (ValType, InitExpr) {
     match ty {
+        DataType::U32 => (ValType::I32, InitExpr::Value(walrus::ir::Value::I32(0))),
         DataType::I32 => (ValType::I32, InitExpr::Value(walrus::ir::Value::I32(0))),
         DataType::Boolean => (ValType::I32, InitExpr::Value(walrus::ir::Value::I32(0))),
         DataType::Null => unimplemented!(),
@@ -797,6 +798,7 @@ struct FuncInfo {
     module: String,
     name: String,
 }
+
 struct EmittingInstrTracker {
     // To keep track of the location of the original instruction while we're instrumenting!
     orig_instr_idx: usize,
@@ -1033,6 +1035,26 @@ impl Emitter for WasmRewritingEmitter <'_> {
         self.instr_iter.has_next()
     }
 
+    fn init_first_instr(&mut self) -> bool {
+        if let Some(first) = self.instr_iter.curr() {
+            self.emitting_instr = Some(EmittingInstrTracker {
+                orig_instr_idx: first.index,
+                curr_seq_id: first.instr_seq_id,
+                curr_idx: first.index,
+                main_seq_id: first.instr_seq_id,
+                main_idx: first.index,
+                outer_seq_id: None,
+                outer_idx: None,
+                then_seq_id: None,
+                then_idx: None,
+                else_seq_id: None,
+                else_idx: None,
+            });
+            return true;
+        }
+        false
+    }
+
     /// bool -> whether it found a next instruction
     fn next_instr(&mut self) -> bool {
         if self.instr_iter.has_next() {
@@ -1052,14 +1074,6 @@ impl Emitter for WasmRewritingEmitter <'_> {
             //     });
             //     return true;
             // }
-        }
-        false
-    }
-
-    /// bool -> whether the current instruction is one of the passed list of types
-    fn curr_instr_is_of_type(&mut self, instr_names: &[String]) -> bool {
-        if let Some(instr) = self.instr_iter.curr() {
-            return instr_names.contains(&instr.instr_name);
         }
         false
     }
@@ -1262,6 +1276,7 @@ impl Emitter for WasmRewritingEmitter <'_> {
             | Expr::BinOp { .. }
             | Expr::Primitive { .. }
             | Expr::Call { .. } => {
+<<<<<<< task/wasm-parse-emitter
                 // // Anything else can be emitted as normal
                 // if let Some(curr_loc) = self.instr_iter.curr_mut() {
                 //     if let Some(tracker) = &mut self.emitting_instr {
@@ -1303,6 +1318,49 @@ impl Emitter for WasmRewritingEmitter <'_> {
                 //     )));
                 // }
 
+=======
+                // Anything else can be emitted as normal
+                if let Some(curr_loc) = self.instr_iter.curr_mut() {
+                    if let Some(tracker) = &mut self.emitting_instr {
+                        let func = self
+                            .app_wasm
+                            .funcs
+                            .get_mut(curr_loc.wasm_func_id)
+                            .kind
+                            .unwrap_local_mut();
+                        let func_builder = func.builder_mut();
+                        let mut instr_builder = func_builder.instr_seq(tracker.curr_seq_id);
+
+                        is_success &= emit_expr(
+                            &mut self.table,
+                            &mut self.app_wasm.data,
+                            expr,
+                            &mut instr_builder,
+                            &mut self.metadata,
+                            &mut tracker.curr_idx,
+                        )?;
+                    } else {
+                        // have an error at this place when for 3 calls
+                        return Err(Box::new(ErrorGen::get_unexpected_error(
+                            true,
+                            Some(format!(
+                                "{UNEXPECTED_ERR_MSG} \
+                            Something went wrong while emitting an instruction."
+                            )),
+                            None,
+                        )));
+                    }
+                } else {
+                    return Err(Box::new(ErrorGen::get_unexpected_error(
+                        true,
+                        Some(format!(
+                            "{UNEXPECTED_ERR_MSG} \
+                        Something went wrong while emitting an instruction."
+                        )),
+                        None,
+                    )));
+                }
+>>>>>>> master
             }
         }
         Ok(is_success)
@@ -1734,6 +1792,12 @@ impl Emitter for WasmRewritingEmitter <'_> {
             Statement::Assign { .. } => self.emit_assign_stmt(stmt),
             Statement::Expr { expr, .. } => self.emit_expr(expr),
             Statement::Return { .. } => unimplemented!(),
+            Statement::If {
+                // cond, conseq, alt, .. -- for eventual implimentation
+                ..
+            } => {
+                unimplemented!()
+            }
         }
     }
 
