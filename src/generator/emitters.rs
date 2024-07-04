@@ -661,7 +661,7 @@ impl InstrIter {
             // https://docs.rs/wasmparser/latest/wasmparser/enum.Operator.html
             // only care about call instructions now
             match instruction {
-                wasmparser::Operator::Call { .. } => {}
+                (wasmparser::Operator::Call { .. }, _) => {}
                 _ => {
                     // do nothing extra for other instructions
                 }
@@ -823,10 +823,11 @@ pub struct WasmRewritingEmitter<'a> {
     pub app_wasm: orca::ir::Module<'a>,
     pub table: SymbolTable,
 
+    // TODO: totally change this with orca
     // whamm! AST traversal bookkeeping
     metadata: InsertionMetadata,
-    instr_iter: InstrIter,
-    emitting_instr: Option<EmittingInstrTracker>,
+    instr_iter: InstrIter,                        //matches probe
+    emitting_instr: Option<EmittingInstrTracker>, // defines probe action
 
     fn_providing_contexts: Vec<String>,
 }
@@ -1746,7 +1747,7 @@ impl Emitter for WasmRewritingEmitter<'_> {
                 unimplemented!()
             }
         }
-    } 
+    }
 
     fn dump_to_file(&mut self, output_wasm_path: String) -> Result<bool, Box<WhammError>> {
         // clone for now
