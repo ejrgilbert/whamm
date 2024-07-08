@@ -83,18 +83,29 @@ pub trait Emitter {
 const UNEXPECTED_ERR_MSG: &str =
     "WasmRewritingEmitter: Looks like you've found a bug...please report this behavior!";
 
-// Reliant on walrus
-fn data_type_to_val_type(ty: &DataType) -> (ValType, InitExpr) {
+// TODO https://github.com/thesuhas/orca/issues/13
+// used to define default value of a global
+fn data_type_to_val_type(ty: &DataType) -> orca::ir::Global {
     match ty {
-        DataType::U32 => (ValType::I32, InitExpr::Value(walrus::ir::Value::I32(0))),
-        DataType::I32 => (ValType::I32, InitExpr::Value(walrus::ir::Value::I32(0))),
-        DataType::Boolean => (ValType::I32, InitExpr::Value(walrus::ir::Value::I32(0))),
-        DataType::Null => unimplemented!(),
-        DataType::Str => unimplemented!(),
-        DataType::Tuple { .. } => unimplemented!(),
-        // the ID used to track this var in the lib
-        DataType::Map { .. } => (ValType::I32, InitExpr::Value(walrus::ir::Value::I32(0))),
-        &DataType::AssumeGood => unimplemented!(),
+        // DataType::I32 => orca::ir::Global {
+        //     ty: wasmparser::GlobalType {
+        //         content_type: wasmparser::ValType::I32,
+        //         mutable: true,
+        //         shared: false,
+        //     },
+        //     init_expr: 
+        // },
+        
+        _ => unimplemented!(),
+        // DataType::U32 => (ValType::I32, InitExpr::Value(walrus::ir::Value::I32(0))),
+        // DataType::I32 => (ValType::I32, InitExpr::Value(walrus::ir::Value::I32(0))),
+        // DataType::Boolean => (ValType::I32, InitExpr::Value(walrus::ir::Value::I32(0))),
+        // DataType::Null => unimplemented!(),
+        // DataType::Str => unimplemented!(),
+        // DataType::Tuple { .. } => unimplemented!(),
+        // // the ID used to track this var in the lib
+        // DataType::Map { .. } => (ValType::I32, InitExpr::Value(walrus::ir::Value::I32(0))),
+        // &DataType::AssumeGood => unimplemented!(),
     }
 }
 
@@ -507,7 +518,6 @@ fn emit_unop(op: &UnOp, instr_builder: &mut InstrSeqBuilder, index: &mut usize) 
 }
 
 // Reliant on walrus
-// Alex: Why is this not in impl Emitter?
 fn emit_value(
     table: &mut SymbolTable,
     module_data: &mut ModuleData,
@@ -580,14 +590,15 @@ struct InsertionMetadata {
     curr_mem_offset: u32,
 }
 
+/// All the ProbeLoc we want to visit
 #[derive(Debug)]
-struct InstrIter {
-    instr_locs: Vec<ProbeLoc>,
+struct InstrIter<'a> {
+    instr_locs: Vec<ProbeLoc<'a>>,
     curr_loc: usize,
 }
 
 // Reliant on walrus
-impl InstrIter {
+impl<'a> InstrIter<'a> {
     /// Build out a list of all local functions and their blocks/instruction indexes
     /// to visit while doing instrumentation.
     fn new() -> Self {
@@ -596,20 +607,23 @@ impl InstrIter {
             curr_loc: 0,
         }
     }
-    fn init(&mut self, app_wasm: &orca::ir::Module, instrs_of_interest: &[String]) {
+    fn init(&mut self, app_wasm: &orca::ir::Module<'a>, instrs_of_interest: &[String]) {
+        // TODO REWRITE THIS WITH ORCA VISITOR PATTERN?
+
         // Figure out which functions to visit
-        eprintln!("{:?}", app_wasm);
+        let mut func_id: u32 = 0;
         for func in app_wasm.code_sections.iter() {
             // iterate each instruction of the function
             self.init_instr_locs(
                 instrs_of_interest,
                 app_wasm,
                 func,
-                // &func.id(),
+                func_id,
                 // func.name.clone(),
                 // func.entry_block(),
             );
 
+            func_id += 1;
             // let func_id = func.id();
             // if let Some(name) = func.name.as_ref() {
             //     // TODO -- get rid of this necessity (probably by removing the need to have
@@ -620,15 +634,8 @@ impl InstrIter {
             // }
 
             // in orca, all functions (in code_sections) are local
-            // why this get called twice?
-            // self.init_instr_locs(
-            //     instrs_of_interest,
-            //     app_wasm,
-            //     func,
-            //     &func.id(),
-            //     func.name.clone(),
-            //     func.entry_block(),
-            // );
+
+            // LOOK AT ME: This is the main one that looks at call
             // if let FunctionKind::Local(local_func) = &func.kind {
             //     // TODO -- make sure that the id is not any of the injected function IDs (strcmp)
             //     self.init_instr_locs(
@@ -651,21 +658,37 @@ impl InstrIter {
         &mut self,
         instrs_of_interest: &[String],
         app_wasm: &orca::ir::Module,
-        func_body: &orca::ir::Body, // func: &LocalFunction,
-                                    // func_id: &FunctionId,
-                                    // func_name: Option<String>,
-                                    // instr_seq_id: InstrSeqId,
+        func_body: &orca::ir::Body<'a>, // func: &LocalFunction,
+        func_id: u32,
+                                        // func_id: &FunctionId,
+                                        // func_name: Option<String>,
+                                        // instr_seq_id: InstrSeqId,
     ) {
         // for each instruction in the function, check if it's an instruction of interest
+        let mut instr_index: usize = 0;
         for instruction in &func_body.instructions {
             // https://docs.rs/wasmparser/latest/wasmparser/enum.Operator.html
             // only care about call instructions now
             match instruction {
-                (wasmparser::Operator::Call { .. }, _) => {}
+                (wasmparser::Operator::Call { function_index }, instr_needed) => {
+                    println!("Call: {:#?}", instruction);
+
+                    self.instr_locs.push(ProbeLoc {
+                        wasm_func_id: func_id,
+                        index: instr_index,
+                        instr_name: "call".to_string(),
+                        instr: instruction.0.clone(),
+                        func_info: None,
+                        instr_params: vec![],
+                        instr_created_args: vec![],
+                        instr_alt_call: None,
+                    });
+                }
                 _ => {
                     // do nothing extra for other instructions
                 }
             }
+            instr_index += 1;
         }
 
         // func.block(instr_seq_id)
@@ -758,33 +781,38 @@ impl InstrIter {
     fn curr(&self) -> Option<&ProbeLoc> {
         self.instr_locs.get(self.curr_loc)
     }
-    fn curr_mut(&mut self) -> Option<&mut ProbeLoc> {
+    fn curr_mut(&mut self) -> Option<&mut ProbeLoc<'a>> {
         self.instr_locs.get_mut(self.curr_loc)
     }
 }
 
-// Struct to store info on insertion locations for an instruction sequence.
-// Note that blocks can be indefinitely nested.
-
 // Reliant on walrus
-#[derive(Debug)]
-struct ProbeLoc {
-    // wasm_func_name: Option<String>,
+
+/// Struct to store info on insertion locations for an instruction sequence.
+/// Note that blocks can be indefinitely nested. (what's the problem?)
+#[derive(Debug, Clone)]
+struct ProbeLoc<'a> {
     // https://docs.rs/wasmparser/latest/wasmparser/enum.Operator.html#variant.Call.field.function_index
+    
+    // index of the function that this instruction lives in
     wasm_func_id: u32,
-    // instr_seq_id: InstrSeqId,
-    // index: usize,
+
+    index: usize, // index into the instructions of wasm_func_id
+
     instr_name: String,
-    instr: Instr,
+    instr: wasmparser::Operator<'a>, // orca correspondence of Instr?
+
+    // TODO: figure out what are these
     func_info: Option<FuncInfo>,
-    instr_params: Vec<ValType>,
+    instr_params: Vec<wasmparser::ValType>, // orca correspondence of ValTtype?
     instr_created_args: Vec<(String, usize)>,
 
     // Save off the compiler-defined constants for this instruction
     // instr_symbols: HashMap<String, Record>,
-    instr_alt_call: Option<FunctionId>,
+    instr_alt_call: Option<usize>, // Orca correspondence of FunctionId?
 }
-#[derive(Debug)]
+
+#[derive(Debug, Clone)]
 struct FuncInfo {
     func_kind: String,
     module: String,
@@ -795,28 +823,28 @@ struct EmittingInstrTracker {
     // To keep track of the location of the original instruction while we're instrumenting!
     orig_instr_idx: usize,
 
-    curr_seq_id: InstrSeqId,
+    // curr_seq_id: InstrSeqId,    
     curr_idx: usize,
 
-    /// The sequence ID of the main block (containing the instruction of-interest)
-    main_seq_id: InstrSeqId,
-    /// The current index into the main block (containing the instruction of-interest)
-    main_idx: usize,
+    // /// The sequence ID of the main block (containing the instruction of-interest)
+    // main_seq_id: InstrSeqId,
+    // /// The current index into the main block (containing the instruction of-interest)
+    // main_idx: usize,
 
-    /// The sequence ID of the outer block of an injected conditional
-    outer_seq_id: Option<InstrSeqId>,
-    /// The current index into the outer block of an injected conditional
-    outer_idx: Option<usize>,
+    // /// The sequence ID of the outer block of an injected conditional
+    // outer_seq_id: Option<InstrSeqId>,
+    // /// The current index into the outer block of an injected conditional
+    // outer_idx: Option<usize>,
 
-    /// The sequence ID of the consequent block of an injected conditional
-    then_seq_id: Option<InstrSeqId>,
-    /// The current index into the consequent block of an injected conditional
-    then_idx: Option<usize>,
+    // /// The sequence ID of the consequent block of an injected conditional
+    // then_seq_id: Option<InstrSeqId>,
+    // /// The current index into the consequent block of an injected conditional
+    // then_idx: Option<usize>,
 
-    /// The sequence ID of the alternate block of an injected conditional
-    else_seq_id: Option<InstrSeqId>,
-    /// The current index into the alternate block of an injected conditional
-    else_idx: Option<usize>,
+    // /// The sequence ID of the alternate block of an injected conditional
+    // else_seq_id: Option<InstrSeqId>,
+    // /// The current index into the alternate block of an injected conditional
+    // else_idx: Option<usize>,
 }
 
 pub struct WasmRewritingEmitter<'a> {
@@ -826,7 +854,7 @@ pub struct WasmRewritingEmitter<'a> {
     // TODO: totally change this with orca
     // whamm! AST traversal bookkeeping
     metadata: InsertionMetadata,
-    instr_iter: InstrIter,                        //matches probe
+    instr_iter: InstrIter<'a>,                    //matches probe
     emitting_instr: Option<EmittingInstrTracker>, // defines probe action
 
     fn_providing_contexts: Vec<String>,
@@ -975,7 +1003,8 @@ impl<'a> WasmRewritingEmitter<'a> {
 
     fn emit_provided_fn(&mut self, context: &str, f: &Fn) -> Result<bool, Box<WhammError>> {
         if context == "whamm" && f.name.name == "strcmp" {
-            self.emit_whamm_strcmp_fn(f)
+            // self.emit_whamm_strcmp_fn(f)
+            Ok(true)
         } else {
             Err(Box::new(ErrorGen::get_unexpected_error(
                 true,
@@ -992,15 +1021,129 @@ impl<'a> WasmRewritingEmitter<'a> {
     // Reliant on walrus
     // do nothing for now
     fn emit_whamm_strcmp_fn(&mut self, f: &Fn) -> Result<bool, Box<WhammError>> {
-        Ok(true)
+        todo!();
     }
 
     fn emit_decl_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>> {
-        Ok(true)
+        todo!();
     }
 
     fn emit_assign_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>> {
-        Ok(true)
+        return match stmt {
+            Statement::Assign { var_id, expr, .. } => {
+                let mut folded_expr = ExprFolder::fold_expr(expr, &self.table);
+
+                // Save off primitives to symbol table
+                // TODO -- this is only necessary for `new_target_fn_name`, remove after deprecating!
+                if let (Expr::VarId { name, .. }, Expr::Primitive { val, .. }) =
+                    (&var_id, &folded_expr)
+                {
+                    let var_rec_id = match self.table.lookup(name) {
+                        Some(rec_id) => *rec_id,
+                        _ => {
+                            return Err(Box::new(ErrorGen::get_unexpected_error(
+                                true,
+                                Some(format!(
+                                    "{UNEXPECTED_ERR_MSG} \
+                                    Attempting to emit an assign, but VarId '{name}' does not exist in this scope!"
+                                )),
+                                None,
+                            )));
+                        }
+                    };
+                    match self.table.get_record_mut(&var_rec_id) {
+                        Some(Record::Var {
+                            value,
+                            is_comp_provided,
+                            ..
+                        }) => {
+                            *value = Some(val.clone());
+
+                            if *is_comp_provided {
+                                return Ok(true);
+                            }
+                        }
+                        Some(ty) => {
+                            return Err(Box::new(ErrorGen::get_unexpected_error(
+                                true,
+                                Some(format!(
+                                    "{UNEXPECTED_ERR_MSG} \
+                                    Incorrect variable record, expected Record::Var, found: {:?}",
+                                    ty
+                                )),
+                                None,
+                            )));
+                        }
+                        None => {
+                            return Err(Box::new(ErrorGen::get_unexpected_error(
+                                true,
+                                Some(format!(
+                                    "{UNEXPECTED_ERR_MSG} \
+                                    Variable symbol does not exist!"
+                                )),
+                                None,
+                            )));
+                        }
+                    }
+                }
+
+                match self.emit_expr(&mut folded_expr) {
+                    Err(e) => Err(e),
+                    Ok(_) => {
+                        if let Some(curr_loc) = self.instr_iter.curr_mut() {
+                            if let Some(tracker) = &mut self.emitting_instr {
+
+                                // let func = self
+                                //     .app_wasm
+                                //     .funcs
+                                //     .get_mut(curr_loc.wasm_func_id)
+                                //     .kind
+                                //     .unwrap_local_mut();
+                                // let func_builder = func.builder_mut();
+                                // let mut instr_builder = func_builder.instr_seq(tracker.curr_seq_id);
+
+                                // // Emit the instruction that sets the variable's value to the emitted expression
+                                // emit_set(
+                                //     &mut self.table,
+                                //     var_id,
+                                //     &mut instr_builder,
+                                //     &mut tracker.curr_idx,
+                                // )
+                                Ok(true)
+                            } else {
+                                return Err(Box::new(ErrorGen::get_unexpected_error(
+                                    true,
+                                    Some(format!(
+                                        "{UNEXPECTED_ERR_MSG} \
+                                            Something went wrong while emitting an instruction."
+                                    )),
+                                    None,
+                                )));
+                            }
+                        } else {
+                            return Err(Box::new(ErrorGen::get_unexpected_error(
+                                true,
+                                Some(format!(
+                                    "{UNEXPECTED_ERR_MSG} \
+                                        Something went wrong while emitting an instruction."
+                                )),
+                                None,
+                            )));
+                        }
+                    }
+                }
+            }
+            _ => {
+                return Err(Box::new(ErrorGen::get_unexpected_error(
+                    false,
+                    Some(format!(
+                        "{UNEXPECTED_ERR_MSG} \
+                    Wrong statement type, should be `assign`"
+                    )),
+                    None,
+                )));
+            }
+        };
     }
 }
 
@@ -1029,44 +1172,27 @@ impl Emitter for WasmRewritingEmitter<'_> {
     }
 
     fn init_first_instr(&mut self) -> bool {
-        // if let Some(first) = self.instr_iter.curr() {
-        //     self.emitting_instr = Some(EmittingInstrTracker {
-        //         orig_instr_idx: first.index,
-        //         curr_seq_id: first.instr_seq_id,
-        //         curr_idx: first.index,
-        //         main_seq_id: first.instr_seq_id,
-        //         main_idx: first.index,
-        //         outer_seq_id: None,
-        //         outer_idx: None,
-        //         then_seq_id: None,
-        //         then_idx: None,
-        //         else_seq_id: None,
-        //         else_idx: None,
-        //     });
-        //     return true;
-        // }
+        if let Some(first) = self.instr_iter.curr() {
+            self.emitting_instr = Some(EmittingInstrTracker {
+                orig_instr_idx: first.index,
+                curr_idx: first.index,          
+            });
+            return true;
+        }
         false
     }
 
     /// bool -> whether it found a next instruction
     fn next_instr(&mut self) -> bool {
         if self.instr_iter.has_next() {
-            // if let Some(next) = self.instr_iter.next() {
-            //     self.emitting_instr = Some(EmittingInstrTracker {
-            //         orig_instr_idx: next.index,
-            //         curr_seq_id: next.instr_seq_id,
-            //         curr_idx: next.index,
-            //         main_seq_id: next.instr_seq_id,
-            //         main_idx: next.index,
-            //         outer_seq_id: None,
-            //         outer_idx: None,
-            //         then_seq_id: None,
-            //         then_idx: None,
-            //         else_seq_id: None,
-            //         else_idx: None,
-            //     });
-            //     return true;
-            // }
+            if let Some(next) = self.instr_iter.next() {
+                self.emitting_instr = Some(EmittingInstrTracker {
+                    orig_instr_idx: next.index,
+                    curr_idx: next.index,
+
+                });
+                return true;
+            }
         }
         false
     }
@@ -1082,7 +1208,6 @@ impl Emitter for WasmRewritingEmitter<'_> {
     fn incr_loc_pointer(&mut self) {
         if let Some(tracker) = &mut self.emitting_instr {
             tracker.curr_idx += 1;
-            tracker.main_idx += 1;
         }
     }
 
@@ -1366,7 +1491,8 @@ impl Emitter for WasmRewritingEmitter<'_> {
             Some(Record::Var { ref mut addr, .. }) => {
                 // emit global variable and set addr in symbol table
                 // this is used for user-defined global vars in the script...
-                let (walrus_ty, init_expr) = data_type_to_val_type(&ty);
+                // let (walrus_ty, init_expr) = data_type_to_val_type(&ty);
+                // self.app_wasm.globals.add_local(walrus_ty, true, init_expr);
                 // let id = self.app_wasm.globals.add_local(walrus_ty, true, init_expr);
                 // *addr = Some(VarAddr::Global { addr: id });
 
@@ -1540,59 +1666,59 @@ impl Emitter for WasmRewritingEmitter<'_> {
     /// Will configure the emitter to emit subsequent expression as the condition of an if or if/else stmt
     /// Then emits the passed condition at that location.
     fn emit_condition(&mut self) -> bool {
-        if let Some(tracker) = &mut self.emitting_instr {
-            if let Some(outer_seq_id) = &tracker.outer_seq_id {
-                if let Some(outer_idx) = &tracker.outer_idx {
-                    tracker.curr_seq_id = *outer_seq_id;
-                    tracker.curr_idx = *outer_idx;
-                }
-            }
-        }
+        // if let Some(tracker) = &mut self.emitting_instr {
+        //     if let Some(outer_seq_id) = &tracker.outer_seq_id {
+        //         if let Some(outer_idx) = &tracker.outer_idx {
+        //             tracker.curr_seq_id = *outer_seq_id;
+        //             tracker.curr_idx = *outer_idx;
+        //         }
+        //     }
+        // }
         false
     }
 
     /// Will configure the emitter to emit subsequent statements into the consequent body of an if or if/else stmt
     fn emit_consequent(&mut self) -> bool {
-        if let Some(tracker) = &mut self.emitting_instr {
-            if let Some(then_seq_id) = &tracker.then_seq_id {
-                if let Some(then_idx) = &tracker.then_idx {
-                    tracker.curr_seq_id = *then_seq_id;
-                    tracker.curr_idx = *then_idx;
-                }
-            }
-            return true;
-        }
+        // if let Some(tracker) = &mut self.emitting_instr {
+        //     if let Some(then_seq_id) = &tracker.then_seq_id {
+        //         if let Some(then_idx) = &tracker.then_idx {
+        //             tracker.curr_seq_id = *then_seq_id;
+        //             tracker.curr_idx = *then_idx;
+        //         }
+        //     }
+        //     return true;
+        // }
         false
     }
 
     /// Will configure the emitter to emit subsequent statements into the alternate body of an if/else stmt
     fn emit_alternate(&mut self) -> bool {
-        if let Some(tracker) = &mut self.emitting_instr {
-            if let Some(else_seq_id) = &tracker.else_seq_id {
-                if let Some(else_idx) = &tracker.else_idx {
-                    tracker.curr_seq_id = *else_seq_id;
-                    tracker.curr_idx = *else_idx;
-                    return true;
-                }
-            }
-        }
+        // if let Some(tracker) = &mut self.emitting_instr {
+        //     if let Some(else_seq_id) = &tracker.else_seq_id {
+        //         if let Some(else_idx) = &tracker.else_idx {
+        //             tracker.curr_seq_id = *else_seq_id;
+        //             tracker.curr_idx = *else_idx;
+        //             return true;
+        //         }
+        //     }
+        // }
         false
     }
 
     /// Will configure the emitter to emit subsequent statements in the outer block of some branching logic
     fn finish_branch(&mut self) -> bool {
-        if let Some(tracker) = &mut self.emitting_instr {
-            tracker.curr_seq_id = tracker.main_seq_id;
-            tracker.curr_idx = tracker.main_idx;
+        // if let Some(tracker) = &mut self.emitting_instr {
+        //     tracker.curr_seq_id = tracker.main_seq_id;
+        //     tracker.curr_idx = tracker.main_idx;
 
-            tracker.outer_seq_id = None;
-            tracker.outer_idx = None;
-            tracker.then_seq_id = None;
-            tracker.then_idx = None;
-            tracker.else_seq_id = None;
-            tracker.else_idx = None;
-            return true;
-        }
+        //     tracker.outer_seq_id = None;
+        //     tracker.outer_idx = None;
+        //     tracker.then_seq_id = None;
+        //     tracker.then_idx = None;
+        //     tracker.else_seq_id = None;
+        //     tracker.else_idx = None;
+        //     return true;
+        // }
         true
     }
 
@@ -1750,8 +1876,7 @@ impl Emitter for WasmRewritingEmitter<'_> {
     }
 
     fn dump_to_file(&mut self, output_wasm_path: String) -> Result<bool, Box<WhammError>> {
-        // clone for now
-
+        // TODO: clone for now
         let res = self.app_wasm.clone().encode();
         match res {
             Ok(module) => {
@@ -1774,6 +1899,10 @@ impl Emitter for WasmRewritingEmitter<'_> {
         }
     }
 }
+
+// =====================================
+// ==== WasmRewritingEmitter (Orca) ====
+// =====================================
 
 // =====================
 // ==== WasiEmitter ====
