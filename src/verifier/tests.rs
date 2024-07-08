@@ -326,6 +326,26 @@ wasm::call:alt /
             count[2] = a == count[1];
         }
     "#,
+    r#"
+    map<map<i32, i32>, map<i32, i32>> count;
+        
+        wasm::call:alt {
+            
+        }
+    "#,
+    r#"
+        wasm::call:alt {
+            (i32, map<i32, i32>) a;
+        }
+    "#,
+    r#"
+        wasm::call:alt {
+            (i32, map<i32, i32>) a;
+            map<i32, i32> b;
+            if((1, b) == a){
+            };
+        }
+    "#,
 ];
 
 // =============
@@ -527,14 +547,11 @@ pub fn testing_map() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
-        map<i32, map<i32, i32>> count;
-        my_fn() -> i32 {
-            map<i32, i32> a;
-            count[0] = a;
-            return a[0];
-        }
         wasm::call:alt {
-            i32 a = my_fn();
+            (i32, map<i32, i32>) a;
+            map<i32, i32> b;
+            if((1, b) == a){
+            };
         }
     "#;
 
@@ -543,8 +560,8 @@ pub fn testing_map() {
             let mut table = verifier::build_symbol_table(&mut ast, &mut err);
             let res = verifier::type_check(&ast, &mut table, &mut err);
             err.report();
-            assert!(!err.has_errors);
-            assert!(res);
+            assert!(err.has_errors);
+            assert!(!res);
         }
         None => {
             error!("Could not get ast from script: {}", script);

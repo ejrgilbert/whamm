@@ -327,6 +327,30 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                 ty, var_id, loc, ..
             } => {
                 if let Expr::VarId { name, .. } = var_id {
+                    //check that if type is map, key_ty is not a map
+                    if let DataType::Map { key_ty, .. } = ty {
+                        if let DataType::Map { .. } = key_ty.as_ref() {
+                            self.err.type_check_error(
+                                false,
+                                "Map keys cannot be maps".to_owned(),
+                                &loc.clone().map(|l| l.line_col),
+                            );
+                            return None;
+                        }
+                    }
+                    //check to make sure that that if tuple, doesn't contain a map
+                    if let DataType::Tuple { ty_info } = ty {
+                        for ty in ty_info {
+                            if let DataType::Map { .. } = ty.as_ref() {
+                                self.err.type_check_error(
+                                    false,
+                                    "Tuples cannot contain maps".to_owned(),
+                                    &loc.clone().map(|l| l.line_col),
+                                );
+                                return None;
+                            }
+                        }
+                    }
                     if !self.in_script_global {
                         self.add_local(ty.to_owned(), name.to_owned(), false, loc);
                     }
@@ -828,7 +852,20 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                 let mut all_tys: Vec<Box<DataType>> = Vec::new();
                 for ty in tys {
                     match ty {
-                        Some(ty) => all_tys.push(Box::new(ty)),
+                        Some(ty) => {
+                            //check if ty is a map -> throw a type error if so as maps are not allowed in tuples
+                            if let DataType::Map { .. } = ty {
+                                self.err.type_check_error(
+                                    false,
+                                    "Maps are not allowed in tuples".to_owned(),
+                                    &Some(
+                                        vals.iter().next().unwrap().loc().clone().unwrap().line_col,
+                                    ),
+                                );
+                                return Some(DataType::AssumeGood);
+                            }
+                            all_tys.push(Box::new(ty));
+                        }
                         _ => self.err.unexpected_error(
                             true,
                             Some(UNEXPECTED_ERR_MSG.to_string()),
