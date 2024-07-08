@@ -68,6 +68,17 @@ const VALID_SCRIPTS: &[&str] = &[
             i32 b = my_fn(a);
         }
     "#,
+    r#"
+        map<i32, i32> count;
+        my_fn() -> i32 {
+            count[0] = 1;
+            return count[0];
+        }
+        wasm::call:alt {
+            count[1] = count[3];
+            i32 a = my_fn();
+        }
+    "#,
 ];
 
 const TYPE_ERROR_SCRIPTS: &[&str] = &[
@@ -303,6 +314,18 @@ wasm::call:alt /
             i32 strcmp;
         }
     "#,
+    r#"
+        map<i32, i32> count;
+        my_fn() -> i32 {
+            count[0] = false;
+            return count[0];
+        }
+        wasm::call:alt {
+            count[1] = count[3];
+            i32 a = my_fn();
+            count[2] = a == count[1];
+        }
+    "#,
 ];
 
 // =============
@@ -504,13 +527,13 @@ pub fn testing_map() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
-        map<i32, i32> count;
+        map<i32, map<i32, i32>> count;
         my_fn() -> i32 {
-            count[0] = true;
-            return count[0];
+            map<i32, i32> a;
+            count[0] = a;
+            return a[0];
         }
         wasm::call:alt {
-            count[1] = count[3];
             i32 a = my_fn();
         }
     "#;
@@ -520,8 +543,8 @@ pub fn testing_map() {
             let mut table = verifier::build_symbol_table(&mut ast, &mut err);
             let res = verifier::type_check(&ast, &mut table, &mut err);
             err.report();
-            assert!(err.has_errors);
-            assert!(!res);
+            assert!(!err.has_errors);
+            assert!(res);
         }
         None => {
             error!("Could not get ast from script: {}", script);

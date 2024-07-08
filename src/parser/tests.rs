@@ -648,13 +648,14 @@ pub fn testing_map() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
-        map<i32, i32> count;
-        my_fn() -> i32{
-            count[0] = 0;
-            return count[0];
+        map<i32, map<i32, i32>> count;
+        my_fn() -> i32 {
+            map<i32, i32> a;
+            count[0] = a;
+            return a[0];
         }
-        BEGIN {
-            count[1] = my_fn();
+        wasm::call:alt {
+            i32 a = my_fn();
         }
     "#;
 
