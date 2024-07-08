@@ -6,7 +6,6 @@ use std::fs;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use wabt::{wasm2wat, wat2wasm};
-use walrus::Module;
 use whamm::behavior::builder_visitor::{build_behavior_tree, SimpleAST};
 use whamm::common::error::ErrorGen;
 use whamm::generator::emitters::{Emitter, WasmRewritingEmitter};

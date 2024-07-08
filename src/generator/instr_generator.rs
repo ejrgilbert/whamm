@@ -197,26 +197,27 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_, '_> {
         is_success
     }
 
+    // TODO, replace this, see comment in Emitter trait
     fn visit_has_alt_call(&mut self, node: &Node) -> bool {
         let mut is_success = true;
-        if let Node::Decorator {
-            ty: DecoratorType::HasAltCall,
-            child,
-            ..
-        } = node
-        {
-            if self.emitter.has_alt_call() {
-                // The current probe has a defined alt call, continue with behavior
-                if let Some(node) = self.tree.get_node(*child) {
-                    is_success &= self.visit_node(node);
-                }
-            } else {
-                // If the decorator condition is false, return false
-                return false;
-            }
-        } else {
-            unreachable!()
-        }
+        // if let Node::Decorator {
+        //     ty: DecoratorType::HasAltCall,
+        //     child,
+        //     ..
+        // } = node
+        // {
+        //     if self.emitter.has_alt_call() {
+        //         // The current probe has a defined alt call, continue with behavior
+        //         if let Some(node) = self.tree.get_node(*child) {
+        //             is_success &= self.visit_node(node);
+        //         }
+        //     } else {
+        //         // If the decorator condition is false, return false
+        //         return false;
+        //     }
+        // } else {
+        //     unreachable!()
+        // }
         is_success
     }
 
@@ -317,6 +318,8 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_, '_> {
                 events,
             } = ty
             {
+                // TODO: rewrite this to have a better interaction with orca's visitor?
+
                 if package_name == "bytecode" {
                     // Perform 'bytecode' package logic
 
