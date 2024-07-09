@@ -1,13 +1,12 @@
 [package]
-name = "lib-map"
+name = "maps"
 version = "0.1.0"
 edition = "2021"
 
-[[bin]]
-doc = false
-name = "lib-map"
-path = "main.rs"
-#required-features = ["exe"]
+[lib]
+crate-type = ["dylib"]
+path = "src/lib.rs"
+bench = false
 
 [dependencies]
 failure = "0.1.5"
