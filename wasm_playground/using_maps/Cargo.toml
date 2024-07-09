@@ -1,12 +1,12 @@
 [package]
-name = "whamm"
+name = "lib-map"
 version = "0.1.0"
 edition = "2021"
 
 [[bin]]
 doc = false
-name = "whamm"
-path = "src/main.rs"
+name = "lib-map"
+path = "main.rs"
 #required-features = ["exe"]
 
 [dependencies]
