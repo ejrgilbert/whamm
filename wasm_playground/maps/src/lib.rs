@@ -42,7 +42,8 @@ trait MapOperations {
     fn get_i32(&self, key: &dyn Any) -> Option<&i32>;
     fn get_string(&self, key: &dyn Any) -> Option<&String>;
     fn get_tuple(&self, key: &dyn Any) -> Option<&Box<TupleVariant>>;
-    fn get_map(&self, key: &dyn Any) -> Option<&Box<AnyMap>>;
+    fn get_map_mut(&mut self, key: &dyn Any) -> Option<&mut AnyMap>;
+    fn get_map(&self, key: &dyn Any) -> Option<Box<AnyMap>>;
     fn get_bool(&self, key: &dyn Any) -> Option<&bool>;
 }
 
@@ -63,17 +64,17 @@ impl MapOperations for AnyMap {
             }
             AnyMap::i32_map_Map(ref mut map) => {
                 if let (Ok(key), Ok(value)) =
-                    (key.downcast::<i32>(), value.downcast::<Box<AnyMap>>())
+                    (key.downcast::<i32>(), value.downcast::<AnyMap>())
                 {
-                    map.insert(*key, *value);
+                    map.insert(*key, value);
                     return true;
                 }
             }
             AnyMap::i32_tuple_Map(ref mut map) => {
                 if let (Ok(key), Ok(value)) =
-                    (key.downcast::<i32>(), value.downcast::<Box<TupleVariant>>())
+                    (key.downcast::<i32>(), value.downcast::<TupleVariant>())
                 {
-                    map.insert(*key, *value);
+                    map.insert(*key, value);
                     return true;
                 }
             }
@@ -98,18 +99,18 @@ impl MapOperations for AnyMap {
             }
             AnyMap::string_map_Map(ref mut map) => {
                 if let (Ok(key), Ok(value)) =
-                    (key.downcast::<String>(), value.downcast::<Box<AnyMap>>())
+                    (key.downcast::<String>(), value.downcast::<AnyMap>())
                 {
-                    map.insert(*key, *value);
+                    map.insert(*key, value);
                     return true;
                 }
             }
             AnyMap::string_tuple_Map(ref mut map) => {
                 if let (Ok(key), Ok(value)) = (
                     key.downcast::<String>(),
-                    value.downcast::<Box<TupleVariant>>(),
+                    value.downcast::<TupleVariant>(),
                 ) {
-                    map.insert(*key, *value);
+                    map.insert(*key, value);
                     return true;
                 }
             }
@@ -121,45 +122,45 @@ impl MapOperations for AnyMap {
             }
             AnyMap::tuple_i32_Map(ref mut map) => {
                 if let (Ok(key), Ok(value)) =
-                    (key.downcast::<Box<TupleVariant>>(), value.downcast::<i32>())
+                    (key.downcast::<TupleVariant>(), value.downcast::<i32>())
                 {
-                    map.insert(*key, *value);
+                    map.insert(key, *value);
                     return true;
                 }
             }
             AnyMap::tuple_string_Map(ref mut map) => {
                 if let (Ok(key), Ok(value)) = (
-                    key.downcast::<Box<TupleVariant>>(),
+                    key.downcast::<TupleVariant>(),
                     value.downcast::<String>(),
                 ) {
-                    map.insert(*key, *value);
+                    map.insert(key, *value);
                     return true;
                 }
             }
             AnyMap::tuple_map_Map(ref mut map) => {
                 if let (Ok(key), Ok(value)) = (
-                    key.downcast::<Box<TupleVariant>>(),
-                    value.downcast::<Box<AnyMap>>(),
+                    key.downcast::<TupleVariant>(),
+                    value.downcast::<AnyMap>(),
                 ) {
-                    map.insert(*key, *value);
+                    map.insert(key, value);
                     return true;
                 }
             }
             AnyMap::tuple_tuple_Map(ref mut map) => {
                 if let (Ok(key), Ok(value)) = (
-                    key.downcast::<Box<TupleVariant>>(),
-                    value.downcast::<Box<TupleVariant>>(),
+                    key.downcast::<TupleVariant>(),
+                    value.downcast::<TupleVariant>(),
                 ) {
-                    map.insert(*key, *value);
+                    map.insert(key, value);
                     return true;
                 }
             }
             AnyMap::tuple_bool_Map(ref mut map) => {
                 if let (Ok(key), Ok(value)) = (
-                    key.downcast::<Box<TupleVariant>>(),
+                    key.downcast::<TupleVariant>(),
                     value.downcast::<bool>(),
                 ) {
-                    map.insert(*key, *value);
+                    map.insert(key, *value);
                     return true;
                 }
             }
@@ -177,18 +178,18 @@ impl MapOperations for AnyMap {
             }
             AnyMap::bool_map_Map(ref mut map) => {
                 if let (Ok(key), Ok(value)) =
-                    (key.downcast::<bool>(), value.downcast::<Box<AnyMap>>())
+                    (key.downcast::<bool>(), value.downcast::<AnyMap>())
                 {
-                    map.insert(*key, *value);
+                    map.insert(*key, value);
                     return true;
                 }
             }
             AnyMap::bool_tuple_Map(ref mut map) => {
                 if let (Ok(key), Ok(value)) = (
                     key.downcast::<bool>(),
-                    value.downcast::<Box<TupleVariant>>(),
+                    value.downcast::<TupleVariant>(),
                 ) {
-                    map.insert(*key, *value);
+                    map.insert(*key, value);
                     return true;
                 }
             }
@@ -280,32 +281,59 @@ impl MapOperations for AnyMap {
         }
         None
     }
-    fn get_map(&self, key: &dyn Any) -> Option<&Box<AnyMap>> {
+    fn get_map_mut(&mut self, key: &dyn Any) -> Option<&mut AnyMap> {
         match self {
-            AnyMap::i32_map_Map(ref map) => {
+            AnyMap::i32_map_Map(ref mut map) => {
                 if let Some(key) = key.downcast_ref::<i32>() {
-                    return map.get(key);
+                    return map.get_mut(key).map(|box_any_map| &mut **box_any_map);
                 }
             }
-            AnyMap::string_map_Map(ref map) => {
+            AnyMap::string_map_Map(ref mut map) => {
                 if let Some(key) = key.downcast_ref::<String>() {
-                    return map.get(key);
+                    return map.get_mut(key).map(|box_any_map| &mut **box_any_map);
                 }
             }
-            AnyMap::tuple_map_Map(ref map) => {
+            AnyMap::tuple_map_Map(ref mut map) => {
                 if let Some(key) = key.downcast_ref::<Box<TupleVariant>>() {
-                    return map.get(key);
+                    return map.get_mut(key).map(|box_any_map| &mut **box_any_map);
                 }
             }
-            AnyMap::bool_map_Map(ref map) => {
+            AnyMap::bool_map_Map(ref mut map) => {
                 if let Some(key) = key.downcast_ref::<bool>() {
-                    return map.get(key);
+                    return map.get_mut(key).map(|box_any_map| &mut **box_any_map);
                 }
             }
             _ => {}
         }
         None
     }
+    fn get_map(&self, key: &dyn Any) -> Option<Box<AnyMap>>{
+        match self {
+            AnyMap::i32_map_Map(ref map) => {
+                if let Some(key) = key.downcast_ref::<i32>() {
+                    return map.get(key).map(|box_any_map| box_any_map.clone());
+                }
+            }
+            AnyMap::string_map_Map(ref map) => {
+                if let Some(key) = key.downcast_ref::<String>() {
+                    return map.get(key).map(|box_any_map| box_any_map.clone());
+                }
+            }
+            AnyMap::tuple_map_Map(ref map) => {
+                if let Some(key) = key.downcast_ref::<Box<TupleVariant>>() {
+                    return map.get(key).map(|box_any_map| box_any_map.clone());
+                }
+            }
+            AnyMap::bool_map_Map(ref map) => {
+                if let Some(key) = key.downcast_ref::<bool>() {
+                    return map.get(key).map(|box_any_map| box_any_map.clone());
+                }
+            }
+            _ => {}
+        }
+        None
+    }
+
     fn get_bool(&self, key: &dyn Any) -> Option<&bool> {
         match self {
             AnyMap::i32_bool_Map(ref map) => {
@@ -658,10 +686,19 @@ pub fn get_tuple(name: String, key: &dyn Any) -> Option<Box<TupleVariant>> {
     None
 }
 
-pub fn get_map(name: String, key: &dyn Any) -> Option<Box<AnyMap>> {
+pub fn get_map_mut<'a>(my_maps: &'a mut HashMap<String, AnyMap>, name: String, key: &dyn Any) -> Option<&'a mut AnyMap> {
+    if let Some(boxed_map) = my_maps.get_mut(&name) {
+        return match boxed_map.get_map_mut(key) {
+            Some(value) => Some(value), 
+            None => None,
+        };
+    }
+    None
+}
+pub fn get_map(name: String, key: &dyn Any) -> Option<AnyMap> {
     if let Some(boxed_map) = MY_MAPS.lock().unwrap().get(&name) {
         return match boxed_map.get_map(key) {
-            Some(value) => Some(value.clone()), // Use clone() here
+            Some(value) => Some(*value.clone()), // Use clone() here
             None => None,
         };
     }
