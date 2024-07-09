@@ -24,7 +24,6 @@ pub trait Emitter {
     fn has_next_instr(&self) -> bool;
     fn init_first_instr(&mut self) -> bool;
     fn next_instr(&mut self) -> bool;
-    fn curr_instr_is_of_type(&mut self, instr_names: &[String]) -> bool;
     fn curr_instr_type(&mut self) -> String;
     fn incr_loc_pointer(&mut self);
 
@@ -84,6 +83,7 @@ const UNEXPECTED_ERR_MSG: &str =
 
 fn data_type_to_val_type(ty: &DataType) -> (ValType, InitExpr) {
     match ty {
+        DataType::U32 => (ValType::I32, InitExpr::Value(walrus::ir::Value::I32(0))),
         DataType::I32 => (ValType::I32, InitExpr::Value(walrus::ir::Value::I32(0))),
         DataType::Boolean => (ValType::I32, InitExpr::Value(walrus::ir::Value::I32(0))),
         DataType::Null => unimplemented!(),
@@ -1451,14 +1451,6 @@ impl Emitter for WasmRewritingEmitter {
                 });
                 return true;
             }
-        }
-        false
-    }
-
-    /// bool -> whether the current instruction is one of the passed list of types
-    fn curr_instr_is_of_type(&mut self, instr_names: &[String]) -> bool {
-        if let Some(instr) = self.instr_iter.curr() {
-            return instr_names.contains(&instr.instr_name);
         }
         false
     }

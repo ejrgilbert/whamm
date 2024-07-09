@@ -1,9 +1,10 @@
 use std::vec;
 
 use crate::common::error::ErrorGen;
+use crate::parser::rules::{Event, Package, Probe, Provider};
 use crate::parser::types::{
-    BinOp, Block, DataType, Event, Expr, Fn, Location, Package, Probe, Provider, Script, Statement,
-    UnOp, Value, Whamm, WhammVisitor, WhammVisitorMut,
+    BinOp, Block, DataType, Expr, Fn, Location, Script, Statement, UnOp, Value, Whamm,
+    WhammVisitor, WhammVisitorMut,
 };
 use crate::verifier::builder_visitor::SymbolTableBuilder;
 use crate::verifier::types::{Record, SymbolTable};
@@ -110,7 +111,7 @@ impl TypeChecker<'_> {
     }
 }
 
-impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
+impl<'b> WhammVisitor<'b, Option<DataType>> for TypeChecker<'_> {
     fn visit_whamm(&mut self, whamm: &Whamm) -> Option<DataType> {
         // not printing events and globals now
         self.table.reset();
@@ -148,10 +149,10 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         None
     }
 
-    fn visit_provider(&mut self, provider: &Provider) -> Option<DataType> {
+    fn visit_provider(&mut self, provider: &Box<dyn Provider>) -> Option<DataType> {
         let _ = self.table.enter_scope();
 
-        provider.packages.iter().for_each(|(_, package)| {
+        provider.packages().for_each(|package| {
             self.visit_package(package);
         });
 
@@ -159,10 +160,10 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         None
     }
 
-    fn visit_package(&mut self, package: &Package) -> Option<DataType> {
+    fn visit_package(&mut self, package: &dyn Package) -> Option<DataType> {
         let _ = self.table.enter_scope();
 
-        package.events.iter().for_each(|(_, event)| {
+        package.events().for_each(|event| {
             self.visit_event(event);
         });
 
@@ -171,10 +172,10 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         None
     }
 
-    fn visit_event(&mut self, event: &Event) -> Option<DataType> {
+    fn visit_event(&mut self, event: &dyn Event) -> Option<DataType> {
         let _ = self.table.enter_scope();
 
-        event.probe_map.iter().for_each(|(_, probe)| {
+        event.probes().iter().for_each(|(_, probe)| {
             probe.iter().for_each(|probe| {
                 self.visit_probe(probe);
             });
@@ -185,11 +186,11 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         None
     }
 
-    fn visit_probe(&mut self, probe: &Probe) -> Option<DataType> {
+    fn visit_probe(&mut self, probe: &Box<dyn Probe>) -> Option<DataType> {
         let _ = self.table.enter_scope();
 
         // type check predicate
-        if let Some(predicate) = &probe.predicate {
+        if let Some(predicate) = &probe.predicate() {
             let predicate_loc = predicate.loc().clone().unwrap();
             if let Some(ty) = self.visit_expr(predicate) {
                 if ty != DataType::Boolean {
@@ -203,7 +204,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         }
 
         // type check action
-        if let Some(body) = &probe.body {
+        if let Some(body) = &probe.body() {
             for stmt in body {
                 self.visit_stmt(stmt);
             }
@@ -237,6 +238,10 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         }
         //return the type of the fn
         function.return_ty.clone()
+    }
+
+    fn visit_formal_param(&mut self, _param: &(Expr, DataType)) -> Option<DataType> {
+        unimplemented!()
     }
 
     fn visit_block(&mut self, block: &Block) -> Option<DataType> {
@@ -830,6 +835,14 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         }
     }
 
+    fn visit_unop(&mut self, _unop: &UnOp) -> Option<DataType> {
+        unimplemented!()
+    }
+
+    fn visit_binop(&mut self, _binop: &BinOp) -> Option<DataType> {
+        unimplemented!()
+    }
+
     fn visit_datatype(&mut self, _datatype: &DataType) -> Option<DataType> {
         unimplemented!()
     }
@@ -877,18 +890,6 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                 Some(DataType::Tuple { ty_info: all_tys })
             }
         }
-    }
-
-    fn visit_formal_param(&mut self, _param: &(Expr, DataType)) -> Option<DataType> {
-        unimplemented!()
-    }
-
-    fn visit_binop(&mut self, _binop: &BinOp) -> Option<DataType> {
-        unimplemented!()
-    }
-
-    fn visit_unop(&mut self, _unop: &UnOp) -> Option<DataType> {
-        unimplemented!()
     }
 }
 

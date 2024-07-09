@@ -1,26 +1,20 @@
 use std::path::PathBuf;
 use whamm::parser::types::Whamm;
 use whamm::parser::whamm_parser::*;
-use whamm::verifier::verifier::build_symbol_table;
 
 use glob::{glob, glob_with};
 use log::{error, info, warn};
-use whamm::behavior::builder_visitor::{build_behavior_tree, SimpleAST};
-use whamm::behavior::tree::BehaviorTree;
 use whamm::common::error::ErrorGen;
 use whamm::verifier::types::SymbolTable;
-
-// =================
-// = Setup Logging =
-// =================
-
-fn setup_logger() {
-    let _ = env_logger::builder().is_test(true).try_init();
-}
+use whamm::verifier::verifier::build_symbol_table;
 
 // ====================
 // = Helper Functions =
 // ====================
+
+pub fn setup_logger() {
+    let _ = env_logger::builder().is_test(true).try_init();
+}
 
 const TEST_RSC_DIR: &str = "tests/scripts/";
 const PATTERN: &str = "*.mm";
@@ -91,7 +85,7 @@ fn parse_all_scripts(
 fn process_scripts(
     scripts: Vec<(PathBuf, String)>,
     err: &mut ErrorGen,
-) -> Vec<(String, String, Whamm, SymbolTable, BehaviorTree, SimpleAST)> {
+) -> Vec<(String, String, Whamm, SymbolTable)> {
     let asts = parse_all_scripts(scripts, err);
 
     // Build the symbol table from the AST
@@ -100,17 +94,11 @@ fn process_scripts(
         let mut symbol_table = build_symbol_table(&mut ast, err);
         symbol_table.reset();
 
-        // Build the behavior tree from the AST
-        let (mut behavior, simple_ast) = build_behavior_tree(&ast, err);
-        behavior.reset();
-
         result.push((
             path.into_os_string().into_string().unwrap(),
             script_str.clone(),
             ast,
             symbol_table,
-            behavior,
-            simple_ast,
         ));
     }
 
@@ -120,7 +108,7 @@ fn process_scripts(
 pub fn setup_fault_injection(
     variation: &str,
     err: &mut ErrorGen,
-) -> Vec<(String, String, Whamm, SymbolTable, BehaviorTree, SimpleAST)> {
+) -> Vec<(String, String, Whamm, SymbolTable)> {
     setup_logger();
     let scripts = get_test_scripts(format!("fault_injection/{variation}").as_str());
     if scripts.is_empty() {
@@ -130,9 +118,7 @@ pub fn setup_fault_injection(
     process_scripts(scripts, err)
 }
 
-pub fn setup_wizard_monitors(
-    err: &mut ErrorGen,
-) -> Vec<(String, String, Whamm, SymbolTable, BehaviorTree, SimpleAST)> {
+pub fn setup_wizard_monitors(err: &mut ErrorGen) -> Vec<(String, String, Whamm, SymbolTable)> {
     setup_logger();
     let scripts = get_test_scripts("wizard_monitors");
     if scripts.is_empty() {
@@ -142,9 +128,7 @@ pub fn setup_wizard_monitors(
     process_scripts(scripts, err)
 }
 
-pub fn setup_replay(
-    err: &mut ErrorGen,
-) -> Vec<(String, String, Whamm, SymbolTable, BehaviorTree, SimpleAST)> {
+pub fn setup_replay(err: &mut ErrorGen) -> Vec<(String, String, Whamm, SymbolTable)> {
     setup_logger();
     let scripts = get_test_scripts("replay");
     if scripts.is_empty() {

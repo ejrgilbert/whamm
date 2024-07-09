@@ -2,14 +2,12 @@ use crate::parser::types as parser_types;
 use crate::verifier::builder_visitor::parser_types::Location;
 use crate::verifier::types::{Record, ScopeType, SymbolTable};
 use crate::verifier::verifier::check_duplicate_id;
-use parser_types::{
-    BinOp, Block, DataType, Event, Expr, Fn, Package, Probe, Provider, Script, Statement, UnOp,
-    Value, Whamm,
-};
+use parser_types::{BinOp, Block, DataType, Expr, Fn, Script, Statement, UnOp, Value, Whamm};
 use std::collections::HashMap;
 
 use crate::common::error::ErrorGen;
-use crate::parser::types::{Global, ProvidedFunctionality, WhammVisitorMut};
+use crate::parser::rules::{Event, Package, Probe, Provider};
+use crate::parser::types::{Global, ProvidedFunction, ProvidedGlobal, WhammVisitorMut};
 use log::trace;
 
 const UNEXPECTED_ERR_MSG: &str = "SymbolTableBuilder: Looks like you've found a bug...please report this behavior! Exiting now...";
@@ -71,24 +69,24 @@ impl SymbolTableBuilder<'_> {
             .set_curr_scope_info(script.name.clone(), ScopeType::Script);
         self.table.set_curr_script(id);
     }
-    fn add_provider(&mut self, provider: &Provider) {
+    fn add_provider(&mut self, provider: &dyn Provider) {
         /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
         In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
         just in case it is non-fatal to avoid having 2 strings w/same name in record */
-        if check_duplicate_id(&provider.name, &None, true, &self.table, self.err) {
+        if check_duplicate_id(&provider.name(), &None, true, &self.table, self.err) {
             return;
         }
 
         // create record
         let provider_rec = Record::Provider {
-            name: provider.name.clone(),
+            name: provider.name().clone(),
             fns: vec![],
             globals: vec![],
             packages: vec![],
         };
 
         // Add provider to scope
-        let id = self.table.put(provider.name.clone(), provider_rec);
+        let id = self.table.put(provider.name().clone(), provider_rec);
 
         // Add provider to current script record
         match self
@@ -113,27 +111,27 @@ impl SymbolTableBuilder<'_> {
 
         // set scope name and type
         self.table
-            .set_curr_scope_info(provider.name.clone(), ScopeType::Provider);
+            .set_curr_scope_info(provider.name().clone(), ScopeType::Provider);
     }
 
-    fn add_package(&mut self, package: &Package) {
+    fn add_package(&mut self, package: &dyn Package) {
         /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
         In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
         just in case it is non-fatal to avoid having 2 strings w/same name in record */
-        if check_duplicate_id(&package.name, &None, true, &self.table, self.err) {
+        if check_duplicate_id(&package.name(), &None, true, &self.table, self.err) {
             return;
         }
 
         // create record
         let package_rec = Record::Package {
-            name: package.name.clone(),
+            name: package.name().clone(),
             fns: vec![],
             globals: vec![],
             events: vec![],
         };
 
         // Add package to scope
-        let id = self.table.put(package.name.clone(), package_rec);
+        let id = self.table.put(package.name().clone(), package_rec);
 
         // Add package to current provider record
         match self.table.get_record_mut(&self.curr_provider.unwrap()) {
@@ -154,27 +152,27 @@ impl SymbolTableBuilder<'_> {
 
         // set scope name and type
         self.table
-            .set_curr_scope_info(package.name.clone(), ScopeType::Package);
+            .set_curr_scope_info(package.name().clone(), ScopeType::Package);
     }
 
-    fn add_event(&mut self, event: &Event) {
+    fn add_event(&mut self, event: &dyn Event) {
         /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
         In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
         just in case it is non-fatal to avoid having 2 strings w/same name in record */
-        if check_duplicate_id(&event.name, &None, true, &self.table, self.err) {
+        if check_duplicate_id(&event.name(), &None, true, &self.table, self.err) {
             return;
         }
 
         // create record
         let event_rec = Record::Event {
-            name: event.name.clone(),
+            name: event.name().clone(),
             fns: vec![],
             globals: vec![],
             probes: vec![],
         };
 
         // Add event to scope
-        let id = self.table.put(event.name.clone(), event_rec);
+        let id = self.table.put(event.name().clone(), event_rec);
 
         // Add event to current package record
         match self
@@ -199,26 +197,26 @@ impl SymbolTableBuilder<'_> {
 
         // set scope name and type
         self.table
-            .set_curr_scope_info(event.name.clone(), ScopeType::Event);
+            .set_curr_scope_info(event.name().clone(), ScopeType::Event);
     }
 
-    fn add_probe(&mut self, probe: &Probe) {
+    fn add_probe(&mut self, probe: &dyn Probe) {
         /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
         In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
         just in case it is non-fatal to avoid having 2 strings w/same name in record */
-        if check_duplicate_id(&probe.mode, &None, true, &self.table, self.err) {
+        if check_duplicate_id(&probe.mode_name(), &None, true, &self.table, self.err) {
             return;
         }
 
         // create record
         let probe_rec = Record::Probe {
-            mode: probe.mode.clone(),
+            mode: probe.mode_name().clone(),
             fns: vec![],
             globals: vec![],
         };
 
         // Add probe to scope
-        let id = self.table.put(probe.mode.clone(), probe_rec);
+        let id = self.table.put(probe.mode_name().clone(), probe_rec);
 
         // Add probe to current event record
         match self.table.get_record_mut(&self.curr_event.unwrap()) {
@@ -239,7 +237,7 @@ impl SymbolTableBuilder<'_> {
 
         // set scope name and type
         self.table
-            .set_curr_scope_info(probe.mode.clone(), ScopeType::Probe);
+            .set_curr_scope_info(probe.mode_name().clone(), ScopeType::Probe);
     }
 
     fn add_fn(&mut self, f: &mut Fn) {
@@ -428,11 +426,8 @@ impl SymbolTableBuilder<'_> {
         self.add_global_id_to_curr_rec(id);
     }
 
-    fn visit_provided_globals(
-        &mut self,
-        globals: &HashMap<String, (ProvidedFunctionality, Global)>,
-    ) {
-        for (name, (.., global)) in globals.iter() {
+    fn visit_provided_globals(&mut self, globals: &HashMap<String, ProvidedGlobal>) {
+        for (name, ProvidedGlobal { global, .. }) in globals.iter() {
             self.add_global(global.ty.clone(), name.clone(), true, None);
         }
     }
@@ -459,7 +454,10 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         self.curr_whamm = Some(id);
 
         // visit fns
-        whamm.fns.iter_mut().for_each(|(.., f)| self.visit_fn(f));
+        whamm
+            .fns
+            .iter_mut()
+            .for_each(|ProvidedFunction { function, .. }| self.visit_fn(function));
 
         // visit globals
         self.visit_provided_globals(&whamm.globals);
@@ -519,16 +517,18 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         self.curr_script = None;
     }
 
-    fn visit_provider(&mut self, provider: &mut Provider) {
+    fn visit_provider(&mut self, provider: &mut Box<dyn Provider>) {
         trace!("Entering: visit_provider");
 
-        self.add_provider(provider);
-        provider.fns.iter_mut().for_each(|(.., f)| self.visit_fn(f));
-        self.visit_provided_globals(&provider.globals);
+        self.add_provider(provider.as_ref());
         provider
-            .packages
+            .get_provided_fns_mut()
             .iter_mut()
-            .for_each(|(_name, package)| self.visit_package(package));
+            .for_each(|f| self.visit_fn(&mut f.function));
+        self.visit_provided_globals(provider.get_provided_globals());
+        provider
+            .packages_mut()
+            .for_each(|package| self.visit_package(package));
 
         trace!("Exiting: visit_provider");
         if let Err(e) = self.table.exit_scope() {
@@ -537,16 +537,18 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         self.curr_provider = None;
     }
 
-    fn visit_package(&mut self, package: &mut Package) {
+    fn visit_package(&mut self, package: &mut dyn Package) {
         trace!("Entering: visit_package");
 
         self.add_package(package);
-        package.fns.iter_mut().for_each(|(.., f)| self.visit_fn(f));
-        self.visit_provided_globals(&package.globals);
         package
-            .events
+            .get_provided_fns_mut()
             .iter_mut()
-            .for_each(|(_name, event)| self.visit_event(event));
+            .for_each(|f| self.visit_fn(&mut f.function));
+        self.visit_provided_globals(package.get_provided_globals());
+        package
+            .events_mut()
+            .for_each(|event| self.visit_event(event));
 
         trace!("Exiting: visit_package");
         if let Err(e) = self.table.exit_scope() {
@@ -555,15 +557,18 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         self.curr_package = None;
     }
 
-    fn visit_event(&mut self, event: &mut Event) {
+    fn visit_event(&mut self, event: &mut dyn Event) {
         trace!("Entering: visit_event");
 
         self.add_event(event);
-        event.fns.iter_mut().for_each(|(.., f)| self.visit_fn(f));
-        self.visit_provided_globals(&event.globals);
+        event
+            .get_provided_fns_mut()
+            .iter_mut()
+            .for_each(|f| self.visit_fn(&mut f.function));
+        self.visit_provided_globals(event.get_provided_globals());
 
         // visit probe_map
-        event.probe_map.iter_mut().for_each(|probes| {
+        event.probes_mut().iter_mut().for_each(|probes| {
             probes.1.iter_mut().for_each(|probe| {
                 self.visit_probe(probe);
             });
@@ -576,12 +581,15 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         self.curr_event = None;
     }
 
-    fn visit_probe(&mut self, probe: &mut Probe) {
+    fn visit_probe(&mut self, probe: &mut Box<dyn Probe>) {
         trace!("Entering: visit_probe");
 
-        self.add_probe(probe);
-        probe.fns.iter_mut().for_each(|(.., f)| self.visit_fn(f));
-        self.visit_provided_globals(&probe.globals);
+        self.add_probe(probe.as_ref());
+        probe
+            .get_mode_provided_fns_mut()
+            .iter_mut()
+            .for_each(|f| self.visit_fn(&mut f.function));
+        self.visit_provided_globals(probe.get_mode_provided_globals());
 
         // Will not visit predicate/body at this stage
 
