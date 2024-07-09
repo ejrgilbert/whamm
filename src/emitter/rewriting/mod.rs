@@ -1194,7 +1194,7 @@ impl WasmRewritingEmitter {
                     }
                     Some(VarAddr::Local { .. }) | None => {
                         // If the local already exists, it would be because the probe has been
-                        // emitted at another bytecode location. Simply overwrite the previously saved
+                        // emitted at another opcode location. Simply overwrite the previously saved
                         // address.
                         let (walrus_ty, ..) = data_type_to_val_type(ty);
                         let id = self.app_wasm.locals.add(walrus_ty);
@@ -1439,7 +1439,7 @@ impl Emitter for WasmRewritingEmitter {
                 let func_builder = func.builder_mut();
                 let mut instr_builder = func_builder.instr_seq(tracker.curr_seq_id);
 
-                // No bytecodes should have been emitted in the module yet!
+                // No opcodes should have been emitted in the module yet!
                 // So, we can just save off the first * items in the stack as the args
                 // to the call.
                 let mut arg_recs = vec![]; // vec to retain order!
@@ -1451,7 +1451,7 @@ impl Emitter for WasmRewritingEmitter {
                         // create local for the param in the module
                         let arg_local_id = self.app_wasm.locals.add(*param_ty);
 
-                        // emit a bytecode in the event to assign the ToS to this new local
+                        // emit a opcode in the event to assign the ToS to this new local
                         instr_builder.instr_at(
                             tracker.curr_idx,
                             walrus::ir::LocalSet {
@@ -1539,7 +1539,7 @@ impl Emitter for WasmRewritingEmitter {
         context: &str,
         var_name: &str,
     ) -> Result<bool, Box<WhammError>> {
-        let regex = Regex::new(r"whamm:script([0-9]+):wasm:bytecode").unwrap();
+        let regex = Regex::new(r"whamm:script([0-9]+):wasm:opcode").unwrap();
         return if let Some(_caps) = regex.captures(context) {
             match var_name {
                 "new_target_fn_name" => self.define_new_target_fn_name(),
@@ -1750,7 +1750,7 @@ impl Emitter for WasmRewritingEmitter {
                 let func_builder = func.builder_mut();
                 let mut instr_builder = func_builder.instr_seq(tracker.curr_seq_id);
 
-                // reset where the "orig instruction" is located in the bytecode
+                // reset where the "orig instruction" is located in the opcode
                 tracker.orig_instr_idx = tracker.curr_idx;
                 instr_builder.instr_at(tracker.curr_idx, curr_loc.instr.clone());
                 return true;

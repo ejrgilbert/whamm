@@ -317,8 +317,8 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_, '_> {
                 events,
             } = ty
             {
-                if package_name == "bytecode" {
-                    // Perform 'bytecode' package logic
+                if package_name == "opcode" {
+                    // Perform 'opcode' package logic
 
                     // Initialize the instr visitor
                     let instrs_of_interest: Vec<String> = events.keys().cloned().collect();
@@ -326,7 +326,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_, '_> {
                         self.err.add_error(*e)
                     }
 
-                    // enter 'bytecode' scope
+                    // enter 'opcode' scope
                     if !self.emitter.enter_named_scope(package_name) {
                         self.err.unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} Could not find the specified scope by name: `{}`", package_name)), None);
                     }

@@ -5,10 +5,7 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::Emitter;
 use crate::parser::rules::{Event, Package, Probe, Provider};
-use crate::parser::types::{
-    BinOp, Block, DataType, Expr, Global, ProvidedFunction, ProvidedGlobal, Script, Statement,
-    UnOp, Value, Whamm, WhammVisitor,
-};
+use crate::parser::types::{BinOp, Block, DataType, Definition, Expr, Global, ProvidedFunction, ProvidedGlobal, Script, Statement, UnOp, Value, Whamm, WhammVisitor};
 use log::{trace, warn};
 use std::collections::HashMap;
 
@@ -37,7 +34,7 @@ impl InitGenerator<'_> {
         let mut is_success = true;
         for (name, global) in globals.iter() {
             // do not inject globals into Wasm that are used/defined by the compiler
-            if !&global.is_comp_provided {
+            if global.is_from_user() {
                 match self
                     .emitter
                     .emit_global(name.clone(), global.ty.clone(), &global.value)
@@ -54,7 +51,7 @@ impl InitGenerator<'_> {
         let mut is_success = true;
         for (name, ProvidedGlobal { global, .. }) in globals.iter() {
             // do not inject globals into Wasm that are used/defined by the compiler
-            if !global.is_comp_provided {
+            if global.is_from_user() {
                 match self
                     .emitter
                     .emit_global(name.clone(), global.ty.clone(), &global.value)

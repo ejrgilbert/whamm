@@ -365,8 +365,15 @@ impl Fn {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Definition {
+    User,
+    CompilerStatic,
+    CompilerDynamic
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Global {
-    pub is_comp_provided: bool,
+    pub def: Definition,
 
     pub ty: DataType,
     pub var_name: Expr, // Should be VarId
@@ -379,6 +386,27 @@ impl Global {
         }
         white(true, ": ".to_string(), buffer);
         self.ty.print(buffer);
+    }
+    
+    pub fn is_static(&self) -> bool {
+        match self.def {
+            Definition::CompilerStatic => true,
+            _ => false
+        }
+    }
+
+    pub fn is_dynamic(&self) -> bool {
+        match self.def {
+            Definition::CompilerDynamic => true,
+            _ => false
+        }
+    }
+
+    pub fn is_from_user(&self) -> bool {
+        match self.def {
+            Definition::User => true,
+            _ => false
+        }
     }
 }
 
@@ -895,12 +923,16 @@ pub struct ProvidedGlobal {
     pub global: Global,
 }
 impl ProvidedGlobal {
-    pub fn new(name: String, docs: String, ty: DataType) -> Self {
+    pub fn new(name: String, docs: String, ty: DataType, is_static: bool) -> Self {
         Self {
             name: name.clone(),
             docs,
             global: Global {
-                is_comp_provided: true,
+                def: if is_static {
+                    Definition::CompilerStatic
+                } else {
+                    Definition::CompilerDynamic
+                },
                 ty,
                 var_name: Expr::VarId {
                     is_comp_provided: true,

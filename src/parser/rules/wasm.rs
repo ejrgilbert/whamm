@@ -9,12 +9,12 @@ use std::collections::HashMap;
 use termcolor::Buffer;
 
 pub enum WasmPackageKind {
-    Bytecode,
+    Opcode,
 }
 impl WasmPackageKind {
     fn name(&self) -> String {
         match self {
-            Self::Bytecode => "bytecode".to_string(),
+            Self::Opcode => "opcode".to_string(),
         }
     }
 }
@@ -27,13 +27,13 @@ impl NameOptions for WasmPackage {
     fn get_name_options() -> Vec<String> {
         // Violates DRY principle, but works for now.
         // Maybe make this better some other time.
-        vec!["bytecode".to_string()]
+        vec!["opcode".to_string()]
     }
 }
 impl FromStr for WasmPackage {
     fn from_str(name: String, loc: Option<Location>) -> Self {
         match name.as_str() {
-            "bytecode" => Self::bytecode(loc),
+            "opcode" => Self::opcode(loc),
             _ => panic!("unsupported WasmPackage: {name}"),
         }
     }
@@ -43,9 +43,9 @@ impl WasmPackage {
     // ---- Constructors ----
     // ======================
 
-    fn bytecode(loc: Option<Location>) -> Self {
+    fn opcode(loc: Option<Location>) -> Self {
         Self {
-            kind: WasmPackageKind::Bytecode,
+            kind: WasmPackageKind::Opcode,
             info: PackageInfo {
                 docs: "This package within the wasm provider contains enables the \
                     instrumentation of WebAssembly bytecode instructions."
@@ -58,6 +58,7 @@ impl WasmPackage {
                         "A unique identifier tied to the probe's location in the Wasm bytecode."
                             .to_string(),
                         DataType::I32,
+                        true
                     ),
                 )]),
                 loc,
@@ -155,9 +156,9 @@ impl Package for WasmPackage {
     ) -> (bool, bool) {
         match self {
             Self {
-                kind: WasmPackageKind::Bytecode,
+                kind: WasmPackageKind::Opcode,
                 ..
-            } => event_factory::<BytecodeEvent>(
+            } => event_factory::<OpcodeEvent>(
                 &mut self.info.events,
                 probe_spec,
                 loc,
@@ -168,7 +169,7 @@ impl Package for WasmPackage {
     }
 }
 
-pub enum BytecodeEventKind {
+pub enum OpcodeEventKind {
     Block,
     Loop,
     Call,
@@ -218,66 +219,66 @@ pub enum BytecodeEventKind {
     ElemDrop,
     TableCopy,
 }
-impl BytecodeEventKind {
+impl OpcodeEventKind {
     fn name(&self) -> String {
         match self {
-            BytecodeEventKind::Block => "block".to_string(),
-            BytecodeEventKind::Loop => "loop".to_string(),
-            BytecodeEventKind::Call => "call".to_string(),
-            BytecodeEventKind::CallIndirect => "call_indirect".to_string(),
-            BytecodeEventKind::LocalGet => "local_get".to_string(),
-            BytecodeEventKind::LocalSet => "local_set".to_string(),
-            BytecodeEventKind::LocalTee => "local_tee".to_string(),
-            BytecodeEventKind::GlobalGet => "global_get".to_string(),
-            BytecodeEventKind::GlobalSet => "global_set".to_string(),
-            BytecodeEventKind::Const => "const".to_string(),
-            BytecodeEventKind::Binop => "binop".to_string(),
-            BytecodeEventKind::Unop => "unop".to_string(),
-            BytecodeEventKind::Select => "select".to_string(),
-            BytecodeEventKind::Unreachable => "unreachable".to_string(),
-            BytecodeEventKind::Br => "br".to_string(),
-            BytecodeEventKind::BrIf => "br_if".to_string(),
-            BytecodeEventKind::IfElse => "if_else".to_string(),
-            BytecodeEventKind::BrTable => "br_table".to_string(),
-            BytecodeEventKind::Drop => "drop".to_string(),
-            BytecodeEventKind::Return => "return".to_string(),
-            BytecodeEventKind::MemorySize => "memory_size".to_string(),
-            BytecodeEventKind::MemoryGrow => "memory_grow".to_string(),
-            BytecodeEventKind::MemoryInit => "memory_init".to_string(),
-            BytecodeEventKind::DataDrop => "data_drop".to_string(),
-            BytecodeEventKind::MemoryCopy => "memory_copy".to_string(),
-            BytecodeEventKind::MemoryFill => "memory_fill".to_string(),
-            BytecodeEventKind::Load => "load".to_string(),
-            BytecodeEventKind::Store => "store".to_string(),
-            BytecodeEventKind::AtomicRmw => "atomic_rmw".to_string(),
-            BytecodeEventKind::Cmpxchg => "cmpxchg".to_string(),
-            BytecodeEventKind::AtomicNotify => "atomic_notify".to_string(),
-            BytecodeEventKind::AtomicWait => "atomic_wait".to_string(),
-            BytecodeEventKind::AtomicFence => "atomic_fence".to_string(),
-            BytecodeEventKind::TableGet => "table_get".to_string(),
-            BytecodeEventKind::TableSet => "table_set".to_string(),
-            BytecodeEventKind::TableGrow => "table_grow".to_string(),
-            BytecodeEventKind::TableSize => "table_size".to_string(),
-            BytecodeEventKind::TableFill => "table_fill".to_string(),
-            BytecodeEventKind::RefNull => "ref_null".to_string(),
-            BytecodeEventKind::RefIsNull => "ref_is_null".to_string(),
-            BytecodeEventKind::RefFunc => "ref_func".to_string(),
-            BytecodeEventKind::V128Bitselect => "v128_bitselect".to_string(),
-            BytecodeEventKind::I8x16Swizzle => "i8x16_swizzle".to_string(),
-            BytecodeEventKind::I8x16Shuffle => "i8x16_shuffle".to_string(),
-            BytecodeEventKind::LoadSimd => "load_simd".to_string(),
-            BytecodeEventKind::TableInit => "table_init".to_string(),
-            BytecodeEventKind::ElemDrop => "elem_drop".to_string(),
-            BytecodeEventKind::TableCopy => "table_copy".to_string(),
+            OpcodeEventKind::Block => "block".to_string(),
+            OpcodeEventKind::Loop => "loop".to_string(),
+            OpcodeEventKind::Call => "call".to_string(),
+            OpcodeEventKind::CallIndirect => "call_indirect".to_string(),
+            OpcodeEventKind::LocalGet => "local_get".to_string(),
+            OpcodeEventKind::LocalSet => "local_set".to_string(),
+            OpcodeEventKind::LocalTee => "local_tee".to_string(),
+            OpcodeEventKind::GlobalGet => "global_get".to_string(),
+            OpcodeEventKind::GlobalSet => "global_set".to_string(),
+            OpcodeEventKind::Const => "const".to_string(),
+            OpcodeEventKind::Binop => "binop".to_string(),
+            OpcodeEventKind::Unop => "unop".to_string(),
+            OpcodeEventKind::Select => "select".to_string(),
+            OpcodeEventKind::Unreachable => "unreachable".to_string(),
+            OpcodeEventKind::Br => "br".to_string(),
+            OpcodeEventKind::BrIf => "br_if".to_string(),
+            OpcodeEventKind::IfElse => "if_else".to_string(),
+            OpcodeEventKind::BrTable => "br_table".to_string(),
+            OpcodeEventKind::Drop => "drop".to_string(),
+            OpcodeEventKind::Return => "return".to_string(),
+            OpcodeEventKind::MemorySize => "memory_size".to_string(),
+            OpcodeEventKind::MemoryGrow => "memory_grow".to_string(),
+            OpcodeEventKind::MemoryInit => "memory_init".to_string(),
+            OpcodeEventKind::DataDrop => "data_drop".to_string(),
+            OpcodeEventKind::MemoryCopy => "memory_copy".to_string(),
+            OpcodeEventKind::MemoryFill => "memory_fill".to_string(),
+            OpcodeEventKind::Load => "load".to_string(),
+            OpcodeEventKind::Store => "store".to_string(),
+            OpcodeEventKind::AtomicRmw => "atomic_rmw".to_string(),
+            OpcodeEventKind::Cmpxchg => "cmpxchg".to_string(),
+            OpcodeEventKind::AtomicNotify => "atomic_notify".to_string(),
+            OpcodeEventKind::AtomicWait => "atomic_wait".to_string(),
+            OpcodeEventKind::AtomicFence => "atomic_fence".to_string(),
+            OpcodeEventKind::TableGet => "table_get".to_string(),
+            OpcodeEventKind::TableSet => "table_set".to_string(),
+            OpcodeEventKind::TableGrow => "table_grow".to_string(),
+            OpcodeEventKind::TableSize => "table_size".to_string(),
+            OpcodeEventKind::TableFill => "table_fill".to_string(),
+            OpcodeEventKind::RefNull => "ref_null".to_string(),
+            OpcodeEventKind::RefIsNull => "ref_is_null".to_string(),
+            OpcodeEventKind::RefFunc => "ref_func".to_string(),
+            OpcodeEventKind::V128Bitselect => "v128_bitselect".to_string(),
+            OpcodeEventKind::I8x16Swizzle => "i8x16_swizzle".to_string(),
+            OpcodeEventKind::I8x16Shuffle => "i8x16_shuffle".to_string(),
+            OpcodeEventKind::LoadSimd => "load_simd".to_string(),
+            OpcodeEventKind::TableInit => "table_init".to_string(),
+            OpcodeEventKind::ElemDrop => "elem_drop".to_string(),
+            OpcodeEventKind::TableCopy => "table_copy".to_string(),
         }
     }
 }
 
-pub struct BytecodeEvent {
+pub struct OpcodeEvent {
     info: EventInfo,
-    kind: BytecodeEventKind,
+    kind: OpcodeEventKind,
 }
-impl NameOptions for BytecodeEvent {
+impl NameOptions for OpcodeEvent {
     fn get_name_options() -> Vec<String> {
         // Violates DRY principle, but works for now.
         // Maybe make this better some other time.
@@ -333,7 +334,7 @@ impl NameOptions for BytecodeEvent {
         ]
     }
 }
-impl FromStr for BytecodeEvent {
+impl FromStr for OpcodeEvent {
     fn from_str(name: String, loc: Option<Location>) -> Self {
         match name.as_str() {
             "block" => Self::block(loc),
@@ -384,18 +385,54 @@ impl FromStr for BytecodeEvent {
             "table_init" => Self::table_init(loc),
             "elem_drop" => Self::elem_drop(loc),
             "table_copy" => Self::table_copy(loc),
-            _ => panic!("unsupported BytecodeEvent: {name}"),
+            _ => panic!("unsupported OpcodeEvent: {name}"),
         }
     }
 }
-impl BytecodeEvent {
+impl OpcodeEvent {
+    // =========================
+    // ---- Globals Helpers ----
+    // =========================
+    
+    fn init_globals(num_args: i32, num_immediates: i32) -> HashMap<String, ProvidedGlobal> {
+        let mut globals = HashMap::new();
+        Self::gen_args(&mut globals, num_args);
+        Self::gen_immediates(&mut globals, num_immediates);
+        
+        globals
+    }
+    
+    fn gen_args(globals: &mut HashMap<String, ProvidedGlobal>, num_args: i32) {
+        for i in 0..num_args {
+            let name = format!("arg{}", i);
+            globals.insert(name.clone(), ProvidedGlobal::new(
+                name.to_string(),
+                format!("The argument to the opcode at index {}.", i),
+                DataType::Str,
+                false
+            ));
+        }
+    }
+
+    fn gen_immediates(globals: &mut HashMap<String, ProvidedGlobal>, num_immediates: i32) {
+        for i in 0..num_immediates {
+            let name = format!("imm{}", i);
+            globals.insert(name.clone(), ProvidedGlobal::new(
+                name.to_string(),
+                format!("The immediate to the opcode at index {}.", i),
+                DataType::Str,
+                true
+            ));
+        }
+    }
+
     // ======================
     // ---- Constructors ----
     // ======================
 
     fn block(loc: Option<Location>) -> Self {
         Self {
-            kind: BytecodeEventKind::Block,
+            kind: OpcodeEventKind::Block,
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/block".to_string(),
                 fns: vec![],
@@ -407,7 +444,7 @@ impl BytecodeEvent {
     }
     fn _loop(loc: Option<Location>) -> Self {
         Self {
-            kind: BytecodeEventKind::Loop,
+            kind: OpcodeEventKind::Loop,
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/loop".to_string(),
                 fns: vec![],
@@ -419,7 +456,7 @@ impl BytecodeEvent {
     }
     fn call(loc: Option<Location>) -> Self {
         Self {
-            kind: BytecodeEventKind::Call,
+            kind: OpcodeEventKind::Call,
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call".to_string(),
                 fns: vec![],
@@ -438,7 +475,8 @@ impl BytecodeEvent {
                         "target_fn_type".to_string(),
                         "The type of function being called at this call site. This constant will \
                             evaluate to either `local` or `import`.".to_string(),
-                        DataType::Str
+                        DataType::Str,
+                        true
                     )
                 ), (
                     "target_imp_module".to_string(),
@@ -447,7 +485,8 @@ impl BytecodeEvent {
                         "The name of the module that the imported function comes from. \
                             To improve performance, pair with `target_fn_type == \"import\"` \
                             for faster short-circuiting.".to_string(),
-                        DataType::Str
+                        DataType::Str,
+                        true
                     )
                 ), (
                     "target_imp_name".to_string(),
@@ -456,14 +495,16 @@ impl BytecodeEvent {
                         "The name of the imported function. \
                         To improve performance, pair with `target_fn_type == \"import\"` \
                         for faster short-circuiting.".to_string(),
-                        DataType::Str
+                        DataType::Str,
+                        true
                     )
                 ), (
                     "new_target_fn_name".to_string(),
                     ProvidedGlobal::new(
                         "new_target_fn_name".to_string(),
                         "(DEPRECATED) The name of the target function to call instead of the original.".to_string(),
-                        DataType::Str
+                        DataType::Str,
+                        true
                     )
                 )]),
                 loc,
@@ -508,7 +549,7 @@ impl BytecodeEvent {
         //     }
         // ));
         Self {
-            kind: BytecodeEventKind::CallIndirect,
+            kind: OpcodeEventKind::CallIndirect,
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call".to_string(),
                 fns: vec![],
@@ -539,7 +580,7 @@ impl BytecodeEvent {
         //     }
         // ));
         Self {
-            kind: BytecodeEventKind::LocalGet,
+            kind: OpcodeEventKind::LocalGet,
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_get".to_string(),
                 fns: vec![],
@@ -570,7 +611,7 @@ impl BytecodeEvent {
         //     }
         // ));
         Self {
-            kind: BytecodeEventKind::LocalSet,
+            kind: OpcodeEventKind::LocalSet,
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_set".to_string(),
                 fns: vec![],
@@ -601,7 +642,7 @@ impl BytecodeEvent {
         //     }
         // ));
         Self {
-            kind: BytecodeEventKind::LocalTee,
+            kind: OpcodeEventKind::LocalTee,
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_tee".to_string(),
                 fns: vec![],
@@ -631,7 +672,7 @@ impl BytecodeEvent {
         //     }
         // ));
         Self {
-            kind: BytecodeEventKind::GlobalGet,
+            kind: OpcodeEventKind::GlobalGet,
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Global_get".to_string(),
                 fns: vec![],
@@ -661,7 +702,7 @@ impl BytecodeEvent {
         //     }
         // ));
         Self {
-            kind: BytecodeEventKind::GlobalSet,
+            kind: OpcodeEventKind::GlobalSet,
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Global_set".to_string(),
                 fns: vec![],
@@ -694,7 +735,7 @@ impl BytecodeEvent {
         // ));
         // TODO -- Should there be a way to check the actual value of this constant?
         Self {
-            kind: BytecodeEventKind::Const,
+            kind: OpcodeEventKind::Const,
             info: EventInfo {
                 docs:
                     "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Const"
@@ -730,7 +771,7 @@ impl BytecodeEvent {
         // TODO -- No way to check lhs/rhs using walrus since due to lack of
         //     typing info at this point. Maybe wasmparser will support this.
         Self {
-            kind: BytecodeEventKind::Binop,
+            kind: OpcodeEventKind::Binop,
             info: EventInfo {
                 docs: "Consume two operands and produce one result of the respective type. \
                     The types of binary operations available to instrument depend on the operands \
@@ -769,7 +810,7 @@ impl BytecodeEvent {
         // TODO -- No way to check operand using walrus since due to lack of
         //     typing info at this point. Maybe wasmparser will support this.
         Self {
-            kind: BytecodeEventKind::Unop,
+            kind: OpcodeEventKind::Unop,
             info: EventInfo {
                 docs: "Consume one operand and produce one result of the respective type. \
                     The types of unary operations available to instrument depend on the operands \
@@ -788,7 +829,7 @@ impl BytecodeEvent {
         // TODO -- No way to check lhs/rhs using walrus since due to lack of
         //     typing info at this point. Maybe wasmparser will support this.
         Self {
-            kind: BytecodeEventKind::Select,
+            kind: OpcodeEventKind::Select,
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/Select".to_string(),
                 fns: vec![],
@@ -800,7 +841,7 @@ impl BytecodeEvent {
     }
     fn unreachable(loc: Option<Location>) -> Self {
         Self {
-            kind: BytecodeEventKind::Unreachable,
+            kind: OpcodeEventKind::Unreachable,
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/unreachable".to_string(),
                 fns: vec![],
@@ -812,7 +853,7 @@ impl BytecodeEvent {
     }
     fn br(loc: Option<Location>) -> Self {
         Self {
-            kind: BytecodeEventKind::Br,
+            kind: OpcodeEventKind::Br,
             info: EventInfo {
                 docs:
                     "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
@@ -826,18 +867,11 @@ impl BytecodeEvent {
     }
     fn br_if(loc: Option<Location>) -> Self {
         Self {
-            kind: BytecodeEventKind::BrIf,
+            kind: OpcodeEventKind::BrIf,
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br".to_string(),
                 fns: vec![],
-                globals: HashMap::from([(
-                    "condition".to_string(),
-                    ProvidedGlobal::new(
-                        "condition".to_string(),
-                        "Contains the value of the condition to break on if true (0 is false, nonzero is true).".to_string(),
-                        DataType::I32
-                    )
-                )]),
+                globals: Self::init_globals(1, 1),
                 loc,
                 probe_map: HashMap::new()
             }
@@ -845,7 +879,7 @@ impl BytecodeEvent {
     }
     fn if_else(loc: Option<Location>) -> Self {
         Self {
-            kind: BytecodeEventKind::IfElse,
+            kind: OpcodeEventKind::IfElse,
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else".to_string(),
                 fns: vec![],
@@ -857,7 +891,7 @@ impl BytecodeEvent {
     }
     fn br_table(loc: Option<Location>) -> Self {
         Self {
-            kind: BytecodeEventKind::BrTable,
+            kind: OpcodeEventKind::BrTable,
             info: EventInfo {
                 docs:
                     "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
@@ -871,7 +905,7 @@ impl BytecodeEvent {
     }
     fn drop(loc: Option<Location>) -> Self {
         Self {
-            kind: BytecodeEventKind::Drop,
+            kind: OpcodeEventKind::Drop,
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/Drop".to_string(),
                 fns: vec![],
@@ -883,7 +917,7 @@ impl BytecodeEvent {
     }
     fn _return(loc: Option<Location>) -> Self {
         Self {
-            kind: BytecodeEventKind::Return,
+            kind: OpcodeEventKind::Return,
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/return".to_string(),
                 fns: vec![],
@@ -914,7 +948,7 @@ impl BytecodeEvent {
         //     }
         // ));
         Self {
-            kind: BytecodeEventKind::MemorySize,
+            kind: OpcodeEventKind::MemorySize,
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Size"
                     .to_string(),
@@ -951,7 +985,7 @@ impl BytecodeEvent {
         //     }
         // ));
         Self {
-            kind: BytecodeEventKind::MemoryGrow,
+            kind: OpcodeEventKind::MemoryGrow,
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Grow"
                     .to_string(),
@@ -1000,7 +1034,7 @@ impl BytecodeEvent {
         //     }
         // ));
         Self {
-            kind: BytecodeEventKind::MemoryInit,
+            kind: OpcodeEventKind::MemoryInit,
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-memory".to_string(),
                 fns: vec![],
@@ -1030,7 +1064,7 @@ impl BytecodeEvent {
         //     }
         // ));
         Self {
-            kind: BytecodeEventKind::DataDrop,
+            kind: OpcodeEventKind::DataDrop,
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-memory".to_string(),
                 fns: vec![],
@@ -1083,7 +1117,7 @@ impl BytecodeEvent {
         //     }
         // ));
         Self {
-            kind: BytecodeEventKind::MemoryCopy,
+            kind: OpcodeEventKind::MemoryCopy,
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Copy"
                     .to_string(),
@@ -1102,7 +1136,7 @@ impl BytecodeEvent {
         // i32.const 100 ;; The number of bytes to update
         // memory.fill ;; Fill default memory
         Self {
-            kind: BytecodeEventKind::MemoryFill,
+            kind: OpcodeEventKind::MemoryFill,
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Fill"
                     .to_string(),
@@ -1185,7 +1219,7 @@ impl BytecodeEvent {
         //     }
         // ));
         Self {
-            kind: BytecodeEventKind::Load,
+            kind: OpcodeEventKind::Load,
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
                     .to_string(),
@@ -1198,7 +1232,7 @@ impl BytecodeEvent {
     }
     fn store(loc: Option<Location>) -> Self {
         Self {
-            kind: BytecodeEventKind::Store,
+            kind: OpcodeEventKind::Store,
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
                     .to_string(),
@@ -1211,7 +1245,7 @@ impl BytecodeEvent {
     }
     fn atomic_rmw(loc: Option<Location>) -> Self {
         Self {
-            kind: BytecodeEventKind::AtomicRmw,
+            kind: OpcodeEventKind::AtomicRmw,
             info: EventInfo {
                 docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#read-modify-write".to_string(),
                 fns: vec![],
@@ -1223,7 +1257,7 @@ impl BytecodeEvent {
     }
     fn cmpxchg(loc: Option<Location>) -> Self {
         Self {
-            kind: BytecodeEventKind::Cmpxchg,
+            kind: OpcodeEventKind::Cmpxchg,
             info: EventInfo {
                 docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#compare-exchange".to_string(),
                 fns: vec![],
@@ -1235,7 +1269,7 @@ impl BytecodeEvent {
     }
     fn atomic_notify(loc: Option<Location>) -> Self {
         Self {
-            kind: BytecodeEventKind::AtomicNotify,
+            kind: OpcodeEventKind::AtomicNotify,
             info: EventInfo {
                 docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#wait-and-notify-operators".to_string(),
                 fns: vec![],
@@ -1247,7 +1281,7 @@ impl BytecodeEvent {
     }
     fn atomic_wait(loc: Option<Location>) -> Self {
         Self {
-            kind: BytecodeEventKind::AtomicWait,
+            kind: OpcodeEventKind::AtomicWait,
             info: EventInfo {
                 docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#wait-and-notify-operators".to_string(),
                 fns: vec![],
@@ -1259,7 +1293,7 @@ impl BytecodeEvent {
     }
     fn atomic_fence(loc: Option<Location>) -> Self {
         Self {
-            kind: BytecodeEventKind::AtomicFence,
+            kind: OpcodeEventKind::AtomicFence,
             info: EventInfo {
                 docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#fence-operator".to_string(),
                 fns: vec![],
@@ -1271,7 +1305,7 @@ impl BytecodeEvent {
     }
     fn table_get(loc: Option<Location>) -> Self {
         Self {
-            kind: BytecodeEventKind::TableGet,
+            kind: OpcodeEventKind::TableGet,
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 fns: vec![],
@@ -1283,7 +1317,7 @@ impl BytecodeEvent {
     }
     fn table_set(loc: Option<Location>) -> Self {
         Self {
-            kind: BytecodeEventKind::TableSet,
+            kind: OpcodeEventKind::TableSet,
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 fns: vec![],
@@ -1295,7 +1329,7 @@ impl BytecodeEvent {
     }
     fn table_grow(loc: Option<Location>) -> Self {
         Self {
-            kind: BytecodeEventKind::TableGrow,
+            kind: OpcodeEventKind::TableGrow,
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 fns: vec![],
@@ -1307,7 +1341,7 @@ impl BytecodeEvent {
     }
     fn table_size(loc: Option<Location>) -> Self {
         Self {
-            kind: BytecodeEventKind::TableSize,
+            kind: OpcodeEventKind::TableSize,
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 fns: vec![],
@@ -1319,7 +1353,7 @@ impl BytecodeEvent {
     }
     fn table_fill(loc: Option<Location>) -> Self {
         Self {
-            kind: BytecodeEventKind::TableFill,
+            kind: OpcodeEventKind::TableFill,
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 fns: vec![],
@@ -1331,7 +1365,7 @@ impl BytecodeEvent {
     }
     fn ref_null(loc: Option<Location>) -> Self {
         Self {
-            kind: BytecodeEventKind::RefNull,
+            kind: OpcodeEventKind::RefNull,
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-ref".to_string(),
                 fns: vec![],
@@ -1343,7 +1377,7 @@ impl BytecodeEvent {
     }
     fn ref_is_null(loc: Option<Location>) -> Self {
         Self {
-            kind: BytecodeEventKind::RefIsNull,
+            kind: OpcodeEventKind::RefIsNull,
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-ref".to_string(),
                 fns: vec![],
@@ -1355,7 +1389,7 @@ impl BytecodeEvent {
     }
     fn ref_func(loc: Option<Location>) -> Self {
         Self {
-            kind: BytecodeEventKind::RefFunc,
+            kind: OpcodeEventKind::RefFunc,
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-ref".to_string(),
                 fns: vec![],
@@ -1367,7 +1401,7 @@ impl BytecodeEvent {
     }
     fn v128_bitselect(loc: Option<Location>) -> Self {
         Self {
-            kind: BytecodeEventKind::V128Bitselect,
+            kind: OpcodeEventKind::V128Bitselect,
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-vec".to_string(),
                 fns: vec![],
@@ -1379,7 +1413,7 @@ impl BytecodeEvent {
     }
     fn i8x16_swizzle(loc: Option<Location>) -> Self {
         Self {
-            kind: BytecodeEventKind::I8x16Swizzle,
+            kind: OpcodeEventKind::I8x16Swizzle,
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-vec".to_string(),
                 fns: vec![],
@@ -1391,7 +1425,7 @@ impl BytecodeEvent {
     }
     fn i8x16_shuffle(loc: Option<Location>) -> Self {
         Self {
-            kind: BytecodeEventKind::I8x16Shuffle,
+            kind: OpcodeEventKind::I8x16Shuffle,
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-vec".to_string(),
                 fns: vec![],
@@ -1403,7 +1437,7 @@ impl BytecodeEvent {
     }
     fn load_simd(loc: Option<Location>) -> Self {
         Self {
-            kind: BytecodeEventKind::LoadSimd,
+            kind: OpcodeEventKind::LoadSimd,
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-vec".to_string(),
                 fns: vec![],
@@ -1415,7 +1449,7 @@ impl BytecodeEvent {
     }
     fn table_init(loc: Option<Location>) -> Self {
         Self {
-            kind: BytecodeEventKind::TableInit,
+            kind: OpcodeEventKind::TableInit,
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 fns: vec![],
@@ -1427,7 +1461,7 @@ impl BytecodeEvent {
     }
     fn elem_drop(loc: Option<Location>) -> Self {
         Self {
-            kind: BytecodeEventKind::ElemDrop,
+            kind: OpcodeEventKind::ElemDrop,
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 fns: vec![],
@@ -1439,7 +1473,7 @@ impl BytecodeEvent {
     }
     fn table_copy(loc: Option<Location>) -> Self {
         Self {
-            kind: BytecodeEventKind::TableCopy,
+            kind: OpcodeEventKind::TableCopy,
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 fns: vec![],
@@ -1450,7 +1484,7 @@ impl BytecodeEvent {
         }
     }
 }
-impl Event for BytecodeEvent {
+impl Event for OpcodeEvent {
     fn name(&self) -> String {
         self.kind.name()
     }

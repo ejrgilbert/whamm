@@ -158,7 +158,7 @@ impl<'b> BehaviorTreeBuilder<'_, 'b, '_> {
 
             // visit globals
             for (_name, ProvidedGlobal { global, .. }) in globals.iter() {
-                if global.is_comp_provided {
+                if !global.is_from_user() {
                     if let Expr::VarId { name, .. } = &global.var_name {
                         self.tree
                             .define(self.context_name.clone(), name.clone(), self.err);
@@ -174,7 +174,7 @@ impl<'b> BehaviorTreeBuilder<'_, 'b, '_> {
         matches!(regex.captures(self.context_name.as_str()), Some(_caps))
     }
 
-    fn visit_bytecode_package(&mut self, package: &'b dyn Package) {
+    fn visit_opcode_package(&mut self, package: &'b dyn Package) {
         if package.has_events() {
             // Build events->globals HashMap
             let mut events = HashMap::new();
@@ -200,7 +200,7 @@ impl<'b> BehaviorTreeBuilder<'_, 'b, '_> {
         }
     }
 
-    fn visit_bytecode_event(&mut self, event: &'b dyn Event) {
+    fn visit_opcode_event(&mut self, event: &'b dyn Event) {
         // Only create a sequence if there are multiple probes we're emitting
         if event.probes().len() > 1 {
             self.tree.sequence(self.err);
@@ -225,7 +225,7 @@ impl<'b> BehaviorTreeBuilder<'_, 'b, '_> {
         }
     }
 
-    fn visit_bytecode_probe(&mut self, probe: &dyn Probe) {
+    fn visit_opcode_probe(&mut self, probe: &dyn Probe) {
         self.tree
             .sequence(self.err)
             .save_params(true, self.err)
@@ -262,7 +262,7 @@ impl<'b> BehaviorTreeBuilder<'_, 'b, '_> {
                 self.err,
             );
 
-        self.emit_bytecode_probe_before_body(probe);
+        self.emit_opcode_probe_before_body(probe);
         self.tree
             .exit_decorator(self.err)
             // alt behavior
@@ -272,7 +272,7 @@ impl<'b> BehaviorTreeBuilder<'_, 'b, '_> {
                 },
                 self.err,
             );
-        self.emit_bytecode_probe_alt_body(probe);
+        self.emit_opcode_probe_alt_body(probe);
         self.tree
             .exit_decorator(self.err)
             // after behavior
@@ -282,7 +282,7 @@ impl<'b> BehaviorTreeBuilder<'_, 'b, '_> {
                 },
                 self.err,
             );
-        self.emit_bytecode_probe_after_body(probe);
+        self.emit_opcode_probe_after_body(probe);
         self.tree
             .exit_decorator(self.err)
             // exit
@@ -291,7 +291,7 @@ impl<'b> BehaviorTreeBuilder<'_, 'b, '_> {
             .exit_sequence(self.err);
     }
 
-    fn emit_bytecode_probe_before_body(&mut self, _probe: &dyn Probe) {
+    fn emit_opcode_probe_before_body(&mut self, _probe: &dyn Probe) {
         self.tree
             .parameterized_action(ParamActionType::EmitIf { cond: 0, conseq: 1 }, self.err)
             .emit_pred(self.err)
@@ -299,7 +299,7 @@ impl<'b> BehaviorTreeBuilder<'_, 'b, '_> {
             .exit_parameterized_action(self.err);
     }
 
-    fn emit_bytecode_probe_alt_body(&mut self, _probe: &dyn Probe) {
+    fn emit_opcode_probe_alt_body(&mut self, _probe: &dyn Probe) {
         self.tree
             .sequence(self.err)
             .remove_orig(self.err)
@@ -338,7 +338,7 @@ impl<'b> BehaviorTreeBuilder<'_, 'b, '_> {
             .exit_sequence(self.err);
     }
 
-    fn emit_bytecode_probe_after_body(&mut self, _probe: &dyn Probe) {
+    fn emit_opcode_probe_after_body(&mut self, _probe: &dyn Probe) {
         self.tree
             .parameterized_action(ParamActionType::EmitIf { cond: 0, conseq: 1 }, self.err)
             .emit_pred(self.err)
@@ -423,8 +423,8 @@ impl<'b> WhammVisitor<'b, ()> for BehaviorTreeBuilder<'_, 'b, '_> {
         trace!("Entering: BehaviorTreeBuilder::visit_package");
         self.context_name += &format!(":{}", package.name());
 
-        if self.is_in_context(r"whamm:script([0-9]+):wasm:bytecode") {
-            self.visit_bytecode_package(package);
+        if self.is_in_context(r"whamm:script([0-9]+):wasm:opcode") {
+            self.visit_opcode_package(package);
         } else if let Some(loc) = &package.loc() {
             self.err.unexpected_error(
                 true,
@@ -462,8 +462,8 @@ impl<'b> WhammVisitor<'b, ()> for BehaviorTreeBuilder<'_, 'b, '_> {
         self.context_name += &format!(":{}", event.name());
         self.add_event_to_ast(event.name());
 
-        if self.is_in_context(r"whamm:script([0-9]+):wasm:bytecode:(.*)") {
-            self.visit_bytecode_event(event);
+        if self.is_in_context(r"whamm:script([0-9]+):wasm:opcode:(.*)") {
+            self.visit_opcode_event(event);
         } else if let Some(loc) = &event.loc() {
             self.err.unexpected_error(
                 true,
@@ -497,8 +497,8 @@ impl<'b> WhammVisitor<'b, ()> for BehaviorTreeBuilder<'_, 'b, '_> {
             self.err,
         );
 
-        if self.is_in_context(r"whamm:script([0-9]+):wasm:bytecode:(.*)") {
-            self.visit_bytecode_probe(probe.as_ref());
+        if self.is_in_context(r"whamm:script([0-9]+):wasm:opcode:(.*)") {
+            self.visit_opcode_probe(probe.as_ref());
         } else {
             self.err.unexpected_error(
                 true,

@@ -18,38 +18,38 @@ pub fn setup_logger() {
 const VALID_SCRIPTS: &[&str] = &[
     // Ternary
     r#"
-wasm:bytecode:br:before {
+wasm:opcode:br:before {
     index = i ? 1 : 0;
 }
     "#,
     // Variations of PROBE_SPEC
     "BEGIN { }",
     "END { }",
-    "wasm:bytecode:call:alt { }",
-    "wasm:bytecode:call:before { }",
-    "wasm:bytecode:call:after { }",
+    "wasm:opcode:call:alt { }",
+    "wasm:opcode:call:before { }",
+    "wasm:opcode:call:after { }",
     // Regexes
     "wasm:byt*:call:before { }",
     "wasm::call:after { }",
     ":::alt { }",
     "wasm::: { }",
-    ":bytecode:: { }",
+    ":opcode:: { }",
     "::call: { }",
     ":::before { }",
-    ":bytecode:call:alt { }",
+    ":opcode:call:alt { }",
     "wasm::call:alt { }",
-    "wasm:bytecode::alt { }",
+    "wasm:opcode::alt { }",
     // Predicates
-    "wasm:bytecode:br:before / i / { }",
-    r#"wasm:bytecode:br:before / "i" <= 1 / { }"#, // TODO make invalid in type checking
-    "wasm:bytecode:br:before / i54 < r77 / { }",
-    "wasm:bytecode:br:before / i54 < r77 / { }",
-    "wasm:bytecode:br:before / i != 7 / { }",
-    r#"wasm:bytecode:br:before / (i == "1") && (b == "2") / { }"#,
-    r#"wasm:bytecode:br:before / i == "1" && b == "2" / { }"#,
-    "wasm:bytecode:br:before / i == (1 + 3) / { count = 0; }",
-    "wasm:bytecode:br:before / !(a && b) / { count = 0; }",
-    "wasm:bytecode:br:before / !a / { count = 0; }",
+    "wasm:opcode:br:before / i / { }",
+    r#"wasm:opcode:br:before / "i" <= 1 / { }"#, // TODO make invalid in type checking
+    "wasm:opcode:br:before / i54 < r77 / { }",
+    "wasm:opcode:br:before / i54 < r77 / { }",
+    "wasm:opcode:br:before / i != 7 / { }",
+    r#"wasm:opcode:br:before / (i == "1") && (b == "2") / { }"#,
+    r#"wasm:opcode:br:before / i == "1" && b == "2" / { }"#,
+    "wasm:opcode:br:before / i == (1 + 3) / { count = 0; }",
+    "wasm:opcode:br:before / !(a && b) / { count = 0; }",
+    "wasm:opcode:br:before / !a / { count = 0; }",
     // Function calls
     r#"
 wasm::call:alt / strcmp((arg2, arg3), "record") / {
@@ -100,13 +100,13 @@ BEGIN { }
     BEGIN { }
         "#,
     r#"
-    wasm:bytecode:br:before {
+    wasm:opcode:br:before {
         i32 i;
         return i;
     }
     "#,
     r#"
-    wasm:bytecode:br:before {
+    wasm:opcode:br:before {
         return;
     }
     "#,
@@ -116,7 +116,7 @@ BEGIN { }
         b--;
         return a + b;
     }
-    wasm:bytecode:br:before {
+    wasm:opcode:br:before {
         i32 a;
         i32 b;
         i32 c;
@@ -140,40 +140,40 @@ BEGIN { }
     "#,
     // Statements (either assignment or function call)
     r#"
-    wasm:bytecode:br:before {
+    wasm:opcode:br:before {
         i32 return123;
     }
     "#,
     r#"
-wasm:bytecode:br:before {
+wasm:opcode:br:before {
     i = -10;
 }
     "#,
     r#"
-    wasm:bytecode:br:before {
+    wasm:opcode:br:before {
         call_new();
     }
     "#,
     r#"
-    wasm:bytecode:br:before {
+    wasm:opcode:br:before {
         i = 0;
         i ++;
     }
     "#,
     r#"
-    wasm:bytecode:br:before {
+    wasm:opcode:br:before {
         i = 0;
         i++;
     }
     "#,
     r#"
-    wasm:bytecode:br:before {
+    wasm:opcode:br:before {
         i = 0;
         i--;
     }
     "#,
     r#"
-    wasm:bytecode:br:before {
+    wasm:opcode:br:before {
         i = 0;
         i --;
     }
@@ -181,26 +181,26 @@ wasm:bytecode:br:before {
     // Comments
     r#"
 /* comment */
-wasm:bytecode:br:before { }
+wasm:opcode:br:before { }
     "#,
-    "wasm:bytecode:br:before { } // this is a comment",
+    "wasm:opcode:br:before { } // this is a comment",
     r#"
 /* comment */
-wasm:bytecode:br:before { } // this is a comment
+wasm:opcode:br:before { } // this is a comment
     "#,
     r#"
-wasm:bytecode:br:before {
+wasm:opcode:br:before {
     i = 0; // this is a comment
 }
     "#,
     r#"
-wasm:bytecode:br:before {
+wasm:opcode:br:before {
     //has an empty comment
     i = 0; //
 }
     "#,
     r#"
-wasm:bytecode:br:before {
+wasm:opcode:br:before {
     //has an empty block comment
     i = 0; /**/
 }
@@ -223,9 +223,9 @@ wasm:bytecode:br:before {
     
     "#,
     // valid "variants" of reserved keywords
-    "wasm:bytecode:call:alt { i32 arg; }",
-    "wasm:bytecode:call:alt { arg = 1; }",
-    "wasm:bytecode:call:alt { arg0 = 1; }",
+    "wasm:opcode:call:alt { i32 arg; }",
+    "wasm:opcode:call:alt { arg = 1; }",
+    "wasm:opcode:call:alt { arg0 = 1; }",
 ];
 
 const FATAL_SCRIPTS: &[&str] = &[
@@ -241,30 +241,30 @@ const INVALID_SCRIPTS: &[&str] = &[
 map<i32, i32> count;
     "#,
     // Variations of PROBE_SPEC
-    "wasm:bytecode:call:alt: { }",
-    "wasm:bytecode:call:alt",
-    "wasm:bytecode:call:dne",
+    "wasm:opcode:call:alt: { }",
+    "wasm:opcode:call:alt",
+    "wasm:opcode:call:dne",
     // Empty predicate
-    "wasm:bytecode:call:alt  // { }",
-    "wasm:bytecode:call:alt / 5i < r77 / { }",
-    //            "wasm:bytecode:call:alt / i < 1 < 2 / { }", // TODO -- make invalid on semantic pass
-    //            "wasm:bytecode:call:alt / (1 + 3) / { i }", // TODO -- make invalid on type check
-    r#"wasm:bytecode:call:alt  / i == """" / { }"#,
+    "wasm:opcode:call:alt  // { }",
+    "wasm:opcode:call:alt / 5i < r77 / { }",
+    //            "wasm:opcode:call:alt / i < 1 < 2 / { }", // TODO -- make invalid on semantic pass
+    //            "wasm:opcode:call:alt / (1 + 3) / { i }", // TODO -- make invalid on type check
+    r#"wasm:opcode:call:alt  / i == """" / { }"#,
     // bad statement
-    "wasm:bytecode:call:alt / i == 1 / { i; }",
+    "wasm:opcode:call:alt / i == 1 / { i; }",
     r#"
-    wasm:bytecode:br:before {
+    wasm:opcode:br:before {
         i32 return;
     }
     "#,
     r#"
-    wasm:bytecode:br:before {
+    wasm:opcode:br:before {
         i32 if;
     }
     "#,
     // bad incrementor
     r#"
-    wasm:bytecode:br:before {
+    wasm:opcode:br:before {
         i = 0;
         if(i++ == 0){
             i = 2;
@@ -274,12 +274,12 @@ map<i32, i32> count;
     // bad fn definitions
     r#"
     fn_name() -> i32{
-    wasm:bytecode:br:before {
+    wasm:opcode:br:before {
     }
         "#,
     r#"
     fn_name(, arg0) -> i32{}
-    wasm:bytecode:br:before {
+    wasm:opcode:br:before {
     }
         "#,
     // invalid if/else
@@ -308,7 +308,7 @@ map<i32, i32> count;
             elif(a){};
         }
     // reserved keywords
-    "wasm:bytecode:call:alt { i32 arg0; }",
+    "wasm:opcode:call:alt { i32 arg0; }",
     r#"
 map<i32, i32> arg0;
     "#,
@@ -469,7 +469,7 @@ wasm::call:alt /
 
             assert_eq!(1, provider.len_packages());
             let package = provider.packages().next().unwrap();
-            assert_eq!("bytecode", package.name());
+            assert_eq!("opcode", package.name());
             assert_eq!(1, package.get_provided_globals().len());
             assert_eq!(0, package.get_provided_fns().len());
 

@@ -1,5 +1,5 @@
 use crate::emitter::rewriting::rules::{Event, LocInfo, Package, ProcessLoc};
-use crate::parser::rules::wasm::{BytecodeEventKind, WasmPackageKind};
+use crate::parser::rules::wasm::{OpcodeEventKind, WasmPackageKind};
 use crate::parser::rules::Probe;
 use std::collections::HashMap;
 use walrus::ir::Instr;
@@ -17,21 +17,21 @@ impl ProcessLoc for WasmPackage {
         _instr_name: &str,
     ) -> LocInfo {
         match self.kind {
-            WasmPackageKind::Bytecode => {
+            WasmPackageKind::Opcode => {
                 todo!()
             }
         }
     }
 }
 
-pub struct BytecodeEvent<'a> {
-    kind: BytecodeEventKind,
+pub struct OpcodeEvent<'a> {
+    kind: OpcodeEventKind,
     // outer Vec represents script[0:9] for composable instrumentation,
     // inner HashMap is mode_name-> an ordered Vec of probes from the respective script
     probes: Vec<HashMap<String, Vec<&'a dyn Probe>>>,
 }
-impl Event for BytecodeEvent<'_> {}
-impl ProcessLoc for BytecodeEvent<'_> {
+impl Event for OpcodeEvent<'_> {}
+impl ProcessLoc for OpcodeEvent<'_> {
     fn get_loc_info(
         &self,
         _app_wasm: &walrus::Module,
@@ -39,19 +39,19 @@ impl ProcessLoc for BytecodeEvent<'_> {
         _instr_name: &str,
     ) -> LocInfo {
         match self.kind {
-            BytecodeEventKind::Block => {
+            OpcodeEventKind::Block => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::Loop => {
+            OpcodeEventKind::Loop => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::Call => {
+            OpcodeEventKind::Call => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
@@ -68,80 +68,80 @@ impl ProcessLoc for BytecodeEvent<'_> {
 
                 todo!()
             }
-            BytecodeEventKind::CallIndirect => {
+            OpcodeEventKind::CallIndirect => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::LocalGet => {
+            OpcodeEventKind::LocalGet => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::LocalSet => {
+            OpcodeEventKind::LocalSet => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::LocalTee => {
+            OpcodeEventKind::LocalTee => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::GlobalGet => {
+            OpcodeEventKind::GlobalGet => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::GlobalSet => {
+            OpcodeEventKind::GlobalSet => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::Const => {
+            OpcodeEventKind::Const => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::Binop => {
+            OpcodeEventKind::Binop => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::Unop => {
+            OpcodeEventKind::Unop => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::Select => {
+            OpcodeEventKind::Select => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::Unreachable => {
+            OpcodeEventKind::Unreachable => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::Br => {
+            OpcodeEventKind::Br => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // - label_id
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::BrIf => {
+            OpcodeEventKind::BrIf => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // - label_id
@@ -149,193 +149,193 @@ impl ProcessLoc for BytecodeEvent<'_> {
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::IfElse => {
+            OpcodeEventKind::IfElse => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::BrTable => {
+            OpcodeEventKind::BrTable => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::Drop => {
+            OpcodeEventKind::Drop => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::Return => {
+            OpcodeEventKind::Return => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::MemorySize => {
+            OpcodeEventKind::MemorySize => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::MemoryGrow => {
+            OpcodeEventKind::MemoryGrow => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::MemoryInit => {
+            OpcodeEventKind::MemoryInit => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::DataDrop => {
+            OpcodeEventKind::DataDrop => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::MemoryCopy => {
+            OpcodeEventKind::MemoryCopy => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::MemoryFill => {
+            OpcodeEventKind::MemoryFill => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::Load => {
+            OpcodeEventKind::Load => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::Store => {
+            OpcodeEventKind::Store => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::AtomicRmw => {
+            OpcodeEventKind::AtomicRmw => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::Cmpxchg => {
+            OpcodeEventKind::Cmpxchg => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::AtomicNotify => {
+            OpcodeEventKind::AtomicNotify => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::AtomicWait => {
+            OpcodeEventKind::AtomicWait => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::AtomicFence => {
+            OpcodeEventKind::AtomicFence => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::TableGet => {
+            OpcodeEventKind::TableGet => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::TableSet => {
+            OpcodeEventKind::TableSet => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::TableGrow => {
+            OpcodeEventKind::TableGrow => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::TableSize => {
+            OpcodeEventKind::TableSize => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::TableFill => {
+            OpcodeEventKind::TableFill => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::RefNull => {
+            OpcodeEventKind::RefNull => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::RefIsNull => {
+            OpcodeEventKind::RefIsNull => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::RefFunc => {
+            OpcodeEventKind::RefFunc => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::V128Bitselect => {
+            OpcodeEventKind::V128Bitselect => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::I8x16Swizzle => {
+            OpcodeEventKind::I8x16Swizzle => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::I8x16Shuffle => {
+            OpcodeEventKind::I8x16Shuffle => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::LoadSimd => {
+            OpcodeEventKind::LoadSimd => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::TableInit => {
+            OpcodeEventKind::TableInit => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::ElemDrop => {
+            OpcodeEventKind::ElemDrop => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
                 todo!()
             }
-            BytecodeEventKind::TableCopy => {
+            OpcodeEventKind::TableCopy => {
                 // check if the instr is of this event type
                 // define static/dynamic vars
                 // pull matched probes
