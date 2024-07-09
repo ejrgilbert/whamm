@@ -352,7 +352,7 @@ map<i32, i32> arg0;
         }
     "#,
 ];
-
+const FATAL_SCRIPTS: &[&str] = &[];
 const SPECIAL: &[&str] = &["BEGIN { }", "END { }", "wasm:::alt { }", "wasm:::alt { }"];
 
 // ====================
