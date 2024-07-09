@@ -1,6 +1,8 @@
+//to test, use RUST_TEST_THREADS=1 cargo test
+//Necessary because the mutex expects a single thread of acessors (or at least 1 thread per name in the map)
+
 #[allow(unused_imports)]
 use crate::*;
-
 //testing map functionality
 #[test]
 fn test_i32_i32() {
@@ -15,7 +17,7 @@ fn test_i32_i32() {
 
 //test the ones including tuples and maps especially
 #[test]
-fn test_i32_tuple(){
+fn test_i32_tuple() {
     create_i32_tuple("test".to_string());
     insert_i32_tuple("test".to_string(), 1, TupleVariant::i32_i32(2, 3));
     insert_i32_tuple("test".to_string(), 2, TupleVariant::i32_i32(3, 4));
@@ -24,7 +26,7 @@ fn test_i32_tuple(){
     assert!(*(a.unwrap()) == TupleVariant::i32_i32(2, 3));
 }
 #[test]
-fn test_i32_map(){
+fn test_i32_map() {
     create_i32_map("test".to_string());
     insert_i32_map("test".to_string(), 1, AnyMap::i32_i32_Map(HashMap::new()));
     //to change the stuff in the map, lock the mutex then get mut on that lock
@@ -37,7 +39,19 @@ fn test_i32_map(){
     //otherwise, you can just get the map for its contents -- Inserting on map from this get does not change the global map
     map.insert(Box::new(3), Box::new(4)); //does nothing
     println!("{:?}", get_map("test".to_string(), &1).unwrap().get_i32(&2));
-    assert!(get_map("test".to_string(), &1).unwrap().get_i32(&2) == Some(&3));
+    assert!(get_map("test".to_string(), &1).unwrap().get_i32(&2) == Some(3));
     assert!(get_map("test".to_string(), &1).unwrap().get_i32(&3) == None);
 }
 //tuple as key
+#[test]
+fn test_tuple_i32() {
+    create_tuple_i32("test".to_string());
+    insert_tuple_i32("test".to_string(), TupleVariant::i32_i32(1, 2), 3);
+    insert_tuple_i32("test".to_string(), TupleVariant::i32_i32(2, 3), 4);
+    println!(
+        "{:?}",
+        get_i32("test".to_string(), &Box::new(TupleVariant::i32_i32(1, 2)))
+    );
+    let a = get_i32("test".to_string(), &Box::new(TupleVariant::i32_i32(1, 2)));
+    assert!(a == Some(3));
+}
