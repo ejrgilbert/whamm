@@ -272,6 +272,24 @@ impl OpcodeEventKind {
             OpcodeEventKind::TableCopy => "table_copy".to_string(),
         }
     }
+    
+    fn get_args(&self) -> Vec<DataType> {
+        match self {
+            OpcodeEventKind::BrIf => vec![
+                DataType::I32
+            ],
+            _ => vec![]
+        }
+    }
+
+    fn get_immediates(&self) -> Vec<DataType> {
+        match self {
+            OpcodeEventKind::BrIf => vec![
+                DataType::I32
+            ],
+            _ => vec![]
+        }
+    }
 }
 
 pub struct OpcodeEvent {
@@ -394,33 +412,33 @@ impl OpcodeEvent {
     // ---- Globals Helpers ----
     // =========================
     
-    fn init_globals(num_args: i32, num_immediates: i32) -> HashMap<String, ProvidedGlobal> {
+    fn init_globals(kind: OpcodeEventKind) -> HashMap<String, ProvidedGlobal> {
         let mut globals = HashMap::new();
-        Self::gen_args(&mut globals, num_args);
-        Self::gen_immediates(&mut globals, num_immediates);
+        Self::gen_args(&mut globals, kind.get_args());
+        Self::gen_immediates(&mut globals, kind.get_immediates());
         
         globals
     }
     
-    fn gen_args(globals: &mut HashMap<String, ProvidedGlobal>, num_args: i32) {
-        for i in 0..num_args {
-            let name = format!("arg{}", i);
+    fn gen_args(globals: &mut HashMap<String, ProvidedGlobal>, args: Vec<DataType>) {
+        for (idx, ty) in args.iter().enumerate() {
+            let name = format!("arg{}", idx);
             globals.insert(name.clone(), ProvidedGlobal::new(
                 name.to_string(),
-                format!("The argument to the opcode at index {}.", i),
-                DataType::Str,
+                format!("The argument to the opcode at index {}.", idx),
+                ty.to_owned(),
                 false
             ));
         }
     }
 
-    fn gen_immediates(globals: &mut HashMap<String, ProvidedGlobal>, num_immediates: i32) {
-        for i in 0..num_immediates {
-            let name = format!("imm{}", i);
+    fn gen_immediates(globals: &mut HashMap<String, ProvidedGlobal>, immediates: Vec<DataType>) {
+        for (idx, ty) in immediates.iter().enumerate() {
+            let name = format!("imm{}", idx);
             globals.insert(name.clone(), ProvidedGlobal::new(
                 name.to_string(),
-                format!("The immediate to the opcode at index {}.", i),
-                DataType::Str,
+                format!("The immediate to the opcode at index {}.", idx),
+                ty.to_owned(),
                 true
             ));
         }
@@ -436,7 +454,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/block".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::Block),
                 loc,
                 probe_map: HashMap::new()
             }
@@ -448,65 +466,64 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/loop".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::Loop),
                 loc,
                 probe_map: HashMap::new()
             }
         }
     }
     fn call(loc: Option<Location>) -> Self {
+        let mut globals = Self::init_globals(OpcodeEventKind::Call);
+        
+        // add in the extra globals (that aren't args or immediates)
+        globals.insert(
+            "target_fn_type".to_string(),
+            ProvidedGlobal::new(
+                "target_fn_type".to_string(),
+                "The type of function being called at this call site. This constant will \
+                            evaluate to either `local` or `import`.".to_string(),
+                DataType::Str,
+                true
+            )
+        );
+        globals.insert(
+            "target_imp_module".to_string(),
+            ProvidedGlobal::new(
+                "target_imp_module".to_string(),
+                "The name of the module that the imported function comes from. \
+                            To improve performance, pair with `target_fn_type == \"import\"` \
+                            for faster short-circuiting.".to_string(),
+                DataType::Str,
+                true
+            )
+        );
+        globals.insert(
+            "target_imp_name".to_string(),
+            ProvidedGlobal::new(
+                "target_imp_name".to_string(),
+                "The name of the imported function. \
+                        To improve performance, pair with `target_fn_type == \"import\"` \
+                        for faster short-circuiting.".to_string(),
+                DataType::Str,
+                true
+            )
+        );
+        globals.insert(
+            "new_target_fn_name".to_string(),
+            ProvidedGlobal::new(
+                "new_target_fn_name".to_string(),
+                "(DEPRECATED) The name of the target function to call instead of the original.".to_string(),
+                DataType::Str,
+                true
+            )
+        );
+        
         Self {
             kind: OpcodeEventKind::Call,
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call".to_string(),
                 fns: vec![],
-                globals: HashMap::from([
-                //     (
-                //     "arg[0:9]+".to_string(),
-                //     ProvidedGlobal::new(
-                //         "arg[0:9]+".to_string(),
-                //         "To reference the arguments passed to the target function, can use any name matching this regex. For example, the first arg can be referenced with `arg0`.".to_string(),
-                //         DataType::Null
-                //     )
-                // ),
-                    (
-                    "target_fn_type".to_string(),
-                    ProvidedGlobal::new(
-                        "target_fn_type".to_string(),
-                        "The type of function being called at this call site. This constant will \
-                            evaluate to either `local` or `import`.".to_string(),
-                        DataType::Str,
-                        true
-                    )
-                ), (
-                    "target_imp_module".to_string(),
-                    ProvidedGlobal::new(
-                        "target_imp_module".to_string(),
-                        "The name of the module that the imported function comes from. \
-                            To improve performance, pair with `target_fn_type == \"import\"` \
-                            for faster short-circuiting.".to_string(),
-                        DataType::Str,
-                        true
-                    )
-                ), (
-                    "target_imp_name".to_string(),
-                    ProvidedGlobal::new(
-                        "target_imp_name".to_string(),
-                        "The name of the imported function. \
-                        To improve performance, pair with `target_fn_type == \"import\"` \
-                        for faster short-circuiting.".to_string(),
-                        DataType::Str,
-                        true
-                    )
-                ), (
-                    "new_target_fn_name".to_string(),
-                    ProvidedGlobal::new(
-                        "new_target_fn_name".to_string(),
-                        "(DEPRECATED) The name of the target function to call instead of the original.".to_string(),
-                        DataType::Str,
-                        true
-                    )
-                )]),
+                globals,
                 loc,
                 probe_map: HashMap::new()
             }
@@ -553,7 +570,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::CallIndirect),
                 loc,
                 probe_map: HashMap::new()
             }
@@ -584,7 +601,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_get".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::LocalGet),
                 loc,
                 probe_map: HashMap::new()
             }
@@ -615,7 +632,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_set".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::LocalSet),
                 loc,
                 probe_map: HashMap::new()
             }
@@ -646,7 +663,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_tee".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::LocalTee),
                 loc,
                 probe_map: HashMap::new()
             }
@@ -676,7 +693,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Global_get".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::GlobalGet),
                 loc,
                 probe_map: HashMap::new()
             }
@@ -706,7 +723,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Global_set".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::GlobalSet),
                 loc,
                 probe_map: HashMap::new()
             }
@@ -741,7 +758,7 @@ impl OpcodeEvent {
                     "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Const"
                         .to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::Const),
                 loc,
                 probe_map: HashMap::new(),
             },
@@ -780,7 +797,7 @@ impl OpcodeEvent {
                     https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric"
                     .to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::Binop),
                 loc,
                 probe_map: HashMap::new(),
             },
@@ -819,7 +836,7 @@ impl OpcodeEvent {
                     https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric"
                     .to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::Unop),
                 loc,
                 probe_map: HashMap::new(),
             },
@@ -833,7 +850,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/Select".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::Select),
                 loc,
                 probe_map: HashMap::new()
             }
@@ -845,7 +862,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/unreachable".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::Unreachable),
                 loc,
                 probe_map: HashMap::new()
             }
@@ -859,7 +876,7 @@ impl OpcodeEvent {
                     "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
                         .to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::Br),
                 loc,
                 probe_map: HashMap::new(),
             },
@@ -871,7 +888,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br".to_string(),
                 fns: vec![],
-                globals: Self::init_globals(1, 1),
+                globals: Self::init_globals(OpcodeEventKind::BrIf),
                 loc,
                 probe_map: HashMap::new()
             }
@@ -883,7 +900,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::IfElse),
                 loc,
                 probe_map: HashMap::new()
             }
@@ -897,7 +914,7 @@ impl OpcodeEvent {
                     "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
                         .to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::BrTable),
                 loc,
                 probe_map: HashMap::new(),
             },
@@ -909,7 +926,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/Drop".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::Drop),
                 loc,
                 probe_map: HashMap::new()
             }
@@ -921,7 +938,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/return".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::Return),
                 loc,
                 probe_map: HashMap::new()
             }
@@ -953,7 +970,7 @@ impl OpcodeEvent {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Size"
                     .to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::MemorySize),
                 loc,
                 probe_map: HashMap::new(),
             },
@@ -990,7 +1007,7 @@ impl OpcodeEvent {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Grow"
                     .to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::MemoryGrow),
                 loc,
                 probe_map: HashMap::new(),
             },
@@ -1038,7 +1055,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-memory".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::MemoryInit),
                 loc,
                 probe_map: HashMap::new(),
             },
@@ -1068,7 +1085,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-memory".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::DataDrop),
                 loc,
                 probe_map: HashMap::new(),
             },
@@ -1122,7 +1139,7 @@ impl OpcodeEvent {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Copy"
                     .to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::MemoryCopy),
                 loc,
                 probe_map: HashMap::new(),
             },
@@ -1141,7 +1158,7 @@ impl OpcodeEvent {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Fill"
                     .to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::MemoryFill),
                 loc,
                 probe_map: HashMap::new(),
             },
@@ -1224,7 +1241,7 @@ impl OpcodeEvent {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
                     .to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::Load),
                 loc,
                 probe_map: HashMap::new(),
             },
@@ -1237,7 +1254,7 @@ impl OpcodeEvent {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
                     .to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::Store),
                 loc,
                 probe_map: HashMap::new(),
             },
@@ -1249,7 +1266,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#read-modify-write".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::AtomicRmw),
                 loc,
                 probe_map: HashMap::new()
             }
@@ -1261,7 +1278,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#compare-exchange".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::Cmpxchg),
                 loc,
                 probe_map: HashMap::new()
             }
@@ -1273,7 +1290,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#wait-and-notify-operators".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::AtomicNotify),
                 loc,
                 probe_map: HashMap::new()
             }
@@ -1285,7 +1302,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#wait-and-notify-operators".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::AtomicWait),
                 loc,
                 probe_map: HashMap::new()
             }
@@ -1297,7 +1314,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#fence-operator".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::AtomicFence),
                 loc,
                 probe_map: HashMap::new()
             }
@@ -1309,7 +1326,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::TableGet),
                 loc,
                 probe_map: HashMap::new(),
             },
@@ -1321,7 +1338,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::TableSet),
                 loc,
                 probe_map: HashMap::new(),
             },
@@ -1333,7 +1350,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::TableGrow),
                 loc,
                 probe_map: HashMap::new(),
             },
@@ -1345,7 +1362,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::TableSize),
                 loc,
                 probe_map: HashMap::new(),
             },
@@ -1357,7 +1374,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::TableFill),
                 loc,
                 probe_map: HashMap::new(),
             },
@@ -1369,7 +1386,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-ref".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::RefNull),
                 loc,
                 probe_map: HashMap::new(),
             },
@@ -1381,7 +1398,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-ref".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::RefIsNull),
                 loc,
                 probe_map: HashMap::new(),
             },
@@ -1393,7 +1410,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-ref".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::RefFunc),
                 loc,
                 probe_map: HashMap::new(),
             },
@@ -1405,7 +1422,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-vec".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::V128Bitselect),
                 loc,
                 probe_map: HashMap::new(),
             },
@@ -1417,7 +1434,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-vec".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::I8x16Swizzle),
                 loc,
                 probe_map: HashMap::new(),
             },
@@ -1429,7 +1446,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-vec".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::I8x16Shuffle),
                 loc,
                 probe_map: HashMap::new(),
             },
@@ -1441,7 +1458,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-vec".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::LoadSimd),
                 loc,
                 probe_map: HashMap::new(),
             },
@@ -1453,7 +1470,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::TableInit),
                 loc,
                 probe_map: HashMap::new(),
             },
@@ -1465,7 +1482,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::ElemDrop),
                 loc,
                 probe_map: HashMap::new(),
             },
@@ -1477,7 +1494,7 @@ impl OpcodeEvent {
             info: EventInfo {
                 docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-table".to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals: Self::init_globals(OpcodeEventKind::TableCopy),
                 loc,
                 probe_map: HashMap::new(),
             },
