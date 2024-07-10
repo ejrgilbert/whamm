@@ -138,13 +138,14 @@ impl Package for CorePackage {
         loc: Option<Location>,
         predicate: Option<Expr>,
         body: Option<Vec<Statement>>,
+        printing_info: bool
     ) -> (bool, bool) {
         match self {
             Self {
                 kind: CorePackageKind::Default,
                 ..
             } => {
-                event_factory::<CoreEvent>(&mut self.info.events, probe_spec, loc, predicate, body)
+                event_factory::<CoreEvent>(&mut self.info.events, probe_spec, loc, predicate, body, printing_info)
             }
         }
     }

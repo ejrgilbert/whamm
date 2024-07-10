@@ -153,6 +153,7 @@ impl Package for WasmPackage {
         loc: Option<Location>,
         predicate: Option<Expr>,
         body: Option<Vec<Statement>>,
+        printing_info: bool
     ) -> (bool, bool) {
         match self {
             Self {
@@ -164,6 +165,7 @@ impl Package for WasmPackage {
                 loc,
                 predicate,
                 body,
+                printing_info
             ),
         }
     }

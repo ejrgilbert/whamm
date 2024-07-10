@@ -731,7 +731,7 @@ impl Script {
 
         let mut providers: HashMap<String, Box<dyn Provider>> = HashMap::new();
         let (matched_providers, matched_packages, matched_events, matched_modes) =
-            provider_factory::<WhammProvider>(&mut providers, probe_spec, None, None, None)?;
+            provider_factory::<WhammProvider>(&mut providers, probe_spec, None, None, None, true)?;
 
         // Print the matched provider information
         if matched_providers {
@@ -814,6 +814,7 @@ impl Script {
             None,
             predicate,
             body,
+            false
         )?;
 
         if !matched_providers {
