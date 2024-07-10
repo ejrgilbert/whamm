@@ -197,34 +197,22 @@ impl MapOperations for AnyMap {
         match self {
             AnyMap::i32_i32_Map(ref map) => {
                 if let Some(key) = key.downcast_ref::<i32>() {
-                    return match map.get(key) {
-                        Some(value) => Some(*value),
-                        None => None,
-                    }
+                    return map.get(key).copied();
                 }
             }
             AnyMap::string_i32_Map(ref map) => {
                 if let Some(key) = key.downcast_ref::<String>() {
-                    return match map.get(key) {
-                        Some(value) => Some(*value),
-                        None => None,
-                    }
+                    return map.get(key).copied();
                 }
             }
             AnyMap::tuple_i32_Map(ref map) => {
                 if let Some(key) = key.downcast_ref::<Box<TupleVariant>>() {
-                    return match map.get(key) {
-                        Some(value) => Some(*value),
-                        None => None,
-                    }
+                    return map.get(key).copied();
                 }
             }
             AnyMap::bool_i32_Map(ref map) => {
                 if let Some(key) = key.downcast_ref::<bool>() {
-                    return match map.get(key) {
-                        Some(value) => Some(*value),
-                        None => None,
-                    }
+                    return map.get(key).copied();
                 }
             }
             _ => {}
@@ -235,34 +223,22 @@ impl MapOperations for AnyMap {
         match self {
             AnyMap::i32_string_Map(ref map) => {
                 if let Some(key) = key.downcast_ref::<i32>() {
-                    return match map.get(key) {
-                        Some(value) => Some(value.clone()),
-                        None => None,
-                    }
+                    return map.get(key).cloned();
                 }
             }
             AnyMap::string_string_Map(ref map) => {
                 if let Some(key) = key.downcast_ref::<String>() {
-                    return match map.get(key) {
-                        Some(value) => Some(value.clone()),
-                        None => None,
-                    }
+                    return map.get(key).cloned();
                 }
             }
             AnyMap::tuple_string_Map(ref map) => {
                 if let Some(key) = key.downcast_ref::<Box<TupleVariant>>() {
-                    return match map.get(key) {
-                        Some(value) => Some(value.clone()),
-                        None => None,
-                    }
+                    return map.get(key).cloned();
                 }
             }
             AnyMap::bool_string_Map(ref map) => {
                 if let Some(key) = key.downcast_ref::<bool>() {
-                    return match map.get(key) {
-                        Some(value) => Some(value.clone()),
-                        None => None,
-                    }
+                    return map.get(key).cloned();
                 }
             }
             _ => {}
@@ -273,34 +249,22 @@ impl MapOperations for AnyMap {
         match self {
             AnyMap::i32_tuple_Map(ref map) => {
                 if let Some(key) = key.downcast_ref::<i32>() {
-                    return match map.get(key) {
-                        Some(value) => Some(value.clone()),
-                        None => None,
-                    }
+                    return map.get(key).cloned();
                 }
             }
             AnyMap::string_tuple_Map(ref map) => {
                 if let Some(key) = key.downcast_ref::<String>() {
-                    return match map.get(key) {
-                        Some(value) => Some(value.clone()),
-                        None => None,
-                    }
+                    return map.get(key).cloned();
                 }
             }
             AnyMap::tuple_tuple_Map(ref map) => {
                 if let Some(key) = key.downcast_ref::<Box<TupleVariant>>() {
-                    return match map.get(key) {
-                        Some(value) => Some(value.clone()),
-                        None => None,
-                    }
+                    return map.get(key).cloned();
                 }
             }
             AnyMap::bool_tuple_Map(ref map) => {
                 if let Some(key) = key.downcast_ref::<bool>() {
-                    return match map.get(key) {
-                        Some(value) => Some(value.clone()),
-                        None => None,
-                    }
+                    return map.get(key).cloned();
                 }
             }
             _ => {}
@@ -337,22 +301,22 @@ impl MapOperations for AnyMap {
         match self {
             AnyMap::i32_map_Map(ref map) => {
                 if let Some(key) = key.downcast_ref::<i32>() {
-                    return map.get(key).map(|box_any_map| box_any_map.clone());
+                    return map.get(key).cloned();
                 }
             }
             AnyMap::string_map_Map(ref map) => {
                 if let Some(key) = key.downcast_ref::<String>() {
-                    return map.get(key).map(|box_any_map| box_any_map.clone());
+                    return map.get(key).cloned();
                 }
             }
             AnyMap::tuple_map_Map(ref map) => {
                 if let Some(key) = key.downcast_ref::<Box<TupleVariant>>() {
-                    return map.get(key).map(|box_any_map| box_any_map.clone());
+                    return map.get(key).cloned();
                 }
             }
             AnyMap::bool_map_Map(ref map) => {
                 if let Some(key) = key.downcast_ref::<bool>() {
-                    return map.get(key).map(|box_any_map| box_any_map.clone());
+                    return map.get(key).cloned();
                 }
             }
             _ => {}
@@ -364,34 +328,22 @@ impl MapOperations for AnyMap {
         match self {
             AnyMap::i32_bool_Map(ref map) => {
                 if let Some(key) = key.downcast_ref::<i32>() {
-                    return match map.get(key) {
-                        Some(value) => Some(*value),
-                        None => None,
-                    }
+                    return map.get(key).cloned();
                 }
             }
             AnyMap::string_bool_Map(ref map) => {
                 if let Some(key) = key.downcast_ref::<String>() {
-                    return match map.get(key) {
-                        Some(value) => Some(*value),
-                        None => None,
-                    }
+                    return map.get(key).cloned();
                 }
             }
             AnyMap::tuple_bool_Map(ref map) => {
                 if let Some(key) = key.downcast_ref::<Box<TupleVariant>>() {
-                    return match map.get(key) {
-                        Some(value) => Some(*value),
-                        None => None,
-                    }
+                    return map.get(key).cloned();
                 }
             }
             AnyMap::bool_bool_Map(ref map) => {
                 if let Some(key) = key.downcast_ref::<bool>() {
-                    return match map.get(key) {
-                        Some(value) => Some(*value),
-                        None => None,
-                    }
+                    return map.get(key).cloned();
                 }
             }
             _ => {}
@@ -698,28 +650,19 @@ pub fn insert_bool_bool(name: String, key: bool, value: bool) -> bool {
 //functions for getting from a map
 pub fn get_i32(name: String, key: &dyn Any) -> Option<i32> {
     if let Some(boxed_map) = MY_MAPS.lock().unwrap().get(&name) {
-        return match boxed_map.get_i32(key) {
-            Some(value) => Some(value),
-            None => None,
-        };
+        return boxed_map.get_i32(key);
     }
     None
 }
 pub fn get_string(name: String, key: &dyn Any) -> Option<String> {
     if let Some(boxed_map) = MY_MAPS.lock().unwrap().get(&name) {
-        return match boxed_map.get_string(key) {
-            Some(value) => Some(value.clone()),
-            None => None,
-        };
+        return boxed_map.get_string(key);
     }
     None
 }
 pub fn get_tuple(name: String, key: &dyn Any) -> Option<Box<TupleVariant>> {
     if let Some(boxed_map) = MY_MAPS.lock().unwrap().get(&name) {
-        return match boxed_map.get_tuple(key) {
-            Some(value) => Some(value.clone()), // Use clone() here
-            None => None,
-        };
+        return boxed_map.get_tuple(key);
     }
     None
 }
@@ -739,19 +682,13 @@ pub fn get_map_mut<'a>(
 }
 pub fn get_map(name: String, key: &dyn Any) -> Option<AnyMap> {
     if let Some(boxed_map) = MY_MAPS.lock().unwrap().get(&name) {
-        return match boxed_map.get_map(key) {
-            Some(value) => Some(*value.clone()), // Use clone() here
-            None => None,
-        };
+        return boxed_map.get_map(key).map(|value| *value.clone());
     }
     None
 }
 pub fn get_bool(name: String, key: &dyn Any) -> Option<bool> {
     if let Some(boxed_map) = MY_MAPS.lock().unwrap().get(&name) {
-        return match boxed_map.get_bool(key) {
-            Some(value) => Some(value),
-            None => None,
-        };
+        return boxed_map.get_bool(key);
     }
     None
 }

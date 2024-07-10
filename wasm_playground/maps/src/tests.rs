@@ -14,7 +14,16 @@ fn test_i32_i32() {
     println!("{:?}", get_i32("test".to_string(), &a.unwrap()));
     assert!(a == Some(2));
 }
-
+#[test]
+fn test_string_bool() {
+    create_string_bool("test".to_string());
+    insert_string_bool("test".to_string(), "hello".to_string(), true);
+    insert_string_bool("test".to_string(), "world".to_string(), false);
+    println!("{:?}", get_bool("test".to_string(), &"hello".to_string()));
+    let a = get_bool("test".to_string(), &"hello".to_string());
+    println!("{:?}", get_bool("test".to_string(), &a.unwrap()));
+    assert!(a == Some(true));
+}
 //test the ones including tuples and maps especially
 #[test]
 fn test_i32_tuple() {
