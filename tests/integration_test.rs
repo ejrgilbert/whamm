@@ -1,11 +1,11 @@
 mod common;
 
 use log::error;
-use orca::ir::Module as WasmModule;
+use orca::ir::module::Module as WasmModule;
 use std::fs;
 use std::path::Path;
 use std::process::{Command, Stdio};
-use wabt::{wasm2wat, wat2wasm};
+use wabt::{wasm2wat, Wat2Wasm};
 use whamm::behavior::builder_visitor::{build_behavior_tree, SimpleAST};
 use whamm::common::error::ErrorGen;
 use whamm::generator::emitters::{Emitter, WasmRewritingEmitter};
@@ -108,7 +108,10 @@ fn instrument_handwritten_wasm_call() {
     // (calling wat2wasm from a child process doesn't work
     //  since somehow the executable can't write to the file system directly)
     let file_data = fs::read("tests/apps/handwritten/add.wat").unwrap();
-    let wasm_data = wat2wasm(file_data).unwrap();
+    let wasm_data = Wat2Wasm::new()
+        .write_debug_names(true)
+        .convert(file_data)
+        .unwrap();
     fs::write("tests/apps/handwritten/add.wasm", wasm_data).unwrap();
 
     let res = Command::new(executable)

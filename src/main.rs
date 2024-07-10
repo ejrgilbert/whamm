@@ -20,7 +20,7 @@ use clap::Parser;
 use graphviz_rust::cmd::{CommandArg, Format};
 use graphviz_rust::exec_dot;
 use log::{error, info};
-use orca::ir::Module as WasmModule;
+use orca::ir::module::Module as WasmModule;
 use project_root::get_project_root;
 use std::path::PathBuf;
 use std::process::exit;

@@ -2,8 +2,8 @@ use crate::common::error::{ErrorGen, WhammError};
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{BinOp, DataType, Expr, Fn, Statement, UnOp, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
-use orca;
-use wasmparser;
+use orca::ir::types::{Global, InitExpr, Value as OrcaValue};
+use wasmparser::ValType;
 
 // =================================================
 // ==== Emitter Trait --> Used By All Emitters! ====
@@ -76,28 +76,31 @@ pub trait Emitter {
 const UNEXPECTED_ERR_MSG: &str =
     "WasmRewritingEmitter: Looks like you've found a bug...please report this behavior!";
 
-// TODO https://github.com/thesuhas/orca/issues/13
-// used to define default value of a global
-fn data_type_to_val_type(ty: &DataType) -> orca::ir::Global {
+// transform a whamm type to default wasm type, used for creating new global
+// TODO: Might be more generic to also inlcude Local
+fn whamm_type_to_wasm(ty: &DataType) -> Global {
     match ty {
-        // DataType::I32 => orca::ir::Global {
-        //     ty: wasmparser::GlobalType {
-        //         content_type: wasmparser::ValType::I32,
-        //         mutable: true,
-        //         shared: false,
-        //     },
-        //     init_expr:
-        // },
-        _ => unimplemented!(),
-        // DataType::U32 => (ValType::I32, InitExpr::Value(walrus::ir::Value::I32(0))),
-        // DataType::I32 => (ValType::I32, InitExpr::Value(walrus::ir::Value::I32(0))),
-        // DataType::Boolean => (ValType::I32, InitExpr::Value(walrus::ir::Value::I32(0))),
-        // DataType::Null => unimplemented!(),
-        // DataType::Str => unimplemented!(),
-        // DataType::Tuple { .. } => unimplemented!(),
-        // // the ID used to track this var in the lib
-        // DataType::Map { .. } => (ValType::I32, InitExpr::Value(walrus::ir::Value::I32(0))),
-        // &DataType::AssumeGood => unimplemented!(),
+        DataType::I32 | DataType::U32 | DataType::Boolean => Global {
+            ty: wasmparser::GlobalType {
+                content_type: ValType::I32,
+                mutable: true,
+                shared: false,
+            },
+            init_expr: InitExpr::Value(OrcaValue::I32(0)),
+        },
+        // the ID used to track this var in the lib
+        DataType::Map { .. } => Global {
+            ty: wasmparser::GlobalType {
+                content_type: ValType::I32,
+                mutable: true,
+                shared: false,
+            },
+            init_expr: InitExpr::Value(OrcaValue::I32(0)),
+        },
+        DataType::Null => unimplemented!(),
+        DataType::Str => unimplemented!(),
+        DataType::Tuple { .. } => unimplemented!(),
+        DataType::AssumeGood => unimplemented!(),
     }
 }
 
@@ -110,7 +113,7 @@ fn data_type_to_val_type(ty: &DataType) -> orca::ir::Global {
 // ==============================
 
 pub struct WasmRewritingEmitter<'a> {
-    pub app_wasm: orca::ir::Module<'a>,
+    pub app_wasm: orca::ir::module::Module<'a>,
     pub table: SymbolTable,
 
     // TODO change instr_iter and emitting_instr with orca
@@ -118,7 +121,7 @@ pub struct WasmRewritingEmitter<'a> {
     fn_providing_contexts: Vec<String>,
 }
 impl<'a> WasmRewritingEmitter<'a> {
-    pub fn new(app_wasm: orca::ir::Module<'a>, table: SymbolTable) -> Self {
+    pub fn new(app_wasm: orca::ir::module::Module<'a>, table: SymbolTable) -> Self {
         Self {
             app_wasm,
             table,
@@ -414,19 +417,13 @@ impl Emitter for WasmRewritingEmitter<'_> {
         };
 
         let rec = self.table.get_record_mut(&rec_id);
-        println!("{:?}", rec);
         match rec {
             Some(Record::Var { ref mut addr, .. }) => {
                 // emit global variable and set addr in symbol table
                 // this is used for user-defined global vars in the script...
-
-                // TODO
-
-                // let (walrus_ty, init_expr) = data_type_to_val_type(&ty);
-                // self.app_wasm.globals.add_local(walrus_ty, true, init_expr);
-                // let id = self.app_wasm.globals.add_local(walrus_ty, true, init_expr);
-                // *addr = Some(VarAddr::Global { addr: id });
-
+                let default_global = whamm_type_to_wasm(&ty);
+                let global_id = self.app_wasm.add_global(default_global);
+                *addr = Some(VarAddr::Global { addr: global_id });
                 Ok(true)
             }
             Some(&mut ref ty) => Err(Box::new(ErrorGen::get_unexpected_error(

@@ -2,7 +2,6 @@ use crate::common::error::{ErrorGen, WhammError};
 use crate::parser::types::{DataType, FnId, Location, Value};
 use std::collections::HashMap;
 use std::fmt;
-use walrus::{FunctionId, GlobalId, LocalId};
 
 const UNEXPECTED_ERR_MSG: &str =
     "SymbolTable: Looks like you've found a bug...please report this behavior!";
@@ -384,10 +383,7 @@ pub enum Record {
         is_comp_provided: bool,
 
         /// The address of this function post-injection
-        // TODO -- this representation SUCKS...specific to walrus bytecode injection...
-        //         can't find another way though since I can't encode a FunctionId through the API
-        //         ...maybe use type parameters?
-        addr: Option<FunctionId>,
+        addr: Option<u32>,
         loc: Option<Location>,
     },
     Var {
@@ -423,7 +419,9 @@ impl Record {
 }
 
 #[derive(Debug, Eq, Hash, PartialEq)]
+/// the index of the variables (global/local) in app.wasm
+/// This is the relative index that's dependent on which function/module you're in.
 pub enum VarAddr {
-    Local { addr: LocalId },
-    Global { addr: GlobalId },
+    Local { addr: u32 },
+    Global { addr: u32 },
 }
