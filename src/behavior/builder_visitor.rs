@@ -126,8 +126,8 @@ impl SimpleAST {
     }
 }
 
-pub fn build_behavior_tree<'a>(
-    ast: &'a Whamm,
+pub fn build_behavior_tree(
+    ast: &Whamm,
     simple_ast: &mut SimpleAST,
     err: &mut ErrorGen,
 ) -> BehaviorTree {
@@ -467,7 +467,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_, '_> {
             .enter_scope(self.context_name.clone(), provider.name(), self.err);
 
         // visit globals
-        self.visit_provided_globals(&provider.get_provided_globals());
+        self.visit_provided_globals(provider.get_provided_globals());
 
         provider
             .packages()
@@ -500,6 +500,11 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_, '_> {
             )
         };
 
+        // NOTE: Here we add a script's unit of instrumentation which retains
+        // the script order as passed by the user during `whamm!` tool invocation.
+        // This is guaranteed since we visit Scripts in order of the Vec and then
+        // the in-unit order is retained as well since there is an ordering of the 
+        // Vec of probes contained by an Event.
         // Handle AST separately since we don't visit every package
         self.add_package_to_ast(package.name());
         package.events().for_each(|event| {
