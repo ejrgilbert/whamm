@@ -1,6 +1,5 @@
 use crate::emitter::rewriting::rules::{Event, event_factory, FromStr, LocInfo, Package, probe_factory, ProcessLoc};
 use crate::parser::rules::wasm::{OpcodeEventKind, WasmPackageKind};
-use crate::parser::rules::Probe;
 use std::collections::HashMap;
 use walrus::ir::Instr;
 use crate::behavior::builder_visitor::SimpleProbe;

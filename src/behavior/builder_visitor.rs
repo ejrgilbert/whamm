@@ -62,6 +62,9 @@ use regex::Regex;
 /// mixing that with a non-static lifetimes keeps from having simple factory code.
 /// As a workaround, we know that the original AST isn't really needed at this point, so we have the new
 /// AST representation own the Probes instead!
+/// 
+/// TODO: Just realized that we will need to actually have a low-level notion of Scripts for
+///       the virgil emitter logic! This is because we'll want to emit one Wasm module per passed script!
 pub type SimpleAstProbes =
     HashMap<String, HashMap<String, HashMap<String, HashMap<String, Vec<SimpleProbe>>>>>;
 #[derive(Clone)]

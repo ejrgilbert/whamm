@@ -3,7 +3,6 @@ use crate::emitter::rewriting::rules::{Event, event_factory, FromStr, LocInfo, P
 use crate::parser::rules::core::{CoreEventKind, CorePackageKind};
 use walrus::ir::Instr;
 use crate::behavior::builder_visitor::SimpleProbe;
-use crate::parser::rules::Probe;
 
 pub struct CorePackage {
     kind: CorePackageKind,
