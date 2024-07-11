@@ -273,7 +273,7 @@ fn get_script_ast(script_path: &String, err: &mut ErrorGen) -> Whamm {
     }
 }
 
-fn build_behavior<'a>(whamm: &'a Whamm, err: &mut ErrorGen) -> (BehaviorTree, SimpleAST<'a>) {
+fn build_behavior<'a>(whamm: &'a Whamm, err: &mut ErrorGen) -> (BehaviorTree, SimpleAST) {
     // Build the behavior tree from the AST
     let mut simple_ast = SimpleAST::new();
     let mut behavior = build_behavior_tree(whamm, &mut simple_ast, err);

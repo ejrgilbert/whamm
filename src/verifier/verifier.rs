@@ -111,7 +111,7 @@ impl TypeChecker<'_> {
     }
 }
 
-impl<'b> WhammVisitor<'b, Option<DataType>> for TypeChecker<'_> {
+impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
     fn visit_whamm(&mut self, whamm: &Whamm) -> Option<DataType> {
         // not printing events and globals now
         self.table.reset();

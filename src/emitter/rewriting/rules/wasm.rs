@@ -1,14 +1,15 @@
-use crate::emitter::rewriting::rules::{Event, event_factory, FromStr, LocInfo, Package, ProcessLoc};
+use crate::emitter::rewriting::rules::{Event, event_factory, FromStr, LocInfo, Package, probe_factory, ProcessLoc};
 use crate::parser::rules::wasm::{OpcodeEventKind, WasmPackageKind};
 use crate::parser::rules::Probe;
 use std::collections::HashMap;
 use walrus::ir::Instr;
+use crate::behavior::builder_visitor::SimpleProbe;
 
-pub struct WasmPackage<'a> {
+pub struct WasmPackage {
     kind: WasmPackageKind,
-    pub events: Vec<Box<dyn Event<'a>>>,
+    pub events: Vec<Box<dyn Event>>,
 }
-impl FromStr for WasmPackage<'_> {
+impl FromStr for WasmPackage {
     fn from_str(name: &String) -> Self {
         match name.as_str() {
             "opcode" => Self::opcode(),
@@ -16,7 +17,7 @@ impl FromStr for WasmPackage<'_> {
         }
     }
 }
-impl WasmPackage<'_> {
+impl WasmPackage {
     fn opcode() -> Self {
         Self {
             kind: WasmPackageKind::Opcode,
@@ -24,19 +25,17 @@ impl WasmPackage<'_> {
         }
     }
 }
-impl<'a> Package<'a> for WasmPackage<'a> {
-    fn get_events_mut(&mut self) -> &mut Vec<Box<dyn Event<'a>>> {
-        &mut self.events
-    }
-    fn add_events(&mut self, ast_events: &HashMap<String, HashMap<String, Vec<Box<&'a dyn Probe>>>>) {
-        match self.kind {
+impl Package for WasmPackage {
+    fn add_events(&mut self, ast_events: &HashMap<String, HashMap<String, Vec<SimpleProbe>>>) {
+        let events = match self.kind {
             WasmPackageKind::Opcode => {
-                event_factory::<OpcodeEvent>(self as &mut dyn Package, ast_events);
+                event_factory::<OpcodeEvent>(ast_events)
             }
-        }
+        };
+        self.events = events;
     }
 }
-impl ProcessLoc for WasmPackage<'_> {
+impl ProcessLoc for WasmPackage {
     fn get_loc_info(
         &self,
         _app_wasm: &walrus::Module,
@@ -51,13 +50,13 @@ impl ProcessLoc for WasmPackage<'_> {
     }
 }
 
-pub struct OpcodeEvent<'a> {
+pub struct OpcodeEvent {
     kind: OpcodeEventKind,
     // Map from probe_mode_name -> Vec[probes_of_this_mode]
     // Retains ordering of instrumentation units (in order of scripts passed by user)
-    probes: HashMap<String, Vec<Box<&'a dyn Probe>>>,
+    probes: HashMap<String, Vec<SimpleProbe>>,
 }
-impl FromStr for OpcodeEvent<'_> {
+impl FromStr for OpcodeEvent {
     fn from_str(name: &String) -> Self {
         match name.as_str() {
             "block" => Self::block(),
@@ -112,7 +111,7 @@ impl FromStr for OpcodeEvent<'_> {
         }
     }
 }
-impl OpcodeEvent<'_> {
+impl OpcodeEvent {
     // ======================
     // ---- Constructors ----
     // ======================
@@ -268,12 +267,12 @@ impl OpcodeEvent<'_> {
         Self::new(OpcodeEventKind::TableCopy)
     }
 }
-impl<'a> Event<'a> for OpcodeEvent<'a> {
-    fn add_probes(&mut self, probes: &HashMap<String, Vec<Box<&'a dyn Probe>>>) {
-        self.probes = probes.to_owned()
+impl Event for OpcodeEvent {
+    fn add_probes(&mut self, probes: &HashMap<String, Vec<SimpleProbe>>) {
+        self.probes = probe_factory(probes);
     }
 }
-impl ProcessLoc for OpcodeEvent<'_> {
+impl ProcessLoc for OpcodeEvent {
     fn get_loc_info(
         &self,
         _app_wasm: &walrus::Module,

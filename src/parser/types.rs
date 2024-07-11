@@ -1015,27 +1015,23 @@ pub enum BinOp {
 // TODO add a default visit implementation
 // (take a look at the behavior tree visit trait) that would be good to add to
 // the AST visitor as well to make the visit ordering/conventions less annoying.
-/// The lifetime parameter 'a is used primarily in the `behavior/builder_visitor.rs`
-/// in order to enable saving off data in the `Whamm` struct while it is being visited
-/// in some other data structure.
-/// The lifetime is necessary to mark where the pointers are actually pointing to!
-pub trait WhammVisitor<'a, T> {
-    fn visit_whamm(&mut self, whamm: &'a Whamm) -> T;
-    fn visit_script(&mut self, script: &'a Script) -> T;
-    fn visit_provider(&mut self, provider: &'a Box<dyn Provider>) -> T;
-    fn visit_package(&mut self, package: &'a dyn Package) -> T;
-    fn visit_event(&mut self, event: &'a dyn Event) -> T;
-    fn visit_probe(&mut self, probe: &'a Box<dyn Probe>) -> T;
+pub trait WhammVisitor<T> {
+    fn visit_whamm(&mut self, whamm: &Whamm) -> T;
+    fn visit_script(&mut self, script: &Script) -> T;
+    fn visit_provider(&mut self, provider: &Box<dyn Provider>) -> T;
+    fn visit_package(&mut self, package: &dyn Package) -> T;
+    fn visit_event(&mut self, event: &dyn Event) -> T;
+    fn visit_probe(&mut self, probe: &Box<dyn Probe>) -> T;
     // fn visit_predicate(&mut self, predicate: &Expr) -> T;
-    fn visit_fn(&mut self, f: &'a Fn) -> T;
-    fn visit_formal_param(&mut self, param: &'a (Expr, DataType)) -> T;
-    fn visit_block(&mut self, block: &'a Block) -> T;
-    fn visit_stmt(&mut self, stmt: &'a Statement) -> T;
-    fn visit_expr(&mut self, expr: &'a Expr) -> T;
-    fn visit_unop(&mut self, unop: &'a UnOp) -> T;
-    fn visit_binop(&mut self, binop: &'a BinOp) -> T;
-    fn visit_datatype(&mut self, datatype: &'a DataType) -> T;
-    fn visit_value(&mut self, val: &'a Value) -> T;
+    fn visit_fn(&mut self, f: &Fn) -> T;
+    fn visit_formal_param(&mut self, param: &(Expr, DataType)) -> T;
+    fn visit_block(&mut self, block: &Block) -> T;
+    fn visit_stmt(&mut self, stmt: &Statement) -> T;
+    fn visit_expr(&mut self, expr: &Expr) -> T;
+    fn visit_unop(&mut self, unop: &UnOp) -> T;
+    fn visit_binop(&mut self, binop: &BinOp) -> T;
+    fn visit_datatype(&mut self, datatype: &DataType) -> T;
+    fn visit_value(&mut self, val: &Value) -> T;
 }
 
 /// To support setting constant-provided global vars

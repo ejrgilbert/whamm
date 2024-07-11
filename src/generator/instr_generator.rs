@@ -20,10 +20,10 @@ const UNEXPECTED_ERR_MSG: &str =
 /// passed emitter to emit instrumentation code.
 /// This process should ideally be generic, made to perform a specific
 /// instrumentation technique by the passed Emitter type.
-pub struct InstrGenerator<'a, 'b, 'c> {
+pub struct InstrGenerator<'a, 'b> {
     pub tree: &'a BehaviorTree,
     pub emitter: Box<&'b mut dyn Emitter>,
-    pub ast: SimpleAST<'c>,
+    pub ast: SimpleAST,
     pub err: &'a mut ErrorGen,
 
     pub context_name: String,
@@ -34,7 +34,7 @@ pub struct InstrGenerator<'a, 'b, 'c> {
     /// The current probe's body and predicate
     pub curr_probe: Option<(Option<Vec<Statement>>, Option<Expr>)>,
 }
-impl InstrGenerator<'_, '_, '_> {
+impl InstrGenerator<'_, '_> {
     pub fn run(&mut self, behavior: &BehaviorTree) -> bool {
         // Reset the symbol table in the emitter just in case
         self.emitter.reset_children();
@@ -123,7 +123,7 @@ impl InstrGenerator<'_, '_, '_> {
         is_success
     }
 }
-impl BehaviorVisitor<bool> for InstrGenerator<'_, '_, '_> {
+impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
     fn visit_root(&mut self, node: &Node) -> bool {
         let mut is_success = true;
         if let Node::Root { child, .. } = node {
@@ -450,7 +450,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_, '_> {
                         // make a clone of the current probe per instruction traversal
                         // this will reset the clone pred/body for each instruction!
                         let (body_cloned, mut pred_cloned) =
-                            ((*probe).body().clone(), (*probe).predicate().clone());
+                            ((*probe).body.clone(), (*probe).predicate.clone());
                         if let Some(pred) = &mut pred_cloned {
                             // Fold predicate
                             is_success &= self.emitter.fold_expr(pred);
@@ -491,7 +491,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_, '_> {
                 // this will reset the clone pred/body for each instruction!
                 if let Some(probe) = probe_list.first() {
                     let (body_cloned, mut pred_cloned) =
-                        ((*probe).body().clone(), (*probe).predicate().clone());
+                        ((*probe).body.clone(), (*probe).predicate.clone());
                     if let Some(pred) = &mut pred_cloned {
                         // Fold predicate
                         is_success &= self.emitter.fold_expr(pred);

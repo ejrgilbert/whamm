@@ -1,14 +1,15 @@
 use std::collections::HashMap;
-use crate::emitter::rewriting::rules::{Event, event_factory, FromStr, LocInfo, Package, ProcessLoc};
+use crate::emitter::rewriting::rules::{Event, event_factory, FromStr, LocInfo, Package, probe_factory, ProcessLoc};
 use crate::parser::rules::core::{CoreEventKind, CorePackageKind};
 use walrus::ir::Instr;
+use crate::behavior::builder_visitor::SimpleProbe;
 use crate::parser::rules::Probe;
 
-pub struct CorePackage<'a> {
+pub struct CorePackage {
     kind: CorePackageKind,
-    pub events: Vec<Box<dyn Event<'a>>>,
+    pub events: Vec<Box<dyn Event>>,
 }
-impl FromStr for CorePackage<'_> {
+impl FromStr for CorePackage {
     fn from_str(name: &String) -> Self {
         match name.as_str() {
             "default" => Self::default(),
@@ -16,7 +17,7 @@ impl FromStr for CorePackage<'_> {
         }
     }
 }
-impl CorePackage<'_> {
+impl CorePackage {
     fn default() -> Self {
         Self {
             kind: CorePackageKind::Default,
@@ -24,19 +25,17 @@ impl CorePackage<'_> {
         }
     }
 }
-impl<'a> Package<'a> for CorePackage<'a> {
-    fn get_events_mut(&mut self) -> &mut Vec<Box<dyn Event<'a>>> {
-        &mut self.events
-    }
-    fn add_events(&mut self, ast_events: &HashMap<String, HashMap<String, Vec<Box<&'a dyn Probe>>>>) {
-        match self.kind {
+impl Package for CorePackage {
+    fn add_events(&mut self, ast_events: &HashMap<String, HashMap<String, Vec<SimpleProbe>>>) {
+        let events = match self.kind {
             CorePackageKind::Default => {
-                event_factory::<CoreEvent>(self as &mut dyn Package, ast_events);
+                event_factory::<CoreEvent>(ast_events)
             }
-        }
+        };
+        self.events = events;
     }
 }
-impl ProcessLoc for CorePackage<'_> {
+impl ProcessLoc for CorePackage {
     fn get_loc_info(
         &self,
         _app_wasm: &walrus::Module,
@@ -51,11 +50,11 @@ impl ProcessLoc for CorePackage<'_> {
     }
 }
 
-pub struct CoreEvent<'a> {
+pub struct CoreEvent {
     kind: CoreEventKind,
-    probes: HashMap<String, Vec<Box<&'a dyn Probe>>>,
+    probes: HashMap<String, Vec<SimpleProbe>>,
 }
-impl FromStr for CoreEvent<'_> {
+impl FromStr for CoreEvent {
     fn from_str(name: &String) -> Self {
         match name.as_str() {
             "default" => Self::default(),
@@ -63,7 +62,7 @@ impl FromStr for CoreEvent<'_> {
         }
     }
 }
-impl CoreEvent<'_> {
+impl CoreEvent {
     // ======================
     // ---- Constructors ----
     // ======================
@@ -74,12 +73,12 @@ impl CoreEvent<'_> {
         }
     }
 }
-impl<'a> Event<'a> for CoreEvent<'a> {
-    fn add_probes(&mut self, probes: &HashMap<String, Vec<Box<&'a dyn Probe>>>) {
-        self.probes = probes.to_owned()
+impl Event for CoreEvent {
+    fn add_probes(&mut self, probes: &HashMap<String, Vec<SimpleProbe>>) {
+        self.probes = probe_factory(probes);
     }
 }
-impl ProcessLoc for CoreEvent<'_> {
+impl ProcessLoc for CoreEvent {
     fn get_loc_info(
         &self,
         _app_wasm: &walrus::Module,

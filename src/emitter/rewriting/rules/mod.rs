@@ -3,7 +3,7 @@ use crate::verifier::types::Record;
 use std::collections::HashMap;
 use walrus::ir::Instr;
 use walrus::ValType;
-use crate::behavior::builder_visitor::SimpleAstProbes;
+use crate::behavior::builder_visitor::{SimpleAstProbes, SimpleProbe};
 use crate::emitter::rewriting::rules::core::CorePackage;
 use crate::emitter::rewriting::rules::wasm::WasmPackage;
 
@@ -38,7 +38,7 @@ pub mod wasm;
 /// enable us to work around the annoying Rust type system constraints. This will also keep the emitter logic
 /// separate from the parser/verifier/behavior tree logic and keep this emitter logic specific to the bytecode
 /// rewriting injection strategy.
-pub fn provider_factory<'a, P: Provider<'a> + NameOptions + FromStr + 'static>(ast: &SimpleAstProbes<'a>) -> Vec<Box<P>> {
+pub fn provider_factory<P: Provider + NameOptions + FromStr>(ast: &SimpleAstProbes) -> Vec<Box<P>> {
     // Track the added provider hierarchies.
     // When visiting the next provider hierarchy it will be added (if not already there)
     // OR the new hierarchy will be appended within its respectful location in the already-existing one.
@@ -47,15 +47,15 @@ pub fn provider_factory<'a, P: Provider<'a> + NameOptions + FromStr + 'static>(a
     ast.iter().for_each(|(provider_name, packages)| {
         let mut provider = P::from_str(provider_name);
         provider.add_packages(packages);
-        
+
         providers.push(Box::new(provider));
     });
 
     providers
 }
 /// Splits out the logic to add new packages to a provider
-fn package_factory<'a, P: Package<'a> + FromStr + 'static>(ast_packages: &HashMap<String, HashMap<String, HashMap<String, Vec<Box<&'a dyn Probe>>>>>) -> Vec<Box<dyn Package<'a>>>{
-    let mut packages: Vec<Box<dyn Package<'a>>> = vec![];
+fn package_factory<P: Package + FromStr + 'static>(ast_packages: &HashMap<String, HashMap<String, HashMap<String, Vec<SimpleProbe>>>>) -> Vec<Box<dyn Package>> {
+    let mut packages: Vec<Box<dyn Package>> = vec![];
     ast_packages.iter().for_each(|(package_name, events)| {
         let mut package = P::from_str(package_name);
         package.add_events(events);
@@ -65,14 +65,26 @@ fn package_factory<'a, P: Package<'a> + FromStr + 'static>(ast_packages: &HashMa
     packages
 }
 /// Splits out the logic to add new events to a package
-fn event_factory<'a, E: Event<'a> + FromStr + 'static>(package: &mut dyn Package<'a>, ast_events: &HashMap<String, HashMap<String, Vec<Box<&'a dyn Probe>>>>) {
-    let events = package.get_events_mut();
+fn event_factory<E: Event + FromStr + 'static>(ast_events: &HashMap<String, HashMap<String, Vec<SimpleProbe>>>) -> Vec<Box<dyn Event>> {
+    let mut events: Vec<Box<dyn Event>> = vec![];
     ast_events.iter().for_each(|(event_name, probes)| {
         let mut event = E::from_str(event_name);
         event.add_probes(probes);
 
         events.push(Box::new(event));
     });
+    events
+}
+fn probe_factory(ast_probes: &HashMap<String, Vec<SimpleProbe>>) -> HashMap<String, Vec<SimpleProbe>> {
+    ast_probes.iter().map(|(name, probe_list)| {
+        // it would be nice to not have to do this iteration, but I don't know of another way...
+        let mut new_list = vec![];
+        probe_list.iter().for_each(|probe| {
+            new_list.push(probe.to_owned());
+        });
+
+        (name.to_owned(), new_list)
+    }).collect()
 }
 
 pub struct LocInfo<'a> {
@@ -93,21 +105,21 @@ pub trait FromStr {
 }
 
 pub trait Provider {
-    fn add_packages(&mut self, ast_packages: &HashMap<String, HashMap<String, HashMap<String, Vec<Box<&'a dyn Probe>>>>>);
+    fn add_packages(&mut self, ast_packages: &HashMap<String, HashMap<String, HashMap<String, Vec<SimpleProbe>>>>);
 }
 pub trait Package {
-    fn add_events(&mut self, ast_events: &HashMap<String, HashMap<String, Vec<Box<&'a dyn Probe>>>>);
+    fn add_events(&mut self, ast_events: &HashMap<String, HashMap<String, Vec<SimpleProbe>>>);
 }
 pub trait Event {
-    fn add_probes(&mut self, ast_probes: &HashMap<String, Vec<Box<&'a dyn Probe>>>);
+    fn add_probes(&mut self, ast_probes: &HashMap<String, Vec<SimpleProbe>>);
 }
 
-pub struct WhammProvider<'a> {
+pub struct WhammProvider {
     kind: WhammProviderKind,
     /// The packages of the probes that have been used in the Script.
-    pub packages: Vec<Box<dyn Package<'a>>>,
+    pub packages: Vec<Box<dyn Package>>,
 }
-impl FromStr for WhammProvider<'_> {
+impl FromStr for WhammProvider {
     fn from_str(name: &String) -> Self {
         match name.as_str() {
             "core" => Self::core(),
@@ -116,7 +128,7 @@ impl FromStr for WhammProvider<'_> {
         }
     }
 }
-impl WhammProvider<'_> {
+impl WhammProvider {
     fn core() -> Self {
         Self {
             kind: WhammProviderKind::Core,
@@ -130,8 +142,8 @@ impl WhammProvider<'_> {
         }
     }
 }
-impl<'a> Provider<'a> for WhammProvider<'a> {
-    fn add_packages(&mut self, ast_packages: &HashMap<String, HashMap<String, HashMap<String, Vec<Box<&'a dyn Probe>>>>>) {
+impl Provider for WhammProvider {
+    fn add_packages(&mut self, ast_packages: &HashMap<String, HashMap<String, HashMap<String, Vec<SimpleProbe>>>>) {
         let packages = match self.kind {
             WhammProviderKind::Core => {
                 package_factory::<CorePackage>(ast_packages)
@@ -143,7 +155,7 @@ impl<'a> Provider<'a> for WhammProvider<'a> {
         self.packages = packages;
     }
 }
-impl ProcessLoc for WhammProvider<'_> {
+impl ProcessLoc for WhammProvider {
     fn get_loc_info(
         &self,
         _app_wasm: &walrus::Module,

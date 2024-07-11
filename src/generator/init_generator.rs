@@ -65,7 +65,7 @@ impl InitGenerator<'_> {
         is_success
     }
 }
-impl WhammVisitor<'_, bool> for InitGenerator<'_> {
+impl WhammVisitor<bool> for InitGenerator<'_> {
     fn visit_whamm(&mut self, whamm: &Whamm) -> bool {
         trace!("Entering: CodeGenerator::visit_whamm");
         self.context_name = "whamm".to_string();
