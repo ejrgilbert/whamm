@@ -645,7 +645,7 @@ impl WhammProviderKind {
 ///         this in the future. Now, the use of `WhammProvider` is hardcoded everywhere.
 
 pub struct WhammProvider {
-    kind: WhammProviderKind,
+    pub(crate) kind: WhammProviderKind,
     info: ProviderInfo,
 }
 impl NameOptions for WhammProvider {

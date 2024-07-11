@@ -14,7 +14,48 @@ use crate::parser::types::{Block, ProvidedGlobal};
 use log::trace;
 use regex::Regex;
 
-type SimpleAstProbes<'a> =
+/// This is a structure that saves a simplified variation of the activated
+/// probe rules.
+/// Note that this does not explicitly represent a "Script" (which was used in the
+/// previous AST representation to keep instrumentation "units" together). This
+/// design is important to support composable instrumentation that imposes an ordering
+/// to the injected code. If multiple scripts probe the same point in an application,
+/// the injection ordering should follow the ordering of the scripts as specified by the
+/// user.
+/// While this is not explicitly retained, there is still a convention that is followed by
+/// construction of the BehaviorTree AST visitation logic that imposes this requirement. Since
+/// the AST scripts are followed in-order (they're saved to an ordered Vec type), the collapsing
+/// into this new AST representation retains the intended order as well.
+/// Consider the following example (where <script0_body0> is used to refer to the contents of the probe for readability):
+/// Script0 {
+///     wasm:opcode:call:before {<script0_body0>}
+///     wasm:opcode:call:before {<script0_body1>}
+///     wasm:opcode:call:after {<script0_body2>}
+/// }
+/// Script1 {
+///     wasm:opcode:call:before {<script1_body0>}
+/// }
+/// 
+/// This will translate to the following structure in the `SimpleAstProbes` type:
+/// {
+///     "wasm" -> {
+///         "opcode" -> {
+///             "call" -> {
+///                 "before" -> {
+///                     <script0_body0>,
+///                     <script0_body1>,
+///                     <script1_body0>,
+///                 }
+///                 "after" -> {
+///                     <script0_body2>
+///                 }
+///             }
+///         }
+///     }
+/// }
+/// The code generator will then take this and iterate over bodies to be injected at each probed point
+/// in the application code in the same order as the scripts were passed to the `whamm!` tool.
+pub type SimpleAstProbes<'a> =
     HashMap<String, HashMap<String, HashMap<String, HashMap<String, Vec<Box<&'a dyn Probe>>>>>>;
 
 pub struct SimpleAST<'a> {
