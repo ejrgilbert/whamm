@@ -218,6 +218,10 @@ impl Block {
 // Statements
 #[derive(Clone, Debug)]
 pub enum Statement {
+    SaveDecl {
+        decl: Box<Statement>,
+        loc: Option<Location>,
+    },
     Decl {
         ty: DataType,
         var_id: Expr, // should be VarId
@@ -258,6 +262,7 @@ impl Statement {
             | Statement::Return { loc, .. }
             | Statement::Assign { loc, .. }
             | Statement::SetMap { loc, .. }
+            | Statement::SaveDecl { loc, .. }
             | Statement::Expr { loc, .. } => loc,
         }
     }

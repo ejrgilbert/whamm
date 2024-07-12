@@ -222,7 +222,6 @@ wasm:bytecode:br:before {
         }
     
     "#,
-
     //maps
     r#"
         map<i32, i32> count;
@@ -239,7 +238,7 @@ wasm:bytecode:br:before {
         BEGIN {
             count[1] = 1+1;
         }
-
+    "#,
     // valid "variants" of reserved keywords
     "wasm:bytecode:call:alt { i32 arg; }",
     "wasm:bytecode:call:alt { arg = 1; }",
@@ -352,7 +351,6 @@ map<i32, i32> arg0;
         }
     "#,
 ];
-const FATAL_SCRIPTS: &[&str] = &[];
 const SPECIAL: &[&str] = &["BEGIN { }", "END { }", "wasm:::alt { }", "wasm:::alt { }"];
 
 // ====================

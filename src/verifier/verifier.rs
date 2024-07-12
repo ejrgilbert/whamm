@@ -280,7 +280,7 @@ impl<'b> WhammVisitor<'b, Option<DataType>> for TypeChecker<'_> {
         if self.in_script_global {
             match stmt {
                 //allow declarations and assignment
-                Statement::Decl { .. } | Statement::Assign { .. } => {}
+                Statement::Decl { .. } | Statement::Assign { .. } | Statement::SaveDecl { .. } => {}
                 _ => {
                     self.err.type_check_error(
                         false,
@@ -324,6 +324,7 @@ impl<'b> WhammVisitor<'b, Option<DataType>> for TypeChecker<'_> {
                     None
                 }
             }
+            Statement::SaveDecl { decl, .. } => self.visit_stmt(decl),
             Statement::Expr { expr, .. } => {
                 self.visit_expr(expr);
                 None

@@ -9,8 +9,10 @@ use once_cell::sync::Lazy; // 1.3.1
 use std::sync::Mutex;
 
 mod tests;
+mod middleman;
 #[no_mangle]
-static MY_MAPS: Lazy<Mutex<HashMap<String, AnyMap>>> = Lazy::new(|| Mutex::new(HashMap::new()));
+static MY_MAPS: Lazy<Mutex<HashMap<i32, AnyMap>>> = Lazy::new(|| Mutex::new(HashMap::new()));
+static MAP_METADATA: Lazy<Mutex<HashMap<i32, Metadata>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
 //this should initialize a map of maps -> from string (name) to any type of map
 
@@ -389,140 +391,140 @@ pub enum TupleVariant {
 
 //functions for creating a map
 #[no_mangle]
-pub fn create_i32_i32(name: String) {
+pub fn create_i32_i32(name: i32) {
     MY_MAPS
         .lock()
         .unwrap()
         .insert(name, AnyMap::i32_i32_Map(HashMap::new()));
 }
 
-pub fn create_i32_string(name: String) {
+pub fn create_i32_string(name: i32) {
     MY_MAPS
         .lock()
         .unwrap()
         .insert(name, AnyMap::i32_string_Map(HashMap::new()));
 }
 
-pub fn create_i32_map(name: String) {
+pub fn create_i32_map(name: i32) {
     MY_MAPS
         .lock()
         .unwrap()
         .insert(name, AnyMap::i32_map_Map(HashMap::new()));
 }
 
-pub fn create_i32_tuple(name: String) {
+pub fn create_i32_tuple(name: i32) {
     MY_MAPS
         .lock()
         .unwrap()
         .insert(name, AnyMap::i32_tuple_Map(HashMap::new()));
 }
 
-pub fn create_i32_bool(name: String) {
+pub fn create_i32_bool(name: i32) {
     MY_MAPS
         .lock()
         .unwrap()
         .insert(name, AnyMap::i32_bool_Map(HashMap::new()));
 }
 
-pub fn create_string_i32(name: String) {
+pub fn create_string_i32(name: i32) {
     MY_MAPS
         .lock()
         .unwrap()
         .insert(name, AnyMap::string_i32_Map(HashMap::new()));
 }
 
-pub fn create_string_string(name: String) {
+pub fn create_string_string(name: i32) {
     MY_MAPS
         .lock()
         .unwrap()
         .insert(name, AnyMap::string_string_Map(HashMap::new()));
 }
 
-pub fn create_string_map(name: String) {
+pub fn create_string_map(name: i32) {
     MY_MAPS
         .lock()
         .unwrap()
         .insert(name, AnyMap::string_map_Map(HashMap::new()));
 }
 
-pub fn create_string_tuple(name: String) {
+pub fn create_string_tuple(name: i32) {
     MY_MAPS
         .lock()
         .unwrap()
         .insert(name, AnyMap::string_tuple_Map(HashMap::new()));
 }
 
-pub fn create_string_bool(name: String) {
+pub fn create_string_bool(name: i32) {
     MY_MAPS
         .lock()
         .unwrap()
         .insert(name, AnyMap::string_bool_Map(HashMap::new()));
 }
 
-pub fn create_tuple_i32(name: String) {
+pub fn create_tuple_i32(name: i32) {
     MY_MAPS
         .lock()
         .unwrap()
         .insert(name, AnyMap::tuple_i32_Map(HashMap::new()));
 }
 
-pub fn create_tuple_string(name: String) {
+pub fn create_tuple_string(name: i32) {
     MY_MAPS
         .lock()
         .unwrap()
         .insert(name, AnyMap::tuple_string_Map(HashMap::new()));
 }
 
-pub fn create_tuple_map(name: String) {
+pub fn create_tuple_map(name: i32) {
     MY_MAPS
         .lock()
         .unwrap()
         .insert(name, AnyMap::tuple_map_Map(HashMap::new()));
 }
 
-pub fn create_tuple_tuple(name: String) {
+pub fn create_tuple_tuple(name: i32) {
     MY_MAPS
         .lock()
         .unwrap()
         .insert(name, AnyMap::tuple_tuple_Map(HashMap::new()));
 }
 
-pub fn create_tuple_bool(name: String) {
+pub fn create_tuple_bool(name: i32) {
     MY_MAPS
         .lock()
         .unwrap()
         .insert(name, AnyMap::tuple_bool_Map(HashMap::new()));
 }
 
-pub fn create_bool_i32(name: String) {
+pub fn create_bool_i32(name: i32) {
     MY_MAPS
         .lock()
         .unwrap()
         .insert(name, AnyMap::bool_i32_Map(HashMap::new()));
 }
 
-pub fn create_bool_string(name: String) {
+pub fn create_bool_string(name: i32) {
     MY_MAPS
         .lock()
         .unwrap()
         .insert(name, AnyMap::bool_string_Map(HashMap::new()));
 }
 
-pub fn create_bool_map(name: String) {
+pub fn create_bool_map(name: i32) {
     MY_MAPS
         .lock()
         .unwrap()
         .insert(name, AnyMap::bool_map_Map(HashMap::new()));
 }
 
-pub fn create_bool_tuple(name: String) {
+pub fn create_bool_tuple(name: i32) {
     MY_MAPS
         .lock()
         .unwrap()
         .insert(name, AnyMap::bool_tuple_Map(HashMap::new()));
 }
 
-pub fn create_bool_bool(name: String) {
+pub fn create_bool_bool(name: i32) {
     MY_MAPS
         .lock()
         .unwrap()
@@ -531,128 +533,128 @@ pub fn create_bool_bool(name: String) {
 
 //functions for inserting into a map - use the matching done in the insert function for AnyMap enum
 
-pub fn insert_i32_i32(name: String, key: i32, value: i32) -> bool {
+pub fn insert_i32_i32(name: i32, key: i32, value: i32) -> bool {
     if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
 
-pub fn insert_i32_string(name: String, key: i32, value: String) -> bool {
+pub fn insert_i32_string(name: i32, key: i32, value: String) -> bool {
     if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
 
-pub fn insert_i32_map(name: String, key: i32, value: AnyMap) -> bool {
+pub fn insert_i32_map(name: i32, key: i32, value: AnyMap) -> bool {
     if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
 
-pub fn insert_i32_tuple(name: String, key: i32, value: TupleVariant) -> bool {
+pub fn insert_i32_tuple(name: i32, key: i32, value: TupleVariant) -> bool {
     if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
-pub fn insert_i32_bool(name: String, key: i32, value: bool) -> bool {
+pub fn insert_i32_bool(name: i32, key: i32, value: bool) -> bool {
     if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
-pub fn insert_string_i32(name: String, key: String, value: i32) -> bool {
+pub fn insert_string_i32(name: i32, key: String, value: i32) -> bool {
     if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
-pub fn insert_string_string(name: String, key: String, value: String) -> bool {
+pub fn insert_string_string(name: i32, key: String, value: String) -> bool {
     if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
-pub fn insert_string_map(name: String, key: String, value: AnyMap) -> bool {
+pub fn insert_string_map(name: i32, key: String, value: AnyMap) -> bool {
     if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
-pub fn insert_string_tuple(name: String, key: String, value: TupleVariant) -> bool {
+pub fn insert_string_tuple(name: i32, key: String, value: TupleVariant) -> bool {
     if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
-pub fn insert_string_bool(name: String, key: String, value: bool) -> bool {
+pub fn insert_string_bool(name: i32, key: String, value: bool) -> bool {
     if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
-pub fn insert_tuple_i32(name: String, key: TupleVariant, value: i32) -> bool {
-    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
-        return any_map.insert(Box::new(key), Box::new(value));
-    }
-    false
-}
-
-pub fn insert_tuple_string(name: String, key: TupleVariant, value: String) -> bool {
+pub fn insert_tuple_i32(name: i32, key: TupleVariant, value: i32) -> bool {
     if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
 
-pub fn insert_tuple_map(name: String, key: TupleVariant, value: AnyMap) -> bool {
+pub fn insert_tuple_string(name: i32, key: TupleVariant, value: String) -> bool {
     if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
 
-pub fn insert_tuple_tuple(name: String, key: TupleVariant, value: TupleVariant) -> bool {
+pub fn insert_tuple_map(name: i32, key: TupleVariant, value: AnyMap) -> bool {
     if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
-pub fn insert_tuple_bool(name: String, key: TupleVariant, value: bool) -> bool {
+
+pub fn insert_tuple_tuple(name: i32, key: TupleVariant, value: TupleVariant) -> bool {
     if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
-pub fn insert_bool_i32(name: String, key: bool, value: i32) -> bool {
+pub fn insert_tuple_bool(name: i32, key: TupleVariant, value: bool) -> bool {
     if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
-pub fn insert_bool_string(name: String, key: bool, value: String) -> bool {
+pub fn insert_bool_i32(name: i32, key: bool, value: i32) -> bool {
     if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
-pub fn insert_bool_map(name: String, key: bool, value: AnyMap) -> bool {
+pub fn insert_bool_string(name: i32, key: bool, value: String) -> bool {
+    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
+        return any_map.insert(Box::new(key), Box::new(value));
+    }
+    false
+}
+pub fn insert_bool_map(name: i32, key: bool, value: AnyMap) -> bool {
     if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
 #[no_mangle]
-pub fn insert_bool_tuple(name: String, key: bool, value: TupleVariant) -> bool {
+pub fn insert_bool_tuple(name: i32, key: bool, value: TupleVariant) -> bool {
     if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
-pub fn insert_bool_bool(name: String, key: bool, value: bool) -> bool {
+pub fn insert_bool_bool(name: i32, key: bool, value: bool) -> bool {
     if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
@@ -660,19 +662,19 @@ pub fn insert_bool_bool(name: String, key: bool, value: bool) -> bool {
 }
 
 //functions for getting from a map
-pub fn get_i32_optional(name: String, key: &dyn Any) -> Option<i32> {
+pub fn get_i32_optional(name: i32, key: &dyn Any) -> Option<i32> {
     if let Some(boxed_map) = MY_MAPS.lock().unwrap().get(&name) {
         return boxed_map.get_i32(key);
     }
     None
 }
-pub fn get_string_optional(name: String, key: &dyn Any) -> Option<String> {
+pub fn get_string_optional(name: i32, key: &dyn Any) -> Option<String> {
     if let Some(boxed_map) = MY_MAPS.lock().unwrap().get(&name) {
         return boxed_map.get_string(key).map(|value| value.clone());
     }
     None
 }
-pub fn get_tuple_optional(name: String, key: &dyn Any) -> Option<Box<TupleVariant>> {
+pub fn get_tuple_optional(name: i32, key: &dyn Any) -> Option<Box<TupleVariant>> {
     if let Some(boxed_map) = MY_MAPS.lock().unwrap().get(&name) {
         return boxed_map.get_tuple(key).map(|value| value.clone());
     }
@@ -680,8 +682,8 @@ pub fn get_tuple_optional(name: String, key: &dyn Any) -> Option<Box<TupleVarian
 }
 
 pub fn get_map_mut<'a>(
-    my_maps: &'a mut HashMap<String, AnyMap>,
-    name: String,
+    my_maps: &'a mut HashMap<i32, AnyMap>,
+    name: i32,
     key: &dyn Any,
 ) -> Option<&'a mut AnyMap> {
     if let Some(boxed_map) = my_maps.get_mut(&name) {
@@ -692,13 +694,13 @@ pub fn get_map_mut<'a>(
     }
     None
 }
-pub fn get_map_optional(name: String, key: &dyn Any) -> Option<AnyMap> {
+pub fn get_map_optional(name: i32, key: &dyn Any) -> Option<AnyMap> {
     if let Some(boxed_map) = MY_MAPS.lock().unwrap().get(&name) {
         return boxed_map.get_map(key).map(|value| *value.clone());
     }
     None
 }
-pub fn get_bool_optional(name: String, key: &dyn Any) -> Option<bool> {
+pub fn get_bool_optional(name: i32, key: &dyn Any) -> Option<bool> {
     if let Some(boxed_map) = MY_MAPS.lock().unwrap().get(&name) {
         return boxed_map.get_bool(key).map(|value| value);
     }
@@ -706,58 +708,92 @@ pub fn get_bool_optional(name: String, key: &dyn Any) -> Option<bool> {
 }
 //make public getters that unwrap these optional versions
 #[no_mangle]
-pub fn get_i32(name: String, key: &dyn Any) -> i32 {
+pub fn get_i32(name: i32, key: &dyn Any) -> i32 {
     match get_i32_optional(name, key) {
         Some(value) => value,
         None => panic!("Key not found in map"),
     }
 }
 #[no_mangle]
-pub fn get_string(name: String, key: &dyn Any) -> String {
+pub fn get_string(name: i32, key: &dyn Any) -> String {
     match get_string_optional(name, key) {
         Some(value) => value,
         None => panic!("Key not found in map"),
     }
 }
 #[no_mangle]
-pub fn get_tuple(name: String, key: &dyn Any) -> Box<TupleVariant> {
+pub fn get_tuple(name: i32, key: &dyn Any) -> Box<TupleVariant> {
     match get_tuple_optional(name, key) {
         Some(value) => value,
         None => panic!("Key not found in map"),
     }
 }
 #[no_mangle]
-pub fn get_map(name: String, key: &dyn Any) -> AnyMap {
+pub fn get_map(name: i32, key: &dyn Any) -> AnyMap {
     match get_map_optional(name, key) {
         Some(value) => value,
         None => panic!("Key not found in map"),
     }
 }
 #[no_mangle]
-pub fn get_bool(name:String, key: &dyn Any) -> bool {
+pub fn get_bool(name:i32, key: &dyn Any) -> bool {
     match get_bool_optional(name, key) {
         Some(value) => value,
         None => panic!("Key not found in map"),
     }
 }
 
-pub fn create_map_i32i32i32tuple_i32(name: &str){
-    let a = name.to_string();
-    create_tuple_i32(a);
+pub fn create_map_i32i32i32tuple_i32(name: i32){
+    create_tuple_i32(name);
 }
 
-pub fn insert_map_i32i32i32tuple_i32(name: &str, key0: i32, key1: i32, key2: i32, value: i32){
-    let a = name.to_string();
-    insert_tuple_i32(a, TupleVariant::i32_i32_i32(key0, key1, key2), value);
+pub fn insert_map_i32i32i32tuple_i32(name: i32, key0: i32, key1: i32, key2: i32, value: i32){
+    
+    insert_tuple_i32(name, TupleVariant::i32_i32_i32(key0, key1, key2), value);
 }
 
-pub fn get_i32_from_i32i32i32tuple(name: &str, key0: i32, key1: i32, key2: i32) -> i32{
-    let a = name.to_string();
-    get_i32(a, &Box::new(TupleVariant::i32_i32_i32(key0, key1, key2)))
+pub fn get_i32_from_i32i32i32tuple(name: i32, key0: i32, key1: i32, key2: i32) -> i32{
+    get_i32(name, &Box::new(TupleVariant::i32_i32_i32(key0, key1, key2)))
 }
-#[no_mangle]
+pub enum Metadata {
+    global {
+        name: String, 
+        script_id: i32,
+    },
+    local {
+        name: String,
+        script_id: i32,
+        bytecode_loc: i32,
+        probe_id: i32,
+    },
+}
+
+pub fn put_map_metadata(map_id: i32, map_data: Metadata) {
+    let mut maps = MAP_METADATA.lock().unwrap();
+    maps.insert(map_id, map_data);
+}
+//TODO: instrument this into the bytecode
+pub fn create_local_map_meta(map_id: i32, name: String, script_id: i32, bytecode_loc: i32, probe_id: i32){
+    //call the put code for the metadata
+    let metadata = Metadata::local {
+        name: name,
+        script_id: script_id,
+        bytecode_loc: bytecode_loc,
+        probe_id: probe_id,
+    };
+    put_map_metadata(map_id, metadata);
+}
+pub fn create_global_meta(map_id: i32, name: String, script_id: i32) {
+    let metadata = Metadata::global {
+        name: name,
+        script_id: script_id,
+    };
+    put_map_metadata(map_id, metadata);
+}
+
+// #[no_mangle]
 fn main(){
-    let a = "hello";
+    let a = 5;
     create_map_i32i32i32tuple_i32(a);
     insert_map_i32i32i32tuple_i32(a, 1, 2, 3, 4);
     let c = get_i32_from_i32i32i32tuple(a, 1, 2, 3);
