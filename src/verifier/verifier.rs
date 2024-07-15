@@ -295,7 +295,9 @@ impl<'b> WhammVisitor<'b, Option<DataType>> for TypeChecker<'_> {
         if self.in_script_global {
             match stmt {
                 //allow declarations and assignment
-                Statement::Decl { .. } | Statement::Assign { .. } | Statement::ReportDecl { .. } => {}
+                Statement::Decl { .. }
+                | Statement::Assign { .. }
+                | Statement::ReportDecl { .. } => {}
                 _ => {
                     self.err.type_check_error(
                         false,
