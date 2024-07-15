@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use crate::emitter::rewriting::rules::{Event, event_factory, FromStr, LocInfo, Package, probe_factory, ProcessLoc};
+use crate::emitter::rewriting::rules::{Event, event_factory, FromStr, LocInfo, Package, probe_factory};
 use crate::parser::rules::core::{CoreEventKind, CorePackageKind};
 use walrus::ir::Instr;
 use crate::behavior::builder_visitor::SimpleProbe;
@@ -25,6 +25,17 @@ impl CorePackage {
     }
 }
 impl Package for CorePackage {
+    fn get_loc_info(
+        &self,
+        _instr: &Instr,
+        _instr_name: &str,
+    ) -> Option<LocInfo> {
+        match self.kind {
+            CorePackageKind::Default => {
+                todo!()
+            }
+        }
+    }
     fn add_events(&mut self, ast_events: &HashMap<String, HashMap<String, Vec<SimpleProbe>>>) {
         let events = match self.kind {
             CorePackageKind::Default => {
@@ -32,20 +43,6 @@ impl Package for CorePackage {
             }
         };
         self.events = events;
-    }
-}
-impl ProcessLoc for CorePackage {
-    fn get_loc_info(
-        &self,
-        _app_wasm: &walrus::Module,
-        _instr: &Instr,
-        _instr_name: &str,
-    ) -> LocInfo {
-        match self.kind {
-            CorePackageKind::Default => {
-                todo!()
-            }
-        }
     }
 }
 
@@ -73,21 +70,18 @@ impl CoreEvent {
     }
 }
 impl Event for CoreEvent {
-    fn add_probes(&mut self, probes: &HashMap<String, Vec<SimpleProbe>>) {
-        self.probes = probe_factory(probes);
-    }
-}
-impl ProcessLoc for CoreEvent {
     fn get_loc_info(
         &self,
-        _app_wasm: &walrus::Module,
         _instr: &Instr,
         _instr_name: &str,
-    ) -> LocInfo {
+    ) -> Option<LocInfo> {
         match self.kind {
             CoreEventKind::Default => {
                 todo!()
             }
         }
+    }
+    fn add_probes(&mut self, probes: &HashMap<String, Vec<SimpleProbe>>) {
+        self.probes = probe_factory(probes);
     }
 }

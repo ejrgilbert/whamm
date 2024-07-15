@@ -569,6 +569,9 @@ impl ProbeSpec {
             mode: None,
         }
     }
+    pub fn full_name(&self) -> String {
+        format!("{}:{}:{}:{}", &self.provider.as_ref().unwrap().name, &self.package.as_ref().unwrap().name, &self.event.as_ref().unwrap().name, &self.mode.as_ref().unwrap().name)
+    }
     pub fn add_spec_def(&mut self, part: SpecPart) {
         if self.provider.is_none() {
             self.provider = Some(part);

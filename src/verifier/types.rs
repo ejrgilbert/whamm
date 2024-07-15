@@ -1,5 +1,5 @@
 use crate::common::error::{ErrorGen, WhammError};
-use crate::parser::types::{DataType, FnId, Location, Value};
+use crate::parser::types::{DataType, FnId, Location, ProbeSpec, Value};
 use std::collections::HashMap;
 use std::fmt;
 use walrus::{FunctionId, GlobalId, LocalId};
@@ -91,6 +91,11 @@ impl SymbolTable {
         }
 
         false
+    }
+    
+    pub fn enter_scope_via_spec(&mut self, script_id: &String, probe_spec: &ProbeSpec) -> bool {
+        let scope_name = format!("{}:{}", script_id, probe_spec.full_name());
+        self.enter_named_scope(scope_name.as_str())
     }
 
     pub fn enter_scope(&mut self) -> Result<(), Box<WhammError>> {

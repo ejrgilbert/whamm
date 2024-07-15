@@ -1,9 +1,9 @@
-mod rules;
+pub mod rules;
 
 use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::Emitter;
 use crate::generator::types::ExprFolder;
-use crate::parser::types::{BinOp, DataType, Expr, Fn, Statement, UnOp, Value};
+use crate::parser::types::{BinOp, DataType, Expr, Fn, ProbeSpec, Statement, UnOp, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use log::{debug, info};
 use regex::Regex;
@@ -606,7 +606,7 @@ impl InstrIter {
             curr_loc: 0,
         }
     }
-    fn init(&mut self, app_wasm: &walrus::Module, instrs_of_interest: &[String]) {
+    fn init(&mut self, app_wasm: &walrus::Module) {
         // Figure out which functions to visit
         for func in app_wasm.funcs.iter() {
             let func_id = func.id();
@@ -621,7 +621,7 @@ impl InstrIter {
             if let FunctionKind::Local(local_func) = &func.kind {
                 // TODO -- make sure that the id is not any of the injected function IDs (strcmp)
                 self.init_instr_locs(
-                    instrs_of_interest,
+                    // instrs_of_interest,
                     app_wasm,
                     local_func,
                     &func_id,
@@ -634,7 +634,7 @@ impl InstrIter {
     }
     fn init_instr_locs(
         &mut self,
-        instrs_of_interest: &[String],
+        // instrs_of_interest: &[String],
         app_wasm: &walrus::Module,
         func: &LocalFunction,
         func_id: &FunctionId,
@@ -648,7 +648,9 @@ impl InstrIter {
                 let instr_as_str = &format!("{:?}", instr);
                 let instr_name = instr_as_str.split('(').next().unwrap().to_lowercase();
 
-                if instrs_of_interest.contains(&instr_name) {
+                // as a hack, just save ALL INSTRS, to be visited later to possibly
+                //     instrument them
+                // if instrs_of_interest.contains(&instr_name) {
                     let (func_info, params) = if let Instr::Call(func) = instr {
                         let func = app_wasm.funcs.get(func.func);
                         // get information about the function call
@@ -672,13 +674,13 @@ impl InstrIter {
                         // instr_symbols: HashMap::new()
                         func_info,
                     });
-                }
+                // }
 
                 // visit nested blocks
                 match instr {
                     Instr::Block(block) => {
                         self.init_instr_locs(
-                            instrs_of_interest,
+                            // instrs_of_interest,
                             app_wasm,
                             func,
                             func_id,
@@ -688,7 +690,7 @@ impl InstrIter {
                     }
                     Instr::Loop(_loop) => {
                         self.init_instr_locs(
-                            instrs_of_interest,
+                            // instrs_of_interest,
                             app_wasm,
                             func,
                             func_id,
@@ -699,7 +701,7 @@ impl InstrIter {
                     Instr::IfElse(if_else, ..) => {
                         println!("IfElse: {:#?}", if_else);
                         self.init_instr_locs(
-                            instrs_of_interest,
+                            // instrs_of_interest,
                             app_wasm,
                             func,
                             func_id,
@@ -707,7 +709,7 @@ impl InstrIter {
                             if_else.consequent,
                         );
                         self.init_instr_locs(
-                            instrs_of_interest,
+                            // instrs_of_interest,
                             app_wasm,
                             func,
                             func_id,
@@ -1338,6 +1340,9 @@ impl Emitter for WasmRewritingEmitter {
     fn enter_named_scope(&mut self, scope_name: &str) -> bool {
         self.table.enter_named_scope(scope_name)
     }
+    fn enter_scope_via_spec(&mut self, script_id: &String, probe_spec: &ProbeSpec) -> bool {
+        self.table.enter_scope_via_spec(script_id, probe_spec)
+    }
     fn exit_scope(&mut self) -> Result<(), Box<WhammError>> {
         self.table.exit_scope()
     }
@@ -1345,8 +1350,8 @@ impl Emitter for WasmRewritingEmitter {
         self.table.reset_children();
     }
 
-    fn init_instr_iter(&mut self, instrs_of_interest: &[String]) -> Result<(), Box<WhammError>> {
-        self.instr_iter.init(&self.app_wasm, instrs_of_interest);
+    fn init_instr_iter(&mut self) -> Result<(), Box<WhammError>> {
+        self.instr_iter.init(&self.app_wasm);
         Ok(())
     }
 
@@ -1396,6 +1401,11 @@ impl Emitter for WasmRewritingEmitter {
             }
         }
         false
+    }
+
+    fn curr_instr(&self) -> (&Instr, &str) {
+        let curr_instr = self.instr_iter.curr().unwrap();
+        return (&curr_instr.instr, curr_instr.instr_name.as_str())
     }
 
     /// bool -> whether the current instruction is one of the passed list of types
@@ -1569,6 +1579,27 @@ impl Emitter for WasmRewritingEmitter {
                 None,
             )));
         };
+    }
+    fn define(&mut self, var_name: &String, var_val: &Option<Value>) -> Result<bool, Box<WhammError>> {
+        let rec_id = match self.table.lookup(&var_name) {
+            Some(rec_id) => *rec_id,
+            _ => {
+                return Err(Box::new(ErrorGen::get_unexpected_error(
+                    true,
+                    Some(format!(
+                        "{UNEXPECTED_ERR_MSG} \
+                        `{var_name}` symbol does not exist in this scope!"
+                    )),
+                    None,
+                )));
+            }
+        };
+        self.override_var_val(
+            &rec_id,
+            var_val.clone(),
+        );
+        
+        Ok(true)
     }
 
     fn fold_expr(&mut self, expr: &mut Expr) -> bool {

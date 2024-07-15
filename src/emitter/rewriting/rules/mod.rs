@@ -1,11 +1,11 @@
-use crate::parser::rules::{NameOptions, Probe, WhammProviderKind};
-use crate::verifier::types::Record;
+use crate::parser::rules::WhammProviderKind;
 use std::collections::HashMap;
 use walrus::ir::Instr;
 use walrus::ValType;
 use crate::behavior::builder_visitor::{SimpleAstProbes, SimpleProbe};
 use crate::emitter::rewriting::rules::core::CorePackage;
 use crate::emitter::rewriting::rules::wasm::WasmPackage;
+use crate::parser::types::{ProbeSpec, Value};
 
 mod core;
 pub mod wasm;
@@ -38,7 +38,7 @@ pub mod wasm;
 /// enable us to work around the annoying Rust type system constraints. This will also keep the emitter logic
 /// separate from the parser/verifier/behavior tree logic and keep this emitter logic specific to the bytecode
 /// rewriting injection strategy.
-pub fn provider_factory<P: Provider + NameOptions + FromStr>(ast: &SimpleAstProbes) -> Vec<Box<P>> {
+pub fn provider_factory<P: Provider + FromStr>(ast: &SimpleAstProbes) -> Vec<Box<P>> {
     // Track the added provider hierarchies.
     // When visiting the next provider hierarchy it will be added (if not already there)
     // OR the new hierarchy will be appended within its respectful location in the already-existing one.
@@ -87,30 +87,34 @@ fn probe_factory(ast_probes: &HashMap<String, Vec<SimpleProbe>>) -> HashMap<Stri
     }).collect()
 }
 
-pub struct LocInfo<'a> {
-    /// static information to be saved in symbol table
-    static_data: HashMap<String, Record>,
-    /// dynamic information corresponding to the operands of this location
-    dynamic_data: Vec<ValType>,
-    /// the probes that were matched for this instruction
-    probes: Vec<&'a dyn Probe>,
-}
-
-pub trait ProcessLoc {
-    /// Pass some location to the provider and get back two types of data:
-    fn get_loc_info(&self, app_wasm: &walrus::Module, instr: &Instr, instr_name: &str) -> LocInfo;
-}
 pub trait FromStr {
     fn from_str(name: &String) -> Self;
 }
 
+pub struct LocInfo<'a> {
+    /// static information to be saved in symbol table
+    pub static_data: HashMap<String, Option<Value>>,
+    /// dynamic information corresponding to the operands of this location
+    dynamic_data: Vec<ValType>,
+    pub num_alt_probes: usize,
+    /// the probes that were matched for this instruction
+    /// note the Script ID is contained in SimpleProbe
+    pub probes: Vec<(ProbeSpec, &'a SimpleProbe)>
+}
+
 pub trait Provider {
+    /// Pass some location to the provider and get back two types of data:
+    fn get_loc_info(&self, instr: &Instr, instr_name: &str) -> Option<LocInfo>;
     fn add_packages(&mut self, ast_packages: &HashMap<String, HashMap<String, HashMap<String, Vec<SimpleProbe>>>>);
 }
 pub trait Package {
+    /// Pass some location to the provider and get back two types of data:
+    fn get_loc_info(&self, instr: &Instr, instr_name: &str) -> Option<LocInfo>;
     fn add_events(&mut self, ast_events: &HashMap<String, HashMap<String, Vec<SimpleProbe>>>);
 }
 pub trait Event {
+    /// Pass some location to the provider and get back two types of data:
+    fn get_loc_info(&self, instr: &Instr, instr_name: &str) -> Option<LocInfo>;
     fn add_probes(&mut self, ast_probes: &HashMap<String, Vec<SimpleProbe>>);
 }
 
@@ -143,6 +147,25 @@ impl WhammProvider {
     }
 }
 impl Provider for WhammProvider {
+    fn get_loc_info(
+        &self,
+        instr: &Instr,
+        instr_name: &str,
+    ) -> Option<LocInfo> {
+        match self.kind {
+            WhammProviderKind::Core => {
+                // TODO
+            }
+            WhammProviderKind::Wasm => {
+                // TODO
+            }
+        }
+        
+        self.packages.iter().for_each(|package| {
+            let loc_info = package.get_loc_info(instr, instr_name);
+        });
+        todo!()
+    }
     fn add_packages(&mut self, ast_packages: &HashMap<String, HashMap<String, HashMap<String, Vec<SimpleProbe>>>>) {
         let packages = match self.kind {
             WhammProviderKind::Core => {
@@ -153,22 +176,5 @@ impl Provider for WhammProvider {
             }
         };
         self.packages = packages;
-    }
-}
-impl ProcessLoc for WhammProvider {
-    fn get_loc_info(
-        &self,
-        _app_wasm: &walrus::Module,
-        _instr: &Instr,
-        _instr_name: &str,
-    ) -> LocInfo {
-        match self.kind {
-            WhammProviderKind::Core => {
-                todo!()
-            }
-            WhammProviderKind::Wasm => {
-                todo!()
-            }
-        }
     }
 }

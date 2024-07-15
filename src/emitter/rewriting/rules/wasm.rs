@@ -1,4 +1,4 @@
-use crate::emitter::rewriting::rules::{Event, event_factory, FromStr, LocInfo, Package, probe_factory, ProcessLoc};
+use crate::emitter::rewriting::rules::{Event, event_factory, FromStr, LocInfo, Package, probe_factory};
 use crate::parser::rules::wasm::{OpcodeEventKind, WasmPackageKind};
 use std::collections::HashMap;
 use walrus::ir::Instr;
@@ -25,6 +25,17 @@ impl WasmPackage {
     }
 }
 impl Package for WasmPackage {
+    fn get_loc_info(
+        &self,
+        _instr: &Instr,
+        _instr_name: &str,
+    ) -> Option<LocInfo> {
+        match self.kind {
+            WasmPackageKind::Opcode => {
+                todo!()
+            }
+        }
+    }
     fn add_events(&mut self, ast_events: &HashMap<String, HashMap<String, Vec<SimpleProbe>>>) {
         let events = match self.kind {
             WasmPackageKind::Opcode => {
@@ -32,20 +43,6 @@ impl Package for WasmPackage {
             }
         };
         self.events = events;
-    }
-}
-impl ProcessLoc for WasmPackage {
-    fn get_loc_info(
-        &self,
-        _app_wasm: &walrus::Module,
-        _instr: &Instr,
-        _instr_name: &str,
-    ) -> LocInfo {
-        match self.kind {
-            WasmPackageKind::Opcode => {
-                todo!()
-            }
-        }
     }
 }
 
@@ -267,17 +264,11 @@ impl OpcodeEvent {
     }
 }
 impl Event for OpcodeEvent {
-    fn add_probes(&mut self, probes: &HashMap<String, Vec<SimpleProbe>>) {
-        self.probes = probe_factory(probes);
-    }
-}
-impl ProcessLoc for OpcodeEvent {
     fn get_loc_info(
         &self,
-        _app_wasm: &walrus::Module,
         _instr: &Instr,
         _instr_name: &str,
-    ) -> LocInfo {
+    ) -> Option<LocInfo> {
         match self.kind {
             OpcodeEventKind::Block => {
                 // check if the instr is of this event type
@@ -582,5 +573,8 @@ impl ProcessLoc for OpcodeEvent {
                 todo!()
             }
         }
+    }
+    fn add_probes(&mut self, probes: &HashMap<String, Vec<SimpleProbe>>) {
+        self.probes = probe_factory(probes);
     }
 }

@@ -93,6 +93,26 @@ impl ErrorGen {
     // ======================
     // == Error Generators ==
     // ======================
+    
+    pub fn get_instrumentation_error(
+        fatal: bool,
+        message: String
+    ) -> WhammError {
+        WhammError {
+            fatal,
+            ty: ErrorType::InstrumentationError {
+                message
+            },
+            err_loc: None,
+            info_loc: None
+        }
+    }
+    
+    pub fn multiple_alt_matches(&mut self, instr_name: &str) {
+        let msg = format!("Multiple `alt` probes matched same bytecode location for instr_name: {}", instr_name);
+        let err = Self::get_instrumentation_error(true, msg);
+        self.add_error(err);
+    }
 
     pub fn get_parse_error(
         fatal: bool,
@@ -796,6 +816,9 @@ impl WarnType {
     }
 }
 pub enum ErrorType {
+    InstrumentationError {
+        message: String
+    },
     DuplicateIdentifierError {
         duplicated_id: String,
     },
@@ -818,6 +841,7 @@ pub enum ErrorType {
 impl ErrorType {
     pub fn name(&self) -> &str {
         match self {
+            ErrorType::InstrumentationError { .. } => "InstrumentationError",
             ErrorType::DuplicateIdentifierError { .. } => "DuplicateIdentifierError",
             ErrorType::ParsingError { .. } => "ParsingError",
             ErrorType::TypeCheckError { .. } => "TypeCheckError",
@@ -826,6 +850,7 @@ impl ErrorType {
     }
     pub fn message(&self) -> Cow<'_, str> {
         match self {
+            ErrorType::InstrumentationError { ref message } => Cow::Borrowed(message),
             ErrorType::ParsingError {
                 ref positives,
                 ref negatives,

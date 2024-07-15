@@ -1,14 +1,14 @@
 use crate::behavior::builder_visitor::SimpleAST;
 use crate::behavior::tree::{
-    ActionType, ActionWithChildType, ArgActionType, BehaviorVisitor, DecoratorType, ParamActionType,
+    ActionType, ArgActionType, BehaviorVisitor, DecoratorType, ParamActionType,
 };
 use crate::behavior::tree::{BehaviorTree, Node};
 use crate::common::error::ErrorGen;
 use crate::emitter::Emitter;
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{Expr, Statement};
-use convert_case::{Case, Casing};
 use log::warn;
+use crate::emitter::rewriting::rules::{Provider, provider_factory, WhammProvider};
 
 const UNEXPECTED_ERR_MSG: &str =
     "InstrGenerator: Looks like you've found a bug...please report this behavior!";
@@ -38,12 +38,88 @@ impl InstrGenerator<'_, '_> {
     pub fn run(&mut self, behavior: &BehaviorTree) -> bool {
         // Reset the symbol table in the emitter just in case
         self.emitter.reset_children();
-        if let Some(root) = behavior.get_root() {
-            // Traverse `behavior` tree and emit the probes held in `ast`
-            return self.visit_root(root);
+        
+        // Here we do the following logic:
+        // 1. initialize the emitter rules
+        // 2. for each instruction (iterate over app_wasm)
+        //    1. rules.process_instr() -> Vec<MatchedRules>
+        //    2. for each matched probe
+        //       1. enter the scope using (script_id, probe_spec) 
+        //       2. initialize the symbol table with the metadata at this program point
+        //       3. create a new clone of the probe, fold the predicate
+        //       4. traverse the behavior tree to emit code! (if predicate is not false)
+        
+        // Initialize the emitter rules
+        let rules = provider_factory::<WhammProvider>(&self.ast.probes);
+
+        // Initialize the instr visitor
+        if let Err(e) = self.emitter.init_instr_iter() {
+            self.err.add_error(*e)
         }
-        warn!("The behavior tree was empty! Nothing to emit!");
-        false
+        
+        // Iterate over each instruction in the application Wasm bytecode
+        let mut is_success = true;
+        let mut first_instr = true;
+        while first_instr || self.emitter.has_next_instr() {
+            if first_instr {
+                is_success = self.emitter.init_first_instr();
+            }
+            if !first_instr {
+                is_success = self.emitter.next_instr();
+            }
+            first_instr = false;
+            let (curr_instr, curr_instr_name) = self.emitter.curr_instr();
+            
+            // Do any of the configured rules match this instruction in the application?
+            rules.iter().for_each(|rule| {
+                if let Some(loc_info) = rule.get_loc_info(curr_instr, curr_instr_name) {
+                    if loc_info.num_alt_probes > 1 {
+                        self.err.multiple_alt_matches(curr_instr_name);
+                    }
+                    // This location has matched some rules, inject each matched probe!
+                    loc_info.probes.iter().for_each(|(probe_spec, probe)| {
+                        // Enter the scope for this matched probe
+                        is_success = self.emitter.enter_scope_via_spec(&probe.script_id, probe_spec);
+                        
+                        // Initialize the symbol table with the metadata at this program point
+                        loc_info.static_data.iter().for_each(|(static_var_name, static_var_val)| {
+                            if let Err(e) = self.emitter.define(static_var_name, static_var_val) {
+                                self.err.add_error(*e);
+                            }
+                        });
+                        
+                        // Create a new clone of the probe, fold the predicate.
+                        // NOTE: We make a clone so that the probe is reset for each instruction!
+                        let (body_clone, mut pred_clone) = (probe.body.clone(), probe.predicate.clone());
+                        if let Some(pred) = &mut pred_clone {
+                            // Fold predicate
+                            is_success = self.emitter.fold_expr(pred);
+                            
+                            // If the predicate evaluates to false, short-circuit!
+                            if let Some(pred_as_bool) = ExprFolder::get_single_bool(pred) {
+                                if !pred_as_bool {
+                                    // predicate is reduced to false, short-circuit!
+                                    return;
+                                }
+                            }
+                        }
+                        
+                        self.curr_probe = Some((body_clone, pred_clone));
+                        
+                        // Traverse the behavior tree to emit code (if the predicate is not false)
+                        if let Some(root) = behavior.get_root() {
+                            // Traverse `behavior` tree and emit the probes held in `ast`
+                            is_success = self.visit_root(root);
+                        } else {
+                            warn!("The behavior tree was empty! Nothing to emit!");
+                            is_success &= false;
+                        }
+                    });
+                }
+            });
+        }
+        
+        is_success
     }
 
     fn set_context_info(&mut self, context: &str) {
@@ -308,222 +384,218 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         is_success
     }
 
-    fn visit_enter_package(&mut self, node: &Node) -> bool {
-        let mut is_success = true;
-        if let Node::ActionWithChild { ty, child, .. } = node {
-            if let ActionWithChildType::EnterPackage {
-                context,
-                package_name,
-                events,
-            } = ty
-            {
-                if package_name == "opcode" {
-                    // Perform 'opcode' package logic
+    // fn visit_enter_package(&mut self, node: &Node) -> bool {
+    //     let mut is_success = true;
+    //     if let Node::ActionWithChild { ty, child, .. } = node {
+    //         if let ActionWithChildType::EnterPackage {
+    //             context,
+    //             package_name,
+    //             events,
+    //         } = ty
+    //         {
+    //             if package_name == "opcode" {
+    //                 // Perform 'opcode' package logic
+    // 
+    //                 // Initialize the instr visitor
+    //                 let instrs_of_interest: Vec<String> = events.keys().cloned().collect();
+    //                 if let Err(e) = self.emitter.init_instr_iter() {
+    //                     self.err.add_error(*e)
+    //                 }
+    // 
+    //                 // enter 'opcode' scope
+    //                 if !self.emitter.enter_named_scope(package_name) {
+    //                     self.err.unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} Could not find the specified scope by name: `{}`", package_name)), None);
+    //                 }
+    //                 self.set_context_info(context);
+    // 
+    //                 let mut first_instr = true;
+    //                 while first_instr || self.emitter.has_next_instr() {
+    //                     if first_instr {
+    //                         self.emitter.init_first_instr();
+    //                     }
+    //                     if !&first_instr {
+    //                         self.emitter.next_instr();
+    //                     }
+    // 
+    //                     let instr_ty = match self.emitter.curr_instr_type().as_str() {
+    //                         // Handle some special-cases
+    //                         "V128Bitselect" => "v128_bitselect".to_string(),
+    //                         "I8x16Swizzle" => "i8x16_swizzle".to_string(),
+    //                         "I8x16Shuffle" => "i8x16_shuffle".to_string(),
+    //                         other => other.to_case(Case::Snake),
+    //                     };
+    // 
+    //                     // is this an instruction of-interest?
+    //                     if let Some(globals) = events.get(&instr_ty) {
+    //                         // enter this event's scope
+    //                         if !self.emitter.enter_named_scope(&instr_ty) {
+    //                             self.err.unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} Could not find the specified scope by name: `{}`", instr_ty)), None);
+    //                         }
+    //                         self.curr_event_name = instr_ty.clone();
+    // 
+    //                         // define this instruction type's compiler variables
+    //                         for global in globals {
+    //                             match self.emitter.define_compiler_var(&self.context_name, global) {
+    //                                 Err(e) => self.err.add_error(*e),
+    //                                 Ok(res) => is_success &= res,
+    //                             }
+    //                         }
+    // 
+    //                         // continue with logic
+    //                         if let Some(node) = self.tree.get_node(*child) {
+    //                             is_success &= self.visit_node(node);
+    //                         }
+    // 
+    //                         // exit this event's scope
+    //                         if let Err(e) = self.emitter.exit_scope() {
+    //                             self.err.add_error(*e)
+    //                         }
+    //                     }
+    //                     first_instr = false;
+    //                 }
+    // 
+    //                 if let Err(e) = self.emitter.exit_scope() {
+    //                     self.err.add_error(*e)
+    //                 }
+    //             }
+    //         }
+    //     } else {
+    //         unreachable!()
+    //     }
+    //     is_success
+    // }
 
-                    // Initialize the instr visitor
-                    let instrs_of_interest: Vec<String> = events.keys().cloned().collect();
-                    if let Err(e) = self.emitter.init_instr_iter(&instrs_of_interest) {
-                        self.err.add_error(*e)
-                    }
 
-                    // enter 'opcode' scope
-                    if !self.emitter.enter_named_scope(package_name) {
-                        self.err.unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} Could not find the specified scope by name: `{}`", package_name)), None);
-                    }
-                    self.set_context_info(context);
-
-                    let mut first_instr = self.emitter.init_first_instr();
-
-                    // nothing to instrument
-                    if !first_instr {
-                        eprintln!("No instructions to instrument in the bytecode package!");
-                        return true;
-                    }
-
-                    while first_instr || self.emitter.has_next_instr() {
-                        if !first_instr {
-                            // move to the next instruction
-                            self.emitter.next_instr();
-                        }
-
-                        let instr_ty = match self.emitter.curr_instr_type().as_str() {
-                            // Handle some special-cases
-                            "V128Bitselect" => "v128_bitselect".to_string(),
-                            "I8x16Swizzle" => "i8x16_swizzle".to_string(),
-                            "I8x16Shuffle" => "i8x16_shuffle".to_string(),
-                            other => other.to_case(Case::Snake),
-                        };
-
-                        // is this an instruction of-interest?
-                        if let Some(globals) = events.get(&instr_ty) {
-                            // enter this event's scope
-                            if !self.emitter.enter_named_scope(&instr_ty) {
-                                self.err.unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} Could not find the specified scope by name: `{}`", instr_ty)), None);
-                            }
-                            self.curr_event_name = instr_ty.clone();
-
-                            // define this instruction type's compiler variables
-                            for global in globals {
-                                match self.emitter.define_compiler_var(&self.context_name, global) {
-                                    Err(e) => self.err.add_error(*e),
-                                    Ok(res) => is_success &= res,
-                                }
-                            }
-
-                            // continue with logic
-                            if let Some(node) = self.tree.get_node(*child) {
-                                is_success &= self.visit_node(node);
-                            }
-
-                            // exit this event's scope
-                            if let Err(e) = self.emitter.exit_scope() {
-                                self.err.add_error(*e)
-                            }
-                        }
-                        first_instr = false;
-                    }
-
-                    if let Err(e) = self.emitter.exit_scope() {
-                        self.err.add_error(*e)
-                    }
-                }
-            }
-        } else {
-            unreachable!()
-        }
-        is_success
-    }
-
-    fn visit_enter_probe(&mut self, node: &Node) -> bool {
-        let mut is_success = true;
-        if let Node::ActionWithChild {
-            ty:
-                ActionWithChildType::EnterProbe {
-                    probe_mode,
-                    global_names,
-                    ..
-                },
-            child,
-            ..
-        } = node
-        {
-            // enter probe's scope
-            if !self.emitter.enter_named_scope(probe_mode) {
-                self.err.unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} Could not find the specified scope by name: `{}`",
-                        probe_mode
-                    )),
-                    None,
-                );
-            }
-            self.curr_probe_mode = probe_mode.clone();
-
-            // define this probe's compiler variables
-            for global in global_names {
-                match self.emitter.define_compiler_var(&self.context_name, global) {
-                    Err(e) => self.err.add_error(*e),
-                    Ok(res) => is_success &= res,
-                }
-            }
-            if probe_mode == "before" || probe_mode == "after" {
-                // Perform 'before' and 'after' probe logic
-                // Must pull the probe by index due to Rust calling constraints...
-                let probe_list_len = self
-                    .ast
-                    .get_probes_from_ast(
-                        &self.curr_provider_name,
-                        &self.curr_package_name,
-                        &self.curr_event_name,
-                        probe_mode,
-                    )
-                    .len();
-                for i in Vec::from_iter(0..probe_list_len).iter() {
-                    if let Some(probe) = self.ast.get_probe_at_idx(
-                        &self.curr_provider_name,
-                        &self.curr_package_name,
-                        &self.curr_event_name,
-                        probe_mode,
-                        i,
-                    ) {
-                        // make a clone of the current probe per instruction traversal
-                        // this will reset the clone pred/body for each instruction!
-                        let (body_cloned, mut pred_cloned) =
-                            ((*probe).body.clone(), (*probe).predicate.clone());
-                        if let Some(pred) = &mut pred_cloned {
-                            // Fold predicate
-                            is_success &= self.emitter.fold_expr(pred);
-
-                            // If the predicate evaluates to false, short-circuit!
-                            if let Some(pred_as_bool) = ExprFolder::get_single_bool(pred) {
-                                // predicate has been reduced to a boolean value
-                                if !pred_as_bool {
-                                    // predicate is reduced to `false` short-circuit!
-                                    if let Err(e) = self.emitter.exit_scope() {
-                                        self.err.add_error(*e)
-                                    }
-                                    return true;
-                                }
-                            }
-                        }
-
-                        self.curr_probe = Some((body_cloned, pred_cloned));
-                    }
-
-                    // Process the instructions for this probe!
-                    if let Some(node) = self.tree.get_node(*child) {
-                        is_success &= self.visit_node(node);
-                    }
-                }
-            } else if probe_mode == "alt" {
-                // Perform 'alt' probe logic
-                let probe_list = self.ast.get_probes_from_ast(
-                    &self.curr_provider_name,
-                    &self.curr_package_name,
-                    &self.curr_event_name,
-                    probe_mode,
-                );
-                if probe_list.len() > 1 {
-                    warn!("There is more than one probe for probe type '{}'. So only emitting first probe, ignoring rest.", probe_mode)
-                }
-                // make a clone of the first probe per instruction traversal
-                // this will reset the clone pred/body for each instruction!
-                if let Some(probe) = probe_list.first() {
-                    let (body_cloned, mut pred_cloned) =
-                        ((*probe).body.clone(), (*probe).predicate.clone());
-                    if let Some(pred) = &mut pred_cloned {
-                        // Fold predicate
-                        is_success &= self.emitter.fold_expr(pred);
-
-                        // If the predicate evaluates to false, short-circuit!
-                        if let Some(pred_as_bool) = ExprFolder::get_single_bool(pred) {
-                            // predicate has been reduced to a boolean value
-                            if !pred_as_bool {
-                                // predicate is reduced to `false` short-circuit!
-                                if let Err(e) = self.emitter.exit_scope() {
-                                    self.err.add_error(*e)
-                                }
-                                return true;
-                            }
-                        }
-                    }
-                    self.curr_probe = Some((body_cloned, pred_cloned));
-                }
-
-                // Process the instructions for this single probe!
-                if let Some(node) = self.tree.get_node(*child) {
-                    is_success &= self.visit_node(node);
-                }
-            } else {
-                unreachable!()
-            }
-            if let Err(e) = self.emitter.exit_scope() {
-                self.err.add_error(*e)
-            }
-        }
-        is_success
-    }
+    // fn visit_enter_probe(&mut self, node: &Node) -> bool {
+    //     let mut is_success = true;
+    //     if let Node::ActionWithChild {
+    //         ty:
+    //             ActionWithChildType::EnterProbe {
+    //                 probe_mode,
+    //                 global_names,
+    //                 ..
+    //             },
+    //         child,
+    //         ..
+    //     } = node
+    //     {
+    //         // enter probe's scope
+    //         if !self.emitter.enter_named_scope(probe_mode) {
+    //             self.err.unexpected_error(
+    //                 true,
+    //                 Some(format!(
+    //                     "{UNEXPECTED_ERR_MSG} Could not find the specified scope by name: `{}`",
+    //                     probe_mode
+    //                 )),
+    //                 None,
+    //             );
+    //         }
+    //         self.curr_probe_mode = probe_mode.clone();
+    // 
+    //         // define this probe's compiler variables
+    //         for global in global_names {
+    //             match self.emitter.define_compiler_var(&self.context_name, global) {
+    //                 Err(e) => self.err.add_error(*e),
+    //                 Ok(res) => is_success &= res,
+    //             }
+    //         }
+    //         if probe_mode == "before" || probe_mode == "after" {
+    //             // Perform 'before' and 'after' probe logic
+    //             // Must pull the probe by index due to Rust calling constraints...
+    //             let probe_list_len = self
+    //                 .ast
+    //                 .get_probes_from_ast(
+    //                     &self.curr_provider_name,
+    //                     &self.curr_package_name,
+    //                     &self.curr_event_name,
+    //                     probe_mode,
+    //                 )
+    //                 .len();
+    //             for i in Vec::from_iter(0..probe_list_len).iter() {
+    //                 if let Some(probe) = self.ast.get_probe_at_idx(
+    //                     &self.curr_provider_name,
+    //                     &self.curr_package_name,
+    //                     &self.curr_event_name,
+    //                     probe_mode,
+    //                     i,
+    //                 ) {
+    //                     // make a clone of the current probe per instruction traversal
+    //                     // this will reset the clone pred/body for each instruction!
+    //                     let (body_cloned, mut pred_cloned) =
+    //                         ((*probe).body.clone(), (*probe).predicate.clone());
+    //                     if let Some(pred) = &mut pred_cloned {
+    //                         // Fold predicate
+    //                         is_success &= self.emitter.fold_expr(pred);
+    // 
+    //                         // If the predicate evaluates to false, short-circuit!
+    //                         if let Some(pred_as_bool) = ExprFolder::get_single_bool(pred) {
+    //                             // predicate has been reduced to a boolean value
+    //                             if !pred_as_bool {
+    //                                 // predicate is reduced to `false` short-circuit!
+    //                                 if let Err(e) = self.emitter.exit_scope() {
+    //                                     self.err.add_error(*e)
+    //                                 }
+    //                                 return true;
+    //                             }
+    //                         }
+    //                     }
+    // 
+    //                     self.curr_probe = Some((body_cloned, pred_cloned));
+    //                 }
+    // 
+    //                 // Process the instructions for this probe!
+    //                 if let Some(node) = self.tree.get_node(*child) {
+    //                     is_success &= self.visit_node(node);
+    //                 }
+    //             }
+    //         } else if probe_mode == "alt" {
+    //             // Perform 'alt' probe logic
+    //             let probe_list = self.ast.get_probes_from_ast(
+    //                 &self.curr_provider_name,
+    //                 &self.curr_package_name,
+    //                 &self.curr_event_name,
+    //                 probe_mode,
+    //             );
+    //             if probe_list.len() > 1 {
+    //                 warn!("There is more than one probe for probe type '{}'. So only emitting first probe, ignoring rest.", probe_mode)
+    //             }
+    //             // make a clone of the first probe per instruction traversal
+    //             // this will reset the clone pred/body for each instruction!
+    //             if let Some(probe) = probe_list.first() {
+    //                 let (body_cloned, mut pred_cloned) =
+    //                     ((*probe).body.clone(), (*probe).predicate.clone());
+    //                 if let Some(pred) = &mut pred_cloned {
+    //                     // Fold predicate
+    //                     is_success &= self.emitter.fold_expr(pred);
+    // 
+    //                     // If the predicate evaluates to false, short-circuit!
+    //                     if let Some(pred_as_bool) = ExprFolder::get_single_bool(pred) {
+    //                         // predicate has been reduced to a boolean value
+    //                         if !pred_as_bool {
+    //                             // predicate is reduced to `false` short-circuit!
+    //                             if let Err(e) = self.emitter.exit_scope() {
+    //                                 self.err.add_error(*e)
+    //                             }
+    //                             return true;
+    //                         }
+    //                     }
+    //                 }
+    //                 self.curr_probe = Some((body_cloned, pred_cloned));
+    //             }
+    // 
+    //             // Process the instructions for this single probe!
+    //             if let Some(node) = self.tree.get_node(*child) {
+    //                 is_success &= self.visit_node(node);
+    //             }
+    //         } else {
+    //             unreachable!()
+    //         }
+    //         if let Err(e) = self.emitter.exit_scope() {
+    //             self.err.add_error(*e)
+    //         }
+    //     }
+    //     is_success
+    // }
 
     fn visit_emit_if_else(&mut self, node: &Node) -> bool {
         if let Node::ActionWithParams {
@@ -556,69 +628,6 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         } else {
             unreachable!()
         }
-    }
-
-    fn visit_enter_scope(&mut self, node: &Node) -> bool {
-        if let Node::Action {
-            ty:
-                ActionType::EnterScope {
-                    context,
-                    scope_name,
-                },
-            ..
-        } = node
-        {
-            if !self.emitter.enter_named_scope(scope_name) {
-                self.err.unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} Could not find the specified scope by name: `{}`",
-                        scope_name
-                    )),
-                    None,
-                );
-            }
-            self.set_context_info(context);
-        } else {
-            unreachable!()
-        }
-        true
-    }
-
-    fn visit_exit_scope(&mut self, node: &Node) -> bool {
-        let is_success = true;
-        if let Node::Action {
-            ty: ActionType::ExitScope,
-            ..
-        } = node
-        {
-            if let Err(e) = self.emitter.exit_scope() {
-                self.err.add_error(*e)
-            }
-        } else {
-            unreachable!()
-        }
-        is_success
-    }
-
-    fn visit_define(&mut self, node: &Node) -> bool {
-        let mut is_success = true;
-        if let Node::Action {
-            ty: ActionType::Define { var_name, .. },
-            ..
-        } = node
-        {
-            match self
-                .emitter
-                .define_compiler_var(&self.context_name, var_name)
-            {
-                Err(e) => self.err.add_error(*e),
-                Ok(res) => is_success &= res,
-            }
-        } else {
-            unreachable!()
-        }
-        is_success
     }
 
     fn visit_emit_global_stmts(&mut self, node: &Node) -> bool {
@@ -657,20 +666,6 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
                     }
                 }
             }
-        } else {
-            unreachable!()
-        }
-        is_success
-    }
-
-    fn visit_reset(&mut self, node: &Node) -> bool {
-        let is_success = true;
-        if let Node::Action {
-            ty: ActionType::Reset,
-            ..
-        } = node
-        {
-            self.emitter.reset_children();
         } else {
             unreachable!()
         }

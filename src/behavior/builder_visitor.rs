@@ -1,4 +1,4 @@
-use crate::behavior::tree::{ActionWithChildType, BehaviorTree, DecoratorType};
+use crate::behavior::tree::{BehaviorTree, DecoratorType};
 
 use crate::parser::rules::{Event, Package, Probe, Provider};
 use crate::parser::types as parser_types;
@@ -10,9 +10,8 @@ use std::collections::HashMap;
 use crate::behavior::tree::DecoratorType::{HasAltCall, PredIs};
 use crate::behavior::tree::ParamActionType;
 use crate::common::error::ErrorGen;
-use crate::parser::types::{Block, ProvidedGlobal};
+use crate::parser::types::Block;
 use log::trace;
-use regex::Regex;
 
 /// This is a structure that saves a simplified variation of the activated
 /// probe rules.
@@ -69,12 +68,14 @@ pub type SimpleAstProbes =
     HashMap<String, HashMap<String, HashMap<String, HashMap<String, Vec<SimpleProbe>>>>>;
 #[derive(Clone)]
 pub struct SimpleProbe {
+    pub script_id: String,
     pub predicate: Option<Expr>,
     pub body: Option<Vec<Statement>>
 }
 impl SimpleProbe {
-    fn new(probe: &dyn Probe) -> Self {
+    fn new(script_id: String, probe: &dyn Probe) -> Self {
         Self {
+            script_id,
             predicate: probe.predicate().to_owned(),
             body: probe.body().to_owned()
         }
@@ -138,7 +139,7 @@ pub fn build_behavior_tree(
         tree: BehaviorTree::new(),
         ast: simple_ast,
         err,
-        context_name: "".to_string(),
+        script_id: "".to_string(),
         curr_provider_name: "".to_string(),
         curr_package_name: "".to_string(),
         curr_event_name: "".to_string(),
@@ -153,7 +154,7 @@ pub struct BehaviorTreeBuilder<'a, 'b> {
     pub ast: &'a mut SimpleAST,
     pub err: &'b mut ErrorGen,
 
-    context_name: String,
+    script_id: String,
     curr_provider_name: String,
     curr_package_name: String,
     curr_event_name: String,
@@ -201,9 +202,9 @@ impl BehaviorTreeBuilder<'_, '_> {
             if let Some(package) = provider.get_mut(&self.curr_package_name) {
                 if let Some(event) = package.get_mut(&self.curr_event_name) {
                     if let Some(probes) = event.get_mut(&probe.mode_name()) {
-                        probes.push(SimpleProbe::new(probe));
+                        probes.push(SimpleProbe::new(self.script_id.clone(), probe));
                     } else {
-                        event.insert(probe.mode_name().clone(), vec![SimpleProbe::new(probe)]);
+                        event.insert(probe.mode_name().clone(), vec![SimpleProbe::new(self.script_id.clone(), probe)]);
                     }
                 }
             }
@@ -216,80 +217,7 @@ impl BehaviorTreeBuilder<'_, '_> {
     // = BehaviorTree =
     // ================
 
-    fn visit_provided_globals(&mut self, globals: &HashMap<String, ProvidedGlobal>) {
-        if !globals.is_empty() {
-            self.tree.sequence(self.err);
-
-            // visit globals
-            for (_name, ProvidedGlobal { global, .. }) in globals.iter() {
-                if !global.is_from_user() {
-                    if let Expr::VarId { name, .. } = &global.var_name {
-                        self.tree
-                            .define(self.context_name.clone(), name.clone(), self.err);
-                    }
-                }
-            }
-            self.tree.exit_sequence(self.err);
-        }
-    }
-
-    fn is_in_context(&self, pattern: &str) -> bool {
-        let regex = Regex::new(pattern).unwrap();
-        matches!(regex.captures(self.context_name.as_str()), Some(_caps))
-    }
-
-    fn visit_opcode_package(&mut self, package: &dyn Package) {
-        if package.has_events() {
-            // Build events->globals HashMap
-            let mut events = HashMap::new();
-            for event in package.events() {
-                let globals: Vec<String> = event.get_provided_globals().keys().cloned().collect();
-                events.insert(event.name(), globals);
-            }
-
-            self.tree.action_with_child(
-                ActionWithChildType::EnterPackage {
-                    context: self.context_name.clone(),
-                    package_name: package.name(),
-                    events,
-                },
-                self.err,
-            );
-            if let Some(event) = package.events().next() {
-                // just grab the first one and emit behavior (the decorator above is what
-                // makes this apply to all events)
-                self.visit_event(event);
-            }
-            self.tree.exit_action_with_child(self.err);
-        }
-    }
-
-    fn visit_opcode_event(&mut self, event: &dyn Event) {
-        // Only create a sequence if there are multiple probes we're emitting
-        if event.probes().len() > 1 {
-            self.tree.sequence(self.err);
-        }
-
-        self.visit_probe_mode(event, "before");
-        self.visit_probe_mode(event, "alt");
-        self.visit_probe_mode(event, "after");
-
-        if event.probes().len() > 1 {
-            self.tree.exit_sequence(self.err);
-        }
-    }
-
-    fn visit_probe_mode(&mut self, event: &dyn Event, ty: &str) {
-        if let Some(probes) = event.probes().get(ty) {
-            if let Some(probe) = probes.first() {
-                // just grab the first one and emit behavior (the behavior includes a loop
-                // over all probes of this type)
-                self.visit_probe(probe);
-            }
-        }
-    }
-
-    fn visit_opcode_probe(&mut self, probe: &dyn Probe) {
+    fn encode_behavior_tree(&mut self) {
         self.tree
             .sequence(self.err)
             .save_params(true, self.err)
@@ -326,7 +254,7 @@ impl BehaviorTreeBuilder<'_, '_> {
                 self.err,
             );
 
-        self.emit_opcode_probe_before_body(probe);
+        self.emit_probe_before_body();
         self.tree
             .exit_decorator(self.err)
             // alt behavior
@@ -336,7 +264,7 @@ impl BehaviorTreeBuilder<'_, '_> {
                 },
                 self.err,
             );
-        self.emit_opcode_probe_alt_body(probe);
+        self.emit_probe_alt_body();
         self.tree
             .exit_decorator(self.err)
             // after behavior
@@ -346,7 +274,7 @@ impl BehaviorTreeBuilder<'_, '_> {
                 },
                 self.err,
             );
-        self.emit_opcode_probe_after_body(probe);
+        self.emit_probe_after_body();
         self.tree
             .exit_decorator(self.err)
             // exit
@@ -355,7 +283,7 @@ impl BehaviorTreeBuilder<'_, '_> {
             .exit_sequence(self.err);
     }
 
-    fn emit_opcode_probe_before_body(&mut self, _probe: &dyn Probe) {
+    fn emit_probe_before_body(&mut self) {
         self.tree
             .parameterized_action(ParamActionType::EmitIf { cond: 0, conseq: 1 }, self.err)
             .emit_pred(self.err)
@@ -363,7 +291,7 @@ impl BehaviorTreeBuilder<'_, '_> {
             .exit_parameterized_action(self.err);
     }
 
-    fn emit_opcode_probe_alt_body(&mut self, _probe: &dyn Probe) {
+    fn emit_probe_alt_body(&mut self) {
         self.tree
             .sequence(self.err)
             .remove_orig(self.err)
@@ -402,7 +330,7 @@ impl BehaviorTreeBuilder<'_, '_> {
             .exit_sequence(self.err);
     }
 
-    fn emit_opcode_probe_after_body(&mut self, _probe: &dyn Probe) {
+    fn emit_probe_after_body(&mut self) {
         self.tree
             .parameterized_action(ParamActionType::EmitIf { cond: 0, conseq: 1 }, self.err)
             .emit_pred(self.err)
@@ -413,13 +341,6 @@ impl BehaviorTreeBuilder<'_, '_> {
 impl WhammVisitor<()> for BehaviorTreeBuilder<'_, '_> {
     fn visit_whamm(&mut self, whamm: &Whamm) {
         trace!("Entering: BehaviorTreeBuilder::visit_whamm");
-        self.context_name = "whamm".to_string();
-
-        self.tree.sequence(self.err);
-        // .enter_scope(self.context_name.clone());
-
-        // visit globals
-        self.visit_provided_globals(&whamm.globals);
 
         // visit scripts
         whamm
@@ -427,81 +348,50 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_, '_> {
             .iter()
             .for_each(|script| self.visit_script(script));
 
-        // self.tree.exit_scope();
-
         trace!("Exiting: BehaviorTreeBuilder::visit_whamm");
-        self.tree.exit_sequence(self.err);
         // Remove from `context_name`
-        self.context_name = "".to_string();
     }
 
     fn visit_script(&mut self, script: &Script) {
         trace!("Entering: BehaviorTreeBuilder::visit_script");
-        self.context_name += &format!(":{}", script.name.clone());
-
-        self.tree
-            .enter_scope(self.context_name.clone(), script.name.clone(), self.err);
+        self.script_id = script.name.clone();
 
         // NOTE: visit_globals() is no longer needed since initializing user-defined globals is done
         // in the init_generator (which doesn't traverse the behavior tree)
         // RATHER, we process and emit the statements that do anything with the global vars
         // (including declarations since that is an initialization action)
         self.ast.global_stmts = script.global_stmts.to_owned();
-        self.tree.emit_global_stmts(self.err);
 
         script
             .providers
             .iter()
             .for_each(|(_name, provider)| self.visit_provider(provider));
 
-        self.tree.exit_scope(self.err);
-
         trace!("Exiting: BehaviorTreeBuilder::visit_script");
-        // Remove from `context_name`
-        self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
+        self.script_id = "".to_string()
     }
 
     fn visit_provider(&mut self, provider: &Box<dyn Provider>) {
         trace!("Entering: BehaviorTreeBuilder::visit_provider");
-        self.context_name += &format!(":{}", provider.name());
         self.add_provider_to_ast(provider.name());
-
-        self.tree
-            .enter_scope(self.context_name.clone(), provider.name(), self.err);
-
-        // visit globals
-        self.visit_provided_globals(provider.get_provided_globals());
 
         provider
             .packages()
             .for_each(|package| self.visit_package(package));
 
-        self.tree.exit_scope(self.err);
 
         trace!("Exiting: BehaviorTreeBuilder::visit_provider");
-        // Remove this package from `context_name`
-        self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
     }
 
     fn visit_package(&mut self, package: &dyn Package) {
         trace!("Entering: BehaviorTreeBuilder::visit_package");
-        self.context_name += &format!(":{}", package.name());
 
-        if self.is_in_context(r"whamm:script([0-9]+):wasm:opcode") {
-            self.visit_opcode_package(package);
-        } else if let Some(loc) = &package.loc() {
-            self.err.unexpected_error(
-                true,
-                Some(format!("Package not supported! {}", package.name())),
-                Some(loc.line_col.clone()),
-            )
-        } else {
-            self.err.unexpected_error(
-                true,
-                Some(format!("Package not supported! {}", package.name())),
-                None,
-            )
-        };
+        if package.has_events() {
+            if let Some(event) = package.events().next() {
+                // just grab the first one and emit behavior
+                self.visit_event(event);
+            }
+        }
 
         // NOTE: Here we add a script's unit of instrumentation which retains
         // the script order as passed by the user during `whamm!` tool invocation.
@@ -522,64 +412,18 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_, '_> {
         });
 
         trace!("Exiting: BehaviorTreeBuilder::visit_package");
-        // Remove this package from `context_name`
-        self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
     }
 
-    fn visit_event(&mut self, event: &dyn Event) {
+    fn visit_event(&mut self, _event: &dyn Event) {
         trace!("Entering: BehaviorTreeBuilder::visit_event");
-        self.context_name += &format!(":{}", event.name());
-        self.add_event_to_ast(event.name());
 
-        if self.is_in_context(r"whamm:script([0-9]+):wasm:opcode:(.*)") {
-            self.visit_opcode_event(event);
-        } else if let Some(loc) = &event.loc() {
-            self.err.unexpected_error(
-                true,
-                Some(format!("Event not supported! {}", event.name())),
-                Some(loc.line_col.clone()),
-            )
-        } else {
-            self.err.unexpected_error(
-                true,
-                Some(format!("Event not supported! {}", event.name())),
-                None,
-            )
-        };
+        self.encode_behavior_tree();
 
         trace!("Exiting: BehaviorTreeBuilder::visit_event");
-        // Remove this event from `context_name`
-        self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
     }
 
-    fn visit_probe(&mut self, probe: &Box<dyn Probe>) {
-        trace!("Entering: BehaviorTreeBuilder::visit_probe");
-        self.context_name += &format!(":{}", probe.mode_name());
-        self.add_probe_to_ast(probe.as_ref());
-
-        self.tree.action_with_child(
-            ActionWithChildType::EnterProbe {
-                context: self.context_name.clone(),
-                probe_mode: probe.mode_name(),
-                global_names: probe.get_mode_provided_globals().keys().cloned().collect(),
-            },
-            self.err,
-        );
-
-        if self.is_in_context(r"whamm:script([0-9]+):wasm:opcode:(.*)") {
-            self.visit_opcode_probe(probe.as_ref());
-        } else {
-            self.err.unexpected_error(
-                true,
-                Some(format!("Probe not supported! {}", self.context_name)),
-                None,
-            );
-        };
-
-        trace!("Exiting: BehaviorTreeBuilder::visit_probe");
-        self.tree.exit_action_with_child(self.err);
-        // Remove this probe from `context_name`
-        self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
+    fn visit_probe(&mut self, _probe: &Box<dyn Probe>) {
+        unreachable!()
     }
 
     fn visit_fn(&mut self, _f: &Fn) {
