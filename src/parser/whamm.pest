@@ -76,12 +76,12 @@ block = { "{" ~ statement* ~ "}" }
 // var ops
 ret = { "return" ~ expr ? }
 
-save_declaration = { "save" ~ declaration }
+report_declaration = { "report" ~ declaration }
 assignment = { (get_map | ID) ~ "=" ~ (ternary | expr) }
 declaration = { TYPE ~ !RESERVED_KEYWORDS ~ ID }
 
 initialize = { TYPE ~ ID ~ "=" ~ (ternary | expr) }
-statement = { ( ( initialize | if_stmt | fn_call | save_declaration | declaration | assignment | incrementor | decrementor | ret ) ~ ";" )+ }
+statement = { ( ( initialize | if_stmt | fn_call | report_declaration | declaration | assignment | incrementor | decrementor | ret ) ~ ";" )+ }
 incrementor = { (get_map | ID) ~ "++"}
 decrementor = { (get_map | ID) ~ "--"}
 // =====================

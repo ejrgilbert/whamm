@@ -549,14 +549,14 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
             }];
             output
         }
-        Rule::save_declaration => {
-            trace!("Entering save_declaration");
+        Rule::report_declaration => {
+            trace!("Entering report_declaration");
             let line_col = LineColLocation::from(pair.as_span());
             let mut pair = pair.into_inner();
             let decl_stmt = pair.next().unwrap();
             let decl = stmt_from_rule(decl_stmt, err);
-            trace!("Exiting save_declaration");
-            let output = vec![Statement::SaveDecl {
+            trace!("Exiting report_declaration");
+            let output = vec![Statement::ReportDecl {
                 decl: Box::new(decl[0].clone()),
                 loc: Some(Location {
                     line_col: line_col.clone(),

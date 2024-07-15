@@ -710,14 +710,14 @@ pub fn testing_map() {
     };
 }
 #[test]
-pub fn test_save_decl() {
+pub fn test_report_decl() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
-        save i32 a;
+        report i32 a;
         wasm:bytecode:br:before {
             a = 1;
-            save bool b;
+            report bool b;
         }
     "#;
     match get_ast(script, &mut err) {

@@ -1260,7 +1260,7 @@ impl WasmRewritingEmitter {
                     }
                 }
             }
-            Statement::SaveDecl { .. } => {
+            Statement::ReportDecl { .. } => {
                 todo!();
             }
             _ => Err(Box::new(ErrorGen::get_unexpected_error(
@@ -2135,7 +2135,7 @@ impl Emitter for WasmRewritingEmitter {
             Statement::SetMap { .. } => {
                 unimplemented!()
             },
-            Statement::SaveDecl { .. } => {
+            Statement::ReportDecl { .. } => {
                 unimplemented!()
             }
         }

@@ -218,7 +218,7 @@ impl Block {
 // Statements
 #[derive(Clone, Debug)]
 pub enum Statement {
-    SaveDecl {
+    ReportDecl {
         decl: Box<Statement>,
         loc: Option<Location>,
     },
@@ -262,7 +262,7 @@ impl Statement {
             | Statement::Return { loc, .. }
             | Statement::Assign { loc, .. }
             | Statement::SetMap { loc, .. }
-            | Statement::SaveDecl { loc, .. }
+            | Statement::ReportDecl { loc, .. }
             | Statement::Expr { loc, .. } => loc,
         }
     }

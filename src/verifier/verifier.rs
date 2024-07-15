@@ -281,10 +281,10 @@ impl<'b> WhammVisitor<'b, Option<DataType>> for TypeChecker<'_> {
     fn visit_stmt(&mut self, stmt: &Statement) -> Option<DataType> {
         if self.in_fuction {
             match stmt {
-                Statement::SaveDecl { .. } => {
+                Statement::ReportDecl { .. } => {
                     self.err.type_check_error(
                         false,
-                        "Save declarations are not allowed in functions".to_owned(),
+                        "report declarations are not allowed in functions".to_owned(),
                         &stmt.loc().clone().map(|l| l.line_col),
                     );
                     return None;
@@ -295,7 +295,7 @@ impl<'b> WhammVisitor<'b, Option<DataType>> for TypeChecker<'_> {
         if self.in_script_global {
             match stmt {
                 //allow declarations and assignment
-                Statement::Decl { .. } | Statement::Assign { .. } | Statement::SaveDecl { .. } => {}
+                Statement::Decl { .. } | Statement::Assign { .. } | Statement::ReportDecl { .. } => {}
                 _ => {
                     self.err.type_check_error(
                         false,
@@ -339,7 +339,7 @@ impl<'b> WhammVisitor<'b, Option<DataType>> for TypeChecker<'_> {
                     None
                 }
             }
-            Statement::SaveDecl { decl, .. } => self.visit_stmt(decl),
+            Statement::ReportDecl { decl, .. } => self.visit_stmt(decl),
             Statement::Expr { expr, .. } => {
                 self.visit_expr(expr);
                 None
