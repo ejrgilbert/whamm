@@ -28,6 +28,7 @@ pub enum DataType {
 // END TO REMOVE
 
 static MAP_COUNT: Lazy<Mutex<i32>> = Lazy::new(|| Mutex::new(0));
+static MAP_METADATA: Lazy<Mutex<HashMap<i32, Metadata>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
 pub fn get_map_count() -> i32 {
     let count = MAP_COUNT.lock().unwrap();
@@ -42,6 +43,41 @@ pub fn increment_map_count() {
     *count += 1;
 }
 
+pub enum Metadata {
+    global {
+        name: String, 
+        script_id: i32,
+    },
+    local {
+        name: String,
+        script_id: i32,
+        bytecode_loc: i32,
+        probe_id: i32,
+    },
+}
+
+pub fn put_map_metadata(map_id: i32, map_data: Metadata) {
+    let mut maps = MAP_METADATA.lock().unwrap();
+    maps.insert(map_id, map_data);
+}
+//TODO: instrument this into the bytecode
+pub fn create_local_map_meta(map_id: i32, name: String, script_id: i32, bytecode_loc: i32, probe_id: i32){
+    //call the put code for the metadata
+    let metadata = Metadata::local {
+        name: name,
+        script_id: script_id,
+        bytecode_loc: bytecode_loc,
+        probe_id: probe_id,
+    };
+    put_map_metadata(map_id, metadata);
+}
+pub fn create_global_meta(map_id: i32, name: String, script_id: i32) {
+    let metadata = Metadata::global {
+        name: name,
+        script_id: script_id,
+    };
+    put_map_metadata(map_id, metadata);
+}
 
 pub fn create_local_map(name: String, script_id: i32, bytecode_loc: i32, probe_id: i32, map: DataType) -> i32 {
     //create the metadata for the map

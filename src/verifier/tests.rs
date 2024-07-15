@@ -79,6 +79,14 @@ const VALID_SCRIPTS: &[&str] = &[
             i32 a = my_fn();
         }
     "#,
+    r#"
+        save i32 a;
+        wasm:bytecode:br:before {
+            a = 1;
+            save bool b;
+        }
+    "#,
+
 ];
 
 const TYPE_ERROR_SCRIPTS: &[&str] = &[
@@ -346,6 +354,16 @@ wasm::call:alt /
             };
         }
     "#,
+    r#"
+        save i32 a;
+        my_fn() {
+            save i32 c;
+        }
+        wasm:bytecode:br:before {
+            a = 1;
+            save bool b;
+        }
+    "#,
 ];
 
 // =============
@@ -572,6 +590,33 @@ pub fn testing_map() {
             }
         }
     };
+}
+#[test]
+pub fn test_save_decl(){
+    setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let script = r#"
+        save i32 a;
+        wasm:bytecode:br:before {
+            a = 1;
+            save bool b;
+        }"#;
+    match tests::get_ast(script, &mut err) {
+        Some(mut ast) => {
+            let mut table = verifier::build_symbol_table(&mut ast, &mut err);
+            let res = verifier::type_check(&ast, &mut table, &mut err);
+            err.report();
+            assert!(err.has_errors);
+            assert!(!res);
+        }
+        None => {
+            error!("Could not get ast from script: {}", script);
+            if err.has_errors {
+                err.report();
+            }
+        }
+    };
+
 }
 //TODO: uncomment after BEGIN is working
 

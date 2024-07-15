@@ -546,6 +546,7 @@ wasm::call:alt /
         }
     };
 }
+
 #[test]
 pub fn test_ast_special_cases() {
     setup_logger();
@@ -695,6 +696,30 @@ pub fn testing_map() {
         }
     "#;
 
+    match get_ast(script, &mut err) {
+        Some(ast) => {
+            print_ast(&ast);
+        }
+        None => {
+            error!("Could not get ast from script: {}", script);
+            if err.has_errors {
+                err.report();
+            }
+            assert!(!err.has_errors);
+        }
+    };
+}
+#[test]
+pub fn test_save_decl(){
+    setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let script = r#"
+        save i32 a;
+        wasm:bytecode:br:before {
+            a = 1;
+            save bool b;
+        }
+    "#;
     match get_ast(script, &mut err) {
         Some(ast) => {
             print_ast(&ast);

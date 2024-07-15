@@ -424,7 +424,7 @@ impl WhammVisitor<'_, String> for AsStrVisitor {
                 )
             }
             Statement::SaveDecl { decl, .. } => {
-                format!("{} {} ", "save", self.visit_stmt(decl))
+                format!("{} {}", "save", self.visit_stmt(decl))
             }
         }
     }

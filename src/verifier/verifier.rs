@@ -79,6 +79,7 @@ struct TypeChecker<'a> {
     table: &'a mut SymbolTable,
     err: &'a mut ErrorGen,
     in_script_global: bool,
+    in_fuction: bool,
 }
 
 impl TypeChecker<'_> {
@@ -137,10 +138,11 @@ impl<'b> WhammVisitor<'b, Option<DataType>> for TypeChecker<'_> {
             self.visit_stmt(stmt);
         });
         self.in_script_global = false;
+        self.in_fuction = true;
         script.fns.iter().for_each(|function| {
             self.visit_fn(function);
         });
-
+        self.in_fuction = false;
         script.providers.iter().for_each(|(_, provider)| {
             self.visit_provider(provider);
         });
@@ -246,7 +248,7 @@ impl<'b> WhammVisitor<'b, Option<DataType>> for TypeChecker<'_> {
 
     fn visit_block(&mut self, block: &Block) -> Option<DataType> {
         let mut ret_type = None;
-        let num_statements = block.stmts.len();
+        let num_statements: usize = block.stmts.len();
         let start_of_range: usize;
         for i in 0..num_statements {
             let temp = self.visit_stmt(&block.stmts[i]);
@@ -277,6 +279,19 @@ impl<'b> WhammVisitor<'b, Option<DataType>> for TypeChecker<'_> {
     }
 
     fn visit_stmt(&mut self, stmt: &Statement) -> Option<DataType> {
+        if self.in_fuction {
+            match stmt {
+                Statement::SaveDecl{ .. } => {
+                    self.err.type_check_error(
+                        false,
+                        "Save declarations are not allowed in functions".to_owned(),
+                        &stmt.loc().clone().map(|l| l.line_col),
+                    );
+                    return None;
+                }
+                _ => {}
+            }
+        }
         if self.in_script_global {
             match stmt {
                 //allow declarations and assignment
@@ -899,6 +914,7 @@ pub fn type_check(ast: &Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> bool
         table: st,
         err,
         in_script_global: false,
+        in_fuction: false,
     };
     type_checker.visit_whamm(ast);
     // note that parser errors might propagate here

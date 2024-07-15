@@ -12,7 +12,6 @@ mod tests;
 mod middleman;
 #[no_mangle]
 static MY_MAPS: Lazy<Mutex<HashMap<i32, AnyMap>>> = Lazy::new(|| Mutex::new(HashMap::new()));
-static MAP_METADATA: Lazy<Mutex<HashMap<i32, Metadata>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
 //this should initialize a map of maps -> from string (name) to any type of map
 
@@ -754,41 +753,6 @@ pub fn insert_map_i32i32i32tuple_i32(name: i32, key0: i32, key1: i32, key2: i32,
 
 pub fn get_i32_from_i32i32i32tuple(name: i32, key0: i32, key1: i32, key2: i32) -> i32{
     get_i32(name, &Box::new(TupleVariant::i32_i32_i32(key0, key1, key2)))
-}
-pub enum Metadata {
-    global {
-        name: String, 
-        script_id: i32,
-    },
-    local {
-        name: String,
-        script_id: i32,
-        bytecode_loc: i32,
-        probe_id: i32,
-    },
-}
-
-pub fn put_map_metadata(map_id: i32, map_data: Metadata) {
-    let mut maps = MAP_METADATA.lock().unwrap();
-    maps.insert(map_id, map_data);
-}
-//TODO: instrument this into the bytecode
-pub fn create_local_map_meta(map_id: i32, name: String, script_id: i32, bytecode_loc: i32, probe_id: i32){
-    //call the put code for the metadata
-    let metadata = Metadata::local {
-        name: name,
-        script_id: script_id,
-        bytecode_loc: bytecode_loc,
-        probe_id: probe_id,
-    };
-    put_map_metadata(map_id, metadata);
-}
-pub fn create_global_meta(map_id: i32, name: String, script_id: i32) {
-    let metadata = Metadata::global {
-        name: name,
-        script_id: script_id,
-    };
-    put_map_metadata(map_id, metadata);
 }
 
 // #[no_mangle]
