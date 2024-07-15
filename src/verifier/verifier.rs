@@ -281,7 +281,7 @@ impl<'b> WhammVisitor<'b, Option<DataType>> for TypeChecker<'_> {
     fn visit_stmt(&mut self, stmt: &Statement) -> Option<DataType> {
         if self.in_fuction {
             match stmt {
-                Statement::SaveDecl{ .. } => {
+                Statement::SaveDecl { .. } => {
                     self.err.type_check_error(
                         false,
                         "Save declarations are not allowed in functions".to_owned(),

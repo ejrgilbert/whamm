@@ -710,7 +710,7 @@ pub fn testing_map() {
     };
 }
 #[test]
-pub fn test_save_decl(){
+pub fn test_save_decl() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"

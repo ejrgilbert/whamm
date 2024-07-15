@@ -86,7 +86,6 @@ const VALID_SCRIPTS: &[&str] = &[
             save bool b;
         }
     "#,
-
 ];
 
 const TYPE_ERROR_SCRIPTS: &[&str] = &[
@@ -592,7 +591,7 @@ pub fn testing_map() {
     };
 }
 #[test]
-pub fn test_save_decl(){
+pub fn test_save_decl() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
@@ -616,7 +615,6 @@ pub fn test_save_decl(){
             }
         }
     };
-
 }
 //TODO: uncomment after BEGIN is working
 
