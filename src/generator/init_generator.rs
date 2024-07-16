@@ -3,7 +3,7 @@
 // =======================
 
 use crate::common::error::ErrorGen;
-use crate::generator::emitters::Emitter;
+use crate::emitter::Emitter;
 use crate::parser::rules::{Event, Package, Probe, Provider};
 use crate::parser::types::{
     BinOp, Block, DataType, Expr, Global, ProvidedFunction, ProvidedGlobal, Script, Statement,
@@ -37,7 +37,7 @@ impl InitGenerator<'_> {
         let mut is_success = true;
         for (name, global) in globals.iter() {
             // do not inject globals into Wasm that are used/defined by the compiler
-            if !&global.is_comp_provided {
+            if global.is_from_user() {
                 match self
                     .emitter
                     .emit_global(name.clone(), global.ty.clone(), &global.value)
@@ -54,7 +54,7 @@ impl InitGenerator<'_> {
         let mut is_success = true;
         for (name, ProvidedGlobal { global, .. }) in globals.iter() {
             // do not inject globals into Wasm that are used/defined by the compiler
-            if !global.is_comp_provided {
+            if global.is_from_user() {
                 match self
                     .emitter
                     .emit_global(name.clone(), global.ty.clone(), &global.value)
@@ -68,7 +68,7 @@ impl InitGenerator<'_> {
         is_success
     }
 }
-impl WhammVisitor<'_, bool> for InitGenerator<'_> {
+impl WhammVisitor<bool> for InitGenerator<'_> {
     fn visit_whamm(&mut self, whamm: &Whamm) -> bool {
         trace!("Entering: CodeGenerator::visit_whamm");
         self.context_name = "whamm".to_string();

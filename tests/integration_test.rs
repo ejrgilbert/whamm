@@ -8,7 +8,8 @@ use wabt::{wasm2wat, wat2wasm};
 use walrus::Module;
 use whamm::behavior::builder_visitor::{build_behavior_tree, SimpleAST};
 use whamm::common::error::ErrorGen;
-use whamm::generator::emitters::{Emitter, WasmRewritingEmitter};
+use whamm::emitter::rewriting::WasmRewritingEmitter;
+use whamm::emitter::Emitter;
 use whamm::generator::init_generator::InitGenerator;
 use whamm::generator::instr_generator::InstrGenerator;
 
@@ -54,18 +55,8 @@ fn instrument_dfinity_with_fault_injection() {
         // Phase 1 of instrumentation (actually emits the instrumentation code)
         // This structure is necessary since we need to have the fns/globals injected (a single time)
         // and ready to use in every body/predicate.
-        let mut instr = InstrGenerator {
-            tree: &behavior,
-            emitter: Box::new(&mut emitter),
-            ast: simple_ast,
-            context_name: "".to_string(),
-            curr_provider_name: "".to_string(),
-            curr_package_name: "".to_string(),
-            curr_event_name: "".to_string(),
-            curr_probe_mode: "".to_string(),
-            curr_probe: None,
-            err: &mut err,
-        };
+        let mut instr =
+            InstrGenerator::new(&behavior, Box::new(&mut emitter), simple_ast, &mut err);
         // TODO add assertions here once I have error logic in place to check that it worked!
         instr.run(&behavior);
         err.fatal_report("Integration Test");
@@ -120,6 +111,34 @@ fn instrument_handwritten_wasm_call() {
         .arg("tests/scripts/instr.mm")
         .arg("--app")
         .arg("tests/apps/handwritten/add.wasm")
+        .output()
+        .expect("failed to execute process");
+    assert!(res.status.success());
+
+    let file_data = fs::read("output/output.wasm").unwrap();
+    let wat_data = wasm2wat(file_data).unwrap();
+    println!("{}", wat_data);
+}
+
+#[test]
+fn instrument_no_matches() {
+    common::setup_logger();
+    // executable is located at target/debug/whamm
+    let executable = "target/debug/whamm";
+
+    // if you want to change the wat file
+    // (calling wat2wasm from a child process doesn't work
+    //  since somehow the executable can't write to the file system directly)
+    let file_data = fs::read("tests/apps/handwritten/no_matched_events.wat").unwrap();
+    let wasm_data = wat2wasm(file_data).unwrap();
+    fs::write("tests/apps/handwritten/no_matched_events.wasm", wasm_data).unwrap();
+
+    let res = Command::new(executable)
+        .arg("instr")
+        .arg("--script")
+        .arg("tests/scripts/instr.mm")
+        .arg("--app")
+        .arg("tests/apps/handwritten/no_matched_events.wasm")
         .output()
         .expect("failed to execute process");
     assert!(res.status.success());

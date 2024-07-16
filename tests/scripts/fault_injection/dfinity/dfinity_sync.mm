@@ -5,7 +5,7 @@
  *       to be added to collect call site/target canister info.
  *       See file: `dfinity_sync-with-pred.d`
  */
-wasm:bytecode:call:alt /
+wasm:opcode:call:alt /
     target_fn_type == "import" &&
     target_imp_module == "ic0" &&
     target_imp_name == "call_perform"

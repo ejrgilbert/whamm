@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 use crate::common::error::ErrorGen;
 use crate::parser::rules::{Event, Package, Probe, Provider};
-use crate::parser::types::{Global, ProvidedFunction, ProvidedGlobal, WhammVisitorMut};
+use crate::parser::types::{Definition, Global, ProvidedFunction, ProvidedGlobal, WhammVisitorMut};
 use log::trace;
 
 const UNEXPECTED_ERR_MSG: &str = "SymbolTableBuilder: Looks like you've found a bug...please report this behavior! Exiting now...";
@@ -484,7 +484,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
                     script.globals.insert(
                         name.clone(),
                         Global {
-                            is_comp_provided: false,
+                            def: Definition::User,
                             ty: ty.clone(),
                             var_name: var_id.clone(),
                             value: None,

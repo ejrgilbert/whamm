@@ -365,8 +365,15 @@ impl Fn {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Definition {
+    User,
+    CompilerStatic,
+    CompilerDynamic,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Global {
-    pub is_comp_provided: bool,
+    pub def: Definition,
 
     pub ty: DataType,
     pub var_name: Expr, // Should be VarId
@@ -379,6 +386,27 @@ impl Global {
         }
         white(true, ": ".to_string(), buffer);
         self.ty.print(buffer);
+    }
+
+    pub fn is_static(&self) -> bool {
+        match self.def {
+            Definition::CompilerStatic => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_dynamic(&self) -> bool {
+        match self.def {
+            Definition::CompilerDynamic => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_from_user(&self) -> bool {
+        match self.def {
+            Definition::User => true,
+            _ => false,
+        }
     }
 }
 
@@ -516,11 +544,13 @@ impl Whamm {
 }
 
 /// SpecPart are the probe ids in a probe spec
+#[derive(Clone)]
 pub struct SpecPart {
     pub name: String,
     pub loc: Option<Location>,
 }
 
+#[derive(Clone)]
 pub struct ProbeSpec {
     pub provider: Option<SpecPart>,
     pub package: Option<SpecPart>,
@@ -540,6 +570,15 @@ impl ProbeSpec {
             event: None,
             mode: None,
         }
+    }
+    pub fn full_name(&self) -> String {
+        format!(
+            "{}:{}:{}:{}",
+            &self.provider.as_ref().unwrap().name,
+            &self.package.as_ref().unwrap().name,
+            &self.event.as_ref().unwrap().name,
+            &self.mode.as_ref().unwrap().name
+        )
     }
     pub fn add_spec_def(&mut self, part: SpecPart) {
         if self.provider.is_none() {
@@ -703,7 +742,7 @@ impl Script {
 
         let mut providers: HashMap<String, Box<dyn Provider>> = HashMap::new();
         let (matched_providers, matched_packages, matched_events, matched_modes) =
-            provider_factory::<WhammProvider>(&mut providers, probe_spec, None, None, None)?;
+            provider_factory::<WhammProvider>(&mut providers, probe_spec, None, None, None, true)?;
 
         // Print the matched provider information
         if matched_providers {
@@ -786,6 +825,7 @@ impl Script {
             None,
             predicate,
             body,
+            false,
         )?;
 
         if !matched_providers {
@@ -895,12 +935,16 @@ pub struct ProvidedGlobal {
     pub global: Global,
 }
 impl ProvidedGlobal {
-    pub fn new(name: String, docs: String, ty: DataType) -> Self {
+    pub fn new(name: String, docs: String, ty: DataType, is_static: bool) -> Self {
         Self {
             name: name.clone(),
             docs,
             global: Global {
-                is_comp_provided: true,
+                def: if is_static {
+                    Definition::CompilerStatic
+                } else {
+                    Definition::CompilerDynamic
+                },
                 ty,
                 var_name: Expr::VarId {
                     is_comp_provided: true,
@@ -982,27 +1026,23 @@ pub enum BinOp {
 // TODO add a default visit implementation
 // (take a look at the behavior tree visit trait) that would be good to add to
 // the AST visitor as well to make the visit ordering/conventions less annoying.
-/// The lifetime parameter 'a is used primarily in the `behavior/builder_visitor.rs`
-/// in order to enable saving off data in the `Whamm` struct while it is being visited
-/// in some other data structure.
-/// The lifetime is necessary to mark where the pointers are actually pointing to!
-pub trait WhammVisitor<'a, T> {
-    fn visit_whamm(&mut self, whamm: &'a Whamm) -> T;
-    fn visit_script(&mut self, script: &'a Script) -> T;
-    fn visit_provider(&mut self, provider: &'a Box<dyn Provider>) -> T;
-    fn visit_package(&mut self, package: &'a dyn Package) -> T;
-    fn visit_event(&mut self, event: &'a dyn Event) -> T;
-    fn visit_probe(&mut self, probe: &'a Box<dyn Probe>) -> T;
+pub trait WhammVisitor<T> {
+    fn visit_whamm(&mut self, whamm: &Whamm) -> T;
+    fn visit_script(&mut self, script: &Script) -> T;
+    fn visit_provider(&mut self, provider: &Box<dyn Provider>) -> T;
+    fn visit_package(&mut self, package: &dyn Package) -> T;
+    fn visit_event(&mut self, event: &dyn Event) -> T;
+    fn visit_probe(&mut self, probe: &Box<dyn Probe>) -> T;
     // fn visit_predicate(&mut self, predicate: &Expr) -> T;
-    fn visit_fn(&mut self, f: &'a Fn) -> T;
-    fn visit_formal_param(&mut self, param: &'a (Expr, DataType)) -> T;
-    fn visit_block(&mut self, block: &'a Block) -> T;
-    fn visit_stmt(&mut self, stmt: &'a Statement) -> T;
-    fn visit_expr(&mut self, expr: &'a Expr) -> T;
-    fn visit_unop(&mut self, unop: &'a UnOp) -> T;
-    fn visit_binop(&mut self, binop: &'a BinOp) -> T;
-    fn visit_datatype(&mut self, datatype: &'a DataType) -> T;
-    fn visit_value(&mut self, val: &'a Value) -> T;
+    fn visit_fn(&mut self, f: &Fn) -> T;
+    fn visit_formal_param(&mut self, param: &(Expr, DataType)) -> T;
+    fn visit_block(&mut self, block: &Block) -> T;
+    fn visit_stmt(&mut self, stmt: &Statement) -> T;
+    fn visit_expr(&mut self, expr: &Expr) -> T;
+    fn visit_unop(&mut self, unop: &UnOp) -> T;
+    fn visit_binop(&mut self, binop: &BinOp) -> T;
+    fn visit_datatype(&mut self, datatype: &DataType) -> T;
+    fn visit_value(&mut self, val: &Value) -> T;
 }
 
 /// To support setting constant-provided global vars

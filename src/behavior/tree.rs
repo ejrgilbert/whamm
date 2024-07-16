@@ -1,5 +1,4 @@
 use crate::common::error::ErrorGen;
-use std::collections::HashMap;
 
 const UNEXPECTED_ERR_MSG: &str =
     "BehaviorTree: Looks like you've found a bug...please report this behavior!";
@@ -120,30 +119,6 @@ impl BehaviorTree {
         self
     }
 
-    pub fn action_with_child(&mut self, ty: ActionWithChildType, err: &mut ErrorGen) -> &mut Self {
-        let id = self.nodes.len();
-        self.put_child_and_enter(
-            Node::ActionWithChild {
-                id,
-                parent: self.curr,
-                ty,
-                child: 0,
-            },
-            err,
-        );
-        self
-    }
-
-    pub fn exit_action_with_child(&mut self, err: &mut ErrorGen) -> &mut Self {
-        match self.get_curr_mut() {
-            Some(Node::ActionWithChild { parent, .. }) => self.curr = *parent,
-            other => {
-                err.unexpected_error(false, Some(format!("{UNEXPECTED_ERR_MSG} Something went wrong, expected ActionWithChild, but was: {:?}.", other)), None);
-            }
-        };
-        self
-    }
-
     pub fn parameterized_action(&mut self, ty: ParamActionType, err: &mut ErrorGen) -> &mut Self {
         let id = self.nodes.len();
         self.put_child_and_enter(
@@ -199,19 +174,6 @@ impl BehaviorTree {
         };
     }
 
-    pub fn define(&mut self, context: String, var_name: String, err: &mut ErrorGen) -> &mut Self {
-        let id = self.nodes.len();
-        self.put_child(
-            Node::Action {
-                id,
-                parent: self.curr,
-                ty: ActionType::Define { context, var_name },
-            },
-            err,
-        );
-        self
-    }
-
     pub fn emit_global_stmts(&mut self, err: &mut ErrorGen) -> &mut Self {
         let id = self.nodes.len();
         self.put_child(
@@ -251,13 +213,13 @@ impl BehaviorTree {
         self
     }
 
-    pub fn emit_params(&mut self, force_success: bool, err: &mut ErrorGen) -> &mut Self {
+    pub fn emit_args(&mut self, force_success: bool, err: &mut ErrorGen) -> &mut Self {
         let id = self.nodes.len();
         self.put_child(
             Node::ArgAction {
                 id,
                 parent: self.curr,
-                ty: ArgActionType::EmitParams,
+                ty: ArgActionType::EmitArgs,
                 force_success,
             },
             err,
@@ -265,13 +227,13 @@ impl BehaviorTree {
         self
     }
 
-    pub fn save_params(&mut self, force_success: bool, err: &mut ErrorGen) -> &mut Self {
+    pub fn save_args(&mut self, force_success: bool, err: &mut ErrorGen) -> &mut Self {
         let id = self.nodes.len();
         self.put_child(
             Node::ArgAction {
                 id,
                 parent: self.curr,
-                ty: ArgActionType::SaveParams,
+                ty: ArgActionType::SaveArgs,
                 force_success,
             },
             err,
@@ -318,40 +280,6 @@ impl BehaviorTree {
         self
     }
 
-    pub fn enter_scope(
-        &mut self,
-        context_name: String,
-        scope_name: String,
-        err: &mut ErrorGen,
-    ) -> &mut Self {
-        let id = self.nodes.len();
-        self.put_child(
-            Node::Action {
-                id,
-                parent: self.curr,
-                ty: ActionType::EnterScope {
-                    context: context_name,
-                    scope_name,
-                },
-            },
-            err,
-        );
-        self
-    }
-
-    pub fn exit_scope(&mut self, err: &mut ErrorGen) -> &mut Self {
-        let id = self.nodes.len();
-        self.put_child(
-            Node::Action {
-                id,
-                parent: self.curr,
-                ty: ActionType::ExitScope,
-            },
-            err,
-        );
-        self
-    }
-
     pub fn force_success(&mut self, err: &mut ErrorGen) -> &mut Self {
         let id = self.nodes.len();
         self.put_child(
@@ -389,10 +317,6 @@ impl BehaviorTree {
                 }
                 Node::Fallback { children, .. } => {
                     children.push(new_id);
-                    assigned_id = Some(new_id);
-                }
-                Node::ActionWithChild { child, .. } => {
-                    *child = new_id;
                     assigned_id = Some(new_id);
                 }
                 Node::ActionWithParams { children, .. } => {
@@ -475,12 +399,6 @@ pub enum Node {
         parent: usize,
         force_success: bool,
     },
-    ActionWithChild {
-        id: usize,
-        ty: ActionWithChildType,
-        parent: usize,
-        child: usize,
-    },
     ActionWithParams {
         id: usize,
         parent: usize,
@@ -503,12 +421,8 @@ pub enum DecoratorType {
 
 #[derive(Debug)]
 pub enum ActionType {
-    EnterScope { context: String, scope_name: String },
-    ExitScope,
-    Define { context: String, var_name: String },
     EmitGlobalStmts,
     EmitPred,
-    Reset,
     EmitBody,
     EmitAltCall,
     RemoveOrig,
@@ -518,23 +432,8 @@ pub enum ActionType {
 
 #[derive(Debug)]
 pub enum ArgActionType {
-    SaveParams,
-    EmitParams,
-}
-
-#[derive(Debug)]
-pub enum ActionWithChildType {
-    EnterPackage {
-        context: String,
-        package_name: String,
-        /// The events and the corresponding compiler-defined globals
-        events: HashMap<String, Vec<String>>,
-    },
-    EnterProbe {
-        context: String,
-        probe_mode: String,
-        global_names: Vec<String>,
-    },
+    SaveArgs,
+    EmitArgs,
 }
 
 #[derive(Debug)]
@@ -559,8 +458,7 @@ pub trait BehaviorVisitor<T> {
             Node::Decorator { .. } => self.visit_decorator(node),
             Node::Fallback { .. } => self.visit_fallback(node),
             Node::ArgAction { .. } => self.visit_arg_action(node),
-            Node::ActionWithChild { .. } => self.visit_action_with_child(node),
-            Node::ActionWithParams { .. } => self.visit_action_with_params(node),
+            Node::ActionWithParams { .. } => self.visit_action_with_args(node),
             Node::Action { .. } => self.visit_action(node),
         }
     }
@@ -583,24 +481,14 @@ pub trait BehaviorVisitor<T> {
     fn visit_arg_action(&mut self, node: &Node) -> T {
         if let Node::ArgAction { ty, .. } = node {
             match ty {
-                ArgActionType::SaveParams { .. } => self.visit_save_params(node),
-                ArgActionType::EmitParams { .. } => self.visit_emit_params(node),
+                ArgActionType::SaveArgs { .. } => self.visit_save_args(node),
+                ArgActionType::EmitArgs { .. } => self.visit_emit_args(node),
             }
         } else {
             unreachable!()
         }
     }
-    fn visit_action_with_child(&mut self, node: &Node) -> T {
-        if let Node::ActionWithChild { ty, .. } = node {
-            match ty {
-                ActionWithChildType::EnterPackage { .. } => self.visit_enter_package(node),
-                ActionWithChildType::EnterProbe { .. } => self.visit_enter_probe(node),
-            }
-        } else {
-            unreachable!()
-        }
-    }
-    fn visit_action_with_params(&mut self, node: &Node) -> T {
+    fn visit_action_with_args(&mut self, node: &Node) -> T {
         if let Node::ActionWithParams { ty, .. } = node {
             match ty {
                 ParamActionType::EmitIfElse { .. } => self.visit_emit_if_else(node),
@@ -617,12 +505,8 @@ pub trait BehaviorVisitor<T> {
     fn visit_pred_is(&mut self, node: &Node) -> T;
 
     // Argument action nodes
-    fn visit_save_params(&mut self, node: &Node) -> T;
-    fn visit_emit_params(&mut self, node: &Node) -> T;
-
-    // Action with child nodes
-    fn visit_enter_package(&mut self, node: &Node) -> T;
-    fn visit_enter_probe(&mut self, node: &Node) -> T;
+    fn visit_save_args(&mut self, node: &Node) -> T;
+    fn visit_emit_args(&mut self, node: &Node) -> T;
 
     // Parameterized action nodes
     fn visit_emit_if_else(&mut self, node: &Node) -> T;
@@ -632,12 +516,8 @@ pub trait BehaviorVisitor<T> {
     fn visit_action(&mut self, node: &Node) -> T {
         if let Node::Action { ty, .. } = node {
             match ty {
-                ActionType::EnterScope { .. } => self.visit_enter_scope(node),
-                ActionType::ExitScope { .. } => self.visit_exit_scope(node),
-                ActionType::Define { .. } => self.visit_define(node),
                 ActionType::EmitGlobalStmts { .. } => self.visit_emit_global_stmts(node),
                 ActionType::EmitPred { .. } => self.visit_emit_pred(node),
-                ActionType::Reset { .. } => self.visit_reset(node),
                 ActionType::EmitBody { .. } => self.visit_emit_body(node),
                 ActionType::EmitAltCall { .. } => self.visit_emit_alt_call(node),
                 ActionType::RemoveOrig { .. } => self.visit_remove_orig(node),
@@ -648,12 +528,8 @@ pub trait BehaviorVisitor<T> {
             unreachable!()
         }
     }
-    fn visit_enter_scope(&mut self, node: &Node) -> T;
-    fn visit_exit_scope(&mut self, node: &Node) -> T;
-    fn visit_define(&mut self, node: &Node) -> T;
     fn visit_emit_global_stmts(&mut self, node: &Node) -> T;
     fn visit_emit_pred(&mut self, node: &Node) -> T;
-    fn visit_reset(&mut self, node: &Node) -> T;
     fn visit_emit_body(&mut self, node: &Node) -> T;
     fn visit_emit_alt_call(&mut self, node: &Node) -> T;
     fn visit_remove_orig(&mut self, node: &Node) -> T;

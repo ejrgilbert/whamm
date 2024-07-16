@@ -52,7 +52,7 @@ impl AsStrVisitor {
     }
 }
 
-impl WhammVisitor<'_, String> for AsStrVisitor {
+impl WhammVisitor<String> for AsStrVisitor {
     fn visit_whamm(&mut self, whamm: &Whamm) -> String {
         let mut s = "".to_string();
 
@@ -340,7 +340,7 @@ impl WhammVisitor<'_, String> for AsStrVisitor {
         // print name
         s += &format!("{} {} (", self.get_indent(), f.name.name);
 
-        // print params
+        // print args
         s += &f
             .params
             .iter()

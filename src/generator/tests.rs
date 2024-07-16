@@ -90,7 +90,7 @@ fn hardcode_compiler_constants(table: &mut SymbolTable, err: &mut ErrorGen) {
     }
     move_through_scopes_til_match(ScopeType::Provider, table, err);
     println!("Scope name: {}", table.get_curr_scope().unwrap().name);
-    // enter bytecode scope
+    // enter opcode scope
     if let Err(e) = table.enter_scope() {
         err.add_error(*e);
         err.report();

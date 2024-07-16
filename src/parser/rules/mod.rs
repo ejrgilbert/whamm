@@ -60,6 +60,7 @@ pub trait Provider {
         loc: Option<Location>,
         predicate: Option<Expr>,
         body: Option<Vec<Statement>>,
+        printing_info: bool,
     ) -> (bool, bool, bool);
 }
 
@@ -73,6 +74,7 @@ pub fn provider_factory<P: Provider + NameOptions + FromStr + 'static>(
     loc: Option<Location>,
     predicate: Option<Expr>,
     body: Option<Vec<Statement>>,
+    printing_info: bool,
 ) -> Result<(bool, bool, bool, bool), Box<WhammError>> {
     if let Some(SpecPart {
         name: provider_patt,
@@ -112,20 +114,23 @@ pub fn provider_factory<P: Provider + NameOptions + FromStr + 'static>(
                     package_loc.to_owned(),
                     predicate.clone(),
                     body.clone(),
+                    printing_info,
                 )
             } else {
                 (false, false, false)
             };
-            if !found_modes && !already_has {
+            if !printing_info && !found_modes && !already_has {
                 // If this matched provider wasn't already present, we need to remove.
                 // Otherwise, we'd have providers with no probes in them!
+                // ONLY DO THIS IF NOT PRINTING INFO, this allows users to get information without
+                // complete probe specs.
                 curr_providers.remove(&m.clone());
             }
             matched_packages |= found_package;
             matched_events |= found_events;
             matched_modes |= found_modes;
         }
-        if !matched_providers {
+        if !matched_providers && probe_spec.provider.is_some() {
             let loc = provider_loc.as_ref().map(|loc| loc.line_col.clone());
             return Err(Box::new(ErrorGen::get_parse_error(
                 true,
@@ -135,7 +140,7 @@ pub fn provider_factory<P: Provider + NameOptions + FromStr + 'static>(
                 vec![],
             )));
         }
-        if !matched_packages {
+        if !matched_packages && probe_spec.package.is_some() {
             let loc = probe_spec
                 .package
                 .as_ref()
@@ -151,7 +156,7 @@ pub fn provider_factory<P: Provider + NameOptions + FromStr + 'static>(
                 vec![],
             )));
         }
-        if !matched_events {
+        if !matched_events && probe_spec.event.is_some() {
             let loc = probe_spec
                 .event
                 .as_ref()
@@ -167,7 +172,7 @@ pub fn provider_factory<P: Provider + NameOptions + FromStr + 'static>(
                 vec![],
             )));
         }
-        if !matched_modes {
+        if !matched_modes && probe_spec.mode.is_some() {
             let loc = probe_spec
                 .mode
                 .as_ref()
@@ -268,6 +273,7 @@ pub trait Package {
         loc: Option<Location>,
         predicate: Option<Expr>,
         body: Option<Vec<Statement>>,
+        printing_info: bool,
     ) -> (bool, bool);
 }
 
@@ -293,6 +299,7 @@ fn package_factory<P: Package + NameOptions + FromStr + 'static>(
     loc: Option<Location>,
     predicate: Option<Expr>,
     body: Option<Vec<Statement>>,
+    printing_info: bool,
 ) -> (bool, bool, bool) {
     if let Some(SpecPart {
         name: package_patt, ..
@@ -320,13 +327,16 @@ fn package_factory<P: Package + NameOptions + FromStr + 'static>(
                         event_loc.to_owned(),
                         predicate.clone(),
                         body.clone(),
+                        printing_info,
                     )
                 } else {
                     (false, false)
                 };
-            if !found_match_for_mode && !already_has {
+            if !printing_info && !found_match_for_mode && !already_has {
                 // If this matched package wasn't already present, we need to remove.
                 // Otherwise, we'd have packages with no probes in them!
+                // ONLY DO THIS IF NOT PRINTING INFO, this allows users to get information without
+                // complete probe specs.
                 curr_packages.remove(&m.clone());
             }
             matched_events |= found_match_for_event;
@@ -440,6 +450,7 @@ fn event_factory<E: Event + NameOptions + FromStr + 'static>(
     loc: Option<Location>,
     predicate: Option<Expr>,
     body: Option<Vec<Statement>>,
+    printing_info: bool,
 ) -> (bool, bool) {
     if let Some(SpecPart {
         name: event_patt, ..
@@ -470,9 +481,11 @@ fn event_factory<E: Event + NameOptions + FromStr + 'static>(
                 } else {
                     false
                 };
-            if !found_match_for_mode && !already_has {
+            if !printing_info && !found_match_for_mode && !already_has {
                 // If this matched package wasn't already present, we need to remove.
                 // Otherwise, we'd have packages with no probes in them!
+                // ONLY DO THIS IF NOT PRINTING INFO, this allows users to get information without
+                // complete probe specs.
                 curr_events.remove(&m.clone());
             }
             matched_modes |= found_match_for_mode;
@@ -632,7 +645,7 @@ impl WhammProviderKind {
 ///         this in the future. Now, the use of `WhammProvider` is hardcoded everywhere.
 
 pub struct WhammProvider {
-    kind: WhammProviderKind,
+    pub(crate) kind: WhammProviderKind,
     info: ProviderInfo,
 }
 impl NameOptions for WhammProvider {
@@ -768,6 +781,7 @@ impl Provider for WhammProvider {
         loc: Option<Location>,
         predicate: Option<Expr>,
         body: Option<Vec<Statement>>,
+        printing_info: bool,
     ) -> (bool, bool, bool) {
         match self {
             Self {
@@ -779,6 +793,7 @@ impl Provider for WhammProvider {
                 loc,
                 predicate,
                 body,
+                printing_info,
             ),
             Self {
                 kind: WhammProviderKind::Wasm,
@@ -789,6 +804,7 @@ impl Provider for WhammProvider {
                 loc,
                 predicate,
                 body,
+                printing_info,
             ),
         }
     }

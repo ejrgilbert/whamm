@@ -17,7 +17,7 @@ pub fn setup_logger() {
 // ====================
 
 const VALID_SCRIPTS: &[&str] = &[
-    "wasm:bytecode:call:alt { new_target_fn_name = redirect_to_fault_injector; }",
+    "wasm:opcode:call:alt { new_target_fn_name = redirect_to_fault_injector; }",
     r#"
         bool a;
         i32 b;
@@ -34,7 +34,7 @@ const VALID_SCRIPTS: &[&str] = &[
     "#,
     r#"
         i32 i;
-        wasm:bytecode:call:before /
+        wasm:opcode:call:before /
             target_imp_name == "add"
         /{
             i = 1;
@@ -82,7 +82,7 @@ wasm::call:alt /
 
 }
     "#,
-    r#"wasm:bytecode:br:before / "i" <= 1 / { }"#,
+    r#"wasm:opcode:br:before / "i" <= 1 / { }"#,
     r#"wasm::call:alt / (1 + 3) / {  }"#, // final type in predicate
     r#"wasm::call:alt / !1 / { }"#,       // unop
     // stmt
@@ -123,7 +123,7 @@ wasm::call:alt {
     r#"
 bool i;
 i32 a;
-wasm:bytecode:br:before {
+wasm:opcode:br:before {
     a = i ? 1 : true;
 }
     "#,
@@ -349,9 +349,9 @@ wasm::call:alt /
             let table = verifier::build_symbol_table(&mut ast, &mut err);
             println!("{:#?}", table);
 
-            // 7 scopes: whamm, strcmp, script0, wasm, bytecode, call, alt
+            // 7 scopes: whamm, strcmp, script0, wasm, opcode, call, alt
             let num_scopes = 7;
-            // records: num_scopes PLUS (str_addr, value, wasm_bytecode_loc, new_target_fn_name, target_imp_name, target_fn_type, target_imp_module)
+            // records: num_scopes PLUS (str_addr, value, wasm_opcode_loc, new_target_fn_name, target_imp_name, target_fn_type, target_imp_module)
             // TODO -- change to + 8 when add back: arg[0:9]+
             let num_recs = num_scopes + 7;
 
