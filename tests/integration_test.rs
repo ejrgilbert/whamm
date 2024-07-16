@@ -121,6 +121,34 @@ fn instrument_handwritten_wasm_call() {
 }
 
 #[test]
+fn instrument_no_matches() {
+    common::setup_logger();
+    // executable is located at target/debug/whamm
+    let executable = "target/debug/whamm";
+
+    // if you want to change the wat file
+    // (calling wat2wasm from a child process doesn't work
+    //  since somehow the executable can't write to the file system directly)
+    let file_data = fs::read("tests/apps/handwritten/no_matched_events.wat").unwrap();
+    let wasm_data = wat2wasm(file_data).unwrap();
+    fs::write("tests/apps/handwritten/no_matched_events.wasm", wasm_data).unwrap();
+
+    let res = Command::new(executable)
+        .arg("instr")
+        .arg("--script")
+        .arg("tests/scripts/instr.mm")
+        .arg("--app")
+        .arg("tests/apps/handwritten/no_matched_events.wasm")
+        .output()
+        .expect("failed to execute process");
+    assert!(res.status.success());
+
+    let file_data = fs::read("output/output.wasm").unwrap();
+    let wat_data = wasm2wat(file_data).unwrap();
+    println!("{}", wat_data);
+}
+
+#[test]
 fn instrument_control_flow() {
     common::setup_logger();
     let executable = "target/debug/whamm";
