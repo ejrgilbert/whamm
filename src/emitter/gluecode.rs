@@ -1,32 +1,18 @@
+//this is the code that knows which functions to call in lib.rs based on what is in the AST
+#![allow(unused)]
+use crate::parser::types::{Whamm, WhammVisitor, DataType, Expr, Value};
+use crate::common::error::{ErrorGen, WhammError};
+use std::any::Any;
 // //this is the code that knows which functions to call in lib.rs based on what is in the AST -> will be in emitter folder eventually
-
-#[allow(unused_imports)]
-use crate::*;
-use once_cell::sync::Lazy; use core::panic;
-// 1.3.1
+use once_cell::sync::Lazy; 
+use core::panic;
 use std::sync::Mutex;
-use std::collections::HashSet;
-
-
-//TODO: remove this instance of datatype and instead use the one in parser
-#[derive(Clone, Debug, PartialEq)]
-pub enum DataType {
-    I32,
-    U32,
-    Boolean,
-    Null,
-    Str,
-    Tuple {
-        ty_info: Vec<Box<DataType>>,
-    },
-    Map {
-        key_ty: Box<DataType>,
-        val_ty: Box<DataType>,
-    },
-    AssumeGood,
-}
-
-// END TO REMOVE
+use std::collections::{HashSet, HashMap};
+use walrus::ir::{BinaryOp, ExtendedLoad, Instr, InstrSeqId, LoadKind, MemArg};
+use walrus::{
+    ActiveData, ActiveDataLocation, DataKind, FunctionBuilder, FunctionId, FunctionKind,
+    ImportedFunction, InitExpr, InstrSeqBuilder, LocalFunction, MemoryId, ModuleData, ValType,
+};
 
 //convert these from being lazy static to being emitter objects
 static MAP_COUNT: Lazy<Mutex<i32>> = Lazy::new(|| Mutex::new(0));
@@ -37,6 +23,8 @@ static VARIABLE_METADATA: Lazy<Mutex<HashMap<i32, Metadata>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 //metadata for any variable or map should be unique, so make a hashset and add to it as you go
 static ALL_METADATA: Lazy<Mutex<HashSet<Metadata>>> = Lazy::new(|| Mutex::new(HashSet::new()));
+
+
 
 pub fn get_map_count() -> i32 {
     let count = MAP_COUNT.lock().unwrap();
@@ -52,11 +40,11 @@ pub fn increment_map_count() {
 }
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Metadata {
-    global {
+    Global {
         name: String,
         script_id: i32,
     },
-    local {
+    Local {
         name: String,
         script_id: i32,
         bytecode_loc: i32,
@@ -81,7 +69,7 @@ pub fn create_local_map_meta(
     probe_id: i32,
 ) {
     //call the put code for the metadata
-    let metadata = Metadata::local {
+    let metadata = Metadata::Local {
         name: name,
         script_id: script_id,
         bytecode_loc: bytecode_loc,
@@ -90,7 +78,7 @@ pub fn create_local_map_meta(
     put_map_metadata(map_id, metadata);
 }
 pub fn create_global_meta(map_id: i32, name: String, script_id: i32) {
-    let metadata = Metadata::global {
+    let metadata = Metadata::Global {
         name: name,
         script_id: script_id,
     };
@@ -250,9 +238,9 @@ pub fn get_key_unwrapped(key: Expr) -> Box<dyn Any> {
     return match key {
         Expr::Primitive { val, .. } => {
             match val {
-                Value::Integer { val } => Box::new(val),
-                Value::Boolean { val } => Box::new(val),
-                Value::Str { val } => Box::new(val),
+                Value::Integer { val , ..} => Box::new(val),
+                Value::Boolean { val, .. } => Box::new(val),
+                Value::Str { val, .. } => Box::new(val),
                 Value::Tuple { ty, vals } => {
                     if ty
                         == (DataType::Tuple {
@@ -321,3 +309,4 @@ pub fn map_get(map_id: i32, key: Expr, map_type: DataType) {
         }
     }
 }
+

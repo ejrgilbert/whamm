@@ -8,8 +8,8 @@ use std::collections::HashMap;
 use once_cell::sync::Lazy; // 1.3.1
 use std::sync::Mutex;
 
-mod tests;
 mod middleman;
+mod tests;
 #[no_mangle]
 static MY_MAPS: Lazy<Mutex<HashMap<i32, AnyMap>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
@@ -383,7 +383,7 @@ pub enum TupleVariant {
     bool_string(bool, String),
     // bool_map(bool, Box<AnyMap>),
     bool_tuple(bool, Box<TupleVariant>),
-    bool_bool(bool, bool), 
+    bool_bool(bool, bool),
     i32_i32_i32(i32, i32, i32),
 }
 //to make a map to/from a map or string they have to boxed
@@ -735,28 +735,27 @@ pub fn get_map(name: i32, key: &dyn Any) -> AnyMap {
     }
 }
 #[no_mangle]
-pub fn get_bool(name:i32, key: &dyn Any) -> bool {
+pub fn get_bool(name: i32, key: &dyn Any) -> bool {
     match get_bool_optional(name, key) {
         Some(value) => value,
         None => panic!("Key not found in map"),
     }
 }
 
-pub fn create_map_i32i32i32tuple_i32(name: i32){
+pub fn create_map_i32i32i32tuple_i32(name: i32) {
     create_tuple_i32(name);
 }
 
-pub fn insert_map_i32i32i32tuple_i32(name: i32, key0: i32, key1: i32, key2: i32, value: i32){
-    
+pub fn insert_map_i32i32i32tuple_i32(name: i32, key0: i32, key1: i32, key2: i32, value: i32) {
     insert_tuple_i32(name, TupleVariant::i32_i32_i32(key0, key1, key2), value);
 }
 
-pub fn get_i32_from_i32i32i32tuple(name: i32, key0: i32, key1: i32, key2: i32) -> i32{
+pub fn get_i32_from_i32i32i32tuple(name: i32, key0: i32, key1: i32, key2: i32) -> i32 {
     get_i32(name, &Box::new(TupleVariant::i32_i32_i32(key0, key1, key2)))
 }
 
 // #[no_mangle]
-fn main(){
+fn main() {
     let a = 5;
     create_map_i32i32i32tuple_i32(a);
     insert_map_i32i32i32tuple_i32(a, 1, 2, 3, 4);

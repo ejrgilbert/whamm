@@ -78,7 +78,7 @@ fn test_i32_i32_notopt() {
 }
 
 #[test]
-fn i32i32i32_i32case(){
+fn i32i32i32_i32case() {
     let a = 6;
     let b = a;
     create_map_i32i32i32tuple_i32(a);
