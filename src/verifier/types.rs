@@ -92,10 +92,24 @@ impl SymbolTable {
 
         false
     }
-    
-    pub fn enter_scope_via_spec(&mut self, script_id: &String, probe_spec: &ProbeSpec) -> bool {
-        let scope_name = format!("{}:{}", script_id, probe_spec.full_name());
-        self.enter_named_scope(scope_name.as_str())
+
+    pub fn enter_scope_via_spec(&mut self, script_id: &str, probe_spec: &ProbeSpec) -> bool {
+        let mut is_success = true;
+
+        is_success &= self.enter_named_scope(script_id);
+        if let Some(provider) = &probe_spec.provider {
+            is_success &= self.enter_named_scope(&provider.name);
+            if let Some(package) = &probe_spec.package {
+                is_success &= self.enter_named_scope(&package.name);
+                if let Some(event) = &probe_spec.event {
+                    is_success &= self.enter_named_scope(&event.name);
+                    if let Some(mode) = &probe_spec.mode {
+                        is_success &= self.enter_named_scope(&mode.name);
+                    }
+                }
+            }
+        }
+        is_success
     }
 
     pub fn enter_scope(&mut self) -> Result<(), Box<WhammError>> {
@@ -150,6 +164,17 @@ impl SymbolTable {
         self.get_curr_scope_mut().unwrap().containing_script = Some(id);
     }
 
+    pub fn remove_record(&mut self, symbol_name: &String) {
+        match self.get_curr_scope_mut() {
+            None => {
+                // nothing to do
+            }
+            Some(curr) => {
+                curr.records.remove(symbol_name);
+            }
+        }
+    }
+
     pub fn get_record(&self, rec_id: &usize) -> Option<&Record> {
         self.records.get(*rec_id)
     }
@@ -191,7 +216,7 @@ impl SymbolTable {
         new_rec_id
     }
 
-    pub fn lookup(&self, key: &String) -> Option<&usize> {
+    pub fn lookup(&self, key: &str) -> Option<&usize> {
         match self.get_curr_scope() {
             None => None,
             Some(curr) => {
@@ -295,7 +320,7 @@ impl Scope {
     }
 
     /// Is the key in the current scope?
-    pub fn lookup(&self, key: &String) -> Option<&usize> {
+    pub fn lookup(&self, key: &str) -> Option<&usize> {
         self.records.get(key)
     }
 }

@@ -213,13 +213,13 @@ impl BehaviorTree {
         self
     }
 
-    pub fn emit_params(&mut self, force_success: bool, err: &mut ErrorGen) -> &mut Self {
+    pub fn emit_args(&mut self, force_success: bool, err: &mut ErrorGen) -> &mut Self {
         let id = self.nodes.len();
         self.put_child(
             Node::ArgAction {
                 id,
                 parent: self.curr,
-                ty: ArgActionType::EmitParams,
+                ty: ArgActionType::EmitArgs,
                 force_success,
             },
             err,
@@ -227,13 +227,13 @@ impl BehaviorTree {
         self
     }
 
-    pub fn save_params(&mut self, force_success: bool, err: &mut ErrorGen) -> &mut Self {
+    pub fn save_args(&mut self, force_success: bool, err: &mut ErrorGen) -> &mut Self {
         let id = self.nodes.len();
         self.put_child(
             Node::ArgAction {
                 id,
                 parent: self.curr,
-                ty: ArgActionType::SaveParams,
+                ty: ArgActionType::SaveArgs,
                 force_success,
             },
             err,
@@ -432,8 +432,8 @@ pub enum ActionType {
 
 #[derive(Debug)]
 pub enum ArgActionType {
-    SaveParams,
-    EmitParams,
+    SaveArgs,
+    EmitArgs,
 }
 
 #[derive(Debug)]
@@ -458,7 +458,7 @@ pub trait BehaviorVisitor<T> {
             Node::Decorator { .. } => self.visit_decorator(node),
             Node::Fallback { .. } => self.visit_fallback(node),
             Node::ArgAction { .. } => self.visit_arg_action(node),
-            Node::ActionWithParams { .. } => self.visit_action_with_params(node),
+            Node::ActionWithParams { .. } => self.visit_action_with_args(node),
             Node::Action { .. } => self.visit_action(node),
         }
     }
@@ -481,14 +481,14 @@ pub trait BehaviorVisitor<T> {
     fn visit_arg_action(&mut self, node: &Node) -> T {
         if let Node::ArgAction { ty, .. } = node {
             match ty {
-                ArgActionType::SaveParams { .. } => self.visit_save_params(node),
-                ArgActionType::EmitParams { .. } => self.visit_emit_params(node),
+                ArgActionType::SaveArgs { .. } => self.visit_save_args(node),
+                ArgActionType::EmitArgs { .. } => self.visit_emit_args(node),
             }
         } else {
             unreachable!()
         }
     }
-    fn visit_action_with_params(&mut self, node: &Node) -> T {
+    fn visit_action_with_args(&mut self, node: &Node) -> T {
         if let Node::ActionWithParams { ty, .. } = node {
             match ty {
                 ParamActionType::EmitIfElse { .. } => self.visit_emit_if_else(node),
@@ -505,8 +505,8 @@ pub trait BehaviorVisitor<T> {
     fn visit_pred_is(&mut self, node: &Node) -> T;
 
     // Argument action nodes
-    fn visit_save_params(&mut self, node: &Node) -> T;
-    fn visit_emit_params(&mut self, node: &Node) -> T;
+    fn visit_save_args(&mut self, node: &Node) -> T;
+    fn visit_emit_args(&mut self, node: &Node) -> T;
 
     // Parameterized action nodes
     fn visit_emit_if_else(&mut self, node: &Node) -> T;

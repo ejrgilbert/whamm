@@ -61,7 +61,7 @@ use log::trace;
 /// mixing that with a non-static lifetimes keeps from having simple factory code.
 /// As a workaround, we know that the original AST isn't really needed at this point, so we have the new
 /// AST representation own the Probes instead!
-/// 
+///
 /// TODO: Just realized that we will need to actually have a low-level notion of Scripts for
 ///       the virgil emitter logic! This is because we'll want to emit one Wasm module per passed script!
 pub type SimpleAstProbes =
@@ -70,14 +70,14 @@ pub type SimpleAstProbes =
 pub struct SimpleProbe {
     pub script_id: String,
     pub predicate: Option<Expr>,
-    pub body: Option<Vec<Statement>>
+    pub body: Option<Vec<Statement>>,
 }
 impl SimpleProbe {
     fn new(script_id: String, probe: &dyn Probe) -> Self {
         Self {
             script_id,
             predicate: probe.predicate().to_owned(),
-            body: probe.body().to_owned()
+            body: probe.body().to_owned(),
         }
     }
 }
@@ -98,35 +98,6 @@ impl SimpleAST {
             global_stmts: vec![],
             probes: HashMap::new(),
         }
-    }
-    pub(crate) fn get_probes_from_ast(
-        &self,
-        curr_provider_name: &String,
-        curr_package_name: &String,
-        curr_event_name: &String,
-        name: &String,
-    ) -> &Vec<SimpleProbe> {
-        if let Some(provider) = self.probes.get(curr_provider_name) {
-            if let Some(package) = provider.get(curr_package_name) {
-                if let Some(event) = package.get(curr_event_name) {
-                    if let Some(probes) = event.get(name) {
-                        return probes;
-                    }
-                }
-            }
-        }
-        unreachable!()
-    }
-    pub(crate) fn get_probe_at_idx(
-        &self,
-        curr_provider_name: &String,
-        curr_package_name: &String,
-        curr_event_name: &String,
-        name: &String,
-        idx: &usize,
-    ) -> Option<&SimpleProbe> {
-        self.get_probes_from_ast(curr_provider_name, curr_package_name, curr_event_name, name)
-            .get(*idx)
     }
 }
 
@@ -204,7 +175,10 @@ impl BehaviorTreeBuilder<'_, '_> {
                     if let Some(probes) = event.get_mut(&probe.mode_name()) {
                         probes.push(SimpleProbe::new(self.script_id.clone(), probe));
                     } else {
-                        event.insert(probe.mode_name().clone(), vec![SimpleProbe::new(self.script_id.clone(), probe)]);
+                        event.insert(
+                            probe.mode_name().clone(),
+                            vec![SimpleProbe::new(self.script_id.clone(), probe)],
+                        );
                     }
                 }
             }
@@ -220,7 +194,7 @@ impl BehaviorTreeBuilder<'_, '_> {
     fn encode_behavior_tree(&mut self) {
         self.tree
             .sequence(self.err)
-            .save_params(true, self.err)
+            .save_args(true, self.err)
             .fallback(self.err)
             .decorator(PredIs { val: true }, self.err)
             .sequence(self.err)
@@ -236,7 +210,7 @@ impl BehaviorTreeBuilder<'_, '_> {
             .force_success(self.err)
             .exit_fallback(self.err)
             .emit_body(self.err)
-            .emit_params(true, self.err)
+            .emit_args(true, self.err)
             .fallback(self.err)
             .decorator(HasAltCall, self.err)
             .emit_alt_call(self.err)
@@ -313,7 +287,7 @@ impl BehaviorTreeBuilder<'_, '_> {
             // of the alternate call is known to contextualize targeting the right place
             // for emitting the parameters.
             .emit_alt_call(self.err)
-            .emit_params(true, self.err)
+            .emit_args(true, self.err)
             .exit_sequence(self.err)
             .exit_decorator(self.err)
             .force_success(self.err)
@@ -324,7 +298,7 @@ impl BehaviorTreeBuilder<'_, '_> {
             // of the original instruction is known to contextualize targeting the right place
             // for emitting the parameters.
             .emit_orig(self.err)
-            .emit_params(true, self.err)
+            .emit_args(true, self.err)
             .exit_sequence(self.err)
             .exit_parameterized_action(self.err)
             .exit_sequence(self.err);
@@ -379,7 +353,6 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_, '_> {
             .packages()
             .for_each(|package| self.visit_package(package));
 
-
         trace!("Exiting: BehaviorTreeBuilder::visit_provider");
     }
 
@@ -396,7 +369,7 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_, '_> {
         // NOTE: Here we add a script's unit of instrumentation which retains
         // the script order as passed by the user during `whamm!` tool invocation.
         // This is guaranteed since we visit Scripts in order of the Vec and then
-        // the in-unit order is retained as well since there is an ordering of the 
+        // the in-unit order is retained as well since there is an ordering of the
         // Vec of probes contained by an Event.
         // Handle AST separately since we don't visit every package
         self.add_package_to_ast(package.name());

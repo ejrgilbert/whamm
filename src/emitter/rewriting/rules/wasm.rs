@@ -1,16 +1,20 @@
-use crate::emitter::rewriting::rules::{Event, event_factory, FromStr, LocInfo, Package, probe_factory};
+use crate::behavior::builder_visitor::SimpleProbe;
+use crate::emitter::rewriting::rules::{
+    event_factory, probe_factory, Event, FromStr, LocInfo, Package,
+};
 use crate::parser::rules::wasm::{OpcodeEventKind, WasmPackageKind};
+use crate::parser::types::{DataType, ProbeSpec, SpecPart, Value};
 use std::collections::HashMap;
 use walrus::ir::Instr;
-use crate::behavior::builder_visitor::SimpleProbe;
+use walrus::{FunctionKind, ImportedFunction, LocalFunction, ValType};
 
 pub struct WasmPackage {
     kind: WasmPackageKind,
     pub events: Vec<Box<dyn Event>>,
 }
 impl FromStr for WasmPackage {
-    fn from_str(name: &String) -> Self {
-        match name.as_str() {
+    fn from_str(name: &str) -> Self {
+        match name {
             "opcode" => Self::opcode(),
             _ => panic!("unsupported WasmPackage: {name}"),
         }
@@ -20,30 +24,45 @@ impl WasmPackage {
     fn opcode() -> Self {
         Self {
             kind: WasmPackageKind::Opcode,
-            events: vec![]
+            events: vec![],
         }
     }
 }
 impl Package for WasmPackage {
-    fn get_loc_info(
-        &self,
-        _instr: &Instr,
-        _instr_name: &str,
-    ) -> Option<LocInfo> {
+    fn get_loc_info(&self, app_wasm: &walrus::Module, instr: &Instr) -> Option<LocInfo> {
+        let mut loc_info = LocInfo::new();
         match self.kind {
             WasmPackageKind::Opcode => {
-                todo!()
+                // nothing to add
             }
+        }
+
+        // Get location info from the rest of the configured rules
+        self.events.iter().for_each(|event| {
+            if let Some(mut other_loc_info) = event.get_loc_info(app_wasm, instr) {
+                loc_info.append(&mut other_loc_info);
+            }
+        });
+
+        if loc_info.has_match() {
+            Some(loc_info)
+        } else {
+            None
         }
     }
     fn add_events(&mut self, ast_events: &HashMap<String, HashMap<String, Vec<SimpleProbe>>>) {
         let events = match self.kind {
-            WasmPackageKind::Opcode => {
-                event_factory::<OpcodeEvent>(ast_events)
-            }
+            WasmPackageKind::Opcode => event_factory::<OpcodeEvent>(ast_events),
         };
         self.events = events;
     }
+}
+
+#[derive(Debug)]
+struct FuncInfo {
+    func_kind: String,
+    module: String,
+    name: String,
 }
 
 pub struct OpcodeEvent {
@@ -53,8 +72,8 @@ pub struct OpcodeEvent {
     probes: HashMap<String, Vec<SimpleProbe>>,
 }
 impl FromStr for OpcodeEvent {
-    fn from_str(name: &String) -> Self {
-        match name.as_str() {
+    fn from_str(name: &str) -> Self {
+        match name {
             "block" => Self::block(),
             "loop" => Self::_loop(),
             "call" => Self::call(),
@@ -108,13 +127,246 @@ impl FromStr for OpcodeEvent {
     }
 }
 impl OpcodeEvent {
+    // =================
+    // ---- Helpers ----
+    // =================
+
+    fn probe_spec(&self) -> ProbeSpec {
+        ProbeSpec {
+            provider: Some(SpecPart {
+                name: "wasm".to_string(),
+                loc: None,
+            }),
+            package: Some(SpecPart {
+                name: "opcode".to_string(),
+                loc: None,
+            }),
+            event: Some(SpecPart {
+                name: self.kind.name(),
+                loc: None,
+            }),
+            mode: None,
+        }
+    }
+    pub fn get_args_for_instr(app_wasm: &walrus::Module, instr: &Instr) -> Vec<ValType> {
+        match instr {
+            Instr::Block(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::Loop(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::Call(called_func) => match &app_wasm.funcs.get(called_func.func).kind {
+                FunctionKind::Import(ImportedFunction { ty: ty_id, .. }) => {
+                    let ty = app_wasm.types.get(*ty_id);
+                    Vec::from(ty.params())
+                }
+                FunctionKind::Local(LocalFunction { args, .. }) => {
+                    let mut fn_args = vec![];
+                    args.iter().for_each(|arg_id| {
+                        let arg = app_wasm.locals.get(*arg_id);
+                        fn_args.push(arg.ty());
+                    });
+                    fn_args
+                }
+                FunctionKind::Uninitialized(ty_id) => {
+                    let ty = app_wasm.types.get(*ty_id);
+
+                    Vec::from(ty.params())
+                }
+            },
+            Instr::CallIndirect(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::LocalGet(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::LocalSet(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::LocalTee(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::GlobalGet(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::GlobalSet(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::Const(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::Binop(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::Unop(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::Select(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::Unreachable(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::Br(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::BrIf(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::IfElse(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::BrTable(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::Drop(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::Return(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::MemorySize(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::MemoryGrow(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::MemoryInit(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::DataDrop(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::MemoryCopy(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::MemoryFill(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::Load(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::Store(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::AtomicRmw(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::Cmpxchg(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::AtomicNotify(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::AtomicWait(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::AtomicFence(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::TableGet(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::TableSet(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::TableGrow(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::TableSize(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::TableFill(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::RefNull(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::RefIsNull(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::RefFunc(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::V128Bitselect(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::I8x16Swizzle(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::I8x16Shuffle(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::LoadSimd(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::TableInit(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::ElemDrop(..) => {
+                // TODO -- define args
+                vec![]
+            }
+            Instr::TableCopy(..) => {
+                // TODO -- define args
+                vec![]
+            }
+        }
+    }
+
     // ======================
     // ---- Constructors ----
     // ======================
     fn new(kind: OpcodeEventKind) -> Self {
         Self {
             kind,
-            probes: HashMap::new()
+            probes: HashMap::new(),
         }
     }
 
@@ -264,314 +516,355 @@ impl OpcodeEvent {
     }
 }
 impl Event for OpcodeEvent {
-    fn get_loc_info(
-        &self,
-        _instr: &Instr,
-        _instr_name: &str,
-    ) -> Option<LocInfo> {
+    fn get_loc_info(&self, app_wasm: &walrus::Module, instr: &Instr) -> Option<LocInfo> {
+        let mut loc_info = LocInfo::new();
+
         match self.kind {
             OpcodeEventKind::Block => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::Block(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::Loop => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::Loop(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::Call => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
+                if let Instr::Call(called_func) = instr {
+                    // collect information about this instruction
+                    let func = app_wasm.funcs.get(called_func.func);
+                    let func_info = match &func.kind {
+                        FunctionKind::Import(ImportedFunction {
+                            import: import_id, ..
+                        }) => {
+                            let import = app_wasm.imports.get(*import_id);
+                            FuncInfo {
+                                func_kind: "import".to_string(),
+                                module: import.module.clone(),
+                                name: import.name.clone(),
+                            }
+                        }
+                        FunctionKind::Local(LocalFunction { .. }) => FuncInfo {
+                            func_kind: "local".to_string(),
+                            module: "".to_string(),
+                            name: func.name.clone().unwrap_or("".to_string()),
+                        },
+                        FunctionKind::Uninitialized(..) => FuncInfo {
+                            func_kind: "uninitialized".to_string(),
+                            module: "".to_string(),
+                            name: "".to_string(),
+                        },
+                    };
 
-                // let func = app_wasm.funcs.get(func.func);
-                // // get information about the function call
-                // let (func_info, params) = crate::emitter::rewriting::get_func_info(app_wasm, func);
-                //
-                // crate::emitter::rewriting::InstrInfo {
-                //     instr_name: instr_name.to_owned(),
-                //     instr_args: params,
-                //     called_func_info: Some(func_info),
-                // }
+                    // define static_data
+                    loc_info.static_data.insert(
+                        "target_imp_name".to_string(),
+                        Some(Value::Str {
+                            ty: DataType::Str,
+                            val: func_info.name.to_string(),
+                            addr: None,
+                        }),
+                    );
+                    loc_info.static_data.insert(
+                        "target_fn_type".to_string(),
+                        Some(Value::Str {
+                            ty: DataType::Str,
+                            val: func_info.func_kind.to_string(),
+                            addr: None,
+                        }),
+                    );
+                    loc_info.static_data.insert(
+                        "target_imp_module".to_string(),
+                        Some(Value::Str {
+                            ty: DataType::Str,
+                            val: func_info.module.to_string(),
+                            addr: None,
+                        }),
+                    );
 
-                todo!()
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::CallIndirect => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::CallIndirect(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::LocalGet => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::LocalGet(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::LocalSet => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::LocalSet(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::LocalTee => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::LocalTee(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::GlobalGet => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::GlobalGet(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::GlobalSet => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::GlobalSet(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::Const => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::Const(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::Binop => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::Binop(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::Unop => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::Unop(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::Select => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::Select(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::Unreachable => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::Unreachable(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::Br => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // - label_id
-                // pull matched probes
-                todo!()
+                if let Instr::Br(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::BrIf => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // - label_id
-                // - condition
-                // pull matched probes
-                todo!()
+                if let Instr::BrIf(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::IfElse => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::IfElse(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::BrTable => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::BrTable(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::Drop => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::Drop(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::Return => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::Return(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::MemorySize => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::MemorySize(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::MemoryGrow => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::MemoryGrow(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::MemoryInit => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::MemoryInit(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::DataDrop => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::DataDrop(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::MemoryCopy => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::MemoryCopy(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::MemoryFill => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::MemoryFill(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::Load => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::Load(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::Store => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::Store(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::AtomicRmw => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::AtomicRmw(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::Cmpxchg => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::Cmpxchg(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::AtomicNotify => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::AtomicNotify(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::AtomicWait => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::AtomicWait(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::AtomicFence => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::AtomicFence(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::TableGet => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::TableGet(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::TableSet => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::TableSet(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::TableGrow => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::TableGrow(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::TableSize => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::TableSize(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::TableFill => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::TableFill(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::RefNull => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::RefNull(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::RefIsNull => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::RefIsNull(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::RefFunc => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::RefFunc(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::V128Bitselect => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::V128Bitselect(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::I8x16Swizzle => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::I8x16Swizzle(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::I8x16Shuffle => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::I8x16Shuffle(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::LoadSimd => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::LoadSimd(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::TableInit => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::TableInit(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::ElemDrop => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::ElemDrop(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
             OpcodeEventKind::TableCopy => {
-                // check if the instr is of this event type
-                // define static/dynamic vars
-                // pull matched probes
-                todo!()
+                if let Instr::TableCopy(..) = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
             }
+        }
+
+        if loc_info.has_match() {
+            Some(loc_info)
+        } else {
+            None
         }
     }
     fn add_probes(&mut self, probes: &HashMap<String, Vec<SimpleProbe>>) {

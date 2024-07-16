@@ -29,7 +29,7 @@ wasm:opcode:br:before {
     "wasm:opcode:call:before { }",
     "wasm:opcode:call:after { }",
     // Regexes
-    "wasm:byt*:call:before { }",
+    "wasm:opc*:call:before { }",
     "wasm::call:after { }",
     ":::alt { }",
     "wasm::: { }",

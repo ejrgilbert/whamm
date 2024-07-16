@@ -60,7 +60,7 @@ pub trait Provider {
         loc: Option<Location>,
         predicate: Option<Expr>,
         body: Option<Vec<Statement>>,
-        printing_info: bool
+        printing_info: bool,
     ) -> (bool, bool, bool);
 }
 
@@ -74,7 +74,7 @@ pub fn provider_factory<P: Provider + NameOptions + FromStr + 'static>(
     loc: Option<Location>,
     predicate: Option<Expr>,
     body: Option<Vec<Statement>>,
-    printing_info: bool
+    printing_info: bool,
 ) -> Result<(bool, bool, bool, bool), Box<WhammError>> {
     if let Some(SpecPart {
         name: provider_patt,
@@ -114,7 +114,7 @@ pub fn provider_factory<P: Provider + NameOptions + FromStr + 'static>(
                     package_loc.to_owned(),
                     predicate.clone(),
                     body.clone(),
-                    printing_info
+                    printing_info,
                 )
             } else {
                 (false, false, false)
@@ -273,7 +273,7 @@ pub trait Package {
         loc: Option<Location>,
         predicate: Option<Expr>,
         body: Option<Vec<Statement>>,
-        printing_info: bool
+        printing_info: bool,
     ) -> (bool, bool);
 }
 
@@ -299,7 +299,7 @@ fn package_factory<P: Package + NameOptions + FromStr + 'static>(
     loc: Option<Location>,
     predicate: Option<Expr>,
     body: Option<Vec<Statement>>,
-    printing_info: bool
+    printing_info: bool,
 ) -> (bool, bool, bool) {
     if let Some(SpecPart {
         name: package_patt, ..
@@ -327,7 +327,7 @@ fn package_factory<P: Package + NameOptions + FromStr + 'static>(
                         event_loc.to_owned(),
                         predicate.clone(),
                         body.clone(),
-                        printing_info
+                        printing_info,
                     )
                 } else {
                     (false, false)
@@ -450,7 +450,7 @@ fn event_factory<E: Event + NameOptions + FromStr + 'static>(
     loc: Option<Location>,
     predicate: Option<Expr>,
     body: Option<Vec<Statement>>,
-    printing_info: bool
+    printing_info: bool,
 ) -> (bool, bool) {
     if let Some(SpecPart {
         name: event_patt, ..
@@ -781,7 +781,7 @@ impl Provider for WhammProvider {
         loc: Option<Location>,
         predicate: Option<Expr>,
         body: Option<Vec<Statement>>,
-        printing_info: bool
+        printing_info: bool,
     ) -> (bool, bool, bool) {
         match self {
             Self {
@@ -793,7 +793,7 @@ impl Provider for WhammProvider {
                 loc,
                 predicate,
                 body,
-                printing_info
+                printing_info,
             ),
             Self {
                 kind: WhammProviderKind::Wasm,
@@ -804,7 +804,7 @@ impl Provider for WhammProvider {
                 loc,
                 predicate,
                 body,
-                printing_info
+                printing_info,
             ),
         }
     }

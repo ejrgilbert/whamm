@@ -58,7 +58,7 @@ impl WasmPackage {
                         "A unique identifier tied to the probe's location in the Wasm bytecode."
                             .to_string(),
                         DataType::I32,
-                        true
+                        true,
                     ),
                 )]),
                 loc,
@@ -153,7 +153,7 @@ impl Package for WasmPackage {
         loc: Option<Location>,
         predicate: Option<Expr>,
         body: Option<Vec<Statement>>,
-        printing_info: bool
+        printing_info: bool,
     ) -> (bool, bool) {
         match self {
             Self {
@@ -165,7 +165,7 @@ impl Package for WasmPackage {
                 loc,
                 predicate,
                 body,
-                printing_info
+                printing_info,
             ),
         }
     }
@@ -222,7 +222,7 @@ pub enum OpcodeEventKind {
     TableCopy,
 }
 impl OpcodeEventKind {
-    fn name(&self) -> String {
+    pub fn name(&self) -> String {
         match self {
             OpcodeEventKind::Block => "block".to_string(),
             OpcodeEventKind::Loop => "loop".to_string(),
@@ -274,22 +274,18 @@ impl OpcodeEventKind {
             OpcodeEventKind::TableCopy => "table_copy".to_string(),
         }
     }
-    
+
     fn get_args(&self) -> Vec<DataType> {
         match self {
-            OpcodeEventKind::BrIf => vec![
-                DataType::I32
-            ],
-            _ => vec![]
+            OpcodeEventKind::BrIf => vec![DataType::I32],
+            _ => vec![],
         }
     }
 
     fn get_immediates(&self) -> Vec<DataType> {
         match self {
-            OpcodeEventKind::BrIf => vec![
-                DataType::I32
-            ],
-            _ => vec![]
+            OpcodeEventKind::BrIf => vec![DataType::I32],
+            _ => vec![],
         }
     }
 }
@@ -413,36 +409,42 @@ impl OpcodeEvent {
     // =========================
     // ---- Globals Helpers ----
     // =========================
-    
+
     fn init_globals(kind: OpcodeEventKind) -> HashMap<String, ProvidedGlobal> {
         let mut globals = HashMap::new();
         Self::gen_args(&mut globals, kind.get_args());
         Self::gen_immediates(&mut globals, kind.get_immediates());
-        
+
         globals
     }
-    
+
     fn gen_args(globals: &mut HashMap<String, ProvidedGlobal>, args: Vec<DataType>) {
         for (idx, ty) in args.iter().enumerate() {
             let name = format!("arg{}", idx);
-            globals.insert(name.clone(), ProvidedGlobal::new(
-                name.to_string(),
-                format!("The argument to the opcode at index {}.", idx),
-                ty.to_owned(),
-                false
-            ));
+            globals.insert(
+                name.clone(),
+                ProvidedGlobal::new(
+                    name.to_string(),
+                    format!("The argument to the opcode at index {}.", idx),
+                    ty.to_owned(),
+                    false,
+                ),
+            );
         }
     }
 
     fn gen_immediates(globals: &mut HashMap<String, ProvidedGlobal>, immediates: Vec<DataType>) {
         for (idx, ty) in immediates.iter().enumerate() {
             let name = format!("imm{}", idx);
-            globals.insert(name.clone(), ProvidedGlobal::new(
-                name.to_string(),
-                format!("The immediate to the opcode at index {}.", idx),
-                ty.to_owned(),
-                true
-            ));
+            globals.insert(
+                name.clone(),
+                ProvidedGlobal::new(
+                    name.to_string(),
+                    format!("The immediate to the opcode at index {}.", idx),
+                    ty.to_owned(),
+                    true,
+                ),
+            );
         }
     }
 
@@ -476,17 +478,18 @@ impl OpcodeEvent {
     }
     fn call(loc: Option<Location>) -> Self {
         let mut globals = Self::init_globals(OpcodeEventKind::Call);
-        
+
         // add in the extra globals (that aren't args or immediates)
         globals.insert(
             "target_fn_type".to_string(),
             ProvidedGlobal::new(
                 "target_fn_type".to_string(),
                 "The type of function being called at this call site. This constant will \
-                            evaluate to either `local` or `import`.".to_string(),
+                            evaluate to either `local` or `import`."
+                    .to_string(),
                 DataType::Str,
-                true
-            )
+                true,
+            ),
         );
         globals.insert(
             "target_imp_module".to_string(),
@@ -494,10 +497,11 @@ impl OpcodeEvent {
                 "target_imp_module".to_string(),
                 "The name of the module that the imported function comes from. \
                             To improve performance, pair with `target_fn_type == \"import\"` \
-                            for faster short-circuiting.".to_string(),
+                            for faster short-circuiting."
+                    .to_string(),
                 DataType::Str,
-                true
-            )
+                true,
+            ),
         );
         globals.insert(
             "target_imp_name".to_string(),
@@ -505,21 +509,23 @@ impl OpcodeEvent {
                 "target_imp_name".to_string(),
                 "The name of the imported function. \
                         To improve performance, pair with `target_fn_type == \"import\"` \
-                        for faster short-circuiting.".to_string(),
+                        for faster short-circuiting."
+                    .to_string(),
                 DataType::Str,
-                true
-            )
+                true,
+            ),
         );
         globals.insert(
             "new_target_fn_name".to_string(),
             ProvidedGlobal::new(
                 "new_target_fn_name".to_string(),
-                "(DEPRECATED) The name of the target function to call instead of the original.".to_string(),
+                "(DEPRECATED) The name of the target function to call instead of the original."
+                    .to_string(),
                 DataType::Str,
-                true
-            )
+                true,
+            ),
         );
-        
+
         Self {
             kind: OpcodeEventKind::Call,
             info: EventInfo {
@@ -888,12 +894,14 @@ impl OpcodeEvent {
         Self {
             kind: OpcodeEventKind::BrIf,
             info: EventInfo {
-                docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br".to_string(),
+                docs:
+                    "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
+                        .to_string(),
                 fns: vec![],
                 globals: Self::init_globals(OpcodeEventKind::BrIf),
                 loc,
-                probe_map: HashMap::new()
-            }
+                probe_map: HashMap::new(),
+            },
         }
     }
     fn if_else(loc: Option<Location>) -> Self {

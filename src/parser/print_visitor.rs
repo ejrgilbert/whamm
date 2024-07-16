@@ -340,7 +340,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         // print name
         s += &format!("{} {} (", self.get_indent(), f.name.name);
 
-        // print params
+        // print args
         s += &f
             .params
             .iter()

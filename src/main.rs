@@ -149,18 +149,8 @@ fn run_instr(
     // Phase 1 of instrumentation (actually emits the instrumentation code)
     // This structure is necessary since we need to have the fns/globals injected (a single time)
     // and ready to use in every body/predicate.
-    let mut instr = InstrGenerator {
-        tree: &behavior_tree,
-        emitter: Box::new(&mut emitter),
-        ast: simple_ast,
-        err: &mut err,
-        context_name: "".to_string(),
-        curr_provider_name: "".to_string(),
-        curr_package_name: "".to_string(),
-        curr_event_name: "".to_string(),
-        curr_probe_mode: "".to_string(),
-        curr_probe: None,
-    };
+    let mut instr =
+        InstrGenerator::new(&behavior_tree, Box::new(&mut emitter), simple_ast, &mut err);
     instr.run(&behavior_tree);
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
@@ -273,7 +263,7 @@ fn get_script_ast(script_path: &String, err: &mut ErrorGen) -> Whamm {
     }
 }
 
-fn build_behavior<'a>(whamm: &'a Whamm, err: &mut ErrorGen) -> (BehaviorTree, SimpleAST) {
+fn build_behavior(whamm: &Whamm, err: &mut ErrorGen) -> (BehaviorTree, SimpleAST) {
     // Build the behavior tree from the AST
     let mut simple_ast = SimpleAST::new();
     let mut behavior = build_behavior_tree(whamm, &mut simple_ast, err);

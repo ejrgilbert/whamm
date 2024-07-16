@@ -1,6 +1,6 @@
 use crate::behavior::tree::{
-    ActionType, ArgActionType, BehaviorTree, BehaviorVisitor, DecoratorType,
-    Node as TreeNode, ParamActionType,
+    ActionType, ArgActionType, BehaviorTree, BehaviorVisitor, DecoratorType, Node as TreeNode,
+    ParamActionType,
 };
 use graphviz_rust::cmd::{CommandArg, Format};
 use graphviz_rust::dot_generator::{attr, edge, graph, id, node, node_id, stmt};
@@ -215,30 +215,30 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
         }
     }
 
-    fn visit_save_params(&mut self, node: &TreeNode) {
+    fn visit_save_args(&mut self, node: &TreeNode) {
         if let TreeNode::ArgAction {
             id,
-            ty: ArgActionType::SaveParams,
+            ty: ArgActionType::SaveArgs,
             parent,
             ..
         } = node
         {
-            self.emit_special_action_node(id, "SaveParams");
+            self.emit_special_action_node(id, "SaveArgs");
             self.emit_edge(parent, id);
         } else {
             unreachable!()
         }
     }
 
-    fn visit_emit_params(&mut self, node: &TreeNode) {
+    fn visit_emit_args(&mut self, node: &TreeNode) {
         if let TreeNode::ArgAction {
             id,
-            ty: ArgActionType::EmitParams,
+            ty: ArgActionType::EmitArgs,
             parent,
             ..
         } = node
         {
-            self.emit_special_action_node(id, "EmitParams");
+            self.emit_special_action_node(id, "EmitArgs");
             self.emit_edge(parent, id);
         } else {
             unreachable!()

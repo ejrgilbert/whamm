@@ -1,18 +1,17 @@
 pub mod rules;
 
 use crate::common::error::{ErrorGen, WhammError};
+use crate::emitter::rewriting::rules::{LocInfo, Provider, WhammProvider};
 use crate::emitter::Emitter;
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{BinOp, DataType, Expr, Fn, ProbeSpec, Statement, UnOp, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use log::{debug, info};
-use regex::Regex;
 use walrus::ir::{BinaryOp, ExtendedLoad, Instr, InstrSeqId, LoadKind, MemArg};
 use walrus::{
-    ActiveData, ActiveDataLocation, DataKind, FunctionBuilder, FunctionId, FunctionKind,
-    ImportedFunction, InitExpr, InstrSeqBuilder, LocalFunction, MemoryId, ModuleData, ValType,
+    ActiveData, ActiveDataLocation, DataKind, FunctionBuilder, FunctionId, FunctionKind, InitExpr,
+    InstrSeqBuilder, LocalFunction, MemoryId, ModuleData, ValType,
 };
-
 // =================================================================================
 // ================ WasmRewritingEmitter - HELPER FUNCTIONS ========================
 // Necessary to extract common logic between Emitter and InstrumentationVisitor.
@@ -533,55 +532,6 @@ fn emit_value(
     Ok(is_success)
 }
 
-fn get_func_info(app_wasm: &walrus::Module, func: &walrus::Function) -> (FuncInfo, Vec<ValType>) {
-    match &func.kind {
-        FunctionKind::Import(ImportedFunction {
-            ty: ty_id,
-            import: import_id,
-        }) => {
-            let import = app_wasm.imports.get(*import_id);
-            let ty = app_wasm.types.get(*ty_id);
-
-            (
-                FuncInfo {
-                    func_kind: "import".to_string(),
-                    module: import.module.clone(),
-                    name: import.name.clone(),
-                },
-                Vec::from(ty.params()),
-            )
-        }
-        FunctionKind::Local(LocalFunction { args, .. }) => {
-            let mut params = vec![];
-            args.iter().for_each(|arg_id| {
-                let arg = app_wasm.locals.get(*arg_id);
-                params.push(arg.ty());
-            });
-
-            (
-                FuncInfo {
-                    func_kind: "local".to_string(),
-                    module: "".to_string(),
-                    name: func.name.clone().unwrap_or("".to_string()),
-                },
-                params,
-            )
-        }
-        FunctionKind::Uninitialized(ty_id) => {
-            let ty = app_wasm.types.get(*ty_id);
-
-            (
-                FuncInfo {
-                    func_kind: "uninitialized".to_string(),
-                    module: "".to_string(),
-                    name: "".to_string(),
-                },
-                Vec::from(ty.params()),
-            )
-        }
-    }
-}
-
 // ==============================
 // ==== WasmRewritingEmitter ====
 // ==============================
@@ -621,7 +571,6 @@ impl InstrIter {
             if let FunctionKind::Local(local_func) = &func.kind {
                 // TODO -- make sure that the id is not any of the injected function IDs (strcmp)
                 self.init_instr_locs(
-                    // instrs_of_interest,
                     app_wasm,
                     local_func,
                     &func_id,
@@ -634,8 +583,7 @@ impl InstrIter {
     }
     fn init_instr_locs(
         &mut self,
-        // instrs_of_interest: &[String],
-        app_wasm: &walrus::Module,
+        _app_wasm: &walrus::Module,
         func: &LocalFunction,
         func_id: &FunctionId,
         func_name: Option<String>,
@@ -650,38 +598,24 @@ impl InstrIter {
 
                 // as a hack, just save ALL INSTRS, to be visited later to possibly
                 //     instrument them
-                // if instrs_of_interest.contains(&instr_name) {
-                    let (func_info, params) = if let Instr::Call(func) = instr {
-                        let func = app_wasm.funcs.get(func.func);
-                        // get information about the function call
-                        let (func_info, params) = get_func_info(app_wasm, func);
-                        (Some(func_info), params)
-                    } else {
-                        (None, vec![])
-                    };
 
-                    // add current instr
-                    self.instr_locs.push(ProbeLoc {
-                        // wasm_func_name: func_name.clone(),
-                        wasm_func_id: *func_id,
-                        instr_seq_id,
-                        index,
-                        instr_name: instr_name.clone(),
-                        instr: instr.clone(),
-                        instr_params: params,
-                        instr_created_args: vec![],
-                        instr_alt_call: None,
-                        // instr_symbols: HashMap::new()
-                        func_info,
-                    });
-                // }
+                // add current instr
+                self.instr_locs.push(ProbeLoc {
+                    // wasm_func_name: func_name.clone(),
+                    wasm_func_id: *func_id,
+                    instr_seq_id,
+                    index,
+                    instr_name: instr_name.clone(),
+                    instr: instr.clone(),
+                    instr_created_args: vec![],
+                    instr_alt_call: None,
+                });
 
                 // visit nested blocks
                 match instr {
                     Instr::Block(block) => {
                         self.init_instr_locs(
-                            // instrs_of_interest,
-                            app_wasm,
+                            _app_wasm,
                             func,
                             func_id,
                             func_name.clone(),
@@ -690,8 +624,7 @@ impl InstrIter {
                     }
                     Instr::Loop(_loop) => {
                         self.init_instr_locs(
-                            // instrs_of_interest,
-                            app_wasm,
+                            _app_wasm,
                             func,
                             func_id,
                             func_name.clone(),
@@ -701,16 +634,14 @@ impl InstrIter {
                     Instr::IfElse(if_else, ..) => {
                         println!("IfElse: {:#?}", if_else);
                         self.init_instr_locs(
-                            // instrs_of_interest,
-                            app_wasm,
+                            _app_wasm,
                             func,
                             func_id,
                             func_name.clone(),
                             if_else.consequent,
                         );
                         self.init_instr_locs(
-                            // instrs_of_interest,
-                            app_wasm,
+                            _app_wasm,
                             func,
                             func_id,
                             func_name.clone(),
@@ -749,19 +680,8 @@ struct ProbeLoc {
 
     instr_name: String,
     instr: Instr,
-    func_info: Option<FuncInfo>,
-    instr_params: Vec<ValType>,
     instr_created_args: Vec<(String, usize)>,
-
-    // Save off the compiler-defined constants for this instruction
-    // instr_symbols: HashMap<String, Record>,
     instr_alt_call: Option<FunctionId>,
-}
-#[derive(Debug)]
-struct FuncInfo {
-    func_kind: String,
-    module: String,
-    name: String,
 }
 struct EmittingInstrTracker {
     // To keep track of the location of the original instruction while we're instrumenting!
@@ -815,7 +735,6 @@ impl WasmRewritingEmitter {
             app_wasm,
             table,
             metadata: InsertionMetadata {
-                // curr_event: "".to_string(),
                 mem_id,
                 curr_mem_offset: 1_052_576, // Set default memory base address to DEFAULT + 4KB = 1048576 bytes + 4000 bytes = 1052576 bytes
             },
@@ -830,116 +749,6 @@ impl WasmRewritingEmitter {
         if let Some(Record::Var { value, .. }) = &mut rec {
             *value = val;
         }
-    }
-
-    fn define_new_target_fn_name(&mut self) -> Result<bool, Box<WhammError>> {
-        // TODO -- change this to be an inline call() instead of setting a var
-        Ok(true)
-    }
-
-    fn define_target_imp_name(&mut self) -> Result<bool, Box<WhammError>> {
-        let var_name = "target_imp_name".to_string();
-
-        if let Some(curr_instr) = self.instr_iter.curr() {
-            if let Some(func_info) = &curr_instr.func_info {
-                if func_info.name.contains("call_perform") {
-                    // For debugging, set breakpoint here!
-                    println!("{}", func_info.name);
-                }
-
-                let rec_id = match self.table.lookup(&var_name) {
-                    Some(rec_id) => *rec_id,
-                    _ => {
-                        return Err(Box::new(ErrorGen::get_unexpected_error(
-                            true,
-                            Some(format!(
-                                "{UNEXPECTED_ERR_MSG} \
-                        `{var_name}` symbol does not exist in this scope!"
-                            )),
-                            None,
-                        )));
-                    }
-                };
-                self.override_var_val(
-                    &rec_id,
-                    Some(Value::Str {
-                        ty: DataType::Str,
-                        val: func_info.name.to_string(),
-                        addr: None,
-                    }),
-                );
-            }
-        }
-        Ok(true)
-    }
-
-    fn define_target_fn_type(&mut self) -> Result<bool, Box<WhammError>> {
-        let var_name = "target_fn_type".to_string();
-
-        if let Some(curr_instr) = self.instr_iter.curr() {
-            if let Some(func_info) = &curr_instr.func_info {
-                // if func_info.name.contains("call_new") {
-                //     // For debugging, set breakpoint here!
-                //     println!("{}", func_info.name);
-                // }
-                let rec_id = match self.table.lookup(&var_name) {
-                    Some(rec_id) => *rec_id,
-                    _ => {
-                        return Err(Box::new(ErrorGen::get_unexpected_error(
-                            true,
-                            Some(format!(
-                                "{UNEXPECTED_ERR_MSG} \
-                        `{var_name}` symbol does not exist in this scope!"
-                            )),
-                            None,
-                        )));
-                    }
-                };
-                self.override_var_val(
-                    &rec_id,
-                    Some(Value::Str {
-                        ty: DataType::Str,
-                        val: func_info.func_kind.to_string(),
-                        addr: None,
-                    }),
-                );
-            }
-        }
-        Ok(true)
-    }
-
-    fn define_target_imp_module(&mut self) -> Result<bool, Box<WhammError>> {
-        let var_name = "target_imp_module".to_string();
-        if let Some(curr_instr) = self.instr_iter.curr() {
-            if let Some(func_info) = &curr_instr.func_info {
-                // if func_info.name.contains("call_new") {
-                //     // For debugging, set breakpoint here!
-                //     println!("{}", func_info.name);
-                // }
-                let rec_id = match self.table.lookup(&var_name) {
-                    Some(rec_id) => *rec_id,
-                    _ => {
-                        return Err(Box::new(ErrorGen::get_unexpected_error(
-                            true,
-                            Some(format!(
-                                "{UNEXPECTED_ERR_MSG} \
-                        `{var_name}` symbol does not exist in this scope!"
-                            )),
-                            None,
-                        )));
-                    }
-                };
-                self.override_var_val(
-                    &rec_id,
-                    Some(Value::Str {
-                        ty: DataType::Str,
-                        val: func_info.module.to_string(),
-                        addr: None,
-                    }),
-                );
-            }
-        }
-        Ok(true)
     }
 
     fn emit_provided_fn(&mut self, context: &str, f: &Fn) -> Result<bool, Box<WhammError>> {
@@ -1337,10 +1146,7 @@ impl Emitter for WasmRewritingEmitter {
     fn enter_scope(&mut self) -> Result<(), Box<WhammError>> {
         self.table.enter_scope()
     }
-    fn enter_named_scope(&mut self, scope_name: &str) -> bool {
-        self.table.enter_named_scope(scope_name)
-    }
-    fn enter_scope_via_spec(&mut self, script_id: &String, probe_spec: &ProbeSpec) -> bool {
+    fn enter_scope_via_spec(&mut self, script_id: &str, probe_spec: &ProbeSpec) -> bool {
         self.table.enter_scope_via_spec(script_id, probe_spec)
     }
     fn exit_scope(&mut self) -> Result<(), Box<WhammError>> {
@@ -1403,17 +1209,14 @@ impl Emitter for WasmRewritingEmitter {
         false
     }
 
-    fn curr_instr(&self) -> (&Instr, &str) {
+    fn curr_instr(&self) -> &Instr {
         let curr_instr = self.instr_iter.curr().unwrap();
-        return (&curr_instr.instr, curr_instr.instr_name.as_str())
+        &curr_instr.instr
     }
 
-    /// bool -> whether the current instruction is one of the passed list of types
-    fn curr_instr_type(&mut self) -> String {
-        if let Some(instr) = self.instr_iter.curr() {
-            return instr.instr_name.clone();
-        }
-        unreachable!()
+    fn curr_instr_name(&self) -> &str {
+        let curr_instr = self.instr_iter.curr().unwrap();
+        curr_instr.instr_name.as_str()
     }
 
     fn incr_loc_pointer(&mut self) {
@@ -1423,21 +1226,12 @@ impl Emitter for WasmRewritingEmitter {
         }
     }
 
-    fn has_params(&mut self) -> Result<bool, Box<WhammError>> {
-        if let Some(curr_instr) = self.instr_iter.curr_mut() {
-            return Ok(!curr_instr.instr_params.is_empty());
-        }
-        Err(Box::new(ErrorGen::get_unexpected_error(
-            true,
-            Some(format!(
-                "{UNEXPECTED_ERR_MSG} \
-        Something went wrong when trying to access the current instruction."
-            )),
-            None,
-        )))
+    fn get_loc_info<'a>(&self, rule: &'a WhammProvider) -> Option<LocInfo<'a>> {
+        let curr_instr = self.curr_instr();
+        rule.get_loc_info(&self.app_wasm, curr_instr)
     }
 
-    fn save_params(&mut self) -> bool {
+    fn save_args(&mut self, args: &[ValType]) -> bool {
         if let Some(curr_loc) = self.instr_iter.curr_mut() {
             if let Some(tracker) = &mut self.emitting_instr {
                 let func = self
@@ -1453,44 +1247,40 @@ impl Emitter for WasmRewritingEmitter {
                 // So, we can just save off the first * items in the stack as the args
                 // to the call.
                 let mut arg_recs = vec![]; // vec to retain order!
-                curr_loc
-                    .instr_params
-                    .iter()
-                    .enumerate()
-                    .for_each(|(num, param_ty)| {
-                        // create local for the param in the module
-                        let arg_local_id = self.app_wasm.locals.add(*param_ty);
+                args.iter().enumerate().for_each(|(num, param_ty)| {
+                    // create local for the param in the module
+                    let arg_local_id = self.app_wasm.locals.add(*param_ty);
 
-                        // emit a opcode in the event to assign the ToS to this new local
-                        instr_builder.instr_at(
-                            tracker.curr_idx,
-                            walrus::ir::LocalSet {
-                                local: arg_local_id,
-                            },
-                        );
+                    // emit a opcode in the event to assign the ToS to this new local
+                    instr_builder.instr_at(
+                        tracker.curr_idx,
+                        walrus::ir::LocalSet {
+                            local: arg_local_id,
+                        },
+                    );
 
-                        // update index of tracker to point to what follows our insertions
-                        tracker.curr_idx += 1;
+                    // update index of tracker to point to what follows our insertions
+                    tracker.curr_idx += 1;
 
-                        // also update index to point to new location of instrumented instruction!
-                        // (saved params go before the original instruction)
-                        tracker.orig_instr_idx += 1;
+                    // also update index to point to new location of instrumented instruction!
+                    // (saved args go before the original instruction)
+                    tracker.orig_instr_idx += 1;
 
-                        // place in symbol table with var addr for future reference
-                        let arg_name = format!("arg{}", num);
-                        let id = self.table.put(
-                            arg_name.clone(),
-                            Record::Var {
-                                ty: DataType::I32, // we only support integers right now.
-                                name: arg_name.clone(),
-                                value: None,
-                                is_comp_provided: false,
-                                addr: Some(VarAddr::Local { addr: arg_local_id }),
-                                loc: None,
-                            },
-                        );
-                        arg_recs.push((arg_name, id));
-                    });
+                    // place in symbol table with var addr for future reference
+                    let arg_name = format!("arg{}", num);
+                    let id = self.table.put(
+                        arg_name.clone(),
+                        Record::Var {
+                            ty: DataType::I32, // we only support integers right now.
+                            name: arg_name.clone(),
+                            value: None,
+                            is_comp_provided: false,
+                            addr: Some(VarAddr::Local { addr: arg_local_id }),
+                            loc: None,
+                        },
+                    );
+                    arg_recs.push((arg_name, id));
+                });
                 curr_loc.instr_created_args = arg_recs;
                 return true;
             }
@@ -1498,7 +1288,7 @@ impl Emitter for WasmRewritingEmitter {
         false
     }
 
-    fn emit_params(&mut self) -> Result<bool, Box<WhammError>> {
+    fn emit_args(&mut self) -> Result<bool, Box<WhammError>> {
         if let Some(curr_loc) = self.instr_iter.curr_mut() {
             if let Some(tracker) = &mut self.emitting_instr {
                 let func = self
@@ -1517,7 +1307,7 @@ impl Emitter for WasmRewritingEmitter {
                         ..
                     }) = param_rec
                     {
-                        // Inject at tracker.orig_instr_idx to make sure that this actually emits the params
+                        // Inject at tracker.orig_instr_idx to make sure that this actually emits the args
                         // for the instrumented instruction right before that instruction is called!
                         instr_builder.instr_at(
                             tracker.orig_instr_idx,
@@ -1525,7 +1315,7 @@ impl Emitter for WasmRewritingEmitter {
                         );
 
                         // update index to point to new location of instrumented instruction!
-                        // (re-emitted params go before the original instruction)
+                        // (re-emitted args go before the original instruction)
                         tracker.orig_instr_idx += 1;
                     } else {
                         return Err(Box::new(ErrorGen::get_unexpected_error(
@@ -1544,44 +1334,8 @@ impl Emitter for WasmRewritingEmitter {
         Ok(false)
     }
 
-    fn define_compiler_var(
-        &mut self,
-        context: &str,
-        var_name: &str,
-    ) -> Result<bool, Box<WhammError>> {
-        let regex = Regex::new(r"whamm:script([0-9]+):wasm:opcode").unwrap();
-        return if let Some(_caps) = regex.captures(context) {
-            match var_name {
-                "new_target_fn_name" => self.define_new_target_fn_name(),
-                "target_imp_name" => self.define_target_imp_name(),
-                "target_fn_type" => self.define_target_fn_type(),
-                "target_imp_module" => self.define_target_imp_module(),
-                _ => {
-                    return Err(Box::new(ErrorGen::get_unexpected_error(
-                        true,
-                        Some(format!(
-                            "{UNEXPECTED_ERR_MSG} \
-                    Current context `{}` does not provide definition for variable `{}`",
-                            context, var_name
-                        )),
-                        None,
-                    )));
-                }
-            }
-        } else {
-            return Err(Box::new(ErrorGen::get_unexpected_error(
-                true,
-                Some(format!(
-                    "{UNEXPECTED_ERR_MSG} \
-            Could not find a context to provide the definition, context: {}",
-                    context
-                )),
-                None,
-            )));
-        };
-    }
-    fn define(&mut self, var_name: &String, var_val: &Option<Value>) -> Result<bool, Box<WhammError>> {
-        let rec_id = match self.table.lookup(&var_name) {
+    fn define(&mut self, var_name: &str, var_val: &Option<Value>) -> Result<bool, Box<WhammError>> {
+        let rec_id = match self.table.lookup(var_name) {
             Some(rec_id) => *rec_id,
             _ => {
                 return Err(Box::new(ErrorGen::get_unexpected_error(
@@ -1594,12 +1348,22 @@ impl Emitter for WasmRewritingEmitter {
                 )));
             }
         };
-        self.override_var_val(
-            &rec_id,
-            var_val.clone(),
-        );
-        
+        self.override_var_val(&rec_id, var_val.clone());
+
         Ok(true)
+    }
+
+    fn reset_table_data(&mut self, loc_info: &LocInfo) {
+        // reset static_data
+        loc_info.static_data.iter().for_each(|(symbol_name, ..)| {
+            self.table.remove_record(symbol_name);
+        });
+
+        // reset dynamic_data
+        for i in 0..loc_info.args.len() {
+            let arg_name = format!("arg{}", i);
+            self.table.remove_record(&arg_name);
+        }
     }
 
     fn fold_expr(&mut self, expr: &mut Expr) -> bool {
@@ -2014,10 +1778,7 @@ impl Emitter for WasmRewritingEmitter {
     fn has_alt_call(&mut self) -> bool {
         // check if we should inject an alternate call!
         // At this point the body has been visited, so "new_target_fn_name" would be defined
-        let rec_id = self
-            .table
-            .lookup(&"new_target_fn_name".to_string())
-            .copied();
+        let rec_id = self.table.lookup("new_target_fn_name").copied();
 
         if rec_id.is_none() {
             info!("`new_target_fn_name` not configured for this probe.");
@@ -2069,7 +1830,7 @@ impl Emitter for WasmRewritingEmitter {
                     let func_builder = func.builder_mut();
                     let mut instr_builder = func_builder.instr_seq(tracker.curr_seq_id);
 
-                    // Hack to have emit_params target this new call site!
+                    // Hack to have emit_args target this new call site!
                     tracker.orig_instr_idx = tracker.curr_idx;
 
                     // inject call

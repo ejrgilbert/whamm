@@ -3,9 +3,11 @@ pub mod rewriting;
 #[cfg(test)]
 pub mod tests;
 
-use walrus::ir::Instr;
 use crate::common::error::WhammError;
+use crate::emitter::rewriting::rules::{LocInfo, WhammProvider};
 use crate::parser::types::{DataType, Expr, Fn, ProbeSpec, Statement, Value};
+use walrus::ir::Instr;
+use walrus::ValType;
 
 // =================================================
 // ==== Emitter Trait --> Used By All Emitters! ====
@@ -13,8 +15,7 @@ use crate::parser::types::{DataType, Expr, Fn, ProbeSpec, Statement, Value};
 
 pub trait Emitter {
     fn enter_scope(&mut self) -> Result<(), Box<WhammError>>;
-    fn enter_named_scope(&mut self, scope_name: &str) -> bool;
-    fn enter_scope_via_spec(&mut self, script_id: &String, probe_spec: &ProbeSpec) -> bool;
+    fn enter_scope_via_spec(&mut self, script_id: &str, probe_spec: &ProbeSpec) -> bool;
     fn exit_scope(&mut self) -> Result<(), Box<WhammError>>;
     fn reset_children(&mut self);
 
@@ -22,21 +23,15 @@ pub trait Emitter {
     fn has_next_instr(&self) -> bool;
     fn init_first_instr(&mut self) -> bool;
     fn next_instr(&mut self) -> bool;
-    fn curr_instr(&self) -> (&Instr, &str);
-    fn curr_instr_is_of_type(&mut self, instr_names: &[String]) -> bool;
-    fn curr_instr_type(&mut self) -> String;
+    fn curr_instr(&self) -> &Instr;
+    fn curr_instr_name(&self) -> &str;
     fn incr_loc_pointer(&mut self);
+    fn get_loc_info<'a>(&self, rule: &'a WhammProvider) -> Option<LocInfo<'a>>;
 
-    fn has_params(&mut self) -> Result<bool, Box<WhammError>>;
-    fn save_params(&mut self) -> bool;
-    fn emit_params(&mut self) -> Result<bool, Box<WhammError>>;
-    fn define_compiler_var(
-        &mut self,
-        context: &str,
-        var_name: &str,
-    ) -> Result<bool, Box<WhammError>>;
-    fn define(&mut self, var_name: &String, var_rec: &Option<Value>) -> Result<bool, Box<WhammError>>;
-    // fn emit_event(&mut self, context: &str, event: &mut Event) -> bool;
+    fn save_args(&mut self, args: &[ValType]) -> bool;
+    fn emit_args(&mut self) -> Result<bool, Box<WhammError>>;
+    fn define(&mut self, var_name: &str, var_rec: &Option<Value>) -> Result<bool, Box<WhammError>>;
+    fn reset_table_data(&mut self, loc_info: &LocInfo);
     fn fold_expr(&mut self, expr: &mut Expr) -> bool;
     fn emit_expr(&mut self, expr: &mut Expr) -> Result<bool, Box<WhammError>>;
 

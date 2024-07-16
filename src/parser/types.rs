@@ -368,7 +368,7 @@ impl Fn {
 pub enum Definition {
     User,
     CompilerStatic,
-    CompilerDynamic
+    CompilerDynamic,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -387,25 +387,25 @@ impl Global {
         white(true, ": ".to_string(), buffer);
         self.ty.print(buffer);
     }
-    
+
     pub fn is_static(&self) -> bool {
         match self.def {
             Definition::CompilerStatic => true,
-            _ => false
+            _ => false,
         }
     }
 
     pub fn is_dynamic(&self) -> bool {
         match self.def {
             Definition::CompilerDynamic => true,
-            _ => false
+            _ => false,
         }
     }
 
     pub fn is_from_user(&self) -> bool {
         match self.def {
             Definition::User => true,
-            _ => false
+            _ => false,
         }
     }
 }
@@ -544,11 +544,13 @@ impl Whamm {
 }
 
 /// SpecPart are the probe ids in a probe spec
+#[derive(Clone)]
 pub struct SpecPart {
     pub name: String,
     pub loc: Option<Location>,
 }
 
+#[derive(Clone)]
 pub struct ProbeSpec {
     pub provider: Option<SpecPart>,
     pub package: Option<SpecPart>,
@@ -570,7 +572,13 @@ impl ProbeSpec {
         }
     }
     pub fn full_name(&self) -> String {
-        format!("{}:{}:{}:{}", &self.provider.as_ref().unwrap().name, &self.package.as_ref().unwrap().name, &self.event.as_ref().unwrap().name, &self.mode.as_ref().unwrap().name)
+        format!(
+            "{}:{}:{}:{}",
+            &self.provider.as_ref().unwrap().name,
+            &self.package.as_ref().unwrap().name,
+            &self.event.as_ref().unwrap().name,
+            &self.mode.as_ref().unwrap().name
+        )
     }
     pub fn add_spec_def(&mut self, part: SpecPart) {
         if self.provider.is_none() {
@@ -817,7 +825,7 @@ impl Script {
             None,
             predicate,
             body,
-            false
+            false,
         )?;
 
         if !matched_providers {

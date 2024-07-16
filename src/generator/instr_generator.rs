@@ -4,14 +4,23 @@ use crate::behavior::tree::{
 };
 use crate::behavior::tree::{BehaviorTree, Node};
 use crate::common::error::ErrorGen;
+use crate::emitter::rewriting::rules::{provider_factory, LocInfo, WhammProvider};
 use crate::emitter::Emitter;
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{Expr, Statement};
 use log::warn;
-use crate::emitter::rewriting::rules::{Provider, provider_factory, WhammProvider};
+use walrus::ValType;
 
 const UNEXPECTED_ERR_MSG: &str =
     "InstrGenerator: Looks like you've found a bug...please report this behavior!";
+fn get_loc_info<'a>(
+    rule: &'a WhammProvider,
+    emitter: &Box<&mut dyn Emitter>,
+) -> Option<LocInfo<'a>> {
+    // Pull the curr instr each time this is called to keep from having
+    // long-lasting refs into self.emitter.
+    emitter.get_loc_info(rule)
+}
 
 /// The second phase of instrumenting a Wasm module by actually emitting the
 /// instrumentation code.
@@ -26,29 +35,47 @@ pub struct InstrGenerator<'a, 'b> {
     pub ast: SimpleAST,
     pub err: &'a mut ErrorGen,
 
-    pub context_name: String,
-    pub curr_provider_name: String,
-    pub curr_package_name: String,
-    pub curr_event_name: String,
-    pub curr_probe_mode: String,
+    // pub context_name: String,
+    // pub curr_provider_name: String,
+    // pub curr_package_name: String,
+    // pub curr_event_name: String,
+    curr_instr_args: Vec<ValType>,
+    curr_probe_mode: String,
     /// The current probe's body and predicate
-    pub curr_probe: Option<(Option<Vec<Statement>>, Option<Expr>)>,
+    curr_probe: Option<(Option<Vec<Statement>>, Option<Expr>)>,
 }
-impl InstrGenerator<'_, '_> {
+impl<'a, 'b> InstrGenerator<'a, 'b> {
+    pub fn new(
+        tree: &'a BehaviorTree,
+        emitter: Box<&'b mut dyn Emitter>,
+        ast: SimpleAST,
+        err: &'a mut ErrorGen,
+    ) -> Self {
+        Self {
+            tree,
+            emitter,
+            ast,
+            err,
+            curr_instr_args: vec![],
+            curr_probe_mode: "".to_string(),
+            curr_probe: None,
+        }
+    }
+
     pub fn run(&mut self, behavior: &BehaviorTree) -> bool {
         // Reset the symbol table in the emitter just in case
         self.emitter.reset_children();
-        
+
         // Here we do the following logic:
         // 1. initialize the emitter rules
         // 2. for each instruction (iterate over app_wasm)
         //    1. rules.process_instr() -> Vec<MatchedRules>
         //    2. for each matched probe
-        //       1. enter the scope using (script_id, probe_spec) 
+        //       1. enter the scope using (script_id, probe_spec)
         //       2. initialize the symbol table with the metadata at this program point
         //       3. create a new clone of the probe, fold the predicate
         //       4. traverse the behavior tree to emit code! (if predicate is not false)
-        
+
         // Initialize the emitter rules
         let rules = provider_factory::<WhammProvider>(&self.ast.probes);
 
@@ -56,7 +83,7 @@ impl InstrGenerator<'_, '_> {
         if let Err(e) = self.emitter.init_instr_iter() {
             self.err.add_error(*e)
         }
-        
+
         // Iterate over each instruction in the application Wasm bytecode
         let mut is_success = true;
         let mut first_instr = true;
@@ -68,33 +95,40 @@ impl InstrGenerator<'_, '_> {
                 is_success = self.emitter.next_instr();
             }
             first_instr = false;
-            let (curr_instr, curr_instr_name) = self.emitter.curr_instr();
-            
-            // Do any of the configured rules match this instruction in the application?
+
             rules.iter().for_each(|rule| {
-                if let Some(loc_info) = rule.get_loc_info(curr_instr, curr_instr_name) {
+                // Check if any of the configured rules match this instruction in the application.
+                if let Some(loc_info) = get_loc_info(rule, &self.emitter) {
                     if loc_info.num_alt_probes > 1 {
-                        self.err.multiple_alt_matches(curr_instr_name);
+                        self.err
+                            .multiple_alt_matches(self.emitter.curr_instr_name());
                     }
                     // This location has matched some rules, inject each matched probe!
                     loc_info.probes.iter().for_each(|(probe_spec, probe)| {
                         // Enter the scope for this matched probe
-                        is_success = self.emitter.enter_scope_via_spec(&probe.script_id, probe_spec);
-                        
+                        is_success = self
+                            .emitter
+                            .enter_scope_via_spec(&probe.script_id, probe_spec);
+
                         // Initialize the symbol table with the metadata at this program point
-                        loc_info.static_data.iter().for_each(|(static_var_name, static_var_val)| {
-                            if let Err(e) = self.emitter.define(static_var_name, static_var_val) {
-                                self.err.add_error(*e);
-                            }
-                        });
-                        
+                        loc_info.static_data.iter().for_each(
+                            |(static_var_name, static_var_val)| {
+                                if let Err(e) = self.emitter.define(static_var_name, static_var_val)
+                                {
+                                    self.err.add_error(*e);
+                                }
+                            },
+                        );
+                        // todo -- how do i do dynamic data
+
                         // Create a new clone of the probe, fold the predicate.
                         // NOTE: We make a clone so that the probe is reset for each instruction!
-                        let (body_clone, mut pred_clone) = (probe.body.clone(), probe.predicate.clone());
+                        let (body_clone, mut pred_clone) =
+                            (probe.body.clone(), probe.predicate.clone());
                         if let Some(pred) = &mut pred_clone {
                             // Fold predicate
                             is_success = self.emitter.fold_expr(pred);
-                            
+
                             // If the predicate evaluates to false, short-circuit!
                             if let Some(pred_as_bool) = ExprFolder::get_single_bool(pred) {
                                 if !pred_as_bool {
@@ -103,9 +137,11 @@ impl InstrGenerator<'_, '_> {
                                 }
                             }
                         }
-                        
+
+                        self.curr_instr_args = loc_info.args.clone(); // must clone so that this lives long enough
+                        self.curr_probe_mode = probe_spec.mode.as_ref().unwrap().name.clone();
                         self.curr_probe = Some((body_clone, pred_clone));
-                        
+
                         // Traverse the behavior tree to emit code (if the predicate is not false)
                         if let Some(root) = behavior.get_root() {
                             // Traverse `behavior` tree and emit the probes held in `ast`
@@ -114,36 +150,40 @@ impl InstrGenerator<'_, '_> {
                             warn!("The behavior tree was empty! Nothing to emit!");
                             is_success &= false;
                         }
+
+                        // Now that we've emitted this probe, reset the symbol table's static/dynamic
+                        // data defined for this instr
+                        self.emitter.reset_table_data(&loc_info);
                     });
                 }
             });
         }
-        
+
         is_success
     }
 
-    fn set_context_info(&mut self, context: &str) {
-        // Set the current context info for probe lookup
-        self.context_name = context.to_string();
-
-        let mut spec_split = context.split(':');
-        if let Some(_whamm) = spec_split.next() {
-            if let Some(_script) = spec_split.next() {
-                if let Some(provider) = spec_split.next() {
-                    self.curr_provider_name = provider.to_string();
-                    if let Some(package) = spec_split.next() {
-                        self.curr_package_name = package.to_string();
-                        if let Some(event) = spec_split.next() {
-                            self.curr_event_name = event.to_string();
-                            if let Some(mode) = spec_split.next() {
-                                self.curr_probe_mode = mode.to_string()
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
+    // fn set_context_info(&mut self, context: &str) {
+    //     // Set the current context info for probe lookup
+    //     self.context_name = context.to_string();
+    //
+    //     let mut spec_split = context.split(':');
+    //     if let Some(_whamm) = spec_split.next() {
+    //         if let Some(_script) = spec_split.next() {
+    //             if let Some(provider) = spec_split.next() {
+    //                 self.curr_provider_name = provider.to_string();
+    //                 if let Some(package) = spec_split.next() {
+    //                     self.curr_package_name = package.to_string();
+    //                     if let Some(event) = spec_split.next() {
+    //                         self.curr_event_name = event.to_string();
+    //                         if let Some(mode) = spec_split.next() {
+    //                             self.curr_probe_mode = mode.to_string()
+    //                         }
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 
     fn emit_cond(&mut self, cond: &usize) -> bool {
         let mut is_success = true;
@@ -329,25 +369,20 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         false
     }
 
-    fn visit_save_params(&mut self, node: &Node) -> bool {
+    fn visit_save_args(&mut self, node: &Node) -> bool {
         let mut is_success = true;
         if let Node::ArgAction {
-            ty: ArgActionType::SaveParams,
+            ty: ArgActionType::SaveArgs,
             force_success,
             ..
         } = node
         {
-            match self.emitter.has_params() {
-                Err(e) => self.err.add_error(*e),
-                Ok(res) => {
-                    if res {
-                        // The current instruction has parameters, save them
-                        is_success &= self.emitter.save_params();
-                    } else {
-                        // If no params, return whatever was configured to do
-                        return *force_success;
-                    }
-                }
+            if !self.curr_instr_args.is_empty() {
+                // The current instruction has args, save them
+                is_success &= self.emitter.save_args(&self.curr_instr_args);
+            } else {
+                // If no args, return whatever was configured to do
+                return *force_success;
             }
         } else {
             unreachable!()
@@ -355,28 +390,24 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         is_success
     }
 
-    fn visit_emit_params(&mut self, node: &Node) -> bool {
+    fn visit_emit_args(&mut self, node: &Node) -> bool {
         let mut is_success = true;
         if let Node::ArgAction {
-            ty: ArgActionType::EmitParams,
+            ty: ArgActionType::EmitArgs,
             force_success,
             ..
         } = node
         {
-            match self.emitter.has_params() {
-                Err(e) => self.err.add_error(*e),
-                Ok(res) => {
-                    if res {
-                        // The current instruction has parameters, emit them
-                        match self.emitter.emit_params() {
-                            Err(e) => self.err.add_error(*e),
-                            Ok(res) => is_success &= res,
-                        }
-                    } else {
-                        // If no params, return whatever was configured to do
-                        return *force_success;
-                    }
+            if !self.curr_instr_args.is_empty() {
+                // The current instruction has args, emit them
+                // NOTE: The emitter holds on to the saved arg info
+                match self.emitter.emit_args() {
+                    Err(e) => self.err.add_error(*e),
+                    Ok(res) => is_success &= res,
                 }
+            } else {
+                // If no args, return whatever was configured to do
+                return *force_success;
             }
         } else {
             unreachable!()
@@ -395,19 +426,19 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
     //         {
     //             if package_name == "opcode" {
     //                 // Perform 'opcode' package logic
-    // 
+    //
     //                 // Initialize the instr visitor
     //                 let instrs_of_interest: Vec<String> = events.keys().cloned().collect();
     //                 if let Err(e) = self.emitter.init_instr_iter() {
     //                     self.err.add_error(*e)
     //                 }
-    // 
+    //
     //                 // enter 'opcode' scope
     //                 if !self.emitter.enter_named_scope(package_name) {
     //                     self.err.unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} Could not find the specified scope by name: `{}`", package_name)), None);
     //                 }
     //                 self.set_context_info(context);
-    // 
+    //
     //                 let mut first_instr = true;
     //                 while first_instr || self.emitter.has_next_instr() {
     //                     if first_instr {
@@ -416,7 +447,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
     //                     if !&first_instr {
     //                         self.emitter.next_instr();
     //                     }
-    // 
+    //
     //                     let instr_ty = match self.emitter.curr_instr_type().as_str() {
     //                         // Handle some special-cases
     //                         "V128Bitselect" => "v128_bitselect".to_string(),
@@ -424,7 +455,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
     //                         "I8x16Shuffle" => "i8x16_shuffle".to_string(),
     //                         other => other.to_case(Case::Snake),
     //                     };
-    // 
+    //
     //                     // is this an instruction of-interest?
     //                     if let Some(globals) = events.get(&instr_ty) {
     //                         // enter this event's scope
@@ -432,7 +463,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
     //                             self.err.unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} Could not find the specified scope by name: `{}`", instr_ty)), None);
     //                         }
     //                         self.curr_event_name = instr_ty.clone();
-    // 
+    //
     //                         // define this instruction type's compiler variables
     //                         for global in globals {
     //                             match self.emitter.define_compiler_var(&self.context_name, global) {
@@ -440,12 +471,12 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
     //                                 Ok(res) => is_success &= res,
     //                             }
     //                         }
-    // 
+    //
     //                         // continue with logic
     //                         if let Some(node) = self.tree.get_node(*child) {
     //                             is_success &= self.visit_node(node);
     //                         }
-    // 
+    //
     //                         // exit this event's scope
     //                         if let Err(e) = self.emitter.exit_scope() {
     //                             self.err.add_error(*e)
@@ -453,7 +484,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
     //                     }
     //                     first_instr = false;
     //                 }
-    // 
+    //
     //                 if let Err(e) = self.emitter.exit_scope() {
     //                     self.err.add_error(*e)
     //                 }
@@ -491,7 +522,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
     //             );
     //         }
     //         self.curr_probe_mode = probe_mode.clone();
-    // 
+    //
     //         // define this probe's compiler variables
     //         for global in global_names {
     //             match self.emitter.define_compiler_var(&self.context_name, global) {
@@ -526,7 +557,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
     //                     if let Some(pred) = &mut pred_cloned {
     //                         // Fold predicate
     //                         is_success &= self.emitter.fold_expr(pred);
-    // 
+    //
     //                         // If the predicate evaluates to false, short-circuit!
     //                         if let Some(pred_as_bool) = ExprFolder::get_single_bool(pred) {
     //                             // predicate has been reduced to a boolean value
@@ -539,10 +570,10 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
     //                             }
     //                         }
     //                     }
-    // 
+    //
     //                     self.curr_probe = Some((body_cloned, pred_cloned));
     //                 }
-    // 
+    //
     //                 // Process the instructions for this probe!
     //                 if let Some(node) = self.tree.get_node(*child) {
     //                     is_success &= self.visit_node(node);
@@ -567,7 +598,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
     //                 if let Some(pred) = &mut pred_cloned {
     //                     // Fold predicate
     //                     is_success &= self.emitter.fold_expr(pred);
-    // 
+    //
     //                     // If the predicate evaluates to false, short-circuit!
     //                     if let Some(pred_as_bool) = ExprFolder::get_single_bool(pred) {
     //                         // predicate has been reduced to a boolean value
@@ -582,7 +613,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
     //                 }
     //                 self.curr_probe = Some((body_cloned, pred_cloned));
     //             }
-    // 
+    //
     //             // Process the instructions for this single probe!
     //             if let Some(node) = self.tree.get_node(*child) {
     //                 is_success &= self.visit_node(node);
@@ -639,6 +670,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         {
             // NOTE -- this WILL NOT WORK for dfinity or microservice applications...they are stateless
             //     will need to instrument ALL entrypoints for that to work :/
+            // TODO -- fix above noted issue by inserting a new 'start' function if it doesn't exist
             if !self.ast.global_stmts.is_empty() {
                 match self.emitter.emit_global_stmts(&mut self.ast.global_stmts) {
                     Err(e) => self.err.add_error(*e),
@@ -658,12 +690,10 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
             ..
         } = node
         {
-            if let Some((.., ref mut pred)) = self.curr_probe {
-                if let Some(pred) = pred {
-                    match self.emitter.emit_expr(pred) {
-                        Err(e) => self.err.add_error(*e),
-                        Ok(res) => is_success &= res,
-                    }
+            if let Some((.., Some(ref mut pred))) = self.curr_probe {
+                match self.emitter.emit_expr(pred) {
+                    Err(e) => self.err.add_error(*e),
+                    Ok(res) => is_success &= res,
                 }
             }
         } else {

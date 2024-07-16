@@ -5,7 +5,10 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::Emitter;
 use crate::parser::rules::{Event, Package, Probe, Provider};
-use crate::parser::types::{BinOp, Block, DataType, Expr, Global, ProvidedFunction, ProvidedGlobal, Script, Statement, UnOp, Value, Whamm, WhammVisitor};
+use crate::parser::types::{
+    BinOp, Block, DataType, Expr, Global, ProvidedFunction, ProvidedGlobal, Script, Statement,
+    UnOp, Value, Whamm, WhammVisitor,
+};
 use log::{trace, warn};
 use std::collections::HashMap;
 

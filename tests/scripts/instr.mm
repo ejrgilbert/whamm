@@ -1,4 +1,4 @@
 i32 i;
-wasm:bytecode:call:before {
+wasm:opcode:call:before {
     i = 10;
 }
