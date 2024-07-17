@@ -1,7 +1,7 @@
 pub mod rules;
 
 use crate::common::error::{ErrorGen, WhammError};
-use crate::emitter::rewriting::rules::{LocInfo, Provider, WhammProvider};
+use crate::emitter::rewriting::rules::{Arg, LocInfo, Provider, WhammProvider};
 use crate::emitter::Emitter;
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{BinOp, DataType, Expr, Fn, ProbeSpec, Statement, UnOp, Value};
@@ -1231,7 +1231,7 @@ impl Emitter for WasmRewritingEmitter {
         rule.get_loc_info(&self.app_wasm, curr_instr)
     }
 
-    fn save_args(&mut self, args: &[ValType]) -> bool {
+    fn save_args(&mut self, args: &[Arg]) -> bool {
         if let Some(curr_loc) = self.instr_iter.curr_mut() {
             if let Some(tracker) = &mut self.emitting_instr {
                 let func = self
@@ -1246,10 +1246,10 @@ impl Emitter for WasmRewritingEmitter {
                 // No opcodes should have been emitted in the module yet!
                 // So, we can just save off the first * items in the stack as the args
                 // to the call.
-                let mut arg_recs = vec![]; // vec to retain order!
-                args.iter().enumerate().for_each(|(num, param_ty)| {
+                let mut arg_recs: Vec<(String, usize)> = vec![]; // vec to retain order!
+                args.iter().for_each(|Arg {name: arg_name, ty: arg_ty}| {
                     // create local for the param in the module
-                    let arg_local_id = self.app_wasm.locals.add(*param_ty);
+                    let arg_local_id = self.app_wasm.locals.add(*arg_ty);
 
                     // emit a opcode in the event to assign the ToS to this new local
                     instr_builder.instr_at(
@@ -1267,9 +1267,8 @@ impl Emitter for WasmRewritingEmitter {
                     tracker.orig_instr_idx += 1;
 
                     // place in symbol table with var addr for future reference
-                    let arg_name = format!("arg{}", num);
                     let id = self.table.put(
-                        arg_name.clone(),
+                        arg_name.to_string(),
                         Record::Var {
                             ty: DataType::I32, // we only support integers right now.
                             name: arg_name.clone(),
@@ -1279,7 +1278,7 @@ impl Emitter for WasmRewritingEmitter {
                             loc: None,
                         },
                     );
-                    arg_recs.push((arg_name, id));
+                    arg_recs.push((arg_name.to_string(), id));
                 });
                 curr_loc.instr_created_args = arg_recs;
                 return true;
@@ -1360,10 +1359,9 @@ impl Emitter for WasmRewritingEmitter {
         });
 
         // reset dynamic_data
-        for i in 0..loc_info.args.len() {
-            let arg_name = format!("arg{}", i);
-            self.table.remove_record(&arg_name);
-        }
+        loc_info.args.iter().for_each(| Arg {name: arg_name, .. } | {
+            self.table.remove_record(arg_name);
+        });
     }
 
     fn fold_expr(&mut self, expr: &mut Expr) -> bool {

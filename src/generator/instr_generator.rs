@@ -4,7 +4,7 @@ use crate::behavior::tree::{
 };
 use crate::behavior::tree::{BehaviorTree, Node};
 use crate::common::error::ErrorGen;
-use crate::emitter::rewriting::rules::{provider_factory, LocInfo, WhammProvider};
+use crate::emitter::rewriting::rules::{provider_factory, LocInfo, WhammProvider, Arg};
 use crate::emitter::Emitter;
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{Expr, Statement};
@@ -39,7 +39,7 @@ pub struct InstrGenerator<'a, 'b> {
     // pub curr_provider_name: String,
     // pub curr_package_name: String,
     // pub curr_event_name: String,
-    curr_instr_args: Vec<ValType>,
+    curr_instr_args: Vec<Arg>,
     curr_probe_mode: String,
     /// The current probe's body and predicate
     curr_probe: Option<(Option<Vec<Statement>>, Option<Expr>)>,

@@ -1,12 +1,10 @@
 use crate::behavior::builder_visitor::SimpleProbe;
-use crate::emitter::rewriting::rules::{
-    event_factory, probe_factory, Event, FromStr, LocInfo, Package,
-};
+use crate::emitter::rewriting::rules::{event_factory, probe_factory, Event, FromStr, LocInfo, Package, Arg};
 use crate::parser::rules::wasm::{OpcodeEventKind, WasmPackageKind};
 use crate::parser::types::{DataType, ProbeSpec, SpecPart, Value};
 use std::collections::HashMap;
 use walrus::ir::Instr;
-use walrus::{FunctionKind, ImportedFunction, LocalFunction, ValType};
+use walrus::{FunctionKind, ImportedFunction, LocalFunction};
 
 pub struct WasmPackage {
     kind: WasmPackageKind,
@@ -148,8 +146,8 @@ impl OpcodeEvent {
             mode: None,
         }
     }
-    pub fn get_args_for_instr(app_wasm: &walrus::Module, instr: &Instr) -> Vec<ValType> {
-        match instr {
+    pub fn get_args_for_instr(app_wasm: &walrus::Module, instr: &Instr) -> Vec<Arg> {
+        let ty_list = match instr {
             Instr::Block(..) => {
                 // TODO -- define args
                 vec![]
@@ -357,7 +355,13 @@ impl OpcodeEvent {
                 // TODO -- define args
                 vec![]
             }
+        };
+
+        let mut args = vec![];
+        for (idx, ty) in ty_list.iter().enumerate() {
+            args.push(Arg::new(format!("arg{}", idx), ty.to_owned()));
         }
+        args
     }
 
     // ======================

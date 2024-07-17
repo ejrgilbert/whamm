@@ -100,12 +100,26 @@ pub trait FromStr {
     fn from_str(name: &str) -> Self;
 }
 
+#[derive(Clone, PartialEq)]
+pub struct Arg {
+    pub name: String,
+    pub ty: ValType
+}
+impl Arg {
+    fn new(name: String, ty: ValType) -> Self {
+        Self {
+            name,
+            ty
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct LocInfo<'a> {
     /// static information to be saved in symbol table
     pub static_data: HashMap<String, Option<Value>>,
     /// dynamic information corresponding to the operands of this location
-    pub(crate) args: Vec<ValType>,
+    pub(crate) args: Vec<Arg>,
     pub num_alt_probes: usize,
     /// the probes that were matched for this instruction
     /// note the Script ID is contained in SimpleProbe
