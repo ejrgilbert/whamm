@@ -10,7 +10,6 @@ use crate::parser::rules::{
 use pest::pratt_parser::PrattParser;
 use pest_derive::Parser;
 use termcolor::BufferWriter;
-use walrus::DataId;
 
 #[derive(Parser)]
 #[grammar = "./parser/whamm.pest"] // Path relative to base `src` dir
@@ -186,11 +185,14 @@ pub enum Value {
         ty: DataType,
         val: String,
 
+        // TODO: doesn't seem to be implemented anywhere
+
         // Used by emitter to store this string's address/len in Wasm memory
-        // DataId: Walrus ID to reference data segment
+        // (DEPRECATED) DataId: Walrus ID to reference data segment
+        // u32: orca ID to reference data segment
         // u32: address of data in memory
         // usize:  the length of the string in memory
-        addr: Option<(DataId, u32, usize)>,
+        addr: Option<(u32, u32, usize)>,
     },
     Tuple {
         ty: DataType,

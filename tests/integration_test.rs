@@ -4,8 +4,8 @@ use log::error;
 use std::fs;
 use std::path::Path;
 use std::process::{Command, Stdio};
-use wabt::{wasm2wat, wat2wasm};
-use walrus::Module;
+use wabt::{wasm2wat, Wat2Wasm};
+use orca::ir::module::Module as WasmModule;
 use whamm::behavior::builder_visitor::{build_behavior_tree, SimpleAST};
 use whamm::common::error::ErrorGen;
 use whamm::emitter::rewriting::WasmRewritingEmitter;
@@ -17,12 +17,6 @@ const APP_WASM_PATH: &str = "tests/apps/dfinity/users.wasm";
 
 const OUT_BASE_DIR: &str = "target";
 const OUT_WASM_NAME: &str = "out.wasm";
-
-fn get_wasm_module() -> Module {
-    // Read app Wasm into Walrus module
-    let _config = walrus::ModuleConfig::new();
-    Module::from_file(APP_WASM_PATH).unwrap()
-}
 
 /// This test just confirms that a wasm module can be instrumented with the preconfigured
 /// scripts without errors occurring.
@@ -40,9 +34,11 @@ fn instrument_dfinity_with_fault_injection() {
         let mut behavior = build_behavior_tree(&whamm, &mut simple_ast, &mut err);
         behavior.reset();
 
-        let app_wasm = get_wasm_module();
+        let buff = std::fs::read(APP_WASM_PATH).unwrap();
+        let mut app_wasm =
+            WasmModule::parse_only_module(&buff, false).expect("Failed to parse Wasm module");
         let mut err = ErrorGen::new(script_path.clone(), script_text, 0);
-        let mut emitter = WasmRewritingEmitter::new(app_wasm, symbol_table);
+        let mut emitter = WasmRewritingEmitter::new(&mut app_wasm, symbol_table);
         // Phase 0 of instrumentation (emit globals and provided fns)
         let mut init = InitGenerator {
             emitter: Box::new(&mut emitter),
@@ -102,7 +98,10 @@ fn instrument_handwritten_wasm_call() {
     // (calling wat2wasm from a child process doesn't work
     //  since somehow the executable can't write to the file system directly)
     let file_data = fs::read("tests/apps/handwritten/add.wat").unwrap();
-    let wasm_data = wat2wasm(file_data).unwrap();
+    let wasm_data = Wat2Wasm::new()
+    .write_debug_names(true)
+    .convert(file_data)
+    .unwrap();
     fs::write("tests/apps/handwritten/add.wasm", wasm_data).unwrap();
 
     let res = Command::new(executable)
@@ -130,7 +129,10 @@ fn instrument_no_matches() {
     // (calling wat2wasm from a child process doesn't work
     //  since somehow the executable can't write to the file system directly)
     let file_data = fs::read("tests/apps/handwritten/no_matched_events.wat").unwrap();
-    let wasm_data = wat2wasm(file_data).unwrap();
+    let wasm_data = Wat2Wasm::new()
+        .write_debug_names(true)
+        .convert(file_data)
+        .unwrap();
     fs::write("tests/apps/handwritten/no_matched_events.wasm", wasm_data).unwrap();
 
     let res = Command::new(executable)

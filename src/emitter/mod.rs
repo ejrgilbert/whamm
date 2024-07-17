@@ -6,9 +6,10 @@ pub mod tests;
 use crate::common::error::WhammError;
 use crate::emitter::rewriting::rules::{LocInfo, WhammProvider};
 use crate::parser::types::{DataType, Expr, Fn, ProbeSpec, Statement, Value};
-use walrus::ir::Instr;
-use walrus::ValType;
 
+use orca::ir::types::DataType as OrcaType;
+use orca::iterator::module_iterator::ModuleIterator;
+use wasmparser::Operator;
 // =================================================
 // ==== Emitter Trait --> Used By All Emitters! ====
 // =================================================
@@ -23,12 +24,12 @@ pub trait Emitter {
     fn has_next_instr(&self) -> bool;
     fn init_first_instr(&mut self) -> bool;
     fn next_instr(&mut self) -> bool;
-    fn curr_instr(&self) -> &Instr;
+    fn curr_instr(&self) -> &Operator;
     fn curr_instr_name(&self) -> &str;
     fn incr_loc_pointer(&mut self);
-    fn get_loc_info<'a>(&self, rule: &'a WhammProvider) -> Option<LocInfo<'a>>;
+    fn get_loc_info<'d>(&self, rule: &'d WhammProvider) -> Option<LocInfo<'d>>;
 
-    fn save_args(&mut self, args: &[ValType]) -> bool;
+    fn save_args(&mut self, args: &[OrcaType]) -> bool;
     fn emit_args(&mut self) -> Result<bool, Box<WhammError>>;
     fn define(&mut self, var_name: &str, var_rec: &Option<Value>) -> Result<bool, Box<WhammError>>;
     fn reset_table_data(&mut self, loc_info: &LocInfo);

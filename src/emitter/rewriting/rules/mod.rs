@@ -4,8 +4,10 @@ use crate::emitter::rewriting::rules::wasm::{OpcodeEvent, WasmPackage};
 use crate::parser::rules::WhammProviderKind;
 use crate::parser::types::{ProbeSpec, SpecPart, Value};
 use std::collections::HashMap;
-use walrus::ir::Instr;
-use walrus::ValType;
+
+use orca::ir::types::DataType as OrcaType;
+use orca::ir::module::Module;
+use wasmparser::Operator;
 
 mod core;
 pub mod wasm;
@@ -105,7 +107,7 @@ pub struct LocInfo<'a> {
     /// static information to be saved in symbol table
     pub static_data: HashMap<String, Option<Value>>,
     /// dynamic information corresponding to the operands of this location
-    pub(crate) args: Vec<ValType>,
+    pub(crate) args: Vec<OrcaType>,
     pub num_alt_probes: usize,
     /// the probes that were matched for this instruction
     /// note the Script ID is contained in SimpleProbe
@@ -163,7 +165,7 @@ impl<'a> LocInfo<'a> {
 
 pub trait Provider {
     /// Pass some location to the provider and get back two types of data:
-    fn get_loc_info(&self, app_wasm: &walrus::Module, instr: &Instr) -> Option<LocInfo>;
+    fn get_loc_info(&self, app_wasm: &Module, instr: &Operator) -> Option<LocInfo>;
     fn add_packages(
         &mut self,
         ast_packages: &HashMap<String, HashMap<String, HashMap<String, Vec<SimpleProbe>>>>,
@@ -171,12 +173,12 @@ pub trait Provider {
 }
 pub trait Package {
     /// Pass some location to the provider and get back two types of data:
-    fn get_loc_info(&self, app_wasm: &walrus::Module, instr: &Instr) -> Option<LocInfo>;
+    fn get_loc_info(&self, app_wasm: &Module, instr: &Operator) -> Option<LocInfo>;
     fn add_events(&mut self, ast_events: &HashMap<String, HashMap<String, Vec<SimpleProbe>>>);
 }
 pub trait Event {
     /// Pass some location to the provider and get back two types of data:
-    fn get_loc_info(&self, app_wasm: &walrus::Module, instr: &Instr) -> Option<LocInfo>;
+    fn get_loc_info(&self, app_wasm: &Module, instr: &Operator) -> Option<LocInfo>;
     fn add_probes(&mut self, ast_probes: &HashMap<String, Vec<SimpleProbe>>);
 }
 
@@ -209,7 +211,7 @@ impl WhammProvider {
     }
 }
 impl Provider for WhammProvider {
-    fn get_loc_info(&self, app_wasm: &walrus::Module, instr: &Instr) -> Option<LocInfo> {
+    fn get_loc_info(&self, app_wasm: &Module, instr: &Operator) -> Option<LocInfo> {
         let mut loc_info = LocInfo::new();
         match self.kind {
             WhammProviderKind::Core | WhammProviderKind::Wasm => {

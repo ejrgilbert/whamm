@@ -9,7 +9,9 @@ use crate::emitter::Emitter;
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{Expr, Statement};
 use log::warn;
-use walrus::ValType;
+
+use orca::ir::types::DataType;
+use orca::iterator::module_iterator::ModuleIterator;
 
 const UNEXPECTED_ERR_MSG: &str =
     "InstrGenerator: Looks like you've found a bug...please report this behavior!";
@@ -39,7 +41,7 @@ pub struct InstrGenerator<'a, 'b> {
     // pub curr_provider_name: String,
     // pub curr_package_name: String,
     // pub curr_event_name: String,
-    curr_instr_args: Vec<ValType>,
+    curr_instr_args: Vec<DataType>,
     curr_probe_mode: String,
     /// The current probe's body and predicate
     curr_probe: Option<(Option<Vec<Statement>>, Option<Expr>)>,
@@ -84,17 +86,22 @@ impl<'a, 'b> InstrGenerator<'a, 'b> {
             self.err.add_error(*e)
         }
 
+
+        // self.emitter.init_iterator();
+
         // Iterate over each instruction in the application Wasm bytecode
         let mut is_success = true;
-        let mut first_instr = true;
-        while first_instr || self.emitter.has_next_instr() {
-            if first_instr {
-                is_success = self.emitter.init_first_instr();
-            }
-            if !first_instr {
-                is_success = self.emitter.next_instr();
-            }
-            first_instr = false;
+
+        loop {
+        // let mut first_instr = true;
+        // while first_instr || self.emitter.has_next_instr() {
+        //     if first_instr {
+        //         is_success = self.emitter.init_first_instr();
+        //     }
+        //     if !first_instr {
+        //         is_success = self.emitter.next_instr();
+        //     }
+        //     first_instr = false;
 
             rules.iter().for_each(|rule| {
                 // Check if any of the configured rules match this instruction in the application.
@@ -157,6 +164,11 @@ impl<'a, 'b> InstrGenerator<'a, 'b> {
                     });
                 }
             });
+
+            // if comp_it.next().is_none() {
+            if true {
+                break;
+            };
         }
 
         is_success
