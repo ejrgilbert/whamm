@@ -578,6 +578,20 @@ pub struct WhammError {
     pub info_loc: Option<CodeLocation>,
     pub ty: ErrorType,
 }
+
+impl From<std::io::Error> for Box<WhammError> {
+    fn from(e: std::io::Error) -> Self {
+        Box::new(WhammError {
+            fatal: true,
+            err_loc: None,
+            info_loc: None,
+            ty: ErrorType::Error {
+                message: Some(e.to_string()),
+            },
+        })
+    }
+}
+
 pub struct WhammWarning {
     pub ty: WarnType,
     pub warn_loc: Option<CodeLocation>,

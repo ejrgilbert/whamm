@@ -78,6 +78,7 @@ const UNEXPECTED_ERR_MSG: &str =
 
 // transform a whamm type to default wasm type, used for creating new global
 // TODO: Might be more generic to also inlcude Local
+// TODO: Do we really want to depend on wasmpaser::ValType, or create a wrapper?
 fn whamm_type_to_wasm(ty: &DataType) -> Global {
     match ty {
         DataType::I32 | DataType::U32 | DataType::Boolean => Global {
@@ -551,27 +552,8 @@ impl Emitter for WasmRewritingEmitter<'_> {
     }
 
     fn dump_to_file(&mut self, output_wasm_path: String) -> Result<bool, Box<WhammError>> {
-        // TODO: clone for now
-        let res = self.app_wasm.clone().encode();
-        match res {
-            Ok(module) => {
-                let mut file = std::fs::File::create(&output_wasm_path).unwrap();
-                use std::io::Write;
-                let bytes = module.finish();
-                file.write_all(&bytes).unwrap();
-
-                Ok(true)
-            }
-            Err(err) => Err(Box::new(ErrorGen::get_unexpected_error(
-                true,
-                Some(format!(
-                    "{UNEXPECTED_ERR_MSG} \
-                Failed to dump instrumented wasm to {} from error: {}",
-                    &output_wasm_path, err
-                )),
-                None,
-            ))),
-        }
+        self.app_wasm.emit_wasm(&output_wasm_path)?;
+        Ok(true)
     }
 }
 
