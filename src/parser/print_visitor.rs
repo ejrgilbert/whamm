@@ -202,7 +202,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         if !globals.is_empty() {
             s += &format!("{} package globals:{}", self.get_indent(), NL);
             self.increase_indent();
-            self.visit_provided_globals(&globals);
+            self.visit_provided_globals(globals);
             self.decrease_indent();
         }
 

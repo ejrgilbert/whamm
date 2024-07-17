@@ -1,3 +1,5 @@
+#![allow(clippy::borrowed_box)]
+
 use crate::behavior::builder_visitor::SimpleAST;
 use crate::behavior::tree::{
     ActionType, ArgActionType, BehaviorVisitor, DecoratorType, ParamActionType,

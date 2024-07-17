@@ -201,7 +201,7 @@ impl WhammVisitor<bool> for InitGenerator<'_> {
                 is_success &= self.visit_fn(function);
             });
         // inject globals
-        is_success &= self.visit_provided_globals(&event.get_provided_globals());
+        is_success &= self.visit_provided_globals(event.get_provided_globals());
 
         // 1. visit the BEFORE probes
         if let Some(probes) = event.probes().get(&"before".to_string()) {
@@ -253,7 +253,7 @@ impl WhammVisitor<bool> for InitGenerator<'_> {
                 is_success &= self.visit_fn(function);
             });
         // inject globals
-        is_success &= self.visit_provided_globals(&probe.get_mode_provided_globals());
+        is_success &= self.visit_provided_globals(probe.get_mode_provided_globals());
 
         trace!("Exiting: CodeGenerator::visit_probe");
         if let Err(e) = self.emitter.exit_scope() {

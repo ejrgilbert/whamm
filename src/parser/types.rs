@@ -1,3 +1,4 @@
+#![allow(clippy::borrowed_box)]
 use pest::error::LineColLocation;
 use std::collections::HashMap;
 use termcolor::{Buffer, ColorChoice, WriteColor};
@@ -389,24 +390,15 @@ impl Global {
     }
 
     pub fn is_static(&self) -> bool {
-        match self.def {
-            Definition::CompilerStatic => true,
-            _ => false,
-        }
+        matches!(self.def, Definition::CompilerStatic)
     }
 
     pub fn is_dynamic(&self) -> bool {
-        match self.def {
-            Definition::CompilerDynamic => true,
-            _ => false,
-        }
+        matches!(self.def, Definition::CompilerDynamic)
     }
 
     pub fn is_from_user(&self) -> bool {
-        match self.def {
-            Definition::User => true,
-            _ => false,
-        }
+        matches!(self.def, Definition::User)
     }
 }
 
@@ -488,14 +480,13 @@ impl Default for Whamm {
 }
 impl Whamm {
     pub fn new() -> Self {
-        let whamm = Whamm {
+        Whamm {
             provided_probes: HashMap::new(),
             fns: Whamm::get_provided_fns(),
             globals: Whamm::get_provided_globals(),
 
             scripts: vec![],
-        };
-        whamm
+        }
     }
 
     fn get_provided_fns() -> Vec<ProvidedFunction> {

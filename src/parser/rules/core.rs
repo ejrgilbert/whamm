@@ -1,3 +1,4 @@
+#![allow(clippy::borrowed_box)]
 use crate::parser::rules::{
     event_factory, mode_factory, print_mode_docs, Event, EventInfo, FromStr, Mode, ModeInfo,
     NameOptions, Package, PackageInfo, Probe,
