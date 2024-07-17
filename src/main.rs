@@ -17,6 +17,7 @@ pub mod emitter;
 pub mod generator;
 pub mod parser;
 pub mod verifier;
+pub mod emitter;
 
 use clap::Parser;
 use graphviz_rust::cmd::{CommandArg, Format};

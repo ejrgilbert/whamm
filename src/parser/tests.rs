@@ -222,6 +222,23 @@ wasm:opcode:br:before {
         }
     
     "#,
+    //maps
+    r#"
+        map<i32, i32> count;
+        my_fn() -> i32{
+            count[0] = 0;
+            return count[0];
+        }
+        BEGIN {
+            count[1] = my_fn();
+        }
+    "#,
+    r#"
+        map<i32, i32> count;
+        BEGIN {
+            count[1] = 1+1;
+        }
+    "#,
     // valid "variants" of reserved keywords
     "wasm:opcode:call:alt { i32 arg; }",
     "wasm:opcode:call:alt { arg = 1; }",
@@ -232,6 +249,7 @@ const FATAL_SCRIPTS: &[&str] = &[
     // invalid probe specification
     r#"
 core::br:before / i == 1 / { i = 0; }  // SHOULD FAIL HERE
+
     "#,
 ];
 
@@ -312,8 +330,27 @@ map<i32, i32> count;
     r#"
 map<i32, i32> arg0;
     "#,
+    r#"
+        map<i32> count;
+        my_fn() -> i32{
+            count[0] = 0;
+            return count[0];
+        }
+        BEGIN {
+            count[1] = my_fn();
+        }
+    "#,
+    r#"
+        map<i32, i32> count;
+        my_fn() -> i32{
+            count[0] = 0;
+            return count[0];
+        }
+        BEGIN {
+            count[] = my_fn();
+        }
+    "#,
 ];
-
 const SPECIAL: &[&str] = &["BEGIN { }", "END { }", "wasm:::alt { }", "wasm:::alt { }"];
 
 // ====================
@@ -509,6 +546,7 @@ wasm::call:alt /
         }
     };
 }
+
 #[test]
 pub fn test_ast_special_cases() {
     setup_logger();
@@ -629,6 +667,59 @@ pub fn testing_global_def() {
     
     "#;
 
+    match get_ast(script, &mut err) {
+        Some(ast) => {
+            print_ast(&ast);
+        }
+        None => {
+            error!("Could not get ast from script: {}", script);
+            if err.has_errors {
+                err.report();
+            }
+            assert!(!err.has_errors);
+        }
+    };
+}
+#[test]
+pub fn testing_map() {
+    setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let script = r#"
+        map<i32, map<i32, i32>> count;
+        my_fn() -> i32 {
+            map<i32, i32> a;
+            count[0] = a;
+            return a[0];
+        }
+        wasm::call:alt {
+            i32 a = my_fn();
+        }
+    "#;
+
+    match get_ast(script, &mut err) {
+        Some(ast) => {
+            print_ast(&ast);
+        }
+        None => {
+            error!("Could not get ast from script: {}", script);
+            if err.has_errors {
+                err.report();
+            }
+            assert!(!err.has_errors);
+        }
+    };
+}
+#[test]
+pub fn test_report_decl() {
+    setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let script = r#"
+        report i32 a;
+        wasm:bytecode:br:before {
+            a = 1;
+            report bool b;
+        }
+    "#;
     match get_ast(script, &mut err) {
         Some(ast) => {
             print_ast(&ast);

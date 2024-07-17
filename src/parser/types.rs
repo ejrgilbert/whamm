@@ -218,6 +218,10 @@ impl Block {
 // Statements
 #[derive(Clone, Debug)]
 pub enum Statement {
+    ReportDecl {
+        decl: Box<Statement>,
+        loc: Option<Location>,
+    },
     Decl {
         ty: DataType,
         var_id: Expr, // should be VarId
@@ -229,7 +233,12 @@ pub enum Statement {
         expr: Expr,
         loc: Option<Location>,
     },
-
+    SetMap {
+        map: Expr, // Should be VarId
+        key: Expr,
+        val: Expr,
+        loc: Option<Location>,
+    },
     Expr {
         expr: Expr,
         loc: Option<Location>,
@@ -252,6 +261,8 @@ impl Statement {
             | Statement::If { loc, .. }
             | Statement::Return { loc, .. }
             | Statement::Assign { loc, .. }
+            | Statement::SetMap { loc, .. }
+            | Statement::ReportDecl { loc, .. }
             | Statement::Expr { loc, .. } => loc,
         }
     }
@@ -309,6 +320,11 @@ pub enum Expr {
         val: Value,
         loc: Option<Location>,
     },
+    GetMap {
+        map: Box<Expr>,
+        key: Box<Expr>,
+        loc: Option<Location>,
+    },
 }
 impl Expr {
     pub fn loc(&self) -> &Option<Location> {
@@ -318,7 +334,8 @@ impl Expr {
             | Expr::BinOp { loc, .. }
             | Expr::Call { loc, .. }
             | Expr::VarId { loc, .. }
-            | Expr::Primitive { loc, .. } => loc,
+            | Expr::Primitive { loc, .. }
+            | Expr::GetMap { loc, .. } => loc,
         }
     }
 }

@@ -26,6 +26,8 @@ output/
 
 # Ignore the wasm playground files
 wasm_playground/*.wasm
+wasm_playground/**/*.wat
+wasm_playground/**/*.wasm
 
 # Ignore mac files
 .DS_Store

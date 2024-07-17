@@ -1,4 +1,6 @@
 pub mod rewriting;
+mod gluecode;
+mod map_knower;
 
 #[cfg(test)]
 pub mod tests;
@@ -63,3 +65,5 @@ pub trait Emitter {
 
     fn dump_to_file(&mut self, output_wasm_path: String) -> Result<bool, Box<WhammError>>;
 }
+
+

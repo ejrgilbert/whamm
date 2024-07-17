@@ -262,6 +262,7 @@ fn emit_expr(
         Expr::Primitive { val, .. } => {
             is_success &= emit_value(table, module_data, val, instr_builder, metadata, index)?;
         }
+        Expr::GetMap { .. } => todo!(),
     }
     Ok(is_success)
 }
@@ -1014,6 +1015,9 @@ impl WasmRewritingEmitter {
                     }
                 }
             }
+            Statement::ReportDecl { .. } => {
+                todo!();
+            }
             _ => Err(Box::new(ErrorGen::get_unexpected_error(
                 false,
                 Some(format!(
@@ -1389,6 +1393,7 @@ impl Emitter for WasmRewritingEmitter {
             | Expr::UnOp { .. }
             | Expr::BinOp { .. }
             | Expr::Primitive { .. }
+            | Expr::GetMap { .. } //may have to change this
             | Expr::Call { .. } => {
                 // Anything else can be emitted as normal
                 if let Some(curr_loc) = self.instr_iter.curr_mut() {
@@ -1857,7 +1862,18 @@ impl Emitter for WasmRewritingEmitter {
             Statement::Assign { .. } => self.emit_assign_stmt(stmt),
             Statement::Expr { expr, .. } => self.emit_expr(expr),
             Statement::Return { .. } => unimplemented!(),
-            Statement::If { .. } => unimplemented!(),
+            Statement::If {
+                // cond, conseq, alt, .. -- for eventual implimentation
+                ..
+            } => {
+                unimplemented!()
+            },
+            Statement::SetMap { .. } => {
+                unimplemented!()
+            },
+            Statement::ReportDecl { .. } => {
+                unimplemented!()
+            }
         }
     }
 

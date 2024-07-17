@@ -79,6 +79,7 @@ struct TypeChecker<'a> {
     table: &'a mut SymbolTable,
     err: &'a mut ErrorGen,
     in_script_global: bool,
+    in_fuction: bool,
 }
 
 impl TypeChecker<'_> {
@@ -137,10 +138,11 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
             self.visit_stmt(stmt);
         });
         self.in_script_global = false;
+        self.in_fuction = true;
         script.fns.iter().for_each(|function| {
             self.visit_fn(function);
         });
-
+        self.in_fuction = false;
         script.providers.iter().for_each(|(_, provider)| {
             self.visit_provider(provider);
         });
@@ -246,7 +248,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
 
     fn visit_block(&mut self, block: &Block) -> Option<DataType> {
         let mut ret_type = None;
-        let num_statements = block.stmts.len();
+        let num_statements: usize = block.stmts.len();
         let start_of_range: usize;
         for i in 0..num_statements {
             let temp = self.visit_stmt(&block.stmts[i]);
@@ -277,10 +279,25 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
     }
 
     fn visit_stmt(&mut self, stmt: &Statement) -> Option<DataType> {
+        if self.in_fuction {
+            match stmt {
+                Statement::ReportDecl { .. } => {
+                    self.err.type_check_error(
+                        false,
+                        "report declarations are not allowed in functions".to_owned(),
+                        &stmt.loc().clone().map(|l| l.line_col),
+                    );
+                    return None;
+                }
+                _ => {}
+            }
+        }
         if self.in_script_global {
             match stmt {
                 //allow declarations and assignment
-                Statement::Decl { .. } | Statement::Assign { .. } => {}
+                Statement::Decl { .. }
+                | Statement::Assign { .. }
+                | Statement::ReportDecl { .. } => {}
                 _ => {
                     self.err.type_check_error(
                         false,
@@ -324,6 +341,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                     None
                 }
             }
+            Statement::ReportDecl { decl, .. } => self.visit_stmt(decl),
             Statement::Expr { expr, .. } => {
                 self.visit_expr(expr);
                 None
@@ -332,6 +350,30 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                 ty, var_id, loc, ..
             } => {
                 if let Expr::VarId { name, .. } = var_id {
+                    //check that if type is map, key_ty is not a map
+                    if let DataType::Map { key_ty, .. } = ty {
+                        if let DataType::Map { .. } = key_ty.as_ref() {
+                            self.err.type_check_error(
+                                false,
+                                "Map keys cannot be maps".to_owned(),
+                                &loc.clone().map(|l| l.line_col),
+                            );
+                            return None;
+                        }
+                    }
+                    //check to make sure that that if tuple, doesn't contain a map
+                    if let DataType::Tuple { ty_info } = ty {
+                        for ty in ty_info {
+                            if let DataType::Map { .. } = ty.as_ref() {
+                                self.err.type_check_error(
+                                    false,
+                                    "Tuples cannot contain maps".to_owned(),
+                                    &loc.clone().map(|l| l.line_col),
+                                );
+                                return None;
+                            }
+                        }
+                    }
                     if !self.in_script_global {
                         self.add_local(ty.to_owned(), name.to_owned(), false, loc);
                     }
@@ -396,6 +438,59 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                     );
                     Some(DataType::AssumeGood)
                 }
+            }
+            Statement::SetMap { map, key, val, loc } => {
+                //ensure that map is a map, then get the other stuff from the map info
+                let map_ty = self.visit_expr(map);
+                let key_ty = self.visit_expr(key);
+                let val_ty = self.visit_expr(val);
+                match (map_ty.clone(), key_ty.clone(), val_ty.clone()) {
+                    (None, _, _) | (_, None, _) | (_, _, None) => {
+                        self.err.type_check_error(
+                            false,
+                            "Can't get type of map, key or value".to_owned(),
+                            &loc.clone().map(|l| l.line_col),
+                        );
+                        return None;
+                    }
+                    _ => {
+                        //we know that the types are all "Some"
+                        let key_ty = key_ty.unwrap();
+                        let val_ty = val_ty.unwrap();
+                        let map_ty = map_ty.unwrap();
+                        if let DataType::Map {
+                            key_ty: map_key_ty,
+                            val_ty: map_val_ty,
+                        } = map_ty
+                        {
+                            //ensure that the key_ty matches and the val_ty matches
+                            if key_ty != *map_key_ty {
+                                self.err.type_check_error(
+                                    false,
+                                    format! {"Type Mismatch, key:{:?}, map_key:{:?}", key_ty, map_key_ty},
+                                    &loc.clone().map(|l| l.line_col),
+                                );
+                                return None;
+                            }
+                            if val_ty != *map_val_ty {
+                                self.err.type_check_error(
+                                    false,
+                                    format! {"Type Mismatch, val:{:?}, map_val:{:?}", val_ty, map_val_ty},
+                                    &loc.clone().map(|l| l.line_col),
+                                );
+                                return None;
+                            }
+                        } else {
+                            self.err.unexpected_error(
+                                true,
+                                Some(UNEXPECTED_ERR_MSG.to_string()),
+                                loc.clone().map(|l| l.line_col),
+                            );
+                            return None;
+                        }
+                    }
+                }
+                None
             }
         }
     }
@@ -652,6 +747,49 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
 
                 Some(DataType::AssumeGood)
             }
+            Expr::GetMap { map, key, loc } => {
+                //ensure that map is a map, then get the other stuff from the map info
+                let map_ty = self.visit_expr(map);
+                let key_ty = self.visit_expr(key);
+                match (map_ty.clone(), key_ty.clone()) {
+                    (None, _) | (_, None) => {
+                        self.err.type_check_error(
+                            false,
+                            "Can't get type of map or key".to_owned(),
+                            &loc.clone().map(|l| l.line_col),
+                        );
+                        Some(DataType::AssumeGood)
+                    }
+                    _ => {
+                        //we know that the types are all "Some"
+                        let key_ty = key_ty.unwrap();
+                        let map_ty = map_ty.unwrap();
+                        if let DataType::Map {
+                            key_ty: map_key_ty,
+                            val_ty,
+                        } = map_ty
+                        {
+                            //ensure that the key_ty matches and the val_ty matches
+                            if key_ty != *map_key_ty {
+                                self.err.type_check_error(
+                                    false,
+                                    format! {"Type Mismatch, key:{:?}, map_key:{:?}", key_ty, map_key_ty},
+                                    &loc.clone().map(|l| l.line_col),
+                                );
+                                return Some(DataType::AssumeGood);
+                            }
+                            Some(*val_ty)
+                        } else {
+                            self.err.unexpected_error(
+                                true,
+                                Some(UNEXPECTED_ERR_MSG.to_string()),
+                                loc.clone().map(|l| l.line_col),
+                            );
+                            Some(DataType::AssumeGood)
+                        }
+                    }
+                }
+            }
             Expr::Ternary {
                 cond, conseq, alt, ..
             } => {
@@ -745,7 +883,20 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                 let mut all_tys: Vec<Box<DataType>> = Vec::new();
                 for ty in tys {
                     match ty {
-                        Some(ty) => all_tys.push(Box::new(ty)),
+                        Some(ty) => {
+                            //check if ty is a map -> throw a type error if so as maps are not allowed in tuples
+                            if let DataType::Map { .. } = ty {
+                                self.err.type_check_error(
+                                    false,
+                                    "Maps are not allowed in tuples".to_owned(),
+                                    &Some(
+                                        vals.iter().next().unwrap().loc().clone().unwrap().line_col,
+                                    ),
+                                );
+                                return Some(DataType::AssumeGood);
+                            }
+                            all_tys.push(Box::new(ty));
+                        }
                         _ => self.err.unexpected_error(
                             true,
                             Some(UNEXPECTED_ERR_MSG.to_string()),
@@ -765,6 +916,7 @@ pub fn type_check(ast: &Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> bool
         table: st,
         err,
         in_script_global: false,
+        in_fuction: false,
     };
     type_checker.visit_whamm(ast);
     // note that parser errors might propagate here
