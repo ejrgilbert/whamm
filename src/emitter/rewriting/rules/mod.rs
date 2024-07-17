@@ -67,7 +67,7 @@ fn package_factory<P: Package + FromStr + 'static>(
     packages
 }
 /// Splits out the logic to add new events to a package
-fn event_factory<E: Event + FromStr + 'static>(
+pub fn event_factory<E: Event + FromStr + 'static>(
     ast_events: &HashMap<String, HashMap<String, Vec<SimpleProbe>>>,
 ) -> Vec<Box<dyn Event>> {
     let mut events: Vec<Box<dyn Event>> = vec![];
@@ -79,7 +79,7 @@ fn event_factory<E: Event + FromStr + 'static>(
     });
     events
 }
-fn probe_factory(
+pub fn probe_factory(
     ast_probes: &HashMap<String, Vec<SimpleProbe>>,
 ) -> HashMap<String, Vec<SimpleProbe>> {
     ast_probes

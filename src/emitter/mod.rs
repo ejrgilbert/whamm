@@ -1,6 +1,4 @@
 pub mod rewriting;
-mod gluecode;
-mod map_knower;
 
 #[cfg(test)]
 pub mod tests;

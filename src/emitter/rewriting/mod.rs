@@ -1,4 +1,5 @@
 pub mod rules;
+pub mod map_knower;
 
 use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::rewriting::rules::{LocInfo, Provider, WhammProvider};
@@ -1745,7 +1746,10 @@ impl Emitter for WasmRewritingEmitter {
         } else {
             for stmt in stmts.iter_mut() {
                 match stmt {
-                    Statement::Decl { .. } => {
+                    Statement::Decl { .. } 
+                    | Statement::ReportDecl { .. }
+                    //TODO: Make assignment in the global state work - so that you can initialize variables  | Statement::Assign { .. } 
+                    => {
                         // This is fine
                     }
                     _ => {

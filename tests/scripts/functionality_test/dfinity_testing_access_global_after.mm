@@ -4,5 +4,5 @@ wasm:bytecode:call:after /
     target_imp_module == "ic0" &&
     target_imp_name == "call_new"
 / {
-    i = 0;
+    i = false;
 }
