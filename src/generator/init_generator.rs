@@ -10,7 +10,7 @@ use crate::parser::types::{
 };
 use log::{trace, warn};
 use std::collections::HashMap;
-use crate::emitter::rewriting::ModuleEmitter;
+use crate::emitter::rewriting::module_emitter::ModuleEmitter;
 
 /// Serves as the first phase of instrumenting a module by setting up
 /// the groundwork.
@@ -20,7 +20,7 @@ use crate::emitter::rewriting::ModuleEmitter;
 /// This process should ideally be generic, made to perform a specific
 /// instrumentation technique by the Emitter field.
 pub struct InitGenerator<'a, 'b, 'c, 'd> {
-    pub emitter: &'a mut ModuleEmitter<'b, 'c>,
+    pub emitter: ModuleEmitter<'a, 'b, 'c>,
     pub context_name: String,
     pub err: &'d mut ErrorGen,
 }

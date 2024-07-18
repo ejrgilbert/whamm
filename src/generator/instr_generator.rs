@@ -5,19 +5,18 @@ use crate::behavior::tree::{
 use crate::behavior::tree::{BehaviorTree, Node};
 use crate::common::error::ErrorGen;
 use crate::emitter::rewriting::rules::{provider_factory, LocInfo, WhammProvider};
-use crate::emitter::Emitter;
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{Expr, Statement};
 use log::warn;
 
 use orca::ir::types::DataType;
-use orca::iterator::module_iterator::ModuleIterator;
+use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 
 const UNEXPECTED_ERR_MSG: &str =
     "InstrGenerator: Looks like you've found a bug...please report this behavior!";
-fn get_loc_info<'a>(
+fn get_loc_info<'a, 'b, 'c, 'd>(
     rule: &'a WhammProvider,
-    emitter: &Box<&mut dyn Emitter>,
+    emitter: &VisitingEmitter<'b, 'c, 'd>,
 ) -> Option<LocInfo<'a>> {
     // Pull the curr instr each time this is called to keep from having
     // long-lasting refs into self.emitter.
@@ -31,11 +30,11 @@ fn get_loc_info<'a>(
 /// passed emitter to emit instrumentation code.
 /// This process should ideally be generic, made to perform a specific
 /// instrumentation technique by the passed Emitter type.
-pub struct InstrGenerator<'a, 'b> {
+pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e> {
     pub tree: &'a BehaviorTree,
-    pub emitter: Box<&'b mut dyn Emitter>,
+    pub emitter: VisitingEmitter<'b, 'c, 'd>,
     pub ast: SimpleAST,
-    pub err: &'a mut ErrorGen,
+    pub err: &'e mut ErrorGen,
 
     // pub context_name: String,
     // pub curr_provider_name: String,
@@ -46,12 +45,12 @@ pub struct InstrGenerator<'a, 'b> {
     /// The current probe's body and predicate
     curr_probe: Option<(Option<Vec<Statement>>, Option<Expr>)>,
 }
-impl<'a, 'b> InstrGenerator<'a, 'b> {
+impl<'a, 'b, 'c, 'd, 'e> InstrGenerator<'a, 'b, 'c, 'd, 'e> {
     pub fn new(
         tree: &'a BehaviorTree,
-        emitter: Box<&'b mut dyn Emitter>,
+        emitter: VisitingEmitter<'b, 'c, 'd>,
         ast: SimpleAST,
-        err: &'a mut ErrorGen,
+        err: &'e mut ErrorGen,
     ) -> Self {
         Self {
             tree,
@@ -81,11 +80,6 @@ impl<'a, 'b> InstrGenerator<'a, 'b> {
         // Initialize the emitter rules
         let rules = provider_factory::<WhammProvider>(&self.ast.probes);
 
-        // Initialize the instr visitor
-        if let Err(e) = self.emitter.init_instr_iter() {
-            self.err.add_error(*e)
-        }
-
 
         // self.emitter.init_iterator();
 
@@ -108,7 +102,7 @@ impl<'a, 'b> InstrGenerator<'a, 'b> {
                 if let Some(loc_info) = get_loc_info(rule, &self.emitter) {
                     if loc_info.num_alt_probes > 1 {
                         self.err
-                            .multiple_alt_matches(self.emitter.curr_instr_name());
+                            .multiple_alt_matches(self.emitter.curr_instr_name().as_str());
                     }
                     // This location has matched some rules, inject each matched probe!
                     loc_info.probes.iter().for_each(|(probe_spec, probe)| {
@@ -196,62 +190,8 @@ impl<'a, 'b> InstrGenerator<'a, 'b> {
     //         }
     //     }
     // }
-
-    fn emit_cond(&mut self, cond: &usize) -> bool {
-        let mut is_success = true;
-        if let Some(node) = self.tree.get_node(*cond) {
-            // emit the branch conditional
-            self.emitter.emit_condition();
-            is_success &= self.visit_node(node);
-        } else {
-            self.err.unexpected_error(
-                true,
-                Some(format!(
-                    "{UNEXPECTED_ERR_MSG} Node to define conditional logic node does not exist!"
-                )),
-                None,
-            );
-        }
-        is_success
-    }
-
-    fn emit_conseq(&mut self, conseq: &usize) -> bool {
-        let mut is_success = true;
-        if let Some(node) = self.tree.get_node(*conseq) {
-            // emit the consequent logic
-            self.emitter.emit_consequent();
-            is_success &= self.visit_node(node);
-        } else {
-            self.err.unexpected_error(
-                true,
-                Some(format!(
-                    "{UNEXPECTED_ERR_MSG} Node to define consequent logic node does not exist!"
-                )),
-                None,
-            );
-        }
-        is_success
-    }
-
-    fn emit_alt(&mut self, alt: &usize) -> bool {
-        let mut is_success = true;
-        if let Some(node) = self.tree.get_node(*alt) {
-            // emit the alternate logic
-            self.emitter.emit_alternate();
-            is_success &= self.visit_node(node);
-        } else {
-            self.err.unexpected_error(
-                true,
-                Some(format!(
-                    "{UNEXPECTED_ERR_MSG} Node to define alternate logic node does not exist!"
-                )),
-                None,
-            );
-        }
-        is_success
-    }
 }
-impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
+impl BehaviorVisitor<bool> for InstrGenerator<'_, '_, '_, '_, '_> {
     fn visit_root(&mut self, node: &Node) -> bool {
         let mut is_success = true;
         if let Node::Root { child, .. } = node {
@@ -429,15 +369,12 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
 
     fn visit_emit_if_else(&mut self, node: &Node) -> bool {
         if let Node::ActionWithParams {
-            ty: ParamActionType::EmitIfElse { cond, conseq, alt },
+            ty: ParamActionType::EmitIfElse { cond: _cond, conseq: _conseq, alt: _alt },
             ..
         } = node
         {
-            self.emitter.emit_if_else();
-            self.emit_cond(cond);
-            self.emit_conseq(conseq);
-            self.emit_alt(alt);
-            self.emitter.finish_branch();
+            // todo -- figure this one out...still unsure...
+            // self.emitter.emit_if_else();
             true
         } else {
             unreachable!()
@@ -446,41 +383,39 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
 
     fn visit_emit_if(&mut self, node: &Node) -> bool {
         if let Node::ActionWithParams {
-            ty: ParamActionType::EmitIf { cond, conseq },
+            ty: ParamActionType::EmitIf { cond: _cond, conseq: _conseq },
             ..
         } = node
         {
-            self.emitter.emit_if();
-            self.emit_cond(cond);
-            self.emit_conseq(conseq);
-            self.emitter.finish_branch();
+            // todo -- pull pred/body from current probe
+            // self.emitter.emit_if();
             true
         } else {
             unreachable!()
         }
     }
 
-    fn visit_emit_global_stmts(&mut self, node: &Node) -> bool {
-        let mut is_success = true;
-        if let Node::Action {
-            ty: ActionType::EmitGlobalStmts,
-            ..
-        } = node
-        {
-            // NOTE -- this WILL NOT WORK for dfinity or microservice applications...they are stateless
-            //     will need to instrument ALL entrypoints for that to work :/
-            // TODO -- fix above noted issue by inserting a new 'start' function if it doesn't exist
-            if !self.ast.global_stmts.is_empty() {
-                match self.emitter.emit_global_stmts(&mut self.ast.global_stmts) {
-                    Err(e) => self.err.add_error(*e),
-                    Ok(res) => is_success &= res,
-                }
-            }
-        } else {
-            unreachable!()
-        }
-        is_success
-    }
+    // fn visit_emit_global_stmts(&mut self, node: &Node) -> bool {
+    //     let mut is_success = true;
+    //     if let Node::Action {
+    //         ty: ActionType::EmitGlobalStmts,
+    //         ..
+    //     } = node
+    //     {
+    //         // NOTE -- this WILL NOT WORK for dfinity or microservice applications...they are stateless
+    //         //     will need to instrument ALL entrypoints for that to work :/
+    //         // TODO -- fix above noted issue by inserting a new 'start' function if it doesn't exist
+    //         if !self.ast.global_stmts.is_empty() {
+    //             match self.emitter.emit_global_stmts(&mut self.ast.global_stmts) {
+    //                 Err(e) => self.err.add_error(*e),
+    //                 Ok(res) => is_success &= res,
+    //             }
+    //         }
+    //     } else {
+    //         unreachable!()
+    //     }
+    //     is_success
+    // }
 
     fn visit_emit_pred(&mut self, node: &Node) -> bool {
         let mut is_success = true;
@@ -509,10 +444,6 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_> {
         } = node
         {
             if let Some((Some(ref mut body), ..)) = self.curr_probe {
-                if self.curr_probe_mode == "after" {
-                    // tell the emitter to point to location after instruction-of-interest
-                    self.emitter.incr_loc_pointer();
-                }
                 match self.emitter.emit_body(body) {
                     Err(e) => self.err.add_error(*e),
                     Ok(res) => is_success &= res,

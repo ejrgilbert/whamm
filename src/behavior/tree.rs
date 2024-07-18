@@ -174,19 +174,6 @@ impl BehaviorTree {
         };
     }
 
-    pub fn emit_global_stmts(&mut self, err: &mut ErrorGen) -> &mut Self {
-        let id = self.nodes.len();
-        self.put_child(
-            Node::Action {
-                id,
-                parent: self.curr,
-                ty: ActionType::EmitGlobalStmts,
-            },
-            err,
-        );
-        self
-    }
-
     pub fn emit_body(&mut self, err: &mut ErrorGen) -> &mut Self {
         let id = self.nodes.len();
         self.put_child(
@@ -421,7 +408,6 @@ pub enum DecoratorType {
 
 #[derive(Debug)]
 pub enum ActionType {
-    EmitGlobalStmts,
     EmitPred,
     EmitBody,
     EmitAltCall,
@@ -516,7 +502,6 @@ pub trait BehaviorVisitor<T> {
     fn visit_action(&mut self, node: &Node) -> T {
         if let Node::Action { ty, .. } = node {
             match ty {
-                ActionType::EmitGlobalStmts { .. } => self.visit_emit_global_stmts(node),
                 ActionType::EmitPred { .. } => self.visit_emit_pred(node),
                 ActionType::EmitBody { .. } => self.visit_emit_body(node),
                 ActionType::EmitAltCall { .. } => self.visit_emit_alt_call(node),
@@ -528,7 +513,6 @@ pub trait BehaviorVisitor<T> {
             unreachable!()
         }
     }
-    fn visit_emit_global_stmts(&mut self, node: &Node) -> T;
     fn visit_emit_pred(&mut self, node: &Node) -> T;
     fn visit_emit_body(&mut self, node: &Node) -> T;
     fn visit_emit_alt_call(&mut self, node: &Node) -> T;

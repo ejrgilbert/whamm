@@ -4,10 +4,9 @@ use cli::{Cmd, WhammCli};
 
 use crate::behavior::builder_visitor::*;
 use crate::common::error::ErrorGen;
-use crate::emitter::rewriting::ModuleEmitter;
-// use crate::emitter::Emitter;
+use crate::emitter::rewriting::module_emitter::ModuleEmitter;
 use crate::generator::init_generator::InitGenerator;
-// use crate::generator::instr_generator::InstrGenerator;
+use crate::generator::instr_generator::InstrGenerator;
 use crate::parser::whamm_parser::*;
 
 pub mod behavior;
@@ -30,6 +29,7 @@ use orca::ir::module::Module as WasmModule;
 
 use crate::behavior::tree::BehaviorTree;
 use crate::behavior::visualize::visualization_to_file;
+use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::parser::types::Whamm;
 use crate::verifier::types::SymbolTable;
 use crate::verifier::verifier::{build_symbol_table, type_check};
@@ -116,7 +116,7 @@ fn run_instr(
 
     // Process the script
     let mut whamm = get_script_ast(&script_path, &mut err);
-    let symbol_table = get_symbol_table(&mut whamm, run_verifier, &mut err);
+    let mut symbol_table = get_symbol_table(&mut whamm, run_verifier, &mut err);
     let (behavior_tree, simple_ast) = build_behavior(&whamm, &mut err);
 
     // If there were any errors encountered, report and exit!
@@ -134,16 +134,11 @@ fn run_instr(
     let buff = std::fs::read(app_wasm_path).unwrap();
     let mut app_wasm = WasmModule::parse_only_module(&buff, false).unwrap();
 
-    // Configure the emitter based on target instrumentation code format
-    let mut emitter = if emit_virgil {
-        unimplemented!();
-    } else {
-        ModuleEmitter::new(&mut app_wasm, symbol_table)
-    };
+    // TODO Configure the generator based on target (wizard vs bytecode rewriting)
 
     // Phase 0 of instrumentation (emit globals and provided fns)
     let mut init = InitGenerator {
-        emitter: &mut emitter,
+        emitter: ModuleEmitter::new(&mut app_wasm, &mut symbol_table),
         context_name: "".to_string(),
         err: &mut err,
     };
@@ -154,15 +149,30 @@ fn run_instr(
     // Phase 1 of instrumentation (actually emits the instrumentation code)
     // This structure is necessary since we need to have the fns/globals injected (a single time)
     // and ready to use in every body/predicate.
-    // let mut instr =
-    //     InstrGenerator::new(&behavior_tree, Box::new(&mut emitter), simple_ast, &mut err);
-    // instr.run(&behavior_tree);
+    let mut instr =
+        InstrGenerator::new(
+            &behavior_tree,
+            VisitingEmitter::new(
+                &mut app_wasm,
+                &mut symbol_table
+            ),
+            simple_ast,
+            &mut err
+        );
+    instr.run(&behavior_tree);
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
 
     try_path(&output_wasm_path);
-    if let Err(e) = emitter.dump_to_file(output_wasm_path) {
-        err.add_error(*e)
+    if let Err(e) = app_wasm.emit_wasm(&output_wasm_path) {
+        err.add_error(ErrorGen::get_unexpected_error(
+            true,
+            Some(format!(
+                "Failed to dump instrumented wasm to {} from error: {}",
+                &output_wasm_path, e
+            )),
+            None,
+        ))
     }
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
