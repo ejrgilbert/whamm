@@ -10,7 +10,7 @@ use orca::opcode::Opcode;
 
 use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::rewriting::{emit_expr, emit_set, InsertionMetadata};
-use crate::emitter::rewriting::rules::{LocInfo, WhammProvider};
+use crate::emitter::rewriting::rules::{Arg, LocInfo, WhammProvider};
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{DataType, Expr, ProbeSpec, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
@@ -275,35 +275,34 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c>
         }
     }
 
-    pub(crate) fn save_args(&mut self, args: &[OrcaType]) -> bool {
+    pub(crate) fn save_args(&mut self, args: &[Arg]) -> bool {
         // No opcodes should have been emitted in the module yet!
         // So, we can just save off the first * items in the stack as the args
         // to the call.
         self.app_iter.before(); // should be done before the original opcode
-        let mut arg_recs = vec![]; // vec to retain order!
-        args.iter().enumerate().for_each(|(num, param_ty)| {
+        let mut arg_recs: Vec<(String, usize)> = vec![]; // vec to retain order!
+        args.iter().for_each(|Arg {name: arg_name, ty: arg_ty}| {
             // create local for the param in the module
             // todo -- rework when we can add locals through the app_iter
-            // let arg_local_id = self.app_iter.add_local(*param_ty);
+            // let arg_local_id = self.app_iter.add_local(*arg_ty);
             let arg_local_id = 0;
             
             // emit an opcode in the event to assign the ToS to this new local
             self.app_iter.local_set(arg_local_id);
 
             // place in symbol table with var addr for future reference
-            let arg_name = format!("arg{}", num);
             let id = self.table.put(
-                arg_name.clone(),
+                arg_name.to_string(),
                 Record::Var {
                     ty: DataType::I32, // we only support integers right now.
-                    name: arg_name.clone(),
+                    name: arg_name.to_string(),
                     value: None,
                     is_comp_provided: false,
                     addr: Some(VarAddr::Local { addr: arg_local_id }),
                     loc: None,
                 },
             );
-            arg_recs.push((arg_name, id));
+            arg_recs.push((arg_name.to_string(), id));
         });
         self.instr_created_args = arg_recs;
         true

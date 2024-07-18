@@ -1,6 +1,6 @@
 use crate::behavior::builder_visitor::SimpleProbe;
 use crate::emitter::rewriting::rules::{
-    event_factory, probe_factory, Event, FromStr, LocInfo, Package,
+    event_factory, probe_factory, Event, FromStr, LocInfo, Package, Arg
 };
 use crate::parser::rules::wasm::{OpcodeEventKind, WasmPackageKind};
 use crate::parser::types::{ProbeSpec, SpecPart};
@@ -151,11 +151,11 @@ impl OpcodeEvent {
             mode: None,
         }
     }
-    pub fn get_args_for_instr(_app_wasm: &Module, instr: &Operator) -> Vec<OrcaType> {
+    pub fn get_args_for_instr(_app_wasm: &Module, instr: &Operator) -> Vec<Arg> {
         // TODO: there are 500 of them in wasmparser::Operator
         // compared to 48 of them in walrus::ir::Instr
-        // How do we compress thte Operators we need to concern
-        match instr {
+        // How do we compress the Operators we need to concern
+        let ty_list: Vec<OrcaType> = match instr {
 
             Operator::Call { function_index: _function_idx } => {
                 // do something
@@ -348,7 +348,13 @@ impl OpcodeEvent {
                 // TODO -- define args
                 unimplemented!()
             }
+        };
+
+        let mut args = vec![];
+        for (idx, ty) in ty_list.iter().enumerate() {
+            args.push(Arg::new(format!("arg{}", idx), ty.to_owned()));
         }
+        args
     }
 
     // ======================

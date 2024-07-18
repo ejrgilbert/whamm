@@ -4,7 +4,7 @@ pub mod rewriting;
 pub mod tests;
 
 use crate::common::error::WhammError;
-use crate::emitter::rewriting::rules::{LocInfo, WhammProvider};
+use crate::emitter::rewriting::rules::{Arg, LocInfo, WhammProvider};
 use crate::parser::types::{DataType, Expr, Fn, ProbeSpec, Statement, Value};
 
 use orca::ir::types::DataType as OrcaType;
@@ -17,7 +17,7 @@ pub trait ModuleEmitter {
     fn enter_scope(&mut self) -> Result<(), Box<WhammError>>;
     fn exit_scope(&mut self) -> Result<(), Box<WhammError>>;
     fn reset_children(&mut self);
-    fn save_args(&mut self, args: &[OrcaType]) -> bool;
+    fn save_args(&mut self, args: &[Arg]) -> bool;
     fn emit_args(&mut self) -> Result<bool, Box<WhammError>>;
     fn define(&mut self, var_name: &str, var_rec: &Option<Value>) -> Result<bool, Box<WhammError>>;
     fn reset_table_data(&mut self, loc_info: &LocInfo);
