@@ -352,7 +352,7 @@ fn emit_value(
     let mut is_success = true;
     match val {
         Value::Integer { val, .. } => {
-            func_builder.i32(*val);
+            func_builder.i32_const(*val);
             is_success &= true;
         }
         Value::Str { val, addr, ty: _ty } => {
@@ -400,10 +400,10 @@ fn emit_value(
             // https://github.com/sunfishcode/wasm-reference-manual/blob/master/WebAssembly.md#booleans
             if *val {
                 // insert true (non-zero)
-                func_builder.i32(1);
+                func_builder.i32_const(1);
             } else {
                 // insert false (zero)
-                func_builder.i32(0);
+                func_builder.i32_const(0);
             }
             is_success &= true;
         }
@@ -480,17 +480,18 @@ impl<'a, 'b> ModuleEmitter<'a, 'b>
             )))
         }
     }
+
     fn emit_whamm_strcmp_fn(&mut self, f: &Fn) -> Result<bool, Box<WhammError>> {
         let strcmp_params = vec![OrcaType::I32, OrcaType::I32, OrcaType::I32, OrcaType::I32];
         let strcmp_result = vec![OrcaType::I32];
 
         let mut strcmp = FunctionBuilder::new(&strcmp_params, &strcmp_result);
 
-        // create params
-        let str0_offset = strcmp.add_local(OrcaType::I32);
-        let str0_size = strcmp.add_local(OrcaType::I32);
-        let str1_offset = strcmp.add_local(OrcaType::I32);
-        let str1_size = strcmp.add_local(OrcaType::I32);
+        // specify params
+        let str0_offset = 0u32;
+        let str0_size = 1u32;
+        let str1_offset = 2u32;
+        let str1_size = 3u32;
 
         // create locals
         let i = strcmp.add_local(OrcaType::I32);
@@ -514,75 +515,70 @@ impl<'a, 'b> ModuleEmitter<'a, 'b>
                     .br_if(0) // (;@2;)
 
                     // 3. iterate over each string and check equivalence of chars, if any not equal, return 0
-                    .i32(0)
+                    .i32_const(0)
                     .local_set(i)
                     .loop_stmt(BlockType::Empty)
                         // Check if we've reached the end of the string
                         .local_get(i)
                         .local_get(str0_size)  // (can compare with either str size, equal at this point)
-                        .i32_lte_unsigned()
-                        .i32(0)
-                        .i32_eq()
+                        .i32_lt_unsigned()
+                        .i32_eqz()
                         .br_if(1) // (;2;),  We've reached the end without failing equality checks!
-            
+
                         // get char for str0
                         .local_get(str0_offset)
                         .local_get(i)
                         .i32_add()
-                        // TODO -- support loading a byte from memory
-                        // .load(
-                        //     self.metadata.mem_id,
-                        //     LoadKind::I32_8 {
-                        //         kind: ExtendedLoad::ZeroExtend,
-                        //     },
-                        //     MemArg {
-                        //         offset: 0,
-                        //         align: 1,
-                        //     },
-                        // )
+                        // load a byte from memory
+                        .i32_load8_u(
+                            wasmparser::MemArg {
+                                align: 0,
+                                max_align: 0,
+                                offset: 0,
+                                memory: self.metadata.mem_id
+                            }
+                        )
                         .local_set(str0_char)
-                        
+
                         // get char for str1
                         .local_get(str1_offset)
                         .local_get(i)
                         .i32_add()
-                        // TODO -- support loading a byte from memory
-                        // .load(
-                        //     self.metadata.mem_id,
-                        //     LoadKind::I32_8 {
-                        //         kind: ExtendedLoad::ZeroExtend,
-                        //     },
-                        //     MemArg {
-                        //         offset: 0,
-                        //         align: 1,
-                        //     },
-                        // )
+                        // load a byte from memory
+                        .i32_load8_u(
+                            wasmparser::MemArg {
+                                align: 0,
+                                max_align: 0,
+                                offset: 0,
+                                memory: self.metadata.mem_id
+                            }
+                        )
                         .local_set(str1_char)
-                        
+
                         // compare the two chars
                         .local_get(str0_char)
                         .local_get(str1_char)
                         .i32_ne()
                         .br_if(2) // (;@1;), If they are not equal, exit and return '0'
-                        
+
                         // Increment i and continue loop
                         .local_get(i)
-                        .i32(1)
+                        .i32_const(1)
                         .i32_add()
                         .local_set(i)
                         .br(0) // (;3;)
                     .end()
-            
+
                     // 4. Reached the end of each string without returning, return nonzero
                     .br(0) // (;2;)
                 .end()
-            
+
                 // they are equal, return '1'
-                .i32(1)
+                .i32_const(1)
                 .return_stmt()
             .end()
             // they are not equal, return '0'
-            .i32(0)
+            .i32_const(0)
             .return_stmt();
 
         let strcmp_id = strcmp.finish(&mut self.app_wasm);
