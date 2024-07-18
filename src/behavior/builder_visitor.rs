@@ -8,7 +8,6 @@ use parser_types::{
 use std::collections::HashMap;
 
 use crate::behavior::tree::DecoratorType::{HasAltCall, PredIs};
-use crate::behavior::tree::ParamActionType;
 use crate::common::error::ErrorGen;
 use crate::parser::types::Block;
 use log::trace;
@@ -198,18 +197,8 @@ impl BehaviorTreeBuilder<'_, '_> {
             .fallback(self.err)
             .decorator(PredIs { val: true }, self.err)
             .sequence(self.err)
-            .fallback(self.err)
-            .decorator(
-                DecoratorType::IsProbeMode {
-                    probe_mode: "alt".to_string(),
-                },
-                self.err,
-            )
-            .remove_orig(self.err)
-            .exit_decorator(self.err)
-            .force_success(self.err)
-            .exit_fallback(self.err)
             .emit_body(self.err)
+            // emit args after body to prep for alt call (or orig call)
             .emit_args(true, self.err)
             .fallback(self.err)
             .decorator(HasAltCall, self.err)
@@ -258,58 +247,18 @@ impl BehaviorTreeBuilder<'_, '_> {
     }
 
     fn emit_probe_before_body(&mut self) {
-        self.tree
-            .parameterized_action(ParamActionType::EmitIf { cond: 0, conseq: 1 }, self.err)
-            .emit_pred(self.err)
-            .emit_body(self.err)
-            .exit_parameterized_action(self.err);
+        self.tree.emit_probe_as_if(self.err);
     }
 
     fn emit_probe_alt_body(&mut self) {
-        self.tree
-            .sequence(self.err)
-            .remove_orig(self.err)
-            .parameterized_action(
-                ParamActionType::EmitIfElse {
-                    cond: 0,
-                    conseq: 1,
-                    alt: 2,
-                },
-                self.err,
-            )
-            .emit_pred(self.err)
-            .sequence(self.err)
-            .emit_body(self.err)
-            .fallback(self.err)
-            .decorator(HasAltCall, self.err)
-            .sequence(self.err) // TODO -- remove need for this (just have normal lib::<fn_name>() call syntax)
-            // Emit alternate call before emitting parameters so that the location
-            // of the alternate call is known to contextualize targeting the right place
-            // for emitting the parameters.
-            .emit_alt_call(self.err)
-            .emit_args(true, self.err)
-            .exit_sequence(self.err)
-            .exit_decorator(self.err)
-            .force_success(self.err)
-            .exit_fallback(self.err)
-            .exit_sequence(self.err)
-            .sequence(self.err)
-            // Emit original instruction before emitting parameters so that the location
-            // of the original instruction is known to contextualize targeting the right place
-            // for emitting the parameters.
-            .emit_orig(self.err)
-            .emit_args(true, self.err)
-            .exit_sequence(self.err)
-            .exit_parameterized_action(self.err)
-            .exit_sequence(self.err);
+        // Emit alternate call before emitting parameters so that the location
+        // of the alternate call is known to contextualize targeting the right place
+        // for emitting the parameters.
+        self.tree.emit_probe_as_if_else(self.err);
     }
 
     fn emit_probe_after_body(&mut self) {
-        self.tree
-            .parameterized_action(ParamActionType::EmitIf { cond: 0, conseq: 1 }, self.err)
-            .emit_pred(self.err)
-            .emit_body(self.err)
-            .exit_parameterized_action(self.err);
+        self.tree.emit_probe_as_if(self.err);
     }
 }
 impl WhammVisitor<()> for BehaviorTreeBuilder<'_, '_> {

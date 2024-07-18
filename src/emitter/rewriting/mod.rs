@@ -8,16 +8,7 @@ use crate::verifier::types::{Record, SymbolTable, VarAddr};
 
 use orca::ir::types::{Global, InitExpr, Value as OrcaValue};
 use wasmparser::ValType;
-
-use orca::ir::module::Module;
-use orca::ir::component::Component;
 use orca::opcode::Opcode;
-
-fn module_to_component(module: Module) -> Component {
-    let mut component = Component::new();
-    component.add_module(module);
-    component
-}
 
 // transform a whamm type to default wasm type, used for creating new global
 // TODO: Might be more generic to also include Local

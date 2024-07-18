@@ -1,6 +1,5 @@
 use crate::behavior::tree::{
-    ActionType, ArgActionType, BehaviorTree, BehaviorVisitor, DecoratorType, Node as TreeNode,
-    ParamActionType,
+    ActionType, ArgActionType, BehaviorTree, BehaviorVisitor, DecoratorType, Node as TreeNode
 };
 use graphviz_rust::cmd::{CommandArg, Format};
 use graphviz_rust::dot_generator::{attr, edge, graph, id, node, node_id, stmt};
@@ -245,63 +244,6 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
         }
     }
 
-    fn visit_emit_if_else(&mut self, node: &TreeNode) {
-        if let TreeNode::ActionWithParams {
-            id,
-            parent,
-            ty: ParamActionType::EmitIfElse { cond, conseq, alt },
-            ..
-        } = node
-        {
-            self.emit_special_action_node(id, "EmitIfElse");
-            self.emit_edge(parent, id);
-
-            self.is_param_action = true;
-            self.param_label = Some("cond".to_string());
-            if let Some(node) = self.tree.get_node(*cond) {
-                self.visit_node(node);
-            }
-            self.is_param_action = true;
-            self.param_label = Some("conseq".to_string());
-            if let Some(node) = self.tree.get_node(*conseq) {
-                self.visit_node(node);
-            }
-            self.is_param_action = true;
-            self.param_label = Some("alt".to_string());
-            if let Some(node) = self.tree.get_node(*alt) {
-                self.visit_node(node);
-            }
-        } else {
-            unreachable!()
-        }
-    }
-
-    fn visit_emit_if(&mut self, node: &TreeNode) {
-        if let TreeNode::ActionWithParams {
-            id,
-            parent,
-            ty: ParamActionType::EmitIf { cond, conseq },
-            ..
-        } = node
-        {
-            self.emit_special_action_node(id, "EmitIf");
-            self.emit_edge(parent, id);
-
-            self.is_param_action = true;
-            self.param_label = Some("cond".to_string());
-            if let Some(node) = self.tree.get_node(*cond) {
-                self.visit_node(node);
-            }
-            self.is_param_action = true;
-            self.param_label = Some("conseq".to_string());
-            if let Some(node) = self.tree.get_node(*conseq) {
-                self.visit_node(node);
-            }
-        } else {
-            unreachable!()
-        }
-    }
-
     fn visit_emit_pred(&mut self, node: &TreeNode) {
         if let TreeNode::Action {
             id,
@@ -344,20 +286,6 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
         }
     }
 
-    fn visit_remove_orig(&mut self, node: &TreeNode) {
-        if let TreeNode::Action {
-            id,
-            ty: ActionType::RemoveOrig,
-            parent,
-        } = node
-        {
-            self.emit_action_node(id, "RemoveOrig");
-            self.emit_edge(parent, id);
-        } else {
-            unreachable!()
-        }
-    }
-
     fn visit_emit_orig(&mut self, node: &TreeNode) {
         if let TreeNode::Action {
             id,
@@ -380,6 +308,34 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
         } = node
         {
             self.emit_action_node(id, "ForceSuccess");
+            self.emit_edge(parent, id);
+        } else {
+            unreachable!()
+        }
+    }
+
+    fn visit_emit_probe_as_if(&mut self, node: &TreeNode) {
+        if let TreeNode::Action {
+            id,
+            ty: ActionType::EmitProbeAsIf,
+            parent,
+        } = node
+        {
+            self.emit_special_action_node(id, "EmitProbeAsIf");
+            self.emit_edge(parent, id);
+        } else {
+            unreachable!()
+        }
+    }
+
+    fn visit_emit_probe_as_if_else(&mut self, node: &TreeNode) {
+        if let TreeNode::Action {
+            id,
+            ty: ActionType::EmitProbeAsIfElse,
+            parent,
+        } = node
+        {
+            self.emit_special_action_node(id, "EmitProbeAsIfElse");
             self.emit_edge(parent, id);
         } else {
             unreachable!()

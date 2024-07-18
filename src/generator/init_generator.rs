@@ -50,22 +50,10 @@ impl InitGenerator<'_, '_, '_, '_> {
 
         is_success
     }
-    fn visit_provided_globals(&mut self, globals: &HashMap<String, ProvidedGlobal>) -> bool {
-        let mut is_success = true;
-        for (name, ProvidedGlobal { global, .. }) in globals.iter() {
-            // do not inject globals into Wasm that are used/defined by the compiler
-            if global.is_from_user() {
-                match self
-                    .emitter
-                    .emit_global(name.clone(), global.ty.clone(), &global.value)
-                {
-                    Err(e) => self.err.add_error(*e),
-                    Ok(res) => is_success &= res,
-                }
-            }
-        }
-
-        is_success
+    fn visit_provided_globals(&mut self, _globals: &HashMap<String, ProvidedGlobal>) -> bool {
+        // do not inject globals into Wasm that are used/defined by the compiler
+        // because they are statically-defined and folded away
+        true
     }
 }
 impl WhammVisitor<bool> for InitGenerator<'_, '_, '_, '_> {
@@ -201,7 +189,7 @@ impl WhammVisitor<bool> for InitGenerator<'_, '_, '_, '_> {
                 is_success &= self.visit_fn(function);
             });
         // inject globals
-        is_success &= self.visit_provided_globals(&event.get_provided_globals());
+        is_success &= self.visit_provided_globals(event.get_provided_globals());
 
         // 1. visit the BEFORE probes
         if let Some(probes) = event.probes().get(&"before".to_string()) {
@@ -253,7 +241,7 @@ impl WhammVisitor<bool> for InitGenerator<'_, '_, '_, '_> {
                 is_success &= self.visit_fn(function);
             });
         // inject globals
-        is_success &= self.visit_provided_globals(&probe.get_mode_provided_globals());
+        is_success &= self.visit_provided_globals(probe.get_mode_provided_globals());
 
         trace!("Exiting: CodeGenerator::visit_probe");
         if let Err(e) = self.emitter.exit_scope() {

@@ -9,7 +9,7 @@ use orca::iterator::module_iterator::ModuleIterator;
 use orca::opcode::Opcode;
 
 use crate::common::error::{ErrorGen, WhammError};
-use crate::emitter::rewriting::{emit_expr, emit_set, InsertionMetadata, whamm_type_to_wasm};
+use crate::emitter::rewriting::{emit_expr, emit_set, InsertionMetadata};
 use crate::emitter::rewriting::rules::{LocInfo, WhammProvider};
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{DataType, Expr, ProbeSpec, Statement, Value};
@@ -26,7 +26,6 @@ pub struct VisitingEmitter<'a, 'b, 'c>
     instr_created_args: Vec<(String, usize)>,
 
     metadata: InsertionMetadata,
-    fn_providing_contexts: Vec<String>,
 }
 
 impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c>
@@ -48,22 +47,26 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c>
             },
             table,
             instr_alt_call: None,
-            instr_created_args: vec![],
-            fn_providing_contexts: vec!["whamm".to_string()],
+            instr_created_args: vec![]
         };
 
         a
     }
 
-    fn instrument_before(&mut self) {
+    /// bool -> whether there is a next instruction to process
+    pub fn next(&mut self) -> bool {
+        self.app_iter.next().is_some()
+    }
+
+    pub fn before(&mut self) {
         self.app_iter.before();
     }
 
-    fn instrument_after(&mut self) {
+    pub fn after(&mut self) {
         self.app_iter.after();
     }
 
-    fn instrument_as_alternate(&mut self) {
+    pub fn alternate(&mut self) {
         self.app_iter.alternate();
     }
 
@@ -165,7 +168,7 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c>
     fn emit_assign_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>> {
         return match stmt {
             Statement::Assign { var_id, expr, .. } => {
-                let mut folded_expr = ExprFolder::fold_expr(expr, &self.table);
+                let mut folded_expr = ExprFolder::fold_expr(expr, self.table);
 
                 // Save off primitives to symbol table
                 // TODO -- this is only necessary for `new_target_fn_name`, remove after deprecating!
@@ -225,7 +228,7 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c>
                     Err(e) => Err(e),
                     Ok(_) => {
                         emit_set(
-                            &mut self.table,
+                            self.table,
                             var_id,
                             &mut self.app_iter,
                             UNEXPECTED_ERR_MSG
@@ -246,16 +249,10 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c>
         };
     }
 
-    pub(crate) fn enter_scope(&mut self) -> Result<(), Box<WhammError>> {
-        self.table.enter_scope()
-    }
     pub(crate) fn enter_scope_via_spec(&mut self, script_id: &str, probe_spec: &ProbeSpec) -> bool {
         self.table.enter_scope_via_spec(script_id, probe_spec)
     }
 
-    pub(crate) fn exit_scope(&mut self) -> Result<(), Box<WhammError>> {
-        self.table.exit_scope()
-    }
     pub(crate) fn reset_children(&mut self) {
         self.table.reset_children();
     }
@@ -376,7 +373,7 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c>
     }
 
     pub(crate) fn fold_expr(&mut self, expr: &mut Expr) -> bool {
-        *expr = ExprFolder::fold_expr(expr, &self.table);
+        *expr = ExprFolder::fold_expr(expr, self.table);
         true
     }
 
@@ -416,23 +413,17 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c>
         Ok(is_success)
     }
 
-    fn emit_formal_param(&mut self, _param: &(Expr, DataType)) -> bool {
-        // TODO: only when we're supporting user-defined fns in script...
-        unimplemented!();
-    }
-
-    pub fn remove_orig(&mut self) -> bool {
-        todo!()
-    }
     pub fn emit_orig(&mut self) -> bool {
+        // TODO -- uncomment after we can say "instr_at"
+        // TODO -- cannot pull location info from Location struct (is it private?)
+        // let orig = self.app_iter.curr_op();
+        // let curr_loc = self.app_iter.curr_loc();
+        // 
+        // self.app_iter.instr_at(curr_loc.instr_idx, orig);
         todo!()
     }
-
-    fn emit_if(&mut self, condition: &mut Expr, conseq: &mut Vec<Statement>) -> Result<bool, Box<WhammError>> {
-        // NOTE: The structure of this code is wonky, but it's because of
-        // overlapping references/calls to self.
-        // To avoid that, we place all calls to self.emitting_func in a block.
-
+    
+    fn emit_if_preamble(&mut self, condition: &mut Expr, conseq: &mut [Statement]) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
 
         // emit the condition of the `if` expression
@@ -442,26 +433,16 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c>
 
         // emit the consequent body
         is_success &= self.emit_body(conseq)?;
-
-        // emit the end of the if block
-        self.app_iter.end();
+        
+        // INTENTIONALLY DON'T END IF BLOCK
+        
         Ok(is_success)
     }
-
-    pub(crate) fn emit_if_else(&mut self, condition: &mut Expr, conseq: &mut Vec<Statement>, alternate: &mut Vec<Statement>) -> Result<bool, Box<WhammError>> {
-        // NOTE: The structure of this code is wonky, but it's because of
-        // overlapping references/calls to self.
-        // To avoid that, we place all calls to self.emitting_func in a block.
-
+    
+    fn emit_if_else_preamble(&mut self, condition: &mut Expr, conseq: &mut [Statement], alternate: &mut Vec<Statement>) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
 
-        // emit the condition of the `if` expression
-        is_success &= self.emit_expr(condition)?;
-        // emit the beginning of the if block
-        self.app_iter.if_stmt(BlockType::Empty);
-
-        // emit the consequent body
-        is_success &= self.emit_body(conseq)?;
+        is_success &= self.emit_if_preamble(condition, conseq)?;
 
         // emit the beginning of the else
         self.app_iter.else_stmt();
@@ -469,13 +450,45 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c>
         // emit the alternate body
         is_success &= self.emit_body(alternate)?;
 
-        // emit the end of the if block
-        self.app_iter.end();
+        // INTENTIONALLY DON'T END IF/ELSE BLOCK
 
         Ok(is_success)
     }
+
+    pub(crate) fn emit_if(&mut self, condition: &mut Expr, conseq: &mut [Statement]) -> Result<bool, Box<WhammError>> {
+        let mut is_success = true;
+
+        is_success &= self.emit_if_preamble(condition, conseq)?;
+
+        // emit the end of the if block
+        self.app_iter.end();
+        Ok(is_success)
+    }
+
+    pub(crate) fn emit_if_else(&mut self, condition: &mut Expr, conseq: &mut [Statement], alternate: &mut Vec<Statement>) -> Result<bool, Box<WhammError>> {
+        let mut is_success = true;
+
+        is_success &= self.emit_if_else_preamble(condition, conseq, alternate)?;
+
+        // emit the end of the if block
+        self.app_iter.end();
+        Ok(is_success)
+    }
     
-    pub fn emit_body(&mut self, body: &mut Vec<Statement>) -> Result<bool, Box<WhammError>> {
+    pub(crate) fn emit_if_with_orig_as_else(&mut self, condition: &mut Expr, conseq: &mut [Statement]) -> Result<bool, Box<WhammError>> {
+        let mut is_success = true;
+        
+        is_success &= self.emit_if_preamble(condition, conseq)?;
+
+        is_success &= self.emit_args()?;
+        is_success &= self.emit_orig();
+
+        // emit the end of the if block
+        self.app_iter.end();
+        Ok(is_success)
+    }
+    
+    pub fn emit_body(&mut self, body: &mut [Statement]) -> Result<bool, Box<WhammError>> {
         for stmt in body.iter_mut() {
             self.emit_stmt(stmt)?;
         }

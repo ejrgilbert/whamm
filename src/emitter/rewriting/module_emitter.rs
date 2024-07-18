@@ -21,7 +21,6 @@ pub struct ModuleEmitter<'a, 'b, 'c>
     pub app_wasm: &'a mut Module<'b>,
     pub emitting_func: Option<FunctionBuilder<'b>>,
     pub table: &'c mut SymbolTable,
-    instr_alt_call: Option<i32>,
 
     metadata: InsertionMetadata,
     fn_providing_contexts: Vec<String>,
@@ -35,22 +34,17 @@ impl<'a, 'b, 'c> ModuleEmitter<'a, 'b, 'c>
             // TODO -- make this work with multi-memory
             panic!("only single memory is supported")
         };
-        // Assuming the ID of the first memory is 0!
-        let mem_id = 0;
-
-        let a = Self {
+        
+        Self {
             app_wasm,
             emitting_func: None,
             metadata: InsertionMetadata {
-                mem_id,
+                mem_id: 0, // Assuming the ID of the first memory is 0!
                 curr_mem_offset: 1_052_576, // Set default memory base address to DEFAULT + 4KB = 1048576 bytes + 4000 bytes = 1052576 bytes
             },
             table,
-            instr_alt_call: None,
             fn_providing_contexts: vec!["whamm".to_string()],
-        };
-
-        a
+        }
     }
 
     fn emit_provided_fn(&mut self, context: &str, f: &Fn) -> Result<bool, Box<WhammError>> {
@@ -210,17 +204,6 @@ impl<'a, 'b, 'c> ModuleEmitter<'a, 'b, 'c>
                 None,
             )));
         };
-    }
-    fn instrument_before(&mut self) {
-        // todo -- for visitor (not available on funcbuilder for module)
-    }
-
-    fn instrument_after(&mut self) {
-        // todo -- for visitor (not available on funcbuilder for module)
-    }
-
-    fn instrument_as_alternate(&mut self) {
-        // todo -- for visitor (not available on funcbuilder for module)
     }
 
     fn emit_decl_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>> {
@@ -424,19 +407,6 @@ impl<'a, 'b, 'c> ModuleEmitter<'a, 'b, 'c>
     }
     pub(crate) fn reset_children(&mut self) {
         self.table.reset_children();
-    }
-
-    fn reset_table_data(&mut self, loc_info: &LocInfo) {
-        // reset static_data
-        loc_info.static_data.iter().for_each(|(symbol_name, ..)| {
-            self.table.remove_record(symbol_name);
-        });
-
-        // reset dynamic_data
-        for i in 0..loc_info.args.len() {
-            let arg_name = format!("arg{}", i);
-            self.table.remove_record(&arg_name);
-        }
     }
 
     fn emit_expr(&mut self, expr: &mut Expr) -> Result<bool, Box<WhammError>> {
@@ -664,60 +634,6 @@ impl<'a, 'b, 'c> ModuleEmitter<'a, 'b, 'c>
     fn emit_body(&mut self, body: &mut Vec<Statement>) -> Result<bool, Box<WhammError>> {
         for stmt in body.iter_mut() {
             self.emit_stmt(stmt)?;
-        }
-        Ok(true)
-    }
-
-    fn has_alt_call(&mut self) -> bool {
-        // check if we should inject an alternate call!
-        // At this point the body has been visited, so "new_target_fn_name" would be defined
-        let rec_id = self.table.lookup("new_target_fn_name").copied();
-
-        if rec_id.is_none() {
-            info!("`new_target_fn_name` not configured for this probe.");
-            return false;
-        } else {
-            let (name, func_call_id) = match rec_id {
-                Some(r_id) => {
-                    let rec = self.table.get_record_mut(&r_id);
-                    if let Some(Record::Var {
-                                    value: Some(Value::Str { val, .. }),
-                                    ..
-                                }) = rec
-                    {
-                        // TODO -- how to pull func names from module?
-                        // (val.clone(), self.app_wasm.funcs.by_name(val))
-                        (val.clone(), Some(1056)) // hardcoded for now to ID for `redirect_to_fault_injector` for users.wasm file
-                    } else {
-                        ("".to_string(), None)
-                    }
-                }
-                None => ("".to_string(), None),
-            };
-            if func_call_id.is_none() {
-                info!(
-                    "Could not find function in app Wasm specified by `new_target_fn_name`: {}",
-                    name
-                );
-                return false;
-            }
-            self.instr_alt_call = func_call_id;
-        }
-        true
-    }
-
-    fn emit_alt_call(&mut self) -> Result<bool, Box<WhammError>> {
-        if let (Some(emitting_func), Some(alt_fn_id)) = (&mut self.emitting_func, self.instr_alt_call) {
-            emitting_func.call(alt_fn_id as u32);
-        } else {
-            return Err(Box::new(ErrorGen::get_unexpected_error(
-                true,
-                Some(format!(
-                    "{UNEXPECTED_ERR_MSG} \
-                    Could not inject alternate call to function, something went wrong..."
-                )),
-                None,
-            )));
         }
         Ok(true)
     }
