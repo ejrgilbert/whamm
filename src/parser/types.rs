@@ -190,9 +190,9 @@ pub enum Value {
         // Used by emitter to store this string's address/len in Wasm memory
         // (DEPRECATED) DataId: Walrus ID to reference data segment
         // u32: orca ID to reference data segment
-        // u32: address of data in memory
+        // usize: address of data in memory
         // usize:  the length of the string in memory
-        addr: Option<(u32, u32, usize)>,
+        addr: Option<(u32, usize, usize)>,
     },
     Tuple {
         ty: DataType,

@@ -1,20 +1,14 @@
 pub mod rules;
 
 use crate::common::error::{ErrorGen, WhammError};
-use crate::emitter::rewriting::rules::{LocInfo, Provider, WhammProvider};
+use crate::emitter::rewriting::rules::LocInfo;
 use crate::generator::types::ExprFolder;
-use crate::parser::types::{BinOp, DataType, Expr, Fn, ProbeSpec, Statement, UnOp, Value};
+use crate::parser::types::{BinOp, DataType, Expr, Fn, Statement, UnOp, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
-use log::{debug, info};
-use orca::iterator::module_iterator::ModuleIterator;
-use walrus::ir::{BinaryOp, ExtendedLoad, Instr, InstrSeqId, LoadKind, MemArg};
-use walrus::{
-    ActiveData, ActiveDataLocation, DataKind, FunctionId, FunctionKind,
-    InstrSeqBuilder, LocalFunction, MemoryId, ModuleData,
-};
+use log::info;
 
 use orca::ir::types::{Global, InitExpr, Value as OrcaValue, DataType as OrcaType, DataSegment, DataSegmentKind};
-use wasmparser::{ValType, Operator, BlockType, ConstExpr, BinaryReader, WasmFeatures};
+use wasmparser::{ValType, BlockType, ConstExpr, BinaryReader, WasmFeatures};
 
 use orca::ir::module::Module;
 use orca::ir::component::Component;
@@ -91,7 +85,7 @@ fn emit_set(
             Some(Record::Var { addr, loc, .. }) => {
                 // this will be different based on if this is a global or local var
                 match addr {
-                    Some(VarAddr::Global { addr }) => {
+                    Some(VarAddr::Global { addr: _addr }) => {
                         // todo
                         // func_builder.global_set(*addr);
                     }
@@ -129,18 +123,19 @@ fn emit_expr(
     table: &mut SymbolTable,
     module_data: &mut Vec<DataSegment>,
     expr: &mut Expr,
-    func_builder: &mut FunctionBuilder
+    func_builder: &mut FunctionBuilder,
+    metadata: &mut InsertionMetadata
 ) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
     match expr {
         Expr::UnOp { op, expr, .. } => {
-            is_success &= emit_expr(table, module_data, expr, instr_builder, metadata, index)?;
-            is_success &= emit_unop(op, instr_builder, index);
+            is_success &= emit_expr(table, module_data, expr, func_builder, metadata)?;
+            is_success &= emit_unop(op, func_builder);
         }
         Expr::BinOp { lhs, op, rhs, .. } => {
-            is_success &= emit_expr(table, module_data, lhs, instr_builder, metadata, index)?;
-            is_success &= emit_expr(table, module_data, rhs, instr_builder, metadata, index)?;
-            is_success &= emit_binop(op, instr_builder, index);
+            is_success &= emit_expr(table, module_data, lhs, func_builder, metadata)?;
+            is_success &= emit_expr(table, module_data, rhs, func_builder, metadata)?;
+            is_success &= emit_binop(op, func_builder);
         }
         Expr::Ternary {
             cond: _cond,
@@ -170,7 +165,7 @@ fn emit_expr(
                 for boxed_arg in args.iter_mut() {
                     let arg = &mut **boxed_arg; // unbox
                     is_success &=
-                        emit_expr(table, module_data, arg, instr_builder, metadata, index)?;
+                        emit_expr(table, module_data, arg, func_builder, metadata)?;
                 }
             }
 
@@ -182,9 +177,7 @@ fn emit_expr(
                     match fn_rec {
                         Some(Record::Fn { addr, .. }) => {
                             if let Some(f_id) = addr {
-                                instr_builder.instr_at(*index, walrus::ir::Call { func: *f_id });
-                                // update index to point to what follows our insertions
-                                *index += 1;
+                                func_builder.call(*f_id);
                             } else {
                                 return Err(Box::new(ErrorGen::get_unexpected_error(
                                     true,
@@ -234,15 +227,12 @@ fn emit_expr(
                 Some(Record::Var { addr, .. }) => {
                     // this will be different based on if this is a global or local var
                     match addr {
-                        Some(VarAddr::Global { addr }) => {
-                            instr_builder.instr_at(*index, walrus::ir::GlobalGet { global: *addr });
-                            // update index to point to what follows our insertions
-                            *index += 1;
+                        Some(VarAddr::Global { addr: _addr }) => {
+                            // todo
+                            // func_builder.global_get(*addr);
                         }
                         Some(VarAddr::Local { addr }) => {
-                            instr_builder.instr_at(*index, walrus::ir::LocalGet { local: *addr });
-                            // update index to point to what follows our insertions
-                            *index += 1;
+                            func_builder.local_get(*addr);
                         }
                         None => {
                             return Err(Box::new(ErrorGen::get_unexpected_error(
@@ -278,255 +268,130 @@ fn emit_expr(
             };
         }
         Expr::Primitive { val, .. } => {
-            is_success &= emit_value(table, module_data, val, instr_builder, metadata, index)?;
+            is_success &= emit_value(table, module_data, val, func_builder, metadata)?;
         }
     }
     Ok(is_success)
 }
 
-fn emit_binop(op: &BinOp, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> bool {
+fn emit_binop(op: &BinOp, func_builder: &mut FunctionBuilder) -> bool {
     match op {
         BinOp::And => {
             // we only support i32's at the moment
-            instr_builder.instr_at(
-                *index,
-                walrus::ir::Binop {
-                    op: BinaryOp::I32And,
-                },
-            );
-            // update index to point to what follows our insertions
-            *index += 1;
-            true
+            func_builder.i32_and();
         }
         BinOp::Or => {
             // we only support i32's at the moment
-            instr_builder.instr_at(
-                *index,
-                walrus::ir::Binop {
-                    op: BinaryOp::I32Or,
-                },
-            );
-            // update index to point to what follows our insertions
-            *index += 1;
-            true
+            func_builder.i32_or();
         }
         BinOp::EQ => {
             // we only support i32's at the moment
-            instr_builder.instr_at(
-                *index,
-                walrus::ir::Binop {
-                    op: BinaryOp::I32Eq,
-                },
-            );
-            // update index to point to what follows our insertions
-            *index += 1;
-            true
+            func_builder.i32_eq();
         }
         BinOp::NE => {
             // we only support i32's at the moment
-            instr_builder.instr_at(
-                *index,
-                walrus::ir::Binop {
-                    op: BinaryOp::I32Ne,
-                },
-            );
-            // update index to point to what follows our insertions
-            *index += 1;
-            true
+            func_builder.i32_ne();
         }
         BinOp::GE => {
             // we only support i32's at the moment (assumes signed)
-            instr_builder.instr_at(
-                *index,
-                walrus::ir::Binop {
-                    op: BinaryOp::I32GeS,
-                },
-            );
-            // update index to point to what follows our insertions
-            *index += 1;
-            true
+            func_builder.i32_gte_signed();
         }
         BinOp::GT => {
             // we only support i32's at the moment (assumes signed)
-            instr_builder.instr_at(
-                *index,
-                walrus::ir::Binop {
-                    op: BinaryOp::I32GtS,
-                },
-            );
-            // update index to point to what follows our insertions
-            *index += 1;
-            true
+            func_builder.i32_gt_signed();
         }
         BinOp::LE => {
             // we only support i32's at the moment (assumes signed)
-            instr_builder.instr_at(
-                *index,
-                walrus::ir::Binop {
-                    op: BinaryOp::I32LeS,
-                },
-            );
-            // update index to point to what follows our insertions
-            *index += 1;
-            true
+            func_builder.i32_lte_signed();
         }
         BinOp::LT => {
             // we only support i32's at the moment (assumes signed)
-            instr_builder.instr_at(
-                *index,
-                walrus::ir::Binop {
-                    op: BinaryOp::I32LtS,
-                },
-            );
-            // update index to point to what follows our insertions
-            *index += 1;
-            true
+            func_builder.i32_lt_signed();
         }
         BinOp::Add => {
-            // we only support i32's at the moment (assumes signed)
-            instr_builder.instr_at(
-                *index,
-                walrus::ir::Binop {
-                    op: BinaryOp::I32Add,
-                },
-            );
-            // update index to point to what follows our insertions
-            *index += 1;
-            true
+            // we only support i32's at the moment
+            func_builder.i32_add();
         }
         BinOp::Subtract => {
-            // we only support i32's at the moment (assumes signed)
-            instr_builder.instr_at(
-                *index,
-                walrus::ir::Binop {
-                    op: BinaryOp::I32Sub,
-                },
-            );
-            // update index to point to what follows our insertions
-            *index += 1;
-            true
+            // we only support i32's at the moment
+            func_builder.i32_sub();
         }
         BinOp::Multiply => {
             // we only support i32's at the moment (assumes signed)
-            instr_builder.instr_at(
-                *index,
-                walrus::ir::Binop {
-                    op: BinaryOp::I32Mul,
-                },
-            );
-            // update index to point to what follows our insertions
-            *index += 1;
-            true
+            func_builder.i32_mul();
         }
         BinOp::Divide => {
             // we only support i32's at the moment (assumes signed)
-            instr_builder.instr_at(
-                *index,
-                walrus::ir::Binop {
-                    op: BinaryOp::I32DivS,
-                },
-            );
-            // update index to point to what follows our insertions
-            *index += 1;
-            true
+            func_builder.i32_div_signed();
         }
         BinOp::Modulo => {
             // we only support i32's at the moment (assumes signed)
-            instr_builder.instr_at(
-                *index,
-                walrus::ir::Binop {
-                    op: BinaryOp::I32RemS,
-                },
-            );
-            // update index to point to what follows our insertions
-            *index += 1;
-            true
+            func_builder.i32_rem_signed();
         }
     }
+    true
 }
 
-fn emit_unop(op: &UnOp, instr_builder: &mut InstrSeqBuilder, index: &mut usize) -> bool {
+fn emit_unop(op: &UnOp, func_builder: &mut FunctionBuilder) -> bool {
     match op {
         UnOp::Not => {
-            instr_builder.instr_at(
-                *index,
-                walrus::ir::Unop {
-                    op: walrus::ir::UnaryOp::I32Eqz, // return 1 if 0, return 0 otherwise
-                },
-            );
-            // update index to point to what follows our insertions
-            *index += 1;
-            true
+            // return 1 if 0, return 0 otherwise
+            func_builder.i32_eqz();
         }
     }
+    true
 }
 
 fn emit_value(
     table: &mut SymbolTable,
     module_data: &mut Vec<DataSegment>,
     val: &mut Value,
-    instr_builder: &mut InstrSeqBuilder,
-    metadata: &mut InsertionMetadata,
-    index: &mut usize,
+    func_builder: &mut FunctionBuilder,
+    metadata: &mut InsertionMetadata
 ) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
     match val {
         Value::Integer { val, .. } => {
-            instr_builder.instr_at(
-                *index,
-                walrus::ir::Const {
-                    value: walrus::ir::Value::I32(*val),
-                },
-            );
-            // update index to point to what follows our insertions
-            *index += 1;
+            func_builder.i32(*val);
             is_success &= true;
         }
         Value::Str { val, addr, ty: _ty } => {
             // TODO -- assuming that the data ID is the index of the object in the Vec
-            let data_id = module_data.len();
-            module_data.push(
-                DataSegment {
-                    data: val.as_bytes(),
-                    kind: DataSegmentKind::Active {
-                        memory_index: metadata.mem_id,
-                        offset_expr: ConstExpr::new(BinaryReader::new(
-                            val.as_bytes(),
-                            metadata.curr_mem_offset,
-                            WasmFeatures::empty()
-                        ))
-                    }
-                }
-            );
-
-            // save the memory addresses/lens, so they can be used as appropriate
-            *addr = Some((data_id as u32, metadata.curr_mem_offset, val.len()));
-
-            // emit Wasm instructions for the memory address and string length
-            instr_builder.instr_at(
-                *index,
-                walrus::ir::Const {
-                    value: walrus::ir::Value::I32(metadata.curr_mem_offset as i32),
-                },
-            );
-            // update index to point to what follows our insertions
-            *index += 1;
-            instr_builder.instr_at(
-                *index,
-                walrus::ir::Const {
-                    value: walrus::ir::Value::I32(val.len() as i32),
-                },
-            );
-            // update index to point to what follows our insertions
-            *index += 1;
-
-            // update curr_mem_offset to account for new data
-            metadata.curr_mem_offset += val.len() as u32;
+            // TODO -- need an API that allows the addition of data segments.
+            //     there is currently an ownership issue since I can't insert
+            //     an owned byte array with same lifetime as the Module data segments.
+            //     For more info, uncomment the below and read error.
+            // let data_id = module_data.len();
+            // let val_bytes = val.as_bytes().to_owned();
+            // let data_segment = DataSegment {
+            //     data: val_bytes.as_slice(),
+            //     kind: DataSegmentKind::Active {
+            //         memory_index: metadata.mem_id,
+            //         offset_expr: ConstExpr::new(BinaryReader::new(
+            //             val_bytes.as_slice(),
+            //             metadata.curr_mem_offset,
+            //             WasmFeatures::empty()
+            //         ))
+            //     }
+            // };
+            // module_data.push(
+            //     data_segment
+            // );
+            // 
+            // // save the memory addresses/lens, so they can be used as appropriate
+            // *addr = Some((data_id as u32, metadata.curr_mem_offset, val.len()));
+            // 
+            // // emit Wasm instructions for the memory address and string length
+            // func_builder.i32(metadata.curr_mem_offset as i32);
+            // func_builder.i32(val.len() as i32);
+            // 
+            // // update curr_mem_offset to account for new data
+            // metadata.curr_mem_offset += val.len();
             is_success &= true;
         }
         Value::Tuple { vals, .. } => {
             for val in vals.iter_mut() {
-                is_success &= emit_expr(table, module_data, val, instr_builder, metadata, index)?;
+                is_success &= emit_expr(table, module_data, val, func_builder, metadata)?;
             }
         }
         Value::Boolean { val, .. } => {
@@ -535,23 +400,11 @@ fn emit_value(
             // https://github.com/sunfishcode/wasm-reference-manual/blob/master/WebAssembly.md#booleans
             if *val {
                 // insert true (non-zero)
-                instr_builder.instr_at(
-                    *index,
-                    walrus::ir::Const {
-                        value: walrus::ir::Value::I32(1),
-                    },
-                );
+                func_builder.i32(1);
             } else {
                 // insert false (zero)
-                instr_builder.instr_at(
-                    *index,
-                    walrus::ir::Const {
-                        value: walrus::ir::Value::I32(0),
-                    },
-                );
+                func_builder.i32(0);
             }
-            // update index to point to what follows our insertions
-            *index += 1;
             is_success &= true;
         }
     }
@@ -562,6 +415,12 @@ fn emit_value(
 // ==== WasmRewritingEmitter ====
 // ==============================
 
+struct InsertionMetadata {
+    // curr_event: String,
+    mem_id: u32,
+    curr_mem_offset: usize,
+}
+
 // 'b is the longest living
 pub struct ModuleEmitter<'a, 'b>
 {
@@ -569,9 +428,9 @@ pub struct ModuleEmitter<'a, 'b>
     pub app_wasm: &'a mut Module<'b>,
     pub emitting_func: Option<FunctionBuilder<'b>>,
     pub table: SymbolTable,
-
-    // whamm! AST traversal bookkeeping
-    // metadata: InsertionMetadata,
+    instr_alt_call: Option<i32>,
+    
+    metadata: InsertionMetadata,
     // instr_iter: InstrIter,
     // emitting_instr: Option<EmittingInstrTracker>,
 
@@ -584,10 +443,22 @@ impl<'a, 'b> ModuleEmitter<'a, 'b>
 {
     // note: only used in integration test
     pub fn new (app_wasm: &'a mut Module<'b>, table: SymbolTable) -> Self {
+        if app_wasm.memories.len() > 1 {
+            // TODO -- make this work with multi-memory
+            panic!("only single memory is supported")
+        };
+        // Assuming the ID of the first memory is 0!
+        let mem_id = 0;
+
         let a = Self {
             app_wasm,
             emitting_func: None,
+            metadata: InsertionMetadata {
+                mem_id,
+                curr_mem_offset: 1_052_576, // Set default memory base address to DEFAULT + 4KB = 1048576 bytes + 4000 bytes = 1052576 bytes
+            },
             table,
+            instr_alt_call: None,
             fn_providing_contexts: vec!["whamm".to_string()],
         };
 
@@ -757,6 +628,18 @@ impl<'a, 'b> ModuleEmitter<'a, 'b>
         };
     }
 
+    fn instrument_before(&mut self) {
+        // todo -- for visitor (not available on funcbuilder for module)
+    }
+    
+    fn instrument_after(&mut self) {
+        // todo -- for visitor (not available on funcbuilder for module)
+    }
+    
+    fn instrument_as_alternate(&mut self) {
+        // todo -- for visitor (not available on funcbuilder for module)
+    }
+    
     fn emit_decl_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>> {
         match stmt {
             Statement::Decl { ty, var_id, .. } => {
@@ -948,14 +831,14 @@ impl<'a, 'b> ModuleEmitter<'a, 'b>
         };
     }
     
-    fn enter_scope(&mut self) -> Result<(), Box<WhammError>> {
+    pub(crate) fn enter_scope(&mut self) -> Result<(), Box<WhammError>> {
         self.table.enter_scope()
     }
 
-    fn exit_scope(&mut self) -> Result<(), Box<WhammError>> {
+    pub(crate) fn exit_scope(&mut self) -> Result<(), Box<WhammError>> {
         self.table.exit_scope()
     }
-    fn reset_children(&mut self) {
+    pub(crate) fn reset_children(&mut self) {
         self.table.reset_children();
     }
 
@@ -978,14 +861,14 @@ impl<'a, 'b> ModuleEmitter<'a, 'b>
             Expr::Ternary {
                 cond, conseq, alt, ..
             } => {
-                is_success &= self.emit_if_else();
-                is_success &= self.emit_condition();
-                is_success &= self.emit_expr(cond)?;
-                is_success &= self.emit_consequent();
-                is_success &= self.emit_expr(conseq)?;
-                is_success &= self.emit_alternate();
-                is_success &= self.emit_expr(alt)?;
-                is_success &= self.finish_branch();
+                // change conseq and alt types to stmt for easier API call
+                is_success &= self.emit_if_else(cond, &mut vec![Statement::Expr {
+                    expr: (**conseq).clone(),
+                    loc: None
+                }], &mut vec![Statement::Expr {
+                    expr: (**alt).clone(),
+                    loc: None
+                }])?;
             }
             Expr::VarId { .. }
             | Expr::UnOp { .. }
@@ -999,7 +882,8 @@ impl<'a, 'b> ModuleEmitter<'a, 'b>
                         &mut self.table,
                         &mut self.app_wasm.data,
                         expr,
-                        emitting_func
+                        emitting_func,
+                        &mut self.metadata
                     )?;
                 } else {
                     return Err(Box::new(ErrorGen::get_unexpected_error(
@@ -1016,7 +900,7 @@ impl<'a, 'b> ModuleEmitter<'a, 'b>
         Ok(is_success)
     }
 
-    fn emit_fn(&mut self, context: &str, f: &Fn) -> Result<bool, Box<WhammError>> {
+    pub(crate) fn emit_fn(&mut self, context: &str, f: &Fn) -> Result<bool, Box<WhammError>> {
         // figure out if this is a provided fn.
         if f.is_comp_provided {
             return if self.fn_providing_contexts.contains(&context.to_string()) {
@@ -1044,7 +928,7 @@ impl<'a, 'b> ModuleEmitter<'a, 'b>
         unimplemented!();
     }
 
-    fn emit_global(
+    pub(crate) fn emit_global(
         &mut self,
         name: String,
         ty: DataType,
@@ -1094,73 +978,159 @@ impl<'a, 'b> ModuleEmitter<'a, 'b>
         }
     }
 
-    fn emit_if(&mut self) -> bool {
-        // todo!()
-        false
+    fn emit_if(&mut self, condition: &mut Expr, conseq: &mut Vec<Statement>) -> Result<bool, Box<WhammError>> {
+        // NOTE: The structure of this code is wonky, but it's because of
+        // overlapping references/calls to self.
+        // To avoid that, we place all calls to self.emitting_func in a block.
+        
+        let mut is_success = true;
+
+        // emit the condition of the `if` expression
+        is_success &= self.emit_expr(condition)?;
+
+        if let Some(emitting_func) = &mut self.emitting_func {
+            // emit the beginning of the if block
+            emitting_func.if_stmt(BlockType::Empty);
+        }
+        
+        // emit the consequent body
+        is_success &= self.emit_body(conseq)?;
+
+        if let Some(emitting_func) = &mut self.emitting_func {
+            // emit the end of the if block
+            emitting_func.end();
+        }
+
+        Ok(is_success)
     }
 
-    fn emit_if_else(&mut self) -> bool {
-        // todo!()
-        false
-    }
+    fn emit_if_else(&mut self, condition: &mut Expr, conseq: &mut Vec<Statement>, alternate: &mut Vec<Statement>) -> Result<bool, Box<WhammError>> {
+        // NOTE: The structure of this code is wonky, but it's because of
+        // overlapping references/calls to self.
+        // To avoid that, we place all calls to self.emitting_func in a block.
 
-    /// Will configure the emitter to emit subsequent expression as the condition of an if or if/else stmt
-    /// Then emits the passed condition at that location.
-    fn emit_condition(&mut self) -> bool {
-        // todo!();
-        false
-    }
+        let mut is_success = true;
 
-    /// Will configure the emitter to emit subsequent statements into the consequent body of an if or if/else stmt
-    fn emit_consequent(&mut self) -> bool {
-        // todo!();
-        false
-    }
+        // emit the condition of the `if` expression
+        is_success &= self.emit_expr(condition)?;
+        
+        if let Some(emitting_func) = &mut self.emitting_func {
+            // emit the beginning of the if block
+            emitting_func.if_stmt(BlockType::Empty);
+        }
 
-    /// Will configure the emitter to emit subsequent statements into the alternate body of an if/else stmt
-    fn emit_alternate(&mut self) -> bool {
-        // todo!()
-        false
-    }
+        // emit the consequent body
+        is_success &= self.emit_body(conseq)?;
 
-    /// Will configure the emitter to emit subsequent statements in the outer block of some branching logic
-    fn finish_branch(&mut self) -> bool {
-        // todo!()
-        false
+        if let Some(emitting_func) = &mut self.emitting_func {
+            // emit the beginning of the else
+            emitting_func.else_stmt();
+        }
+
+        // emit the alternate body
+        is_success &= self.emit_body(alternate)?;
+
+        if let Some(emitting_func) = &mut self.emitting_func {
+            // emit the end of the if/else block
+            emitting_func.end();
+        }
+        
+        Ok(is_success)
     }
 
     fn emit_global_stmts(&mut self, stmts: &mut Vec<Statement>) -> Result<bool, Box<WhammError>> {
         // NOTE: This should be done in the Module entrypoint
         //       https://docs.rs/walrus/latest/walrus/struct.Module.html
 
-        // TODO: need to reason with start funciton (dfinity case)
-
-        for stmt in stmts.iter_mut() {
-            match stmt {
-                Statement::Decl { .. } => {
-                    // This is fine
-                }
-                _ => {
-                    // This is NOT fine...error!
-                    // Cannot emit this at the moment since there's no entrypoint for our module to emit initialization instructions into
-                    return Err(Box::new(ErrorGen::get_unexpected_error(
-                        true,
-                        Some(
-                            "This module has no configured entrypoint, \
-            unable to emit a `script` with global state"
-                                .to_string(),
-                        ),
-                        None,
-                    )));
+        if let Some(_start_fid) = self.app_wasm.start {
+            // 1. create the emitting_func var, assign in self
+            // 2. iterate over stmts and emit them! (will be diff for Decl stmts)
+            todo!()
+        } else {
+            // TODO -- try to create our own start fn (for dfinity case)
+            for stmt in stmts.iter_mut() {
+                match stmt {
+                    Statement::Decl { .. } => {
+                        // This is fine
+                        todo!()
+                    }
+                    _ => {
+                        // This is NOT fine...error!
+                        // Cannot emit this at the moment since there's no entrypoint for our module to emit initialization instructions into
+                        return Err(Box::new(ErrorGen::get_unexpected_error(
+                            true,
+                            Some(
+                                "This module has no configured entrypoint, \
+            unable to emit a `script` with initialized global state"
+                                    .to_string(),
+                            ),
+                            None,
+                        )));
+                    }
                 }
             }
         }
+        
         Ok(true)
     }
 
     fn emit_body(&mut self, body: &mut Vec<Statement>) -> Result<bool, Box<WhammError>> {
         for stmt in body.iter_mut() {
             self.emit_stmt(stmt)?;
+        }
+        Ok(true)
+    }
+
+    fn has_alt_call(&mut self) -> bool {
+        // check if we should inject an alternate call!
+        // At this point the body has been visited, so "new_target_fn_name" would be defined
+        let rec_id = self.table.lookup("new_target_fn_name").copied();
+
+        if rec_id.is_none() {
+            info!("`new_target_fn_name` not configured for this probe.");
+            return false;
+        } else {
+            let (name, func_call_id) = match rec_id {
+                Some(r_id) => {
+                    let rec = self.table.get_record_mut(&r_id);
+                    if let Some(Record::Var {
+                                    value: Some(Value::Str { val, .. }),
+                                    ..
+                                }) = rec
+                    {
+                        // TODO -- how to pull func names from module?
+                        // (val.clone(), self.app_wasm.funcs.by_name(val))
+                        (val.clone(), Some(1056)) // hardcoded for now to ID for `redirect_to_fault_injector` for users.wasm file
+                    } else {
+                        ("".to_string(), None)
+                    }
+                }
+                None => ("".to_string(), None),
+            };
+            if func_call_id.is_none() {
+                info!(
+                    "Could not find function in app Wasm specified by `new_target_fn_name`: {}",
+                    name
+                );
+                return false;
+            }
+            self.instr_alt_call = func_call_id;
+        }
+        true
+    }
+
+    fn emit_alt_call(&mut self) -> Result<bool, Box<WhammError>> {
+        if let (Some(emitting_func), Some(alt_fn_id)) = (&mut self.emitting_func, self.instr_alt_call) {
+            emitting_func.call(alt_fn_id as u32);
+        } else {
+            return Err(Box::new(ErrorGen::get_unexpected_error(
+                true,
+                Some(format!(
+                    "{UNEXPECTED_ERR_MSG} \
+                    Could not inject alternate call to function, something went wrong..."
+                )),
+                None,
+            )));
         }
         Ok(true)
     }
@@ -1172,7 +1142,7 @@ impl<'a, 'b> ModuleEmitter<'a, 'b>
             Statement::Expr { expr, .. } => self.emit_expr(expr),
             Statement::Return { .. } => unimplemented!(),
             Statement::If {
-                // cond, conseq, alt, .. -- for eventual implimentation
+                // cond, conseq, alt, .. -- for eventual implementation
                 ..
             } => {
                 unimplemented!()
@@ -1180,7 +1150,7 @@ impl<'a, 'b> ModuleEmitter<'a, 'b>
         }
     }
 
-    fn dump_to_file(&mut self, output_wasm_path: String) -> Result<bool, Box<WhammError>> {
+    pub fn dump_to_file(&mut self, output_wasm_path: String) -> Result<bool, Box<WhammError>> {
         self.app_wasm.emit_wasm(&output_wasm_path)?;
         Ok(true)
     }

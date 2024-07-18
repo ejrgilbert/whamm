@@ -3,7 +3,7 @@ use crate::emitter::rewriting::rules::{
     event_factory, probe_factory, Event, FromStr, LocInfo, Package,
 };
 use crate::parser::rules::wasm::{OpcodeEventKind, WasmPackageKind};
-use crate::parser::types::{DataType, ProbeSpec, SpecPart, Value};
+use crate::parser::types::{ProbeSpec, SpecPart};
 use std::collections::HashMap;
 
 use orca::ir::module::Module;
@@ -151,13 +151,13 @@ impl OpcodeEvent {
             mode: None,
         }
     }
-    pub fn get_args_for_instr(app_wasm: &Module, instr: &Operator) -> Vec<OrcaType> {
-        // TODO: there are 500 of them in wasmparser::Opearator
+    pub fn get_args_for_instr(_app_wasm: &Module, instr: &Operator) -> Vec<OrcaType> {
+        // TODO: there are 500 of them in wasmparser::Operator
         // compared to 48 of them in walrus::ir::Instr
         // How do we compress thte Operators we need to concern
         match instr {
 
-            Operator::Call { function_index } => {
+            Operator::Call { function_index: _function_idx } => {
                 // do something
 
                 // original walrus code
@@ -507,7 +507,7 @@ impl OpcodeEvent {
     }
 }
 impl Event for OpcodeEvent {
-    fn get_loc_info(&self, app_wasm: &Module, instr: &Operator) -> Option<LocInfo> {
+    fn get_loc_info(&self, _app_wasm: &Module, instr: &Operator) -> Option<LocInfo> {
         let mut loc_info = LocInfo::new();
 
         match self.kind {
@@ -524,8 +524,8 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::Call => {
-                if let Operator::Call {function_index } = instr {
-                    // TODO: finish this
+                if let Operator::Call {function_index: _function_idx } = instr {
+                    // TODO: finish this
                     // // collect information about this instruction
                     // let func = app_wasm.funcs.get(called_func.func);
                     // let func_info = match &func.kind {

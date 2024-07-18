@@ -4,10 +4,10 @@ use cli::{Cmd, WhammCli};
 
 use crate::behavior::builder_visitor::*;
 use crate::common::error::ErrorGen;
-use crate::emitter::rewriting::WasmRewritingEmitter;
-use crate::emitter::Emitter;
+use crate::emitter::rewriting::ModuleEmitter;
+// use crate::emitter::Emitter;
 use crate::generator::init_generator::InitGenerator;
-use crate::generator::instr_generator::InstrGenerator;
+// use crate::generator::instr_generator::InstrGenerator;
 use crate::parser::whamm_parser::*;
 
 pub mod behavior;
@@ -138,12 +138,12 @@ fn run_instr(
     let mut emitter = if emit_virgil {
         unimplemented!();
     } else {
-        WasmRewritingEmitter::new(&mut app_wasm, symbol_table)
+        ModuleEmitter::new(&mut app_wasm, symbol_table)
     };
 
     // Phase 0 of instrumentation (emit globals and provided fns)
     let mut init = InitGenerator {
-        emitter: Box::new(&mut emitter),
+        emitter: &mut emitter,
         context_name: "".to_string(),
         err: &mut err,
     };
@@ -154,9 +154,9 @@ fn run_instr(
     // Phase 1 of instrumentation (actually emits the instrumentation code)
     // This structure is necessary since we need to have the fns/globals injected (a single time)
     // and ready to use in every body/predicate.
-    let mut instr =
-        InstrGenerator::new(&behavior_tree, Box::new(&mut emitter), simple_ast, &mut err);
-    instr.run(&behavior_tree);
+    // let mut instr =
+    //     InstrGenerator::new(&behavior_tree, Box::new(&mut emitter), simple_ast, &mut err);
+    // instr.run(&behavior_tree);
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
 

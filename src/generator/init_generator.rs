@@ -3,7 +3,6 @@
 // =======================
 
 use crate::common::error::ErrorGen;
-use crate::emitter::Emitter;
 use crate::parser::rules::{Event, Package, Probe, Provider};
 use crate::parser::types::{
     BinOp, Block, DataType, Expr, Global, ProvidedFunction, ProvidedGlobal, Script, Statement,
@@ -11,6 +10,7 @@ use crate::parser::types::{
 };
 use log::{trace, warn};
 use std::collections::HashMap;
+use crate::emitter::rewriting::ModuleEmitter;
 
 /// Serves as the first phase of instrumenting a module by setting up
 /// the groundwork.
@@ -19,12 +19,12 @@ use std::collections::HashMap;
 /// emit some compiler-provided functions and user-defined globals.
 /// This process should ideally be generic, made to perform a specific
 /// instrumentation technique by the Emitter field.
-pub struct InitGenerator<'a> {
-    pub emitter: Box<&'a mut dyn Emitter>,
+pub struct InitGenerator<'a, 'b, 'c, 'd> {
+    pub emitter: &'a mut ModuleEmitter<'b, 'c>,
     pub context_name: String,
-    pub err: &'a mut ErrorGen,
+    pub err: &'d mut ErrorGen,
 }
-impl InitGenerator<'_> {
+impl InitGenerator<'_, '_, '_, '_> {
     pub fn run(&mut self, whamm: &Whamm) -> bool {
         // Reset the symbol table in the emitter just in case
         self.emitter.reset_children();
@@ -68,7 +68,7 @@ impl InitGenerator<'_> {
         is_success
     }
 }
-impl WhammVisitor<bool> for InitGenerator<'_> {
+impl WhammVisitor<bool> for InitGenerator<'_, '_, '_, '_> {
     fn visit_whamm(&mut self, whamm: &Whamm) -> bool {
         trace!("Entering: CodeGenerator::visit_whamm");
         self.context_name = "whamm".to_string();

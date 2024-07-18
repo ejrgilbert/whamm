@@ -8,7 +8,6 @@ use crate::emitter::rewriting::rules::{LocInfo, WhammProvider};
 use crate::parser::types::{DataType, Expr, Fn, ProbeSpec, Statement, Value};
 
 use orca::ir::types::DataType as OrcaType;
-use orca::iterator::module_iterator::ModuleIterator;
 use wasmparser::Operator;
 // =================================================
 // ==== Emitter Trait --> Used By All Emitters! ====

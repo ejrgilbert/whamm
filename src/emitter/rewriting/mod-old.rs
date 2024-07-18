@@ -1554,7 +1554,7 @@ impl Emitter for WasmRewritingEmitter {
         false
     }
 
-    fn  &mut self) -> bool {
+    fn emit_if(&mut self) -> bool {
         if let Some(curr_loc) = self.instr_iter.curr_mut() {
             if let Some(tracker) = &mut self.emitting_instr {
                 // This MUST be `self.app_wasm` so we're mutating what will be the instrumented application.
