@@ -1,6 +1,6 @@
 use crate::behavior::builder_visitor::SimpleProbe;
 use crate::emitter::rewriting::rules::{
-    event_factory, probe_factory, Event, FromStr, LocInfo, Package, Arg
+    event_factory, probe_factory, Arg, Event, FromStr, LocInfo, Package,
 };
 use crate::parser::rules::wasm::{OpcodeEventKind, WasmPackageKind};
 use crate::parser::types::{ProbeSpec, SpecPart};
@@ -156,8 +156,9 @@ impl OpcodeEvent {
         // compared to 48 of them in walrus::ir::Instr
         // How do we compress the Operators we need to concern
         let ty_list: Vec<OrcaType> = match instr {
-
-            Operator::Call { function_index: _function_idx } => {
+            Operator::Call {
+                function_index: _function_idx,
+            } => {
                 // do something
 
                 // original walrus code
@@ -196,151 +197,151 @@ impl OpcodeEvent {
                 // TODO -- define args
                 vec![]
             }
-            Operator::LocalGet{ .. } => {
+            Operator::LocalGet { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::LocalSet{ .. } => {
+            Operator::LocalSet { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::LocalTee{ .. } => {
+            Operator::LocalTee { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::GlobalGet{ .. } => {
+            Operator::GlobalGet { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::GlobalSet{ .. } => {
+            Operator::GlobalSet { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::I32Const{ .. } => {
+            Operator::I32Const { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::I64Const{ .. } => {
+            Operator::I64Const { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::F32Const{ .. } => {
+            Operator::F32Const { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::F64Const{ .. } => {
+            Operator::F64Const { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::Select{ .. } => {
+            Operator::Select { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::Unreachable{ .. } => {
+            Operator::Unreachable { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::Br{ .. } => {
+            Operator::Br { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::BrIf{ .. } => {
+            Operator::BrIf { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::BrTable{ .. } => {
+            Operator::BrTable { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::Drop{ .. } => {
+            Operator::Drop { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::Return{ .. } => {
+            Operator::Return { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::MemorySize{ .. } => {
+            Operator::MemorySize { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::MemoryGrow{ .. } => {
+            Operator::MemoryGrow { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::MemoryInit{ .. } => {
+            Operator::MemoryInit { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::DataDrop{ .. } => {
+            Operator::DataDrop { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::MemoryCopy{ .. } => {
+            Operator::MemoryCopy { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::MemoryFill{ .. } => {
+            Operator::MemoryFill { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::AtomicFence{ .. } => {
+            Operator::AtomicFence { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::TableGet{ .. } => {
+            Operator::TableGet { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::TableSet{ .. } => {
+            Operator::TableSet { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::TableGrow{ .. } => {
+            Operator::TableGrow { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::TableSize{ .. } => {
+            Operator::TableSize { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::TableFill{ .. } => {
+            Operator::TableFill { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::RefNull{ .. } => {
+            Operator::RefNull { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::RefIsNull{ .. } => {
+            Operator::RefIsNull { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::RefFunc{ .. } => {
+            Operator::RefFunc { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::V128Bitselect{ .. } => {
+            Operator::V128Bitselect { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::I8x16Swizzle{ .. } => {
+            Operator::I8x16Swizzle { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::I8x16Shuffle{ .. } => {
+            Operator::I8x16Shuffle { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::TableInit{ .. } => {
+            Operator::TableInit { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::ElemDrop{ .. } => {
+            Operator::ElemDrop { .. } => {
                 // TODO -- define args
                 vec![]
             }
-            Operator::TableCopy{ .. } => {
+            Operator::TableCopy { .. } => {
                 // TODO -- define args
                 vec![]
             }
@@ -530,7 +531,10 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::Call => {
-                if let Operator::Call {function_index: _function_idx } = instr {
+                if let Operator::Call {
+                    function_index: _function_idx,
+                } = instr
+                {
                     // TODO: finish this
                     // // collect information about this instruction
                     // let func = app_wasm.funcs.get(called_func.func);
@@ -588,55 +592,55 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::CallIndirect => {
-                if let Operator::CallIndirect{ .. } = instr {
+                if let Operator::CallIndirect { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
             OpcodeEventKind::LocalGet => {
-                if let Operator::LocalGet{ .. } = instr {
+                if let Operator::LocalGet { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
             OpcodeEventKind::LocalSet => {
-                if let Operator::LocalSet{ .. } = instr {
+                if let Operator::LocalSet { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
             OpcodeEventKind::LocalTee => {
-                if let Operator::LocalTee{ .. } = instr {
+                if let Operator::LocalTee { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
             OpcodeEventKind::GlobalGet => {
-                if let Operator::GlobalGet{ .. } = instr {
+                if let Operator::GlobalGet { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
             OpcodeEventKind::GlobalSet => {
-                if let Operator::GlobalSet{ .. } = instr {
+                if let Operator::GlobalSet { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
             OpcodeEventKind::Const => {
-                if let Operator::I32Const{ .. } = instr {
+                if let Operator::I32Const { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
-                if let Operator::I64Const{ .. } = instr {
+                if let Operator::I64Const { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
-                if let Operator::F32Const{ .. } = instr {
+                if let Operator::F32Const { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
-                if let Operator::F64Const{ .. } = instr {
+                if let Operator::F64Const { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
@@ -658,25 +662,25 @@ impl Event for OpcodeEvent {
                 // }
             }
             OpcodeEventKind::Select => {
-                if let Operator::Select{ .. } = instr {
+                if let Operator::Select { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
             OpcodeEventKind::Unreachable => {
-                if let Operator::Unreachable{ .. } = instr {
+                if let Operator::Unreachable { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
             OpcodeEventKind::Br => {
-                if let Operator::Br{ .. } = instr {
+                if let Operator::Br { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
             OpcodeEventKind::BrIf => {
-                if let Operator::BrIf{ .. } = instr {
+                if let Operator::BrIf { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
@@ -686,55 +690,55 @@ impl Event for OpcodeEvent {
                 unimplemented!()
             }
             OpcodeEventKind::BrTable => {
-                if let Operator::BrTable{ .. } = instr {
+                if let Operator::BrTable { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
             OpcodeEventKind::Drop => {
-                if let Operator::Drop{ .. } = instr {
+                if let Operator::Drop { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
             OpcodeEventKind::Return => {
-                if let Operator::Return{ .. } = instr {
+                if let Operator::Return { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
             OpcodeEventKind::MemorySize => {
-                if let Operator::MemorySize{ .. } = instr {
+                if let Operator::MemorySize { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
             OpcodeEventKind::MemoryGrow => {
-                if let Operator::MemoryGrow{ .. } = instr {
+                if let Operator::MemoryGrow { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
             OpcodeEventKind::MemoryInit => {
-                if let Operator::MemoryInit{ .. } = instr {
+                if let Operator::MemoryInit { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
             OpcodeEventKind::DataDrop => {
-                if let Operator::DataDrop{ .. } = instr {
+                if let Operator::DataDrop { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
             OpcodeEventKind::MemoryCopy => {
-                if let Operator::MemoryCopy{ .. } = instr {
+                if let Operator::MemoryCopy { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
             OpcodeEventKind::MemoryFill => {
-                if let Operator::MemoryFill{ .. } = instr {
+                if let Operator::MemoryFill { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
@@ -788,73 +792,73 @@ impl Event for OpcodeEvent {
                 // }
             }
             OpcodeEventKind::AtomicFence => {
-                if let Operator::AtomicFence{ .. } = instr {
+                if let Operator::AtomicFence { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
             OpcodeEventKind::TableGet => {
-                if let Operator::TableGet{ .. } = instr {
+                if let Operator::TableGet { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
             OpcodeEventKind::TableSet => {
-                if let Operator::TableSet{ .. } = instr {
+                if let Operator::TableSet { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
             OpcodeEventKind::TableGrow => {
-                if let Operator::TableGrow{ .. } = instr {
+                if let Operator::TableGrow { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
             OpcodeEventKind::TableSize => {
-                if let Operator::TableSize{ .. } = instr {
+                if let Operator::TableSize { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
             OpcodeEventKind::TableFill => {
-                if let Operator::TableFill{ .. } = instr {
+                if let Operator::TableFill { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
             OpcodeEventKind::RefNull => {
-                if let Operator::RefNull{ .. } = instr {
+                if let Operator::RefNull { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
             OpcodeEventKind::RefIsNull => {
-                if let Operator::RefIsNull{ .. } = instr {
+                if let Operator::RefIsNull { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
             OpcodeEventKind::RefFunc => {
-                if let Operator::RefFunc{ .. } = instr {
+                if let Operator::RefFunc { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
             OpcodeEventKind::V128Bitselect => {
-                if let Operator::V128Bitselect{ .. } = instr {
+                if let Operator::V128Bitselect { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
             OpcodeEventKind::I8x16Swizzle => {
-                if let Operator::I8x16Swizzle{ .. } = instr {
+                if let Operator::I8x16Swizzle { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
             OpcodeEventKind::I8x16Shuffle => {
-                if let Operator::I8x16Shuffle{ .. } = instr {
+                if let Operator::I8x16Shuffle { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
@@ -868,19 +872,19 @@ impl Event for OpcodeEvent {
                 // }
             }
             OpcodeEventKind::TableInit => {
-                if let Operator::TableInit{ .. } = instr {
+                if let Operator::TableInit { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
             OpcodeEventKind::ElemDrop => {
-                if let Operator::ElemDrop{ .. } = instr {
+                if let Operator::ElemDrop { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
             OpcodeEventKind::TableCopy => {
-                if let Operator::TableCopy{ .. } = instr {
+                if let Operator::TableCopy { .. } = instr {
                     // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }

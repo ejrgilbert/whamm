@@ -3,14 +3,14 @@
 // =======================
 
 use crate::common::error::ErrorGen;
+use crate::emitter::rewriting::module_emitter::ModuleEmitter;
 use crate::parser::rules::{Event, Package, Probe, Provider};
 use crate::parser::types::{
-    BinOp, Block, DataType, Expr, Global, ProvidedFunction, ProvidedGlobal, Script, Statement,
-    UnOp, Value, Whamm, WhammVisitor,
+    BinOp, Block, DataType, Expr, Fn, Global, ProvidedFunction, Script, Statement, UnOp, Value,
+    Whamm, WhammVisitor,
 };
 use log::{trace, warn};
 use std::collections::HashMap;
-use crate::emitter::rewriting::module_emitter::ModuleEmitter;
 
 /// Serves as the first phase of instrumenting a module by setting up
 /// the groundwork.
@@ -50,11 +50,6 @@ impl InitGenerator<'_, '_, '_, '_> {
 
         is_success
     }
-    fn visit_provided_globals(&mut self, _globals: &HashMap<String, ProvidedGlobal>) -> bool {
-        // do not inject globals into Wasm that are used/defined by the compiler
-        // because they are statically-defined and folded away
-        true
-    }
 }
 impl WhammVisitor<bool> for InitGenerator<'_, '_, '_, '_> {
     fn visit_whamm(&mut self, whamm: &Whamm) -> bool {
@@ -69,8 +64,9 @@ impl WhammVisitor<bool> for InitGenerator<'_, '_, '_, '_> {
             .for_each(|ProvidedFunction { function, .. }| {
                 is_success &= self.visit_fn(function);
             });
-        // inject globals
-        is_success &= self.visit_provided_globals(&whamm.globals);
+        // do not inject globals into Wasm that are used/defined by the compiler
+        // because they are statically-defined and folded away
+
         // visit scripts
         whamm.scripts.iter().for_each(|script| {
             is_success &= self.visit_script(script);
@@ -125,8 +121,9 @@ impl WhammVisitor<bool> for InitGenerator<'_, '_, '_, '_> {
             .for_each(|ProvidedFunction { function, .. }| {
                 is_success &= self.visit_fn(function);
             });
-        // inject globals
-        is_success &= self.visit_provided_globals(provider.get_provided_globals());
+        // do not inject globals into Wasm that are used/defined by the compiler
+        // because they are statically-defined and folded away
+
         // visit the packages
         provider.packages().for_each(|package| {
             is_success &= self.visit_package(package);
@@ -156,8 +153,9 @@ impl WhammVisitor<bool> for InitGenerator<'_, '_, '_, '_> {
             .for_each(|ProvidedFunction { function, .. }| {
                 is_success &= self.visit_fn(function);
             });
-        // inject globals
-        is_success &= self.visit_provided_globals(package.get_provided_globals());
+        // do not inject globals into Wasm that are used/defined by the compiler
+        // because they are statically-defined and folded away
+
         // visit the events
         package.events().for_each(|event| {
             is_success &= self.visit_event(event);
@@ -188,8 +186,8 @@ impl WhammVisitor<bool> for InitGenerator<'_, '_, '_, '_> {
             .for_each(|ProvidedFunction { function, .. }| {
                 is_success &= self.visit_fn(function);
             });
-        // inject globals
-        is_success &= self.visit_provided_globals(event.get_provided_globals());
+        // do not inject globals into Wasm that are used/defined by the compiler
+        // because they are statically-defined and folded away
 
         // 1. visit the BEFORE probes
         if let Some(probes) = event.probes().get(&"before".to_string()) {
@@ -240,8 +238,8 @@ impl WhammVisitor<bool> for InitGenerator<'_, '_, '_, '_> {
             .for_each(|ProvidedFunction { function, .. }| {
                 is_success &= self.visit_fn(function);
             });
-        // inject globals
-        is_success &= self.visit_provided_globals(probe.get_mode_provided_globals());
+        // do not inject globals into Wasm that are used/defined by the compiler
+        // because they are statically-defined and folded away
 
         trace!("Exiting: CodeGenerator::visit_probe");
         if let Err(e) = self.emitter.exit_scope() {
@@ -252,7 +250,7 @@ impl WhammVisitor<bool> for InitGenerator<'_, '_, '_, '_> {
         is_success
     }
 
-    fn visit_fn(&mut self, f: &crate::parser::types::Fn) -> bool {
+    fn visit_fn(&mut self, f: &Fn) -> bool {
         trace!("Entering: CodeGenerator::visit_fn");
         if let Err(e) = self.emitter.enter_scope() {
             self.err.add_error(*e)

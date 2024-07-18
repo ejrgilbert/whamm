@@ -1,5 +1,5 @@
-pub mod rules;
 pub mod module_emitter;
+pub mod rules;
 pub mod visiting_emitter;
 
 use crate::common::error::{ErrorGen, WhammError};
@@ -7,8 +7,8 @@ use crate::parser::types::{BinOp, DataType, Expr, UnOp, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 
 use orca::ir::types::{Global, InitExpr, Value as OrcaValue};
-use wasmparser::ValType;
 use orca::opcode::Opcode;
+use wasmparser::ValType;
 
 // transform a whamm type to default wasm type, used for creating new global
 // TODO: Might be more generic to also include Local
@@ -52,7 +52,7 @@ fn emit_set<'a, T: Opcode<'a>>(
     table: &mut SymbolTable,
     var_id: &mut Expr,
     injector: &mut T,
-    err_msg: &str
+    err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     if let Expr::VarId { name, .. } = var_id {
         let var_rec_id = match table.lookup(name) {
@@ -98,9 +98,7 @@ fn emit_set<'a, T: Opcode<'a>>(
     } else {
         Err(Box::new(ErrorGen::get_unexpected_error(
             true,
-            Some(format!(
-                "{err_msg} Expected VarId."
-            )),
+            Some(format!("{err_msg} Expected VarId.")),
             None,
         )))
     }
@@ -112,7 +110,7 @@ fn emit_expr<'a, T: Opcode<'a>>(
     expr: &mut Expr,
     injector: &mut T,
     metadata: &mut InsertionMetadata,
-    err_msg: &str
+    err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
     match expr {
@@ -152,8 +150,7 @@ fn emit_expr<'a, T: Opcode<'a>>(
             if let Some(args) = args {
                 for boxed_arg in args.iter_mut() {
                     let arg = &mut **boxed_arg; // unbox
-                    is_success &=
-                        emit_expr(table, arg, injector, metadata, err_msg)?;
+                    is_success &= emit_expr(table, arg, injector, metadata, err_msg)?;
                 }
             }
 
@@ -294,7 +291,7 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, injector: &mut T) -> bool {
         }
         BinOp::LT => {
             // we only support i32's at the moment (assumes signed)
-            injector.i32_lt_signed(); 
+            injector.i32_lt_signed();
         }
         BinOp::Add => {
             // we only support i32's at the moment
@@ -336,7 +333,7 @@ fn emit_value<'a, T: Opcode<'a>>(
     val: &mut Value,
     injector: &mut T,
     metadata: &mut InsertionMetadata,
-    err_msg: &str
+    err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
     match val {
@@ -344,7 +341,11 @@ fn emit_value<'a, T: Opcode<'a>>(
             injector.i32_const(*val);
             is_success &= true;
         }
-        Value::Str { val: _val, addr: _addr, ty: _ty } => {
+        Value::Str {
+            val: _val,
+            addr: _addr,
+            ty: _ty,
+        } => {
             // TODO -- assuming that the data ID is the index of the object in the Vec
             // TODO -- need an API that allows the addition of data segments.
             //     there is currently an ownership issue since I can't insert
@@ -366,14 +367,14 @@ fn emit_value<'a, T: Opcode<'a>>(
             // module_data.push(
             //     data_segment
             // );
-            // 
+            //
             // // save the memory addresses/lens, so they can be used as appropriate
             // *addr = Some((data_id as u32, metadata.curr_mem_offset, val.len()));
-            // 
+            //
             // // emit Wasm instructions for the memory address and string length
             // injector.i32(metadata.curr_mem_offset as i32);
             // injector.i32(val.len() as i32);
-            // 
+            //
             // // update curr_mem_offset to account for new data
             // metadata.curr_mem_offset += val.len();
             is_success &= true;

@@ -21,11 +21,11 @@ use clap::Parser;
 use graphviz_rust::cmd::{CommandArg, Format};
 use graphviz_rust::exec_dot;
 use log::{error, info};
+use orca::ir::module::Module as WasmModule;
 use project_root::get_project_root;
 use std::path::PathBuf;
 use std::process::exit;
 use walrus::Module;
-use orca::ir::module::Module as WasmModule;
 
 use crate::behavior::tree::BehaviorTree;
 use crate::behavior::visualize::visualization_to_file;
@@ -149,16 +149,12 @@ fn run_instr(
     // Phase 1 of instrumentation (actually emits the instrumentation code)
     // This structure is necessary since we need to have the fns/globals injected (a single time)
     // and ready to use in every body/predicate.
-    let mut instr =
-        InstrGenerator::new(
-            &behavior_tree,
-            VisitingEmitter::new(
-                &mut app_wasm,
-                &mut symbol_table
-            ),
-            simple_ast,
-            &mut err
-        );
+    let mut instr = InstrGenerator::new(
+        &behavior_tree,
+        VisitingEmitter::new(&mut app_wasm, &mut symbol_table),
+        simple_ast,
+        &mut err,
+    );
     instr.run(&behavior_tree);
     // If there were any errors encountered, report and exit!
     err.check_has_errors();

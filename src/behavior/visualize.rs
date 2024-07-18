@@ -1,5 +1,5 @@
 use crate::behavior::tree::{
-    ActionType, ArgActionType, BehaviorTree, BehaviorVisitor, DecoratorType, Node as TreeNode
+    ActionType, ArgActionType, BehaviorTree, BehaviorVisitor, DecoratorType, Node as TreeNode,
 };
 use graphviz_rust::cmd::{CommandArg, Format};
 use graphviz_rust::dot_generator::{attr, edge, graph, id, node, node_id, stmt};

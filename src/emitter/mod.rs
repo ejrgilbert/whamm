@@ -56,7 +56,6 @@ pub trait ModuleEmitter {
 }
 
 pub trait VisitingEmitter {
-
     // keep
     fn enter_scope(&mut self) -> Result<(), Box<WhammError>>;
     fn enter_scope_via_spec(&mut self, script_id: &str, probe_spec: &ProbeSpec) -> bool;

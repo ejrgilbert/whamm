@@ -1,23 +1,20 @@
 use crate::common::error::{ErrorGen, WhammError};
-use crate::emitter::rewriting::rules::LocInfo;
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{DataType, Expr, Fn, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
-use log::info;
 
 use orca::ir::types::DataType as OrcaType;
 use wasmparser::BlockType;
 
-use orca::ir::module::Module;
+use crate::emitter::rewriting::{emit_expr, emit_set, whamm_type_to_wasm, InsertionMetadata};
 use orca::ir::function::FunctionBuilder;
+use orca::ir::module::Module;
 use orca::opcode::Opcode;
-use crate::emitter::rewriting::{emit_expr, emit_set, InsertionMetadata, whamm_type_to_wasm};
 
 const UNEXPECTED_ERR_MSG: &str =
     "ModuleEmitter: Looks like you've found a bug...please report this behavior!";
 
-pub struct ModuleEmitter<'a, 'b, 'c>
-{
+pub struct ModuleEmitter<'a, 'b, 'c> {
     pub app_wasm: &'a mut Module<'b>,
     pub emitting_func: Option<FunctionBuilder<'b>>,
     pub table: &'c mut SymbolTable,
@@ -26,20 +23,19 @@ pub struct ModuleEmitter<'a, 'b, 'c>
     fn_providing_contexts: Vec<String>,
 }
 
-impl<'a, 'b, 'c> ModuleEmitter<'a, 'b, 'c>
-{
+impl<'a, 'b, 'c> ModuleEmitter<'a, 'b, 'c> {
     // note: only used in integration test
-    pub fn new (app_wasm: &'a mut Module<'b>, table: &'c mut SymbolTable) -> Self {
+    pub fn new(app_wasm: &'a mut Module<'b>, table: &'c mut SymbolTable) -> Self {
         if app_wasm.memories.len() > 1 {
             // TODO -- make this work with multi-memory
             panic!("only single memory is supported")
         };
-        
+
         Self {
             app_wasm,
             emitting_func: None,
             metadata: InsertionMetadata {
-                mem_id: 0, // Assuming the ID of the first memory is 0!
+                mem_id: 0,                  // Assuming the ID of the first memory is 0!
                 curr_mem_offset: 1_052_576, // Set default memory base address to DEFAULT + 4KB = 1048576 bytes + 4000 bytes = 1052576 bytes
             },
             table,
@@ -163,7 +159,7 @@ impl<'a, 'b, 'c> ModuleEmitter<'a, 'b, 'c>
             .i32_const(0)
             .return_stmt();
 
-        let strcmp_id = strcmp.finish(&mut self.app_wasm);
+        let strcmp_id = strcmp.finish(self.app_wasm);
 
         let rec_id = match self.table.lookup(&f.name.name) {
             Some(rec_id) => *rec_id,
@@ -327,10 +323,10 @@ impl<'a, 'b, 'c> ModuleEmitter<'a, 'b, 'c>
                     };
                     match self.table.get_record_mut(&var_rec_id) {
                         Some(Record::Var {
-                                 value,
-                                 is_comp_provided,
-                                 ..
-                             }) => {
+                            value,
+                            is_comp_provided,
+                            ..
+                        }) => {
                             *value = Some(val.clone());
 
                             if *is_comp_provided {
@@ -366,12 +362,7 @@ impl<'a, 'b, 'c> ModuleEmitter<'a, 'b, 'c>
                     Ok(_) => {
                         if let Some(emitting_func) = &mut self.emitting_func {
                             // Emit the instruction that sets the variable's value to the emitted expression
-                            emit_set(
-                                &mut self.table,
-                                var_id,
-                                emitting_func,
-                                UNEXPECTED_ERR_MSG
-                            )
+                            emit_set(&mut self.table, var_id, emitting_func, UNEXPECTED_ERR_MSG)
                         } else {
                             return Err(Box::new(ErrorGen::get_unexpected_error(
                                 true,
@@ -416,13 +407,17 @@ impl<'a, 'b, 'c> ModuleEmitter<'a, 'b, 'c>
                 cond, conseq, alt, ..
             } => {
                 // change conseq and alt types to stmt for easier API call
-                is_success &= self.emit_if_else(cond, &mut vec![Statement::Expr {
-                    expr: (**conseq).clone(),
-                    loc: None
-                }], &mut vec![Statement::Expr {
-                    expr: (**alt).clone(),
-                    loc: None
-                }])?;
+                is_success &= self.emit_if_else(
+                    cond,
+                    &mut vec![Statement::Expr {
+                        expr: (**conseq).clone(),
+                        loc: None,
+                    }],
+                    &mut vec![Statement::Expr {
+                        expr: (**alt).clone(),
+                        loc: None,
+                    }],
+                )?;
             }
             Expr::VarId { .. }
             | Expr::UnOp { .. }
@@ -440,7 +435,7 @@ impl<'a, 'b, 'c> ModuleEmitter<'a, 'b, 'c>
                         expr,
                         emitting_func,
                         &mut self.metadata,
-                        UNEXPECTED_ERR_MSG
+                        UNEXPECTED_ERR_MSG,
                     )?;
                 } else {
                     return Err(Box::new(ErrorGen::get_unexpected_error(
@@ -535,7 +530,11 @@ impl<'a, 'b, 'c> ModuleEmitter<'a, 'b, 'c>
         }
     }
 
-    fn emit_if(&mut self, condition: &mut Expr, conseq: &mut Vec<Statement>) -> Result<bool, Box<WhammError>> {
+    fn emit_if(
+        &mut self,
+        condition: &mut Expr,
+        conseq: &mut Vec<Statement>,
+    ) -> Result<bool, Box<WhammError>> {
         // NOTE: The structure of this code is wonky, but it's because of
         // overlapping references/calls to self.
         // To avoid that, we place all calls to self.emitting_func in a block.
@@ -561,7 +560,12 @@ impl<'a, 'b, 'c> ModuleEmitter<'a, 'b, 'c>
         Ok(is_success)
     }
 
-    fn emit_if_else(&mut self, condition: &mut Expr, conseq: &mut Vec<Statement>, alternate: &mut Vec<Statement>) -> Result<bool, Box<WhammError>> {
+    fn emit_if_else(
+        &mut self,
+        condition: &mut Expr,
+        conseq: &mut Vec<Statement>,
+        alternate: &mut Vec<Statement>,
+    ) -> Result<bool, Box<WhammError>> {
         // NOTE: The structure of this code is wonky, but it's because of
         // overlapping references/calls to self.
         // To avoid that, we place all calls to self.emitting_func in a block.

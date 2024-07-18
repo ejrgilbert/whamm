@@ -363,7 +363,7 @@ pub enum ActionType {
     EmitOrig,
     EmitProbeAsIf,
     EmitProbeAsIfElse,
-    ForceSuccess
+    ForceSuccess,
 }
 
 #[derive(Debug)]
@@ -430,7 +430,7 @@ pub trait BehaviorVisitor<T> {
                 ActionType::EmitOrig { .. } => self.visit_emit_orig(node),
                 ActionType::ForceSuccess { .. } => self.visit_force_success(node),
                 ActionType::EmitProbeAsIf => self.visit_emit_probe_as_if(node),
-                ActionType::EmitProbeAsIfElse => self.visit_emit_probe_as_if_else(node)
+                ActionType::EmitProbeAsIfElse => self.visit_emit_probe_as_if_else(node),
             }
         } else {
             unreachable!()

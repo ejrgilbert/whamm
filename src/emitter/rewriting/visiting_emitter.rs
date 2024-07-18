@@ -1,16 +1,15 @@
-use std::iter::Iterator;
 use log::info;
+use std::iter::Iterator;
 
-use wasmparser::BlockType;
 use orca::ir::module::Module;
-use orca::ir::types::DataType as OrcaType;
 use orca::iterator::iterator_trait::Iterator as OrcaIterator;
 use orca::iterator::module_iterator::ModuleIterator;
 use orca::opcode::Opcode;
+use wasmparser::BlockType;
 
 use crate::common::error::{ErrorGen, WhammError};
-use crate::emitter::rewriting::{emit_expr, emit_set, InsertionMetadata};
 use crate::emitter::rewriting::rules::{Arg, LocInfo, WhammProvider};
+use crate::emitter::rewriting::{emit_expr, emit_set, InsertionMetadata};
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{DataType, Expr, ProbeSpec, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
@@ -18,8 +17,7 @@ use crate::verifier::types::{Record, SymbolTable, VarAddr};
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
 
-pub struct VisitingEmitter<'a, 'b, 'c>
-{
+pub struct VisitingEmitter<'a, 'b, 'c> {
     pub app_iter: ModuleIterator<'a, 'b>,
     pub table: &'c mut SymbolTable,
     instr_alt_call: Option<i32>,
@@ -28,8 +26,7 @@ pub struct VisitingEmitter<'a, 'b, 'c>
     metadata: InsertionMetadata,
 }
 
-impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c>
-{
+impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
     // note: only used in integration test
     pub fn new(app_wasm: &'a mut Module<'b>, table: &'c mut SymbolTable) -> Self {
         if app_wasm.memories.len() > 1 {
@@ -47,14 +44,14 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c>
             },
             table,
             instr_alt_call: None,
-            instr_created_args: vec![]
+            instr_created_args: vec![],
         };
 
         a
     }
 
     /// bool -> whether there is a next instruction to process
-    pub fn next(&mut self) -> bool {
+    pub fn next_instr(&mut self) -> bool {
         self.app_iter.next().is_some()
     }
 
@@ -190,10 +187,10 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c>
                     };
                     match self.table.get_record_mut(&var_rec_id) {
                         Some(Record::Var {
-                                 value,
-                                 is_comp_provided,
-                                 ..
-                             }) => {
+                            value,
+                            is_comp_provided,
+                            ..
+                        }) => {
                             *value = Some(val.clone());
 
                             if *is_comp_provided {
@@ -226,14 +223,7 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c>
 
                 match self.emit_expr(&mut folded_expr) {
                     Err(e) => Err(e),
-                    Ok(_) => {
-                        emit_set(
-                            self.table,
-                            var_id,
-                            &mut self.app_iter,
-                            UNEXPECTED_ERR_MSG
-                        )
-                    }
+                    Ok(_) => emit_set(self.table, var_id, &mut self.app_iter, UNEXPECTED_ERR_MSG),
                 }
             }
             _ => {
@@ -281,29 +271,34 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c>
         // to the call.
         self.app_iter.before(); // should be done before the original opcode
         let mut arg_recs: Vec<(String, usize)> = vec![]; // vec to retain order!
-        args.iter().for_each(|Arg {name: arg_name, ty: arg_ty}| {
-            // create local for the param in the module
-            // todo -- rework when we can add locals through the app_iter
-            // let arg_local_id = self.app_iter.add_local(*arg_ty);
-            let arg_local_id = 0;
-            
-            // emit an opcode in the event to assign the ToS to this new local
-            self.app_iter.local_set(arg_local_id);
+        args.iter().for_each(
+            |Arg {
+                 name: arg_name,
+                 ty: _arg_ty,
+             }| {
+                // create local for the param in the module
+                // todo -- rework when we can add locals through the app_iter
+                // let arg_local_id = self.app_iter.add_local(*arg_ty);
+                let arg_local_id = 0;
 
-            // place in symbol table with var addr for future reference
-            let id = self.table.put(
-                arg_name.to_string(),
-                Record::Var {
-                    ty: DataType::I32, // we only support integers right now.
-                    name: arg_name.to_string(),
-                    value: None,
-                    is_comp_provided: false,
-                    addr: Some(VarAddr::Local { addr: arg_local_id }),
-                    loc: None,
-                },
-            );
-            arg_recs.push((arg_name.to_string(), id));
-        });
+                // emit an opcode in the event to assign the ToS to this new local
+                self.app_iter.local_set(arg_local_id);
+
+                // place in symbol table with var addr for future reference
+                let id = self.table.put(
+                    arg_name.to_string(),
+                    Record::Var {
+                        ty: DataType::I32, // we only support integers right now.
+                        name: arg_name.to_string(),
+                        value: None,
+                        is_comp_provided: false,
+                        addr: Some(VarAddr::Local { addr: arg_local_id }),
+                        loc: None,
+                    },
+                );
+                arg_recs.push((arg_name.to_string(), id));
+            },
+        );
         self.instr_created_args = arg_recs;
         true
     }
@@ -314,7 +309,8 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c>
             if let Some(Record::Var {
                 addr: Some(VarAddr::Local { addr }),
                 ..
-            }) = param_rec {
+            }) = param_rec
+            {
                 // Inject at tracker.orig_instr_idx to make sure that this actually emits the args
                 // for the instrumented instruction right before that instruction is called!
                 self.app_iter.local_set(*addr);
@@ -339,7 +335,11 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c>
         }
     }
 
-    pub(crate) fn define(&mut self, var_name: &str, var_val: &Option<Value>) -> Result<bool, Box<WhammError>> {
+    pub(crate) fn define(
+        &mut self,
+        var_name: &str,
+        var_val: &Option<Value>,
+    ) -> Result<bool, Box<WhammError>> {
         let rec_id = match self.table.lookup(var_name) {
             Some(rec_id) => *rec_id,
             _ => {
@@ -383,13 +383,17 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c>
                 cond, conseq, alt, ..
             } => {
                 // change conseq and alt types to stmt for easier API call
-                is_success &= self.emit_if_else(cond, &mut vec![Statement::Expr {
-                    expr: (**conseq).clone(),
-                    loc: None
-                }], &mut vec![Statement::Expr {
-                    expr: (**alt).clone(),
-                    loc: None
-                }])?;
+                is_success &= self.emit_if_else(
+                    cond,
+                    &mut vec![Statement::Expr {
+                        expr: (**conseq).clone(),
+                        loc: None,
+                    }],
+                    &mut vec![Statement::Expr {
+                        expr: (**alt).clone(),
+                        loc: None,
+                    }],
+                )?;
             }
             Expr::VarId { .. }
             | Expr::UnOp { .. }
@@ -405,7 +409,7 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c>
                     expr,
                     &mut self.app_iter,
                     &mut self.metadata,
-                    UNEXPECTED_ERR_MSG
+                    UNEXPECTED_ERR_MSG,
                 )?;
             }
         }
@@ -417,12 +421,16 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c>
         // TODO -- cannot pull location info from Location struct (is it private?)
         // let orig = self.app_iter.curr_op();
         // let curr_loc = self.app_iter.curr_loc();
-        // 
+        //
         // self.app_iter.instr_at(curr_loc.instr_idx, orig);
         todo!()
     }
-    
-    fn emit_if_preamble(&mut self, condition: &mut Expr, conseq: &mut [Statement]) -> Result<bool, Box<WhammError>> {
+
+    fn emit_if_preamble(
+        &mut self,
+        condition: &mut Expr,
+        conseq: &mut [Statement],
+    ) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
 
         // emit the condition of the `if` expression
@@ -432,13 +440,18 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c>
 
         // emit the consequent body
         is_success &= self.emit_body(conseq)?;
-        
+
         // INTENTIONALLY DON'T END IF BLOCK
-        
+
         Ok(is_success)
     }
-    
-    fn emit_if_else_preamble(&mut self, condition: &mut Expr, conseq: &mut [Statement], alternate: &mut Vec<Statement>) -> Result<bool, Box<WhammError>> {
+
+    fn emit_if_else_preamble(
+        &mut self,
+        condition: &mut Expr,
+        conseq: &mut [Statement],
+        alternate: &mut Vec<Statement>,
+    ) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
 
         is_success &= self.emit_if_preamble(condition, conseq)?;
@@ -454,7 +467,11 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c>
         Ok(is_success)
     }
 
-    pub(crate) fn emit_if(&mut self, condition: &mut Expr, conseq: &mut [Statement]) -> Result<bool, Box<WhammError>> {
+    pub(crate) fn emit_if(
+        &mut self,
+        condition: &mut Expr,
+        conseq: &mut [Statement],
+    ) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
 
         is_success &= self.emit_if_preamble(condition, conseq)?;
@@ -464,7 +481,12 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c>
         Ok(is_success)
     }
 
-    pub(crate) fn emit_if_else(&mut self, condition: &mut Expr, conseq: &mut [Statement], alternate: &mut Vec<Statement>) -> Result<bool, Box<WhammError>> {
+    pub(crate) fn emit_if_else(
+        &mut self,
+        condition: &mut Expr,
+        conseq: &mut [Statement],
+        alternate: &mut Vec<Statement>,
+    ) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
 
         is_success &= self.emit_if_else_preamble(condition, conseq, alternate)?;
@@ -473,10 +495,14 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c>
         self.app_iter.end();
         Ok(is_success)
     }
-    
-    pub(crate) fn emit_if_with_orig_as_else(&mut self, condition: &mut Expr, conseq: &mut [Statement]) -> Result<bool, Box<WhammError>> {
+
+    pub(crate) fn emit_if_with_orig_as_else(
+        &mut self,
+        condition: &mut Expr,
+        conseq: &mut [Statement],
+    ) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
-        
+
         is_success &= self.emit_if_preamble(condition, conseq)?;
 
         is_success &= self.emit_args()?;
@@ -486,7 +512,7 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c>
         self.app_iter.end();
         Ok(is_success)
     }
-    
+
     pub fn emit_body(&mut self, body: &mut [Statement]) -> Result<bool, Box<WhammError>> {
         for stmt in body.iter_mut() {
             self.emit_stmt(stmt)?;
@@ -507,9 +533,9 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c>
                 Some(r_id) => {
                     let rec = self.table.get_record_mut(&r_id);
                     if let Some(Record::Var {
-                                    value: Some(Value::Str { val, .. }),
-                                    ..
-                                }) = rec
+                        value: Some(Value::Str { val, .. }),
+                        ..
+                    }) = rec
                     {
                         // TODO -- how to pull func names from module?
                         // (val.clone(), self.app_wasm.funcs.by_name(val))

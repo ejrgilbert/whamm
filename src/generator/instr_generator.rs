@@ -1,21 +1,16 @@
 use crate::behavior::builder_visitor::SimpleAST;
-use crate::behavior::tree::{
-    ActionType, ArgActionType, BehaviorVisitor, DecoratorType,
-};
+use crate::behavior::tree::{ActionType, ArgActionType, BehaviorVisitor, DecoratorType};
 use crate::behavior::tree::{BehaviorTree, Node};
 use crate::common::error::ErrorGen;
-use crate::emitter::rewriting::rules::{provider_factory, LocInfo, WhammProvider, Arg};
+use crate::emitter::rewriting::rules::{provider_factory, Arg, LocInfo, WhammProvider};
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{Expr, Statement};
 use log::warn;
 
-use orca::ir::types::DataType;
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
+use orca::ir::types::DataType;
 
-fn get_loc_info<'a>(
-    rule: &'a WhammProvider,
-    emitter: &VisitingEmitter,
-) -> Option<LocInfo<'a>> {
+fn get_loc_info<'a>(rule: &'a WhammProvider, emitter: &VisitingEmitter) -> Option<LocInfo<'a>> {
     // Pull the curr instr each time this is called to keep from having
     // long-lasting refs into self.emitter.
     emitter.get_loc_info(rule)
@@ -56,7 +51,7 @@ impl<'a, 'b, 'c, 'd, 'e> InstrGenerator<'a, 'b, 'c, 'd, 'e> {
             curr_probe: None,
         }
     }
-    
+
     pub fn configure_probe_mode(&mut self) -> bool {
         // TODO -- make the probe mode an enum!
         match self.curr_probe_mode.as_str() {
@@ -84,11 +79,11 @@ impl<'a, 'b, 'c, 'd, 'e> InstrGenerator<'a, 'b, 'c, 'd, 'e> {
 
         // Initialize the emitter rules
         let rules = provider_factory::<WhammProvider>(&self.ast.probes);
-        
+
         // Iterate over each instruction in the application Wasm bytecode
         let mut is_success = true;
         let mut first_instr = true;
-        while first_instr || self.emitter.next() {
+        while first_instr || self.emitter.next_instr() {
             first_instr = false;
             rules.iter().for_each(|rule| {
                 // Check if any of the configured rules match this instruction in the application.

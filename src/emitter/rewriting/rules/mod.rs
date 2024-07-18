@@ -5,8 +5,8 @@ use crate::parser::rules::WhammProviderKind;
 use crate::parser::types::{ProbeSpec, SpecPart, Value};
 use std::collections::HashMap;
 
-use orca::ir::types::DataType as OrcaType;
 use orca::ir::module::Module;
+use orca::ir::types::DataType as OrcaType;
 use wasmparser::Operator;
 
 mod core;
@@ -105,14 +105,11 @@ pub trait FromStr {
 #[derive(Clone, PartialEq)]
 pub struct Arg {
     pub name: String,
-    pub ty: OrcaType
+    pub ty: OrcaType,
 }
 impl Arg {
     fn new(name: String, ty: OrcaType) -> Self {
-        Self {
-            name,
-            ty
-        }
+        Self { name, ty }
     }
 }
 
