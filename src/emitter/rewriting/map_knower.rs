@@ -1,13 +1,13 @@
 #![allow(unused)]
-use crate::parser::types::{Whamm, WhammVisitor, DataType, Expr, Value};
 use crate::common::error::{ErrorGen, WhammError};
+use crate::parser::types::{DataType, Expr, Value, Whamm, WhammVisitor};
 use std::any::Any;
 use std::hash::Hash;
 // //this is the code that knows which functions to call in lib.rs based on what is in the AST -> will be in emitter folder eventually
-use once_cell::sync::Lazy; 
 use core::panic;
+use once_cell::sync::Lazy;
+use std::collections::{HashMap, HashSet};
 use std::sync::Mutex;
-use std::collections::{HashSet, HashMap};
 use walrus::ir::{BinaryOp, ExtendedLoad, Instr, InstrSeqId, LoadKind, MemArg};
 use walrus::{
     ActiveData, ActiveDataLocation, DataKind, FunctionBuilder, FunctionId, FunctionKind,
@@ -26,31 +26,9 @@ pub enum Metadata {
         probe_id: i32,
     },
 }
-pub fn get_key_unwrapped(key: Expr) -> Box<dyn Any> {
+pub fn get_key_unwrapped(key: Expr) -> Value {
     return match key {
-        Expr::Primitive { val, .. } => {
-            match val {
-                Value::Integer { val , ..} => Box::new(val),
-                Value::Boolean { val, .. } => Box::new(val),
-                Value::Str { val, .. } => Box::new(val),
-                Value::Tuple { ty, vals } => {
-                    if ty
-                        == (DataType::Tuple {
-                            ty_info: vec![
-                                Box::new(DataType::I32),
-                                Box::new(DataType::I32),
-                                Box::new(DataType::I32),
-                            ],
-                        })
-                    {
-                        Box::new((vals[0].clone(), vals[1].clone(), vals[2].clone()))
-                    } else {
-                        //This won't work yet because converting the vector of expr to a tuple type isn't supported yet
-                        panic!("Error: Unsupported tuple type for map key");
-                    }
-                }
-            }
-        }
+        Expr::Primitive { val, .. } => val,
         _ => {
             panic!("Error: Expected a primitive value for the key in map get");
         }
@@ -61,10 +39,16 @@ pub struct MapKnower {
     map_metadata: HashMap<i32, Metadata>,
     variable_metadata: HashMap<usize, Metadata>,
     all_metadata: HashSet<Metadata>,
-    wasm_app: walrus::Module,
 }
 impl MapKnower {
-   
+    pub fn new() -> Self {
+        MapKnower {
+            map_count: 0,
+            map_metadata: HashMap::new(),
+            variable_metadata: HashMap::new(),
+            all_metadata: HashSet::new(),
+        }
+    }
     pub fn get_map_count(&self) -> i32 {
         self.map_count
     }
@@ -77,7 +61,9 @@ impl MapKnower {
     pub fn put_map_metadata(&mut self, map_id: i32, map_data: Metadata) {
         self.map_metadata.insert(map_id, map_data.clone());
         if !self.all_metadata.insert(map_data) {
-            panic!("Error: Metadata already exists for this object - duplicate metadata not allowed");
+            panic!(
+                "Error: Metadata already exists for this object - duplicate metadata not allowed"
+            );
         }
     }
     pub fn create_local_map_meta(
@@ -115,16 +101,13 @@ impl MapKnower {
         //create the metadata for the map
         let map_id = self.get_map_count();
         self.increment_map_count();
-    
-        //TODO: this should be called in WASM, not directly called here
         self.create_local_map_meta(map_id, name, script_id, bytecode_loc, probe_id);
-    
+
         //create the map based on the types of the key and value in the map
         //"map" is the type of the declaration statement
         match map {
             DataType::Map { key_ty, val_ty } => {
-                return (self.create_map_insert(map_id, key_ty, val_ty), map_id);
-
+                return (self.create_map_insert(*key_ty, *val_ty), map_id);
             }
             _ => {
                 panic!("Error: Expected a map type, got something else");
@@ -132,16 +115,19 @@ impl MapKnower {
         }
         //returns the map id for this new map
     }
-    pub fn create_global_map(&mut self, name: String, script_id: i32, map: DataType) -> (String, i32) {
+    pub fn create_global_map(
+        &mut self,
+        name: String,
+        script_id: i32,
+        map: DataType,
+    ) -> (String, i32) {
         let map_id = self.get_map_count();
         self.increment_map_count();
-    
-        //TODO: this should be called in WASM, not directly here
         self.create_global_map_meta(map_id, name, script_id);
-    
+
         match map {
             DataType::Map { key_ty, val_ty } => {
-                return (self.create_map_insert(map_id, key_ty, val_ty), map_id);
+                return (self.create_map_insert( *key_ty,*val_ty), map_id);
             }
             _ => {
                 panic!("Error: Expected a map type, got something else");
@@ -153,8 +139,7 @@ impl MapKnower {
         self.increment_map_count();
         match map {
             DataType::Map { key_ty, val_ty } => {
-                
-                return (self.create_map_insert(map_id, key_ty, val_ty), map_id);
+                return (self.create_map_insert(*key_ty, *val_ty), map_id);
             }
             _ => {
                 panic!("Error: Expected a map type, got something else");
@@ -163,10 +148,13 @@ impl MapKnower {
     }
 
     //The stuff that actually calls the emitter stuff
-    pub fn create_map_insert(&mut self, map_id: i32, key: Box<DataType>, val: Box<DataType>) -> String {
-      
-        match *key {
-            DataType::I32 => match *val {
+    pub fn create_map_insert(
+        &mut self,
+        key: DataType,
+        val: DataType,
+    ) -> String {
+        match key {
+            DataType::I32 => match val {
                 DataType::I32 => {
                     return "create_i32_i32".to_string();
                 }
@@ -186,7 +174,7 @@ impl MapKnower {
                     panic!("Error: Unsupported value type for map");
                 }
             },
-            DataType::Str => match *val {
+            DataType::Str => match val {
                 DataType::I32 => {
                     return "create_string_i32".to_string();
                 }
@@ -206,7 +194,7 @@ impl MapKnower {
                     panic!("Error: Unsupported value type for map");
                 }
             },
-            DataType::Boolean {} => match *val {
+            DataType::Boolean {} => match val {
                 DataType::I32 => {
                     return "create_bool_i32".to_string();
                 }
@@ -226,7 +214,7 @@ impl MapKnower {
                     panic!("Error: Unsupported value type for map");
                 }
             },
-            DataType::Tuple { .. } => match *val {
+            DataType::Tuple { .. } => match val {
                 DataType::I32 => {
                     return "create_tuple_i32".to_string();
                 }
@@ -251,13 +239,83 @@ impl MapKnower {
             }
         }
     }
+    pub fn set_map_insert(
+        &mut self,
+        key: DataType,
+        val: DataType,
+    ) -> String  {
+        match key {
+            DataType::I32 => {
+                match val {
+                    DataType::I32 => {
+                        return "insert_i32_i32".to_string();
+                    }
+                    _ =>{
+                        panic!("Error: Not yet supported value type for map");
+                    }
+                }
+            }
+            DataType::Tuple{ ty_info } => {
+                if ty_info == vec![Box::new(DataType::I32), Box::new(DataType::I32), Box::new(DataType::I32)] {
+                    match val {
+                        DataType::I32 => {
+                            return "insert_map_i32i32i32tuple_i32".to_string();
+                        }
+                        _ =>{
+                            panic!("Error: Not yet supported value type for map");
+                        }
+                    }
+                } else {
+                    panic!("Error: Not yet supported key type for map");
+                }
+            }
+            _ => {
+                panic!("Error: Not yet supported key type for map");
+            }
+        }
+    }
+    pub fn create_map_get(
+        &mut self,
+        key: DataType,
+        val: DataType,
+    ) -> String {
+        match key {
+            DataType::I32 => {
+                match val {
+                    DataType::I32 => {
+                        return "get_i32_i32".to_string();
+                    }
+                    _ =>{
+                        panic!("Error: Not yet supported value type for map");
+                    }
+                }
+            }
+            DataType::Tuple{ ty_info } => {
+                if ty_info == vec![Box::new(DataType::I32), Box::new(DataType::I32), Box::new(DataType::I32)] {
+                    match val {
+                        DataType::I32 => {
+                            return "get_map_i32i32i32tuple_i32".to_string();
+                        }
+                        _ =>{
+                            panic!("Error: Not yet supported value type for map");
+                        }
+                    }
+                } else {
+                    panic!("Error: Not yet supported key type for map");
+                }
+            }
+            _ => {
+                panic!("Error: Not yet supported key type for map");
+            }
+        }
+    }
     //not sure how this one will work as an outside fn that doesn't emit
     // pub fn map_get(map_id: i32, key: Expr, map_type: DataType) {
     //     //first, get the key value
     //     let my_key = get_key_unwrapped(key);
     //     match map_type {
     //         DataType::Map { key_ty, val_ty } => {
-    //             match *val_ty { 
+    //             match *val_ty {
     //                 //TODO: make these walrus telling it to call this
     //                 DataType::I32 => {
     //                     let i32i32i32tup = DataType::Tuple {
@@ -300,7 +358,4 @@ impl MapKnower {
     // pub fn set_wasm_app(&mut self, app: walrus::Module) {
     //     self.wasm_app = app;
     // }
-    pub fn get_functionId(&self, name: &str) -> FunctionId {
-        self.wasm_app.funcs.by_name(name).expect(&(format!("Function not found with name {:?}", name)))
-    }
 }

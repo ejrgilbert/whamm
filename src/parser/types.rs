@@ -201,6 +201,16 @@ pub enum Value {
         val: bool,
     },
 }
+impl Value{
+    pub fn ty(&self) -> DataType {
+        match self {
+            Value::Integer { ty, .. } => ty.clone(),
+            Value::Str { ty, .. } => ty.clone(),
+            Value::Tuple { ty, .. } => ty.clone(),
+            Value::Boolean { ty, .. } => ty.clone(),
+        }
+    }
+}
 #[derive(Clone, Debug)]
 pub struct Block {
     pub stmts: Vec<Statement>,
@@ -321,7 +331,7 @@ pub enum Expr {
         loc: Option<Location>,
     },
     GetMap {
-        map: Box<Expr>,
+        map: Box<Expr>, //This should be a VarId
         key: Box<Expr>,
         loc: Option<Location>,
     },

@@ -81,7 +81,7 @@ const VALID_SCRIPTS: &[&str] = &[
     "#,
     r#"
         report i32 a;
-        wasm:bytecode:br:before {
+        wasm::br:before {
             a = 1;
             report bool b;
         }
@@ -358,7 +358,7 @@ wasm::call:alt /
         my_fn() {
             report i32 c;
         }
-        wasm:bytecode:br:before {
+        wasm::br:before {
             a = 1;
             report bool b;
         }
@@ -596,7 +596,7 @@ pub fn test_report_decl() {
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
         report i32 a;
-        wasm:bytecode:br:before {
+        wasm::br:before {
             a = 1;
             report bool b;
         }"#;

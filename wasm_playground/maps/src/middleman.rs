@@ -2,11 +2,11 @@
 
 #[allow(unused_imports)]
 use crate::*;
-use once_cell::sync::Lazy; use core::panic;
+use core::panic;
+use once_cell::sync::Lazy;
 // 1.3.1
-use std::sync::Mutex;
 use std::collections::HashSet;
-
+use std::sync::Mutex;
 
 //TODO: remove this instance of datatype and instead use the one in parser
 #[derive(Clone, Debug, PartialEq)]

@@ -1,7 +1,11 @@
-pub mod rules;
 pub mod map_knower;
+pub mod rules;
+
+
+use std::env::var;
 
 use crate::common::error::{ErrorGen, WhammError};
+use crate::emitter::rewriting::map_knower::MapKnower;
 use crate::emitter::rewriting::rules::{LocInfo, Provider, WhammProvider};
 use crate::emitter::Emitter;
 use crate::generator::types::ExprFolder;
@@ -11,7 +15,7 @@ use log::{debug, info};
 use walrus::ir::{BinaryOp, ExtendedLoad, Instr, InstrSeqId, LoadKind, MemArg};
 use walrus::{
     ActiveData, ActiveDataLocation, DataKind, FunctionBuilder, FunctionId, FunctionKind, InitExpr,
-    InstrSeqBuilder, LocalFunction, MemoryId, ModuleData, ValType,
+    InstrSeqBuilder, LocalFunction, MemoryId, ModuleData, ModuleFunctions, ValType,
 };
 // =================================================================================
 // ================ WasmRewritingEmitter - HELPER FUNCTIONS ========================
@@ -78,7 +82,7 @@ fn emit_set(
                         // update index to point to what follows our insertions
                         *index += 1;
                     },
-                    None => {
+                    Some(VarAddr::Map { .. }) | None => {
                         return Err(Box::new(ErrorGen::get_type_check_error_from_loc(false,
                                                                                     format!("Variable assigned before declared: {}", name), loc)));
                     }
@@ -227,6 +231,16 @@ fn emit_expr(
                             // update index to point to what follows our insertions
                             *index += 1;
                         }
+                        Some(VarAddr::Map { .. }) => {
+                            return Err(Box::new(ErrorGen::get_unexpected_error(
+                                true,
+                                Some(format!(
+                                    "{UNEXPECTED_ERR_MSG} \
+                            Variable is a map, not a scalar!"
+                                )),
+                                None,
+                            )));
+                        }
                         None => {
                             return Err(Box::new(ErrorGen::get_unexpected_error(
                                 true,
@@ -263,7 +277,10 @@ fn emit_expr(
         Expr::Primitive { val, .. } => {
             is_success &= emit_value(table, module_data, val, instr_builder, metadata, index)?;
         }
-        Expr::GetMap { .. } => todo!(),
+        Expr::GetMap{ .. } => {
+            //shouldn't be called outside of the emit_expr from the emitter
+            unimplemented!()
+        }
     }
     Ok(is_success)
 }
@@ -533,7 +550,21 @@ fn emit_value(
     }
     Ok(is_success)
 }
-
+fn emit_map_call(
+    fn_id: &FunctionId,
+    instr_builder: &mut InstrSeqBuilder,
+    index: &mut usize,
+) -> Result<bool, Box<WhammError>> {
+    instr_builder.instr_at(*index, walrus::ir::Call { func: *fn_id });
+    // update index to point to what follows our insertions
+    *index += 1;
+    Ok(true)
+}
+pub fn get_function_id(funcs: &ModuleFunctions, name: &str) -> FunctionId {
+    funcs
+        .by_name(name)
+        .expect(&(format!("Function not found with name {:?}", name)))
+}
 // ==============================
 // ==== WasmRewritingEmitter ====
 // ==============================
@@ -721,8 +752,8 @@ pub struct WasmRewritingEmitter {
     metadata: InsertionMetadata,
     instr_iter: InstrIter,
     emitting_instr: Option<EmittingInstrTracker>,
-
     fn_providing_contexts: Vec<String>,
+    map_knower: MapKnower,
 }
 impl WasmRewritingEmitter {
     pub fn new(app_wasm: walrus::Module, table: SymbolTable) -> Self {
@@ -743,9 +774,9 @@ impl WasmRewritingEmitter {
             instr_iter: InstrIter::new(),
             emitting_instr: None,
             fn_providing_contexts: vec!["whamm".to_string()],
+            map_knower: MapKnower::new(),
         }
     }
-
     fn override_var_val(&mut self, rec_id: &usize, val: Option<Value>) {
         let mut rec = self.table.get_record_mut(rec_id);
         if let Some(Record::Var { value, .. }) = &mut rec {
@@ -989,21 +1020,55 @@ impl WasmRewritingEmitter {
                         None,
                     )));
                 };
-
-                match &mut addr {
-                    Some(VarAddr::Global { addr: _addr }) => {
-                        // The global should already exist, do any initial setup here!
-                        match ty {
-                            DataType::Map {
-                                key_ty: _key_ty,
-                                val_ty: _val_ty,
-                            } => {
-                                // initialize map global variable
-                                // also update value at GID (probably need to set ID of map there)
-                                unimplemented!()
+                match ty {
+                    DataType::Map { .. } => {
+                        // initialize map global variable
+                        // also update the addr to be its mapId now
+                        let to_call = self.map_knower.create_no_meta_map(ty.clone());
+                        *addr = Some(VarAddr::Map {
+                            addr: to_call.1 as usize,
+                        });
+                        //emit the map creation stuff
+                        if let Some(curr_loc) = self.instr_iter.curr_mut() {
+                            if let Some(tracker) = &mut self.emitting_instr {
+                                let ref mut functions = self.app_wasm.funcs;
+                                let map_fn_id = get_function_id(functions, to_call.0.as_str());
+                                let func = functions
+                                    .get_mut(curr_loc.wasm_func_id)
+                                    .kind
+                                    .unwrap_local_mut();
+                                let func_builder = func.builder_mut();
+                                let mut instr_builder =
+                                    func_builder.instr_seq(tracker.curr_seq_id);
+                                let mut int_value = Value::Integer {
+                                    val: to_call.1,
+                                    ty: DataType::I32,
+                                };
+                                emit_value(
+                                    &mut self.table,
+                                    &mut self.app_wasm.data,
+                                    &mut int_value,
+                                    &mut instr_builder,
+                                    &mut self.metadata,
+                                    &mut tracker.curr_idx,
+                                )?;
+                                emit_map_call(
+                                    &map_fn_id,
+                                    &mut instr_builder,
+                                    &mut tracker.curr_idx,
+                                )?;
+                                return Ok(true);
                             }
-                            _ => Ok(true),
                         }
+                        return Ok(false);
+                    }
+                    _ => {}
+                }
+                match &mut addr {
+                    Some(VarAddr::Global { .. }) | Some(VarAddr::Map { .. }) => {
+                        //if in a global space or if VarAddr is a map, we make the map and bind addr to its ID
+                        //need to add this match stuff if local/none space as well
+                           return Ok(true);
                     }
                     Some(VarAddr::Local { .. }) | None => {
                         // If the local already exists, it would be because the probe has been
@@ -1012,18 +1077,20 @@ impl WasmRewritingEmitter {
                         let (walrus_ty, ..) = data_type_to_val_type(ty);
                         let id = self.app_wasm.locals.add(walrus_ty);
                         *addr = Some(VarAddr::Local { addr: id });
-                        Ok(true)
+                        return Ok(true);
                     }
+                    
                 }
             }
             Statement::ReportDecl { .. } => {
-                todo!();
+                //now do similar stuff to the decl statement - but for globals and locals do the metadata saving thing -- always have it as a global not local
+                unimplemented!()
             }
             _ => Err(Box::new(ErrorGen::get_unexpected_error(
                 false,
                 Some(format!(
                     "{UNEXPECTED_ERR_MSG} \
-                    Wrong statement type, should be `assign`"
+                    Wrong statement type, should be `declare`"
                 )),
                 None,
             ))),
@@ -1144,6 +1211,142 @@ impl WasmRewritingEmitter {
                 )));
             }
         };
+    }
+    fn emit_set_map_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>> {
+        //make sure you don't try to resolve the map[key] to a value -> not something in the table yet
+        //necessary to fold key and value expressions
+        match stmt {
+            Statement::SetMap { ref mut map, key, val, .. } => {
+                let mut folded_key = ExprFolder::fold_expr(key, &self.table);
+                let mut folded_val = ExprFolder::fold_expr(val, &self.table);
+                if let (Expr::VarId{ name, ..}, Expr::Primitive { val: key, .. }, Expr::Primitive { val: value, .. }) 
+                = (map, &mut folded_key, &mut folded_val) {
+                    let var_rec_id = match self.table.lookup(name) {
+                        Some(rec_id) => *rec_id,
+                        _ => {
+                            return Err(Box::new(ErrorGen::get_unexpected_error(
+                                true,
+                                Some(format!(
+                                    "{UNEXPECTED_ERR_MSG} \
+                                    Attempting to emit a set_map, but VarId '{name}' does not exist in this scope!"
+                                )),
+                                None,
+                            )));
+                        }
+                    };
+                    let map_id;
+                    match self.table.get_record_mut(&var_rec_id) {
+                        //TODO: make error loc be tied to loc here
+                        Some(Record::Var {
+                            addr, loc, ..
+                        }) => {
+                            match addr {
+                                Some(VarAddr::Map { addr }) => {
+                                    //save off the map_id for the later set call
+                                    map_id = addr;
+                                }
+                                _ => {
+                                    return Err(Box::new(ErrorGen::get_unexpected_error(
+                                        true,
+                                        Some(format!(
+                                            "{UNEXPECTED_ERR_MSG} \
+                                            Incorrect variable record, Map address, found: {:?}",
+                                            addr
+                                        )),
+                                        None,
+                                    )));
+                                }
+                            }
+                        }
+                            //save off the map_id for the later set call
+                        Some(ty) => {
+                            return Err(Box::new(ErrorGen::get_unexpected_error(
+                                true,
+                                Some(format!(
+                                    "{UNEXPECTED_ERR_MSG} \
+                                    Incorrect variable record, expected Record::Var, found: {:?}",
+                                    ty
+                                )),
+                                None,
+                            )));
+                        }
+                        None => {
+                            return Err(Box::new(ErrorGen::get_unexpected_error(
+                                true,
+                                Some(format!(
+                                    "{UNEXPECTED_ERR_MSG} \
+                                    Variable symbol does not exist!"
+                                )),
+                                None,
+                            )));
+                        }
+                    }
+                    //now that we are sure the recor exists and such we can emit the set_map
+                    let set_insert_string = self.map_knower.set_map_insert(key.ty(), value.ty());
+                    if let Some(curr_loc) = self.instr_iter.curr_mut() {
+                        if let Some(tracker) = &mut self.emitting_instr {
+                            let ref mut functions = self.app_wasm.funcs;
+                            let insert_fn_id = get_function_id(functions, set_insert_string.as_str());
+                            let func = functions
+                                            .get_mut(curr_loc.wasm_func_id)
+                                            .kind
+                                            .unwrap_local_mut();
+                            let func_builder = func.builder_mut();
+                            let mut instr_builder =
+                                func_builder.instr_seq(tracker.curr_seq_id);
+                            let mut int_value = Value::Integer {
+                                val: *map_id as i32,
+                                ty: DataType::I32,
+                            };
+
+                            //emit map_id, then the stuff for the key, then stuff for value
+                            emit_value(
+                                &mut self.table,
+                                &mut self.app_wasm.data,
+                                &mut int_value,
+                                &mut instr_builder,
+                                &mut self.metadata,
+                                &mut tracker.curr_idx,
+                            )?;
+                            emit_value(
+                                &mut self.table,
+                                &mut self.app_wasm.data,
+                                 key,
+                                &mut instr_builder,
+                                &mut self.metadata,
+                                &mut tracker.curr_idx,
+                            )?;
+                            emit_value(
+                                &mut self.table,
+                                &mut self.app_wasm.data,
+                                value,
+                                &mut instr_builder,
+                                &mut self.metadata,
+                                &mut tracker.curr_idx,
+                            )?;
+                            //now emit the call to the function itself
+                            emit_map_call(
+                                &insert_fn_id,
+                                &mut instr_builder,
+                                &mut tracker.curr_idx,
+                            )?;
+                        }
+                    }
+                }
+                return Ok(true)
+            }
+            _ => {
+                return Err(Box::new(ErrorGen::get_unexpected_error(
+                    false,
+                    Some(format!(
+                        "{UNEXPECTED_ERR_MSG} \
+                    Wrong statement type, should be `set_map`"
+                    )),
+                    None,
+                )));
+            }
+        }
+
     }
 }
 
@@ -1390,11 +1593,130 @@ impl Emitter for WasmRewritingEmitter {
                 is_success &= self.emit_expr(alt)?;
                 is_success &= self.finish_branch();
             }
+            Expr::GetMap { map, key, .. } => {
+                match *map.clone() {
+                    Expr::VarId{ name, ..} => {
+                        let var_rec_id = match self.table.lookup(&name) {
+                            Some(rec_id) => *rec_id,
+                            _ => {
+                                return Err(Box::new(ErrorGen::get_unexpected_error(
+                                    true,
+                                    Some(format!(
+                                        "{UNEXPECTED_ERR_MSG} \
+                                VarId '{}' does not exist in this scope!",
+                                        name
+                                    )),
+                                    None,
+                                )));
+                            }
+                        };
+                        match self.table.get_record(&var_rec_id) {
+                            Some(Record::Var {addr, ty, ..}) => {
+                                //use ty to find the correct map_get_fn to get 
+                                let map_get_fn ;
+                                match ty {
+                                    DataType::Map {key_ty, val_ty, ..} => {
+                                        map_get_fn = self.map_knower.create_map_get(*key_ty.clone(), *val_ty.clone());
+                                    }
+                                    _ => {
+                                        return Err(Box::new(ErrorGen::get_unexpected_error(
+                                            true,
+                                            Some(format!(
+                                                "{UNEXPECTED_ERR_MSG} \
+                                            Expected Map addr, found: {:?}",
+                                            addr
+                                            )),
+                                            None,
+                                        )));
+                                    }
+                                };
+                                match addr {
+                                    Some(VarAddr::Map {addr, ..}) => {
+                                        let folded_key = ExprFolder::fold_expr(key, &self.table);
+                                        if let Expr::Primitive {mut val, ..} = folded_key {
+                                            if let Some(curr_loc) = self.instr_iter.curr_mut() {
+                                                if let Some(tracker) = &mut self.emitting_instr {
+                                                    let ref mut functions = self.app_wasm.funcs;
+                                                    let map_fn_id = get_function_id(functions, map_get_fn.as_str());
+                                                    let func = functions
+                                                        .get_mut(curr_loc.wasm_func_id)
+                                                        .kind
+                                                        .unwrap_local_mut();
+                                                    let func_builder = func.builder_mut();
+                                                    let mut instr_builder = func_builder.instr_seq(tracker.curr_seq_id);
+                                                    let mut int_value = Value::Integer {
+                                                        val: *addr as i32,
+                                                        ty: DataType::I32,
+                                                    };
+                                                    emit_value(
+                                                        &mut self.table,
+                                                        &mut self.app_wasm.data,
+                                                        &mut int_value,
+                                                        &mut instr_builder,
+                                                        &mut self.metadata,
+                                                        &mut tracker.curr_idx,
+                                                    )?;
+                                                    emit_value(
+                                                        &mut self.table,
+                                                        &mut self.app_wasm.data,
+                                                        &mut val,
+                                                        &mut instr_builder,
+                                                        &mut self.metadata,
+                                                        &mut tracker.curr_idx,
+                                                    )?;
+                                                    emit_map_call(
+                                                        &map_fn_id,
+                                                        &mut instr_builder,
+                                                        &mut tracker.curr_idx,
+                                                    )?;
+                                                    return Ok(true);
+                                                }
+                                            }
+                                            return Ok(false);
+                                        }
+                                    }
+                                    _ => {
+                                        return Err(Box::new(ErrorGen::get_unexpected_error(
+                                            true,
+                                            Some(format!(
+                                                "{UNEXPECTED_ERR_MSG} \
+                                            Expected Map addr, found: {:?}",
+                                                addr
+                                            )),
+                                            None,
+                                        )));
+                                    }
+                                }
+                            }
+                            _ => {
+                                return Err(Box::new(ErrorGen::get_unexpected_error(
+                                    true,
+                                    Some(format!(
+                                        "{UNEXPECTED_ERR_MSG} \
+                                    Expected VarId."
+                                    )),
+                                    None,
+                                )))
+                            }
+                        }
+                    }
+                    _ => {
+                        return Err(Box::new(ErrorGen::get_unexpected_error(
+                            true,
+                            Some(format!(
+                                "{UNEXPECTED_ERR_MSG} \
+                            Expected VarId."
+                            )),
+                            None,
+                        )))
+                    }
+                }
+            }
+            
             Expr::VarId { .. }
             | Expr::UnOp { .. }
             | Expr::BinOp { .. }
             | Expr::Primitive { .. }
-            | Expr::GetMap { .. } //may have to change this
             | Expr::Call { .. } => {
                 // Anything else can be emitted as normal
                 if let Some(curr_loc) = self.instr_iter.curr_mut() {
@@ -1494,11 +1816,25 @@ impl Emitter for WasmRewritingEmitter {
             Some(Record::Var { ref mut addr, .. }) => {
                 // emit global variable and set addr in symbol table
                 // this is used for user-defined global vars in the script...
-                let (walrus_ty, init_expr) = data_type_to_val_type(&ty);
-                let id = self.app_wasm.globals.add_local(walrus_ty, true, init_expr);
-                *addr = Some(VarAddr::Global { addr: id });
-
-                Ok(true)
+                match ty.clone() {
+                    DataType::Map { .. } => {
+                        //make the map init statement and such - this global is for declartion statments in the global space without the "report" tag
+                        let to_call = self.map_knower.create_no_meta_map(ty.clone());
+                        *addr = Some(VarAddr::Map {
+                            addr: to_call.1 as usize,
+                        });
+                        //emit the map creation stuff - need a "start" function to target for global maps
+                        //TODO: add the logic for creating a map into the "start" function 
+                        
+                        Ok(true)
+                    }
+                    _ => {
+                        let (walrus_ty, init_expr) = data_type_to_val_type(&ty);
+                        let id = self.app_wasm.globals.add_local(walrus_ty, true, init_expr);
+                        *addr = Some(VarAddr::Global { addr: id });
+                        Ok(true)
+                    }
+                }
             }
             Some(&mut ref ty) => Err(Box::new(ErrorGen::get_unexpected_error(
                 true,
@@ -1746,7 +2082,7 @@ impl Emitter for WasmRewritingEmitter {
         } else {
             for stmt in stmts.iter_mut() {
                 match stmt {
-                    Statement::Decl { .. } 
+                    Statement::Decl { .. }
                     | Statement::ReportDecl { .. }
                     //TODO: Make assignment in the global state work - so that you can initialize variables  | Statement::Assign { .. } 
                     => {
@@ -1873,7 +2209,7 @@ impl Emitter for WasmRewritingEmitter {
                 unimplemented!()
             },
             Statement::SetMap { .. } => {
-                unimplemented!()
+                self.emit_set_map_stmt(stmt)
             },
             Statement::ReportDecl { .. } => {
                 unimplemented!()

@@ -63,5 +63,3 @@ pub trait Emitter {
 
     fn dump_to_file(&mut self, output_wasm_path: String) -> Result<bool, Box<WhammError>>;
 }
-
-
