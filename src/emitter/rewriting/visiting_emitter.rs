@@ -1,10 +1,14 @@
+use core::panic;
 use log::info;
 use std::iter::Iterator;
 
+use crate::emitter::rewriting::whamm_type_to_wasm;
 use orca::ir::module::Module;
+use orca::ir::types::Location;
 use orca::iterator::iterator_trait::Iterator as OrcaIterator;
 use orca::iterator::module_iterator::ModuleIterator;
 use orca::opcode::Opcode;
+use orca::DataType as OrcaType;
 use wasmparser::BlockType;
 
 use crate::common::error::{ErrorGen, WhammError};
@@ -144,10 +148,9 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
                         // If the local already exists, it would be because the probe has been
                         // emitted at another opcode location. Simply overwrite the previously saved
                         // address.
-                        // TODO -- uncomment after there's support for adding locals through the Orca iterator.
-                        // let wasm_ty = whamm_type_to_wasm(ty).ty.content_type;
-                        // let id = self.app_iter.add_local(OrcaType::from(wasm_ty));
-                        // *addr = Some(VarAddr::Local { addr: id });
+                        let wasm_ty = whamm_type_to_wasm(ty).ty.content_type;
+                        let id = self.app_iter.add_local(OrcaType::from(wasm_ty));
+                        *addr = Some(VarAddr::Local { addr: id });
                         Ok(true)
                     }
                 }
@@ -255,10 +258,11 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
         }
     }
 
-    pub(crate) fn get_loc_info<'d>(&self, _rule: &'d WhammProvider) -> Option<LocInfo<'d>> {
-        if let Some(_curr_instr) = self.app_iter.curr_op() {
+    pub(crate) fn get_loc_info<'d>(&self, rule: &'d WhammProvider) -> Option<LocInfo<'d>> {
+        if let Some(curr_instr) = self.app_iter.curr_op() {
             // TODO -- rework when I have access to app_wasm through iterator
-            // rule.get_loc_info(&self.app_iter.app_wasm, curr_instr)
+            use crate::emitter::rewriting::rules::Provider;
+            rule.get_loc_info(&self.app_iter.module, curr_instr);
             None
         } else {
             None
@@ -277,7 +281,8 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
                  ty: _arg_ty,
              }| {
                 // create local for the param in the module
-                // todo -- rework when we can add locals through the app_iter
+                // TODO -- rework when we can add locals through the app_iter
+                // Note: add_local works now
                 // let arg_local_id = self.app_iter.add_local(*arg_ty);
                 let arg_local_id = 0;
 
@@ -401,28 +406,29 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
             | Expr::Primitive { .. }
             | Expr::Call { .. } => {
                 // Anything else can be emitted as normal
-                // TODO -- need access to the app_wasm data somehow through the iterator.
                 // Emit the instruction that sets the variable's value to the emitted expression
-                is_success &= emit_expr(
-                    &mut self.table,
-                    // &mut self.app_iter.app_wasm.data,
-                    expr,
-                    &mut self.app_iter,
-                    &mut self.metadata,
-                    UNEXPECTED_ERR_MSG,
-                )?;
+
+                // LOOK AT ME: TODO: can't hold two mutable references
+                // here you pass in `self.app_iter`, and `self.app_iter.module.data`
+
+                // is_success &= emit_expr(
+                //     &mut self.table,
+                //     &mut self.app_iter.module.data,
+                //     expr,
+                //     &mut self.app_iter,
+                //     &mut self.metadata,
+                //     UNEXPECTED_ERR_MSG,
+                // )?;
             }
         }
         Ok(is_success)
     }
 
     pub fn emit_orig(&mut self) -> bool {
-        // TODO -- uncomment after we can say "instr_at"
-        // TODO -- cannot pull location info from Location struct (is it private?)
-        // let orig = self.app_iter.curr_op();
-        // let curr_loc = self.app_iter.curr_loc();
-        //
-        // self.app_iter.instr_at(curr_loc.instr_idx, orig);
+        // TODO: can i get around thie curr_op_owned() thing by curr_op?
+        let orig = self.app_iter.curr_op_owned().unwrap().clone();
+        let loc = self.app_iter.curr_loc();
+        self.app_iter.add_instr_at(loc, orig);
         todo!()
     }
 
@@ -537,7 +543,7 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
                         ..
                     }) = rec
                     {
-                        // TODO -- how to pull func names from module?
+                        // ORCA TODO -- how to pull func names from module?
                         // (val.clone(), self.app_wasm.funcs.by_name(val))
                         (val.clone(), Some(1056)) // hardcoded for now to ID for `redirect_to_fault_injector` for users.wasm file
                     } else {

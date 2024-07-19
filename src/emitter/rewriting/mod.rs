@@ -6,14 +6,16 @@ use crate::common::error::{ErrorGen, WhammError};
 use crate::parser::types::{BinOp, DataType, Expr, UnOp, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 
-use orca::ir::types::{Global, InitExpr, Value as OrcaValue};
+use orca::ir::types::{Global, Value as OrcaValue};
 use orca::opcode::Opcode;
+use orca::InitExpr;
+use orca::{DataSegment, DataSegmentKind};
 use wasmparser::ValType;
 
 // transform a whamm type to default wasm type, used for creating new global
 // TODO: Might be more generic to also include Local
 // TODO: Do we really want to depend on wasmparser::ValType, or create a wrapper?
-fn whamm_type_to_wasm(ty: &DataType) -> Global {
+pub fn whamm_type_to_wasm(ty: &DataType) -> Global {
     match ty {
         DataType::I32 | DataType::U32 | DataType::Boolean => Global {
             ty: wasmparser::GlobalType {
@@ -104,9 +106,10 @@ fn emit_set<'a, T: Opcode<'a>>(
     }
 }
 
+// TODO: emit_expr has two mutable references to the name object, the injector has module data in it
 fn emit_expr<'a, T: Opcode<'a>>(
     table: &mut SymbolTable,
-    // module_data: &mut Vec<DataSegment>, // todo -- fix once we have this available
+    module_data: &mut Vec<DataSegment>,
     expr: &mut Expr,
     injector: &mut T,
     metadata: &mut InsertionMetadata,
@@ -115,12 +118,12 @@ fn emit_expr<'a, T: Opcode<'a>>(
     let mut is_success = true;
     match expr {
         Expr::UnOp { op, expr, .. } => {
-            is_success &= emit_expr(table, expr, injector, metadata, err_msg)?;
+            is_success &= emit_expr(table, module_data, expr, injector, metadata, err_msg)?;
             is_success &= emit_unop(op, injector);
         }
         Expr::BinOp { lhs, op, rhs, .. } => {
-            is_success &= emit_expr(table, lhs, injector, metadata, err_msg)?;
-            is_success &= emit_expr(table, rhs, injector, metadata, err_msg)?;
+            is_success &= emit_expr(table, module_data, lhs, injector, metadata, err_msg)?;
+            is_success &= emit_expr(table, module_data, rhs, injector, metadata, err_msg)?;
             is_success &= emit_binop(op, injector);
         }
         Expr::Ternary {
@@ -150,7 +153,7 @@ fn emit_expr<'a, T: Opcode<'a>>(
             if let Some(args) = args {
                 for boxed_arg in args.iter_mut() {
                     let arg = &mut **boxed_arg; // unbox
-                    is_success &= emit_expr(table, arg, injector, metadata, err_msg)?;
+                    is_success &= emit_expr(table, module_data, arg, injector, metadata, err_msg)?;
                 }
             }
 
@@ -253,7 +256,7 @@ fn emit_expr<'a, T: Opcode<'a>>(
             };
         }
         Expr::Primitive { val, .. } => {
-            is_success &= emit_value(table, val, injector, metadata, err_msg)?;
+            is_success &= emit_value(table, module_data, val, injector, metadata, err_msg)?;
         }
     }
     Ok(is_success)
@@ -329,7 +332,7 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, injector: &mut T) -> bool {
 
 fn emit_value<'a, T: Opcode<'a>>(
     table: &mut SymbolTable,
-    // module_data: &mut Vec<DataSegment>, // todo -- fix once we have this available
+    module_data: &mut Vec<DataSegment>,
     val: &mut Value,
     injector: &mut T,
     metadata: &mut InsertionMetadata,
@@ -342,46 +345,41 @@ fn emit_value<'a, T: Opcode<'a>>(
             is_success &= true;
         }
         Value::Str {
-            val: _val,
-            addr: _addr,
-            ty: _ty,
+            val: val,
+            addr: addr,
+            ty: ty,
         } => {
             // TODO -- assuming that the data ID is the index of the object in the Vec
             // TODO -- need an API that allows the addition of data segments.
             //     there is currently an ownership issue since I can't insert
             //     an owned byte array with same lifetime as the Module data segments.
             //     For more info, uncomment the below and read error.
-            // let data_id = module_data.len();
-            // let val_bytes = val.as_bytes().to_owned();
-            // let data_segment = DataSegment {
-            //     data: val_bytes.as_slice(),
-            //     kind: DataSegmentKind::Active {
-            //         memory_index: metadata.mem_id,
-            //         offset_expr: ConstExpr::new(BinaryReader::new(
-            //             val_bytes.as_slice(),
-            //             metadata.curr_mem_offset,
-            //             WasmFeatures::empty()
-            //         ))
-            //     }
-            // };
-            // module_data.push(
-            //     data_segment
-            // );
-            //
-            // // save the memory addresses/lens, so they can be used as appropriate
-            // *addr = Some((data_id as u32, metadata.curr_mem_offset, val.len()));
-            //
-            // // emit Wasm instructions for the memory address and string length
-            // injector.i32(metadata.curr_mem_offset as i32);
-            // injector.i32(val.len() as i32);
-            //
-            // // update curr_mem_offset to account for new data
-            // metadata.curr_mem_offset += val.len();
+            // TDOO: maybe should wrap this into a orca API
+            let data_id = module_data.len();
+            let val_bytes = val.as_bytes().to_owned();
+            let data_segment = DataSegment {
+                data: val_bytes,
+                kind: DataSegmentKind::Active {
+                    memory_index: metadata.mem_id,
+                    offset_expr: InitExpr::Value(OrcaValue::I32(metadata.curr_mem_offset as i32)),
+                },
+            };
+            module_data.push(data_segment);
+
+            // save the memory addresses/lens, so they can be used as appropriate
+            *addr = Some((data_id as u32, metadata.curr_mem_offset, val.len()));
+
+            // emit Wasm instructions for the memory address and string length
+            injector.i32_const(metadata.curr_mem_offset as i32);
+            injector.i32_const(val.len() as i32);
+
+            // update curr_mem_offset to account for new data
+            metadata.curr_mem_offset += val.len();
             is_success &= true;
         }
         Value::Tuple { vals, .. } => {
             for val in vals.iter_mut() {
-                is_success &= emit_expr(table, val, injector, metadata, err_msg)?;
+                is_success &= emit_expr(table, module_data, val, injector, metadata, err_msg)?;
             }
         }
         Value::Boolean { val, .. } => {

@@ -426,12 +426,10 @@ impl<'a, 'b, 'c> ModuleEmitter<'a, 'b, 'c> {
             | Expr::Call { .. } => {
                 // Anything else can be emitted as normal
                 if let Some(emitting_func) = &mut self.emitting_func {
-                    // TODO -- need access to the app_wasm data somehow through the iterator.
-                    //     so, using this common API has to be fixed
                     // Emit the instruction that sets the variable's value to the emitted expression
                     is_success &= emit_expr(
                         &mut self.table,
-                        // &mut self.app_wasm.data,
+                        &mut self.app_wasm.data,
                         expr,
                         emitting_func,
                         &mut self.metadata,
