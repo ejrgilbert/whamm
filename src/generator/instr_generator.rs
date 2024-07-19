@@ -3,12 +3,11 @@ use crate::behavior::tree::{ActionType, ArgActionType, BehaviorVisitor, Decorato
 use crate::behavior::tree::{BehaviorTree, Node};
 use crate::common::error::ErrorGen;
 use crate::emitter::rewriting::rules::{provider_factory, Arg, LocInfo, WhammProvider};
+use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
+use crate::emitter::rewriting::Emitter;
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{Expr, Statement};
 use log::warn;
-
-use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
-use orca::ir::types::DataType;
 
 fn get_loc_info<'a>(rule: &'a WhammProvider, emitter: &VisitingEmitter) -> Option<LocInfo<'a>> {
     // Pull the curr instr each time this is called to keep from having

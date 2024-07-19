@@ -3,14 +3,273 @@ pub mod rules;
 pub mod visiting_emitter;
 
 use crate::common::error::{ErrorGen, WhammError};
-use crate::parser::types::{BinOp, DataType, Expr, UnOp, Value};
+use crate::parser::types::{BinOp, DataType, Expr, Statement, UnOp, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 
-use orca::ir::types::{Global, Value as OrcaValue};
+use crate::generator::types::ExprFolder;
+use orca::ir::types::{DataType as OrcaType, Global, Value as OrcaValue};
 use orca::opcode::Opcode;
-use orca::InitExpr;
-use orca::{DataSegment, DataSegmentKind};
-use wasmparser::ValType;
+use orca::{InitExpr, ModuleBuilder};
+use wasmparser::{BlockType, ValType};
+
+pub trait Emitter {
+    fn emit_body(&mut self, body: &mut [Statement]) -> Result<bool, Box<WhammError>>;
+    fn emit_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>>;
+    // fn emit_decl_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>>;
+    // fn emit_assign_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>>;
+    fn emit_if(
+        &mut self,
+        condition: &mut Expr,
+        conseq: &mut [Statement],
+    ) -> Result<bool, Box<WhammError>>;
+    fn emit_if_else(
+        &mut self,
+        condition: &mut Expr,
+        conseq: &mut [Statement],
+        alternate: &mut [Statement],
+    ) -> Result<bool, Box<WhammError>>;
+    fn emit_expr(&mut self, expr: &mut Expr) -> Result<bool, Box<WhammError>>;
+}
+
+// ==================================================================
+// ================ Emitter Helper Functions ========================
+// TODO -- add this documentation
+// - Necessary to extract common logic between Emitter and InstrumentationVisitor.
+// - Can't pass an Emitter instance to InstrumentationVisitor due to Rust not
+// - allowing nested references to a common mutable object. So I can't pass the
+// - Emitter to the InstrumentationVisitor since I must iterate over Emitter.app_wasm
+// - with a construction of InstrumentationVisitor inside that loop.
+// ==================================================================
+// ==================================================================
+
+fn emit_body<'a, T: Opcode<'a> + ModuleBuilder>(
+    body: &mut [Statement],
+    injector: &mut T,
+    table: &mut SymbolTable,
+    metadata: &mut InsertionMetadata,
+    err_msg: &str,
+) -> Result<bool, Box<WhammError>> {
+    for stmt in body.iter_mut() {
+        emit_stmt(stmt, injector, table, metadata, err_msg)?;
+    }
+    Ok(true)
+}
+
+fn emit_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
+    stmt: &mut Statement,
+    injector: &mut T,
+    table: &mut SymbolTable,
+    metadata: &mut InsertionMetadata,
+    err_msg: &str,
+) -> Result<bool, Box<WhammError>> {
+    match stmt {
+        Statement::Decl { .. } => emit_decl_stmt(stmt, injector, table, err_msg),
+        Statement::Assign { .. } => emit_assign_stmt(stmt, injector, table, metadata, err_msg),
+        Statement::Expr { expr, .. } => emit_expr(expr, injector, table, metadata, err_msg),
+        Statement::If {
+            cond, conseq, alt, ..
+        } => {
+            if alt.stmts.is_empty() {
+                emit_if(
+                    cond,
+                    conseq.stmts.as_mut_slice(),
+                    injector,
+                    table,
+                    metadata,
+                    err_msg,
+                )
+            } else {
+                emit_if_else(
+                    cond,
+                    conseq.stmts.as_mut_slice(),
+                    alt.stmts.as_mut_slice(),
+                    injector,
+                    table,
+                    metadata,
+                    err_msg,
+                )
+            }
+        }
+        Statement::Return { .. } => unimplemented!(),
+    }
+}
+
+fn emit_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
+    stmt: &mut Statement,
+    injector: &mut T,
+    table: &mut SymbolTable,
+    err_msg: &str,
+) -> Result<bool, Box<WhammError>> {
+    match stmt {
+        Statement::Decl { ty, var_id, .. } => {
+            // look up in symbol table
+            let mut addr = if let Expr::VarId { name, .. } = var_id {
+                let var_rec_id = match table.lookup(name) {
+                    Some(rec_id) => *rec_id,
+                    None => {
+                        // TODO -- add variables from body into symbol table
+                        //         (at this point, the verifier should have run to catch variable initialization without declaration)
+                        table.put(
+                            name.clone(),
+                            Record::Var {
+                                ty: ty.clone(),
+                                name: name.clone(),
+                                value: None,
+                                is_comp_provided: false,
+                                addr: None,
+                                loc: None,
+                            },
+                        )
+                    }
+                };
+                match table.get_record_mut(&var_rec_id) {
+                    Some(Record::Var { addr, .. }) => addr,
+                    Some(ty) => {
+                        return Err(Box::new(ErrorGen::get_unexpected_error(
+                            true,
+                            Some(format!(
+                                "{err_msg} Incorrect variable record, expected Record::Var, found: {:?}",
+                                ty
+                            )),
+                            None,
+                        )));
+                    }
+                    None => {
+                        return Err(Box::new(ErrorGen::get_unexpected_error(
+                            true,
+                            Some(format!("{err_msg} Variable symbol does not exist!")),
+                            None,
+                        )));
+                    }
+                }
+            } else {
+                return Err(Box::new(ErrorGen::get_unexpected_error(
+                    true,
+                    Some(format!("{err_msg} Expected VarId.")),
+                    None,
+                )));
+            };
+
+            match &mut addr {
+                Some(VarAddr::Global { addr: _addr }) => {
+                    // The global should already exist, do any initial setup here!
+                    match ty {
+                        DataType::Map {
+                            key_ty: _key_ty,
+                            val_ty: _val_ty,
+                        } => {
+                            // initialize map global variable
+                            // also update value at GID (probably need to set ID of map there)
+                            unimplemented!()
+                        }
+                        _ => Ok(true),
+                    }
+                }
+                Some(VarAddr::Local { .. }) | None => {
+                    // If the local already exists, it would be because the probe has been
+                    // emitted at another opcode location. Simply overwrite the previously saved
+                    // address.
+                    let wasm_ty = whamm_type_to_wasm(ty).ty.content_type;
+                    let id = injector.add_local(OrcaType::from(wasm_ty));
+                    *addr = Some(VarAddr::Local { addr: id });
+                    Ok(true)
+                }
+            }
+        }
+        _ => Err(Box::new(ErrorGen::get_unexpected_error(
+            false,
+            Some(format!(
+                "{err_msg} Wrong statement type, should be `assign`"
+            )),
+            None,
+        ))),
+    }
+}
+
+fn emit_assign_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
+    stmt: &mut Statement,
+    injector: &mut T,
+    table: &mut SymbolTable,
+    metadata: &mut InsertionMetadata,
+    err_msg: &str,
+) -> Result<bool, Box<WhammError>> {
+    return match stmt {
+        Statement::Assign { var_id, expr, .. } => {
+            let mut folded_expr = ExprFolder::fold_expr(expr, table);
+
+            // Save off primitives to symbol table
+            // TODO -- this is only necessary for `new_target_fn_name`, remove after deprecating!
+            if let (Expr::VarId { name, .. }, Expr::Primitive { val, .. }) = (&var_id, &folded_expr)
+            {
+                let var_rec_id = match table.lookup(name) {
+                    Some(rec_id) => *rec_id,
+                    _ => {
+                        return Err(Box::new(ErrorGen::get_unexpected_error(
+                            true,
+                            Some(format!(
+                                "{err_msg} \
+                                    Attempting to emit an assign, but VarId '{name}' does not exist in this scope!"
+                            )),
+                            None,
+                        )));
+                    }
+                };
+                match table.get_record_mut(&var_rec_id) {
+                    Some(Record::Var {
+                        value,
+                        is_comp_provided,
+                        ..
+                    }) => {
+                        *value = Some(val.clone());
+
+                        if *is_comp_provided {
+                            return Ok(true);
+                        }
+                    }
+                    Some(ty) => {
+                        return Err(Box::new(ErrorGen::get_unexpected_error(
+                            true,
+                            Some(format!(
+                                "{err_msg} \
+                                    Incorrect variable record, expected Record::Var, found: {:?}",
+                                ty
+                            )),
+                            None,
+                        )));
+                    }
+                    None => {
+                        return Err(Box::new(ErrorGen::get_unexpected_error(
+                            true,
+                            Some(format!(
+                                "{err_msg} \
+                                    Variable symbol does not exist!"
+                            )),
+                            None,
+                        )));
+                    }
+                }
+            }
+
+            match emit_expr(&mut folded_expr, injector, table, metadata, err_msg) {
+                Err(e) => Err(e),
+                Ok(_) => {
+                    // Emit the instruction that sets the variable's value to the emitted expression
+                    emit_set(var_id, injector, table, err_msg)
+                }
+            }
+        }
+        _ => {
+            return Err(Box::new(ErrorGen::get_unexpected_error(
+                false,
+                Some(format!(
+                    "{err_msg} \
+                    Wrong statement type, should be `assign`"
+                )),
+                None,
+            )));
+        }
+    };
+}
 
 // transform a whamm type to default wasm type, used for creating new global
 // TODO: Might be more generic to also include Local
@@ -40,20 +299,11 @@ pub fn whamm_type_to_wasm(ty: &DataType) -> Global {
         DataType::AssumeGood => unimplemented!(),
     }
 }
-// =================================================================================
-// ================ WasmRewritingEmitter - HELPER FUNCTIONS ========================
-// Necessary to extract common logic between Emitter and InstrumentationVisitor.
-// Can't pass an Emitter instance to InstrumentationVisitor due to Rust not
-// allowing nested references to a common mutable object. So I can't pass the
-// Emitter to the InstrumentationVisitor since I must iterate over Emitter.app_wasm
-// with a construction of InstrumentationVisitor inside that loop.
-// =================================================================================
-// =================================================================================
 
 fn emit_set<'a, T: Opcode<'a>>(
-    table: &mut SymbolTable,
     var_id: &mut Expr,
     injector: &mut T,
+    table: &mut SymbolTable,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     if let Expr::VarId { name, .. } = var_id {
@@ -106,40 +356,131 @@ fn emit_set<'a, T: Opcode<'a>>(
     }
 }
 
-// TODO: emit_expr has two mutable references to the name object, the injector has module data in it
-fn emit_expr<'a, T: Opcode<'a>>(
+fn emit_if_preamble<'a, T: Opcode<'a> + ModuleBuilder>(
+    condition: &mut Expr,
+    conseq: &mut [Statement],
+    injector: &mut T,
     table: &mut SymbolTable,
-    module_data: &mut Vec<DataSegment>,
+    metadata: &mut InsertionMetadata,
+    err_msg: &str,
+) -> Result<bool, Box<WhammError>> {
+    let mut is_success = true;
+
+    // emit the condition of the `if` expression
+    is_success &= emit_expr(condition, injector, table, metadata, err_msg)?;
+    // emit the beginning of the if block
+    injector.if_stmt(BlockType::Empty);
+
+    // emit the consequent body
+    is_success &= emit_body(conseq, injector, table, metadata, err_msg)?;
+
+    // INTENTIONALLY DON'T END IF BLOCK
+
+    Ok(is_success)
+}
+
+fn emit_if_else_preamble<'a, T: Opcode<'a> + ModuleBuilder>(
+    condition: &mut Expr,
+    conseq: &mut [Statement],
+    alternate: &mut [Statement],
+    injector: &mut T,
+    table: &mut SymbolTable,
+    metadata: &mut InsertionMetadata,
+    err_msg: &str,
+) -> Result<bool, Box<WhammError>> {
+    let mut is_success = true;
+
+    is_success &= emit_if_preamble(condition, conseq, injector, table, metadata, err_msg)?;
+
+    // emit the beginning of the else
+    injector.else_stmt();
+
+    // emit the alternate body
+    is_success &= emit_body(alternate, injector, table, metadata, err_msg)?;
+
+    // INTENTIONALLY DON'T END IF/ELSE BLOCK
+
+    Ok(is_success)
+}
+
+fn emit_if<'a, T: Opcode<'a> + ModuleBuilder>(
+    condition: &mut Expr,
+    conseq: &mut [Statement],
+    injector: &mut T,
+    table: &mut SymbolTable,
+    metadata: &mut InsertionMetadata,
+    err_msg: &str,
+) -> Result<bool, Box<WhammError>> {
+    let mut is_success = true;
+
+    is_success &= emit_if_preamble(condition, conseq, injector, table, metadata, err_msg)?;
+
+    // emit the end of the if block
+    injector.end();
+    Ok(is_success)
+}
+
+fn emit_if_else<'a, T: Opcode<'a> + ModuleBuilder>(
+    condition: &mut Expr,
+    conseq: &mut [Statement],
+    alternate: &mut [Statement],
+    injector: &mut T,
+    table: &mut SymbolTable,
+    metadata: &mut InsertionMetadata,
+    err_msg: &str,
+) -> Result<bool, Box<WhammError>> {
+    let mut is_success = true;
+
+    is_success &= emit_if_else_preamble(
+        condition, conseq, alternate, injector, table, metadata, err_msg,
+    )?;
+
+    // emit the end of the if block
+    injector.end();
+    Ok(is_success)
+}
+
+// TODO: emit_expr has two mutable references to the name object, the injector has module data in it
+fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
     expr: &mut Expr,
     injector: &mut T,
+    table: &mut SymbolTable,
     metadata: &mut InsertionMetadata,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
     match expr {
         Expr::UnOp { op, expr, .. } => {
-            is_success &= emit_expr(table, module_data, expr, injector, metadata, err_msg)?;
+            is_success &= emit_expr(expr, injector, table, metadata, err_msg)?;
             is_success &= emit_unop(op, injector);
         }
         Expr::BinOp { lhs, op, rhs, .. } => {
-            is_success &= emit_expr(table, module_data, lhs, injector, metadata, err_msg)?;
-            is_success &= emit_expr(table, module_data, rhs, injector, metadata, err_msg)?;
+            is_success &= emit_expr(lhs, injector, table, metadata, err_msg)?;
+            is_success &= emit_expr(rhs, injector, table, metadata, err_msg)?;
             is_success &= emit_binop(op, injector);
         }
         Expr::Ternary {
-            cond: _cond,
-            conseq: _conseq,
-            alt: _alt,
+            cond,
+            conseq,
+            alt,
             ..
         } => {
-            return Err(Box::new(ErrorGen::get_unexpected_error(
-                true,
-                Some(format!(
-                    "{err_msg} \
-                            Ternary expressions should be handled before this point!"
-                )),
-                None,
-            )));
+            // change conseq and alt types to stmt for easier API call
+            is_success &= emit_if_else(
+                cond,
+                &mut vec![Statement::Expr {
+                    expr: (**conseq).clone(),
+                    loc: None,
+                }],
+                &mut vec![Statement::Expr {
+                    expr: (**alt).clone(),
+                    loc: None,
+                }],
+                injector,
+                table,
+                metadata,
+                err_msg,
+            )?;
         }
         Expr::Call {
             fn_target, args, ..
@@ -153,7 +494,7 @@ fn emit_expr<'a, T: Opcode<'a>>(
             if let Some(args) = args {
                 for boxed_arg in args.iter_mut() {
                     let arg = &mut **boxed_arg; // unbox
-                    is_success &= emit_expr(table, module_data, arg, injector, metadata, err_msg)?;
+                    is_success &= emit_expr(arg, injector, table, metadata, err_msg)?;
                 }
             }
 
@@ -256,7 +597,7 @@ fn emit_expr<'a, T: Opcode<'a>>(
             };
         }
         Expr::Primitive { val, .. } => {
-            is_success &= emit_value(table, module_data, val, injector, metadata, err_msg)?;
+            is_success &= emit_value(val, injector, table, metadata, err_msg)?;
         }
     }
     Ok(is_success)
@@ -330,11 +671,10 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, injector: &mut T) -> bool {
     true
 }
 
-fn emit_value<'a, T: Opcode<'a>>(
-    table: &mut SymbolTable,
-    module_data: &mut Vec<DataSegment>,
+fn emit_value<'a, T: Opcode<'a>  + ModuleBuilder>(
     val: &mut Value,
     injector: &mut T,
+    table: &mut SymbolTable,
     metadata: &mut InsertionMetadata,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
@@ -349,25 +689,26 @@ fn emit_value<'a, T: Opcode<'a>>(
             addr: addr,
             ty: ty,
         } => {
+            // TODO -- handle this in the init_generator! Don't handle this match case!
             // TODO -- assuming that the data ID is the index of the object in the Vec
             // TODO -- need an API that allows the addition of data segments.
             //     there is currently an ownership issue since I can't insert
             //     an owned byte array with same lifetime as the Module data segments.
             //     For more info, uncomment the below and read error.
             // TDOO: maybe should wrap this into a orca API
-            let data_id = module_data.len();
-            let val_bytes = val.as_bytes().to_owned();
-            let data_segment = DataSegment {
-                data: val_bytes,
-                kind: DataSegmentKind::Active {
-                    memory_index: metadata.mem_id,
-                    offset_expr: InitExpr::Value(OrcaValue::I32(metadata.curr_mem_offset as i32)),
-                },
-            };
-            module_data.push(data_segment);
+            // let data_id = module_data.len();
+            // let val_bytes = val.as_bytes().to_owned();
+            // let data_segment = DataSegment {
+            //     data: val_bytes,
+            //     kind: DataSegmentKind::Active {
+            //         memory_index: metadata.mem_id,
+            //         offset_expr: InitExpr::Value(OrcaValue::I32(metadata.curr_mem_offset as i32)),
+            //     },
+            // };
+            // module_data.push(data_segment);
 
             // save the memory addresses/lens, so they can be used as appropriate
-            *addr = Some((data_id as u32, metadata.curr_mem_offset, val.len()));
+            // *addr = Some((data_id as u32, metadata.curr_mem_offset, val.len()));
 
             // emit Wasm instructions for the memory address and string length
             injector.i32_const(metadata.curr_mem_offset as i32);
@@ -379,7 +720,7 @@ fn emit_value<'a, T: Opcode<'a>>(
         }
         Value::Tuple { vals, .. } => {
             for val in vals.iter_mut() {
-                is_success &= emit_expr(table, module_data, val, injector, metadata, err_msg)?;
+                is_success &= emit_expr(val, injector, table, metadata, err_msg)?;
             }
         }
         Value::Boolean { val, .. } => {

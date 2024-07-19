@@ -1,12 +1,14 @@
 use crate::common::error::{ErrorGen, WhammError};
-use crate::generator::types::ExprFolder;
 use crate::parser::types::{DataType, Expr, Fn, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 
 use orca::ir::types::DataType as OrcaType;
 use wasmparser::BlockType;
 
-use crate::emitter::rewriting::{emit_expr, emit_set, whamm_type_to_wasm, InsertionMetadata};
+use crate::emitter::rewriting::{
+    emit_body, emit_expr, emit_if, emit_if_else, emit_stmt, whamm_type_to_wasm, Emitter,
+    InsertionMetadata,
+};
 use orca::ir::function::FunctionBuilder;
 use orca::ir::module::Module;
 use orca::opcode::Opcode;
@@ -202,193 +204,6 @@ impl<'a, 'b, 'c> ModuleEmitter<'a, 'b, 'c> {
         };
     }
 
-    fn emit_decl_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>> {
-        match stmt {
-            Statement::Decl { ty, var_id, .. } => {
-                // look up in symbol table
-                let mut addr = if let Expr::VarId { name, .. } = var_id {
-                    let var_rec_id = match self.table.lookup(name) {
-                        Some(rec_id) => *rec_id,
-                        None => {
-                            // TODO -- add variables from body into symbol table
-                            //         (at this point, the verifier should have run to catch variable initialization without declaration)
-                            self.table.put(
-                                name.clone(),
-                                Record::Var {
-                                    ty: ty.clone(),
-                                    name: name.clone(),
-                                    value: None,
-                                    is_comp_provided: false,
-                                    addr: None,
-                                    loc: None,
-                                },
-                            )
-                        }
-                    };
-                    match self.table.get_record_mut(&var_rec_id) {
-                        Some(Record::Var { addr, .. }) => addr,
-                        Some(ty) => {
-                            return Err(Box::new(ErrorGen::get_unexpected_error(
-                                true,
-                                Some(format!(
-                                    "{UNEXPECTED_ERR_MSG} \
-                            Incorrect variable record, expected Record::Var, found: {:?}",
-                                    ty
-                                )),
-                                None,
-                            )));
-                        }
-                        None => {
-                            return Err(Box::new(ErrorGen::get_unexpected_error(
-                                true,
-                                Some(format!(
-                                    "{UNEXPECTED_ERR_MSG} \
-                            Variable symbol does not exist!"
-                                )),
-                                None,
-                            )));
-                        }
-                    }
-                } else {
-                    return Err(Box::new(ErrorGen::get_unexpected_error(
-                        true,
-                        Some(format!(
-                            "{UNEXPECTED_ERR_MSG} \
-                    Expected VarId."
-                        )),
-                        None,
-                    )));
-                };
-
-                match &mut addr {
-                    Some(VarAddr::Global { addr: _addr }) => {
-                        // The global should already exist, do any initial setup here!
-                        match ty {
-                            DataType::Map {
-                                key_ty: _key_ty,
-                                val_ty: _val_ty,
-                            } => {
-                                // initialize map global variable
-                                // also update value at GID (probably need to set ID of map there)
-                                unimplemented!()
-                            }
-                            _ => Ok(true),
-                        }
-                    }
-                    Some(VarAddr::Local { .. }) | None => {
-                        // If the local already exists, it would be because the probe has been
-                        // emitted at another opcode location. Simply overwrite the previously saved
-                        // address.
-                        let wasm_ty = whamm_type_to_wasm(ty).ty.content_type;
-                        if let Some(func) = &mut self.emitting_func {
-                            let id = func.add_local(OrcaType::from(wasm_ty));
-                            *addr = Some(VarAddr::Local { addr: id });
-                        }
-                        Ok(true)
-                    }
-                }
-            }
-            _ => Err(Box::new(ErrorGen::get_unexpected_error(
-                false,
-                Some(format!(
-                    "{UNEXPECTED_ERR_MSG} Wrong statement type, should be `assign`"
-                )),
-                None,
-            ))),
-        }
-    }
-
-    fn emit_assign_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>> {
-        return match stmt {
-            Statement::Assign { var_id, expr, .. } => {
-                let mut folded_expr = ExprFolder::fold_expr(expr, &self.table);
-
-                // Save off primitives to symbol table
-                // TODO -- this is only necessary for `new_target_fn_name`, remove after deprecating!
-                if let (Expr::VarId { name, .. }, Expr::Primitive { val, .. }) =
-                    (&var_id, &folded_expr)
-                {
-                    let var_rec_id = match self.table.lookup(name) {
-                        Some(rec_id) => *rec_id,
-                        _ => {
-                            return Err(Box::new(ErrorGen::get_unexpected_error(
-                                true,
-                                Some(format!(
-                                    "{UNEXPECTED_ERR_MSG} \
-                                    Attempting to emit an assign, but VarId '{name}' does not exist in this scope!"
-                                )),
-                                None,
-                            )));
-                        }
-                    };
-                    match self.table.get_record_mut(&var_rec_id) {
-                        Some(Record::Var {
-                            value,
-                            is_comp_provided,
-                            ..
-                        }) => {
-                            *value = Some(val.clone());
-
-                            if *is_comp_provided {
-                                return Ok(true);
-                            }
-                        }
-                        Some(ty) => {
-                            return Err(Box::new(ErrorGen::get_unexpected_error(
-                                true,
-                                Some(format!(
-                                    "{UNEXPECTED_ERR_MSG} \
-                                    Incorrect variable record, expected Record::Var, found: {:?}",
-                                    ty
-                                )),
-                                None,
-                            )));
-                        }
-                        None => {
-                            return Err(Box::new(ErrorGen::get_unexpected_error(
-                                true,
-                                Some(format!(
-                                    "{UNEXPECTED_ERR_MSG} \
-                                    Variable symbol does not exist!"
-                                )),
-                                None,
-                            )));
-                        }
-                    }
-                }
-
-                match self.emit_expr(&mut folded_expr) {
-                    Err(e) => Err(e),
-                    Ok(_) => {
-                        if let Some(emitting_func) = &mut self.emitting_func {
-                            // Emit the instruction that sets the variable's value to the emitted expression
-                            emit_set(&mut self.table, var_id, emitting_func, UNEXPECTED_ERR_MSG)
-                        } else {
-                            return Err(Box::new(ErrorGen::get_unexpected_error(
-                                true,
-                                Some(format!(
-                                    "{UNEXPECTED_ERR_MSG} \
-                                            Something went wrong while emitting an instruction."
-                                )),
-                                None,
-                            )));
-                        }
-                    }
-                }
-            }
-            _ => {
-                return Err(Box::new(ErrorGen::get_unexpected_error(
-                    false,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} \
-                    Wrong statement type, should be `assign`"
-                    )),
-                    None,
-                )));
-            }
-        };
-    }
-
     pub(crate) fn enter_scope(&mut self) -> Result<(), Box<WhammError>> {
         self.table.enter_scope()
     }
@@ -398,56 +213,6 @@ impl<'a, 'b, 'c> ModuleEmitter<'a, 'b, 'c> {
     }
     pub(crate) fn reset_children(&mut self) {
         self.table.reset_children();
-    }
-
-    fn emit_expr(&mut self, expr: &mut Expr) -> Result<bool, Box<WhammError>> {
-        let mut is_success = true;
-        match expr {
-            Expr::Ternary {
-                cond, conseq, alt, ..
-            } => {
-                // change conseq and alt types to stmt for easier API call
-                is_success &= self.emit_if_else(
-                    cond,
-                    &mut vec![Statement::Expr {
-                        expr: (**conseq).clone(),
-                        loc: None,
-                    }],
-                    &mut vec![Statement::Expr {
-                        expr: (**alt).clone(),
-                        loc: None,
-                    }],
-                )?;
-            }
-            Expr::VarId { .. }
-            | Expr::UnOp { .. }
-            | Expr::BinOp { .. }
-            | Expr::Primitive { .. }
-            | Expr::Call { .. } => {
-                // Anything else can be emitted as normal
-                if let Some(emitting_func) = &mut self.emitting_func {
-                    // Emit the instruction that sets the variable's value to the emitted expression
-                    is_success &= emit_expr(
-                        &mut self.table,
-                        &mut self.app_wasm.data,
-                        expr,
-                        emitting_func,
-                        &mut self.metadata,
-                        UNEXPECTED_ERR_MSG,
-                    )?;
-                } else {
-                    return Err(Box::new(ErrorGen::get_unexpected_error(
-                        true,
-                        Some(format!(
-                            "{UNEXPECTED_ERR_MSG} \
-                                            Something went wrong while emitting an instruction."
-                        )),
-                        None,
-                    )));
-                }
-            }
-        }
-        Ok(is_success)
     }
 
     pub(crate) fn emit_fn(&mut self, context: &str, f: &Fn) -> Result<bool, Box<WhammError>> {
@@ -528,82 +293,13 @@ impl<'a, 'b, 'c> ModuleEmitter<'a, 'b, 'c> {
         }
     }
 
-    fn emit_if(
-        &mut self,
-        condition: &mut Expr,
-        conseq: &mut Vec<Statement>,
-    ) -> Result<bool, Box<WhammError>> {
-        // NOTE: The structure of this code is wonky, but it's because of
-        // overlapping references/calls to self.
-        // To avoid that, we place all calls to self.emitting_func in a block.
-
-        let mut is_success = true;
-
-        // emit the condition of the `if` expression
-        is_success &= self.emit_expr(condition)?;
-
-        if let Some(emitting_func) = &mut self.emitting_func {
-            // emit the beginning of the if block
-            emitting_func.if_stmt(BlockType::Empty);
-        }
-
-        // emit the consequent body
-        is_success &= self.emit_body(conseq)?;
-
-        if let Some(emitting_func) = &mut self.emitting_func {
-            // emit the end of the if block
-            emitting_func.end();
-        }
-
-        Ok(is_success)
-    }
-
-    fn emit_if_else(
-        &mut self,
-        condition: &mut Expr,
-        conseq: &mut Vec<Statement>,
-        alternate: &mut Vec<Statement>,
-    ) -> Result<bool, Box<WhammError>> {
-        // NOTE: The structure of this code is wonky, but it's because of
-        // overlapping references/calls to self.
-        // To avoid that, we place all calls to self.emitting_func in a block.
-
-        let mut is_success = true;
-
-        // emit the condition of the `if` expression
-        is_success &= self.emit_expr(condition)?;
-
-        if let Some(emitting_func) = &mut self.emitting_func {
-            // emit the beginning of the if block
-            emitting_func.if_stmt(BlockType::Empty);
-        }
-
-        // emit the consequent body
-        is_success &= self.emit_body(conseq)?;
-
-        if let Some(emitting_func) = &mut self.emitting_func {
-            // emit the beginning of the else
-            emitting_func.else_stmt();
-        }
-
-        // emit the alternate body
-        is_success &= self.emit_body(alternate)?;
-
-        if let Some(emitting_func) = &mut self.emitting_func {
-            // emit the end of the if/else block
-            emitting_func.end();
-        }
-
-        Ok(is_success)
-    }
-
-    fn emit_global_stmts(&mut self, stmts: &mut Vec<Statement>) -> Result<bool, Box<WhammError>> {
+    fn emit_global_stmts(&mut self, stmts: &mut [Statement]) -> Result<bool, Box<WhammError>> {
         // NOTE: This should be done in the Module entrypoint
         //       https://docs.rs/walrus/latest/walrus/struct.Module.html
 
         if let Some(_start_fid) = self.app_wasm.start {
             // 1. create the emitting_func var, assign in self
-            // 2. iterate over stmts and emit them! (will be diff for Decl stmts)
+            // 2. iterate over stmts and emit them! (will be different for Decl stmts)
             todo!()
         } else {
             // TODO -- try to create our own start fn (for dfinity case)
@@ -633,25 +329,96 @@ impl<'a, 'b, 'c> ModuleEmitter<'a, 'b, 'c> {
         Ok(true)
     }
 
-    fn emit_body(&mut self, body: &mut Vec<Statement>) -> Result<bool, Box<WhammError>> {
-        for stmt in body.iter_mut() {
-            self.emit_stmt(stmt)?;
+    fn get_unexpected_err(&mut self) -> Box<WhammError> {
+        Box::new(ErrorGen::get_unexpected_error(
+            true,
+            Some(format!(
+                "{UNEXPECTED_ERR_MSG} Something went wrong while emitting an instruction."
+            )),
+            None,
+        ))
+    }
+}
+impl Emitter for ModuleEmitter<'_, '_, '_> {
+    fn emit_body(&mut self, body: &mut [Statement]) -> Result<bool, Box<WhammError>> {
+        if let Some(emitting_func) = &mut self.emitting_func {
+            emit_body(
+                body,
+                emitting_func,
+                self.table,
+                &mut self.metadata,
+                UNEXPECTED_ERR_MSG,
+            )
+        } else {
+            Err(self.get_unexpected_err())
         }
-        Ok(true)
     }
 
     fn emit_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>> {
-        match stmt {
-            Statement::Decl { .. } => self.emit_decl_stmt(stmt),
-            Statement::Assign { .. } => self.emit_assign_stmt(stmt),
-            Statement::Expr { expr, .. } => self.emit_expr(expr),
-            Statement::Return { .. } => unimplemented!(),
-            Statement::If {
-                // cond, conseq, alt, .. -- for eventual implementation
-                ..
-            } => {
-                unimplemented!()
-            }
+        if let Some(emitting_func) = &mut self.emitting_func {
+            emit_stmt(
+                stmt,
+                emitting_func,
+                self.table,
+                &mut self.metadata,
+                UNEXPECTED_ERR_MSG,
+            )
+        } else {
+            Err(self.get_unexpected_err())
+        }
+    }
+
+    fn emit_if(
+        &mut self,
+        condition: &mut Expr,
+        conseq: &mut [Statement],
+    ) -> Result<bool, Box<WhammError>> {
+        if let Some(emitting_func) = &mut self.emitting_func {
+            emit_if(
+                condition,
+                conseq,
+                emitting_func,
+                self.table,
+                &mut self.metadata,
+                UNEXPECTED_ERR_MSG,
+            )
+        } else {
+            Err(self.get_unexpected_err())
+        }
+    }
+
+    fn emit_if_else(
+        &mut self,
+        condition: &mut Expr,
+        conseq: &mut [Statement],
+        alternate: &mut [Statement],
+    ) -> Result<bool, Box<WhammError>> {
+        if let Some(emitting_func) = &mut self.emitting_func {
+            emit_if_else(
+                condition,
+                conseq,
+                alternate,
+                emitting_func,
+                self.table,
+                &mut self.metadata,
+                UNEXPECTED_ERR_MSG,
+            )
+        } else {
+            Err(self.get_unexpected_err())
+        }
+    }
+
+    fn emit_expr(&mut self, expr: &mut Expr) -> Result<bool, Box<WhammError>> {
+        if let Some(emitting_func) = &mut self.emitting_func {
+            emit_expr(
+                expr,
+                emitting_func,
+                self.table,
+                &mut self.metadata,
+                UNEXPECTED_ERR_MSG,
+            )
+        } else {
+            Err(self.get_unexpected_err())
         }
     }
 }

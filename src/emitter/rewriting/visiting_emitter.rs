@@ -2,18 +2,17 @@ use core::panic;
 use log::info;
 use std::iter::Iterator;
 
-use crate::emitter::rewriting::whamm_type_to_wasm;
+use crate::emitter::rewriting::{
+    emit_body, emit_if, emit_if_else, emit_if_preamble, emit_stmt, Emitter,
+};
 use orca::ir::module::Module;
-use orca::ir::types::Location;
 use orca::iterator::iterator_trait::Iterator as OrcaIterator;
 use orca::iterator::module_iterator::ModuleIterator;
 use orca::opcode::Opcode;
-use orca::DataType as OrcaType;
-use wasmparser::BlockType;
 
 use crate::common::error::{ErrorGen, WhammError};
-use crate::emitter::rewriting::rules::{Arg, LocInfo, WhammProvider};
-use crate::emitter::rewriting::{emit_expr, emit_set, InsertionMetadata};
+use crate::emitter::rewriting::rules::{Arg, LocInfo, Provider, WhammProvider};
+use crate::emitter::rewriting::{emit_expr, InsertionMetadata};
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{DataType, Expr, ProbeSpec, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
@@ -71,177 +70,6 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
         self.app_iter.alternate();
     }
 
-    fn emit_decl_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>> {
-        match stmt {
-            Statement::Decl { ty, var_id, .. } => {
-                // look up in symbol table
-                let mut addr = if let Expr::VarId { name, .. } = var_id {
-                    let var_rec_id = match self.table.lookup(name) {
-                        Some(rec_id) => *rec_id,
-                        None => {
-                            // TODO -- add variables from body into symbol table
-                            //         (at this point, the verifier should have run to catch variable initialization without declaration)
-                            self.table.put(
-                                name.clone(),
-                                Record::Var {
-                                    ty: ty.clone(),
-                                    name: name.clone(),
-                                    value: None,
-                                    is_comp_provided: false,
-                                    addr: None,
-                                    loc: None,
-                                },
-                            )
-                        }
-                    };
-                    match self.table.get_record_mut(&var_rec_id) {
-                        Some(Record::Var { addr, .. }) => addr,
-                        Some(ty) => {
-                            return Err(Box::new(ErrorGen::get_unexpected_error(
-                                true,
-                                Some(format!(
-                                    "{UNEXPECTED_ERR_MSG} \
-                            Incorrect variable record, expected Record::Var, found: {:?}",
-                                    ty
-                                )),
-                                None,
-                            )));
-                        }
-                        None => {
-                            return Err(Box::new(ErrorGen::get_unexpected_error(
-                                true,
-                                Some(format!(
-                                    "{UNEXPECTED_ERR_MSG} \
-                            Variable symbol does not exist!"
-                                )),
-                                None,
-                            )));
-                        }
-                    }
-                } else {
-                    return Err(Box::new(ErrorGen::get_unexpected_error(
-                        true,
-                        Some(format!(
-                            "{UNEXPECTED_ERR_MSG} \
-                    Expected VarId."
-                        )),
-                        None,
-                    )));
-                };
-
-                match &mut addr {
-                    Some(VarAddr::Global { addr: _addr }) => {
-                        // The global should already exist, do any initial setup here!
-                        match ty {
-                            DataType::Map {
-                                key_ty: _key_ty,
-                                val_ty: _val_ty,
-                            } => {
-                                // initialize map global variable
-                                // also update value at GID (probably need to set ID of map there)
-                                unimplemented!()
-                            }
-                            _ => Ok(true),
-                        }
-                    }
-                    Some(VarAddr::Local { .. }) | None => {
-                        // If the local already exists, it would be because the probe has been
-                        // emitted at another opcode location. Simply overwrite the previously saved
-                        // address.
-                        let wasm_ty = whamm_type_to_wasm(ty).ty.content_type;
-                        let id = self.app_iter.add_local(OrcaType::from(wasm_ty));
-                        *addr = Some(VarAddr::Local { addr: id });
-                        Ok(true)
-                    }
-                }
-            }
-            _ => Err(Box::new(ErrorGen::get_unexpected_error(
-                false,
-                Some(format!(
-                    "{UNEXPECTED_ERR_MSG} Wrong statement type, should be `assign`"
-                )),
-                None,
-            ))),
-        }
-    }
-
-    fn emit_assign_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>> {
-        return match stmt {
-            Statement::Assign { var_id, expr, .. } => {
-                let mut folded_expr = ExprFolder::fold_expr(expr, self.table);
-
-                // Save off primitives to symbol table
-                // TODO -- this is only necessary for `new_target_fn_name`, remove after deprecating!
-                if let (Expr::VarId { name, .. }, Expr::Primitive { val, .. }) =
-                    (&var_id, &folded_expr)
-                {
-                    let var_rec_id = match self.table.lookup(name) {
-                        Some(rec_id) => *rec_id,
-                        _ => {
-                            return Err(Box::new(ErrorGen::get_unexpected_error(
-                                true,
-                                Some(format!(
-                                    "{UNEXPECTED_ERR_MSG} \
-                                    Attempting to emit an assign, but VarId '{name}' does not exist in this scope!"
-                                )),
-                                None,
-                            )));
-                        }
-                    };
-                    match self.table.get_record_mut(&var_rec_id) {
-                        Some(Record::Var {
-                            value,
-                            is_comp_provided,
-                            ..
-                        }) => {
-                            *value = Some(val.clone());
-
-                            if *is_comp_provided {
-                                return Ok(true);
-                            }
-                        }
-                        Some(ty) => {
-                            return Err(Box::new(ErrorGen::get_unexpected_error(
-                                true,
-                                Some(format!(
-                                    "{UNEXPECTED_ERR_MSG} \
-                                    Incorrect variable record, expected Record::Var, found: {:?}",
-                                    ty
-                                )),
-                                None,
-                            )));
-                        }
-                        None => {
-                            return Err(Box::new(ErrorGen::get_unexpected_error(
-                                true,
-                                Some(format!(
-                                    "{UNEXPECTED_ERR_MSG} \
-                                    Variable symbol does not exist!"
-                                )),
-                                None,
-                            )));
-                        }
-                    }
-                }
-
-                match self.emit_expr(&mut folded_expr) {
-                    Err(e) => Err(e),
-                    Ok(_) => emit_set(self.table, var_id, &mut self.app_iter, UNEXPECTED_ERR_MSG),
-                }
-            }
-            _ => {
-                return Err(Box::new(ErrorGen::get_unexpected_error(
-                    false,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} \
-                    Wrong statement type, should be `assign`"
-                    )),
-                    None,
-                )));
-            }
-        };
-    }
-
     pub(crate) fn enter_scope_via_spec(&mut self, script_id: &str, probe_spec: &ProbeSpec) -> bool {
         self.table.enter_scope_via_spec(script_id, probe_spec)
     }
@@ -260,9 +88,7 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
 
     pub(crate) fn get_loc_info<'d>(&self, rule: &'d WhammProvider) -> Option<LocInfo<'d>> {
         if let Some(curr_instr) = self.app_iter.curr_op() {
-            // TODO -- rework when I have access to app_wasm through iterator
-            use crate::emitter::rewriting::rules::Provider;
-            rule.get_loc_info(&self.app_iter.module, curr_instr);
+            rule.get_loc_info(self.app_iter.module, curr_instr);
             None
         } else {
             None
@@ -278,13 +104,10 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
         args.iter().for_each(
             |Arg {
                  name: arg_name,
-                 ty: _arg_ty,
+                 ty: arg_ty,
              }| {
                 // create local for the param in the module
-                // TODO -- rework when we can add locals through the app_iter
-                // Note: add_local works now
-                // let arg_local_id = self.app_iter.add_local(*arg_ty);
-                let arg_local_id = 0;
+                let arg_local_id = self.app_iter.add_local(arg_ty.clone());
 
                 // emit an opcode in the event to assign the ToS to this new local
                 self.app_iter.local_set(arg_local_id);
@@ -381,125 +204,12 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
         true
     }
 
-    pub fn emit_expr(&mut self, expr: &mut Expr) -> Result<bool, Box<WhammError>> {
-        let mut is_success = true;
-        match expr {
-            Expr::Ternary {
-                cond, conseq, alt, ..
-            } => {
-                // change conseq and alt types to stmt for easier API call
-                is_success &= self.emit_if_else(
-                    cond,
-                    &mut vec![Statement::Expr {
-                        expr: (**conseq).clone(),
-                        loc: None,
-                    }],
-                    &mut vec![Statement::Expr {
-                        expr: (**alt).clone(),
-                        loc: None,
-                    }],
-                )?;
-            }
-            Expr::VarId { .. }
-            | Expr::UnOp { .. }
-            | Expr::BinOp { .. }
-            | Expr::Primitive { .. }
-            | Expr::Call { .. } => {
-                // Anything else can be emitted as normal
-                // Emit the instruction that sets the variable's value to the emitted expression
-
-                // LOOK AT ME: TODO: can't hold two mutable references
-                // here you pass in `self.app_iter`, and `self.app_iter.module.data`
-
-                // is_success &= emit_expr(
-                //     &mut self.table,
-                //     &mut self.app_iter.module.data,
-                //     expr,
-                //     &mut self.app_iter,
-                //     &mut self.metadata,
-                //     UNEXPECTED_ERR_MSG,
-                // )?;
-            }
-        }
-        Ok(is_success)
-    }
-
     pub fn emit_orig(&mut self) -> bool {
-        // TODO: can i get around thie curr_op_owned() thing by curr_op?
+        // TODO: can i get around this curr_op_owned() thing by curr_op?
         let orig = self.app_iter.curr_op_owned().unwrap().clone();
         let loc = self.app_iter.curr_loc();
         self.app_iter.add_instr_at(loc, orig);
-        todo!()
-    }
-
-    fn emit_if_preamble(
-        &mut self,
-        condition: &mut Expr,
-        conseq: &mut [Statement],
-    ) -> Result<bool, Box<WhammError>> {
-        let mut is_success = true;
-
-        // emit the condition of the `if` expression
-        is_success &= self.emit_expr(condition)?;
-        // emit the beginning of the if block
-        self.app_iter.if_stmt(BlockType::Empty);
-
-        // emit the consequent body
-        is_success &= self.emit_body(conseq)?;
-
-        // INTENTIONALLY DON'T END IF BLOCK
-
-        Ok(is_success)
-    }
-
-    fn emit_if_else_preamble(
-        &mut self,
-        condition: &mut Expr,
-        conseq: &mut [Statement],
-        alternate: &mut Vec<Statement>,
-    ) -> Result<bool, Box<WhammError>> {
-        let mut is_success = true;
-
-        is_success &= self.emit_if_preamble(condition, conseq)?;
-
-        // emit the beginning of the else
-        self.app_iter.else_stmt();
-
-        // emit the alternate body
-        is_success &= self.emit_body(alternate)?;
-
-        // INTENTIONALLY DON'T END IF/ELSE BLOCK
-
-        Ok(is_success)
-    }
-
-    pub(crate) fn emit_if(
-        &mut self,
-        condition: &mut Expr,
-        conseq: &mut [Statement],
-    ) -> Result<bool, Box<WhammError>> {
-        let mut is_success = true;
-
-        is_success &= self.emit_if_preamble(condition, conseq)?;
-
-        // emit the end of the if block
-        self.app_iter.end();
-        Ok(is_success)
-    }
-
-    pub(crate) fn emit_if_else(
-        &mut self,
-        condition: &mut Expr,
-        conseq: &mut [Statement],
-        alternate: &mut Vec<Statement>,
-    ) -> Result<bool, Box<WhammError>> {
-        let mut is_success = true;
-
-        is_success &= self.emit_if_else_preamble(condition, conseq, alternate)?;
-
-        // emit the end of the if block
-        self.app_iter.end();
-        Ok(is_success)
+        true
     }
 
     pub(crate) fn emit_if_with_orig_as_else(
@@ -509,7 +219,14 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
     ) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
 
-        is_success &= self.emit_if_preamble(condition, conseq)?;
+        is_success &= emit_if_preamble(
+            condition,
+            conseq,
+            &mut self.app_iter,
+            self.table,
+            &mut self.metadata,
+            UNEXPECTED_ERR_MSG,
+        )?;
 
         is_success &= self.emit_args()?;
         is_success &= self.emit_orig();
@@ -517,13 +234,6 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
         // emit the end of the if block
         self.app_iter.end();
         Ok(is_success)
-    }
-
-    pub fn emit_body(&mut self, body: &mut [Statement]) -> Result<bool, Box<WhammError>> {
-        for stmt in body.iter_mut() {
-            self.emit_stmt(stmt)?;
-        }
-        Ok(true)
     }
 
     pub(crate) fn has_alt_call(&mut self) -> bool {
@@ -579,19 +289,67 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
         }
         Ok(true)
     }
+}
+impl Emitter for VisitingEmitter<'_, '_, '_> {
+    fn emit_body(&mut self, body: &mut [Statement]) -> Result<bool, Box<WhammError>> {
+        emit_body(
+            body,
+            &mut self.app_iter,
+            self.table,
+            &mut self.metadata,
+            UNEXPECTED_ERR_MSG,
+        )
+    }
 
     fn emit_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>> {
-        match stmt {
-            Statement::Decl { .. } => self.emit_decl_stmt(stmt),
-            Statement::Assign { .. } => self.emit_assign_stmt(stmt),
-            Statement::Expr { expr, .. } => self.emit_expr(expr),
-            Statement::Return { .. } => unimplemented!(),
-            Statement::If {
-                // cond, conseq, alt, .. -- for eventual implementation
-                ..
-            } => {
-                unimplemented!()
-            }
-        }
+        emit_stmt(
+            stmt,
+            &mut self.app_iter,
+            self.table,
+            &mut self.metadata,
+            UNEXPECTED_ERR_MSG,
+        )
+    }
+
+    fn emit_if(
+        &mut self,
+        condition: &mut Expr,
+        conseq: &mut [Statement],
+    ) -> Result<bool, Box<WhammError>> {
+        emit_if(
+            condition,
+            conseq,
+            &mut self.app_iter,
+            self.table,
+            &mut self.metadata,
+            UNEXPECTED_ERR_MSG,
+        )
+    }
+
+    fn emit_if_else(
+        &mut self,
+        condition: &mut Expr,
+        conseq: &mut [Statement],
+        alternate: &mut [Statement],
+    ) -> Result<bool, Box<WhammError>> {
+        emit_if_else(
+            condition,
+            conseq,
+            alternate,
+            &mut self.app_iter,
+            self.table,
+            &mut self.metadata,
+            UNEXPECTED_ERR_MSG,
+        )
+    }
+
+    fn emit_expr(&mut self, expr: &mut Expr) -> Result<bool, Box<WhammError>> {
+        emit_expr(
+            expr,
+            &mut self.app_iter,
+            self.table,
+            &mut self.metadata,
+            UNEXPECTED_ERR_MSG,
+        )
     }
 }
