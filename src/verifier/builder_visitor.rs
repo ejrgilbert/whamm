@@ -624,7 +624,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         trace!("Exiting: visit_formal_param");
     }
 
-    fn visit_block(&mut self, _block: &Block) {
+    fn visit_block(&mut self, _block: &mut Block) {
         // Not visiting Blocks
         self.err
             .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);

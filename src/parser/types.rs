@@ -188,7 +188,6 @@ pub enum Value {
         // TODO: doesn't seem to be implemented anywhere
 
         // Used by emitter to store this string's address/len in Wasm memory
-        // (DEPRECATED) DataId: Walrus ID to reference data segment
         // u32: orca ID to reference data segment
         // usize: address of data in memory
         // usize:  the length of the string in memory
@@ -391,24 +390,15 @@ impl Global {
     }
 
     pub fn is_static(&self) -> bool {
-        match self.def {
-            Definition::CompilerStatic => true,
-            _ => false,
-        }
+        matches!(self.def, Definition::CompilerStatic)
     }
 
     pub fn is_dynamic(&self) -> bool {
-        match self.def {
-            Definition::CompilerDynamic => true,
-            _ => false,
-        }
+        matches!(self.def, Definition::CompilerDynamic)
     }
 
     pub fn is_from_user(&self) -> bool {
-        match self.def {
-            Definition::User => true,
-            _ => false,
-        }
+        matches!(self.def, Definition::User)
     }
 }
 
@@ -490,14 +480,13 @@ impl Default for Whamm {
 }
 impl Whamm {
     pub fn new() -> Self {
-        let whamm = Whamm {
+        Whamm {
             provided_probes: HashMap::new(),
             fns: Whamm::get_provided_fns(),
             globals: Whamm::get_provided_globals(),
 
             scripts: vec![],
-        };
-        whamm
+        }
     }
 
     fn get_provided_fns() -> Vec<ProvidedFunction> {
@@ -1058,7 +1047,7 @@ pub trait WhammVisitorMut<T> {
     // fn visit_predicate(&mut self, predicate: &mut Expr) -> T;
     fn visit_fn(&mut self, f: &mut Fn) -> T;
     fn visit_formal_param(&mut self, param: &mut (Expr, DataType)) -> T;
-    fn visit_block(&mut self, block: &Block) -> T;
+    fn visit_block(&mut self, block: &mut Block) -> T;
     fn visit_stmt(&mut self, stmt: &mut Statement) -> T;
     fn visit_expr(&mut self, expr: &mut Expr) -> T;
     fn visit_unop(&mut self, unop: &mut UnOp) -> T;

@@ -15,19 +15,6 @@ use wasmparser::{BlockType, ValType};
 pub trait Emitter {
     fn emit_body(&mut self, body: &mut [Statement]) -> Result<bool, Box<WhammError>>;
     fn emit_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>>;
-    // fn emit_decl_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>>;
-    // fn emit_assign_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>>;
-    fn emit_if(
-        &mut self,
-        condition: &mut Expr,
-        conseq: &mut [Statement],
-    ) -> Result<bool, Box<WhammError>>;
-    fn emit_if_else(
-        &mut self,
-        condition: &mut Expr,
-        conseq: &mut [Statement],
-        alternate: &mut [Statement],
-    ) -> Result<bool, Box<WhammError>>;
     fn emit_expr(&mut self, expr: &mut Expr) -> Result<bool, Box<WhammError>>;
 }
 
@@ -685,30 +672,16 @@ fn emit_value<'a, T: Opcode<'a>  + ModuleBuilder>(
             is_success &= true;
         }
         Value::Str {
-            val: val,
-            addr: addr,
-            ty: ty,
+            val,
+            ..
         } => {
-            // TODO -- handle this in the init_generator! Don't handle this match case!
-            // TODO -- assuming that the data ID is the index of the object in the Vec
-            // TODO -- need an API that allows the addition of data segments.
-            //     there is currently an ownership issue since I can't insert
-            //     an owned byte array with same lifetime as the Module data segments.
-            //     For more info, uncomment the below and read error.
-            // TDOO: maybe should wrap this into a orca API
-            // let data_id = module_data.len();
-            // let val_bytes = val.as_bytes().to_owned();
-            // let data_segment = DataSegment {
-            //     data: val_bytes,
-            //     kind: DataSegmentKind::Active {
-            //         memory_index: metadata.mem_id,
-            //         offset_expr: InitExpr::Value(OrcaValue::I32(metadata.curr_mem_offset as i32)),
-            //     },
-            // };
-            // module_data.push(data_segment);
-
-            // save the memory addresses/lens, so they can be used as appropriate
-            // *addr = Some((data_id as u32, metadata.curr_mem_offset, val.len()));
+            // At this point the String has been emitted into the Wasm module!
+            // See: InitGenerator::visit_value()
+            // This is to avoid having to have access to the app_wasm.data here.
+            // If this were required, we would have 2 mutable references to app_iter
+            // when emitting for VisitingEmitter (won't work for Rust):
+            // 1. app_iter.app_wasm.data
+            // 2. app_iter
 
             // emit Wasm instructions for the memory address and string length
             injector.i32_const(metadata.curr_mem_offset as i32);

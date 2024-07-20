@@ -142,7 +142,7 @@ fn run_instr(
         context_name: "".to_string(),
         err: &mut err,
     };
-    init.run(&whamm);
+    init.run(&mut whamm);
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
 

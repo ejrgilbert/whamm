@@ -1,12 +1,13 @@
+use orca::{DataSegment, DataSegmentKind, InitExpr};
 use crate::common::error::{ErrorGen, WhammError};
 use crate::parser::types::{DataType, Expr, Fn, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 
-use orca::ir::types::DataType as OrcaType;
+use orca::ir::types::{Value as OrcaValue, DataType as OrcaType};
 use wasmparser::BlockType;
 
 use crate::emitter::rewriting::{
-    emit_body, emit_expr, emit_if, emit_if_else, emit_stmt, whamm_type_to_wasm, Emitter,
+    emit_body, emit_expr, emit_stmt, whamm_type_to_wasm, Emitter,
     InsertionMetadata,
 };
 use orca::ir::function::FunctionBuilder;
@@ -242,6 +243,37 @@ impl<'a, 'b, 'c> ModuleEmitter<'a, 'b, 'c> {
         // TODO: only when we're supporting user-defined fns in script...
         unimplemented!();
     }
+    
+    pub fn emit_string(
+        &mut self,
+        value: &mut Value
+    ) -> bool {
+        match value {
+            Value::Str { val, addr, .. } => {
+                // assuming that the data ID is the index of the object in the Vec
+                let data_id = self.app_wasm.data.len();
+                let val_bytes = val.as_bytes().to_owned();
+                let data_segment = DataSegment {
+                    data: val_bytes,
+                    kind: DataSegmentKind::Active {
+                        memory_index: self.metadata.mem_id,
+                        offset_expr: InitExpr::Value(OrcaValue::I32(self.metadata.curr_mem_offset as i32)),
+                    },
+                };
+                self.app_wasm.data.push(data_segment);
+
+                // save the memory addresses/lens, so they can be used as appropriate
+                *addr = Some((data_id as u32, self.metadata.curr_mem_offset, val.len()));
+                true
+            }
+            Value::Integer { .. } |
+            Value::Tuple { .. } |
+            Value::Boolean { .. } => {
+                // todo -- throw error here!
+                todo!()
+            }
+        }
+    }
 
     pub(crate) fn emit_global(
         &mut self,
@@ -358,46 +390,6 @@ impl Emitter for ModuleEmitter<'_, '_, '_> {
         if let Some(emitting_func) = &mut self.emitting_func {
             emit_stmt(
                 stmt,
-                emitting_func,
-                self.table,
-                &mut self.metadata,
-                UNEXPECTED_ERR_MSG,
-            )
-        } else {
-            Err(self.get_unexpected_err())
-        }
-    }
-
-    fn emit_if(
-        &mut self,
-        condition: &mut Expr,
-        conseq: &mut [Statement],
-    ) -> Result<bool, Box<WhammError>> {
-        if let Some(emitting_func) = &mut self.emitting_func {
-            emit_if(
-                condition,
-                conseq,
-                emitting_func,
-                self.table,
-                &mut self.metadata,
-                UNEXPECTED_ERR_MSG,
-            )
-        } else {
-            Err(self.get_unexpected_err())
-        }
-    }
-
-    fn emit_if_else(
-        &mut self,
-        condition: &mut Expr,
-        conseq: &mut [Statement],
-        alternate: &mut [Statement],
-    ) -> Result<bool, Box<WhammError>> {
-        if let Some(emitting_func) = &mut self.emitting_func {
-            emit_if_else(
-                condition,
-                conseq,
-                alternate,
                 emitting_func,
                 self.table,
                 &mut self.metadata,

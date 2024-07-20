@@ -3,7 +3,7 @@ use log::info;
 use std::iter::Iterator;
 
 use crate::emitter::rewriting::{
-    emit_body, emit_if, emit_if_else, emit_if_preamble, emit_stmt, Emitter,
+    emit_body, emit_if, emit_if_preamble, emit_stmt, Emitter,
 };
 use orca::ir::module::Module;
 use orca::iterator::iterator_trait::Iterator as OrcaIterator;
@@ -212,6 +212,21 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
         true
     }
 
+    pub fn emit_if(
+        &mut self,
+        condition: &mut Expr,
+        conseq: &mut [Statement],
+    ) -> Result<bool, Box<WhammError>> {
+        emit_if(
+            condition,
+            conseq,
+            &mut self.app_iter,
+            self.table,
+            &mut self.metadata,
+            UNEXPECTED_ERR_MSG,
+        )
+    }
+
     pub(crate) fn emit_if_with_orig_as_else(
         &mut self,
         condition: &mut Expr,
@@ -304,38 +319,6 @@ impl Emitter for VisitingEmitter<'_, '_, '_> {
     fn emit_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>> {
         emit_stmt(
             stmt,
-            &mut self.app_iter,
-            self.table,
-            &mut self.metadata,
-            UNEXPECTED_ERR_MSG,
-        )
-    }
-
-    fn emit_if(
-        &mut self,
-        condition: &mut Expr,
-        conseq: &mut [Statement],
-    ) -> Result<bool, Box<WhammError>> {
-        emit_if(
-            condition,
-            conseq,
-            &mut self.app_iter,
-            self.table,
-            &mut self.metadata,
-            UNEXPECTED_ERR_MSG,
-        )
-    }
-
-    fn emit_if_else(
-        &mut self,
-        condition: &mut Expr,
-        conseq: &mut [Statement],
-        alternate: &mut [Statement],
-    ) -> Result<bool, Box<WhammError>> {
-        emit_if_else(
-            condition,
-            conseq,
-            alternate,
             &mut self.app_iter,
             self.table,
             &mut self.metadata,
