@@ -535,13 +535,13 @@ impl Whamm {
 }
 
 /// SpecPart are the probe ids in a probe spec
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SpecPart {
     pub name: String,
     pub loc: Option<Location>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ProbeSpec {
     pub provider: Option<SpecPart>,
     pub package: Option<SpecPart>,

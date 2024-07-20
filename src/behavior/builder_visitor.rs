@@ -64,7 +64,7 @@ use log::trace;
 /// Note: This AST representation will only be used for bytecode rewriting, not when targeting Wizard.
 pub type SimpleAstProbes =
     HashMap<String, HashMap<String, HashMap<String, HashMap<String, Vec<SimpleProbe>>>>>;
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SimpleProbe {
     pub script_id: String,
     pub predicate: Option<Expr>,

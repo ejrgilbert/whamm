@@ -86,8 +86,7 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
 
     pub(crate) fn get_loc_info<'d>(&self, rule: &'d WhammProvider) -> Option<LocInfo<'d>> {
         if let Some(curr_instr) = self.app_iter.curr_op() {
-            rule.get_loc_info(self.app_iter.module, curr_instr);
-            None
+            rule.get_loc_info(self.app_iter.module, curr_instr)
         } else {
             None
         }

@@ -102,7 +102,7 @@ pub trait FromStr {
     fn from_str(name: &str) -> Self;
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Arg {
     pub name: String,
     pub ty: OrcaType,
@@ -113,7 +113,7 @@ impl Arg {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct LocInfo<'a> {
     /// static information to be saved in symbol table
     pub static_data: HashMap<String, Option<Value>>,
