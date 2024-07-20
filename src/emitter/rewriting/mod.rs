@@ -311,9 +311,8 @@ fn emit_set<'a, T: Opcode<'a>>(
             Some(Record::Var { addr, loc, .. }) => {
                 // this will be different based on if this is a global or local var
                 match addr {
-                    Some(VarAddr::Global { addr: _addr }) => {
-                        // todo
-                        // injector.global_set(*addr);
+                    Some(VarAddr::Global { addr }) => {
+                        injector.global_set(*addr);
                     }
                     Some(VarAddr::Local { addr }) => {
                         injector.local_set(*addr);
@@ -540,9 +539,8 @@ fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
                 Some(Record::Var { addr, .. }) => {
                     // this will be different based on if this is a global or local var
                     match addr {
-                        Some(VarAddr::Global { addr: _addr }) => {
-                            // todo
-                            // injector.global_get(*addr);
+                        Some(VarAddr::Global { addr }) => {
+                            injector.global_get(*addr);
                         }
                         Some(VarAddr::Local { addr }) => {
                             injector.local_get(*addr);
