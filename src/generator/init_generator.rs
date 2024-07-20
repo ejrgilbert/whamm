@@ -5,7 +5,10 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::rewriting::module_emitter::ModuleEmitter;
 use crate::parser::rules::{Event, Package, Probe, Provider};
-use crate::parser::types::{BinOp, Block, DataType, Expr, Fn, Global, ProvidedFunction, Script, Statement, UnOp, Value, Whamm, WhammVisitorMut};
+use crate::parser::types::{
+    BinOp, Block, DataType, Expr, Fn, Global, ProvidedFunction, Script, Statement, UnOp, Value,
+    Whamm, WhammVisitorMut,
+};
 use log::{trace, warn};
 use std::collections::HashMap;
 
@@ -120,12 +123,11 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_> {
         let mut is_success = true;
 
         // visit fns
-        provider
-            .get_provided_fns_mut()
-            .iter_mut()
-            .for_each(|ProvidedFunction { function, .. }| {
+        provider.get_provided_fns_mut().iter_mut().for_each(
+            |ProvidedFunction { function, .. }| {
                 is_success &= self.visit_fn(function);
-            });
+            },
+        );
         // do not inject globals into Wasm that are used/defined by the compiler
         // because they are statically-defined and folded away
 
@@ -152,12 +154,11 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_> {
         self.context_name += &format!(":{}", package.name());
 
         // visit fns
-        package
-            .get_provided_fns_mut()
-            .iter_mut()
-            .for_each(|ProvidedFunction { function, .. }| {
+        package.get_provided_fns_mut().iter_mut().for_each(
+            |ProvidedFunction { function, .. }| {
                 is_success &= self.visit_fn(function);
-            });
+            },
+        );
         // do not inject globals into Wasm that are used/defined by the compiler
         // because they are statically-defined and folded away
 
@@ -185,12 +186,11 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_> {
         let mut is_success = true;
 
         // visit fns
-        event
-            .get_provided_fns_mut()
-            .iter_mut()
-            .for_each(|ProvidedFunction { function, .. }| {
+        event.get_provided_fns_mut().iter_mut().for_each(
+            |ProvidedFunction { function, .. }| {
                 is_success &= self.visit_fn(function);
-            });
+            },
+        );
         // do not inject globals into Wasm that are used/defined by the compiler
         // because they are statically-defined and folded away
 
@@ -237,12 +237,11 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_> {
         let mut is_success = true;
 
         // visit fns
-        probe
-            .get_mode_provided_fns_mut()
-            .iter_mut()
-            .for_each(|ProvidedFunction { function, .. }| {
+        probe.get_mode_provided_fns_mut().iter_mut().for_each(
+            |ProvidedFunction { function, .. }| {
                 is_success &= self.visit_fn(function);
-            });
+            },
+        );
         // do not inject globals into Wasm that are used/defined by the compiler
         // because they are statically-defined and folded away
 
@@ -319,12 +318,12 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_> {
                 // ignore, this stmt type will not have a string in it!
                 true
             }
-            Statement::Assign { expr, .. } |
-            Statement::Expr { expr, .. } |
-            Statement::Return { expr, .. } => {
-                self.visit_expr(expr)
-            }
-            Statement::If { cond, conseq, alt, .. } => {
+            Statement::Assign { expr, .. }
+            | Statement::Expr { expr, .. }
+            | Statement::Return { expr, .. } => self.visit_expr(expr),
+            Statement::If {
+                cond, conseq, alt, ..
+            } => {
                 let mut is_success = true;
                 is_success &= self.visit_expr(cond);
                 is_success &= self.visit_block(conseq);
@@ -337,10 +336,10 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_> {
 
     fn visit_expr(&mut self, expr: &mut Expr) -> bool {
         match expr {
-            Expr::UnOp { expr, .. } => {
-                self.visit_expr(expr)
-            }
-            Expr::Ternary { cond, conseq, alt, .. } => {
+            Expr::UnOp { expr, .. } => self.visit_expr(expr),
+            Expr::Ternary {
+                cond, conseq, alt, ..
+            } => {
                 let mut is_success = true;
                 is_success &= self.visit_expr(cond);
                 is_success &= self.visit_expr(conseq);
@@ -367,9 +366,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_> {
                     true
                 }
             }
-            Expr::Primitive { val, .. } => {
-                self.visit_value(val)
-            }
+            Expr::Primitive { val, .. } => self.visit_value(val),
             Expr::VarId { .. } => {
                 // ignore, will not have a string to emit
                 true
@@ -394,9 +391,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_> {
 
     fn visit_value(&mut self, val: &mut Value) -> bool {
         match val {
-            Value::Str {
-                ..
-            } => {
+            Value::Str { .. } => {
                 // Emit the string into the Wasm module data section!
                 self.emitter.emit_string(val)
             }
@@ -407,8 +402,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_> {
                 });
                 is_success
             }
-            Value::Integer { .. } |
-            Value::Boolean { .. } => {
+            Value::Integer { .. } | Value::Boolean { .. } => {
                 // ignore, will not have a string to emit
                 true
             }

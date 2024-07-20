@@ -2,9 +2,7 @@ use core::panic;
 use log::info;
 use std::iter::Iterator;
 
-use crate::emitter::rewriting::{
-    emit_body, emit_if, emit_if_preamble, emit_stmt, Emitter,
-};
+use crate::emitter::rewriting::{emit_body, emit_if, emit_if_preamble, emit_stmt, Emitter};
 use orca::ir::module::Module;
 use orca::iterator::iterator_trait::Iterator as OrcaIterator;
 use orca::iterator::module_iterator::ModuleIterator;

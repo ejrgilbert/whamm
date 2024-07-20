@@ -447,10 +447,7 @@ fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
             is_success &= emit_binop(op, injector);
         }
         Expr::Ternary {
-            cond,
-            conseq,
-            alt,
-            ..
+            cond, conseq, alt, ..
         } => {
             // change conseq and alt types to stmt for easier API call
             is_success &= emit_if_else(
@@ -658,7 +655,7 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, injector: &mut T) -> bool {
     true
 }
 
-fn emit_value<'a, T: Opcode<'a>  + ModuleBuilder>(
+fn emit_value<'a, T: Opcode<'a> + ModuleBuilder>(
     val: &mut Value,
     injector: &mut T,
     table: &mut SymbolTable,
@@ -671,10 +668,7 @@ fn emit_value<'a, T: Opcode<'a>  + ModuleBuilder>(
             injector.i32_const(*val);
             is_success &= true;
         }
-        Value::Str {
-            val,
-            ..
-        } => {
+        Value::Str { val, .. } => {
             // At this point the String has been emitted into the Wasm module!
             // See: InitGenerator::visit_value()
             // This is to avoid having to have access to the app_wasm.data here.

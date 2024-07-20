@@ -1,14 +1,13 @@
-use orca::{DataSegment, DataSegmentKind, InitExpr};
 use crate::common::error::{ErrorGen, WhammError};
 use crate::parser::types::{DataType, Expr, Fn, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
+use orca::{DataSegment, DataSegmentKind, InitExpr};
 
-use orca::ir::types::{Value as OrcaValue, DataType as OrcaType};
+use orca::ir::types::{DataType as OrcaType, Value as OrcaValue};
 use wasmparser::BlockType;
 
 use crate::emitter::rewriting::{
-    emit_body, emit_expr, emit_stmt, whamm_type_to_wasm, Emitter,
-    InsertionMetadata,
+    emit_body, emit_expr, emit_stmt, whamm_type_to_wasm, Emitter, InsertionMetadata,
 };
 use orca::ir::function::FunctionBuilder;
 use orca::ir::module::Module;
@@ -243,11 +242,8 @@ impl<'a, 'b, 'c> ModuleEmitter<'a, 'b, 'c> {
         // TODO: only when we're supporting user-defined fns in script...
         unimplemented!();
     }
-    
-    pub fn emit_string(
-        &mut self,
-        value: &mut Value
-    ) -> bool {
+
+    pub fn emit_string(&mut self, value: &mut Value) -> bool {
         match value {
             Value::Str { val, addr, .. } => {
                 // assuming that the data ID is the index of the object in the Vec
@@ -257,7 +253,9 @@ impl<'a, 'b, 'c> ModuleEmitter<'a, 'b, 'c> {
                     data: val_bytes,
                     kind: DataSegmentKind::Active {
                         memory_index: self.metadata.mem_id,
-                        offset_expr: InitExpr::Value(OrcaValue::I32(self.metadata.curr_mem_offset as i32)),
+                        offset_expr: InitExpr::Value(OrcaValue::I32(
+                            self.metadata.curr_mem_offset as i32,
+                        )),
                     },
                 };
                 self.app_wasm.data.push(data_segment);
@@ -266,9 +264,7 @@ impl<'a, 'b, 'c> ModuleEmitter<'a, 'b, 'c> {
                 *addr = Some((data_id as u32, self.metadata.curr_mem_offset, val.len()));
                 true
             }
-            Value::Integer { .. } |
-            Value::Tuple { .. } |
-            Value::Boolean { .. } => {
+            Value::Integer { .. } | Value::Tuple { .. } | Value::Boolean { .. } => {
                 // todo -- throw error here!
                 todo!()
             }
