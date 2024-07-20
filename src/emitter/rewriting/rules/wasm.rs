@@ -3,7 +3,7 @@ use crate::emitter::rewriting::rules::{
     event_factory, probe_factory, Arg, Event, FromStr, LocInfo, Package,
 };
 use crate::parser::rules::wasm::{OpcodeEventKind, WasmPackageKind};
-use crate::parser::types::{ProbeSpec, SpecPart};
+use crate::parser::types::{DataType, ProbeSpec, SpecPart, Value};
 use std::collections::HashMap;
 
 use orca::ir::module::Module;
@@ -151,37 +151,21 @@ impl OpcodeEvent {
             mode: None,
         }
     }
-    pub fn get_args_for_instr(_app_wasm: &Module, instr: &Operator) -> Vec<Arg> {
+    pub fn get_args_for_instr(app_wasm: &Module, instr: &Operator) -> Vec<Arg> {
         // TODO: there are 500 of them in wasmparser::Operator
         // compared to 48 of them in walrus::ir::Instr
         // How do we compress the Operators we need to concern
         let ty_list: Vec<OrcaType> = match instr {
             Operator::Call {
-                function_index: _function_idx,
+                function_index: fid,
             } => {
-                // do something
-
-                // original walrus code
-                //     match &app_wasm.funcs.get(called_func.func).kind {
-                //     FunctionKind::Import(ImportedFunction { ty: ty_id, .. }) => {
-                //         let ty = app_wasm.types.get(*ty_id);
-                //         Vec::from(ty.params())
-                //     }
-                //     FunctionKind::Local(LocalFunction { args, .. }) => {
-                //         let mut fn_args = vec![];
-                //         args.iter().for_each(|arg_id| {
-                //             let arg = app_wasm.locals.get(*arg_id);
-                //             fn_args.push(arg.ty());
-                //         });
-                //         fn_args
-                //     }
-                //     FunctionKind::Uninitialized(ty_id) => {
-                //         let ty = app_wasm.types.get(*ty_id);
-
-                //         Vec::from(ty.params())
-                //     }
-                // },
-                vec![]
+                // module.types includes import type information, pull param/return info 
+                //     via module.get_type with the FID (works with imported OR local funcs)
+                if let Some(ty) = app_wasm.get_type(*fid) {
+                    ty.params.to_vec()
+                } else {
+                    vec![]
+                }
             }
             Operator::Block { .. } => {
                 // TODO -- define args
@@ -514,7 +498,7 @@ impl OpcodeEvent {
     }
 }
 impl Event for OpcodeEvent {
-    fn get_loc_info(&self, _app_wasm: &Module, instr: &Operator) -> Option<LocInfo> {
+    fn get_loc_info(&self, app_wasm: &Module, instr: &Operator) -> Option<LocInfo> {
         let mut loc_info = LocInfo::new();
 
         match self.kind {
@@ -532,63 +516,56 @@ impl Event for OpcodeEvent {
             }
             OpcodeEventKind::Call => {
                 if let Operator::Call {
-                    function_index: _function_idx,
+                    function_index: fid,
                 } = instr
                 {
-                    // TODO: finish this
-                    // // collect information about this instruction
-                    // let func = app_wasm.funcs.get(called_func.func);
-                    // let func_info = match &func.kind {
-                    //     FunctionKind::Import(ImportedFunction {
-                    //         import: import_id, ..
-                    //     }) => {
-                    //         let import = app_wasm.imports.get(*import_id);
-                    //         FuncInfo {
-                    //             func_kind: "import".to_string(),
-                    //             module: import.module.clone(),
-                    //             name: import.name.clone(),
-                    //         }
-                    //     }
-                    //     FunctionKind::Local(LocalFunction { .. }) => FuncInfo {
-                    //         func_kind: "local".to_string(),
-                    //         module: "".to_string(),
-                    //         name: func.name.clone().unwrap_or("".to_string()),
-                    //     },
-                    //     FunctionKind::Uninitialized(..) => FuncInfo {
-                    //         func_kind: "uninitialized".to_string(),
-                    //         module: "".to_string(),
-                    //         name: "".to_string(),
-                    //     },
-                    // };
 
-                    // // define static_data
-                    // loc_info.static_data.insert(
-                    //     "target_imp_name".to_string(),
-                    //     Some(Value::Str {
-                    //         ty: DataType::Str,
-                    //         val: func_info.name.to_string(),
-                    //         addr: None,
-                    //     }),
-                    // );
-                    // loc_info.static_data.insert(
-                    //     "target_fn_type".to_string(),
-                    //     Some(Value::Str {
-                    //         ty: DataType::Str,
-                    //         val: func_info.func_kind.to_string(),
-                    //         addr: None,
-                    //     }),
-                    // );
-                    // loc_info.static_data.insert(
-                    //     "target_imp_module".to_string(),
-                    //     Some(Value::Str {
-                    //         ty: DataType::Str,
-                    //         val: func_info.module.to_string(),
-                    //         addr: None,
-                    //     }),
-                    // );
+                    // low FIDs are imports (if fid < module.imports.len(), fid is an import)
+                    let func_info = if let Some(import) = app_wasm.imports.get(*fid as usize) {
+                        // This is an imported function (FIDs too large will return None)
+                        FuncInfo {
+                            func_kind: "import".to_string(),
+                            module: import.module.to_string(),
+                            name: import.name.to_string(),
+                        }
+                    } else {
+                        // This is a local function
+                        FuncInfo {
+                            func_kind: "local".to_string(),
+                            module: "".to_string(),
+                            // TODO -- fix this when orca supports pulling func names
+                            name: "".to_string(),
+                        }
+                    };
 
-                    // // add the probes for this event
-                    // loc_info.add_probes(self.probe_spec(), &self.probes);
+                    // define static_data
+                    loc_info.static_data.insert(
+                        "target_imp_name".to_string(),
+                        Some(Value::Str {
+                            ty: DataType::Str,
+                            val: func_info.name.to_string(),
+                            addr: None,
+                        }),
+                    );
+                    loc_info.static_data.insert(
+                        "target_fn_type".to_string(),
+                        Some(Value::Str {
+                            ty: DataType::Str,
+                            val: func_info.func_kind.to_string(),
+                            addr: None,
+                        }),
+                    );
+                    loc_info.static_data.insert(
+                        "target_imp_module".to_string(),
+                        Some(Value::Str {
+                            ty: DataType::Str,
+                            val: func_info.module.to_string(),
+                            addr: None,
+                        }),
+                    );
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
             OpcodeEventKind::CallIndirect => {
