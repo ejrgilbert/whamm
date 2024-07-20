@@ -50,8 +50,12 @@ fn instrument_dfinity_with_fault_injection() {
         // Phase 1 of instrumentation (actually emits the instrumentation code)
         // This structure is necessary since we need to have the fns/globals injected (a single time)
         // and ready to use in every body/predicate.
-        let mut instr =
-            InstrGenerator::new(&behavior, VisitingEmitter::new(&mut app_wasm, &mut symbol_table), simple_ast, &mut err);
+        let mut instr = InstrGenerator::new(
+            &behavior,
+            VisitingEmitter::new(&mut app_wasm, &mut symbol_table),
+            simple_ast,
+            &mut err,
+        );
         // TODO add assertions here once I have error logic in place to check that it worked!
         instr.run(&behavior);
         err.fatal_report("Integration Test");
