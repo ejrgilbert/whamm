@@ -8,8 +8,8 @@ use std::process::{Command, Stdio};
 use wabt::{wasm2wat, Wat2Wasm};
 use whamm::behavior::builder_visitor::{build_behavior_tree, SimpleAST};
 use whamm::common::error::ErrorGen;
-use whamm::emitter::rewriting::WasmRewritingEmitter;
-use whamm::emitter::Emitter;
+use whamm::emitter::rewriting::module_emitter::ModuleEmitter;
+use whamm::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use whamm::generator::init_generator::InitGenerator;
 use whamm::generator::instr_generator::InstrGenerator;
 
@@ -28,7 +28,7 @@ fn instrument_dfinity_with_fault_injection() {
     assert!(!processed_scripts.is_empty());
     err.fatal_report("Integration Test");
 
-    for (script_path, script_text, whamm, symbol_table) in processed_scripts {
+    for (script_path, script_text, mut whamm, mut symbol_table) in processed_scripts {
         // Build the behavior tree from the AST
         let mut simple_ast = SimpleAST::new();
         let mut behavior = build_behavior_tree(&whamm, &mut simple_ast, &mut err);
@@ -38,21 +38,20 @@ fn instrument_dfinity_with_fault_injection() {
         let mut app_wasm =
             WasmModule::parse_only_module(&buff, false).expect("Failed to parse Wasm module");
         let mut err = ErrorGen::new(script_path.clone(), script_text, 0);
-        let mut emitter = WasmRewritingEmitter::new(&mut app_wasm, symbol_table);
         // Phase 0 of instrumentation (emit globals and provided fns)
         let mut init = InitGenerator {
-            emitter: Box::new(&mut emitter),
+            emitter: ModuleEmitter::new(&mut app_wasm, &mut symbol_table),
             context_name: "".to_string(),
             err: &mut err,
         };
-        assert!(init.run(&whamm));
+        assert!(init.run(&mut whamm));
         err.fatal_report("Integration Test");
 
         // Phase 1 of instrumentation (actually emits the instrumentation code)
         // This structure is necessary since we need to have the fns/globals injected (a single time)
         // and ready to use in every body/predicate.
         let mut instr =
-            InstrGenerator::new(&behavior, Box::new(&mut emitter), simple_ast, &mut err);
+            InstrGenerator::new(&behavior, VisitingEmitter::new(&mut app_wasm, &mut symbol_table), simple_ast, &mut err);
         // TODO add assertions here once I have error logic in place to check that it worked!
         instr.run(&behavior);
         err.fatal_report("Integration Test");
@@ -65,8 +64,15 @@ fn instrument_dfinity_with_fault_injection() {
         }
 
         let out_wasm_path = format!("{OUT_BASE_DIR}/{OUT_WASM_NAME}");
-        if let Err(e) = emitter.dump_to_file(out_wasm_path.clone()) {
-            err.add_error(*e)
+        if let Err(e) = app_wasm.emit_wasm(&out_wasm_path) {
+            err.add_error(ErrorGen::get_unexpected_error(
+                true,
+                Some(format!(
+                    "Failed to dump instrumented wasm to {} from error: {}",
+                    &out_wasm_path, e
+                )),
+                None,
+            ))
         }
         err.fatal_report("Integration Test");
 

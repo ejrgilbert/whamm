@@ -159,7 +159,7 @@ impl OpcodeEvent {
             Operator::Call {
                 function_index: fid,
             } => {
-                // module.types includes import type information, pull param/return info 
+                // module.types includes import type information, pull param/return info
                 //     via module.get_type with the FID (works with imported OR local funcs)
                 if let Some(ty) = app_wasm.get_type(*fid) {
                     ty.params.to_vec()
@@ -331,7 +331,7 @@ impl OpcodeEvent {
             }
             _ => {
                 // TODO -- define args
-                unimplemented!()
+                vec![]
             }
         };
 
@@ -519,7 +519,6 @@ impl Event for OpcodeEvent {
                     function_index: fid,
                 } = instr
                 {
-
                     // low FIDs are imports (if fid < module.imports.len(), fid is an import)
                     let func_info = if let Some(import) = app_wasm.imports.get(*fid as usize) {
                         // This is an imported function (FIDs too large will return None)
