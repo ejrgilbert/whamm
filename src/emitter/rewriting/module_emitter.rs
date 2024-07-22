@@ -322,7 +322,7 @@ impl<'a, 'b, 'c> ModuleEmitter<'a, 'b, 'c> {
         }
     }
 
-    fn emit_global_stmts(&mut self, stmts: &mut [Statement]) -> Result<bool, Box<WhammError>> {
+    pub fn emit_global_stmts(&mut self, stmts: &mut [Statement]) -> Result<bool, Box<WhammError>> {
         // NOTE: This should be done in the Module entrypoint
         //       https://docs.rs/walrus/latest/walrus/struct.Module.html
 

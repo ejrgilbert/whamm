@@ -51,7 +51,7 @@ impl InitGenerator<'_, '_, '_, '_> {
         is_success
     }
 
-    fn visit_stmts(&mut self, stmts: &mut Vec<Statement>) -> bool {
+    fn visit_stmts(&mut self, stmts: &mut [Statement]) -> bool {
         let mut is_success = true;
         stmts.iter_mut().for_each(|stmt| {
             is_success &= self.visit_stmt(stmt);

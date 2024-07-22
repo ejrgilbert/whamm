@@ -216,19 +216,6 @@ impl BehaviorTree {
         self
     }
 
-    pub fn emit_pred(&mut self, err: &mut ErrorGen) -> &mut Self {
-        let id = self.nodes.len();
-        self.put_child(
-            Node::Action {
-                id,
-                parent: self.curr,
-                ty: ActionType::EmitPred,
-            },
-            err,
-        );
-        self
-    }
-
     pub fn force_success(&mut self, err: &mut ErrorGen) -> &mut Self {
         let id = self.nodes.len();
         self.put_child(
@@ -357,7 +344,6 @@ pub enum DecoratorType {
 
 #[derive(Debug)]
 pub enum ActionType {
-    EmitPred,
     EmitBody,
     EmitAltCall,
     EmitOrig,
@@ -424,7 +410,6 @@ pub trait BehaviorVisitor<T> {
     fn visit_action(&mut self, node: &Node) -> T {
         if let Node::Action { ty, .. } = node {
             match ty {
-                ActionType::EmitPred { .. } => self.visit_emit_pred(node),
                 ActionType::EmitBody { .. } => self.visit_emit_body(node),
                 ActionType::EmitAltCall { .. } => self.visit_emit_alt_call(node),
                 ActionType::EmitOrig { .. } => self.visit_emit_orig(node),
@@ -436,7 +421,6 @@ pub trait BehaviorVisitor<T> {
             unreachable!()
         }
     }
-    fn visit_emit_pred(&mut self, node: &Node) -> T;
     fn visit_emit_body(&mut self, node: &Node) -> T;
     fn visit_emit_alt_call(&mut self, node: &Node) -> T;
     fn visit_emit_orig(&mut self, node: &Node) -> T;

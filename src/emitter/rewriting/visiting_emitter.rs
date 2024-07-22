@@ -138,7 +138,7 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
             {
                 // Inject at tracker.orig_instr_idx to make sure that this actually emits the args
                 // for the instrumented instruction right before that instruction is called!
-                self.app_iter.local_set(*addr);
+                self.app_iter.local_get(*addr);
             } else {
                 return Err(Box::new(ErrorGen::get_unexpected_error(
                     true,

@@ -5,11 +5,11 @@ use crate::emitter::rewriting::rules::{
 use crate::parser::rules::wasm::{OpcodeEventKind, WasmPackageKind};
 use crate::parser::types::{DataType, ProbeSpec, SpecPart, Value};
 use std::collections::HashMap;
-
+use log::warn;
 use orca::ir::module::Module;
 use orca::ir::types::DataType as OrcaType;
 
-use wasmparser::Operator;
+use wasmparser::{Operator, TypeRef};
 
 pub struct WasmPackage {
     kind: WasmPackageKind,
@@ -161,10 +161,31 @@ impl OpcodeEvent {
             } => {
                 // module.types includes import type information, pull param/return info
                 //     via module.get_type with the FID (works with imported OR local funcs)
-                if let Some(ty) = app_wasm.get_type(*fid) {
-                    ty.params.to_vec()
+                if let Some(import) = app_wasm.imports.get(*fid as usize) {
+                    // This is an imported function (FIDs too large will return None)
+                    match import.ty {
+                        TypeRef::Func(ty_id) => {
+                            if let Some(ty) = app_wasm.types.get(ty_id as usize) {
+                                ty.params.to_vec()
+                            } else {
+                                // no type info found!!
+                                warn!("No type information found for import with FID {fid}");
+                                vec![]
+                            }
+                        }
+                        _ => {
+                            // no type info found!!
+                            warn!("No type information found for import with FID {fid}");
+                            vec![]
+                        }
+                    }
                 } else {
-                    vec![]
+                    // this is a local function
+                    if let Some(ty) = app_wasm.get_type(*fid) {
+                        ty.params.to_vec()
+                    } else {
+                        vec![]
+                    }
                 }
             }
             Operator::Block { .. } => {
@@ -522,6 +543,9 @@ impl Event for OpcodeEvent {
                     // low FIDs are imports (if fid < module.imports.len(), fid is an import)
                     let func_info = if let Some(import) = app_wasm.imports.get(*fid as usize) {
                         // This is an imported function (FIDs too large will return None)
+                        if import.name == "call_new" {
+                            println!("call_new!!");
+                        }
                         FuncInfo {
                             func_kind: "import".to_string(),
                             module: import.module.to_string(),

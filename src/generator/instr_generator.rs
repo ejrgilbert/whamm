@@ -120,6 +120,7 @@ impl<'a, 'b, 'c, 'd, 'e> InstrGenerator<'a, 'b, 'c, 'd, 'e> {
                             if let Some(pred_as_bool) = ExprFolder::get_single_bool(pred) {
                                 if !pred_as_bool {
                                     // predicate is reduced to false, short-circuit!
+                                    println!("evaluated to 'false', short-circuit");
                                     return;
                                 }
                             }
@@ -354,25 +355,6 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_, '_, '_, '_> {
     //     is_success
     // }
 
-    fn visit_emit_pred(&mut self, node: &Node) -> bool {
-        let mut is_success = true;
-        if let Node::Action {
-            ty: ActionType::EmitPred,
-            ..
-        } = node
-        {
-            if let Some((.., Some(ref mut pred))) = self.curr_probe {
-                match self.emitter.emit_expr(pred) {
-                    Err(e) => self.err.add_error(*e),
-                    Ok(res) => is_success &= res,
-                }
-            }
-        } else {
-            unreachable!()
-        }
-        is_success
-    }
-
     fn visit_emit_body(&mut self, node: &Node) -> bool {
         let mut is_success = true;
         if let Node::Action {
@@ -438,7 +420,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_, '_, '_, '_> {
     fn visit_emit_probe_as_if(&mut self, node: &Node) -> bool {
         let mut is_success = true;
         if let Node::Action {
-            ty: ActionType::EmitPred,
+            ty: ActionType::EmitProbeAsIf,
             ..
         } = node
         {
@@ -457,7 +439,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_, '_, '_, '_> {
     fn visit_emit_probe_as_if_else(&mut self, node: &Node) -> bool {
         let mut is_success = true;
         if let Node::Action {
-            ty: ActionType::EmitPred,
+            ty: ActionType::EmitProbeAsIfElse,
             ..
         } = node
         {

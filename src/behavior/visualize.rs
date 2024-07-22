@@ -244,20 +244,6 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
         }
     }
 
-    fn visit_emit_pred(&mut self, node: &TreeNode) {
-        if let TreeNode::Action {
-            id,
-            ty: ActionType::EmitPred,
-            parent,
-        } = node
-        {
-            self.emit_action_node(id, "EmitPred");
-            self.emit_edge(parent, id);
-        } else {
-            unreachable!()
-        }
-    }
-
     fn visit_emit_body(&mut self, node: &TreeNode) {
         if let TreeNode::Action {
             id,
