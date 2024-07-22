@@ -202,7 +202,7 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
     }
 
     pub fn emit_orig(&mut self) -> bool {
-        // TODO: can i get around this curr_op_owned() thing by curr_op?
+        // ORCA TODO: can i get around this curr_op_owned() thing by curr_op?
         let orig = self.app_iter.curr_op_owned().unwrap().clone();
         let loc = self.app_iter.curr_loc();
         self.app_iter.add_instr_at(loc, orig);
@@ -265,9 +265,9 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
                         ..
                     }) = rec
                     {
-                        // ORCA TODO -- how to pull func names from module?
-                        // (val.clone(), self.app_wasm.funcs.by_name(val))
-                        (val.clone(), Some(1056)) // hardcoded for now to ID for `redirect_to_fault_injector` for users.wasm file
+                        // TODO: why instr_alt_call: Option<i32>, not Option<u32>?
+                        let func_id = self.app_iter.module.get_fid_by_name(val).map(|x| x as i32);
+                        (val.clone(), func_id) // hardcoded for now to ID for `redirect_to_fault_injector` for users.wasm file
                     } else {
                         ("".to_string(), None)
                     }

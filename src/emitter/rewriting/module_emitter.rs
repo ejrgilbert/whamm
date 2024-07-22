@@ -162,6 +162,7 @@ impl<'a, 'b, 'c> ModuleEmitter<'a, 'b, 'c> {
             .return_stmt();
 
         let strcmp_id = strcmp.finish(self.app_wasm);
+        self.app_wasm.set_fn_name(strcmp_id - self.app_wasm.num_import_func(), "strcmp");
 
         let rec_id = match self.table.lookup(&f.name.name) {
             Some(rec_id) => *rec_id,
