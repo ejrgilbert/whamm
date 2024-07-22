@@ -1,18 +1,18 @@
 use core::panic;
 use log::info;
 use std::iter::Iterator;
-
+use graphviz_rust::attributes::target;
 use crate::emitter::rewriting::{emit_body, emit_if, emit_if_preamble, emit_stmt, Emitter};
 use orca::ir::module::Module;
 use orca::iterator::iterator_trait::Iterator as OrcaIterator;
 use orca::iterator::module_iterator::ModuleIterator;
 use orca::opcode::Opcode;
-
+use wasmparser::BlockType;
 use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::rewriting::rules::{Arg, LocInfo, Provider, WhammProvider};
 use crate::emitter::rewriting::{emit_expr, InsertionMetadata};
 use crate::generator::types::ExprFolder;
-use crate::parser::types::{DataType, Expr, ProbeSpec, Statement, Value};
+use crate::parser::types::{DataType, Definition, Expr, ProbeSpec, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 
 const UNEXPECTED_ERR_MSG: &str =
@@ -21,7 +21,7 @@ const UNEXPECTED_ERR_MSG: &str =
 pub struct VisitingEmitter<'a, 'b, 'c> {
     pub app_iter: ModuleIterator<'a, 'b>,
     pub table: &'c mut SymbolTable,
-    instr_alt_call: Option<u32>,
+    // instr_alt_call: Option<u32>,
     instr_created_args: Vec<(String, usize)>,
 
     metadata: InsertionMetadata,
@@ -44,7 +44,7 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
                 curr_mem_offset: 1_052_576, // Set default memory base address to DEFAULT + 4KB = 1048576 bytes + 4000 bytes = 1052576 bytes
             },
             table,
-            instr_alt_call: None,
+            // instr_alt_call: None,
             instr_created_args: vec![],
         };
 
@@ -213,14 +213,19 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
         condition: &mut Expr,
         conseq: &mut [Statement],
     ) -> Result<bool, Box<WhammError>> {
-        emit_if(
-            condition,
-            conseq,
-            &mut self.app_iter,
-            self.table,
-            &mut self.metadata,
-            UNEXPECTED_ERR_MSG,
-        )
+        let mut is_success = true;
+        // emit the condition of the `if` expression
+        is_success &= self.emit_expr(condition)?;
+        
+        // emit the beginning of the if block
+        self.app_iter.if_stmt(BlockType::Empty);
+
+        is_success &= self.emit_body(conseq)?;
+
+
+        // emit the end of the if block
+        self.app_iter.end();
+        Ok(is_success)
     }
 
     pub(crate) fn emit_if_with_orig_as_else(
@@ -230,14 +235,12 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
     ) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
 
-        is_success &= emit_if_preamble(
-            condition,
-            conseq,
-            &mut self.app_iter,
-            self.table,
-            &mut self.metadata,
-            UNEXPECTED_ERR_MSG,
-        )?;
+        // emit the condition of the `if` expression
+        is_success &= self.emit_expr(condition)?;
+        // emit the beginning of the if block
+        self.app_iter.if_stmt(BlockType::Empty);
+        
+        is_success &= self.emit_body(conseq)?;
         
         // emit the beginning of the else
         self.app_iter.else_stmt();
@@ -250,72 +253,157 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
         Ok(is_success)
     }
 
-    pub(crate) fn has_alt_call(&mut self) -> bool {
-        // check if we should inject an alternate call!
-        // At this point the body has been visited, so "new_target_fn_name" would be defined
-        let rec_id = self.table.lookup("new_target_fn_name").copied();
+    // pub(crate) fn has_alt_call(&mut self) -> bool {
+    //     // check if we should inject an alternate call!
+    //     // At this point the body has been visited, so "new_target_fn_name" would be defined
+    //     let rec_id = self.table.lookup("new_target_fn_name").copied();
+    // 
+    //     if rec_id.is_none() {
+    //         info!("`new_target_fn_name` not configured for this probe.");
+    //         return false;
+    //     } else {
+    //         let (name, func_call_id) = match rec_id {
+    //             Some(r_id) => {
+    //                 let rec = self.table.get_record_mut(&r_id);
+    //                 if let Some(Record::Var {
+    //                     value: Some(Value::Str { val, .. }),
+    //                     ..
+    //                 }) = rec
+    //                 {
+    //                     // TODO: why instr_alt_call: Option<i32>, not Option<u32>?
+    //                     let func_id = self.app_iter.module.get_fid_by_name(val);
+    //                     (val.clone(), func_id)
+    //                 } else {
+    //                     ("".to_string(), None)
+    //                 }
+    //             }
+    //             None => ("".to_string(), None),
+    //         };
+    //         if func_call_id.is_none() {
+    //             info!(
+    //                 "Could not find function in app Wasm specified by `new_target_fn_name`: {}",
+    //                 name
+    //             );
+    //             return false;
+    //         }
+    //         self.instr_alt_call = func_call_id;
+    //     }
+    //     true
+    // }
 
-        if rec_id.is_none() {
-            info!("`new_target_fn_name` not configured for this probe.");
-            return false;
+    // pub fn emit_alt_call(&mut self) -> Result<bool, Box<WhammError>> {
+    //     if let Some(alt_fn_id) = self.instr_alt_call {
+    //         self.app_iter.call(alt_fn_id);
+    //     } else {
+    //         return Err(Box::new(ErrorGen::get_unexpected_error(
+    //             true,
+    //             Some(format!(
+    //                 "{UNEXPECTED_ERR_MSG} \
+    //                 Could not inject alternate call to function, something went wrong..."
+    //             )),
+    //             None,
+    //         )));
+    //     }
+    //     Ok(true)
+    // }
+    
+    fn handle_alt_call_by_name(&mut self, args: &mut Option<Vec<Box<Expr>>>) -> Result<bool, Box<WhammError>> {
+        // args: vec![func_name: String]
+        // Assume the correct args since we've gone through typechecking at this point!
+        let fn_name = match &**args.as_ref().unwrap().iter().next().unwrap() {
+            Expr::Primitive { val: Value::Str { val, .. }, .. } => val.clone(),
+            _ => return Ok(false),
+        };
+        
+        if let Some(func_id) = self.app_iter.module.get_fid_by_name(fn_name.as_str()) {
+            let is_success = self.emit_args()?;
+            self.app_iter.call(func_id);
+            Ok(is_success)
         } else {
-            let (name, func_call_id) = match rec_id {
-                Some(r_id) => {
-                    let rec = self.table.get_record_mut(&r_id);
-                    if let Some(Record::Var {
-                        value: Some(Value::Str { val, .. }),
-                        ..
-                    }) = rec
-                    {
-                        // TODO: why instr_alt_call: Option<i32>, not Option<u32>?
-                        let func_id = self.app_iter.module.get_fid_by_name(val);
-                        (val.clone(), func_id)
-                    } else {
-                        ("".to_string(), None)
-                    }
-                }
-                None => ("".to_string(), None),
-            };
-            if func_call_id.is_none() {
-                info!(
-                    "Could not find function in app Wasm specified by `new_target_fn_name`: {}",
-                    name
-                );
-                return false;
-            }
-            self.instr_alt_call = func_call_id;
-        }
-        true
-    }
-
-    pub fn emit_alt_call(&mut self) -> Result<bool, Box<WhammError>> {
-        if let Some(alt_fn_id) = self.instr_alt_call {
-            self.app_iter.call(alt_fn_id);
-        } else {
-            return Err(Box::new(ErrorGen::get_unexpected_error(
+            Err(Box::new(ErrorGen::get_unexpected_error(
                 true,
                 Some(format!(
-                    "{UNEXPECTED_ERR_MSG} \
-                    Could not inject alternate call to function, something went wrong..."
+                    "{UNEXPECTED_ERR_MSG} Could not find alt function call by name: {fn_name}"
                 )),
                 None,
-            )));
+            )))
         }
-        Ok(true)
+    }
+
+    fn handle_alt_call_by_id(&mut self, args: &mut Option<Vec<Box<Expr>>>) -> Result<bool, Box<WhammError>> {
+        // args: vec![func_id: i32]
+        // Assume the correct args since we've gone through typechecking at this point!
+        let func_id = match &**args.as_ref().unwrap().iter().next().unwrap() {
+            Expr::Primitive { val: Value::Integer { val, .. }, .. } => val.clone(),
+            _ => return Ok(false),
+        };
+        
+        let is_success = self.emit_args()?;
+        self.app_iter.call(func_id as u32);
+        Ok(is_success)
+    }
+    
+    fn handle_special_fn_call(&mut self, target_fn_name: String, args: &mut Option<Vec<Box<Expr>>>) -> Result<bool, Box<WhammError>> {
+        match target_fn_name.as_str() {
+            "alt_call_by_name" => {
+                self.handle_alt_call_by_name(args)
+            },
+            "alt_call_by_id" => {
+                self.handle_alt_call_by_id(args)
+            },
+            _ => {
+                Err(Box::new(ErrorGen::get_unexpected_error(
+                    true,
+                    Some(format!(
+                        "{UNEXPECTED_ERR_MSG} Could not find handler for static function with name: {target_fn_name}"
+                    )),
+                    None,
+                )))
+            }
+        }
     }
 }
 impl Emitter for VisitingEmitter<'_, '_, '_> {
     fn emit_body(&mut self, body: &mut [Statement]) -> Result<bool, Box<WhammError>> {
-        emit_body(
-            body,
-            &mut self.app_iter,
-            self.table,
-            &mut self.metadata,
-            UNEXPECTED_ERR_MSG,
-        )
+        let mut is_success = true;
+        for stmt in body.iter_mut() {
+            is_success &= self.emit_stmt(stmt)?;
+        }
+        Ok(is_success)
     }
 
     fn emit_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>> {
+        // Check if this is calling a provided, static function!
+        if let Statement::Expr {expr: Expr::Call {fn_target, args, .. }, ..} = stmt {
+            let fn_name = match &**fn_target {
+                Expr::VarId { name, .. } => name.clone(),
+                _ => return Ok(false),
+            };
+            let rec_id = self.table.lookup(fn_name.as_str()).copied();
+        
+            if rec_id.is_none() {
+                // this should never happen!
+                return Err(Box::new(ErrorGen::get_unexpected_error(
+                    true,
+                    Some(format!(
+                        "{UNEXPECTED_ERR_MSG} Could not find function with name: {fn_name}"
+                    )),
+                    None,
+                )));
+            } else if let Some(r_id) = rec_id {
+                let rec = self.table.get_record_mut(&r_id);
+                if let Some(Record::Fn {
+                    def: Definition::CompilerStatic,
+                    ..
+                }) = rec
+                {
+                    // We want to handle this as unique logic rather than a simple function call to be emitted
+                    return self.handle_special_fn_call(fn_name, args);
+                }
+            }
+        }
+
+        // everything else can be emitted as normal!
         emit_stmt(
             stmt,
             &mut self.app_iter,

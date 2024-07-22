@@ -176,25 +176,6 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
         }
     }
 
-    fn visit_has_alt_call(&mut self, node: &TreeNode) {
-        if let TreeNode::Decorator {
-            id,
-            ty: DecoratorType::HasAltCall,
-            parent,
-            child,
-        } = node
-        {
-            self.emit_decorator_node(id, "HasAltCall");
-            self.emit_edge(parent, id);
-
-            if let Some(node) = self.tree.get_node(*child) {
-                self.visit_node(node);
-            }
-        } else {
-            unreachable!()
-        }
-    }
-
     fn visit_pred_is(&mut self, node: &TreeNode) {
         if let TreeNode::Decorator {
             id,
@@ -229,21 +210,6 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
         }
     }
 
-    fn visit_emit_args(&mut self, node: &TreeNode) {
-        if let TreeNode::ArgAction {
-            id,
-            ty: ArgActionType::EmitArgs,
-            parent,
-            ..
-        } = node
-        {
-            self.emit_special_action_node(id, "EmitArgs");
-            self.emit_edge(parent, id);
-        } else {
-            unreachable!()
-        }
-    }
-
     fn visit_emit_body(&mut self, node: &TreeNode) {
         if let TreeNode::Action {
             id,
@@ -252,20 +218,6 @@ impl BehaviorVisitor<()> for Visualizer<'_> {
         } = node
         {
             self.emit_action_node(id, "EmitBody");
-            self.emit_edge(parent, id);
-        } else {
-            unreachable!()
-        }
-    }
-
-    fn visit_emit_alt_call(&mut self, node: &TreeNode) {
-        if let TreeNode::Action {
-            id,
-            ty: ActionType::EmitAltCall,
-            parent,
-        } = node
-        {
-            self.emit_action_node(id, "EmitAltCall");
             self.emit_edge(parent, id);
         } else {
             unreachable!()

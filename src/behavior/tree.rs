@@ -136,33 +136,6 @@ impl BehaviorTree {
         self
     }
 
-    pub fn emit_alt_call(&mut self, err: &mut ErrorGen) -> &mut Self {
-        let id = self.nodes.len();
-        self.put_child(
-            Node::Action {
-                id,
-                parent: self.curr,
-                ty: ActionType::EmitAltCall,
-            },
-            err,
-        );
-        self
-    }
-
-    pub fn emit_args(&mut self, force_success: bool, err: &mut ErrorGen) -> &mut Self {
-        let id = self.nodes.len();
-        self.put_child(
-            Node::ArgAction {
-                id,
-                parent: self.curr,
-                ty: ArgActionType::EmitArgs,
-                force_success,
-            },
-            err,
-        );
-        self
-    }
-
     pub fn save_args(&mut self, force_success: bool, err: &mut ErrorGen) -> &mut Self {
         let id = self.nodes.len();
         self.put_child(
@@ -338,14 +311,12 @@ pub enum Node {
 #[derive(Debug)]
 pub enum DecoratorType {
     IsProbeMode { probe_mode: String },
-    HasAltCall,
     PredIs { val: bool },
 }
 
 #[derive(Debug)]
 pub enum ActionType {
     EmitBody,
-    EmitAltCall,
     EmitOrig,
     EmitProbeAsIf,
     EmitProbeAsIfElse,
@@ -355,7 +326,6 @@ pub enum ActionType {
 #[derive(Debug)]
 pub enum ArgActionType {
     SaveArgs,
-    EmitArgs,
 }
 
 pub trait BehaviorVisitor<T> {
@@ -378,7 +348,6 @@ pub trait BehaviorVisitor<T> {
         if let Node::Decorator { ty, .. } = node {
             match ty {
                 DecoratorType::IsProbeMode { .. } => self.visit_is_probe_mode(node),
-                DecoratorType::HasAltCall { .. } => self.visit_has_alt_call(node),
                 DecoratorType::PredIs { .. } => self.visit_pred_is(node),
             }
         } else {
@@ -390,7 +359,6 @@ pub trait BehaviorVisitor<T> {
         if let Node::ArgAction { ty, .. } = node {
             match ty {
                 ArgActionType::SaveArgs { .. } => self.visit_save_args(node),
-                ArgActionType::EmitArgs { .. } => self.visit_emit_args(node),
             }
         } else {
             unreachable!()
@@ -399,19 +367,16 @@ pub trait BehaviorVisitor<T> {
 
     // Decorator nodes
     fn visit_is_probe_mode(&mut self, node: &Node) -> T;
-    fn visit_has_alt_call(&mut self, node: &Node) -> T;
     fn visit_pred_is(&mut self, node: &Node) -> T;
 
     // Argument action nodes
     fn visit_save_args(&mut self, node: &Node) -> T;
-    fn visit_emit_args(&mut self, node: &Node) -> T;
 
     // Action nodes
     fn visit_action(&mut self, node: &Node) -> T {
         if let Node::Action { ty, .. } = node {
             match ty {
                 ActionType::EmitBody { .. } => self.visit_emit_body(node),
-                ActionType::EmitAltCall { .. } => self.visit_emit_alt_call(node),
                 ActionType::EmitOrig { .. } => self.visit_emit_orig(node),
                 ActionType::ForceSuccess { .. } => self.visit_force_success(node),
                 ActionType::EmitProbeAsIf => self.visit_emit_probe_as_if(node),
@@ -422,7 +387,6 @@ pub trait BehaviorVisitor<T> {
         }
     }
     fn visit_emit_body(&mut self, node: &Node) -> T;
-    fn visit_emit_alt_call(&mut self, node: &Node) -> T;
     fn visit_emit_orig(&mut self, node: &Node) -> T;
     fn visit_force_success(&mut self, node: &Node) -> T;
     fn visit_emit_probe_as_if(&mut self, node: &Node) -> T;

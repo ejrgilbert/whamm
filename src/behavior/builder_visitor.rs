@@ -7,7 +7,7 @@ use parser_types::{
 };
 use std::collections::HashMap;
 
-use crate::behavior::tree::DecoratorType::{HasAltCall, PredIs};
+use crate::behavior::tree::DecoratorType::PredIs;
 use crate::common::error::ErrorGen;
 use crate::parser::types::Block;
 use log::trace;
@@ -195,17 +195,7 @@ impl BehaviorTreeBuilder<'_, '_> {
             .save_args(true, self.err)
             .fallback(self.err)
             .decorator(PredIs { val: true }, self.err)
-            .sequence(self.err)
             .emit_body(self.err)
-            // emit args after body to prep for alt call (or orig call)
-            .emit_args(true, self.err)
-            .fallback(self.err)
-            .decorator(HasAltCall, self.err)
-            .emit_alt_call(self.err)
-            .exit_decorator(self.err)
-            .force_success(self.err)
-            .exit_fallback(self.err)
-            .exit_sequence(self.err)
             .exit_decorator(self.err)
             .fallback(self.err)
             // before behavior

@@ -229,28 +229,28 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_, '_, '_, '_> {
         is_success
     }
 
-    fn visit_has_alt_call(&mut self, node: &Node) -> bool {
-        let mut is_success = true;
-        if let Node::Decorator {
-            ty: DecoratorType::HasAltCall,
-            child,
-            ..
-        } = node
-        {
-            if self.emitter.has_alt_call() {
-                // The current probe has a defined alt call, continue with behavior
-                if let Some(node) = self.tree.get_node(*child) {
-                    is_success &= self.visit_node(node);
-                }
-            } else {
-                // If the decorator condition is false, return false
-                return false;
-            }
-        } else {
-            unreachable!()
-        }
-        is_success
-    }
+    // fn visit_has_alt_call(&mut self, node: &Node) -> bool {
+    //     let mut is_success = true;
+    //     if let Node::Decorator {
+    //         ty: DecoratorType::HasAltCall,
+    //         child,
+    //         ..
+    //     } = node
+    //     {
+    //         if self.emitter.has_alt_call() {
+    //             // The current probe has a defined alt call, continue with behavior
+    //             if let Some(node) = self.tree.get_node(*child) {
+    //                 is_success &= self.visit_node(node);
+    //             }
+    //         } else {
+    //             // If the decorator condition is false, return false
+    //             return false;
+    //         }
+    //     } else {
+    //         unreachable!()
+    //     }
+    //     is_success
+    // }
 
     fn visit_pred_is(&mut self, node: &Node) -> bool {
         if let Node::Decorator {
@@ -311,30 +311,30 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_, '_, '_, '_> {
         is_success
     }
 
-    fn visit_emit_args(&mut self, node: &Node) -> bool {
-        let mut is_success = true;
-        if let Node::ArgAction {
-            ty: ArgActionType::EmitArgs,
-            force_success,
-            ..
-        } = node
-        {
-            if !self.curr_instr_args.is_empty() {
-                // The current instruction has args, emit them
-                // NOTE: The emitter holds on to the saved arg info
-                match self.emitter.emit_args() {
-                    Err(e) => self.err.add_error(*e),
-                    Ok(res) => is_success &= res,
-                }
-            } else {
-                // If no args, return whatever was configured to do
-                return *force_success;
-            }
-        } else {
-            unreachable!()
-        }
-        is_success
-    }
+    // fn visit_emit_args(&mut self, node: &Node) -> bool {
+    //     let mut is_success = true;
+    //     if let Node::ArgAction {
+    //         ty: ArgActionType::EmitArgs,
+    //         force_success,
+    //         ..
+    //     } = node
+    //     {
+    //         if !self.curr_instr_args.is_empty() {
+    //             // The current instruction has args, emit them
+    //             // NOTE: The emitter holds on to the saved arg info
+    //             match self.emitter.emit_args() {
+    //                 Err(e) => self.err.add_error(*e),
+    //                 Ok(res) => is_success &= res,
+    //             }
+    //         } else {
+    //             // If no args, return whatever was configured to do
+    //             return *force_success;
+    //         }
+    //     } else {
+    //         unreachable!()
+    //     }
+    //     is_success
+    // }
 
     // fn visit_emit_global_stmts(&mut self, node: &Node) -> bool {
     //     let mut is_success = true;
@@ -377,22 +377,22 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_, '_, '_, '_> {
         is_success
     }
 
-    fn visit_emit_alt_call(&mut self, node: &Node) -> bool {
-        let mut is_success = true;
-        if let Node::Action {
-            ty: ActionType::EmitAltCall,
-            ..
-        } = node
-        {
-            match self.emitter.emit_alt_call() {
-                Err(e) => self.err.add_error(*e),
-                Ok(res) => is_success &= res,
-            }
-        } else {
-            unreachable!()
-        }
-        is_success
-    }
+    // fn visit_emit_alt_call(&mut self, node: &Node) -> bool {
+    //     let mut is_success = true;
+    //     if let Node::Action {
+    //         ty: ActionType::EmitAltCall,
+    //         ..
+    //     } = node
+    //     {
+    //         match self.emitter.emit_alt_call() {
+    //             Err(e) => self.err.add_error(*e),
+    //             Ok(res) => is_success &= res,
+    //         }
+    //     } else {
+    //         unreachable!()
+    //     }
+    //     is_success
+    // }
 
     fn visit_emit_orig(&mut self, node: &Node) -> bool {
         let mut is_success = true;
