@@ -201,7 +201,7 @@ pub enum Value {
         val: bool,
     },
 }
-impl Value{
+impl Value {
     pub fn ty(&self) -> DataType {
         match self {
             Value::Integer { ty, .. } => ty.clone(),

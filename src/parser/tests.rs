@@ -531,7 +531,6 @@ wasm::call:alt /
             // probe body
             assert!(&probe.body().is_some());
             assert_eq!(1, probe.body().as_ref().unwrap().len());
-
             print_ast(&ast);
 
             if err.has_errors {
@@ -593,23 +592,47 @@ fn test_global_stmts() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
-        i32 a;
-        a = 1;
         dummy_fn() {
             a = strcmp((arg0, arg1), "bookings");
             strcmp((arg0, arg1), "bookings");
         }
-        BEGIN{
+        wasm::call:alt{
+            (i32, i32) a = (arg0, arg1);
             strcmp((arg0, arg1), "bookings");
-        }
-        END {
-            a = 2;
         }
     "#;
 
     match get_ast(script, &mut err) {
         Some(ast) => {
             print_ast(&ast);
+            assert_eq!(1, ast.scripts.len()); // a single script
+            let script = ast.scripts.first().unwrap();
+            //functions length - strcmp and my_func
+            assert_eq!(1, script.fns.len());
+            // provider
+            assert_eq!(1, script.providers.len());
+            let provider = script.providers.get("wasm").unwrap();
+            assert_eq!("wasm", provider.name());
+            assert_eq!(0, provider.get_provided_globals().len());
+            assert_eq!(0, provider.get_provided_fns().len());
+
+            assert_eq!(1, provider.len_packages());
+            let package = provider.packages().next().unwrap();
+            assert_eq!("opcode", package.name());
+            assert_eq!(1, package.get_provided_globals().len());
+            assert_eq!(0, package.get_provided_fns().len());
+
+            assert_eq!(1, package.len_events());
+            let event = package.events().next().unwrap();
+            assert_eq!("call", event.name());
+            // TODO -- change to 5 when add back: arg[0:9]+
+            assert_eq!(4, event.get_provided_globals().len());
+            assert_eq!(0, event.get_provided_fns().len());
+
+            assert_eq!(1, event.probes().len());
+            assert_eq!(1, event.probes().get("alt").unwrap().len());
+
+            let probe = event.probes().get("alt").unwrap().first().unwrap();
         }
         None => {
             error!("Could not get ast from script: {}", script);
@@ -654,8 +677,9 @@ pub fn testing_global_def() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
+        (i32, i32) sample = (1, 2);
         dummy_fn() {
-            a = strcmp((arg0, arg1), "bookings");
+            a = strcmp(sample, "bookings");
             strcmp((arg0, arg1), "bookings");
         }
         i32 i;

@@ -457,7 +457,7 @@ pub fn create_string_bool(name: i32) {
         .unwrap()
         .insert(name, AnyMap::string_bool_Map(HashMap::new()));
 }
-
+#[no_mangle]
 pub fn create_tuple_i32(name: i32) {
     MY_MAPS
         .lock()

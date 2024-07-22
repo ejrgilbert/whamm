@@ -1143,10 +1143,18 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
             // handle contents
             let pair_line_col = LineColLocation::from(pair.as_span());
             let mut vals = vec![];
-
+            let mut val_types = vec![];
             for inner in pair.into_inner() {
                 match expr_primary(inner) {
-                    Ok(expr) => vals.push(expr),
+                    Ok(expr) => {
+                        val_types.push(match type_from_expr(expr.clone()) {
+                            Ok(ty) => Box::new(ty),
+                            Err(errors) => {
+                                return Err(errors);
+                            }
+                        });
+                        vals.push(expr)
+                    }
                     other => {
                         return other;
                     }
@@ -1156,7 +1164,7 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
             trace!("Exiting tuple");
             Ok(Expr::Primitive {
                 val: Value::Tuple {
-                    ty: DataType::Tuple { ty_info: vec![] },
+                    ty: DataType::Tuple { ty_info: val_types },
                     vals,
                 },
                 loc: Some(Location {
@@ -1455,4 +1463,69 @@ fn expr_from_pair(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
             vec![rule],
         )]),
     };
+}
+fn type_from_expr(expr: Expr) -> Result<DataType, Vec<WhammError>> {
+    match expr {
+        Expr::Primitive { val, .. } => match val {
+            Value::Integer { ty, .. } => Ok(ty),
+            Value::Boolean { ty, .. } => Ok(ty),
+            Value::Str { ty, .. } => Ok(ty),
+            Value::Tuple { ty, .. } => Ok(ty),
+        },
+        Expr::VarId { .. } => Ok(DataType::AssumeGood),
+        Expr::UnOp { expr, .. } => type_from_expr(*expr),
+        Expr::BinOp { lhs, rhs, loc, .. } => {
+            let lhs_ty = type_from_expr(*lhs);
+            let rhs_ty = type_from_expr(*rhs);
+            let line_col = match loc {
+                Some(loc) => Some(loc.line_col.clone()),
+                None => None,
+            };
+            match (lhs_ty, rhs_ty) {
+                (Ok(lhs_ty), Ok(rhs_ty)) => {
+                    if lhs_ty == rhs_ty {
+                        Ok(lhs_ty)
+                    } else {
+                        Err(vec![ErrorGen::get_parse_error(
+                            true,
+                            Some("Mismatched types in binary operation".to_string()),
+                            line_col,
+                            vec![],
+                            vec![],
+                        )])
+                    }
+                }
+                (Err(lhs_err), Err(rhs_err)) => {
+                    let mut errors = vec![];
+                    errors.extend(lhs_err);
+                    errors.extend(rhs_err);
+                    Err(errors)
+                }
+                (Err(lhs_err), _) => Err(lhs_err),
+                (_, Err(rhs_err)) => Err(rhs_err),
+            }
+        }
+        Expr::Call { .. } => Ok(DataType::AssumeGood),
+        Expr::GetMap { map, key, .. } => {
+            let map_ty = type_from_expr(*map);
+            let key_ty = type_from_expr(*key);
+            match (map_ty.clone(), key_ty.clone()) {
+                (Ok(map_ty), Ok(key_ty)) => Ok(DataType::Map {
+                    key_ty: Box::new(key_ty),
+                    val_ty: Box::new(map_ty),
+                }),
+                _ => {
+                    let mut errors = vec![];
+                    if let Err(map_err) = map_ty {
+                        errors.extend(map_err);
+                    }
+                    if let Err(key_err) = key_ty {
+                        errors.extend(key_err);
+                    }
+                    Err(errors)
+                }
+            }
+        }
+        Expr::Ternary { .. } => Ok(DataType::AssumeGood),
+    }
 }

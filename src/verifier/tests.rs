@@ -566,12 +566,12 @@ pub fn testing_map() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
-        wasm::call:alt {
-            (i32, map<i32, i32>) a;
-            map<i32, i32> b;
-            if((1, b) == a){
-            };
-        }
+        wasm:opcode:call:after{
+        map<(i32, i32, i32), i32> my_map;
+        (i32, i32, i32) b = (1, 2, 3);
+        my_map[b] = 2;
+        i32 a = my_map[b];
+    }
     "#;
 
     match tests::get_ast(script, &mut err) {
@@ -579,8 +579,8 @@ pub fn testing_map() {
             let mut table = verifier::build_symbol_table(&mut ast, &mut err);
             let res = verifier::type_check(&ast, &mut table, &mut err);
             err.report();
-            assert!(err.has_errors);
-            assert!(!res);
+            assert!(!err.has_errors);
+            assert!(res);
         }
         None => {
             error!("Could not get ast from script: {}", script);

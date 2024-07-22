@@ -423,7 +423,7 @@ impl ErrorGen {
         self.add_warn(warn);
     }
 }
-
+#[derive(Clone)]
 pub struct CodeLocation {
     // True if this is an error-causing code location, false if not (just informational)
     pub is_err: bool,
@@ -587,7 +587,7 @@ impl CodeLocation {
         }
     }
 }
-
+#[derive(Clone)]
 pub struct WhammError {
     pub fatal: bool,
     /// The location within the input string causing the error
@@ -813,6 +813,7 @@ impl WarnType {
         }
     }
 }
+#[derive(Clone)]
 pub enum ErrorType {
     InstrumentationError {
         message: String,

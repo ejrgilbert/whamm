@@ -559,8 +559,9 @@ impl WhammVisitor<String> for AsStrVisitor {
                 s += &format!("\"{}\"", val);
                 s
             }
-            Value::Tuple { ty: _ty, vals } => {
+            Value::Tuple { ty, vals } => {
                 let mut s = "".to_string();
+                s += &format!("tuple<{}>", self.visit_datatype(ty));
                 s += "(";
                 s += &vals
                     .iter()

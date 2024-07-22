@@ -127,7 +127,7 @@ impl MapKnower {
 
         match map {
             DataType::Map { key_ty, val_ty } => {
-                return (self.create_map_insert( *key_ty,*val_ty), map_id);
+                return (self.create_map_insert(*key_ty, *val_ty), map_id);
             }
             _ => {
                 panic!("Error: Expected a map type, got something else");
@@ -148,11 +148,7 @@ impl MapKnower {
     }
 
     //The stuff that actually calls the emitter stuff
-    pub fn create_map_insert(
-        &mut self,
-        key: DataType,
-        val: DataType,
-    ) -> String {
+    pub fn create_map_insert(&mut self, key: DataType, val: DataType) -> String {
         match key {
             DataType::I32 => match val {
                 DataType::I32 => {
@@ -239,29 +235,29 @@ impl MapKnower {
             }
         }
     }
-    pub fn set_map_insert(
-        &mut self,
-        key: DataType,
-        val: DataType,
-    ) -> String  {
+    pub fn set_map_insert(&mut self, key: DataType, val: DataType) -> String {
         match key {
-            DataType::I32 => {
-                match val {
-                    DataType::I32 => {
-                        return "insert_i32_i32".to_string();
-                    }
-                    _ =>{
-                        panic!("Error: Not yet supported value type for map");
-                    }
+            DataType::I32 => match val {
+                DataType::I32 => {
+                    return "insert_i32_i32".to_string();
                 }
-            }
-            DataType::Tuple{ ty_info } => {
-                if ty_info == vec![Box::new(DataType::I32), Box::new(DataType::I32), Box::new(DataType::I32)] {
+                _ => {
+                    panic!("Error: Not yet supported value type for map");
+                }
+            },
+            DataType::Tuple { ty_info } => {
+                if ty_info
+                    == vec![
+                        Box::new(DataType::I32),
+                        Box::new(DataType::I32),
+                        Box::new(DataType::I32),
+                    ]
+                {
                     match val {
                         DataType::I32 => {
                             return "insert_map_i32i32i32tuple_i32".to_string();
                         }
-                        _ =>{
+                        _ => {
                             panic!("Error: Not yet supported value type for map");
                         }
                     }
@@ -274,29 +270,29 @@ impl MapKnower {
             }
         }
     }
-    pub fn create_map_get(
-        &mut self,
-        key: DataType,
-        val: DataType,
-    ) -> String {
+    pub fn create_map_get(&mut self, key: DataType, val: DataType) -> String {
         match key {
-            DataType::I32 => {
-                match val {
-                    DataType::I32 => {
-                        return "get_i32_i32".to_string();
-                    }
-                    _ =>{
-                        panic!("Error: Not yet supported value type for map");
-                    }
+            DataType::I32 => match val {
+                DataType::I32 => {
+                    return "get_i32_i32".to_string();
                 }
-            }
-            DataType::Tuple{ ty_info } => {
-                if ty_info == vec![Box::new(DataType::I32), Box::new(DataType::I32), Box::new(DataType::I32)] {
+                _ => {
+                    panic!("Error: Not yet supported value type for map");
+                }
+            },
+            DataType::Tuple { ty_info } => {
+                if ty_info
+                    == vec![
+                        Box::new(DataType::I32),
+                        Box::new(DataType::I32),
+                        Box::new(DataType::I32),
+                    ]
+                {
                     match val {
                         DataType::I32 => {
-                            return "get_map_i32i32i32tuple_i32".to_string();
+                            return "get_i32_from_i32i32i32tuple".to_string();
                         }
-                        _ =>{
+                        _ => {
                             panic!("Error: Not yet supported value type for map");
                         }
                     }
