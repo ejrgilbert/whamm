@@ -477,7 +477,7 @@ impl OpcodeEvent {
         }
     }
     fn call(loc: Option<Location>) -> Self {
-        let mut fns = vec![ProvidedFunction::new(
+        let fns = vec![ProvidedFunction::new(
             "alt_call_by_id".to_string(),
             "Insert an alternate call (targeting the passed function ID) into the Wasm bytecode. Will also emit the original parameters onto the stack.".to_string(),
             vec![(
@@ -504,7 +504,7 @@ impl OpcodeEvent {
             DataType::Tuple { ty_info: vec![] },
             true
         )];
-        
+
         let mut globals = Self::init_globals(OpcodeEventKind::Call);
 
         // add in the extra globals (that aren't args or immediates)

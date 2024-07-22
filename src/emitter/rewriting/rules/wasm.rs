@@ -4,10 +4,10 @@ use crate::emitter::rewriting::rules::{
 };
 use crate::parser::rules::wasm::{OpcodeEventKind, WasmPackageKind};
 use crate::parser::types::{DataType, ProbeSpec, SpecPart, Value};
-use std::collections::HashMap;
 use log::warn;
 use orca::ir::module::Module;
 use orca::ir::types::DataType as OrcaType;
+use std::collections::HashMap;
 
 use wasmparser::{Operator, TypeRef};
 

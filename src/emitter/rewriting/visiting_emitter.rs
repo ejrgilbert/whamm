@@ -1,19 +1,19 @@
-use core::panic;
-use log::info;
-use std::iter::Iterator;
-use graphviz_rust::attributes::target;
-use crate::emitter::rewriting::{emit_body, emit_if, emit_if_preamble, emit_stmt, Emitter};
-use orca::ir::module::Module;
-use orca::iterator::iterator_trait::Iterator as OrcaIterator;
-use orca::iterator::module_iterator::ModuleIterator;
-use orca::opcode::Opcode;
-use wasmparser::BlockType;
 use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::rewriting::rules::{Arg, LocInfo, Provider, WhammProvider};
+use crate::emitter::rewriting::{emit_body, emit_if, emit_if_preamble, emit_stmt, Emitter};
 use crate::emitter::rewriting::{emit_expr, InsertionMetadata};
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{DataType, Definition, Expr, ProbeSpec, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
+use core::panic;
+use graphviz_rust::attributes::target;
+use log::info;
+use orca::ir::module::Module;
+use orca::iterator::iterator_trait::Iterator as OrcaIterator;
+use orca::iterator::module_iterator::ModuleIterator;
+use orca::opcode::Opcode;
+use std::iter::Iterator;
+use wasmparser::BlockType;
 
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
@@ -216,12 +216,11 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
         let mut is_success = true;
         // emit the condition of the `if` expression
         is_success &= self.emit_expr(condition)?;
-        
+
         // emit the beginning of the if block
         self.app_iter.if_stmt(BlockType::Empty);
 
         is_success &= self.emit_body(conseq)?;
-
 
         // emit the end of the if block
         self.app_iter.end();
@@ -239,9 +238,9 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
         is_success &= self.emit_expr(condition)?;
         // emit the beginning of the if block
         self.app_iter.if_stmt(BlockType::Empty);
-        
+
         is_success &= self.emit_body(conseq)?;
-        
+
         // emit the beginning of the else
         self.app_iter.else_stmt();
 
@@ -257,7 +256,7 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
     //     // check if we should inject an alternate call!
     //     // At this point the body has been visited, so "new_target_fn_name" would be defined
     //     let rec_id = self.table.lookup("new_target_fn_name").copied();
-    // 
+    //
     //     if rec_id.is_none() {
     //         info!("`new_target_fn_name` not configured for this probe.");
     //         return false;
@@ -306,15 +305,21 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
     //     }
     //     Ok(true)
     // }
-    
-    fn handle_alt_call_by_name(&mut self, args: &mut Option<Vec<Box<Expr>>>) -> Result<bool, Box<WhammError>> {
+
+    fn handle_alt_call_by_name(
+        &mut self,
+        args: &mut Option<Vec<Box<Expr>>>,
+    ) -> Result<bool, Box<WhammError>> {
         // args: vec![func_name: String]
         // Assume the correct args since we've gone through typechecking at this point!
         let fn_name = match &**args.as_ref().unwrap().iter().next().unwrap() {
-            Expr::Primitive { val: Value::Str { val, .. }, .. } => val.clone(),
+            Expr::Primitive {
+                val: Value::Str { val, .. },
+                ..
+            } => val.clone(),
             _ => return Ok(false),
         };
-        
+
         if let Some(func_id) = self.app_iter.module.get_fid_by_name(fn_name.as_str()) {
             let is_success = self.emit_args()?;
             self.app_iter.call(func_id);
@@ -330,20 +335,30 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
         }
     }
 
-    fn handle_alt_call_by_id(&mut self, args: &mut Option<Vec<Box<Expr>>>) -> Result<bool, Box<WhammError>> {
+    fn handle_alt_call_by_id(
+        &mut self,
+        args: &mut Option<Vec<Box<Expr>>>,
+    ) -> Result<bool, Box<WhammError>> {
         // args: vec![func_id: i32]
         // Assume the correct args since we've gone through typechecking at this point!
         let func_id = match &**args.as_ref().unwrap().iter().next().unwrap() {
-            Expr::Primitive { val: Value::Integer { val, .. }, .. } => val.clone(),
+            Expr::Primitive {
+                val: Value::Integer { val, .. },
+                ..
+            } => val.clone(),
             _ => return Ok(false),
         };
-        
+
         let is_success = self.emit_args()?;
         self.app_iter.call(func_id as u32);
         Ok(is_success)
     }
-    
-    fn handle_special_fn_call(&mut self, target_fn_name: String, args: &mut Option<Vec<Box<Expr>>>) -> Result<bool, Box<WhammError>> {
+
+    fn handle_special_fn_call(
+        &mut self,
+        target_fn_name: String,
+        args: &mut Option<Vec<Box<Expr>>>,
+    ) -> Result<bool, Box<WhammError>> {
         match target_fn_name.as_str() {
             "alt_call_by_name" => {
                 self.handle_alt_call_by_name(args)
@@ -374,13 +389,19 @@ impl Emitter for VisitingEmitter<'_, '_, '_> {
 
     fn emit_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>> {
         // Check if this is calling a provided, static function!
-        if let Statement::Expr {expr: Expr::Call {fn_target, args, .. }, ..} = stmt {
+        if let Statement::Expr {
+            expr: Expr::Call {
+                fn_target, args, ..
+            },
+            ..
+        } = stmt
+        {
             let fn_name = match &**fn_target {
                 Expr::VarId { name, .. } => name.clone(),
                 _ => return Ok(false),
             };
             let rec_id = self.table.lookup(fn_name.as_str()).copied();
-        
+
             if rec_id.is_none() {
                 // this should never happen!
                 return Err(Box::new(ErrorGen::get_unexpected_error(

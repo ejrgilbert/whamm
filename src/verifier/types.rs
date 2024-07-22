@@ -438,10 +438,13 @@ impl Record {
     pub fn is_comp_provided(&self) -> bool {
         match self {
             Record::Fn {
-                def: Definition::CompilerStatic, ..
-            } | Record::Fn {
-                def: Definition::CompilerDynamic, ..
-            }=> true,
+                def: Definition::CompilerStatic,
+                ..
+            }
+            | Record::Fn {
+                def: Definition::CompilerDynamic,
+                ..
+            } => true,
             Record::Var {
                 is_comp_provided, ..
             } => *is_comp_provided,

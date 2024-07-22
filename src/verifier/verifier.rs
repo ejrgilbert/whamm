@@ -3,7 +3,10 @@ use std::vec;
 
 use crate::common::error::ErrorGen;
 use crate::parser::rules::{Event, Package, Probe, Provider};
-use crate::parser::types::{BinOp, Block, DataType, Definition, Expr, Fn, Location, Script, Statement, UnOp, Value, Whamm, WhammVisitor, WhammVisitorMut};
+use crate::parser::types::{
+    BinOp, Block, DataType, Definition, Expr, Fn, Location, Script, Statement, UnOp, Value, Whamm,
+    WhammVisitor, WhammVisitorMut,
+};
 use crate::verifier::builder_visitor::SymbolTableBuilder;
 use crate::verifier::types::{Record, SymbolTable};
 
@@ -231,7 +234,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                 );
             }
         }
-        
+
         //return the type of the fn
         let _ = self.table.exit_scope();
         Some(function.return_ty.clone())
@@ -587,7 +590,10 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                     }) = self.table.get_record(id)
                     {
                         //check if in global state and if is_comp_provided is false --> not allowed if both are the case
-                        if self.in_script_global && !(*def == Definition::CompilerDynamic || *def == Definition::CompilerStatic) {
+                        if self.in_script_global
+                            && !(*def == Definition::CompilerDynamic
+                                || *def == Definition::CompilerStatic)
+                        {
                             self.err.type_check_error(
                                 false,
                                 "Function calls to user def functions are not allowed in the global state of the script"

@@ -388,7 +388,7 @@ pub struct Global {
 
     pub ty: DataType,
     pub var_name: Expr, // Should be VarId
-    pub value: Option<Value>
+    pub value: Option<Value>,
 }
 impl Global {
     pub fn print(&self, buffer: &mut Buffer) {
@@ -526,7 +526,7 @@ impl Whamm {
             "Compare two wasm strings and return whether they are equivalent.".to_string(),
             strcmp_params,
             DataType::Boolean,
-            false
+            false,
         );
 
         vec![strcmp]
@@ -970,7 +970,7 @@ impl ProvidedFunction {
         docs: String,
         params: Vec<(Expr, DataType)>,
         return_ty: DataType,
-        is_static: bool
+        is_static: bool,
     ) -> Self {
         Self {
             name: name.clone(),

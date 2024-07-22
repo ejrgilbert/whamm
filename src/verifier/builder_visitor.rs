@@ -431,7 +431,6 @@ impl SymbolTableBuilder<'_> {
             self.add_global(global.ty.clone(), name.clone(), true, None);
         }
     }
-    
 }
 
 impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {

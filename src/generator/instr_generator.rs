@@ -54,15 +54,9 @@ impl<'a, 'b, 'c, 'd, 'e> InstrGenerator<'a, 'b, 'c, 'd, 'e> {
     pub fn configure_probe_mode(&mut self) -> bool {
         // TODO -- make the probe mode an enum!
         match self.curr_probe_mode.as_str() {
-            "before" => {
-                self.emitter.before()
-            },
-            "after" => {
-                self.emitter.after()
-            },
-            "alt" => {
-                self.emitter.alternate()
-            },
+            "before" => self.emitter.before(),
+            "after" => self.emitter.after(),
+            "alt" => self.emitter.alternate(),
             _ => return false,
         }
         true

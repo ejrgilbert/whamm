@@ -2,7 +2,9 @@ use crate::parser::types;
 use types::{BinOp, Block, FnId, Rule, UnOp, WhammParser, PRATT_PARSER};
 
 use crate::common::error::{ErrorGen, WhammError};
-use crate::parser::types::{DataType, Definition, Expr, Location, ProbeSpec, Script, SpecPart, Statement, Value, Whamm};
+use crate::parser::types::{
+    DataType, Definition, Expr, Location, ProbeSpec, Script, SpecPart, Statement, Value, Whamm,
+};
 use log::trace;
 use pest::error::{Error, LineColLocation};
 use pest::iterators::Pair;
