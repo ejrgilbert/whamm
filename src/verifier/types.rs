@@ -1,5 +1,5 @@
 use crate::common::error::{ErrorGen, WhammError};
-use crate::parser::types::{DataType, FnId, Location, ProbeSpec, Value};
+use crate::parser::types::{DataType, Definition, FnId, Location, ProbeSpec, Value};
 use std::collections::HashMap;
 use std::fmt;
 
@@ -410,7 +410,7 @@ pub enum Record {
         // given that we are assuming function that return nothing
         // returns a unit type (empty tuple)
         ret_ty: DataType,
-        is_comp_provided: bool,
+        def: Definition,
 
         /// The address of this function post-injection
         addr: Option<u32>,
@@ -438,8 +438,10 @@ impl Record {
     pub fn is_comp_provided(&self) -> bool {
         match self {
             Record::Fn {
-                is_comp_provided, ..
-            } => *is_comp_provided,
+                def: Definition::CompilerStatic, ..
+            } | Record::Fn {
+                def: Definition::CompilerDynamic, ..
+            }=> true,
             Record::Var {
                 is_comp_provided, ..
             } => *is_comp_provided,

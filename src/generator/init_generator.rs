@@ -5,10 +5,7 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::rewriting::module_emitter::ModuleEmitter;
 use crate::parser::rules::{Event, Package, Probe, Provider};
-use crate::parser::types::{
-    BinOp, Block, DataType, Expr, Fn, Global, ProvidedFunction, Script, Statement, UnOp, Value,
-    Whamm, WhammVisitorMut,
-};
+use crate::parser::types::{BinOp, Block, DataType, Definition, Expr, Fn, Global, ProvidedFunction, Script, Statement, UnOp, Value, Whamm, WhammVisitorMut};
 use log::{trace, warn};
 use std::collections::HashMap;
 
@@ -273,7 +270,8 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_> {
             self.err.add_error(*e)
         }
         let mut is_success = true;
-        if f.is_comp_provided {
+        if f.def == Definition::CompilerDynamic {
+            // Only emit the functions that will be used dynamically!
             match self.emitter.emit_fn(&self.context_name, f) {
                 Err(e) => self.err.add_error(*e),
                 Ok(res) => is_success = res,

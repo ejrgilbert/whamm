@@ -54,9 +54,15 @@ impl<'a, 'b, 'c, 'd, 'e> InstrGenerator<'a, 'b, 'c, 'd, 'e> {
     pub fn configure_probe_mode(&mut self) -> bool {
         // TODO -- make the probe mode an enum!
         match self.curr_probe_mode.as_str() {
-            "before" => self.emitter.before(),
-            "after" => self.emitter.after(),
-            "alt" => self.emitter.alternate(),
+            "before" => {
+                self.emitter.before()
+            },
+            "after" => {
+                self.emitter.after()
+            },
+            "alt" => {
+                self.emitter.alternate()
+            },
             _ => return false,
         }
         true
@@ -120,7 +126,6 @@ impl<'a, 'b, 'c, 'd, 'e> InstrGenerator<'a, 'b, 'c, 'd, 'e> {
                             if let Some(pred_as_bool) = ExprFolder::get_single_bool(pred) {
                                 if !pred_as_bool {
                                     // predicate is reduced to false, short-circuit!
-                                    println!("evaluated to 'false', short-circuit");
                                     return;
                                 }
                             }
@@ -211,8 +216,6 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_, '_, '_, '_> {
         } = node
         {
             if self.curr_probe_mode == *probe_mode {
-                // prep the instrumentation mode for emitting probe logic
-                self.configure_probe_mode();
                 if let Some(node) = self.tree.get_node(*child) {
                     is_success &= self.visit_node(node);
                 }
@@ -443,6 +446,7 @@ impl BehaviorVisitor<bool> for InstrGenerator<'_, '_, '_, '_, '_> {
             ..
         } = node
         {
+            self.configure_probe_mode();
             if let Some((Some(ref mut body), Some(ref mut pred))) = self.curr_probe {
                 match self.emitter.emit_if_with_orig_as_else(pred, body) {
                     Err(e) => self.err.add_error(*e),

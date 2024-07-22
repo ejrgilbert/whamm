@@ -351,9 +351,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         s += ")";
 
         // print return type
-        if let Some(ty) = &f.return_ty {
-            s += &format!(" -> {}", self.visit_datatype(ty));
-        }
+        s += &format!(" -> {}", self.visit_datatype(&f.return_ty));
         s += &format!(" {{{}", NL);
 
         // print body

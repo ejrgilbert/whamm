@@ -296,9 +296,9 @@ impl SymbolTableBuilder<'_> {
         // create record
         let fn_rec = Record::Fn {
             name: f.name.clone(),
-            is_comp_provided: f.is_comp_provided,
+            def: f.def.clone(),
             params: vec![],
-            ret_ty: f.return_ty.clone().unwrap(),
+            ret_ty: f.return_ty.clone(),
             addr: None,
             loc: f.name.loc.clone(),
         };
@@ -431,6 +431,7 @@ impl SymbolTableBuilder<'_> {
             self.add_global(global.ty.clone(), name.clone(), true, None);
         }
     }
+    
 }
 
 impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {

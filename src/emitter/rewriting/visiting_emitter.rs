@@ -96,7 +96,6 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
         // No opcodes should have been emitted in the module yet!
         // So, we can just save off the first * items in the stack as the args
         // to the call.
-        self.app_iter.before(); // should be done before the original opcode
         let mut arg_recs: Vec<(String, usize)> = vec![]; // vec to retain order!
         args.iter().for_each(
             |Arg {
@@ -239,6 +238,9 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
             &mut self.metadata,
             UNEXPECTED_ERR_MSG,
         )?;
+        
+        // emit the beginning of the else
+        self.app_iter.else_stmt();
 
         is_success &= self.emit_args()?;
         is_success &= self.emit_orig();

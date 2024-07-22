@@ -1,11 +1,9 @@
+use std::cmp::PartialEq;
 use std::vec;
 
 use crate::common::error::ErrorGen;
 use crate::parser::rules::{Event, Package, Probe, Provider};
-use crate::parser::types::{
-    BinOp, Block, DataType, Expr, Fn, Location, Script, Statement, UnOp, Value, Whamm,
-    WhammVisitor, WhammVisitorMut,
-};
+use crate::parser::types::{BinOp, Block, DataType, Definition, Expr, Fn, Location, Script, Statement, UnOp, Value, Whamm, WhammVisitor, WhammVisitorMut};
 use crate::verifier::builder_visitor::SymbolTableBuilder;
 use crate::verifier::types::{Record, SymbolTable};
 
@@ -220,24 +218,23 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         // type check body
 
         self.table.enter_named_scope(&function.name.name);
-        let mut check_ret_type = self.visit_block(&function.body);
-        let _ = self.table.exit_scope();
-        if check_ret_type.is_none() {
-            check_ret_type = Some(DataType::Tuple { ty_info: vec![] });
+        if let Some(check_ret_type) = self.visit_block(&function.body) {
+            //figure out how to deal with void functions (return type is ())
+            if check_ret_type != function.return_ty {
+                self.err.type_check_error(
+                    false,
+                    format!(
+                        "The function signature for '{}' returns '{:?}', but the body returns '{:?}'",
+                        function.name.name, function.return_ty, check_ret_type
+                    ),
+                    &function.name.loc.clone().map(|l| l.line_col),
+                );
+            }
         }
-        //figure out how to deal with void functions (return type is ())
-        if check_ret_type != function.return_ty {
-            self.err.type_check_error(
-                false,
-                format!(
-                    "The function signature for '{}' returns '{:?}', but the body returns '{:?}'",
-                    function.name.name, function.return_ty, check_ret_type
-                ),
-                &function.name.loc.clone().map(|l| l.line_col),
-            );
-        }
+        
         //return the type of the fn
-        function.return_ty.clone()
+        let _ = self.table.exit_scope();
+        Some(function.return_ty.clone())
     }
 
     fn visit_formal_param(&mut self, _param: &(Expr, DataType)) -> Option<DataType> {
@@ -585,12 +582,12 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                         params,
                         ret_ty,
                         addr: _,
-                        is_comp_provided,
+                        def,
                         loc,
                     }) = self.table.get_record(id)
                     {
                         //check if in global state and if is_comp_provided is false --> not allowed if both are the case
-                        if self.in_script_global && !is_comp_provided {
+                        if self.in_script_global && !(*def == Definition::CompilerDynamic || *def == Definition::CompilerStatic) {
                             self.err.type_check_error(
                                 false,
                                 "Function calls to user def functions are not allowed in the global state of the script"

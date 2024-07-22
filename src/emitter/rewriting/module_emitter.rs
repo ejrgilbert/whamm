@@ -1,5 +1,5 @@
 use crate::common::error::{ErrorGen, WhammError};
-use crate::parser::types::{DataType, Expr, Fn, Statement, Value};
+use crate::parser::types::{DataType, Definition, Expr, Fn, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca::{DataSegment, DataSegmentKind, InitExpr};
 
@@ -218,7 +218,7 @@ impl<'a, 'b, 'c> ModuleEmitter<'a, 'b, 'c> {
 
     pub(crate) fn emit_fn(&mut self, context: &str, f: &Fn) -> Result<bool, Box<WhammError>> {
         // figure out if this is a provided fn.
-        if f.is_comp_provided {
+        if f.def == Definition::CompilerDynamic {
             return if self.fn_providing_contexts.contains(&context.to_string()) {
                 self.emit_provided_fn(context, f)
             } else {

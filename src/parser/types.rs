@@ -334,10 +334,10 @@ pub struct FnId {
 
 #[derive(Clone, Debug)]
 pub struct Fn {
-    pub(crate) is_comp_provided: bool,
+    pub(crate) def: Definition,
     pub(crate) name: FnId,
     pub(crate) params: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
-    pub(crate) return_ty: Option<DataType>,
+    pub(crate) return_ty: DataType,
     pub(crate) body: Block,
 }
 impl Fn {
@@ -358,10 +358,20 @@ impl Fn {
         }
         white(true, ")".to_string(), buffer);
 
-        if let Some(return_ty) = &self.return_ty {
-            white(true, " -> ".to_string(), buffer);
-            return_ty.print(buffer);
-        }
+        white(true, " -> ".to_string(), buffer);
+        self.return_ty.print(buffer);
+    }
+
+    pub fn is_static(&self) -> bool {
+        matches!(self.def, Definition::CompilerStatic)
+    }
+
+    pub fn is_dynamic(&self) -> bool {
+        matches!(self.def, Definition::CompilerDynamic)
+    }
+
+    pub fn is_from_user(&self) -> bool {
+        matches!(self.def, Definition::User)
     }
 }
 
@@ -378,7 +388,7 @@ pub struct Global {
 
     pub ty: DataType,
     pub var_name: Expr, // Should be VarId
-    pub value: Option<Value>,
+    pub value: Option<Value>
 }
 impl Global {
     pub fn print(&self, buffer: &mut Buffer) {
@@ -515,7 +525,8 @@ impl Whamm {
             "strcmp".to_string(),
             "Compare two wasm strings and return whether they are equivalent.".to_string(),
             strcmp_params,
-            Some(DataType::Boolean),
+            DataType::Boolean,
+            false
         );
 
         vec![strcmp]
@@ -958,13 +969,18 @@ impl ProvidedFunction {
         name: String,
         docs: String,
         params: Vec<(Expr, DataType)>,
-        return_ty: Option<DataType>,
+        return_ty: DataType,
+        is_static: bool
     ) -> Self {
         Self {
             name: name.clone(),
             docs,
             function: Fn {
-                is_comp_provided: true,
+                def: if is_static {
+                    Definition::CompilerStatic
+                } else {
+                    Definition::CompilerDynamic
+                },
                 name: FnId { name, loc: None },
                 params,
                 return_ty,
