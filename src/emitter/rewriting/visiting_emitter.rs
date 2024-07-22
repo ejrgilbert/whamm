@@ -21,7 +21,7 @@ const UNEXPECTED_ERR_MSG: &str =
 pub struct VisitingEmitter<'a, 'b, 'c> {
     pub app_iter: ModuleIterator<'a, 'b>,
     pub table: &'c mut SymbolTable,
-    instr_alt_call: Option<i32>,
+    instr_alt_call: Option<u32>,
     instr_created_args: Vec<(String, usize)>,
 
     metadata: InsertionMetadata,
@@ -266,8 +266,8 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
                     }) = rec
                     {
                         // TODO: why instr_alt_call: Option<i32>, not Option<u32>?
-                        let func_id = self.app_iter.module.get_fid_by_name(val).map(|x| x as i32);
-                        (val.clone(), func_id) // hardcoded for now to ID for `redirect_to_fault_injector` for users.wasm file
+                        let func_id = self.app_iter.module.get_fid_by_name(val);
+                        (val.clone(), func_id)
                     } else {
                         ("".to_string(), None)
                     }
@@ -288,7 +288,7 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
 
     pub fn emit_alt_call(&mut self) -> Result<bool, Box<WhammError>> {
         if let Some(alt_fn_id) = self.instr_alt_call {
-            self.app_iter.call(alt_fn_id as u32);
+            self.app_iter.call(alt_fn_id);
         } else {
             return Err(Box::new(ErrorGen::get_unexpected_error(
                 true,
