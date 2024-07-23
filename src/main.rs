@@ -128,7 +128,7 @@ fn run_instr(
 
     // TODO Configure the generator based on target (wizard vs bytecode rewriting)
 
-    // Create the memory tracker
+    // Create the memory tracker + the map and metadata tracker
     if app_wasm.memories.len() > 1 {
         // TODO -- make this work with multi-memory
         panic!("only single memory is supported")
@@ -138,6 +138,7 @@ fn run_instr(
         curr_mem_offset: 1_052_576, // Set default memory base address to DEFAULT + 4KB = 1048576 bytes + 4000 bytes = 1052576 bytes
         emitted_strings: HashMap::new(),
     };
+    let mut map_knower = MapKnower::new();
 
     // Phase 0 of instrumentation (emit globals and provided fns)
     let mut init = InitGenerator {

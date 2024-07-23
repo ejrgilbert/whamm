@@ -1,7 +1,9 @@
 pub mod module_emitter;
 pub mod rules;
 pub mod visiting_emitter;
+pub mod map_knower;
 
+use crate::emitter::rewriting::map_knower::MapKnower;
 use crate::common::error::{ErrorGen, WhammError};
 use crate::parser::types::{BinOp, DataType, Expr, Statement, UnOp, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
