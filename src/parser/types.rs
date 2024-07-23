@@ -1,3 +1,4 @@
+#![allow(clippy::borrowed_box)]
 use pest::error::LineColLocation;
 use std::collections::HashMap;
 use termcolor::{Buffer, ColorChoice, WriteColor};
@@ -277,7 +278,7 @@ pub enum Expr {
     Call {
         // Type is fn_target.return_ty, should be VarId
         fn_target: Box<Expr>,
-        args: Option<Vec<Box<Expr>>>,
+        args: Option<Vec<Expr>>,
         loc: Option<Location>,
     },
     VarId {
@@ -1040,7 +1041,6 @@ pub trait WhammVisitorMut<T> {
     fn visit_package(&mut self, package: &mut dyn Package) -> T;
     fn visit_event(&mut self, event: &mut dyn Event) -> T;
     fn visit_probe(&mut self, probe: &mut Box<dyn Probe>) -> T;
-    // fn visit_predicate(&mut self, predicate: &mut Expr) -> T;
     fn visit_fn(&mut self, f: &mut Fn) -> T;
     fn visit_formal_param(&mut self, param: &mut (Expr, DataType)) -> T;
     fn visit_block(&mut self, block: &mut Block) -> T;

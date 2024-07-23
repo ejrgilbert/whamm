@@ -111,7 +111,7 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
             trace!("Entering script");
             let base_script = Script::new();
             let id = whamm.add_script(base_script);
-            //this isnt the right way to iterate over the pairs in script
+            //this isn't the right way to iterate over the pairs in script
             pair.into_inner().for_each(|p| {
                 process_pair(whamm, id, p, err);
             });
@@ -119,9 +119,6 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
         }
         Rule::statement => {
             trace!("Entering statement");
-
-            // let mut pair = pair.into_inner();
-            // let stmt_rules = pair.next().unwrap();
 
             let mut global_stmts = vec![];
             pair.into_inner().for_each(|p| {
@@ -381,7 +378,7 @@ fn fn_call_from_rule(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
         let mut others = vec![];
         match expr_from_pair(next.unwrap()) {
             Ok(expr) => {
-                others.push(Box::new(expr));
+                others.push(expr);
                 init.append(&mut others);
             }
             Err(err) => errors.extend(err),

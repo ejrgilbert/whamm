@@ -28,7 +28,7 @@ pub fn build_symbol_table(ast: &mut Whamm, err: &mut ErrorGen) -> SymbolTable {
     visitor.table
 }
 pub fn check_duplicate_id(
-    name: &String,
+    name: &str,
     loc: &Option<Location>,
     is_comp_provided_new: bool,
     table: &SymbolTable,
@@ -45,7 +45,7 @@ pub fn check_duplicate_id(
                     // happens if new_loc is compiler-provided or is a user-def func without location -- both should throw unexpected error
                     err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
                 } else {
-                    err.compiler_fn_overload_error(false, name.clone(), new_loc);
+                    err.compiler_fn_overload_error(false, name.to_string(), new_loc);
                 }
             } else {
                 err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
@@ -56,7 +56,7 @@ pub fn check_duplicate_id(
             if is_comp_provided_new {
                 err.compiler_fn_overload_error(
                     false,
-                    name.clone(),
+                    name.to_string(),
                     old_loc.clone().map(|l| l.line_col),
                 );
             } else {
@@ -66,7 +66,7 @@ pub fn check_duplicate_id(
         } else {
             err.duplicate_identifier_error(
                 false,
-                name.clone(),
+                name.to_string(),
                 loc.clone().map(|l| l.line_col),
                 old_loc.clone().map(|l| l.line_col),
             );

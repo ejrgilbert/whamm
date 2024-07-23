@@ -482,8 +482,7 @@ fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
 
             // emit the arguments
             if let Some(args) = args {
-                for boxed_arg in args.iter_mut() {
-                    let arg = &mut **boxed_arg; // unbox
+                for arg in args.iter_mut() {
                     is_success &= emit_expr(arg, injector, table, mem_tracker, err_msg)?;
                 }
             }
