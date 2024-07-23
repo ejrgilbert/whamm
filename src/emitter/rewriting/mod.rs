@@ -11,6 +11,7 @@ use orca::ir::types::{DataType as OrcaType, Global, Value as OrcaValue};
 use orca::opcode::Opcode;
 use orca::{InitExpr, ModuleBuilder};
 use wasmparser::{BlockType, ValType};
+use crate::emitter::rewriting::module_emitter::MemoryTracker;
 
 pub trait Emitter {
     fn emit_body(&mut self, body: &mut [Statement]) -> Result<bool, Box<WhammError>>;
@@ -33,11 +34,11 @@ fn emit_body<'a, T: Opcode<'a> + ModuleBuilder>(
     body: &mut [Statement],
     injector: &mut T,
     table: &mut SymbolTable,
-    metadata: &mut InsertionMetadata,
+    mem_tracker: &MemoryTracker,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     for stmt in body.iter_mut() {
-        emit_stmt(stmt, injector, table, metadata, err_msg)?;
+        emit_stmt(stmt, injector, table, mem_tracker, err_msg)?;
     }
     Ok(true)
 }
@@ -46,13 +47,13 @@ fn emit_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
     stmt: &mut Statement,
     injector: &mut T,
     table: &mut SymbolTable,
-    metadata: &mut InsertionMetadata,
+    mem_tracker: &MemoryTracker,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     match stmt {
-        Statement::Decl { .. } => emit_decl_stmt(stmt, injector, table, err_msg),
-        Statement::Assign { .. } => emit_assign_stmt(stmt, injector, table, metadata, err_msg),
-        Statement::Expr { expr, .. } => emit_expr(expr, injector, table, metadata, err_msg),
+        Statement::Decl { .. } => emit_decl_stmt(stmt, injector, table, mem_tracker, err_msg),
+        Statement::Assign { .. } => emit_assign_stmt(stmt, injector, table, mem_tracker, err_msg),
+        Statement::Expr { expr, .. } => emit_expr(expr, injector, table, mem_tracker, err_msg),
         Statement::If {
             cond, conseq, alt, ..
         } => {
@@ -62,7 +63,7 @@ fn emit_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                     conseq.stmts.as_mut_slice(),
                     injector,
                     table,
-                    metadata,
+                    mem_tracker,
                     err_msg,
                 )
             } else {
@@ -72,7 +73,7 @@ fn emit_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                     alt.stmts.as_mut_slice(),
                     injector,
                     table,
-                    metadata,
+                    mem_tracker,
                     err_msg,
                 )
             }
@@ -85,6 +86,7 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
     stmt: &mut Statement,
     injector: &mut T,
     table: &mut SymbolTable,
+    mem_tracker: &MemoryTracker,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     match stmt {
@@ -177,7 +179,7 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
     stmt: &mut Statement,
     injector: &mut T,
     table: &mut SymbolTable,
-    metadata: &mut InsertionMetadata,
+    mem_tracker: &MemoryTracker,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     return match stmt {
@@ -237,11 +239,11 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                 }
             }
 
-            match emit_expr(&mut folded_expr, injector, table, metadata, err_msg) {
+            match emit_expr(&mut folded_expr, injector, table, mem_tracker, err_msg) {
                 Err(e) => Err(e),
                 Ok(_) => {
                     // Emit the instruction that sets the variable's value to the emitted expression
-                    emit_set(var_id, injector, table, err_msg)
+                    emit_set(var_id, injector, table, mem_tracker, err_msg)
                 }
             }
         }
@@ -291,6 +293,7 @@ fn emit_set<'a, T: Opcode<'a>>(
     var_id: &mut Expr,
     injector: &mut T,
     table: &mut SymbolTable,
+    mem_tracker: &MemoryTracker,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     if let Expr::VarId { name, .. } = var_id {
@@ -347,18 +350,18 @@ fn emit_if_preamble<'a, T: Opcode<'a> + ModuleBuilder>(
     conseq: &mut [Statement],
     injector: &mut T,
     table: &mut SymbolTable,
-    metadata: &mut InsertionMetadata,
+    mem_tracker: &MemoryTracker,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
 
     // emit the condition of the `if` expression
-    is_success &= emit_expr(condition, injector, table, metadata, err_msg)?;
+    is_success &= emit_expr(condition, injector, table, mem_tracker, err_msg)?;
     // emit the beginning of the if block
     injector.if_stmt(BlockType::Empty);
 
     // emit the consequent body
-    is_success &= emit_body(conseq, injector, table, metadata, err_msg)?;
+    is_success &= emit_body(conseq, injector, table, mem_tracker, err_msg)?;
 
     // INTENTIONALLY DON'T END IF BLOCK
 
@@ -371,18 +374,18 @@ fn emit_if_else_preamble<'a, T: Opcode<'a> + ModuleBuilder>(
     alternate: &mut [Statement],
     injector: &mut T,
     table: &mut SymbolTable,
-    metadata: &mut InsertionMetadata,
+    mem_tracker: &MemoryTracker,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
 
-    is_success &= emit_if_preamble(condition, conseq, injector, table, metadata, err_msg)?;
+    is_success &= emit_if_preamble(condition, conseq, injector, table, mem_tracker, err_msg)?;
 
     // emit the beginning of the else
     injector.else_stmt();
 
     // emit the alternate body
-    is_success &= emit_body(alternate, injector, table, metadata, err_msg)?;
+    is_success &= emit_body(alternate, injector, table, mem_tracker, err_msg)?;
 
     // INTENTIONALLY DON'T END IF/ELSE BLOCK
 
@@ -394,12 +397,12 @@ fn emit_if<'a, T: Opcode<'a> + ModuleBuilder>(
     conseq: &mut [Statement],
     injector: &mut T,
     table: &mut SymbolTable,
-    metadata: &mut InsertionMetadata,
+    mem_tracker: &MemoryTracker,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
 
-    is_success &= emit_if_preamble(condition, conseq, injector, table, metadata, err_msg)?;
+    is_success &= emit_if_preamble(condition, conseq, injector, table, mem_tracker, err_msg)?;
 
     // emit the end of the if block
     injector.end();
@@ -412,13 +415,19 @@ fn emit_if_else<'a, T: Opcode<'a> + ModuleBuilder>(
     alternate: &mut [Statement],
     injector: &mut T,
     table: &mut SymbolTable,
-    metadata: &mut InsertionMetadata,
+    mem_tracker: &MemoryTracker,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
 
     is_success &= emit_if_else_preamble(
-        condition, conseq, alternate, injector, table, metadata, err_msg,
+        condition,
+        conseq,
+        alternate,
+        injector,
+        table,
+        mem_tracker,
+        err_msg
     )?;
 
     // emit the end of the if block
@@ -431,18 +440,18 @@ fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
     expr: &mut Expr,
     injector: &mut T,
     table: &mut SymbolTable,
-    metadata: &mut InsertionMetadata,
+    mem_tracker: &MemoryTracker,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
     match expr {
         Expr::UnOp { op, expr, .. } => {
-            is_success &= emit_expr(expr, injector, table, metadata, err_msg)?;
+            is_success &= emit_expr(expr, injector, table, mem_tracker, err_msg)?;
             is_success &= emit_unop(op, injector);
         }
         Expr::BinOp { lhs, op, rhs, .. } => {
-            is_success &= emit_expr(lhs, injector, table, metadata, err_msg)?;
-            is_success &= emit_expr(rhs, injector, table, metadata, err_msg)?;
+            is_success &= emit_expr(lhs, injector, table, mem_tracker, err_msg)?;
+            is_success &= emit_expr(rhs, injector, table, mem_tracker, err_msg)?;
             is_success &= emit_binop(op, injector);
         }
         Expr::Ternary {
@@ -461,8 +470,8 @@ fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
                 }],
                 injector,
                 table,
-                metadata,
-                err_msg,
+                mem_tracker,
+                err_msg
             )?;
         }
         Expr::Call {
@@ -477,7 +486,7 @@ fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
             if let Some(args) = args {
                 for boxed_arg in args.iter_mut() {
                     let arg = &mut **boxed_arg; // unbox
-                    is_success &= emit_expr(arg, injector, table, metadata, err_msg)?;
+                    is_success &= emit_expr(arg, injector, table, mem_tracker, err_msg)?;
                 }
             }
 
@@ -579,7 +588,7 @@ fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
             };
         }
         Expr::Primitive { val, .. } => {
-            is_success &= emit_value(val, injector, table, metadata, err_msg)?;
+            is_success &= emit_value(val, injector, table, mem_tracker, err_msg)?;
         }
     }
     Ok(is_success)
@@ -657,8 +666,8 @@ fn emit_value<'a, T: Opcode<'a> + ModuleBuilder>(
     val: &mut Value,
     injector: &mut T,
     table: &mut SymbolTable,
-    metadata: &mut InsertionMetadata,
-    err_msg: &str,
+    mem_tracker: &MemoryTracker,
+    err_msg: &str
 ) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
     match val {
@@ -674,18 +683,25 @@ fn emit_value<'a, T: Opcode<'a> + ModuleBuilder>(
             // when emitting for VisitingEmitter (won't work for Rust):
             // 1. app_iter.app_wasm.data
             // 2. app_iter
-
-            // emit Wasm instructions for the memory address and string length
-            injector.i32_const(metadata.curr_mem_offset as i32);
-            injector.i32_const(val.len() as i32);
-
-            // update curr_mem_offset to account for new data
-            metadata.curr_mem_offset += val.len();
-            is_success &= true;
+            
+            if let Some(str_addr) = mem_tracker.emitted_strings.get(val) {
+                // emit Wasm instructions for the memory address and string length
+                injector.i32_const(str_addr.mem_offset as i32);
+                injector.i32_const(str_addr.len as i32);
+                is_success &= true;
+            } else {
+                return Err(Box::new(ErrorGen::get_unexpected_error(
+                    true,
+                    Some(format!(
+                        "{err_msg} String has not been emitted yet for value: '{val}'!"
+                    )),
+                    None,
+                )));
+            }
         }
         Value::Tuple { vals, .. } => {
             for val in vals.iter_mut() {
-                is_success &= emit_expr(val, injector, table, metadata, err_msg)?;
+                is_success &= emit_expr(val, injector, table, mem_tracker, err_msg)?;
             }
         }
         Value::Boolean { val, .. } => {
@@ -703,14 +719,4 @@ fn emit_value<'a, T: Opcode<'a> + ModuleBuilder>(
         }
     }
     Ok(is_success)
-}
-
-// ==============================
-// ==== WasmRewritingEmitter ====
-// ==============================
-
-struct InsertionMetadata {
-    // curr_event: String,
-    mem_id: u32,
-    curr_mem_offset: usize,
 }

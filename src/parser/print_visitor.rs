@@ -529,9 +529,8 @@ impl WhammVisitor<String> for AsStrVisitor {
                 s
             }
             Value::Str {
-                ty: _ty,
                 val,
-                addr: _addr,
+                ..
             } => {
                 let mut s = "".to_string();
                 s += &format!("\"{}\"", val);

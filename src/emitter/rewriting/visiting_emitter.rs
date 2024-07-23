@@ -1,50 +1,36 @@
 use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::rewriting::rules::{Arg, LocInfo, Provider, WhammProvider};
-use crate::emitter::rewriting::{emit_body, emit_if, emit_if_preamble, emit_stmt, Emitter};
-use crate::emitter::rewriting::{emit_expr, InsertionMetadata};
+use crate::emitter::rewriting::{emit_stmt, Emitter};
+use crate::emitter::rewriting::{emit_expr};
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{DataType, Definition, Expr, ProbeSpec, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use core::panic;
-use graphviz_rust::attributes::target;
-use log::info;
 use orca::ir::module::Module;
 use orca::iterator::iterator_trait::Iterator as OrcaIterator;
 use orca::iterator::module_iterator::ModuleIterator;
 use orca::opcode::Opcode;
 use std::iter::Iterator;
 use wasmparser::BlockType;
+use crate::emitter::rewriting::module_emitter::MemoryTracker;
 
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
 
-pub struct VisitingEmitter<'a, 'b, 'c> {
+pub struct VisitingEmitter<'a, 'b, 'c, 'd> {
     pub app_iter: ModuleIterator<'a, 'b>,
     pub table: &'c mut SymbolTable,
-    // instr_alt_call: Option<u32>,
+    mem_tracker: &'d MemoryTracker,
     instr_created_args: Vec<(String, usize)>,
-
-    metadata: InsertionMetadata,
 }
 
-impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
+impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
     // note: only used in integration test
-    pub fn new(app_wasm: &'a mut Module<'b>, table: &'c mut SymbolTable) -> Self {
-        if app_wasm.memories.len() > 1 {
-            // TODO -- make this work with multi-memory
-            panic!("only single memory is supported")
-        };
-        // Assuming the ID of the first memory is 0!
-        let mem_id = 0;
-
+    pub fn new(app_wasm: &'a mut Module<'b>, table: &'c mut SymbolTable, mem_tracker: &'d MemoryTracker) -> Self {
         let a = Self {
             app_iter: ModuleIterator::new(app_wasm),
-            metadata: InsertionMetadata {
-                mem_id,
-                curr_mem_offset: 1_052_576, // Set default memory base address to DEFAULT + 4KB = 1048576 bytes + 4000 bytes = 1052576 bytes
-            },
             table,
-            // instr_alt_call: None,
+            mem_tracker,
             instr_created_args: vec![],
         };
 
@@ -84,7 +70,7 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
         }
     }
 
-    pub(crate) fn get_loc_info<'d>(&self, rule: &'d WhammProvider) -> Option<LocInfo<'d>> {
+    pub(crate) fn get_loc_info<'e>(&self, rule: &'e WhammProvider) -> Option<LocInfo<'e>> {
         if let Some(curr_instr) = self.app_iter.curr_op() {
             rule.get_loc_info(self.app_iter.module, curr_instr)
         } else {
@@ -378,7 +364,7 @@ impl<'a, 'b, 'c> VisitingEmitter<'a, 'b, 'c> {
         }
     }
 }
-impl Emitter for VisitingEmitter<'_, '_, '_> {
+impl Emitter for VisitingEmitter<'_, '_, '_, '_> {
     fn emit_body(&mut self, body: &mut [Statement]) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
         for stmt in body.iter_mut() {
@@ -429,7 +415,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_> {
             stmt,
             &mut self.app_iter,
             self.table,
-            &mut self.metadata,
+            &mut self.mem_tracker,
             UNEXPECTED_ERR_MSG,
         )
     }
@@ -439,7 +425,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_> {
             expr,
             &mut self.app_iter,
             self.table,
-            &mut self.metadata,
+            &mut self.mem_tracker,
             UNEXPECTED_ERR_MSG,
         )
     }

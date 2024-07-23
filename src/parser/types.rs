@@ -184,14 +184,6 @@ pub enum Value {
     Str {
         ty: DataType,
         val: String,
-
-        // TODO: doesn't seem to be implemented anywhere
-
-        // Used by emitter to store this string's address/len in Wasm memory
-        // u32: orca ID to reference data segment
-        // usize: address of data in memory
-        // usize:  the length of the string in memory
-        addr: Option<(u32, usize, usize)>,
     },
     Tuple {
         ty: DataType,

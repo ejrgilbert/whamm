@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use crate::common::error::{ErrorGen, WhammError};
 use crate::parser::types::{DataType, Definition, Expr, Fn, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
@@ -6,9 +7,7 @@ use orca::{DataSegment, DataSegmentKind, InitExpr};
 use orca::ir::types::{DataType as OrcaType, Value as OrcaValue};
 use wasmparser::BlockType;
 
-use crate::emitter::rewriting::{
-    emit_body, emit_expr, emit_stmt, whamm_type_to_wasm, Emitter, InsertionMetadata,
-};
+use crate::emitter::rewriting::{emit_body, emit_expr, emit_stmt, whamm_type_to_wasm, Emitter};
 use orca::ir::function::FunctionBuilder;
 use orca::ir::module::Module;
 use orca::opcode::Opcode;
@@ -16,30 +15,35 @@ use orca::opcode::Opcode;
 const UNEXPECTED_ERR_MSG: &str =
     "ModuleEmitter: Looks like you've found a bug...please report this behavior!";
 
-pub struct ModuleEmitter<'a, 'b, 'c> {
+pub struct MemoryTracker {
+    pub mem_id: u32,
+    pub curr_mem_offset: usize,
+    pub emitted_strings: HashMap<String, StringAddr>
+}
+
+pub struct StringAddr {
+    pub data_id: u32,
+    pub mem_offset: usize,
+    pub len: usize
+}
+
+pub struct ModuleEmitter<'a, 'b, 'c, 'd> {
     pub app_wasm: &'a mut Module<'b>,
     pub emitting_func: Option<FunctionBuilder<'b>>,
     pub table: &'c mut SymbolTable,
 
-    metadata: InsertionMetadata,
+    mem_tracker: &'d mut MemoryTracker,
     fn_providing_contexts: Vec<String>,
 }
 
-impl<'a, 'b, 'c> ModuleEmitter<'a, 'b, 'c> {
+impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
     // note: only used in integration test
-    pub fn new(app_wasm: &'a mut Module<'b>, table: &'c mut SymbolTable) -> Self {
-        if app_wasm.memories.len() > 1 {
-            // TODO -- make this work with multi-memory
-            panic!("only single memory is supported")
-        };
+    pub fn new(app_wasm: &'a mut Module<'b>, table: &'c mut SymbolTable, mem_tracker: &'d mut MemoryTracker) -> Self {
 
         Self {
             app_wasm,
             emitting_func: None,
-            metadata: InsertionMetadata {
-                mem_id: 0,                  // Assuming the ID of the first memory is 0!
-                curr_mem_offset: 1_052_576, // Set default memory base address to DEFAULT + 4KB = 1048576 bytes + 4000 bytes = 1052576 bytes
-            },
+            mem_tracker,
             table,
             fn_providing_contexts: vec!["whamm".to_string()],
         }
@@ -115,7 +119,7 @@ impl<'a, 'b, 'c> ModuleEmitter<'a, 'b, 'c> {
                     align: 0,
                     max_align: 0,
                     offset: 0,
-                    memory: self.metadata.mem_id
+                    memory: self.mem_tracker.mem_id
                 }
             )
             .local_set(str0_char)
@@ -130,7 +134,7 @@ impl<'a, 'b, 'c> ModuleEmitter<'a, 'b, 'c> {
                     align: 0,
                     max_align: 0,
                     offset: 0,
-                    memory: self.metadata.mem_id
+                    memory: self.mem_tracker.mem_id
                 }
             )
             .local_set(str1_char)
@@ -247,23 +251,30 @@ impl<'a, 'b, 'c> ModuleEmitter<'a, 'b, 'c> {
 
     pub fn emit_string(&mut self, value: &mut Value) -> bool {
         match value {
-            Value::Str { val, addr, .. } => {
+            Value::Str { val, .. } => {
                 // assuming that the data ID is the index of the object in the Vec
                 let data_id = self.app_wasm.data.len();
                 let val_bytes = val.as_bytes().to_owned();
                 let data_segment = DataSegment {
                     data: val_bytes,
                     kind: DataSegmentKind::Active {
-                        memory_index: self.metadata.mem_id,
+                        memory_index: self.mem_tracker.mem_id,
                         offset_expr: InitExpr::Value(OrcaValue::I32(
-                            self.metadata.curr_mem_offset as i32,
+                            self.mem_tracker.curr_mem_offset as i32,
                         )),
                     },
                 };
                 self.app_wasm.data.push(data_segment);
 
                 // save the memory addresses/lens, so they can be used as appropriate
-                *addr = Some((data_id as u32, self.metadata.curr_mem_offset, val.len()));
+                self.mem_tracker.emitted_strings.insert(val.clone(), StringAddr {
+                    data_id: data_id as u32,
+                    mem_offset: self.mem_tracker.curr_mem_offset,
+                    len: val.len(),
+                });
+
+                // update curr_mem_offset to account for new data
+                self.mem_tracker.curr_mem_offset += val.len();
                 true
             }
             Value::Integer { .. } | Value::Tuple { .. } | Value::Boolean { .. } => {
@@ -369,14 +380,14 @@ impl<'a, 'b, 'c> ModuleEmitter<'a, 'b, 'c> {
         ))
     }
 }
-impl Emitter for ModuleEmitter<'_, '_, '_> {
+impl Emitter for ModuleEmitter<'_, '_, '_, '_> {
     fn emit_body(&mut self, body: &mut [Statement]) -> Result<bool, Box<WhammError>> {
         if let Some(emitting_func) = &mut self.emitting_func {
             emit_body(
                 body,
                 emitting_func,
                 self.table,
-                &mut self.metadata,
+                self.mem_tracker,
                 UNEXPECTED_ERR_MSG,
             )
         } else {
@@ -390,7 +401,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_> {
                 stmt,
                 emitting_func,
                 self.table,
-                &mut self.metadata,
+                self.mem_tracker,
                 UNEXPECTED_ERR_MSG,
             )
         } else {
@@ -404,7 +415,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_> {
                 expr,
                 emitting_func,
                 self.table,
-                &mut self.metadata,
+                self.mem_tracker,
                 UNEXPECTED_ERR_MSG,
             )
         } else {

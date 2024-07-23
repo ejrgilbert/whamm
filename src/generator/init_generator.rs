@@ -19,12 +19,12 @@ use std::collections::HashMap;
 /// emit some compiler-provided functions and user-defined globals.
 /// This process should ideally be generic, made to perform a specific
 /// instrumentation technique by the Emitter field.
-pub struct InitGenerator<'a, 'b, 'c, 'd> {
-    pub emitter: ModuleEmitter<'a, 'b, 'c>,
+pub struct InitGenerator<'a, 'b, 'c, 'd, 'e> {
+    pub emitter: ModuleEmitter<'a, 'b, 'c, 'd>,
     pub context_name: String,
-    pub err: &'d mut ErrorGen,
+    pub err: &'e mut ErrorGen,
 }
-impl InitGenerator<'_, '_, '_, '_> {
+impl InitGenerator<'_, '_, '_, '_, '_> {
     pub fn run(&mut self, whamm: &mut Whamm) -> bool {
         // Reset the symbol table in the emitter just in case
         self.emitter.reset_children();
@@ -59,7 +59,7 @@ impl InitGenerator<'_, '_, '_, '_> {
         is_success
     }
 }
-impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_> {
+impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_> {
     fn visit_whamm(&mut self, whamm: &mut Whamm) -> bool {
         trace!("Entering: CodeGenerator::visit_whamm");
         self.context_name = "whamm".to_string();
