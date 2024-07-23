@@ -1,7 +1,8 @@
 use crate::common::error::{ErrorGen, WhammError};
+use crate::emitter::rewriting::emit_expr;
+use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::emitter::rewriting::rules::{Arg, LocInfo, Provider, WhammProvider};
 use crate::emitter::rewriting::{emit_stmt, Emitter};
-use crate::emitter::rewriting::{emit_expr};
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{DataType, Definition, Expr, ProbeSpec, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
@@ -12,7 +13,6 @@ use orca::iterator::module_iterator::ModuleIterator;
 use orca::opcode::Opcode;
 use std::iter::Iterator;
 use wasmparser::BlockType;
-use crate::emitter::rewriting::module_emitter::MemoryTracker;
 
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
@@ -26,7 +26,11 @@ pub struct VisitingEmitter<'a, 'b, 'c, 'd> {
 
 impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
     // note: only used in integration test
-    pub fn new(app_wasm: &'a mut Module<'b>, table: &'c mut SymbolTable, mem_tracker: &'d MemoryTracker) -> Self {
+    pub fn new(
+        app_wasm: &'a mut Module<'b>,
+        table: &'c mut SymbolTable,
+        mem_tracker: &'d MemoryTracker,
+    ) -> Self {
         let a = Self {
             app_iter: ModuleIterator::new(app_wasm),
             table,

@@ -1,8 +1,8 @@
-use std::collections::HashMap;
 use crate::common::error::{ErrorGen, WhammError};
 use crate::parser::types::{DataType, Definition, Expr, Fn, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca::{DataSegment, DataSegmentKind, InitExpr};
+use std::collections::HashMap;
 
 use orca::ir::types::{DataType as OrcaType, Value as OrcaValue};
 use wasmparser::BlockType;
@@ -18,13 +18,13 @@ const UNEXPECTED_ERR_MSG: &str =
 pub struct MemoryTracker {
     pub mem_id: u32,
     pub curr_mem_offset: usize,
-    pub emitted_strings: HashMap<String, StringAddr>
+    pub emitted_strings: HashMap<String, StringAddr>,
 }
 
 pub struct StringAddr {
     pub data_id: u32,
     pub mem_offset: usize,
-    pub len: usize
+    pub len: usize,
 }
 
 pub struct ModuleEmitter<'a, 'b, 'c, 'd> {
@@ -38,8 +38,11 @@ pub struct ModuleEmitter<'a, 'b, 'c, 'd> {
 
 impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
     // note: only used in integration test
-    pub fn new(app_wasm: &'a mut Module<'b>, table: &'c mut SymbolTable, mem_tracker: &'d mut MemoryTracker) -> Self {
-
+    pub fn new(
+        app_wasm: &'a mut Module<'b>,
+        table: &'c mut SymbolTable,
+        mem_tracker: &'d mut MemoryTracker,
+    ) -> Self {
         Self {
             app_wasm,
             emitting_func: None,
@@ -267,11 +270,14 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
                 self.app_wasm.data.push(data_segment);
 
                 // save the memory addresses/lens, so they can be used as appropriate
-                self.mem_tracker.emitted_strings.insert(val.clone(), StringAddr {
-                    data_id: data_id as u32,
-                    mem_offset: self.mem_tracker.curr_mem_offset,
-                    len: val.len(),
-                });
+                self.mem_tracker.emitted_strings.insert(
+                    val.clone(),
+                    StringAddr {
+                        data_id: data_id as u32,
+                        mem_offset: self.mem_tracker.curr_mem_offset,
+                        len: val.len(),
+                    },
+                );
 
                 // update curr_mem_offset to account for new data
                 self.mem_tracker.curr_mem_offset += val.len();

@@ -1169,7 +1169,7 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
             return Ok(Expr::Primitive {
                 val: Value::Str {
                     ty: DataType::Str,
-                    val
+                    val,
                 },
                 loc: Some(Location {
                     line_col: LineColLocation::from(pair.as_span()),

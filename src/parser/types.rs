@@ -177,22 +177,10 @@ impl DataType {
 // Values
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Value {
-    Integer {
-        ty: DataType,
-        val: i32,
-    },
-    Str {
-        ty: DataType,
-        val: String,
-    },
-    Tuple {
-        ty: DataType,
-        vals: Vec<Expr>,
-    },
-    Boolean {
-        ty: DataType,
-        val: bool,
-    },
+    Integer { ty: DataType, val: i32 },
+    Str { ty: DataType, val: String },
+    Tuple { ty: DataType, vals: Vec<Expr> },
+    Boolean { ty: DataType, val: bool },
 }
 #[derive(Clone, Debug)]
 pub struct Block {

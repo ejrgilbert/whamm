@@ -1,8 +1,8 @@
 mod common;
 
-use std::collections::HashMap;
 use log::error;
 use orca::ir::module::Module as WasmModule;
+use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -48,9 +48,9 @@ fn instrument_dfinity_with_fault_injection() {
         let mut mem_tracker = MemoryTracker {
             mem_id: 0,                  // Assuming the ID of the first memory is 0!
             curr_mem_offset: 1_052_576, // Set default memory base address to DEFAULT + 4KB = 1048576 bytes + 4000 bytes = 1052576 bytes
-            emitted_strings: HashMap::new()
+            emitted_strings: HashMap::new(),
         };
-        
+
         // Phase 0 of instrumentation (emit globals and provided fns)
         let mut init = InitGenerator {
             emitter: ModuleEmitter::new(&mut app_wasm, &mut symbol_table, &mut mem_tracker),

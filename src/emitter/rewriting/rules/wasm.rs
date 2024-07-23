@@ -566,21 +566,21 @@ impl Event for OpcodeEvent {
                         "target_imp_name".to_string(),
                         Some(Value::Str {
                             ty: DataType::Str,
-                            val: func_info.name.to_string()
+                            val: func_info.name.to_string(),
                         }),
                     );
                     loc_info.static_data.insert(
                         "target_fn_type".to_string(),
                         Some(Value::Str {
                             ty: DataType::Str,
-                            val: func_info.func_kind.to_string()
+                            val: func_info.func_kind.to_string(),
                         }),
                     );
                     loc_info.static_data.insert(
                         "target_imp_module".to_string(),
                         Some(Value::Str {
                             ty: DataType::Str,
-                            val: func_info.module.to_string()
+                            val: func_info.module.to_string(),
                         }),
                     );
 

@@ -1,7 +1,7 @@
 extern crate core;
 
-use std::collections::HashMap;
 use cli::{Cmd, WhammCli};
+use std::collections::HashMap;
 
 use crate::behavior::builder_visitor::*;
 use crate::common::error::ErrorGen;
@@ -18,6 +18,12 @@ pub mod generator;
 pub mod parser;
 pub mod verifier;
 
+use crate::behavior::tree::BehaviorTree;
+use crate::behavior::visualize::visualization_to_file;
+use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
+use crate::parser::types::Whamm;
+use crate::verifier::types::SymbolTable;
+use crate::verifier::verifier::{build_symbol_table, type_check};
 use clap::Parser;
 use graphviz_rust::cmd::{CommandArg, Format};
 use graphviz_rust::exec_dot;
@@ -28,12 +34,6 @@ use std::path::PathBuf;
 use std::process::exit;
 use walrus::Module;
 use wasmparser::names::ComponentNameKind::Hash;
-use crate::behavior::tree::BehaviorTree;
-use crate::behavior::visualize::visualization_to_file;
-use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
-use crate::parser::types::Whamm;
-use crate::verifier::types::SymbolTable;
-use crate::verifier::verifier::{build_symbol_table, type_check};
 
 const MAX_ERRORS: i32 = 15;
 
@@ -136,7 +136,7 @@ fn run_instr(
     let mut app_wasm = WasmModule::parse_only_module(&buff, false).unwrap();
 
     // TODO Configure the generator based on target (wizard vs bytecode rewriting)
-    
+
     // Create the memory tracker
     if app_wasm.memories.len() > 1 {
         // TODO -- make this work with multi-memory
@@ -145,7 +145,7 @@ fn run_instr(
     let mut mem_tracker = MemoryTracker {
         mem_id: 0,                  // Assuming the ID of the first memory is 0!
         curr_mem_offset: 1_052_576, // Set default memory base address to DEFAULT + 4KB = 1048576 bytes + 4000 bytes = 1052576 bytes
-        emitted_strings: HashMap::new()
+        emitted_strings: HashMap::new(),
     };
 
     // Phase 0 of instrumentation (emit globals and provided fns)

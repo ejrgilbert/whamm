@@ -528,10 +528,7 @@ impl WhammVisitor<String> for AsStrVisitor {
                 s += &format!("{}", val);
                 s
             }
-            Value::Str {
-                val,
-                ..
-            } => {
+            Value::Str { val, .. } => {
                 let mut s = "".to_string();
                 s += &format!("\"{}\"", val);
                 s

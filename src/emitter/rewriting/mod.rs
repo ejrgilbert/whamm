@@ -6,12 +6,12 @@ use crate::common::error::{ErrorGen, WhammError};
 use crate::parser::types::{BinOp, DataType, Expr, Statement, UnOp, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 
+use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::generator::types::ExprFolder;
 use orca::ir::types::{DataType as OrcaType, Global, Value as OrcaValue};
 use orca::opcode::Opcode;
 use orca::{InitExpr, ModuleBuilder};
 use wasmparser::{BlockType, ValType};
-use crate::emitter::rewriting::module_emitter::MemoryTracker;
 
 pub trait Emitter {
     fn emit_body(&mut self, body: &mut [Statement]) -> Result<bool, Box<WhammError>>;
@@ -427,7 +427,7 @@ fn emit_if_else<'a, T: Opcode<'a> + ModuleBuilder>(
         injector,
         table,
         mem_tracker,
-        err_msg
+        err_msg,
     )?;
 
     // emit the end of the if block
@@ -471,7 +471,7 @@ fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
                 injector,
                 table,
                 mem_tracker,
-                err_msg
+                err_msg,
             )?;
         }
         Expr::Call {
@@ -667,7 +667,7 @@ fn emit_value<'a, T: Opcode<'a> + ModuleBuilder>(
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
-    err_msg: &str
+    err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
     match val {
@@ -683,7 +683,7 @@ fn emit_value<'a, T: Opcode<'a> + ModuleBuilder>(
             // when emitting for VisitingEmitter (won't work for Rust):
             // 1. app_iter.app_wasm.data
             // 2. app_iter
-            
+
             if let Some(str_addr) = mem_tracker.emitted_strings.get(val) {
                 // emit Wasm instructions for the memory address and string length
                 injector.i32_const(str_addr.mem_offset as i32);
