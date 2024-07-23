@@ -1,5 +1,6 @@
 mod common;
 
+use std::collections::HashMap;
 use log::error;
 use orca::ir::module::Module as WasmModule;
 use std::fs;
@@ -8,7 +9,7 @@ use std::process::{Command, Stdio};
 use wabt::{wasm2wat, Wat2Wasm};
 use whamm::behavior::builder_visitor::{build_behavior_tree, SimpleAST};
 use whamm::common::error::ErrorGen;
-use whamm::emitter::rewriting::module_emitter::ModuleEmitter;
+use whamm::emitter::rewriting::module_emitter::{MemoryTracker, ModuleEmitter};
 use whamm::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use whamm::generator::init_generator::InitGenerator;
 use whamm::generator::instr_generator::InstrGenerator;
@@ -38,9 +39,21 @@ fn instrument_dfinity_with_fault_injection() {
         let mut app_wasm =
             WasmModule::parse_only_module(&buff, false).expect("Failed to parse Wasm module");
         let mut err = ErrorGen::new(script_path.clone(), script_text, 0);
+
+        // Create the memory tracker
+        if app_wasm.memories.len() > 1 {
+            // TODO -- make this work with multi-memory
+            panic!("only single memory is supported")
+        };
+        let mut mem_tracker = MemoryTracker {
+            mem_id: 0,                  // Assuming the ID of the first memory is 0!
+            curr_mem_offset: 1_052_576, // Set default memory base address to DEFAULT + 4KB = 1048576 bytes + 4000 bytes = 1052576 bytes
+            emitted_strings: HashMap::new()
+        };
+        
         // Phase 0 of instrumentation (emit globals and provided fns)
         let mut init = InitGenerator {
-            emitter: ModuleEmitter::new(&mut app_wasm, &mut symbol_table),
+            emitter: ModuleEmitter::new(&mut app_wasm, &mut symbol_table, &mut mem_tracker),
             context_name: "".to_string(),
             err: &mut err,
         };
@@ -52,7 +65,7 @@ fn instrument_dfinity_with_fault_injection() {
         // and ready to use in every body/predicate.
         let mut instr = InstrGenerator::new(
             &behavior,
-            VisitingEmitter::new(&mut app_wasm, &mut symbol_table),
+            VisitingEmitter::new(&mut app_wasm, &mut symbol_table, &mem_tracker),
             simple_ast,
             &mut err,
         );

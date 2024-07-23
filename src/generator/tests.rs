@@ -118,8 +118,7 @@ fn hardcode_compiler_constants(table: &mut SymbolTable, err: &mut ErrorGen) {
     if let Some(Record::Var { value, .. }) = target_fn_type {
         *value = Some(Value::Str {
             ty: DataType::Str,
-            val: "import".to_string(),
-            addr: None,
+            val: "import".to_string()
         })
     } else {
         error!("Could not find symbol for `target_fn_type`");
@@ -131,8 +130,7 @@ fn hardcode_compiler_constants(table: &mut SymbolTable, err: &mut ErrorGen) {
     if let Some(Record::Var { value, .. }) = target_imp_module {
         *value = Some(Value::Str {
             ty: DataType::Str,
-            val: "ic0".to_string(),
-            addr: None,
+            val: "ic0".to_string()
         })
     } else {
         error!("Could not find symbol for `target_imp_module`");
@@ -144,8 +142,7 @@ fn hardcode_compiler_constants(table: &mut SymbolTable, err: &mut ErrorGen) {
     if let Some(Record::Var { value, .. }) = target_imp_name {
         *value = Some(Value::Str {
             ty: DataType::Str,
-            val: "call_new".to_string(),
-            addr: None,
+            val: "call_new".to_string()
         })
     } else {
         error!("Could not find symbol for `target_imp_name`");
