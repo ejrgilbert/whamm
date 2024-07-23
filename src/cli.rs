@@ -36,33 +36,6 @@ pub enum Cmd {
 
     /// To instrument a Wasm application.
     Instr(InstrArgs),
-
-    /// To visualize the relationship between various structures in the module and its instructions
-    VisWasm {
-        /// The path to the Wasm module we want to visualize.
-        #[clap(short, long, value_parser)]
-        wasm: String,
-
-        /// The path to output the visualization to.
-        #[clap(short, long, value_parser, default_value = "output/wasm.dot")]
-        output_path: String,
-    },
-
-    /// To visualize the generated behavior tree from the specified `script`
-    VisScript {
-        /// The path to the `script` file we want to visualize.
-        #[clap(short, long, value_parser)]
-        script: String,
-
-        /// Whether to run the verifier on the specified script
-        #[clap(long, short, action, default_value = "false")]
-        // TODO -- change this default value to true when I have this implemented
-        run_verifier: bool,
-
-        /// The path to output the visualization to.
-        #[clap(short, long, value_parser, default_value = "output/vis.svg")]
-        output_path: String,
-    },
 }
 
 // #[derive(Debug, Args)]

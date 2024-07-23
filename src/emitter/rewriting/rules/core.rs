@@ -1,10 +1,10 @@
-use crate::behavior::builder_visitor::SimpleProbe;
 use crate::emitter::rewriting::rules::{
     event_factory, probe_factory, Event, FromStr, LocInfo, Package,
 };
 use crate::parser::rules::core::{CoreEventKind, CorePackageKind};
 use std::collections::HashMap;
 
+use crate::generator::simple_ast::SimpleProbe;
 use orca::ir::module::Module;
 use wasmparser::Operator;
 
