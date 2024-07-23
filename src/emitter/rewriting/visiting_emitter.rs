@@ -243,11 +243,11 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
 
     fn handle_alt_call_by_name(
         &mut self,
-        args: &mut Option<Vec<Box<Expr>>>,
+        args: &mut Option<Vec<Expr>>,
     ) -> Result<bool, Box<WhammError>> {
         // args: vec![func_name: String]
         // Assume the correct args since we've gone through typechecking at this point!
-        let fn_name = match &**args.as_ref().unwrap().iter().next().unwrap() {
+        let fn_name = match args.as_ref().unwrap().iter().next().unwrap() {
             Expr::Primitive {
                 val: Value::Str { val, .. },
                 ..
@@ -272,15 +272,15 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
 
     fn handle_alt_call_by_id(
         &mut self,
-        args: &mut Option<Vec<Box<Expr>>>,
+        args: &mut Option<Vec<Expr>>,
     ) -> Result<bool, Box<WhammError>> {
         // args: vec![func_id: i32]
         // Assume the correct args since we've gone through typechecking at this point!
-        let func_id = match &**args.as_ref().unwrap().iter().next().unwrap() {
+        let func_id = match args.as_ref().unwrap().iter().next().unwrap() {
             Expr::Primitive {
                 val: Value::Integer { val, .. },
                 ..
-            } => val.clone(),
+            } => *val,
             _ => return Ok(false),
         };
 
@@ -292,7 +292,7 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
     fn handle_special_fn_call(
         &mut self,
         target_fn_name: String,
-        args: &mut Option<Vec<Box<Expr>>>,
+        args: &mut Option<Vec<Expr>>,
     ) -> Result<bool, Box<WhammError>> {
         match target_fn_name.as_str() {
             "alt_call_by_name" => {

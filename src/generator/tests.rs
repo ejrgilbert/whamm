@@ -235,7 +235,7 @@ fn asserts_on_call(call: &Expr) {
         let args = args.as_ref().unwrap();
         assert_eq!(2, args.len());
 
-        let tuple = &**args.first().unwrap();
+        let tuple = args.first().unwrap();
         if let Expr::Primitive {
             val: Value::Tuple { vals, .. },
             ..

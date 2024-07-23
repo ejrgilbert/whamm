@@ -1,3 +1,4 @@
+#![allow(clippy::borrowed_box)]
 pub mod core;
 pub mod wasm;
 use crate::common::error::{ErrorGen, WhammError};
@@ -227,13 +228,13 @@ pub fn print_provider_docs(
     // Print the globals
     if print_globals {
         let globals = provider.get_provided_globals();
-        print_global_vars(tabs, &globals, buffer);
+        print_global_vars(tabs, globals, buffer);
     }
 
     // Print the functions
     if print_functions {
         let functions = provider.get_provided_fns();
-        print_fns(tabs, &functions, buffer);
+        print_fns(tabs, functions, buffer);
     }
     *tabs -= 1;
 }
@@ -523,13 +524,13 @@ fn print_event_docs(
     // Print the globals
     if print_globals {
         let globals = event.get_provided_globals();
-        print_global_vars(tabs, &globals, buffer);
+        print_global_vars(tabs, globals, buffer);
     }
 
     // Print the functions
     if print_functions {
         let functions = event.get_provided_fns();
-        print_fns(tabs, &functions, buffer);
+        print_fns(tabs, functions, buffer);
     }
     *tabs -= 1;
 }
@@ -598,13 +599,13 @@ fn print_mode_docs<M: Mode>(
     // Print the globals
     if print_globals {
         let globals = mode.get_provided_globals();
-        print_global_vars(tabs, &globals, buffer);
+        print_global_vars(tabs, globals, buffer);
     }
 
     // Print the functions
     if print_functions {
         let functions = mode.get_provided_fns();
-        print_fns(tabs, &functions, buffer);
+        print_fns(tabs, functions, buffer);
     }
     *tabs -= 1;
 }
