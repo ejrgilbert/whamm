@@ -1,4 +1,3 @@
-use crate::behavior::builder_visitor::SimpleProbe;
 use crate::emitter::rewriting::rules::{
     event_factory, probe_factory, Arg, Event, FromStr, LocInfo, Package,
 };
@@ -9,6 +8,7 @@ use orca::ir::module::Module;
 use orca::ir::types::DataType as OrcaType;
 use std::collections::HashMap;
 
+use crate::generator::simple_ast::SimpleProbe;
 use wasmparser::{Operator, TypeRef};
 
 pub struct WasmPackage {

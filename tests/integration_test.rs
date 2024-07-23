@@ -7,12 +7,12 @@ use std::fs;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use wabt::{wasm2wat, Wat2Wasm};
-use whamm::behavior::builder_visitor::{build_behavior_tree, SimpleAST};
 use whamm::common::error::ErrorGen;
 use whamm::emitter::rewriting::module_emitter::{MemoryTracker, ModuleEmitter};
 use whamm::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use whamm::generator::init_generator::InitGenerator;
 use whamm::generator::instr_generator::InstrGenerator;
+use whamm::generator::simple_ast::build_simple_ast;
 
 const APP_WASM_PATH: &str = "tests/apps/dfinity/users.wasm";
 
@@ -31,11 +31,9 @@ fn instrument_dfinity_with_fault_injection() {
 
     for (script_path, script_text, mut whamm, mut symbol_table) in processed_scripts {
         // Build the behavior tree from the AST
-        let mut simple_ast = SimpleAST::new();
-        let mut behavior = build_behavior_tree(&whamm, &mut simple_ast, &mut err);
-        behavior.reset();
+        let simple_ast = build_simple_ast(&whamm, &mut err);
 
-        let buff = std::fs::read(APP_WASM_PATH).unwrap();
+        let buff = fs::read(APP_WASM_PATH).unwrap();
         let mut app_wasm =
             WasmModule::parse_only_module(&buff, false).expect("Failed to parse Wasm module");
         let mut err = ErrorGen::new(script_path.clone(), script_text, 0);
@@ -64,13 +62,12 @@ fn instrument_dfinity_with_fault_injection() {
         // This structure is necessary since we need to have the fns/globals injected (a single time)
         // and ready to use in every body/predicate.
         let mut instr = InstrGenerator::new(
-            &behavior,
             VisitingEmitter::new(&mut app_wasm, &mut symbol_table, &mem_tracker),
             simple_ast,
             &mut err,
         );
         // TODO add assertions here once I have error logic in place to check that it worked!
-        instr.run(&behavior);
+        instr.run();
         err.fatal_report("Integration Test");
 
         if !Path::new(OUT_BASE_DIR).exists() {
@@ -133,11 +130,13 @@ fn instrument_handwritten_wasm_call() {
         .arg("tests/scripts/instr.mm")
         .arg("--app")
         .arg("tests/apps/handwritten/add.wasm")
+        .arg("--output-path")
+        .arg("output/integration-handwritten_add.wasm")
         .output()
         .expect("failed to execute process");
     assert!(res.status.success());
 
-    let file_data = fs::read("output/output.wasm").unwrap();
+    let file_data = fs::read("output/integration-handwritten_add.wasm").unwrap();
     let wat_data = wasm2wat(file_data).unwrap();
     println!("{}", wat_data);
 }
@@ -164,11 +163,13 @@ fn instrument_no_matches() {
         .arg("tests/scripts/instr.mm")
         .arg("--app")
         .arg("tests/apps/handwritten/no_matched_events.wasm")
+        .arg("--output-path")
+        .arg("output/integration-no_matched_events.wasm")
         .output()
         .expect("failed to execute process");
     assert!(res.status.success());
 
-    let file_data = fs::read("output/output.wasm").unwrap();
+    let file_data = fs::read("output/integration-no_matched_events.wasm").unwrap();
     let wat_data = wasm2wat(file_data).unwrap();
     println!("{}", wat_data);
 }

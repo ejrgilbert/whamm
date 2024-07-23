@@ -3,14 +3,12 @@ extern crate core;
 use cli::{Cmd, WhammCli};
 use std::collections::HashMap;
 
-use crate::behavior::builder_visitor::*;
 use crate::common::error::ErrorGen;
 use crate::emitter::rewriting::module_emitter::{MemoryTracker, ModuleEmitter};
 use crate::generator::init_generator::InitGenerator;
 use crate::generator::instr_generator::InstrGenerator;
 use crate::parser::whamm_parser::*;
 
-pub mod behavior;
 mod cli;
 pub mod common;
 pub mod emitter;
@@ -18,21 +16,16 @@ pub mod generator;
 pub mod parser;
 pub mod verifier;
 
-use crate::behavior::tree::BehaviorTree;
-use crate::behavior::visualize::visualization_to_file;
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
+use crate::generator::simple_ast::build_simple_ast;
 use crate::parser::types::Whamm;
 use crate::verifier::types::SymbolTable;
 use crate::verifier::verifier::{build_symbol_table, type_check};
 use clap::Parser;
-use graphviz_rust::cmd::{CommandArg, Format};
-use graphviz_rust::exec_dot;
 use log::{error, info};
 use orca::ir::module::Module as WasmModule;
-use project_root::get_project_root;
 use std::path::PathBuf;
 use std::process::exit;
-use walrus::Module;
 
 const MAX_ERRORS: i32 = 15;
 
@@ -74,16 +67,6 @@ fn try_main() -> Result<(), failure::Error> {
                 args.run_verifier,
             );
         }
-        Cmd::VisWasm { wasm, output_path } => {
-            run_vis_wasm(wasm, output_path);
-        }
-        Cmd::VisScript {
-            script,
-            run_verifier,
-            output_path,
-        } => {
-            run_vis_script(script, run_verifier, output_path);
-        }
     }
 
     Ok(())
@@ -108,7 +91,7 @@ fn run_instr(
     app_wasm_path: String,
     script_path: String,
     output_wasm_path: String,
-    emit_virgil: bool,
+    _emit_virgil: bool,
     run_verifier: bool,
 ) {
     // Set up error reporting mechanism
@@ -117,7 +100,8 @@ fn run_instr(
     // Process the script
     let mut whamm = get_script_ast(&script_path, &mut err);
     let mut symbol_table = get_symbol_table(&mut whamm, run_verifier, &mut err);
-    let (behavior_tree, simple_ast) = build_behavior(&whamm, &mut err);
+    let simple_ast = build_simple_ast(&whamm, &mut err);
+    err.check_too_many();
 
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
@@ -153,12 +137,11 @@ fn run_instr(
     // This structure is necessary since we need to have the fns/globals injected (a single time)
     // and ready to use in every body/predicate.
     let mut instr = InstrGenerator::new(
-        &behavior_tree,
         VisitingEmitter::new(&mut app_wasm, &mut symbol_table, &mem_tracker),
         simple_ast,
         &mut err,
     );
-    instr.run(&behavior_tree);
+    instr.run();
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
 
@@ -175,69 +158,6 @@ fn run_instr(
     }
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
-}
-
-fn run_vis_wasm(wasm_path: String, output_path: String) {
-    // Read app Wasm into Walrus module
-    let _config = walrus::ModuleConfig::new();
-    let app_wasm = Module::from_file(wasm_path).unwrap();
-
-    try_path(&output_path);
-    if app_wasm.write_graphviz_dot(output_path.clone()).is_ok() {
-        match std::fs::read_to_string(output_path.clone()) {
-            Ok(dot_str) => {
-                let svg_path = format!("{}.svg", output_path.clone());
-
-                if let Err(e) = exec_dot(
-                    dot_str,
-                    vec![Format::Svg.into(), CommandArg::Output(svg_path.clone())],
-                ) {
-                    println!("{}", e);
-                    exit(1);
-                }
-
-                if let Err(err) = opener::open(svg_path.clone()) {
-                    error!("Could not open visualization of wasm at: {}", svg_path);
-                    error!("{:?}", err)
-                }
-            }
-            Err(error) => {
-                error!("Cannot read specified file {}: {}", output_path, error);
-                exit(1);
-            }
-        };
-    }
-}
-
-fn run_vis_script(script_path: String, run_verifier: bool, output_path: String) {
-    // Set up error reporting mechanism
-    let mut err = ErrorGen::new(script_path.clone(), "".to_string(), MAX_ERRORS);
-
-    let mut whamm = get_script_ast(&script_path, &mut err);
-    // building the symbol table is necessary since it does some minor manipulations of the AST
-    // (adds declared globals to the script AST node)
-    let _symbol_table = get_symbol_table(&mut whamm, run_verifier, &mut err);
-    let (behavior_tree, ..) = build_behavior(&whamm, &mut err);
-
-    // if there are any errors, should report and exit!
-    err.check_has_errors();
-
-    if !PathBuf::from(&output_path).exists() {
-        std::fs::create_dir_all(PathBuf::from(&output_path).parent().unwrap()).unwrap();
-    }
-
-    let path = match get_pb(&PathBuf::from(output_path.clone())) {
-        Ok(pb) => pb,
-        Err(_) => exit(1),
-    };
-
-    if visualization_to_file(&behavior_tree, path).is_ok() {
-        if let Err(err) = opener::open(output_path.clone()) {
-            error!("Could not open visualization tree at: {}", output_path);
-            error!("{:?}", err)
-        }
-    }
-    exit(0);
 }
 
 fn get_symbol_table(ast: &mut Whamm, run_verifier: bool, err: &mut ErrorGen) -> SymbolTable {
@@ -274,30 +194,5 @@ fn get_script_ast(script_path: &String, err: &mut ErrorGen) -> Whamm {
             error!("Cannot read specified file {}: {}", script_path, error);
             exit(1);
         }
-    }
-}
-
-fn build_behavior(whamm: &Whamm, err: &mut ErrorGen) -> (BehaviorTree, SimpleAST) {
-    // Build the behavior tree from the AST
-    let mut simple_ast = SimpleAST::new();
-    let mut behavior = build_behavior_tree(whamm, &mut simple_ast, err);
-    err.check_too_many();
-    behavior.reset();
-
-    (behavior, simple_ast)
-}
-
-pub(crate) fn get_pb(file_pb: &PathBuf) -> Result<PathBuf, String> {
-    if file_pb.is_relative() {
-        match get_project_root() {
-            Ok(r) => {
-                let mut full_path = r.clone();
-                full_path.push(file_pb);
-                Ok(full_path)
-            }
-            Err(e) => Err(format!("the root folder does not exist: {:?}", e)),
-        }
-    } else {
-        Ok(file_pb.clone())
     }
 }
