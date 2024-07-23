@@ -91,7 +91,7 @@ fn run_instr(
     app_wasm_path: String,
     script_path: String,
     output_wasm_path: String,
-    emit_virgil: bool,
+    _emit_virgil: bool,
     run_verifier: bool,
 ) {
     // Set up error reporting mechanism

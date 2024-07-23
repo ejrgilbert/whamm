@@ -31,7 +31,7 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
         mem_tracker: &'d MemoryTracker,
     ) -> Self {
         let a = Self {
-            app_iter: ModuleIterator::new(app_wasm),
+            app_iter: ModuleIterator::new(app_wasm, vec![]),
             table,
             mem_tracker,
             instr_created_args: vec![],
