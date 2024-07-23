@@ -51,7 +51,7 @@ fn emit_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     match stmt {
-        Statement::Decl { .. } => emit_decl_stmt(stmt, injector, table, mem_tracker, err_msg),
+        Statement::Decl { .. } => emit_decl_stmt(stmt, injector, table, err_msg),
         Statement::Assign { .. } => emit_assign_stmt(stmt, injector, table, mem_tracker, err_msg),
         Statement::Expr { expr, .. } => emit_expr(expr, injector, table, mem_tracker, err_msg),
         Statement::If {
@@ -86,7 +86,6 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
     stmt: &mut Statement,
     injector: &mut T,
     table: &mut SymbolTable,
-    mem_tracker: &MemoryTracker,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     match stmt {
@@ -243,7 +242,7 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                 Err(e) => Err(e),
                 Ok(_) => {
                     // Emit the instruction that sets the variable's value to the emitted expression
-                    emit_set(var_id, injector, table, mem_tracker, err_msg)
+                    emit_set(var_id, injector, table, err_msg)
                 }
             }
         }
@@ -293,7 +292,6 @@ fn emit_set<'a, T: Opcode<'a>>(
     var_id: &mut Expr,
     injector: &mut T,
     table: &mut SymbolTable,
-    mem_tracker: &MemoryTracker,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     if let Expr::VarId { name, .. } = var_id {

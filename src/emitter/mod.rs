@@ -25,10 +25,8 @@ pub trait ModuleEmitter {
     fn fold_expr(&mut self, expr: &mut Expr) -> bool;
     fn emit_expr(&mut self, expr: &mut Expr) -> Result<bool, Box<WhammError>>;
 
-    // keep
     fn emit_fn(&mut self, context_name: &str, f: &Fn) -> Result<bool, Box<WhammError>>;
     fn emit_formal_param(&mut self, param: &(Expr, DataType)) -> bool;
-    // keep
     fn emit_global(
         &mut self,
         name: String,
@@ -49,18 +47,14 @@ pub trait ModuleEmitter {
     fn finish_branch(&mut self) -> bool;
     fn emit_global_stmts(&mut self, stmts: &mut Vec<Statement>) -> Result<bool, Box<WhammError>>;
     fn emit_body(&mut self, body: &mut Vec<Statement>) -> Result<bool, Box<WhammError>>;
-    fn has_alt_call(&mut self) -> bool; // TODO -- remove need for this
-    fn emit_alt_call(&mut self) -> Result<bool, Box<WhammError>>; // TODO -- remove need for this
     fn emit_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>>;
 
     fn dump_to_file(&mut self, output_wasm_path: String) -> Result<bool, Box<WhammError>>;
 }
 
 pub trait VisitingEmitter {
-    // keep
     fn enter_scope(&mut self) -> Result<(), Box<WhammError>>;
     fn enter_scope_via_spec(&mut self, script_id: &str, probe_spec: &ProbeSpec) -> bool;
-    // keep
     fn exit_scope(&mut self) -> Result<(), Box<WhammError>>;
     fn reset_children(&mut self);
 
@@ -80,10 +74,8 @@ pub trait VisitingEmitter {
     fn fold_expr(&mut self, expr: &mut Expr) -> bool;
     fn emit_expr(&mut self, expr: &mut Expr) -> Result<bool, Box<WhammError>>;
 
-    // keep
     fn emit_fn(&mut self, context_name: &str, f: &Fn) -> Result<bool, Box<WhammError>>;
     fn emit_formal_param(&mut self, param: &(Expr, DataType)) -> bool;
-    // keep
     fn emit_global(
         &mut self,
         name: String,
@@ -104,8 +96,6 @@ pub trait VisitingEmitter {
     fn finish_branch(&mut self) -> bool;
     fn emit_global_stmts(&mut self, stmts: &mut Vec<Statement>) -> Result<bool, Box<WhammError>>;
     fn emit_body(&mut self, body: &mut Vec<Statement>) -> Result<bool, Box<WhammError>>;
-    fn has_alt_call(&mut self) -> bool; // TODO -- remove need for this
-    fn emit_alt_call(&mut self) -> Result<bool, Box<WhammError>>; // TODO -- remove need for this
     fn emit_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>>;
 
     fn dump_to_file(&mut self, output_wasm_path: String) -> Result<bool, Box<WhammError>>;

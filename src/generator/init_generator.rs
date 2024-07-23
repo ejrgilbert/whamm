@@ -394,7 +394,10 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_> {
         match val {
             Value::Str { .. } => {
                 // Emit the string into the Wasm module data section!
-                self.emitter.emit_string(val)
+                if let Err(e) = self.emitter.emit_string(val) {
+                    self.err.add_error(*e)
+                }
+                true
             }
             Value::Tuple { vals, .. } => {
                 let mut is_success = true;

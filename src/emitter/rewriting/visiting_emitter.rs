@@ -6,7 +6,6 @@ use crate::emitter::rewriting::{emit_stmt, Emitter};
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{DataType, Definition, Expr, ProbeSpec, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
-use core::panic;
 use orca::ir::module::Module;
 use orca::iterator::iterator_trait::Iterator as OrcaIterator;
 use orca::iterator::module_iterator::ModuleIterator;
@@ -242,60 +241,6 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
         Ok(is_success)
     }
 
-    // pub(crate) fn has_alt_call(&mut self) -> bool {
-    //     // check if we should inject an alternate call!
-    //     // At this point the body has been visited, so "new_target_fn_name" would be defined
-    //     let rec_id = self.table.lookup("new_target_fn_name").copied();
-    //
-    //     if rec_id.is_none() {
-    //         info!("`new_target_fn_name` not configured for this probe.");
-    //         return false;
-    //     } else {
-    //         let (name, func_call_id) = match rec_id {
-    //             Some(r_id) => {
-    //                 let rec = self.table.get_record_mut(&r_id);
-    //                 if let Some(Record::Var {
-    //                     value: Some(Value::Str { val, .. }),
-    //                     ..
-    //                 }) = rec
-    //                 {
-    //                     // TODO: why instr_alt_call: Option<i32>, not Option<u32>?
-    //                     let func_id = self.app_iter.module.get_fid_by_name(val);
-    //                     (val.clone(), func_id)
-    //                 } else {
-    //                     ("".to_string(), None)
-    //                 }
-    //             }
-    //             None => ("".to_string(), None),
-    //         };
-    //         if func_call_id.is_none() {
-    //             info!(
-    //                 "Could not find function in app Wasm specified by `new_target_fn_name`: {}",
-    //                 name
-    //             );
-    //             return false;
-    //         }
-    //         self.instr_alt_call = func_call_id;
-    //     }
-    //     true
-    // }
-
-    // pub fn emit_alt_call(&mut self) -> Result<bool, Box<WhammError>> {
-    //     if let Some(alt_fn_id) = self.instr_alt_call {
-    //         self.app_iter.call(alt_fn_id);
-    //     } else {
-    //         return Err(Box::new(ErrorGen::get_unexpected_error(
-    //             true,
-    //             Some(format!(
-    //                 "{UNEXPECTED_ERR_MSG} \
-    //                 Could not inject alternate call to function, something went wrong..."
-    //             )),
-    //             None,
-    //         )));
-    //     }
-    //     Ok(true)
-    // }
-
     fn handle_alt_call_by_name(
         &mut self,
         args: &mut Option<Vec<Box<Expr>>>,
@@ -419,7 +364,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_> {
             stmt,
             &mut self.app_iter,
             self.table,
-            &mut self.mem_tracker,
+            self.mem_tracker,
             UNEXPECTED_ERR_MSG,
         )
     }
@@ -429,7 +374,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_> {
             expr,
             &mut self.app_iter,
             self.table,
-            &mut self.mem_tracker,
+            self.mem_tracker,
             UNEXPECTED_ERR_MSG,
         )
     }

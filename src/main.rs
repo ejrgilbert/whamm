@@ -33,7 +33,6 @@ use project_root::get_project_root;
 use std::path::PathBuf;
 use std::process::exit;
 use walrus::Module;
-use wasmparser::names::ComponentNameKind::Hash;
 
 const MAX_ERRORS: i32 = 15;
 
@@ -122,14 +121,6 @@ fn run_instr(
 
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
-
-    // // Read app Wasm into Walrus module
-    // let _config = walrus::ModuleConfig::new();
-    // if !PathBuf::from(&app_wasm_path).exists() {
-    //     error!("Wasm module does not exist at: {}", app_wasm_path);
-    //     exit(1);
-    // }
-    // let app_wasm = Module::from_file(app_wasm_path).unwrap();
 
     // Read app Wasm into Orca module
     let buff = std::fs::read(app_wasm_path).unwrap();

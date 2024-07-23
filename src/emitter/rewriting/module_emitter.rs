@@ -247,12 +247,7 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
         unimplemented!();
     }
 
-    fn emit_formal_param(&mut self, _param: &(Expr, DataType)) -> bool {
-        // TODO: only when we're supporting user-defined fns in script...
-        unimplemented!();
-    }
-
-    pub fn emit_string(&mut self, value: &mut Value) -> bool {
+    pub fn emit_string(&mut self, value: &mut Value) -> Result<bool, Box<WhammError>> {
         match value {
             Value::Str { val, .. } => {
                 // assuming that the data ID is the index of the object in the Vec
@@ -281,11 +276,18 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
 
                 // update curr_mem_offset to account for new data
                 self.mem_tracker.curr_mem_offset += val.len();
-                true
+                Ok(true)
             }
             Value::Integer { .. } | Value::Tuple { .. } | Value::Boolean { .. } => {
-                // todo -- throw error here!
-                todo!()
+                Err(Box::new(ErrorGen::get_unexpected_error(
+                    true,
+                    Some(format!(
+                        "{UNEXPECTED_ERR_MSG} \
+                Called 'emit_string', but this is not a string type: {:?}",
+                        value
+                    )),
+                    None,
+                )))
             }
         }
     }

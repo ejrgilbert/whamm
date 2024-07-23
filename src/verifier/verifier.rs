@@ -1,4 +1,3 @@
-use std::cmp::PartialEq;
 use std::vec;
 
 use crate::common::error::ErrorGen;
