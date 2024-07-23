@@ -25,14 +25,11 @@ use crate::parser::types::Whamm;
 use crate::verifier::types::SymbolTable;
 use crate::verifier::verifier::{build_symbol_table, type_check};
 use clap::Parser;
-use graphviz_rust::cmd::{CommandArg, Format};
-use graphviz_rust::exec_dot;
 use log::{error, info};
 use orca::ir::module::Module as WasmModule;
 use project_root::get_project_root;
 use std::path::PathBuf;
 use std::process::exit;
-use walrus::Module;
 
 const MAX_ERRORS: i32 = 15;
 
@@ -74,9 +71,6 @@ fn try_main() -> Result<(), failure::Error> {
                 args.run_verifier,
             );
         }
-        Cmd::VisWasm { wasm, output_path } => {
-            run_vis_wasm(wasm, output_path);
-        }
         Cmd::VisScript {
             script,
             run_verifier,
@@ -108,7 +102,7 @@ fn run_instr(
     app_wasm_path: String,
     script_path: String,
     output_wasm_path: String,
-    emit_virgil: bool,
+    _emit_virgil: bool,
     run_verifier: bool,
 ) {
     // Set up error reporting mechanism
@@ -175,38 +169,6 @@ fn run_instr(
     }
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
-}
-
-fn run_vis_wasm(wasm_path: String, output_path: String) {
-    // Read app Wasm into Walrus module
-    let _config = walrus::ModuleConfig::new();
-    let app_wasm = Module::from_file(wasm_path).unwrap();
-
-    try_path(&output_path);
-    if app_wasm.write_graphviz_dot(output_path.clone()).is_ok() {
-        match std::fs::read_to_string(output_path.clone()) {
-            Ok(dot_str) => {
-                let svg_path = format!("{}.svg", output_path.clone());
-
-                if let Err(e) = exec_dot(
-                    dot_str,
-                    vec![Format::Svg.into(), CommandArg::Output(svg_path.clone())],
-                ) {
-                    println!("{}", e);
-                    exit(1);
-                }
-
-                if let Err(err) = opener::open(svg_path.clone()) {
-                    error!("Could not open visualization of wasm at: {}", svg_path);
-                    error!("{:?}", err)
-                }
-            }
-            Err(error) => {
-                error!("Cannot read specified file {}: {}", output_path, error);
-                exit(1);
-            }
-        };
-    }
 }
 
 fn run_vis_script(script_path: String, run_verifier: bool, output_path: String) {
