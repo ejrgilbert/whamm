@@ -1,13 +1,13 @@
-use crate::behavior::builder_visitor::SimpleAST;
-use crate::behavior::tree::{ActionType, ArgActionType, BehaviorVisitor, DecoratorType};
-use crate::behavior::tree::{BehaviorTree, Node};
 use crate::common::error::ErrorGen;
 use crate::emitter::rewriting::rules::{provider_factory, Arg, LocInfo, WhammProvider};
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::rewriting::Emitter;
+use crate::generator::simple_ast::SimpleAST;
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{Expr, Statement};
-use log::warn;
+
+const UNEXPECTED_ERR_MSG: &str =
+    "InstrGenerator: Looks like you've found a bug...please report this behavior!";
 
 fn get_loc_info<'a>(rule: &'a WhammProvider, emitter: &VisitingEmitter) -> Option<LocInfo<'a>> {
     // Pull the curr instr each time this is called to keep from having
@@ -22,26 +22,23 @@ fn get_loc_info<'a>(rule: &'a WhammProvider, emitter: &VisitingEmitter) -> Optio
 /// passed emitter to emit instrumentation code.
 /// This process should ideally be generic, made to perform a specific
 /// instrumentation technique by the passed Emitter type.
-pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f> {
-    pub tree: &'a BehaviorTree,
-    pub emitter: VisitingEmitter<'b, 'c, 'd, 'e>,
+pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e> {
+    pub emitter: VisitingEmitter<'a, 'b, 'c, 'd>,
     pub ast: SimpleAST,
-    pub err: &'f mut ErrorGen,
+    pub err: &'e mut ErrorGen,
 
     curr_instr_args: Vec<Arg>,
     curr_probe_mode: String,
     /// The current probe's body and predicate
     curr_probe: Option<(Option<Vec<Statement>>, Option<Expr>)>,
 }
-impl<'a, 'b, 'c, 'd, 'e, 'f> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f> {
+impl<'a, 'b, 'c, 'd, 'e> InstrGenerator<'a, 'b, 'c, 'd, 'e> {
     pub fn new(
-        tree: &'a BehaviorTree,
-        emitter: VisitingEmitter<'b, 'c, 'd, 'e>,
+        emitter: VisitingEmitter<'a, 'b, 'c, 'd>,
         ast: SimpleAST,
-        err: &'f mut ErrorGen,
+        err: &'e mut ErrorGen,
     ) -> Self {
         Self {
-            tree,
             emitter,
             ast,
             err,
@@ -62,7 +59,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f> {
         true
     }
 
-    pub fn run(&mut self, behavior: &BehaviorTree) -> bool {
+    pub fn run(&mut self) -> bool {
         // Reset the symbol table in the emitter just in case
         self.emitter.reset_children();
 
@@ -129,14 +126,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f> {
                         self.curr_probe_mode = probe_spec.mode.as_ref().unwrap().name.clone();
                         self.curr_probe = Some((body_clone, pred_clone));
 
-                        // Traverse the behavior tree to emit code (if the predicate is not false)
-                        if let Some(root) = behavior.get_root() {
-                            // Traverse `behavior` tree and emit the probes held in `ast`
-                            is_success = self.visit_root(root);
-                        } else {
-                            warn!("The behavior tree was empty! Nothing to emit!");
-                            is_success &= false;
-                        }
+                        // emit the probe (since the predicate is not false)
+                        is_success &= self.emit_probe();
 
                         // Now that we've emitted this probe, reset the symbol table's static/dynamic
                         // data defined for this instr
@@ -149,220 +140,109 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f> {
         is_success
     }
 }
-impl BehaviorVisitor<bool> for InstrGenerator<'_, '_, '_, '_, '_, '_> {
-    fn visit_root(&mut self, node: &Node) -> bool {
+impl InstrGenerator<'_, '_, '_, '_, '_> {
+    fn emit_probe(&mut self) -> bool {
         let mut is_success = true;
-        if let Node::Root { child, .. } = node {
-            if let Some(node) = self.tree.get_node(*child) {
-                is_success &= self.visit_node(node);
-            }
+
+        is_success &= self.save_args();
+
+        self.configure_probe_mode();
+        if self.pred_is_true() {
+            // The predicate has been reduced to a 'true', emit un-predicated body
+            self.emit_body();
         } else {
-            unreachable!()
+            // The predicate still has some conditionals (remember we already checked for
+            // it being false in run() above)
+            match self.curr_probe_mode.as_str() {
+                "before" | "after" => {
+                    is_success &= self.emit_probe_as_if();
+                }
+                "alt" => {
+                    is_success &= self.emit_probe_as_if_else();
+                }
+                _ => {
+                    self.err.unexpected_error(
+                        true,
+                        Some(format!(
+                            "{UNEXPECTED_ERR_MSG} Unexpected probe mode '{}'",
+                            self.curr_probe_mode
+                        )),
+                        None,
+                    );
+                    is_success &= false;
+                }
+            }
         }
+
         is_success
     }
 
-    fn visit_sequence(&mut self, node: &Node) -> bool {
-        if let Node::Sequence { children, .. } = node {
-            for child in children {
-                let mut child_is_success = true;
-                if let Some(node) = self.tree.get_node(*child) {
-                    child_is_success &= self.visit_node(node);
-                }
-                if !&child_is_success {
-                    // If the child was unsuccessful, don't execute the following children
-                    // and return `false` (failure)
-                    return child_is_success;
-                }
-            }
+    fn save_args(&mut self) -> bool {
+        if !self.curr_instr_args.is_empty() {
+            // The current instruction has args, save them (before)
+            self.emitter.before();
+            self.emitter.save_args(&self.curr_instr_args)
         } else {
-            unreachable!()
-        }
-        true
-    }
-
-    fn visit_fallback(&mut self, node: &Node) -> bool {
-        if let Node::Fallback { children, .. } = node {
-            for child in children {
-                let mut child_is_success = true;
-                if let Some(node) = self.tree.get_node(*child) {
-                    child_is_success &= self.visit_node(node);
-                }
-                if child_is_success {
-                    // If that child was successful, don't execute the fallback
-                    // and return `true` (success)
-                    return child_is_success;
-                }
-            }
-        } else {
-            unreachable!()
-        }
-        // Never successfully executed a child
-        false
-    }
-
-    fn visit_is_probe_mode(&mut self, node: &Node) -> bool {
-        let mut is_success = true;
-        if let Node::Decorator {
-            ty: DecoratorType::IsProbeMode { probe_mode },
-            child,
-            ..
-        } = node
-        {
-            if self.curr_probe_mode == *probe_mode {
-                if let Some(node) = self.tree.get_node(*child) {
-                    is_success &= self.visit_node(node);
-                }
-            } else {
-                // If the decorator condition is false, return false
-                return false;
-            }
-        } else {
-            unreachable!()
-        }
-        is_success
-    }
-
-    fn visit_pred_is(&mut self, node: &Node) -> bool {
-        if let Node::Decorator {
-            ty: DecoratorType::PredIs { val },
-            child,
-            ..
-        } = node
-        {
-            if let Some((.., pred)) = &self.curr_probe {
-                if let Some(pred) = pred {
-                    if let Some(pred_as_bool) = ExprFolder::get_single_bool(pred) {
-                        // predicate has been reduced to a boolean value
-                        if pred_as_bool == *val {
-                            // predicate is reduced to desired value, execute child node
-                            // first, set the before/after/alt mode of the probe
-                            self.configure_probe_mode();
-                            if let Some(node) = self.tree.get_node(*child) {
-                                return self.visit_node(node);
-                            }
-                        }
-                    }
-                } else {
-                    // the predicate is not defined, it is automatically true
-                    if *val {
-                        // first, set the before/after/alt mode of the probe
-                        self.configure_probe_mode();
-                        if let Some(node) = self.tree.get_node(*child) {
-                            return self.visit_node(node);
-                        }
-                    }
-                }
-            }
-        } else {
-            unreachable!()
-        }
-        false
-    }
-
-    fn visit_save_args(&mut self, node: &Node) -> bool {
-        let mut is_success = true;
-        if let Node::ArgAction {
-            ty: ArgActionType::SaveArgs,
-            force_success,
-            ..
-        } = node
-        {
-            if !self.curr_instr_args.is_empty() {
-                // The current instruction has args, save them (before)
-                self.emitter.before();
-                is_success &= self.emitter.save_args(&self.curr_instr_args);
-            } else {
-                // If no args, return whatever was configured to do
-                return *force_success;
-            }
-        } else {
-            unreachable!()
-        }
-        is_success
-    }
-
-    fn visit_emit_body(&mut self, node: &Node) -> bool {
-        let mut is_success = true;
-        if let Node::Action {
-            ty: ActionType::EmitBody,
-            ..
-        } = node
-        {
-            if let Some((Some(ref mut body), ..)) = self.curr_probe {
-                match self.emitter.emit_body(body) {
-                    Err(e) => self.err.add_error(*e),
-                    Ok(res) => is_success &= res,
-                }
-            }
-        } else {
-            unreachable!()
-        }
-        is_success
-    }
-
-    fn visit_emit_orig(&mut self, node: &Node) -> bool {
-        let mut is_success = true;
-        if let Node::Action {
-            ty: ActionType::EmitOrig,
-            ..
-        } = node
-        {
-            is_success &= self.emitter.emit_orig();
-        } else {
-            unreachable!()
-        }
-        is_success
-    }
-
-    fn visit_force_success(&mut self, node: &Node) -> bool {
-        if let Node::Action {
-            ty: ActionType::ForceSuccess,
-            ..
-        } = node
-        {
+            // If no args, just return true
             true
-        } else {
-            unreachable!()
         }
     }
 
-    fn visit_emit_probe_as_if(&mut self, node: &Node) -> bool {
-        let mut is_success = true;
-        if let Node::Action {
-            ty: ActionType::EmitProbeAsIf,
-            ..
-        } = node
-        {
-            if let Some((Some(ref mut body), Some(ref mut pred))) = self.curr_probe {
-                match self.emitter.emit_if(pred, body) {
-                    Err(e) => self.err.add_error(*e),
-                    Ok(res) => is_success &= res,
+    fn pred_is_true(&mut self) -> bool {
+        if let Some((.., pred)) = &self.curr_probe {
+            if let Some(pred) = pred {
+                if let Some(pred_as_bool) = ExprFolder::get_single_bool(pred) {
+                    // predicate has been reduced to a boolean value
+                    return pred_as_bool;
                 }
+            } else {
+                // the predicate is not defined, it is automatically true
+                // first, set the before/after/alt mode of the probe
+                return true;
             }
-        } else {
-            unreachable!()
         }
-        is_success
+        false
     }
 
-    fn visit_emit_probe_as_if_else(&mut self, node: &Node) -> bool {
-        let mut is_success = true;
-        if let Node::Action {
-            ty: ActionType::EmitProbeAsIfElse,
-            ..
-        } = node
-        {
-            self.configure_probe_mode();
-            if let Some((Some(ref mut body), Some(ref mut pred))) = self.curr_probe {
-                match self.emitter.emit_if_with_orig_as_else(pred, body) {
-                    Err(e) => self.err.add_error(*e),
-                    Ok(res) => is_success &= res,
+    fn emit_body(&mut self) -> bool {
+        if let Some((Some(ref mut body), ..)) = self.curr_probe {
+            match self.emitter.emit_body(body) {
+                Err(e) => {
+                    self.err.add_error(*e);
+                    false
                 }
+                Ok(res) => res,
             }
         } else {
-            unreachable!()
+            false
         }
-        is_success
+    }
+
+    fn emit_probe_as_if(&mut self) -> bool {
+        if let Some((Some(ref mut body), Some(ref mut pred))) = self.curr_probe {
+            match self.emitter.emit_if(pred, body) {
+                Err(e) => {
+                    self.err.add_error(*e);
+                    false
+                }
+                Ok(res) => res,
+            }
+        } else {
+            false
+        }
+    }
+
+    fn emit_probe_as_if_else(&mut self) -> bool {
+        if let Some((Some(ref mut body), Some(ref mut pred))) = self.curr_probe {
+            match self.emitter.emit_if_with_orig_as_else(pred, body) {
+                Err(e) => {
+                    self.err.add_error(*e);
+                    false
+                }
+                Ok(res) => res,
+            }
+        } else {
+            false
+        }
     }
 }

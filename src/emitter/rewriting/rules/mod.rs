@@ -1,10 +1,10 @@
-use crate::behavior::builder_visitor::{SimpleAstProbes, SimpleProbe};
 use crate::emitter::rewriting::rules::core::CorePackage;
 use crate::emitter::rewriting::rules::wasm::{OpcodeEvent, WasmPackage};
 use crate::parser::rules::WhammProviderKind;
 use crate::parser::types::{ProbeSpec, SpecPart, Value};
 use std::collections::HashMap;
 
+use crate::generator::simple_ast::{SimpleAstProbes, SimpleProbe};
 use orca::ir::module::Module;
 use orca::ir::types::DataType as OrcaType;
 use wasmparser::Operator;
