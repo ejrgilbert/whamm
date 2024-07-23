@@ -351,9 +351,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         s += ")";
 
         // print return type
-        if let Some(ty) = &f.return_ty {
-            s += &format!(" -> {}", self.visit_datatype(ty));
-        }
+        s += &format!(" -> {}", self.visit_datatype(&f.return_ty));
         s += &format!(" {{{}", NL);
 
         // print body
@@ -530,11 +528,7 @@ impl WhammVisitor<String> for AsStrVisitor {
                 s += &format!("{}", val);
                 s
             }
-            Value::Str {
-                ty: _ty,
-                val,
-                addr: _addr,
-            } => {
+            Value::Str { val, .. } => {
                 let mut s = "".to_string();
                 s += &format!("\"{}\"", val);
                 s

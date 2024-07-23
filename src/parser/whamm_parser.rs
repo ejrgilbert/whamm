@@ -3,7 +3,7 @@ use types::{BinOp, Block, FnId, Rule, UnOp, WhammParser, PRATT_PARSER};
 
 use crate::common::error::{ErrorGen, WhammError};
 use crate::parser::types::{
-    DataType, Expr, Location, ProbeSpec, Script, SpecPart, Statement, Value, Whamm,
+    DataType, Definition, Expr, Location, ProbeSpec, Script, SpecPart, Statement, Value, Whamm,
 };
 use log::trace;
 use pest::error::{Error, LineColLocation};
@@ -273,11 +273,11 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
             };
 
             let output = types::Fn {
-                is_comp_provided: false,
+                def: Definition::User,
                 name: fn_id,
                 params: args,
                 body,
-                return_ty: Some(return_ty),
+                return_ty,
             };
             let script: &mut Script = whamm.scripts.get_mut(script_count).unwrap();
             script.fns.push(output);
@@ -1170,7 +1170,6 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                 val: Value::Str {
                     ty: DataType::Str,
                     val,
-                    addr: None,
                 },
                 loc: Some(Location {
                     line_col: LineColLocation::from(pair.as_span()),

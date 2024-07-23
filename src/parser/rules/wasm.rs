@@ -477,6 +477,34 @@ impl OpcodeEvent {
         }
     }
     fn call(loc: Option<Location>) -> Self {
+        let fns = vec![ProvidedFunction::new(
+            "alt_call_by_id".to_string(),
+            "Insert an alternate call (targeting the passed function ID) into the Wasm bytecode. Will also emit the original parameters onto the stack.".to_string(),
+            vec![(
+                Expr::VarId {
+                    is_comp_provided: true,
+                    name: "func_id".to_string(),
+                    loc: None,
+                },
+                DataType::U32,
+            )],
+            DataType::Tuple { ty_info: vec![] },
+            true
+        ), ProvidedFunction::new(
+            "alt_call_by_name".to_string(),
+            "Insert an alternate call (targeting the passed function name) into the Wasm bytecode. Will also emit the original parameters onto the stack.".to_string(),
+            vec![(
+                Expr::VarId {
+                    is_comp_provided: true,
+                    name: "func_name".to_string(),
+                    loc: None,
+                },
+                DataType::Str,
+            )],
+            DataType::Tuple { ty_info: vec![] },
+            true
+        )];
+
         let mut globals = Self::init_globals(OpcodeEventKind::Call);
 
         // add in the extra globals (that aren't args or immediates)
@@ -515,22 +543,12 @@ impl OpcodeEvent {
                 true,
             ),
         );
-        globals.insert(
-            "new_target_fn_name".to_string(),
-            ProvidedGlobal::new(
-                "new_target_fn_name".to_string(),
-                "(DEPRECATED) The name of the target function to call instead of the original."
-                    .to_string(),
-                DataType::Str,
-                true,
-            ),
-        );
 
         Self {
             kind: OpcodeEventKind::Call,
             info: EventInfo {
                 docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call".to_string(),
-                fns: vec![],
+                fns,
                 globals,
                 loc,
                 probe_map: HashMap::new()

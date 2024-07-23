@@ -1,11 +1,11 @@
 extern crate core;
 
 use cli::{Cmd, WhammCli};
+use std::collections::HashMap;
 
 use crate::behavior::builder_visitor::*;
 use crate::common::error::ErrorGen;
-use crate::emitter::rewriting::WasmRewritingEmitter;
-use crate::emitter::Emitter;
+use crate::emitter::rewriting::module_emitter::{MemoryTracker, ModuleEmitter};
 use crate::generator::init_generator::InitGenerator;
 use crate::generator::instr_generator::InstrGenerator;
 use crate::parser::whamm_parser::*;
@@ -18,20 +18,21 @@ pub mod generator;
 pub mod parser;
 pub mod verifier;
 
+use crate::behavior::tree::BehaviorTree;
+use crate::behavior::visualize::visualization_to_file;
+use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
+use crate::parser::types::Whamm;
+use crate::verifier::types::SymbolTable;
+use crate::verifier::verifier::{build_symbol_table, type_check};
 use clap::Parser;
 use graphviz_rust::cmd::{CommandArg, Format};
 use graphviz_rust::exec_dot;
 use log::{error, info};
+use orca::ir::module::Module as WasmModule;
 use project_root::get_project_root;
 use std::path::PathBuf;
 use std::process::exit;
 use walrus::Module;
-
-use crate::behavior::tree::BehaviorTree;
-use crate::behavior::visualize::visualization_to_file;
-use crate::parser::types::Whamm;
-use crate::verifier::types::SymbolTable;
-use crate::verifier::verifier::{build_symbol_table, type_check};
 
 const MAX_ERRORS: i32 = 15;
 
@@ -115,49 +116,62 @@ fn run_instr(
 
     // Process the script
     let mut whamm = get_script_ast(&script_path, &mut err);
-    let symbol_table = get_symbol_table(&mut whamm, run_verifier, &mut err);
+    let mut symbol_table = get_symbol_table(&mut whamm, run_verifier, &mut err);
     let (behavior_tree, simple_ast) = build_behavior(&whamm, &mut err);
 
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
 
-    // Read app Wasm into Walrus module
-    let _config = walrus::ModuleConfig::new();
-    if !PathBuf::from(&app_wasm_path).exists() {
-        error!("Wasm module does not exist at: {}", app_wasm_path);
-        exit(1);
-    }
-    let app_wasm = Module::from_file(app_wasm_path).unwrap();
+    // Read app Wasm into Orca module
+    let buff = std::fs::read(app_wasm_path).unwrap();
+    let mut app_wasm = WasmModule::parse_only_module(&buff, false).unwrap();
 
-    // Configure the emitter based on target instrumentation code format
-    let mut emitter = if emit_virgil {
-        unimplemented!();
-    } else {
-        WasmRewritingEmitter::new(app_wasm, symbol_table)
+    // TODO Configure the generator based on target (wizard vs bytecode rewriting)
+
+    // Create the memory tracker
+    if app_wasm.memories.len() > 1 {
+        // TODO -- make this work with multi-memory
+        panic!("only single memory is supported")
+    };
+    let mut mem_tracker = MemoryTracker {
+        mem_id: 0,                  // Assuming the ID of the first memory is 0!
+        curr_mem_offset: 1_052_576, // Set default memory base address to DEFAULT + 4KB = 1048576 bytes + 4000 bytes = 1052576 bytes
+        emitted_strings: HashMap::new(),
     };
 
     // Phase 0 of instrumentation (emit globals and provided fns)
     let mut init = InitGenerator {
-        emitter: Box::new(&mut emitter),
+        emitter: ModuleEmitter::new(&mut app_wasm, &mut symbol_table, &mut mem_tracker),
         context_name: "".to_string(),
         err: &mut err,
     };
-    init.run(&whamm);
+    init.run(&mut whamm);
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
 
     // Phase 1 of instrumentation (actually emits the instrumentation code)
     // This structure is necessary since we need to have the fns/globals injected (a single time)
     // and ready to use in every body/predicate.
-    let mut instr =
-        InstrGenerator::new(&behavior_tree, Box::new(&mut emitter), simple_ast, &mut err);
+    let mut instr = InstrGenerator::new(
+        &behavior_tree,
+        VisitingEmitter::new(&mut app_wasm, &mut symbol_table, &mem_tracker),
+        simple_ast,
+        &mut err,
+    );
     instr.run(&behavior_tree);
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
 
     try_path(&output_wasm_path);
-    if let Err(e) = emitter.dump_to_file(output_wasm_path) {
-        err.add_error(*e)
+    if let Err(e) = app_wasm.emit_wasm(&output_wasm_path) {
+        err.add_error(ErrorGen::get_unexpected_error(
+            true,
+            Some(format!(
+                "Failed to dump instrumented wasm to {} from error: {}",
+                &output_wasm_path, e
+            )),
+            None,
+        ))
     }
     // If there were any errors encountered, report and exit!
     err.check_has_errors();

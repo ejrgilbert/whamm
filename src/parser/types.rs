@@ -10,7 +10,6 @@ use crate::parser::rules::{
 use pest::pratt_parser::PrattParser;
 use pest_derive::Parser;
 use termcolor::BufferWriter;
-use walrus::DataId;
 
 #[derive(Parser)]
 #[grammar = "./parser/whamm.pest"] // Path relative to base `src` dir
@@ -178,28 +177,10 @@ impl DataType {
 // Values
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Value {
-    Integer {
-        ty: DataType,
-        val: i32,
-    },
-    Str {
-        ty: DataType,
-        val: String,
-
-        // Used by emitter to store this string's address/len in Wasm memory
-        // DataId: Walrus ID to reference data segment
-        // u32: address of data in memory
-        // usize:  the length of the string in memory
-        addr: Option<(DataId, u32, usize)>,
-    },
-    Tuple {
-        ty: DataType,
-        vals: Vec<Expr>,
-    },
-    Boolean {
-        ty: DataType,
-        val: bool,
-    },
+    Integer { ty: DataType, val: i32 },
+    Str { ty: DataType, val: String },
+    Tuple { ty: DataType, vals: Vec<Expr> },
+    Boolean { ty: DataType, val: bool },
 }
 #[derive(Clone, Debug)]
 pub struct Block {
@@ -333,10 +314,10 @@ pub struct FnId {
 
 #[derive(Clone, Debug)]
 pub struct Fn {
-    pub(crate) is_comp_provided: bool,
+    pub(crate) def: Definition,
     pub(crate) name: FnId,
     pub(crate) params: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
-    pub(crate) return_ty: Option<DataType>,
+    pub(crate) return_ty: DataType,
     pub(crate) body: Block,
 }
 impl Fn {
@@ -357,10 +338,20 @@ impl Fn {
         }
         white(true, ")".to_string(), buffer);
 
-        if let Some(return_ty) = &self.return_ty {
-            white(true, " -> ".to_string(), buffer);
-            return_ty.print(buffer);
-        }
+        white(true, " -> ".to_string(), buffer);
+        self.return_ty.print(buffer);
+    }
+
+    pub fn is_static(&self) -> bool {
+        matches!(self.def, Definition::CompilerStatic)
+    }
+
+    pub fn is_dynamic(&self) -> bool {
+        matches!(self.def, Definition::CompilerDynamic)
+    }
+
+    pub fn is_from_user(&self) -> bool {
+        matches!(self.def, Definition::User)
     }
 }
 
@@ -389,24 +380,15 @@ impl Global {
     }
 
     pub fn is_static(&self) -> bool {
-        match self.def {
-            Definition::CompilerStatic => true,
-            _ => false,
-        }
+        matches!(self.def, Definition::CompilerStatic)
     }
 
     pub fn is_dynamic(&self) -> bool {
-        match self.def {
-            Definition::CompilerDynamic => true,
-            _ => false,
-        }
+        matches!(self.def, Definition::CompilerDynamic)
     }
 
     pub fn is_from_user(&self) -> bool {
-        match self.def {
-            Definition::User => true,
-            _ => false,
-        }
+        matches!(self.def, Definition::User)
     }
 }
 
@@ -488,14 +470,13 @@ impl Default for Whamm {
 }
 impl Whamm {
     pub fn new() -> Self {
-        let whamm = Whamm {
+        Whamm {
             provided_probes: HashMap::new(),
             fns: Whamm::get_provided_fns(),
             globals: Whamm::get_provided_globals(),
 
             scripts: vec![],
-        };
-        whamm
+        }
     }
 
     fn get_provided_fns() -> Vec<ProvidedFunction> {
@@ -524,7 +505,8 @@ impl Whamm {
             "strcmp".to_string(),
             "Compare two wasm strings and return whether they are equivalent.".to_string(),
             strcmp_params,
-            Some(DataType::Boolean),
+            DataType::Boolean,
+            false,
         );
 
         vec![strcmp]
@@ -544,13 +526,13 @@ impl Whamm {
 }
 
 /// SpecPart are the probe ids in a probe spec
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SpecPart {
     pub name: String,
     pub loc: Option<Location>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ProbeSpec {
     pub provider: Option<SpecPart>,
     pub package: Option<SpecPart>,
@@ -967,13 +949,18 @@ impl ProvidedFunction {
         name: String,
         docs: String,
         params: Vec<(Expr, DataType)>,
-        return_ty: Option<DataType>,
+        return_ty: DataType,
+        is_static: bool,
     ) -> Self {
         Self {
             name: name.clone(),
             docs,
             function: Fn {
-                is_comp_provided: true,
+                def: if is_static {
+                    Definition::CompilerStatic
+                } else {
+                    Definition::CompilerDynamic
+                },
                 name: FnId { name, loc: None },
                 params,
                 return_ty,
@@ -1056,7 +1043,7 @@ pub trait WhammVisitorMut<T> {
     // fn visit_predicate(&mut self, predicate: &mut Expr) -> T;
     fn visit_fn(&mut self, f: &mut Fn) -> T;
     fn visit_formal_param(&mut self, param: &mut (Expr, DataType)) -> T;
-    fn visit_block(&mut self, block: &Block) -> T;
+    fn visit_block(&mut self, block: &mut Block) -> T;
     fn visit_stmt(&mut self, stmt: &mut Statement) -> T;
     fn visit_expr(&mut self, expr: &mut Expr) -> T;
     fn visit_unop(&mut self, unop: &mut UnOp) -> T;

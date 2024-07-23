@@ -296,9 +296,9 @@ impl SymbolTableBuilder<'_> {
         // create record
         let fn_rec = Record::Fn {
             name: f.name.clone(),
-            is_comp_provided: f.is_comp_provided,
+            def: f.def.clone(),
             params: vec![],
-            ret_ty: f.return_ty.clone().unwrap(),
+            ret_ty: f.return_ty.clone(),
             addr: None,
             loc: f.name.loc.clone(),
         };
@@ -624,7 +624,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         trace!("Exiting: visit_formal_param");
     }
 
-    fn visit_block(&mut self, _block: &Block) {
+    fn visit_block(&mut self, _block: &mut Block) {
         // Not visiting Blocks
         self.err
             .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);

@@ -476,9 +476,9 @@ wasm::call:alt /
             assert_eq!(1, package.len_events());
             let event = package.events().next().unwrap();
             assert_eq!("call", event.name());
-            // TODO -- change to 5 when add back: arg[0:9]+
-            assert_eq!(4, event.get_provided_globals().len());
-            assert_eq!(0, event.get_provided_fns().len());
+            // TODO -- change to 6 when add back: arg[0:9]+
+            assert_eq!(3, event.get_provided_globals().len());
+            assert_eq!(2, event.get_provided_fns().len());
 
             assert_eq!(1, event.probes().len());
             assert_eq!(1, event.probes().get("alt").unwrap().len());

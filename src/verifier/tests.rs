@@ -349,11 +349,11 @@ wasm::call:alt /
             let table = verifier::build_symbol_table(&mut ast, &mut err);
             println!("{:#?}", table);
 
-            // 7 scopes: whamm, strcmp, script0, wasm, opcode, call, alt
-            let num_scopes = 7;
-            // records: num_scopes PLUS (str_addr, value, wasm_opcode_loc, new_target_fn_name, target_imp_name, target_fn_type, target_imp_module)
+            // 7 scopes: whamm, strcmp, script0, wasm, alt_call_by_name, alt_call_by_id, opcode, call, alt
+            let num_scopes = 9;
+            // records: num_scopes PLUS (str_addr, func_id, func_name, value, wasm_opcode_loc, target_imp_name, target_fn_type, target_imp_module)
             // TODO -- change to + 8 when add back: arg[0:9]+
-            let num_recs = num_scopes + 7;
+            let num_recs = num_scopes + 8;
 
             // asserts on very high level table structure
             assert_eq!(num_scopes, table.scopes.len());

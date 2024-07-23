@@ -10,5 +10,5 @@ wasm:opcode:call:alt /
     target_imp_module == "ic0" &&
     target_imp_name == "call_perform"
 / {
-    new_target_fn_name = "instr_inject_synchronous_fault";
+    alt_call_by_name("instr_inject_synchronous_fault");
 }

@@ -1,15 +1,16 @@
 mod common;
 
 use log::error;
+use orca::ir::module::Module as WasmModule;
+use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::process::{Command, Stdio};
-use wabt::{wasm2wat, wat2wasm};
-use walrus::Module;
+use wabt::{wasm2wat, Wat2Wasm};
 use whamm::behavior::builder_visitor::{build_behavior_tree, SimpleAST};
 use whamm::common::error::ErrorGen;
-use whamm::emitter::rewriting::WasmRewritingEmitter;
-use whamm::emitter::Emitter;
+use whamm::emitter::rewriting::module_emitter::{MemoryTracker, ModuleEmitter};
+use whamm::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use whamm::generator::init_generator::InitGenerator;
 use whamm::generator::instr_generator::InstrGenerator;
 
@@ -17,12 +18,6 @@ const APP_WASM_PATH: &str = "tests/apps/dfinity/users.wasm";
 
 const OUT_BASE_DIR: &str = "target";
 const OUT_WASM_NAME: &str = "out.wasm";
-
-fn get_wasm_module() -> Module {
-    // Read app Wasm into Walrus module
-    let _config = walrus::ModuleConfig::new();
-    Module::from_file(APP_WASM_PATH).unwrap()
-}
 
 /// This test just confirms that a wasm module can be instrumented with the preconfigured
 /// scripts without errors occurring.
@@ -34,29 +29,46 @@ fn instrument_dfinity_with_fault_injection() {
     assert!(!processed_scripts.is_empty());
     err.fatal_report("Integration Test");
 
-    for (script_path, script_text, whamm, symbol_table) in processed_scripts {
+    for (script_path, script_text, mut whamm, mut symbol_table) in processed_scripts {
         // Build the behavior tree from the AST
         let mut simple_ast = SimpleAST::new();
         let mut behavior = build_behavior_tree(&whamm, &mut simple_ast, &mut err);
         behavior.reset();
 
-        let app_wasm = get_wasm_module();
+        let buff = std::fs::read(APP_WASM_PATH).unwrap();
+        let mut app_wasm =
+            WasmModule::parse_only_module(&buff, false).expect("Failed to parse Wasm module");
         let mut err = ErrorGen::new(script_path.clone(), script_text, 0);
-        let mut emitter = WasmRewritingEmitter::new(app_wasm, symbol_table);
+
+        // Create the memory tracker
+        if app_wasm.memories.len() > 1 {
+            // TODO -- make this work with multi-memory
+            panic!("only single memory is supported")
+        };
+        let mut mem_tracker = MemoryTracker {
+            mem_id: 0,                  // Assuming the ID of the first memory is 0!
+            curr_mem_offset: 1_052_576, // Set default memory base address to DEFAULT + 4KB = 1048576 bytes + 4000 bytes = 1052576 bytes
+            emitted_strings: HashMap::new(),
+        };
+
         // Phase 0 of instrumentation (emit globals and provided fns)
         let mut init = InitGenerator {
-            emitter: Box::new(&mut emitter),
+            emitter: ModuleEmitter::new(&mut app_wasm, &mut symbol_table, &mut mem_tracker),
             context_name: "".to_string(),
             err: &mut err,
         };
-        assert!(init.run(&whamm));
+        assert!(init.run(&mut whamm));
         err.fatal_report("Integration Test");
 
         // Phase 1 of instrumentation (actually emits the instrumentation code)
         // This structure is necessary since we need to have the fns/globals injected (a single time)
         // and ready to use in every body/predicate.
-        let mut instr =
-            InstrGenerator::new(&behavior, Box::new(&mut emitter), simple_ast, &mut err);
+        let mut instr = InstrGenerator::new(
+            &behavior,
+            VisitingEmitter::new(&mut app_wasm, &mut symbol_table, &mem_tracker),
+            simple_ast,
+            &mut err,
+        );
         // TODO add assertions here once I have error logic in place to check that it worked!
         instr.run(&behavior);
         err.fatal_report("Integration Test");
@@ -69,8 +81,15 @@ fn instrument_dfinity_with_fault_injection() {
         }
 
         let out_wasm_path = format!("{OUT_BASE_DIR}/{OUT_WASM_NAME}");
-        if let Err(e) = emitter.dump_to_file(out_wasm_path.clone()) {
-            err.add_error(*e)
+        if let Err(e) = app_wasm.emit_wasm(&out_wasm_path) {
+            err.add_error(ErrorGen::get_unexpected_error(
+                true,
+                Some(format!(
+                    "Failed to dump instrumented wasm to {} from error: {}",
+                    &out_wasm_path, e
+                )),
+                None,
+            ))
         }
         err.fatal_report("Integration Test");
 
@@ -102,7 +121,10 @@ fn instrument_handwritten_wasm_call() {
     // (calling wat2wasm from a child process doesn't work
     //  since somehow the executable can't write to the file system directly)
     let file_data = fs::read("tests/apps/handwritten/add.wat").unwrap();
-    let wasm_data = wat2wasm(file_data).unwrap();
+    let wasm_data = Wat2Wasm::new()
+        .write_debug_names(true)
+        .convert(file_data)
+        .unwrap();
     fs::write("tests/apps/handwritten/add.wasm", wasm_data).unwrap();
 
     let res = Command::new(executable)
@@ -130,7 +152,10 @@ fn instrument_no_matches() {
     // (calling wat2wasm from a child process doesn't work
     //  since somehow the executable can't write to the file system directly)
     let file_data = fs::read("tests/apps/handwritten/no_matched_events.wat").unwrap();
-    let wasm_data = wat2wasm(file_data).unwrap();
+    let wasm_data = Wat2Wasm::new()
+        .write_debug_names(true)
+        .convert(file_data)
+        .unwrap();
     fs::write("tests/apps/handwritten/no_matched_events.wasm", wasm_data).unwrap();
 
     let res = Command::new(executable)

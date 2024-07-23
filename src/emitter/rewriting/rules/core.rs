@@ -4,7 +4,9 @@ use crate::emitter::rewriting::rules::{
 };
 use crate::parser::rules::core::{CoreEventKind, CorePackageKind};
 use std::collections::HashMap;
-use walrus::ir::Instr;
+
+use orca::ir::module::Module;
+use wasmparser::Operator;
 
 pub struct CorePackage {
     kind: CorePackageKind,
@@ -27,7 +29,7 @@ impl CorePackage {
     }
 }
 impl Package for CorePackage {
-    fn get_loc_info(&self, app_wasm: &walrus::Module, instr: &Instr) -> Option<LocInfo> {
+    fn get_loc_info(&self, app_wasm: &Module, instr: &Operator) -> Option<LocInfo> {
         let mut loc_info = LocInfo::new();
         match self.kind {
             CorePackageKind::Default => {
@@ -80,7 +82,7 @@ impl CoreEvent {
     }
 }
 impl Event for CoreEvent {
-    fn get_loc_info(&self, _app_wasm: &walrus::Module, _instr: &Instr) -> Option<LocInfo> {
+    fn get_loc_info(&self, _app_wasm: &Module, _instr: &Operator) -> Option<LocInfo> {
         let loc_info = LocInfo::new();
         match self.kind {
             CoreEventKind::Default => {

@@ -119,73 +119,9 @@ impl BehaviorTree {
         self
     }
 
-    pub fn parameterized_action(&mut self, ty: ParamActionType, err: &mut ErrorGen) -> &mut Self {
-        let id = self.nodes.len();
-        self.put_child_and_enter(
-            Node::ActionWithParams {
-                id,
-                parent: self.curr,
-                ty,
-                children: vec![],
-            },
-            err,
-        );
-        self
-    }
-
-    pub fn exit_parameterized_action(&mut self, err: &mut ErrorGen) -> &mut Self {
-        match self.get_curr_mut() {
-            Some(Node::ActionWithParams { parent, .. }) => self.curr = *parent,
-            other => {
-                err.unexpected_error(false, Some(format!("{UNEXPECTED_ERR_MSG} Something went wrong, expected ParameterizedAction, but was: {:?}.", other)), None);
-            }
-        };
-        self
-    }
-
     // ==================
     // ==== Actions =====
     // ==================
-
-    fn add_action_as_param(&mut self, idx: usize, id: usize, err: &mut ErrorGen) {
-        if let Some(Node::ActionWithParams { ty, .. }) = self.get_curr_mut() {
-            match ty {
-                ParamActionType::EmitIf { cond, conseq } => {
-                    if idx == 0 {
-                        *cond = id;
-                    } else if idx == 1 {
-                        *conseq = id;
-                    } else {
-                        err.unexpected_error(false, Some(format!("{UNEXPECTED_ERR_MSG} Unexpected index for parameterized action (EmitIf):  {:?}.", idx)), None);
-                    }
-                }
-                ParamActionType::EmitIfElse { cond, conseq, alt } => {
-                    if idx == 0 {
-                        *cond = id;
-                    } else if idx == 1 {
-                        *conseq = id;
-                    } else if idx == 2 {
-                        *alt = id;
-                    } else {
-                        err.unexpected_error(false, Some(format!("{UNEXPECTED_ERR_MSG} Unexpected index for parameterized action (EmitIfElse):  {:?}.", idx)), None);
-                    }
-                }
-            }
-        };
-    }
-
-    pub fn emit_global_stmts(&mut self, err: &mut ErrorGen) -> &mut Self {
-        let id = self.nodes.len();
-        self.put_child(
-            Node::Action {
-                id,
-                parent: self.curr,
-                ty: ActionType::EmitGlobalStmts,
-            },
-            err,
-        );
-        self
-    }
 
     pub fn emit_body(&mut self, err: &mut ErrorGen) -> &mut Self {
         let id = self.nodes.len();
@@ -194,33 +130,6 @@ impl BehaviorTree {
                 id,
                 parent: self.curr,
                 ty: ActionType::EmitBody,
-            },
-            err,
-        );
-        self
-    }
-
-    pub fn emit_alt_call(&mut self, err: &mut ErrorGen) -> &mut Self {
-        let id = self.nodes.len();
-        self.put_child(
-            Node::Action {
-                id,
-                parent: self.curr,
-                ty: ActionType::EmitAltCall,
-            },
-            err,
-        );
-        self
-    }
-
-    pub fn emit_args(&mut self, force_success: bool, err: &mut ErrorGen) -> &mut Self {
-        let id = self.nodes.len();
-        self.put_child(
-            Node::ArgAction {
-                id,
-                parent: self.curr,
-                ty: ArgActionType::EmitArgs,
-                force_success,
             },
             err,
         );
@@ -241,19 +150,6 @@ impl BehaviorTree {
         self
     }
 
-    pub fn remove_orig(&mut self, err: &mut ErrorGen) -> &mut Self {
-        let id = self.nodes.len();
-        self.put_child(
-            Node::Action {
-                id,
-                parent: self.curr,
-                ty: ActionType::RemoveOrig,
-            },
-            err,
-        );
-        self
-    }
-
     pub fn emit_orig(&mut self, err: &mut ErrorGen) -> &mut Self {
         let id = self.nodes.len();
         self.put_child(
@@ -267,13 +163,26 @@ impl BehaviorTree {
         self
     }
 
-    pub fn emit_pred(&mut self, err: &mut ErrorGen) -> &mut Self {
+    pub fn emit_probe_as_if(&mut self, err: &mut ErrorGen) -> &mut Self {
         let id = self.nodes.len();
         self.put_child(
             Node::Action {
                 id,
                 parent: self.curr,
-                ty: ActionType::EmitPred,
+                ty: ActionType::EmitProbeAsIf,
+            },
+            err,
+        );
+        self
+    }
+
+    pub fn emit_probe_as_if_else(&mut self, err: &mut ErrorGen) -> &mut Self {
+        let id = self.nodes.len();
+        self.put_child(
+            Node::Action {
+                id,
+                parent: self.curr,
+                ty: ActionType::EmitProbeAsIfElse,
             },
             err,
         );
@@ -317,13 +226,6 @@ impl BehaviorTree {
                 }
                 Node::Fallback { children, .. } => {
                     children.push(new_id);
-                    assigned_id = Some(new_id);
-                }
-                Node::ActionWithParams { children, .. } => {
-                    let idx = children.len();
-                    children.push(new_id);
-
-                    self.add_action_as_param(idx, new_id, err);
                     assigned_id = Some(new_id);
                 }
                 _ => {
@@ -399,12 +301,6 @@ pub enum Node {
         parent: usize,
         force_success: bool,
     },
-    ActionWithParams {
-        id: usize,
-        parent: usize,
-        ty: ParamActionType,
-        children: Vec<usize>,
-    },
     Action {
         id: usize,
         parent: usize,
@@ -415,38 +311,21 @@ pub enum Node {
 #[derive(Debug)]
 pub enum DecoratorType {
     IsProbeMode { probe_mode: String },
-    HasAltCall,
     PredIs { val: bool },
 }
 
 #[derive(Debug)]
 pub enum ActionType {
-    EmitGlobalStmts,
-    EmitPred,
     EmitBody,
-    EmitAltCall,
-    RemoveOrig,
     EmitOrig,
+    EmitProbeAsIf,
+    EmitProbeAsIfElse,
     ForceSuccess,
 }
 
 #[derive(Debug)]
 pub enum ArgActionType {
     SaveArgs,
-    EmitArgs,
-}
-
-#[derive(Debug)]
-pub enum ParamActionType {
-    EmitIf {
-        cond: usize,
-        conseq: usize,
-    },
-    EmitIfElse {
-        cond: usize,
-        conseq: usize,
-        alt: usize,
-    },
 }
 
 pub trait BehaviorVisitor<T> {
@@ -458,7 +337,6 @@ pub trait BehaviorVisitor<T> {
             Node::Decorator { .. } => self.visit_decorator(node),
             Node::Fallback { .. } => self.visit_fallback(node),
             Node::ArgAction { .. } => self.visit_arg_action(node),
-            Node::ActionWithParams { .. } => self.visit_action_with_args(node),
             Node::Action { .. } => self.visit_action(node),
         }
     }
@@ -470,7 +348,6 @@ pub trait BehaviorVisitor<T> {
         if let Node::Decorator { ty, .. } = node {
             match ty {
                 DecoratorType::IsProbeMode { .. } => self.visit_is_probe_mode(node),
-                DecoratorType::HasAltCall { .. } => self.visit_has_alt_call(node),
                 DecoratorType::PredIs { .. } => self.visit_pred_is(node),
             }
         } else {
@@ -482,17 +359,6 @@ pub trait BehaviorVisitor<T> {
         if let Node::ArgAction { ty, .. } = node {
             match ty {
                 ArgActionType::SaveArgs { .. } => self.visit_save_args(node),
-                ArgActionType::EmitArgs { .. } => self.visit_emit_args(node),
-            }
-        } else {
-            unreachable!()
-        }
-    }
-    fn visit_action_with_args(&mut self, node: &Node) -> T {
-        if let Node::ActionWithParams { ty, .. } = node {
-            match ty {
-                ParamActionType::EmitIfElse { .. } => self.visit_emit_if_else(node),
-                ParamActionType::EmitIf { .. } => self.visit_emit_if(node),
             }
         } else {
             unreachable!()
@@ -501,38 +367,28 @@ pub trait BehaviorVisitor<T> {
 
     // Decorator nodes
     fn visit_is_probe_mode(&mut self, node: &Node) -> T;
-    fn visit_has_alt_call(&mut self, node: &Node) -> T;
     fn visit_pred_is(&mut self, node: &Node) -> T;
 
     // Argument action nodes
     fn visit_save_args(&mut self, node: &Node) -> T;
-    fn visit_emit_args(&mut self, node: &Node) -> T;
-
-    // Parameterized action nodes
-    fn visit_emit_if_else(&mut self, node: &Node) -> T;
-    fn visit_emit_if(&mut self, node: &Node) -> T;
 
     // Action nodes
     fn visit_action(&mut self, node: &Node) -> T {
         if let Node::Action { ty, .. } = node {
             match ty {
-                ActionType::EmitGlobalStmts { .. } => self.visit_emit_global_stmts(node),
-                ActionType::EmitPred { .. } => self.visit_emit_pred(node),
                 ActionType::EmitBody { .. } => self.visit_emit_body(node),
-                ActionType::EmitAltCall { .. } => self.visit_emit_alt_call(node),
-                ActionType::RemoveOrig { .. } => self.visit_remove_orig(node),
                 ActionType::EmitOrig { .. } => self.visit_emit_orig(node),
                 ActionType::ForceSuccess { .. } => self.visit_force_success(node),
+                ActionType::EmitProbeAsIf => self.visit_emit_probe_as_if(node),
+                ActionType::EmitProbeAsIfElse => self.visit_emit_probe_as_if_else(node),
             }
         } else {
             unreachable!()
         }
     }
-    fn visit_emit_global_stmts(&mut self, node: &Node) -> T;
-    fn visit_emit_pred(&mut self, node: &Node) -> T;
     fn visit_emit_body(&mut self, node: &Node) -> T;
-    fn visit_emit_alt_call(&mut self, node: &Node) -> T;
-    fn visit_remove_orig(&mut self, node: &Node) -> T;
     fn visit_emit_orig(&mut self, node: &Node) -> T;
     fn visit_force_success(&mut self, node: &Node) -> T;
+    fn visit_emit_probe_as_if(&mut self, node: &Node) -> T;
+    fn visit_emit_probe_as_if_else(&mut self, node: &Node) -> T;
 }

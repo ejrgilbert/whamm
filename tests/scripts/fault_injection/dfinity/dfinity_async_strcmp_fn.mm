@@ -8,5 +8,5 @@ wasm::call:alt /
     strcmp((arg0, arg1), "bookings") &&
     strcmp((arg2, arg3), "record")
 / {
-    new_target_fn_name = "instr_redirect_to_fault_injector";
+    alt_call_by_name("instr_redirect_to_fault_injector");
 }
