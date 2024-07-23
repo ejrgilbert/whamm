@@ -68,6 +68,24 @@ const VALID_SCRIPTS: &[&str] = &[
             i32 b = my_fn(a);
         }
     "#,
+    r#"
+        map<i32, i32> count;
+        my_fn() -> i32 {
+            count[0] = 1;
+            return count[0];
+        }
+        wasm::call:alt {
+            count[1] = count[3];
+            i32 a = my_fn();
+        }
+    "#,
+    r#"
+        report i32 a;
+        wasm::br:before {
+            a = 1;
+            report bool b;
+        }
+    "#,
 ];
 
 const TYPE_ERROR_SCRIPTS: &[&str] = &[
@@ -303,6 +321,48 @@ wasm::call:alt /
             i32 strcmp;
         }
     "#,
+    r#"
+        map<i32, i32> count;
+        my_fn() -> i32 {
+            count[0] = false;
+            return count[0];
+        }
+        wasm::call:alt {
+            count[1] = count[3];
+            i32 a = my_fn();
+            count[2] = a == count[1];
+        }
+    "#,
+    r#"
+    map<map<i32, i32>, map<i32, i32>> count;
+        
+        wasm::call:alt {
+            
+        }
+    "#,
+    r#"
+        wasm::call:alt {
+            (i32, map<i32, i32>) a;
+        }
+    "#,
+    r#"
+        wasm::call:alt {
+            (i32, map<i32, i32>) a;
+            map<i32, i32> b;
+            if((1, b) == a){
+            };
+        }
+    "#,
+    r#"
+        report i32 a;
+        my_fn() {
+            report i32 c;
+        }
+        wasm::br:before {
+            a = 1;
+            report bool b;
+        }
+    "#,
 ];
 
 // =============
@@ -498,6 +558,61 @@ pub fn test_recursive_calls() {
         None => {
             error!("Could not get ast from script: {}", script);
             panic!();
+        }
+    };
+}
+#[test]
+pub fn testing_map() {
+    setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let script = r#"
+        wasm:opcode:call:after{
+        map<(i32, i32, i32), i32> my_map;
+        (i32, i32, i32) b = (1, 2, 3);
+        my_map[b] = 2;
+        i32 a = my_map[b];
+    }
+    "#;
+
+    match tests::get_ast(script, &mut err) {
+        Some(mut ast) => {
+            let mut table = verifier::build_symbol_table(&mut ast, &mut err);
+            let res = verifier::type_check(&ast, &mut table, &mut err);
+            err.report();
+            assert!(!err.has_errors);
+            assert!(res);
+        }
+        None => {
+            error!("Could not get ast from script: {}", script);
+            if err.has_errors {
+                err.report();
+            }
+        }
+    };
+}
+#[test]
+pub fn test_report_decl() {
+    setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let script = r#"
+        report i32 a;
+        wasm::br:before {
+            a = 1;
+            report bool b;
+        }"#;
+    match tests::get_ast(script, &mut err) {
+        Some(mut ast) => {
+            let mut table = verifier::build_symbol_table(&mut ast, &mut err);
+            let res = verifier::type_check(&ast, &mut table, &mut err);
+            err.report();
+            assert!(!err.has_errors);
+            assert!(res);
+        }
+        None => {
+            error!("Could not get ast from script: {}", script);
+            if err.has_errors {
+                err.report();
+            }
         }
     };
 }

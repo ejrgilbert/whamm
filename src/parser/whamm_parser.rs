@@ -549,21 +549,43 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
         Rule::assignment => {
             trace!("Entering assignment");
             let mut pair = pair.into_inner();
+            let mut is_map = false;
             let var_id_rule = pair.next().unwrap();
             let expr_rule = pair.next().unwrap();
-
             let var_id_line_col = LineColLocation::from(var_id_rule.as_span());
-
-            let var_id = Expr::VarId {
-                is_comp_provided: false,
-                name: var_id_rule.as_str().parse().unwrap(),
-                loc: Some(Location {
-                    line_col: var_id_line_col.clone(),
-                    path: None,
-                }),
+            let var_id: Expr;
+            let mut key_assigned: Expr = Expr::Primitive {
+                val: Value::Integer {
+                    ty: DataType::I32,
+                    val: 0,
+                },
+                loc: None,
             };
+            match expr_primary(var_id_rule.clone()) {
+                Ok(expr) => match expr {
+                    Expr::GetMap { map, key, .. } => {
+                        is_map = true;
+                        var_id = *map;
+                        key_assigned = *key;
+                    }
+                    _ => {
+                        var_id = Expr::VarId {
+                            is_comp_provided: false,
+                            name: var_id_rule.as_str().parse().unwrap(),
+                            loc: Some(Location {
+                                line_col: var_id_line_col.clone(),
+                                path: None,
+                            }),
+                        };
+                    }
+                },
+                Err(errors) => {
+                    err.add_errors(errors);
+                    return vec![];
+                }
+            }
             let mut output = vec![];
-            return match expr_from_pair(expr_rule) {
+            return match expr_primary(expr_rule) {
                 Err(errors) => {
                     err.add_errors(errors);
 
@@ -586,12 +608,22 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                         ));
                         return output;
                     };
-                    output.push(Statement::Assign {
-                        var_id,
-                        expr,
-                        loc: Some(Location::from(&var_id_line_col, &expr_line_col, None)),
-                    });
-                    output
+                    if is_map {
+                        output.push(Statement::SetMap {
+                            map: var_id,
+                            key: key_assigned,
+                            val: expr,
+                            loc: Some(Location::from(&var_id_line_col, &expr_line_col, None)),
+                        });
+                        output
+                    } else {
+                        output.push(Statement::Assign {
+                            var_id,
+                            expr,
+                            loc: Some(Location::from(&var_id_line_col, &expr_line_col, None)),
+                        });
+                        output
+                    }
                 }
             };
         }
@@ -879,6 +911,22 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                     });
                 }
             }
+            output
+        }
+        Rule::report_declaration => {
+            trace!("Entering report_declaration");
+            let line_col = LineColLocation::from(pair.as_span());
+            let mut pair = pair.into_inner();
+            let decl_stmt = pair.next().unwrap();
+            let decl = stmt_from_rule(decl_stmt, err);
+            trace!("Exiting report_declaration");
+            let output = vec![Statement::ReportDecl {
+                decl: Box::new(decl[0].clone()),
+                loc: Some(Location {
+                    line_col: line_col.clone(),
+                    path: None,
+                }),
+            }];
             output
         }
         rule => {
@@ -1173,6 +1221,34 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                     path: None,
                 }),
             });
+        }
+        Rule::get_map => {
+            let loc = LineColLocation::from(pair.clone().as_span());
+            let mut pairs = pair.into_inner();
+            let map = pairs.next().unwrap();
+            let key = pairs.next().unwrap();
+
+            //this SHOULD be a VarId
+            let map_expr = match expr_primary(map) {
+                Ok(expr) => expr,
+                Err(errors) => {
+                    return Err(errors);
+                }
+            };
+            let key_expr = match expr_primary(key) {
+                Ok(expr) => expr,
+                Err(errors) => {
+                    return Err(errors);
+                }
+            };
+            Ok(Expr::GetMap {
+                map: Box::new(map_expr),
+                key: Box::new(key_expr),
+                loc: Some(Location {
+                    line_col: loc,
+                    path: None,
+                }),
+            })
         }
         _ => expr_from_pair(pair),
     }

@@ -79,6 +79,10 @@ fn emit_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
             }
         }
         Statement::Return { .. } => unimplemented!(),
+        Statement::ReportDecl { decl, .. } => todo!(),
+        Statement::SetMap { map, key, val, loc } => {
+            todo!()
+        }
     }
 }
 
@@ -586,6 +590,9 @@ fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
         }
         Expr::Primitive { val, .. } => {
             is_success &= emit_value(val, injector, table, mem_tracker, err_msg)?;
+        }
+        Expr::GetMap { map, key, .. } => { 
+            todo!() 
         }
     }
     Ok(is_success)

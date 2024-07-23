@@ -332,6 +332,16 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_> {
 
                 is_success
             }
+            Statement::ReportDecl { decl, .. } => self.visit_stmt(decl),
+            Statement::SetMap { map, key, val, .. } => {
+                let mut is_success = true;
+                is_success &= self.visit_expr(map);
+                is_success &= self.visit_expr(key);
+                is_success &= self.visit_expr(val);
+
+                is_success
+            
+            }
         }
     }
 
@@ -371,6 +381,13 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_> {
             Expr::VarId { .. } => {
                 // ignore, will not have a string to emit
                 true
+            }
+            Expr::GetMap { map, key, .. } => {
+                let mut is_success = true;
+                is_success &= self.visit_expr(map);
+                is_success &= self.visit_expr(key);
+
+                is_success
             }
         }
     }

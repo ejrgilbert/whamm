@@ -202,7 +202,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         if !globals.is_empty() {
             s += &format!("{} package globals:{}", self.get_indent(), NL);
             self.increase_indent();
-            self.visit_provided_globals(globals);
+            self.visit_provided_globals(&globals);
             self.decrease_indent();
         }
 
@@ -413,6 +413,17 @@ impl WhammVisitor<String> for AsStrVisitor {
                 s += &format!("{} }}", self.get_indent());
                 s
             }
+            Statement::SetMap { map, key, val, .. } => {
+                format!(
+                    "(map) {}[{}] = {}",
+                    self.visit_expr(map),
+                    self.visit_expr(key),
+                    self.visit_expr(val)
+                )
+            }
+            Statement::ReportDecl { decl, .. } => {
+                format!("{} {}", "report", self.visit_stmt(decl))
+            }
         }
     }
 
@@ -460,6 +471,11 @@ impl WhammVisitor<String> for AsStrVisitor {
             Expr::UnOp { op, expr, .. } => {
                 let mut s = "".to_string();
                 s += &format!("{}{}", self.visit_unop(op), self.visit_expr(expr));
+                s
+            }
+            Expr::GetMap { map, key, .. } => {
+                let mut s = "".to_string();
+                s += &format!("(map) {}[{}]", self.visit_expr(map), self.visit_expr(key));
                 s
             }
         }
@@ -511,7 +527,11 @@ impl WhammVisitor<String> for AsStrVisitor {
                 s += ")";
                 s
             }
-            DataType::Map { .. } => "map".to_string(),
+            DataType::Map { key_ty, val_ty, .. } => format!(
+                "map<{}, {}>",
+                self.visit_datatype(key_ty),
+                self.visit_datatype(val_ty)
+            ),
             DataType::AssumeGood => "unknown".to_string(),
         }
     }
@@ -533,8 +553,9 @@ impl WhammVisitor<String> for AsStrVisitor {
                 s += &format!("\"{}\"", val);
                 s
             }
-            Value::Tuple { ty: _ty, vals } => {
+            Value::Tuple { ty, vals } => {
                 let mut s = "".to_string();
+                s += &format!("tuple<{}>", self.visit_datatype(ty));
                 s += "(";
                 s += &vals
                     .iter()
