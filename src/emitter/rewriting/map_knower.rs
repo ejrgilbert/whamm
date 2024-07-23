@@ -255,7 +255,7 @@ impl MapKnower {
                 {
                     match val {
                         DataType::I32 => {
-                            return "insert_map_i32i32i32tuple_i32".to_string();
+                            return "get_i32_from_i32i32i32tuple".to_string();
                         }
                         _ => {
                             panic!("Error: Not yet supported value type for map");

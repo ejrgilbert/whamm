@@ -776,9 +776,8 @@ pub fn get_i32_i32(name: i32, key: i32) -> i32 {
 }
 
 #[no_mangle]
-pub fn do_nothing(){}
+pub fn do_nothing() {}
 
 fn main() {
     do_nothing();
 }
-
