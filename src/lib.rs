@@ -1,4 +1,3 @@
-pub mod behavior;
 pub mod common;
 pub mod emitter;
 pub mod generator;

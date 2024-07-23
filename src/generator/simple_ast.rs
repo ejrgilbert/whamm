@@ -1,15 +1,10 @@
-use crate::behavior::tree::{BehaviorTree, DecoratorType};
-
 use crate::parser::rules::{Event, Package, Probe, Provider};
 use crate::parser::types as parser_types;
-use parser_types::{
-    BinOp, DataType, Expr, Fn, Script, Statement, UnOp, Value, Whamm, WhammVisitor,
-};
+use parser_types::{Expr, Fn, Script, Statement, Whamm, WhammVisitor};
 use std::collections::HashMap;
 
-use crate::behavior::tree::DecoratorType::PredIs;
 use crate::common::error::ErrorGen;
-use crate::parser::types::Block;
+use crate::parser::types::{BinOp, Block, DataType, UnOp, Value};
 use log::trace;
 
 /// This is a structure that saves a simplified variation of the activated
@@ -99,14 +94,10 @@ impl SimpleAST {
     }
 }
 
-pub fn build_behavior_tree(
-    ast: &Whamm,
-    simple_ast: &mut SimpleAST,
-    err: &mut ErrorGen,
-) -> BehaviorTree {
-    let mut visitor = BehaviorTreeBuilder {
-        tree: BehaviorTree::new(),
-        ast: simple_ast,
+pub fn build_simple_ast(ast: &Whamm, err: &mut ErrorGen) -> SimpleAST {
+    let mut simple_ast = SimpleAST::new();
+    let mut visitor = SimpleASTBuilder {
+        ast: &mut simple_ast,
         err,
         script_id: "".to_string(),
         curr_provider_name: "".to_string(),
@@ -115,11 +106,10 @@ pub fn build_behavior_tree(
     };
     visitor.visit_whamm(ast);
 
-    visitor.tree
+    simple_ast
 }
 
-pub struct BehaviorTreeBuilder<'a, 'b> {
-    pub tree: BehaviorTree,
+pub struct SimpleASTBuilder<'a, 'b> {
     pub ast: &'a mut SimpleAST,
     pub err: &'b mut ErrorGen,
 
@@ -128,7 +118,7 @@ pub struct BehaviorTreeBuilder<'a, 'b> {
     curr_package_name: String,
     curr_event_name: String,
 }
-impl BehaviorTreeBuilder<'_, '_> {
+impl SimpleASTBuilder<'_, '_> {
     // =======
     // = AST =
     // =======
@@ -184,73 +174,8 @@ impl BehaviorTreeBuilder<'_, '_> {
             unreachable!()
         }
     }
-
-    // ================
-    // = BehaviorTree =
-    // ================
-
-    fn encode_behavior_tree(&mut self) {
-        self.tree
-            .sequence(self.err)
-            .save_args(true, self.err)
-            .fallback(self.err)
-            .decorator(PredIs { val: true }, self.err)
-            .emit_body(self.err)
-            .exit_decorator(self.err)
-            .fallback(self.err)
-            // before behavior
-            .decorator(
-                DecoratorType::IsProbeMode {
-                    probe_mode: "before".to_string(),
-                },
-                self.err,
-            );
-
-        self.emit_probe_before_body();
-        self.tree
-            .exit_decorator(self.err)
-            // alt behavior
-            .decorator(
-                DecoratorType::IsProbeMode {
-                    probe_mode: "alt".to_string(),
-                },
-                self.err,
-            );
-        self.emit_probe_alt_body();
-        self.tree
-            .exit_decorator(self.err)
-            // after behavior
-            .decorator(
-                DecoratorType::IsProbeMode {
-                    probe_mode: "after".to_string(),
-                },
-                self.err,
-            );
-        self.emit_probe_after_body();
-        self.tree
-            .exit_decorator(self.err)
-            // exit
-            .exit_fallback(self.err)
-            .exit_fallback(self.err)
-            .exit_sequence(self.err);
-    }
-
-    fn emit_probe_before_body(&mut self) {
-        self.tree.emit_probe_as_if(self.err);
-    }
-
-    fn emit_probe_alt_body(&mut self) {
-        // Emit alternate call before emitting parameters so that the location
-        // of the alternate call is known to contextualize targeting the right place
-        // for emitting the parameters.
-        self.tree.emit_probe_as_if_else(self.err);
-    }
-
-    fn emit_probe_after_body(&mut self) {
-        self.tree.emit_probe_as_if(self.err);
-    }
 }
-impl WhammVisitor<()> for BehaviorTreeBuilder<'_, '_> {
+impl WhammVisitor<()> for SimpleASTBuilder<'_, '_> {
     fn visit_whamm(&mut self, whamm: &Whamm) {
         trace!("Entering: BehaviorTreeBuilder::visit_whamm");
 
@@ -296,14 +221,6 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_, '_> {
 
     fn visit_package(&mut self, package: &dyn Package) {
         trace!("Entering: BehaviorTreeBuilder::visit_package");
-
-        if package.has_events() {
-            if let Some(event) = package.events().next() {
-                // just grab the first one and emit behavior
-                self.visit_event(event);
-            }
-        }
-
         // NOTE: Here we add a script's unit of instrumentation which retains
         // the script order as passed by the user during `whamm!` tool invocation.
         // This is guaranteed since we visit Scripts in order of the Vec and then
@@ -312,29 +229,23 @@ impl WhammVisitor<()> for BehaviorTreeBuilder<'_, '_> {
         // Handle AST separately since we don't visit every package
         self.add_package_to_ast(package.name());
         package.events().for_each(|event| {
-            self.add_event_to_ast(event.name());
-
-            // Handle AST separately since we don't visit every probe
-            event.probes().iter().for_each(|(_mode, probe_list)| {
-                probe_list
-                    .iter()
-                    .for_each(|probe| self.add_probe_to_ast(probe.as_ref()));
-            });
+            self.visit_event(event);
         });
 
         trace!("Exiting: BehaviorTreeBuilder::visit_package");
     }
 
-    fn visit_event(&mut self, _event: &dyn Event) {
-        trace!("Entering: BehaviorTreeBuilder::visit_event");
-
-        self.encode_behavior_tree();
-
-        trace!("Exiting: BehaviorTreeBuilder::visit_event");
+    fn visit_event(&mut self, event: &dyn Event) {
+        self.add_event_to_ast(event.name());
+        event.probes().iter().for_each(|(_mode, probe_list)| {
+            probe_list.iter().for_each(|probe| {
+                self.visit_probe(probe);
+            });
+        });
     }
 
-    fn visit_probe(&mut self, _probe: &Box<dyn Probe>) {
-        unreachable!()
+    fn visit_probe(&mut self, probe: &Box<dyn Probe>) {
+        self.add_probe_to_ast(probe.as_ref());
     }
 
     fn visit_fn(&mut self, _f: &Fn) {
