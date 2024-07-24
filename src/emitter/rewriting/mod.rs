@@ -851,15 +851,16 @@ fn emit_get_map<'a, T: Opcode<'a> + ModuleBuilder>(
         None,
     )))
 }
-fn get_map_info (table: &mut SymbolTable, name: &mut String) -> Result<(u32, DataType, DataType), Box<WhammError>> {
+fn get_map_info(
+    table: &mut SymbolTable,
+    name: &mut String,
+) -> Result<(u32, DataType, DataType), Box<WhammError>> {
     let var_rec_id = match table.lookup(name) {
         Some(rec_id) => *rec_id,
         _ => {
             return Err(Box::new(ErrorGen::get_unexpected_error(
                 true,
-                Some(format!(
-                    "VarId '{name}' does not exist in this scope!"
-                )),
+                Some(format!("VarId '{name}' does not exist in this scope!")),
                 None,
             )));
         }

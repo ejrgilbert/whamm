@@ -1,4 +1,6 @@
-wasm:opcode:call:after 
+wasm:opcode:call:after / 
+    target_fn_name == "do_something"
+/
  {
     map<i32, i32> a;
     i32 b = 3;

@@ -555,9 +555,14 @@ impl Event for OpcodeEvent {
                         // This is a local function
                         FuncInfo {
                             func_kind: "local".to_string(),
-                            module: "".to_string(),
-                            // TODO -- fix this when orca supports pulling func names
-                            name: "".to_string(),
+                            module: match &app_wasm.module_name {
+                                Some(name) => name.clone(),
+                                None => "".to_string(),
+                            },
+                            name: match &app_wasm.get_fname(*fid as usize) {
+                                Some(name) => name.clone(),
+                                None => "".to_string(),
+                            },
                         }
                     };
 

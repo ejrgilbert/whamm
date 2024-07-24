@@ -95,9 +95,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_> {
             let id_option = self.emitter.app_wasm.get_fid_by_name(lib_fn);
             let id = match id_option {
                 Some(id_option) => id_option,
-                None => {
-                    std::u32::MAX
-                }
+                None => std::u32::MAX,
             };
             match self.emitter.table.get_curr_scope_mut() {
                 Some(scope) => {
