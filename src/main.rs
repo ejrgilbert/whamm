@@ -1,7 +1,7 @@
 extern crate core;
 
 use cli::{Cmd, WhammCli};
-use emitter::map_lib_adapter;
+use emitter::report_metadata::ReportMetadata;
 use std::collections::HashMap;
 
 use crate::common::error::ErrorGen;
@@ -125,6 +125,7 @@ fn run_instr(
         emitted_strings: HashMap::new(),
     };
     let mut map_lib_adapter = MapLibAdapter::new();
+    let mut report_metadata = ReportMetadata::new();
 
     // Phase 0 of instrumentation (emit globals and provided fns)
     let mut init = InitGenerator {
@@ -133,6 +134,7 @@ fn run_instr(
             &mut symbol_table,
             &mut mem_tracker,
             &mut map_lib_adapter,
+            &mut report_metadata,
         ),
         context_name: "".to_string(),
         err: &mut err,
@@ -150,6 +152,7 @@ fn run_instr(
             &mut symbol_table,
             &mem_tracker,
             &mut map_lib_adapter,
+            &mut report_metadata,
         ),
         simple_ast,
         &mut err,

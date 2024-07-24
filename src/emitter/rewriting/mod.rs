@@ -35,11 +35,11 @@ fn emit_body<'a, T: Opcode<'a> + ModuleBuilder>(
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
-    map_knower: &mut MapLibAdapter,
+    map_lib_adapter: &mut MapLibAdapter,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     for stmt in body.iter_mut() {
-        emit_stmt(stmt, injector, table, mem_tracker, map_knower, err_msg)?;
+        emit_stmt(stmt, injector, table, mem_tracker, map_lib_adapter, err_msg)?;
     }
     Ok(true)
 }
@@ -49,16 +49,16 @@ fn emit_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
-    map_knower: &mut MapLibAdapter,
+    map_lib_adapter: &mut MapLibAdapter,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     match stmt {
-        Statement::Decl { .. } => emit_decl_stmt(stmt, injector, table, map_knower, err_msg),
+        Statement::Decl { .. } => emit_decl_stmt(stmt, injector, table, map_lib_adapter, err_msg),
         Statement::Assign { .. } => {
-            emit_assign_stmt(stmt, injector, table, mem_tracker, map_knower, err_msg)
+            emit_assign_stmt(stmt, injector, table, mem_tracker, map_lib_adapter, err_msg)
         }
         Statement::Expr { expr, .. } => {
-            emit_expr(expr, injector, table, mem_tracker, map_knower, err_msg)
+            emit_expr(expr, injector, table, mem_tracker, map_lib_adapter, err_msg)
         }
         Statement::If {
             cond, conseq, alt, ..
@@ -70,7 +70,7 @@ fn emit_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                     injector,
                     table,
                     mem_tracker,
-                    map_knower,
+                    map_lib_adapter,
                     err_msg,
                 )
             } else {
@@ -81,15 +81,15 @@ fn emit_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                     injector,
                     table,
                     mem_tracker,
-                    map_knower,
+                    map_lib_adapter,
                     err_msg,
                 )
             }
         }
         Statement::Return { .. } => unimplemented!(),
-        Statement::ReportDecl { decl, .. } => todo!(),
+        Statement::ReportDecl { .. } => todo!(),
         Statement::SetMap { .. } => {
-            emit_set_map_stmt(stmt, injector, table, mem_tracker, map_knower, err_msg)
+            emit_set_map_stmt(stmt, injector, table, mem_tracker, map_lib_adapter, err_msg)
         }
     }
 }
@@ -98,7 +98,7 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
     stmt: &mut Statement,
     injector: &mut T,
     table: &mut SymbolTable,
-    map_knower: &mut MapLibAdapter,
+    map_lib_adapter: &mut MapLibAdapter,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     match stmt {
@@ -152,7 +152,7 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
             };
             match ty {
                 DataType::Map { .. } => {
-                    let to_call = map_knower.create_no_meta_map(ty.clone());
+                    let to_call = map_lib_adapter.create_no_meta_map(ty.clone());
                     *addr = Some(VarAddr::MapId {
                         addr: to_call.1 as u32,
                     });
@@ -197,7 +197,7 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
-    map_knower: &mut MapLibAdapter,
+    map_lib_adapter: &mut MapLibAdapter,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     return match stmt {
@@ -262,13 +262,13 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                 injector,
                 table,
                 mem_tracker,
-                map_knower,
+                map_lib_adapter,
                 err_msg,
             ) {
                 Err(e) => Err(e),
                 Ok(_) => {
                     // Emit the instruction that sets the variable's value to the emitted expression
-                    emit_set(var_id, injector, table, map_knower, err_msg)
+                    emit_set(var_id, injector, table, err_msg)
                 }
             }
         }
@@ -289,22 +289,22 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
-    map_knower: &mut MapLibAdapter,
+    map_lib_adapter: &mut MapLibAdapter,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     if let Statement::SetMap { map, key, val, .. } = stmt {
         if let Expr::VarId { name, .. } = map {
             match get_map_info(table, name) {
                 Ok((map_id, key_ty, val_ty)) => {
-                    let to_call = map_knower.set_map_insert(key_ty, val_ty);
+                    let to_call = map_lib_adapter.set_map_insert(key_ty, val_ty);
                     let fn_id = table
                         .lookup(&to_call)
                         .expect("Map function not in symbol table")
                         .clone(); //clone to close the borrow
                                   //now actualy emit the set call - name then key then value
                     injector.i32_const(map_id as i32);
-                    emit_expr(key, injector, table, mem_tracker, map_knower, err_msg)?;
-                    emit_expr(val, injector, table, mem_tracker, map_knower, err_msg)?;
+                    emit_expr(key, injector, table, mem_tracker, map_lib_adapter, err_msg)?;
+                    emit_expr(val, injector, table, mem_tracker, map_lib_adapter, err_msg)?;
                     injector.call(fn_id as u32);
                     return Ok(true);
                 }
@@ -357,7 +357,6 @@ fn emit_set<'a, T: Opcode<'a>>(
     var_id: &mut Expr,
     injector: &mut T,
     table: &mut SymbolTable,
-    map_knower: &mut MapLibAdapter,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     if let Expr::VarId { name, .. } = var_id {
@@ -415,18 +414,18 @@ fn emit_if_preamble<'a, T: Opcode<'a> + ModuleBuilder>(
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
-    map_knower: &mut MapLibAdapter,
+    map_lib_adapter: &mut MapLibAdapter,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
 
     // emit the condition of the `if` expression
-    is_success &= emit_expr(condition, injector, table, mem_tracker, map_knower, err_msg)?;
+    is_success &= emit_expr(condition, injector, table, mem_tracker, map_lib_adapter, err_msg)?;
     // emit the beginning of the if block
     injector.if_stmt(BlockType::Empty);
 
     // emit the consequent body
-    is_success &= emit_body(conseq, injector, table, mem_tracker, map_knower, err_msg)?;
+    is_success &= emit_body(conseq, injector, table, mem_tracker, map_lib_adapter, err_msg)?;
 
     // INTENTIONALLY DON'T END IF BLOCK
 
@@ -440,7 +439,7 @@ fn emit_if_else_preamble<'a, T: Opcode<'a> + ModuleBuilder>(
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
-    map_knower: &mut MapLibAdapter,
+    map_lib_adapter: &mut MapLibAdapter,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
@@ -451,7 +450,7 @@ fn emit_if_else_preamble<'a, T: Opcode<'a> + ModuleBuilder>(
         injector,
         table,
         mem_tracker,
-        map_knower,
+        map_lib_adapter,
         err_msg,
     )?;
 
@@ -459,7 +458,7 @@ fn emit_if_else_preamble<'a, T: Opcode<'a> + ModuleBuilder>(
     injector.else_stmt();
 
     // emit the alternate body
-    is_success &= emit_body(alternate, injector, table, mem_tracker, map_knower, err_msg)?;
+    is_success &= emit_body(alternate, injector, table, mem_tracker, map_lib_adapter, err_msg)?;
 
     // INTENTIONALLY DON'T END IF/ELSE BLOCK
 
@@ -472,7 +471,7 @@ fn emit_if<'a, T: Opcode<'a> + ModuleBuilder>(
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
-    map_knower: &mut MapLibAdapter,
+    map_lib_adapter: &mut MapLibAdapter,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
@@ -483,7 +482,7 @@ fn emit_if<'a, T: Opcode<'a> + ModuleBuilder>(
         injector,
         table,
         mem_tracker,
-        map_knower,
+        map_lib_adapter,
         err_msg,
     )?;
 
@@ -499,7 +498,7 @@ fn emit_if_else<'a, T: Opcode<'a> + ModuleBuilder>(
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
-    map_knower: &mut MapLibAdapter,
+    map_lib_adapter: &mut MapLibAdapter,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
@@ -511,7 +510,7 @@ fn emit_if_else<'a, T: Opcode<'a> + ModuleBuilder>(
         injector,
         table,
         mem_tracker,
-        map_knower,
+        map_lib_adapter,
         err_msg,
     )?;
 
@@ -526,18 +525,18 @@ fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
-    map_knower: &mut MapLibAdapter,
+    map_lib_adapter: &mut MapLibAdapter,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
     match expr {
         Expr::UnOp { op, expr, .. } => {
-            is_success &= emit_expr(expr, injector, table, mem_tracker, map_knower, err_msg)?;
+            is_success &= emit_expr(expr, injector, table, mem_tracker, map_lib_adapter, err_msg)?;
             is_success &= emit_unop(op, injector);
         }
         Expr::BinOp { lhs, op, rhs, .. } => {
-            is_success &= emit_expr(lhs, injector, table, mem_tracker, map_knower, err_msg)?;
-            is_success &= emit_expr(rhs, injector, table, mem_tracker, map_knower, err_msg)?;
+            is_success &= emit_expr(lhs, injector, table, mem_tracker, map_lib_adapter, err_msg)?;
+            is_success &= emit_expr(rhs, injector, table, mem_tracker, map_lib_adapter, err_msg)?;
             is_success &= emit_binop(op, injector);
         }
         Expr::Ternary {
@@ -557,7 +556,7 @@ fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
                 injector,
                 table,
                 mem_tracker,
-                map_knower,
+                map_lib_adapter,
                 err_msg,
             )?;
         }
@@ -573,7 +572,7 @@ fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
             if let Some(args) = args {
                 for arg in args.iter_mut() {
                     is_success &=
-                        emit_expr(arg, injector, table, mem_tracker, map_knower, err_msg)?;
+                        emit_expr(arg, injector, table, mem_tracker, map_lib_adapter, err_msg)?;
                 }
             }
 
@@ -676,10 +675,10 @@ fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
             };
         }
         Expr::Primitive { val, .. } => {
-            is_success &= emit_value(val, injector, table, mem_tracker, map_knower, err_msg)?;
+            is_success &= emit_value(val, injector, table, mem_tracker, map_lib_adapter, err_msg)?;
         }
         Expr::GetMap { .. } => {
-            is_success &= emit_get_map(expr, injector, table, mem_tracker, map_knower, err_msg)?;
+            is_success &= emit_get_map(expr, injector, table, mem_tracker, map_lib_adapter, err_msg)?;
         }
     }
     Ok(is_success)
@@ -758,7 +757,7 @@ fn emit_value<'a, T: Opcode<'a> + ModuleBuilder>(
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
-    map_knower: &mut MapLibAdapter,
+    map_lib_adapter: &mut MapLibAdapter,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
@@ -793,7 +792,7 @@ fn emit_value<'a, T: Opcode<'a> + ModuleBuilder>(
         }
         Value::Tuple { vals, .. } => {
             for val in vals.iter_mut() {
-                is_success &= emit_expr(val, injector, table, mem_tracker, map_knower, err_msg)?;
+                is_success &= emit_expr(val, injector, table, mem_tracker, map_lib_adapter, err_msg)?;
             }
         }
         Value::Boolean { val, .. } => {
@@ -817,7 +816,7 @@ fn emit_get_map<'a, T: Opcode<'a> + ModuleBuilder>(
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
-    map_knower: &mut MapLibAdapter,
+    map_lib_adapter: &mut MapLibAdapter,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     if let Expr::GetMap { map, key, .. } = expr {
@@ -825,13 +824,13 @@ fn emit_get_map<'a, T: Opcode<'a> + ModuleBuilder>(
         if let Expr::VarId { name, .. } = map {
             match get_map_info(table, name) {
                 Ok((map_id, key_ty, val_ty)) => {
-                    let to_call = map_knower.create_map_get(key_ty, val_ty);
+                    let to_call = map_lib_adapter.create_map_get(key_ty, val_ty);
                     let fn_id = table
                         .lookup(&to_call)
                         .expect("Map function not in symbol table")
                         .clone(); //clone to close the borrow
                     injector.i32_const(map_id as i32);
-                    emit_expr(key, injector, table, mem_tracker, map_knower, err_msg)?;
+                    emit_expr(key, injector, table, mem_tracker, map_lib_adapter, err_msg)?;
                     injector.call(fn_id as u32);
                     return Ok(true);
                 }

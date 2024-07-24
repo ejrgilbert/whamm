@@ -2,6 +2,7 @@ mod common;
 
 use log::error;
 use orca::ir::module::Module as WasmModule;
+use whamm::emitter::report_metadata::ReportMetadata;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
@@ -50,7 +51,7 @@ fn instrument_dfinity_with_fault_injection() {
             emitted_strings: HashMap::new(),
         };
         let mut map_knower = MapLibAdapter::new();
-
+        let mut report_metadata = ReportMetadata::new();
         // Phase 0 of instrumentation (emit globals and provided fns)
         let mut init = InitGenerator {
             emitter: ModuleEmitter::new(
@@ -58,6 +59,7 @@ fn instrument_dfinity_with_fault_injection() {
                 &mut symbol_table,
                 &mut mem_tracker,
                 &mut map_knower,
+                &mut report_metadata,
             ),
             context_name: "".to_string(),
             err: &mut err,
@@ -74,6 +76,7 @@ fn instrument_dfinity_with_fault_injection() {
                 &mut symbol_table,
                 &mem_tracker,
                 &mut map_knower,
+                &mut report_metadata,
             ),
             simple_ast,
             &mut err,

@@ -22,21 +22,21 @@ fn get_loc_info<'a>(rule: &'a WhammProvider, emitter: &VisitingEmitter) -> Optio
 /// passed emitter to emit instrumentation code.
 /// This process should ideally be generic, made to perform a specific
 /// instrumentation technique by the passed Emitter type.
-pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f> {
-    pub emitter: VisitingEmitter<'a, 'b, 'c, 'd, 'e>,
+pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
+    pub emitter: VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f>,
     pub ast: SimpleAST,
-    pub err: &'f mut ErrorGen,
+    pub err: &'g mut ErrorGen,
 
     curr_instr_args: Vec<Arg>,
     curr_probe_mode: String,
     /// The current probe's body and predicate
     curr_probe: Option<(Option<Vec<Statement>>, Option<Expr>)>,
 }
-impl<'a, 'b, 'c, 'd, 'e, 'f> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f> {
+impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub fn new(
-        emitter: VisitingEmitter<'a, 'b, 'c, 'd, 'e>,
+        emitter: VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f>,
         ast: SimpleAST,
-        err: &'f mut ErrorGen,
+        err: &'g mut ErrorGen,
     ) -> Self {
         Self {
             emitter,
@@ -140,7 +140,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f> {
         is_success
     }
 }
-impl InstrGenerator<'_, '_, '_, '_, '_, '_> {
+impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
     fn emit_probe(&mut self) -> bool {
         let mut is_success = true;
 

@@ -1,4 +1,5 @@
 use crate::common::error::{ErrorGen, WhammError};
+use crate::emitter::report_metadata::ReportMetadata;
 use crate::parser::types::{DataType, Definition, Expr, Fn, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca::{DataSegment, DataSegmentKind, InitExpr};
@@ -29,28 +30,31 @@ pub struct StringAddr {
     pub len: usize,
 }
 
-pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e> {
+pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     pub app_wasm: &'a mut Module<'b>,
     pub emitting_func: Option<FunctionBuilder<'b>>,
     pub table: &'c mut SymbolTable,
     mem_tracker: &'d mut MemoryTracker,
-    map_knower: &'e mut MapLibAdapter,
+    map_lib_adapter: &'e mut MapLibAdapter,
+    report_metadata: &'f mut ReportMetadata,
     fn_providing_contexts: Vec<String>,
 }
 
-impl<'a, 'b, 'c, 'd, 'e> ModuleEmitter<'a, 'b, 'c, 'd, 'e> {
+impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     // note: only used in integration test
     pub fn new(
         app_wasm: &'a mut Module<'b>,
         table: &'c mut SymbolTable,
         mem_tracker: &'d mut MemoryTracker,
-        map_knower: &'e mut MapLibAdapter,
+        map_lib_adapter: &'e mut MapLibAdapter,
+        report_metadata: &'f mut ReportMetadata,
     ) -> Self {
         Self {
             app_wasm,
             emitting_func: None,
             mem_tracker,
-            map_knower,
+            map_lib_adapter,
+            report_metadata,
             table,
             fn_providing_contexts: vec!["whamm".to_string()],
         }
@@ -392,7 +396,7 @@ impl<'a, 'b, 'c, 'd, 'e> ModuleEmitter<'a, 'b, 'c, 'd, 'e> {
         ))
     }
 }
-impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_> {
+impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
     fn emit_body(&mut self, body: &mut [Statement]) -> Result<bool, Box<WhammError>> {
         if let Some(emitting_func) = &mut self.emitting_func {
             emit_body(
@@ -400,7 +404,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_> {
                 emitting_func,
                 self.table,
                 self.mem_tracker,
-                self.map_knower,
+                self.map_lib_adapter,
                 UNEXPECTED_ERR_MSG,
             )
         } else {
@@ -415,7 +419,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_> {
                 emitting_func,
                 self.table,
                 self.mem_tracker,
-                self.map_knower,
+                self.map_lib_adapter,
                 UNEXPECTED_ERR_MSG,
             )
         } else {
@@ -430,7 +434,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_> {
                 emitting_func,
                 self.table,
                 self.mem_tracker,
-                self.map_knower,
+                self.map_lib_adapter,
                 UNEXPECTED_ERR_MSG,
             )
         } else {
