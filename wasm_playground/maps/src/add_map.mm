@@ -1,7 +1,6 @@
-wasm:opcode:call:after /
-    target_fn_type == "import" &&
-    target_imp_module == "ic0" &&
-    target_imp_name == "do_something" 
-/ {
+wasm:opcode:call:after  {
     map<i32, i32> a;
+    i32 b = 3;
+    a[1] = 2;
+    a[b] = b + 1;
 }
