@@ -2,7 +2,6 @@ mod common;
 
 use log::error;
 use orca::ir::module::Module as WasmModule;
-use whamm::emitter::report_var_metadata::ReportVarMetadata;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
@@ -10,6 +9,7 @@ use std::process::{Command, Stdio};
 use wabt::{wasm2wat, Wat2Wasm};
 use whamm::common::error::ErrorGen;
 use whamm::emitter::map_lib_adapter::MapLibAdapter;
+use whamm::emitter::report_var_metadata::ReportVarMetadata;
 use whamm::emitter::rewriting::module_emitter::{MemoryTracker, ModuleEmitter};
 use whamm::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use whamm::generator::init_generator::InitGenerator;
