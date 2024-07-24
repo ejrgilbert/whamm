@@ -1,0 +1,9 @@
+[package]
+name = "maps"
+version = "0.1.0"
+edition = "2021"
+
+
+[dependencies]
+once_cell = "1.3.1"
+wasm-bindgen = "0.2"
