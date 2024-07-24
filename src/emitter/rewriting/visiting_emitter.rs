@@ -1,6 +1,6 @@
 use crate::common::error::{ErrorGen, WhammError};
+use crate::emitter::map_lib_adapter::MapLibAdapter;
 use crate::emitter::rewriting::emit_expr;
-use crate::emitter::rewriting::map_knower::MapKnower;
 use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::emitter::rewriting::rules::{Arg, LocInfo, Provider, WhammProvider};
 use crate::emitter::rewriting::{emit_stmt, Emitter};
@@ -15,8 +15,6 @@ use orca::ModuleBuilder;
 use std::iter::Iterator;
 use wasmparser::BlockType;
 
-use super::map_knower;
-
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
 
@@ -24,7 +22,7 @@ pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e> {
     pub app_iter: ModuleIterator<'a, 'b>,
     pub table: &'c mut SymbolTable,
     mem_tracker: &'d MemoryTracker,
-    map_knower: &'e mut MapKnower,
+    map_knower: &'e mut MapLibAdapter,
     instr_created_args: Vec<(String, usize)>,
 }
 
@@ -34,7 +32,7 @@ impl<'a, 'b, 'c, 'd, 'e> VisitingEmitter<'a, 'b, 'c, 'd, 'e> {
         app_wasm: &'a mut Module<'b>,
         table: &'c mut SymbolTable,
         mem_tracker: &'d MemoryTracker,
-        map_knower: &'e mut MapKnower,
+        map_knower: &'e mut MapLibAdapter,
     ) -> Self {
         let a = Self {
             app_iter: ModuleIterator::new(app_wasm, vec![]),

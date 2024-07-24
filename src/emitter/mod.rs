@@ -1,5 +1,5 @@
+pub mod map_lib_adapter;
 pub mod rewriting;
-
 #[cfg(test)]
 pub mod tests;
 

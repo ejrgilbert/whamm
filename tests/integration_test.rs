@@ -8,7 +8,7 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 use wabt::{wasm2wat, Wat2Wasm};
 use whamm::common::error::ErrorGen;
-use whamm::emitter::rewriting::map_knower::MapKnower;
+use whamm::emitter::map_lib_adapter::MapLibAdapter;
 use whamm::emitter::rewriting::module_emitter::{MemoryTracker, ModuleEmitter};
 use whamm::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use whamm::generator::init_generator::InitGenerator;
@@ -49,7 +49,7 @@ fn instrument_dfinity_with_fault_injection() {
             curr_mem_offset: 1_052_576, // Set default memory base address to DEFAULT + 4KB = 1048576 bytes + 4000 bytes = 1052576 bytes
             emitted_strings: HashMap::new(),
         };
-        let mut map_knower = MapKnower::new();
+        let mut map_knower = MapLibAdapter::new();
 
         // Phase 0 of instrumentation (emit globals and provided fns)
         let mut init = InitGenerator {

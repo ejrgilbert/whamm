@@ -1,10 +1,11 @@
 extern crate core;
 
 use cli::{Cmd, WhammCli};
+use emitter::map_lib_adapter;
 use std::collections::HashMap;
 
 use crate::common::error::ErrorGen;
-use crate::emitter::rewriting::map_knower::MapKnower;
+use crate::emitter::map_lib_adapter::MapLibAdapter;
 use crate::emitter::rewriting::module_emitter::{MemoryTracker, ModuleEmitter};
 use crate::generator::init_generator::InitGenerator;
 use crate::generator::instr_generator::InstrGenerator;
@@ -123,7 +124,7 @@ fn run_instr(
         curr_mem_offset: 1_052_576, // Set default memory base address to DEFAULT + 4KB = 1048576 bytes + 4000 bytes = 1052576 bytes
         emitted_strings: HashMap::new(),
     };
-    let mut map_knower = MapKnower::new();
+    let mut map_lib_adapter = MapLibAdapter::new();
 
     // Phase 0 of instrumentation (emit globals and provided fns)
     let mut init = InitGenerator {
@@ -131,7 +132,7 @@ fn run_instr(
             &mut app_wasm,
             &mut symbol_table,
             &mut mem_tracker,
-            &mut map_knower,
+            &mut map_lib_adapter,
         ),
         context_name: "".to_string(),
         err: &mut err,
@@ -148,7 +149,7 @@ fn run_instr(
             &mut app_wasm,
             &mut symbol_table,
             &mem_tracker,
-            &mut map_knower,
+            &mut map_lib_adapter,
         ),
         simple_ast,
         &mut err,

@@ -1,10 +1,9 @@
-pub mod map_knower;
 pub mod module_emitter;
 pub mod rules;
 pub mod visiting_emitter;
 
 use crate::common::error::{ErrorGen, WhammError};
-use crate::emitter::rewriting::map_knower::MapKnower;
+use crate::emitter::map_lib_adapter::MapLibAdapter;
 use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{BinOp, DataType, Expr, Statement, UnOp, Value};
@@ -36,7 +35,7 @@ fn emit_body<'a, T: Opcode<'a> + ModuleBuilder>(
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
-    map_knower: &mut MapKnower,
+    map_knower: &mut MapLibAdapter,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     for stmt in body.iter_mut() {
@@ -50,7 +49,7 @@ fn emit_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
-    map_knower: &mut MapKnower,
+    map_knower: &mut MapLibAdapter,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     match stmt {
@@ -99,7 +98,7 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
     stmt: &mut Statement,
     injector: &mut T,
     table: &mut SymbolTable,
-    map_knower: &mut MapKnower,
+    map_knower: &mut MapLibAdapter,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     match stmt {
@@ -198,7 +197,7 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
-    map_knower: &mut MapKnower,
+    map_knower: &mut MapLibAdapter,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     return match stmt {
@@ -290,7 +289,7 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
-    map_knower: &mut MapKnower,
+    map_knower: &mut MapLibAdapter,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     if let Statement::SetMap { map, key, val, .. } = stmt {
@@ -358,7 +357,7 @@ fn emit_set<'a, T: Opcode<'a>>(
     var_id: &mut Expr,
     injector: &mut T,
     table: &mut SymbolTable,
-    map_knower: &mut MapKnower,
+    map_knower: &mut MapLibAdapter,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     if let Expr::VarId { name, .. } = var_id {
@@ -416,7 +415,7 @@ fn emit_if_preamble<'a, T: Opcode<'a> + ModuleBuilder>(
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
-    map_knower: &mut MapKnower,
+    map_knower: &mut MapLibAdapter,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
@@ -441,7 +440,7 @@ fn emit_if_else_preamble<'a, T: Opcode<'a> + ModuleBuilder>(
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
-    map_knower: &mut MapKnower,
+    map_knower: &mut MapLibAdapter,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
@@ -473,7 +472,7 @@ fn emit_if<'a, T: Opcode<'a> + ModuleBuilder>(
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
-    map_knower: &mut MapKnower,
+    map_knower: &mut MapLibAdapter,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
@@ -500,7 +499,7 @@ fn emit_if_else<'a, T: Opcode<'a> + ModuleBuilder>(
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
-    map_knower: &mut MapKnower,
+    map_knower: &mut MapLibAdapter,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
@@ -527,7 +526,7 @@ fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
-    map_knower: &mut MapKnower,
+    map_knower: &mut MapLibAdapter,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
@@ -759,7 +758,7 @@ fn emit_value<'a, T: Opcode<'a> + ModuleBuilder>(
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
-    map_knower: &mut MapKnower,
+    map_knower: &mut MapLibAdapter,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
@@ -818,7 +817,7 @@ fn emit_get_map<'a, T: Opcode<'a> + ModuleBuilder>(
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
-    map_knower: &mut MapKnower,
+    map_knower: &mut MapLibAdapter,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     if let Expr::GetMap { map, key, .. } = expr {
