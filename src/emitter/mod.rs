@@ -1,6 +1,6 @@
 pub mod map_lib_adapter;
 pub mod rewriting;
-pub mod report_metadata;
+pub mod report_var_metadata;
 #[cfg(test)]
 pub mod tests;
 

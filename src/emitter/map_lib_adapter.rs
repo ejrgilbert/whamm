@@ -2,7 +2,7 @@
 use crate::parser::types::{DataType, Expr, Value};
 // //this is the code that knows which functions to call in lib.rs based on what is in the AST -> will be in emitter folder eventually
 use core::panic;
-use crate::emitter::report_metadata::{ReportMetadata, Metadata};
+use crate::emitter::report_var_metadata::{ReportVarMetadata, Metadata};
 
 
 
@@ -38,9 +38,9 @@ impl MapLibAdapter {
     pub fn increment_map_count(&mut self) {
         self.map_count += 1;
     }
-    pub fn put_map_metadata(&mut self, map_id: i32, map_data: Metadata, report_metadata: &mut ReportMetadata) {
-        report_metadata.map_metadata.insert(map_id, map_data.clone());
-        if !report_metadata.all_metadata.insert(map_data) {
+    pub fn put_map_metadata(&mut self, map_id: i32, map_data: Metadata, report_var_metadata: &mut ReportVarMetadata) {
+        report_var_metadata.map_metadata.insert(map_id, map_data.clone());
+        if !report_var_metadata.all_metadata.insert(map_data) {
             panic!(
                 "Error: Metadata already exists for this object - duplicate metadata not allowed"
             );
@@ -53,7 +53,7 @@ impl MapLibAdapter {
         script_id: i32,
         bytecode_loc: i32,
         probe_id: i32,
-        report_metadata: &mut ReportMetadata,
+        report_var_metadata: &mut ReportVarMetadata,
     ) {
         //call the put code for the metadata
         let metadata = Metadata::Local {
@@ -62,11 +62,11 @@ impl MapLibAdapter {
             bytecode_loc,
             probe_id,
         };
-        self.put_map_metadata(map_id, metadata, report_metadata);
+        self.put_map_metadata(map_id, metadata, report_var_metadata);
     }
-    pub fn create_global_map_meta(&mut self, map_id: i32, name: String, script_id: i32, report_metadata: &mut ReportMetadata) {
+    pub fn create_global_map_meta(&mut self, map_id: i32, name: String, script_id: i32, report_var_metadata: &mut ReportVarMetadata) {
         let metadata = Metadata::Global { name, script_id };
-        self.put_map_metadata(map_id, metadata, report_metadata);
+        self.put_map_metadata(map_id, metadata, report_var_metadata);
     }
     pub fn create_local_map(
         &mut self,
@@ -75,12 +75,12 @@ impl MapLibAdapter {
         bytecode_loc: i32,
         probe_id: i32,
         map: DataType,
-        report_metadata: &mut ReportMetadata,
+        report_var_metadata: &mut ReportVarMetadata,
     ) -> (String, i32) {
         //create the metadata for the map
         let map_id = self.get_map_count();
         self.increment_map_count();
-        self.create_local_map_meta(map_id, name, script_id, bytecode_loc, probe_id, report_metadata);
+        self.create_local_map_meta(map_id, name, script_id, bytecode_loc, probe_id, report_var_metadata);
 
         //create the map based on the types of the key and value in the map
         //"map" is the type of the declaration statement
@@ -97,11 +97,11 @@ impl MapLibAdapter {
         name: String,
         script_id: i32,
         map: DataType,
-        report_metadata: &mut ReportMetadata,
+        report_var_metadata: &mut ReportVarMetadata,
     ) -> (String, i32) {
         let map_id = self.get_map_count();
         self.increment_map_count();
-        self.create_global_map_meta(map_id, name, script_id, report_metadata);
+        self.create_global_map_meta(map_id, name, script_id, report_var_metadata);
 
         match map {
             DataType::Map { key_ty, val_ty } => (self.create_map_insert(*key_ty, *val_ty), map_id),

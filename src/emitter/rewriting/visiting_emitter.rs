@@ -1,6 +1,6 @@
 use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::map_lib_adapter::MapLibAdapter;
-use crate::emitter::report_metadata::ReportMetadata;
+use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::rewriting::emit_expr;
 use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::emitter::rewriting::rules::{Arg, LocInfo, Provider, WhammProvider};
@@ -24,7 +24,7 @@ pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     pub table: &'c mut SymbolTable,
     mem_tracker: &'d MemoryTracker,
     map_lib_adapter: &'e mut MapLibAdapter,
-    report_metadata: &'f mut ReportMetadata,
+    report_var_metadata: &'f mut ReportVarMetadata,
     instr_created_args: Vec<(String, usize)>,
 }
 
@@ -35,14 +35,14 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         table: &'c mut SymbolTable,
         mem_tracker: &'d MemoryTracker,
         map_lib_adapter: &'e mut MapLibAdapter,
-        report_metadata: &'f mut ReportMetadata,
+        report_var_metadata: &'f mut ReportVarMetadata,
     ) -> Self {
         let a = Self {
             app_iter: ModuleIterator::new(app_wasm, vec![]),
             table,
             mem_tracker,
             map_lib_adapter,
-            report_metadata,
+            report_var_metadata,
             instr_created_args: vec![],
         };
 
@@ -375,6 +375,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
             self.table,
             self.mem_tracker,
             self.map_lib_adapter,
+            self.report_var_metadata,
             UNEXPECTED_ERR_MSG,
         )
     }
@@ -386,6 +387,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
             self.table,
             self.mem_tracker,
             self.map_lib_adapter,
+            self.report_var_metadata,
             UNEXPECTED_ERR_MSG,
         )
     }

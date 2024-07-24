@@ -1,5 +1,5 @@
 use crate::common::error::{ErrorGen, WhammError};
-use crate::emitter::report_metadata::ReportMetadata;
+use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::parser::types::{DataType, Definition, Expr, Fn, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca::{DataSegment, DataSegmentKind, InitExpr};
@@ -36,7 +36,7 @@ pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     pub table: &'c mut SymbolTable,
     mem_tracker: &'d mut MemoryTracker,
     map_lib_adapter: &'e mut MapLibAdapter,
-    report_metadata: &'f mut ReportMetadata,
+    report_var_metadata: &'f mut ReportVarMetadata,
     fn_providing_contexts: Vec<String>,
 }
 
@@ -47,14 +47,14 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         table: &'c mut SymbolTable,
         mem_tracker: &'d mut MemoryTracker,
         map_lib_adapter: &'e mut MapLibAdapter,
-        report_metadata: &'f mut ReportMetadata,
+        report_var_metadata: &'f mut ReportVarMetadata,
     ) -> Self {
         Self {
             app_wasm,
             emitting_func: None,
             mem_tracker,
             map_lib_adapter,
-            report_metadata,
+            report_var_metadata,
             table,
             fn_providing_contexts: vec!["whamm".to_string()],
         }
@@ -405,6 +405,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
                 self.table,
                 self.mem_tracker,
                 self.map_lib_adapter,
+                self.report_var_metadata,
                 UNEXPECTED_ERR_MSG,
             )
         } else {
@@ -420,6 +421,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
                 self.table,
                 self.mem_tracker,
                 self.map_lib_adapter,
+                self.report_var_metadata,
                 UNEXPECTED_ERR_MSG,
             )
         } else {
@@ -435,6 +437,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
                 self.table,
                 self.mem_tracker,
                 self.map_lib_adapter,
+                self.report_var_metadata,
                 UNEXPECTED_ERR_MSG,
             )
         } else {
