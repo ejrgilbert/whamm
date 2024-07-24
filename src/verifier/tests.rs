@@ -35,7 +35,7 @@ const VALID_SCRIPTS: &[&str] = &[
     r#"
         i32 i;
         wasm:opcode:call:before /
-            target_imp_name == "add"
+            target_fn_name == "add"
         /{
             i = 1;
         }
@@ -150,7 +150,7 @@ wasm:opcode:br:before {
 wasm::call:alt /
     target_fn_type == "import" &&
     target_imp_module == "ic0" &&
-    target_imp_name == "call_new" &&
+    target_fn_name == "call_new" &&
     strcmp((arg0, arg1), 1) &&
     strcmp((arg2, arg3), "record")
 / {
@@ -395,7 +395,7 @@ pub fn test_build_table_with_asserts() {
 wasm::call:alt /
     target_fn_type == "import" &&
     target_imp_module == "ic0" &&
-    target_imp_name == "call_new" &&
+    target_fn_name == "call_new" &&
     strcmp((arg0, arg1), "bookings") &&
     strcmp((arg2, arg3), "record")
 / {
@@ -411,7 +411,7 @@ wasm::call:alt /
 
             // 7 scopes: whamm, strcmp, script0, wasm, alt_call_by_name, alt_call_by_id, opcode, call, alt
             let num_scopes = 9;
-            // records: num_scopes PLUS (str_addr, func_id, func_name, value, wasm_opcode_loc, target_imp_name, target_fn_type, target_imp_module)
+            // records: num_scopes PLUS (str_addr, func_id, func_name, value, wasm_opcode_loc, target_fn_name, target_fn_type, target_imp_module)
             // TODO -- change to + 8 when add back: arg[0:9]+
             let num_recs = num_scopes + 8;
 

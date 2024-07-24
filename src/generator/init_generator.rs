@@ -9,9 +9,6 @@ use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Fn, Global, ProvidedFunction, Script, Statement,
     UnOp, Value, Whamm, WhammVisitorMut,
 };
-use crate::verifier::types::Record::Var;
-use crate::verifier::types::VarAddr;
-use graphviz_rust::attributes::id;
 use log::{trace, warn};
 use std::collections::HashMap;
 
@@ -67,7 +64,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_> {
         trace!("Entering: CodeGenerator::visit_whamm");
         self.context_name = "whamm".to_string();
         let mut is_success = true;
-        //add library functions to the symbol table - MAKES TESTS WITHOUT MAPS FAIL
+        //add library functions to the symbol table - skips if not in the wasm module
         let lib_map_fns = [
             "create_i32_i32".to_string(),
             "create_i32_bool".to_string(),
@@ -99,20 +96,14 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_> {
             let id = match id_option {
                 Some(id_option) => id_option,
                 None => {
-                    self.err.add_error(ErrorGen::get_unexpected_error(
-                        true,
-                        Some(format!(
-                            "Library functon {:?} not found in the symbol table",
-                            lib_fn
-                        )),
-                        None,
-                    ));
-                    0
+                    std::u32::MAX
                 }
             };
             match self.emitter.table.get_curr_scope_mut() {
                 Some(scope) => {
-                    scope.put(lib_fn.clone(), id as usize);
+                    if id != std::u32::MAX {
+                        scope.put(lib_fn.clone(), id as usize);
+                    }
                 }
                 _ => {
                     self.err.add_error(ErrorGen::get_unexpected_error(

@@ -63,7 +63,7 @@ wasm::call:alt / strcmp((arg2, arg3), "record") / {
 wasm::call:alt /
     target_fn_type == "import" &&
     target_imp_module == "ic0" &&
-    target_imp_name == "call_new" &&
+    target_fn_name == "call_new" &&
     strcmp((arg0, arg1), "bookings") &&
     strcmp((arg2, arg3), "record")
 / {
@@ -481,7 +481,7 @@ my_func() -> i32{
 wasm::call:alt /
     target_fn_type == "import" &&
     target_imp_module == "ic0" &&
-    target_imp_name == "call_new" &&
+    target_fn_name == "call_new" &&
     strcmp((arg0, arg1), "bookings") &&
     strcmp((arg2, arg3), "record")
 / {

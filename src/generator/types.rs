@@ -16,7 +16,7 @@ impl ExprFolder {
             Expr::Call { .. } => ExprFolder::fold_call(expr, table),
             Expr::VarId { .. } => ExprFolder::fold_var_id(expr, table),
             Expr::Primitive { .. } => ExprFolder::fold_primitive(expr, table),
-            Expr::GetMap { .. } => todo!(),
+            Expr::GetMap { .. } => expr.clone(),
         }
     }
 

@@ -9,11 +9,9 @@ use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{BinOp, DataType, Expr, Statement, UnOp, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
-use clap::error::Error;
 use orca::ir::types::{DataType as OrcaType, Global, Value as OrcaValue};
 use orca::opcode::Opcode;
 use orca::{InitExpr, ModuleBuilder};
-use wasmparser::collections::map;
 use wasmparser::{BlockType, ValType};
 
 pub trait Emitter {
@@ -297,89 +295,24 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
 ) -> Result<bool, Box<WhammError>> {
     if let Statement::SetMap { map, key, val, .. } = stmt {
         if let Expr::VarId { name, .. } = map {
-            let var_rec_id = match table.lookup(name) {
-                Some(rec_id) => *rec_id,
-                _ => {
-                    return Err(Box::new(ErrorGen::get_unexpected_error(
-                        true,
-                        Some(format!(
-                            "{err_msg} \
-                            VarId '{name}' does not exist in this scope!"
-                        )),
-                        None,
-                    )));
+            match get_map_info(table, name) {
+                Ok((map_id, key_ty, val_ty)) => {
+                    let to_call = map_knower.set_map_insert(key_ty, val_ty);
+                    let fn_id = table
+                        .lookup(&to_call)
+                        .expect("Map function not in symbol table")
+                        .clone(); //clone to close the borrow
+                                  //now actualy emit the set call - name then key then value
+                    injector.i32_const(map_id as i32);
+                    emit_expr(key, injector, table, mem_tracker, map_knower, err_msg)?;
+                    emit_expr(val, injector, table, mem_tracker, map_knower, err_msg)?;
+                    injector.call(fn_id as u32);
+                    return Ok(true);
                 }
-            };
-            let map_id;
-            let key_ty;
-            let val_ty;
-            match table.get_record_mut(&var_rec_id) {
-                //TODO: make error loc be tied to loc here
-                Some(Record::Var { ty, addr, loc, .. }) => {
-                    match addr {
-                        Some(VarAddr::MapId { addr }) => {
-                            //save off the map_id for the later set call
-                            map_id = addr.clone();
-                            if let DataType::Map {
-                                key_ty: k,
-                                val_ty: v,
-                            } = ty
-                            {
-                                key_ty = *k.clone();
-                                val_ty = *v.clone();
-                            } else {
-                                return Err(Box::new(ErrorGen::get_unexpected_error(
-                                    true,
-                                    Some(format!(
-                                        "Incorrect variable record, Map address, found: {:?}",
-                                        addr.clone()
-                                    )),
-                                    None,
-                                )));
-                            }
-                        }
-                        _ => {
-                            return Err(Box::new(ErrorGen::get_unexpected_error(
-                                true,
-                                Some(format!(
-                                    "Incorrect variable record, Map address, found: {:?}",
-                                    addr
-                                )),
-                                None,
-                            )));
-                        }
-                    }
-                }
-                //save off the map_id for the later set call
-                Some(ty) => {
-                    return Err(Box::new(ErrorGen::get_unexpected_error(
-                        true,
-                        Some(format!(
-                            "Incorrect variable record, expected Record::Var, found: {:?}",
-                            ty
-                        )),
-                        None,
-                    )));
-                }
-                None => {
-                    return Err(Box::new(ErrorGen::get_unexpected_error(
-                        true,
-                        Some(format!("Variable symbol does not exist!")),
-                        None,
-                    )));
+                Err(e) => {
+                    return Err(e);
                 }
             }
-            let to_call = map_knower.set_map_insert(key_ty, val_ty);
-            let fn_id = table
-                .lookup(&to_call)
-                .expect("Map function not in symbol table")
-                .clone(); //clone to close the borrow
-                          //now actualy emit the set call - name then key then value
-            injector.i32_const(map_id as i32);
-            emit_expr(key, injector, table, mem_tracker, map_knower, err_msg)?;
-            emit_expr(val, injector, table, mem_tracker, map_knower, err_msg)?;
-            injector.call(fn_id as u32);
-            return Ok(true);
         }
     }
     Err(Box::new(ErrorGen::get_unexpected_error(
@@ -746,8 +679,8 @@ fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
         Expr::Primitive { val, .. } => {
             is_success &= emit_value(val, injector, table, mem_tracker, map_knower, err_msg)?;
         }
-        Expr::GetMap { map, key, .. } => {
-            todo!()
+        Expr::GetMap { .. } => {
+            is_success &= emit_get_map(expr, injector, table, mem_tracker, map_knower, err_msg)?;
         }
     }
     Ok(is_success)
@@ -879,4 +812,114 @@ fn emit_value<'a, T: Opcode<'a> + ModuleBuilder>(
         }
     }
     Ok(is_success)
+}
+fn emit_get_map<'a, T: Opcode<'a> + ModuleBuilder>(
+    expr: &mut Expr,
+    injector: &mut T,
+    table: &mut SymbolTable,
+    mem_tracker: &MemoryTracker,
+    map_knower: &mut MapKnower,
+    err_msg: &str,
+) -> Result<bool, Box<WhammError>> {
+    if let Expr::GetMap { map, key, .. } = expr {
+        let ref mut map = **map;
+        if let Expr::VarId { name, .. } = map {
+            match get_map_info(table, name) {
+                Ok((map_id, key_ty, val_ty)) => {
+                    let to_call = map_knower.create_map_get(key_ty, val_ty);
+                    let fn_id = table
+                        .lookup(&to_call)
+                        .expect("Map function not in symbol table")
+                        .clone(); //clone to close the borrow
+                    injector.i32_const(map_id as i32);
+                    emit_expr(key, injector, table, mem_tracker, map_knower, err_msg)?;
+                    injector.call(fn_id as u32);
+                    return Ok(true);
+                }
+                Err(e) => {
+                    return Err(e);
+                }
+            }
+        }
+    }
+    Err(Box::new(ErrorGen::get_unexpected_error(
+        false,
+        Some(format!(
+            "{err_msg} \
+            Wrong statement type, should be `get_map`"
+        )),
+        None,
+    )))
+}
+fn get_map_info (table: &mut SymbolTable, name: &mut String) -> Result<(u32, DataType, DataType), Box<WhammError>> {
+    let var_rec_id = match table.lookup(name) {
+        Some(rec_id) => *rec_id,
+        _ => {
+            return Err(Box::new(ErrorGen::get_unexpected_error(
+                true,
+                Some(format!(
+                    "VarId '{name}' does not exist in this scope!"
+                )),
+                None,
+            )));
+        }
+    };
+    let map_id;
+    let key_ty;
+    let val_ty;
+    match table.get_record_mut(&var_rec_id) {
+        Some(Record::Var { ty, addr, .. }) => {
+            match addr {
+                Some(VarAddr::MapId { addr }) => {
+                    //save off the map_id for the later set call
+                    map_id = addr.clone();
+                    if let DataType::Map {
+                        key_ty: k,
+                        val_ty: v,
+                    } = ty
+                    {
+                        key_ty = *k.clone();
+                        val_ty = *v.clone();
+                    } else {
+                        return Err(Box::new(ErrorGen::get_unexpected_error(
+                            true,
+                            Some(format!(
+                                "Incorrect variable record, Map address, found: {:?}",
+                                addr.clone()
+                            )),
+                            None,
+                        )));
+                    }
+                }
+                _ => {
+                    return Err(Box::new(ErrorGen::get_unexpected_error(
+                        true,
+                        Some(format!(
+                            "Incorrect variable record, Map address, found: {:?}",
+                            addr
+                        )),
+                        None,
+                    )));
+                }
+            }
+        }
+        Some(ty) => {
+            return Err(Box::new(ErrorGen::get_unexpected_error(
+                true,
+                Some(format!(
+                    "Incorrect variable record, expected Record::Var, found: {:?}",
+                    ty
+                )),
+                None,
+            )));
+        }
+        None => {
+            return Err(Box::new(ErrorGen::get_unexpected_error(
+                true,
+                Some(format!("Variable symbol does not exist!")),
+                None,
+            )));
+        }
+    }
+    return Ok((map_id, key_ty, val_ty));
 }

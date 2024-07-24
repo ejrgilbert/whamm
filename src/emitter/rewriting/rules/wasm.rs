@@ -563,7 +563,7 @@ impl Event for OpcodeEvent {
 
                     // define static_data
                     loc_info.static_data.insert(
-                        "target_imp_name".to_string(),
+                        "target_fn_name".to_string(),
                         Some(Value::Str {
                             ty: DataType::Str,
                             val: func_info.name.to_string(),
