@@ -1,5 +1,6 @@
 use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::rewriting::emit_expr;
+use crate::emitter::rewriting::map_knower::MapKnower;
 use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::emitter::rewriting::rules::{Arg, LocInfo, Provider, WhammProvider};
 use crate::emitter::rewriting::{emit_stmt, Emitter};
@@ -13,27 +14,32 @@ use orca::opcode::Opcode;
 use std::iter::Iterator;
 use wasmparser::BlockType;
 
+use super::map_knower;
+
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
 
-pub struct VisitingEmitter<'a, 'b, 'c, 'd> {
+pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e> {
     pub app_iter: ModuleIterator<'a, 'b>,
     pub table: &'c mut SymbolTable,
     mem_tracker: &'d MemoryTracker,
+    map_knower: &'e mut MapKnower,
     instr_created_args: Vec<(String, usize)>,
 }
 
-impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
+impl<'a, 'b, 'c, 'd, 'e> VisitingEmitter<'a, 'b, 'c, 'd, 'e> {
     // note: only used in integration test
     pub fn new(
         app_wasm: &'a mut Module<'b>,
         table: &'c mut SymbolTable,
         mem_tracker: &'d MemoryTracker,
+        map_knower: &'e mut MapKnower,
     ) -> Self {
         let a = Self {
             app_iter: ModuleIterator::new(app_wasm, vec![]),
             table,
             mem_tracker,
+            map_knower,
             instr_created_args: vec![],
         };
 
@@ -73,7 +79,7 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
         }
     }
 
-    pub(crate) fn get_loc_info<'e>(&self, rule: &'e WhammProvider) -> Option<LocInfo<'e>> {
+    pub(crate) fn get_loc_info<'f>(&self, rule: &'f WhammProvider) -> Option<LocInfo<'f>> {
         if let Some(curr_instr) = self.app_iter.curr_op() {
             rule.get_loc_info(self.app_iter.module, curr_instr)
         } else {
@@ -313,7 +319,7 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
         }
     }
 }
-impl Emitter for VisitingEmitter<'_, '_, '_, '_> {
+impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_> {
     fn emit_body(&mut self, body: &mut [Statement]) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
         for stmt in body.iter_mut() {
@@ -365,6 +371,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_> {
             &mut self.app_iter,
             self.table,
             self.mem_tracker,
+            self.map_knower,
             UNEXPECTED_ERR_MSG,
         )
     }
@@ -375,6 +382,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_> {
             &mut self.app_iter,
             self.table,
             self.mem_tracker,
+            self.map_knower,
             UNEXPECTED_ERR_MSG,
         )
     }

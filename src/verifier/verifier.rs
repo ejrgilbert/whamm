@@ -279,16 +279,13 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
 
     fn visit_stmt(&mut self, stmt: &Statement) -> Option<DataType> {
         if self.in_function {
-            match stmt {
-                Statement::ReportDecl { .. } => {
-                    self.err.type_check_error(
-                        false,
-                        "report declarations are not allowed in functions".to_owned(),
-                        &stmt.loc().clone().map(|l| l.line_col),
-                    );
-                    return None;
-                }
-                _ => {}
+            if let Statement::ReportDecl { .. } = stmt {
+                self.err.type_check_error(
+                    false,
+                    "Report declarations are not allowed in the functions".to_owned(),
+                    &stmt.loc().clone().map(|l| l.line_col),
+                );
+                return None;
             }
         }
         if self.in_script_global {

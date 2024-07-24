@@ -9,6 +9,9 @@ use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Fn, Global, ProvidedFunction, Script, Statement,
     UnOp, Value, Whamm, WhammVisitorMut,
 };
+use crate::verifier::types::Record::Var;
+use crate::verifier::types::VarAddr;
+use graphviz_rust::attributes::id;
 use log::{trace, warn};
 use std::collections::HashMap;
 
@@ -19,12 +22,12 @@ use std::collections::HashMap;
 /// emit some compiler-provided functions and user-defined globals.
 /// This process should ideally be generic, made to perform a specific
 /// instrumentation technique by the Emitter field.
-pub struct InitGenerator<'a, 'b, 'c, 'd, 'e> {
-    pub emitter: ModuleEmitter<'a, 'b, 'c, 'd>,
+pub struct InitGenerator<'a, 'b, 'c, 'd, 'e, 'f> {
+    pub emitter: ModuleEmitter<'a, 'b, 'c, 'd, 'e>,
     pub context_name: String,
-    pub err: &'e mut ErrorGen,
+    pub err: &'f mut ErrorGen,
 }
-impl InitGenerator<'_, '_, '_, '_, '_> {
+impl InitGenerator<'_, '_, '_, '_, '_, '_> {
     pub fn run(&mut self, whamm: &mut Whamm) -> bool {
         // Reset the symbol table in the emitter just in case
         self.emitter.reset_children();
@@ -59,12 +62,67 @@ impl InitGenerator<'_, '_, '_, '_, '_> {
         is_success
     }
 }
-impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_> {
+impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_> {
     fn visit_whamm(&mut self, whamm: &mut Whamm) -> bool {
         trace!("Entering: CodeGenerator::visit_whamm");
         self.context_name = "whamm".to_string();
         let mut is_success = true;
-
+        //add library functions to the symbol table - MAKES TESTS WITHOUT MAPS FAIL
+        let lib_map_fns = [
+            "create_i32_i32".to_string(),
+            "create_i32_bool".to_string(),
+            "create_i32_string".to_string(),
+            "create_i32_tuple".to_string(),
+            "create_i32_map".to_string(),
+            "create_string_i32".to_string(),
+            "create_string_bool".to_string(),
+            "create_string_string".to_string(),
+            "create_string_tuple".to_string(),
+            "create_string_map".to_string(),
+            "create_bool_i32".to_string(),
+            "create_bool_bool".to_string(),
+            "create_bool_string".to_string(),
+            "create_bool_tuple".to_string(),
+            "create_bool_map".to_string(),
+            "create_tuple_i32".to_string(),
+            "create_tuple_bool".to_string(),
+            "create_tuple_string".to_string(),
+            "create_tuple_tuple".to_string(),
+            "create_tuple_map".to_string(),
+            "insert_i32_i32".to_string(),
+            "insert_map_i32i32i32tuple_i32".to_string(),
+            "get_i32_i32".to_string(),
+            "get_i32_from_i32i32i32tuple".to_string(),
+        ];
+        for lib_fn in lib_map_fns.iter() {
+            let id_option = self.emitter.app_wasm.get_fid_by_name(lib_fn);
+            let id = match id_option {
+                Some(id_option) => id_option,
+                None => {
+                    self.err.add_error(ErrorGen::get_unexpected_error(
+                        true,
+                        Some(format!(
+                            "Library functon {:?} not found in the symbol table",
+                            lib_fn
+                        )),
+                        None,
+                    ));
+                    0
+                }
+            };
+            match self.emitter.table.get_curr_scope_mut() {
+                Some(scope) => {
+                    scope.put(lib_fn.clone(), id as usize);
+                }
+                _ => {
+                    self.err.add_error(ErrorGen::get_unexpected_error(
+                        true,
+                        Some("No scope found in Visit Whamm".to_string()),
+                        None,
+                    ));
+                }
+            }
+        }
         // visit fns
         whamm
             .fns
@@ -340,7 +398,6 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_> {
                 is_success &= self.visit_expr(val);
 
                 is_success
-            
             }
         }
     }

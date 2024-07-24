@@ -3,14 +3,18 @@ use crate::parser::types::{DataType, Definition, Expr, Fn, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca::{DataSegment, DataSegmentKind, InitExpr};
 use std::collections::HashMap;
+use wasmparser::collections::map;
 
 use orca::ir::types::{DataType as OrcaType, Value as OrcaValue};
 use wasmparser::BlockType;
 
+use crate::emitter::rewriting::map_knower::MapKnower;
 use crate::emitter::rewriting::{emit_body, emit_expr, emit_stmt, whamm_type_to_wasm, Emitter};
 use orca::ir::function::FunctionBuilder;
 use orca::ir::module::Module;
 use orca::opcode::Opcode;
+
+use super::map_knower;
 
 const UNEXPECTED_ERR_MSG: &str =
     "ModuleEmitter: Looks like you've found a bug...please report this behavior!";
@@ -27,26 +31,28 @@ pub struct StringAddr {
     pub len: usize,
 }
 
-pub struct ModuleEmitter<'a, 'b, 'c, 'd> {
+pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e> {
     pub app_wasm: &'a mut Module<'b>,
     pub emitting_func: Option<FunctionBuilder<'b>>,
     pub table: &'c mut SymbolTable,
-
     mem_tracker: &'d mut MemoryTracker,
+    map_knower: &'e mut MapKnower,
     fn_providing_contexts: Vec<String>,
 }
 
-impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
+impl<'a, 'b, 'c, 'd, 'e> ModuleEmitter<'a, 'b, 'c, 'd, 'e> {
     // note: only used in integration test
     pub fn new(
         app_wasm: &'a mut Module<'b>,
         table: &'c mut SymbolTable,
         mem_tracker: &'d mut MemoryTracker,
+        map_knower: &'e mut MapKnower,
     ) -> Self {
         Self {
             app_wasm,
             emitting_func: None,
             mem_tracker,
+            map_knower,
             table,
             fn_providing_contexts: vec!["whamm".to_string()],
         }
@@ -388,7 +394,7 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
         ))
     }
 }
-impl Emitter for ModuleEmitter<'_, '_, '_, '_> {
+impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_> {
     fn emit_body(&mut self, body: &mut [Statement]) -> Result<bool, Box<WhammError>> {
         if let Some(emitting_func) = &mut self.emitting_func {
             emit_body(
@@ -396,6 +402,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_> {
                 emitting_func,
                 self.table,
                 self.mem_tracker,
+                self.map_knower,
                 UNEXPECTED_ERR_MSG,
             )
         } else {
@@ -410,6 +417,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_> {
                 emitting_func,
                 self.table,
                 self.mem_tracker,
+                self.map_knower,
                 UNEXPECTED_ERR_MSG,
             )
         } else {
@@ -424,6 +432,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_> {
                 emitting_func,
                 self.table,
                 self.mem_tracker,
+                self.map_knower,
                 UNEXPECTED_ERR_MSG,
             )
         } else {

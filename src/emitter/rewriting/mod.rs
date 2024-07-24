@@ -1,18 +1,21 @@
+pub mod map_knower;
 pub mod module_emitter;
 pub mod rules;
 pub mod visiting_emitter;
-pub mod map_knower;
 
-use crate::emitter::rewriting::map_knower::MapKnower;
+use std::ptr::metadata;
+
 use crate::common::error::{ErrorGen, WhammError};
-use crate::parser::types::{BinOp, DataType, Expr, Statement, UnOp, Value};
-use crate::verifier::types::{Record, SymbolTable, VarAddr};
-
+use crate::emitter::rewriting::map_knower::MapKnower;
 use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::generator::types::ExprFolder;
+use crate::parser::types::{BinOp, DataType, Expr, Statement, UnOp, Value};
+use crate::verifier::types::{Record, SymbolTable, VarAddr};
+use clap::error::Error;
 use orca::ir::types::{DataType as OrcaType, Global, Value as OrcaValue};
 use orca::opcode::Opcode;
 use orca::{InitExpr, ModuleBuilder};
+use wasmparser::collections::map;
 use wasmparser::{BlockType, ValType};
 
 pub trait Emitter {
@@ -37,10 +40,11 @@ fn emit_body<'a, T: Opcode<'a> + ModuleBuilder>(
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
+    map_knower: &mut MapKnower,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     for stmt in body.iter_mut() {
-        emit_stmt(stmt, injector, table, mem_tracker, err_msg)?;
+        emit_stmt(stmt, injector, table, mem_tracker, map_knower, err_msg)?;
     }
     Ok(true)
 }
@@ -50,12 +54,17 @@ fn emit_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
+    map_knower: &mut MapKnower,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     match stmt {
-        Statement::Decl { .. } => emit_decl_stmt(stmt, injector, table, err_msg),
-        Statement::Assign { .. } => emit_assign_stmt(stmt, injector, table, mem_tracker, err_msg),
-        Statement::Expr { expr, .. } => emit_expr(expr, injector, table, mem_tracker, err_msg),
+        Statement::Decl { .. } => emit_decl_stmt(stmt, injector, table, map_knower, err_msg),
+        Statement::Assign { .. } => {
+            emit_assign_stmt(stmt, injector, table, mem_tracker, map_knower, err_msg)
+        }
+        Statement::Expr { expr, .. } => {
+            emit_expr(expr, injector, table, mem_tracker, map_knower, err_msg)
+        }
         Statement::If {
             cond, conseq, alt, ..
         } => {
@@ -66,6 +75,7 @@ fn emit_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                     injector,
                     table,
                     mem_tracker,
+                    map_knower,
                     err_msg,
                 )
             } else {
@@ -76,6 +86,7 @@ fn emit_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                     injector,
                     table,
                     mem_tracker,
+                    map_knower,
                     err_msg,
                 )
             }
@@ -92,6 +103,7 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
     stmt: &mut Statement,
     injector: &mut T,
     table: &mut SymbolTable,
+    map_knower: &mut MapKnower,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     match stmt {
@@ -143,21 +155,26 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                     None,
                 )));
             };
+            match ty {
+                DataType::Map { .. } => {
+                    let to_call = map_knower.create_no_meta_map(ty.clone());
+                    *addr = Some(VarAddr::MapId {
+                        addr: to_call.1 as u32,
+                    });
+                    let fn_id = table
+                        .lookup(&to_call.0)
+                        .expect("Map function not in symbol table");
+                    injector.i32_const(to_call.1 as i32);
+                    injector.call(*fn_id as u32);
+                    return Ok(true);
+                }
 
+                _ => {}
+            }
             match &mut addr {
-                Some(VarAddr::Global { addr: _addr }) => {
+                Some(VarAddr::Global { addr: _addr }) | Some(VarAddr::MapId { addr: _addr }) => {
                     // The global should already exist, do any initial setup here!
-                    match ty {
-                        DataType::Map {
-                            key_ty: _key_ty,
-                            val_ty: _val_ty,
-                        } => {
-                            // initialize map global variable
-                            // also update value at GID (probably need to set ID of map there)
-                            unimplemented!()
-                        }
-                        _ => Ok(true),
-                    }
+                    Ok(true)
                 }
                 Some(VarAddr::Local { .. }) | None => {
                     // If the local already exists, it would be because the probe has been
@@ -185,6 +202,7 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
+    map_knower: &mut MapKnower,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     return match stmt {
@@ -244,11 +262,18 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                 }
             }
 
-            match emit_expr(&mut folded_expr, injector, table, mem_tracker, err_msg) {
+            match emit_expr(
+                &mut folded_expr,
+                injector,
+                table,
+                mem_tracker,
+                map_knower,
+                err_msg,
+            ) {
                 Err(e) => Err(e),
                 Ok(_) => {
                     // Emit the instruction that sets the variable's value to the emitted expression
-                    emit_set(var_id, injector, table, err_msg)
+                    emit_set(var_id, injector, table, map_knower, err_msg)
                 }
             }
         }
@@ -263,6 +288,70 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
             )));
         }
     };
+}
+fn emit_set_map_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
+    stmt: &mut Statement,
+    injector: &mut T,
+    table: &mut SymbolTable,
+    mem_tracker: &MemoryTracker,
+    map_knower: &mut MapKnower,
+    err_msg: &str,
+) -> Result<bool, Box<WhammError>> {
+    if let Statement::SetMap { map, key, val, .. } = stmt {
+        
+        let map_id;
+        match table.get_record_mut(&var_rec_id) {
+            //TODO: make error loc be tied to loc here
+            Some(Record::Var { addr, loc, .. }) => {
+                match addr {
+                    Some(VarAddr::MapId { addr }) => {
+                        //save off the map_id for the later set call
+                        map_id = addr;
+                    }
+                    _ => {
+                        return Err(Box::new(ErrorGen::get_unexpected_error(
+                            true,
+                            Some(format!(
+                                "Incorrect variable record, Map address, found: {:?}",
+                                addr
+                            )),
+                            None,
+                        )));
+                    }
+                }
+            }
+            //save off the map_id for the later set call
+            Some(ty) => {
+                return Err(Box::new(ErrorGen::get_unexpected_error(
+                    true,
+                    Some(format!(
+                        "{UNEXPECTED_ERR_MSG} \
+                        Incorrect variable record, expected Record::Var, found: {:?}",
+                        ty
+                    )),
+                    None,
+                )));
+            }
+            None => {
+                return Err(Box::new(ErrorGen::get_unexpected_error(
+                    true,
+                    Some(format!(
+                        "{UNEXPECTED_ERR_MSG} \
+                        Variable symbol does not exist!"
+                    )),
+                    None,
+                )));
+            }
+        }
+    }
+    Err(Box::new(ErrorGen::get_unexpected_error(
+        false,
+        Some(format!(
+            "{err_msg} \
+            Wrong statement type, should be `set_map`"
+        )),
+        None,
+    )))
 }
 
 // transform a whamm type to default wasm type, used for creating new global
@@ -298,6 +387,7 @@ fn emit_set<'a, T: Opcode<'a>>(
     var_id: &mut Expr,
     injector: &mut T,
     table: &mut SymbolTable,
+    map_knower: &mut MapKnower,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     if let Expr::VarId { name, .. } = var_id {
@@ -324,7 +414,7 @@ fn emit_set<'a, T: Opcode<'a>>(
                     Some(VarAddr::Local { addr }) => {
                         injector.local_set(*addr);
                     },
-                    None => {
+                    Some(VarAddr::MapId { .. }) | None => {
                         return Err(Box::new(ErrorGen::get_type_check_error_from_loc(false,
                                                                                     format!("Variable assigned before declared: {}", name), loc)));
                     }
@@ -355,17 +445,18 @@ fn emit_if_preamble<'a, T: Opcode<'a> + ModuleBuilder>(
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
+    map_knower: &mut MapKnower,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
 
     // emit the condition of the `if` expression
-    is_success &= emit_expr(condition, injector, table, mem_tracker, err_msg)?;
+    is_success &= emit_expr(condition, injector, table, mem_tracker, map_knower, err_msg)?;
     // emit the beginning of the if block
     injector.if_stmt(BlockType::Empty);
 
     // emit the consequent body
-    is_success &= emit_body(conseq, injector, table, mem_tracker, err_msg)?;
+    is_success &= emit_body(conseq, injector, table, mem_tracker, map_knower, err_msg)?;
 
     // INTENTIONALLY DON'T END IF BLOCK
 
@@ -379,17 +470,26 @@ fn emit_if_else_preamble<'a, T: Opcode<'a> + ModuleBuilder>(
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
+    map_knower: &mut MapKnower,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
 
-    is_success &= emit_if_preamble(condition, conseq, injector, table, mem_tracker, err_msg)?;
+    is_success &= emit_if_preamble(
+        condition,
+        conseq,
+        injector,
+        table,
+        mem_tracker,
+        map_knower,
+        err_msg,
+    )?;
 
     // emit the beginning of the else
     injector.else_stmt();
 
     // emit the alternate body
-    is_success &= emit_body(alternate, injector, table, mem_tracker, err_msg)?;
+    is_success &= emit_body(alternate, injector, table, mem_tracker, map_knower, err_msg)?;
 
     // INTENTIONALLY DON'T END IF/ELSE BLOCK
 
@@ -402,11 +502,20 @@ fn emit_if<'a, T: Opcode<'a> + ModuleBuilder>(
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
+    map_knower: &mut MapKnower,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
 
-    is_success &= emit_if_preamble(condition, conseq, injector, table, mem_tracker, err_msg)?;
+    is_success &= emit_if_preamble(
+        condition,
+        conseq,
+        injector,
+        table,
+        mem_tracker,
+        map_knower,
+        err_msg,
+    )?;
 
     // emit the end of the if block
     injector.end();
@@ -420,6 +529,7 @@ fn emit_if_else<'a, T: Opcode<'a> + ModuleBuilder>(
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
+    map_knower: &mut MapKnower,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
@@ -431,6 +541,7 @@ fn emit_if_else<'a, T: Opcode<'a> + ModuleBuilder>(
         injector,
         table,
         mem_tracker,
+        map_knower,
         err_msg,
     )?;
 
@@ -445,17 +556,18 @@ fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
+    map_knower: &mut MapKnower,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
     match expr {
         Expr::UnOp { op, expr, .. } => {
-            is_success &= emit_expr(expr, injector, table, mem_tracker, err_msg)?;
+            is_success &= emit_expr(expr, injector, table, mem_tracker, map_knower, err_msg)?;
             is_success &= emit_unop(op, injector);
         }
         Expr::BinOp { lhs, op, rhs, .. } => {
-            is_success &= emit_expr(lhs, injector, table, mem_tracker, err_msg)?;
-            is_success &= emit_expr(rhs, injector, table, mem_tracker, err_msg)?;
+            is_success &= emit_expr(lhs, injector, table, mem_tracker, map_knower, err_msg)?;
+            is_success &= emit_expr(rhs, injector, table, mem_tracker, map_knower, err_msg)?;
             is_success &= emit_binop(op, injector);
         }
         Expr::Ternary {
@@ -475,6 +587,7 @@ fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
                 injector,
                 table,
                 mem_tracker,
+                map_knower,
                 err_msg,
             )?;
         }
@@ -489,7 +602,8 @@ fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
             // emit the arguments
             if let Some(args) = args {
                 for arg in args.iter_mut() {
-                    is_success &= emit_expr(arg, injector, table, mem_tracker, err_msg)?;
+                    is_success &=
+                        emit_expr(arg, injector, table, mem_tracker, map_knower, err_msg)?;
                 }
             }
 
@@ -557,6 +671,7 @@ fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
                         Some(VarAddr::Local { addr }) => {
                             injector.local_get(*addr);
                         }
+                        Some(VarAddr::MapId { .. }) => todo!(),
                         None => {
                             return Err(Box::new(ErrorGen::get_unexpected_error(
                                 true,
@@ -591,10 +706,10 @@ fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
             };
         }
         Expr::Primitive { val, .. } => {
-            is_success &= emit_value(val, injector, table, mem_tracker, err_msg)?;
+            is_success &= emit_value(val, injector, table, mem_tracker, map_knower, err_msg)?;
         }
-        Expr::GetMap { map, key, .. } => { 
-            todo!() 
+        Expr::GetMap { map, key, .. } => {
+            todo!()
         }
     }
     Ok(is_success)
@@ -673,6 +788,7 @@ fn emit_value<'a, T: Opcode<'a> + ModuleBuilder>(
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
+    map_knower: &mut MapKnower,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
@@ -707,7 +823,7 @@ fn emit_value<'a, T: Opcode<'a> + ModuleBuilder>(
         }
         Value::Tuple { vals, .. } => {
             for val in vals.iter_mut() {
-                is_success &= emit_expr(val, injector, table, mem_tracker, err_msg)?;
+                is_success &= emit_expr(val, injector, table, mem_tracker, map_knower, err_msg)?;
             }
         }
         Value::Boolean { val, .. } => {

@@ -4,6 +4,7 @@ use cli::{Cmd, WhammCli};
 use std::collections::HashMap;
 
 use crate::common::error::ErrorGen;
+use crate::emitter::rewriting::map_knower::MapKnower;
 use crate::emitter::rewriting::module_emitter::{MemoryTracker, ModuleEmitter};
 use crate::generator::init_generator::InitGenerator;
 use crate::generator::instr_generator::InstrGenerator;
@@ -126,7 +127,12 @@ fn run_instr(
 
     // Phase 0 of instrumentation (emit globals and provided fns)
     let mut init = InitGenerator {
-        emitter: ModuleEmitter::new(&mut app_wasm, &mut symbol_table, &mut mem_tracker),
+        emitter: ModuleEmitter::new(
+            &mut app_wasm,
+            &mut symbol_table,
+            &mut mem_tracker,
+            &mut map_knower,
+        ),
         context_name: "".to_string(),
         err: &mut err,
     };
@@ -138,7 +144,12 @@ fn run_instr(
     // This structure is necessary since we need to have the fns/globals injected (a single time)
     // and ready to use in every body/predicate.
     let mut instr = InstrGenerator::new(
-        VisitingEmitter::new(&mut app_wasm, &mut symbol_table, &mem_tracker),
+        VisitingEmitter::new(
+            &mut app_wasm,
+            &mut symbol_table,
+            &mem_tracker,
+            &mut map_knower,
+        ),
         simple_ast,
         &mut err,
     );

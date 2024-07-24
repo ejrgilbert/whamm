@@ -459,4 +459,5 @@ impl Record {
 pub enum VarAddr {
     Local { addr: u32 },
     Global { addr: u32 },
+    MapId { addr: u32 },
 }
