@@ -595,7 +595,7 @@ pub fn test_report_decl() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
-        report i32 a;
+        i32 a;
         wasm::br:before {
             a = 1;
             report bool b;
@@ -607,6 +607,7 @@ pub fn test_report_decl() {
             err.report();
             assert!(!err.has_errors);
             assert!(res);
+            crate::parser::tests::print_ast(&ast);
         }
         None => {
             error!("Could not get ast from script: {}", script);

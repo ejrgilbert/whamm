@@ -4,7 +4,6 @@ use crate::parser::types::{DataType, Definition, Expr, Fn, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca::{DataSegment, DataSegmentKind, InitExpr};
 use std::collections::HashMap;
-use wasmparser::collections::map;
 
 use orca::ir::types::{DataType as OrcaType, Value as OrcaValue};
 use wasmparser::BlockType;
@@ -349,7 +348,61 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             ))),
         }
     }
+    pub fn emit_report_global(
+        &mut self,
+        name: String,
+        ty: DataType,
+        _val: &Option<Value>,
+        script_name: String,
+    ) -> Result<bool, Box<WhammError>> {
+        let rec_id = match self.table.lookup(&name) {
+            Some(rec_id) => *rec_id,
+            _ => {
+                return Err(Box::new(ErrorGen::get_unexpected_error(
+                    true,
+                    Some(format!(
+                        "{UNEXPECTED_ERR_MSG} \
+                Global variable symbol does not exist in this scope! - in emit_report_global"
+                    )),
+                    None,
+                )));
+            } // Ignore, continue to emit
+        };
 
+        let rec = self.table.get_record_mut(&rec_id);
+        match rec {
+            Some(Record::Var { ref mut addr, .. }) => {
+                // emit global variable and set addr in symbol table
+                // this is used for user-defined global vars in the script...
+                let default_global = whamm_type_to_wasm(&ty);
+                let global_id = self.app_wasm.add_global(default_global);
+                *addr = Some(VarAddr::Global {
+                    addr: global_id.clone(),
+                });
+                //now save off the global variable metadata
+                self.report_var_metadata
+                    .put_global_metadata(global_id as usize, name, script_name);
+                Ok(true)
+            }
+            Some(&mut ref ty) => Err(Box::new(ErrorGen::get_unexpected_error(
+                true,
+                Some(format!(
+                    "{UNEXPECTED_ERR_MSG} \
+                Incorrect global variable record, expected Record::Var, found: {:?}",
+                    ty
+                )),
+                None,
+            ))),
+            None => Err(Box::new(ErrorGen::get_unexpected_error(
+                true,
+                Some(format!(
+                    "{UNEXPECTED_ERR_MSG} \
+                Global variable symbol does not exist!"
+                )),
+                None,
+            ))),
+        }
+    }
     pub fn emit_global_stmts(&mut self, stmts: &mut [Statement]) -> Result<bool, Box<WhammError>> {
         // NOTE: This should be done in the Module entrypoint
         //       https://docs.rs/walrus/latest/walrus/struct.Module.html

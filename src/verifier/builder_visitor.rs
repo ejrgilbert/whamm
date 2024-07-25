@@ -478,31 +478,61 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
 
         script.fns.iter_mut().for_each(|f| self.visit_fn(f));
         script.global_stmts.iter_mut().for_each(|stmt| {
-            if let Statement::Decl { ty, var_id, .. } = stmt {
-                if let Expr::VarId { name, .. } = &var_id {
-                    // Add global variable to script globals (triggers the init_generator to emit them!)
-                    script.globals.insert(
-                        name.clone(),
-                        Global {
-                            def: Definition::User,
-                            ty: ty.clone(),
-                            var_name: var_id.clone(),
-                            value: None,
-                        },
-                    );
-                } else {
-                    self.err.unexpected_error(
-                        true,
-                        Some(format!(
-                            "{} \
-                Variable declaration var_id is not the correct Expr variant!!",
-                            UNEXPECTED_ERR_MSG
-                        )),
-                        None,
-                    );
+            match stmt {
+                Statement::Decl { ty, var_id, .. } => {
+                    if let Expr::VarId { name, .. } = &var_id {
+                        // Add global variable to script globals (triggers the init_generator to emit them!)
+                        script.globals.insert(
+                            name.clone(),
+                            Global {
+                                def: Definition::User,
+                                report: false,
+                                ty: ty.clone(),
+                                var_name: var_id.clone(),
+                                value: None,
+                            },
+                        );
+                    } else {
+                        self.err.unexpected_error(
+                            true,
+                            Some(format!(
+                                "{} \
+                    Variable declaration var_id is not the correct Expr variant!!",
+                                UNEXPECTED_ERR_MSG
+                            )),
+                            None,
+                        );
+                    }
                 }
+                Statement::ReportDecl { decl, .. } => {
+                    if let Statement::Decl { ty, var_id, .. } = &**decl {
+                        if let Expr::VarId { name, .. } = &var_id {
+                            // Add global variable to script globals (triggers the init_generator to emit them!)
+                            script.globals.insert(
+                                name.clone(),
+                                Global {
+                                    def: Definition::User,
+                                    report: true,
+                                    ty: ty.clone(),
+                                    var_name: var_id.clone(),
+                                    value: None,
+                                },
+                            );
+                        } else {
+                            self.err.unexpected_error(
+                                true,
+                                Some(format!(
+                                    "{} \
+                        Variable declaration var_id is not the correct Expr variant!!",
+                                    UNEXPECTED_ERR_MSG
+                                )),
+                                None,
+                            );
+                        }
+                    }
+                }
+                _ => {}
             }
-
             self.visit_stmt(stmt)
         });
         script
@@ -646,7 +676,10 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
                 None,
             );
         }
-
+        let stmt = match &stmt {
+            Statement::ReportDecl { decl, .. } => &**decl,
+            _ => stmt,
+        };
         if let Statement::Decl {
             ty, var_id, loc, ..
         } = stmt

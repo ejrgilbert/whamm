@@ -4,7 +4,7 @@ pub mod visiting_emitter;
 
 use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::map_lib_adapter::MapLibAdapter;
-use crate::emitter::report_var_metadata::ReportVarMetadata;
+use crate::emitter::report_var_metadata::{ReportVarMetadata, LocationData};
 use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{BinOp, DataType, Expr, Statement, UnOp, Value};
@@ -221,6 +221,140 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
             None,
         ))),
     }
+}
+fn emit_report_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
+    stmt: &mut Statement,
+    injector: &mut T,
+    table: &mut SymbolTable,
+    mem_tracker: &MemoryTracker,
+    map_lib_adapter: &mut MapLibAdapter,
+    report_var_metadata: &mut ReportVarMetadata,
+    err_msg: &str,
+) -> Result<bool, Box<WhammError>> {
+    if let Statement::ReportDecl { decl, .. } = stmt {
+        match &**decl {
+            Statement::Decl { ty, var_id, .. } => {
+                // look up in symbol table
+                let var_name: String;
+                let mut addr = if let Expr::VarId { name, .. } = var_id {
+                    var_name = name.clone();
+                    let var_rec_id = match table.lookup(name) {
+                        Some(rec_id) => *rec_id,
+                        None => {
+                            // TODO -- add variables from body into symbol table
+                            //         (at this point, the verifier should have run to catch variable initialization without declaration)
+                            table.put(
+                                name.clone(),
+                                Record::Var {
+                                    ty: ty.clone(),
+                                    name: name.clone(),
+                                    value: None,
+                                    is_comp_provided: false,
+                                    addr: None,
+                                    loc: None,
+                                },
+                            )
+                        }
+                    };
+                    match table.get_record_mut(&var_rec_id) {
+                        Some(Record::Var { addr, .. }) => addr,
+                        Some(ty) => {
+                            return Err(Box::new(ErrorGen::get_unexpected_error(
+                                true,
+                                Some(format!(
+                                    "{err_msg} Incorrect variable record, expected Record::Var, found: {:?}",
+                                    ty
+                                )),
+                                None,
+                            )));
+                        }
+                        None => {
+                            return Err(Box::new(ErrorGen::get_unexpected_error(
+                                true,
+                                Some(format!("{err_msg} Variable symbol does not exist!")),
+                                None,
+                            )));
+                        }
+                    }
+                } else {
+                    return Err(Box::new(ErrorGen::get_unexpected_error(
+                        true,
+                        Some(format!("{err_msg} Expected VarId.")),
+                        None,
+                    )));
+                };
+                match ty {
+                    DataType::Map { .. } => {
+                        let script_name;
+                        let bytecode_loc;
+                        let probe_id;
+                        match &report_var_metadata.curr_location {
+                            LocationData::Local {
+                                script_id,
+                                bytecode_loc: bytecode_loc_cur,
+                                probe_id: probe_id_cur,
+                            } => {
+                                script_name = script_id;
+                                bytecode_loc = bytecode_loc_cur;
+                                probe_id = probe_id_cur;
+                            }
+                            LocationData::Global{
+                                ..
+                            } => {
+                                //ERR here because the location data should be local at this point via the visiting emitter
+                                return Err(Box::new(ErrorGen::get_unexpected_error(
+                                    true,
+                                    Some(format!("{err_msg} Expected Local LocationData - shouldn't be called outside visit-gen")),
+                                    None,
+                                )));
+                            }
+                        }
+                        let to_call = map_lib_adapter.create_local_map(var_name.clone(),script_name.clone(), *bytecode_loc, probe_id.clone(), ty.clone(), report_var_metadata);
+                        *addr = Some(VarAddr::MapId {
+                            addr: to_call.1 as u32,
+                        });
+                        let fn_id = table
+                            .lookup(&to_call.0)
+                            .expect("Map function not in symbol table");
+                        injector.i32_const(to_call.1 as i32);
+                        injector.call(*fn_id as u32);
+                        return Ok(true);
+                    }
+    
+                    _ => {}
+                }
+                match &mut addr {
+                    Some(VarAddr::Global { addr: _addr }) | Some(VarAddr::MapId { addr: _addr }) => {
+                        // The global should already exist, do any initial setup here!
+                        return Ok(true)
+                    }
+                    Some(VarAddr::Local { .. }) | None => {
+                        // If the local already exists, it would be because the probe has been
+                        // emitted at another opcode location. Simply overwrite the previously saved
+                        // address.
+                        let wasm_ty = whamm_type_to_wasm(ty).ty.content_type;
+                        let id = injector.add_local(OrcaType::from(wasm_ty));
+                        *addr = Some(VarAddr::Local { addr: id });
+                        return Ok(true)
+                    }
+                }
+            }
+            _ => return Err(Box::new(ErrorGen::get_unexpected_error(
+                false,
+                Some(format!(
+                    "{err_msg} Wrong statement type, should be `assign`"
+                )),
+                None,
+            ))),
+        }
+    }
+    Err(Box::new(ErrorGen::get_unexpected_error(
+        false,
+        Some(format!(
+            "{err_msg} Wrong statement type, should be `report_decl`"
+        )),
+        None,
+    )))
 }
 
 fn emit_assign_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
@@ -754,8 +888,7 @@ fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
                         Some(VarAddr::Local { addr }) => {
                             injector.local_get(*addr);
                         }
-                        Some(VarAddr::MapId { .. }) => todo!(),
-                        None => {
+                        Some(VarAddr::MapId { .. }) | None => {
                             return Err(Box::new(ErrorGen::get_unexpected_error(
                                 true,
                                 Some(format!(

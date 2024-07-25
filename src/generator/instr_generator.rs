@@ -2,9 +2,11 @@ use crate::common::error::ErrorGen;
 use crate::emitter::rewriting::rules::{provider_factory, Arg, LocInfo, WhammProvider};
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::rewriting::Emitter;
-use crate::generator::simple_ast::SimpleAST;
+use crate::generator::simple_ast::{SimpleAST, SimpleProbe};
 use crate::generator::types::ExprFolder;
-use crate::parser::types::{Expr, Statement};
+use crate::parser::types::{Expr, Statement, ProbeSpec};
+
+
 
 const UNEXPECTED_ERR_MSG: &str =
     "InstrGenerator: Looks like you've found a bug...please report this behavior!";
@@ -26,7 +28,6 @@ pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub emitter: VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f>,
     pub ast: SimpleAST,
     pub err: &'g mut ErrorGen,
-
     curr_instr_args: Vec<Arg>,
     curr_probe_mode: String,
     /// The current probe's body and predicate
@@ -43,7 +44,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             ast,
             err,
             curr_instr_args: vec![],
-            curr_probe_mode: "".to_string(),
+            curr_probe_mode: "____0".to_string(),
             curr_probe: None,
         }
     }
@@ -91,6 +92,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     // This location has matched some rules, inject each matched probe!
                     loc_info.probes.iter().for_each(|(probe_spec, probe)| {
                         // Enter the scope for this matched probe
+                        self.set_curr_probe(probe_spec, probe);
                         is_success = self
                             .emitter
                             .enter_scope_via_spec(&probe.script_id, probe_spec);
@@ -139,6 +141,62 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
 
         is_success
     }
+    fn set_curr_probe(&mut self, probe_spec: &ProbeSpec, probe: &&SimpleProbe) {
+        self.emitter.curr_script_id = probe.script_id.clone();
+        let curr_provider = match &probe_spec.provider {
+            Some(provider) => provider.name.clone(),
+            None => "".to_string(),
+        };
+        let curr_package = match &probe_spec.package {
+            Some(package) => package.name.clone(),
+            None => "".to_string(),
+        };
+        let curr_event = match &probe_spec.event {
+            Some(event) => event.name.clone(),
+            None => "".to_string(),
+        };
+        let curr_mode = match &probe_spec.mode {
+            Some(mode) => mode.name.clone(),
+            None => "".to_string(),
+        };
+        let curr_probe_id = format!(
+            "{}_{}_{}_{}0",
+            curr_provider, curr_package, curr_event, curr_mode
+        );
+        let mut emitter_probe_id = self.emitter.curr_probe_id.clone();
+        if emitter_probe_id.is_empty() || curr_probe_id.is_empty() {
+            emitter_probe_id = curr_probe_id;
+        } else {
+            // Split the emitter_probe_id into all but the last character, and the last character
+            let (prefix, last_char_str) = emitter_probe_id.char_indices().rev().nth(0)
+                .map(|(idx, ch)| (&emitter_probe_id[..idx], ch.to_string()))
+                .unwrap_or((&emitter_probe_id[..], "".to_string()));
+
+            if *prefix != curr_probe_id[..curr_probe_id.len().saturating_sub(1)] {
+                emitter_probe_id = curr_probe_id;
+            } else {
+                let last_char = last_char_str.chars().next().expect("Last char of a probe ID should be a number");
+                let new_last_char = match std::char::from_u32(last_char as u32 + 1) {
+                    Some(c) => c,
+                    None => {
+                        println!("Error: Last char of probe ID is not a number: {}", last_char);
+                        self.err.unexpected_error(
+                            true,
+                            Some(format!(
+                                "{UNEXPECTED_ERR_MSG} Unexpected probe mode '{}'",
+                                self.curr_probe_mode
+                            )),
+                            None,
+                        );
+                        last_char
+                    }
+                };
+                emitter_probe_id = format!("{}{}", prefix, new_last_char);
+            }
+        }
+        self.emitter.curr_probe_id = emitter_probe_id;
+    }
+
 }
 impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
     fn emit_probe(&mut self) -> bool {

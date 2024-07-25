@@ -33,17 +33,30 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
     }
 
     // Private helper functions
-    fn visit_globals(&mut self, globals: &HashMap<String, Global>) -> bool {
+    fn visit_globals(&mut self, globals: &HashMap<String, Global>, script_name: &String) -> bool {
         let mut is_success = true;
         for (name, global) in globals.iter() {
             // do not inject globals into Wasm that are used/defined by the compiler
             if global.is_from_user() {
-                match self
-                    .emitter
-                    .emit_global(name.clone(), global.ty.clone(), &global.value)
-                {
-                    Err(e) => self.err.add_error(*e),
-                    Ok(res) => is_success &= res,
+                if global.report {
+                    //emit global and add the metadata to the report_var_metadata
+                    match self.emitter.emit_report_global(
+                        name.clone(),
+                        global.ty.clone(),
+                        &global.value,
+                        script_name.clone(),
+                    ) {
+                        Err(e) => self.err.add_error(*e),
+                        Ok(res) => is_success &= res,
+                    }
+                } else {
+                    match self
+                        .emitter
+                        .emit_global(name.clone(), global.ty.clone(), &global.value)
+                    {
+                        Err(e) => self.err.add_error(*e),
+                        Ok(res) => is_success &= res,
+                    }
                 }
             }
         }
@@ -146,7 +159,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
             is_success &= self.visit_fn(f);
         });
         // inject globals
-        is_success &= self.visit_globals(&script.globals);
+        is_success &= self.visit_globals(&script.globals, &script.name);
         // visit providers
         script.providers.iter_mut().for_each(|(_name, provider)| {
             is_success &= self.visit_provider(provider);

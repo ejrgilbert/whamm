@@ -51,9 +51,9 @@ impl MapLibAdapter {
         &mut self,
         map_id: i32,
         name: String,
-        script_id: i32,
+        script_id: String,
         bytecode_loc: i32,
-        probe_id: i32,
+        probe_id: String,
         report_var_metadata: &mut ReportVarMetadata,
     ) {
         //call the put code for the metadata
@@ -69,7 +69,7 @@ impl MapLibAdapter {
         &mut self,
         map_id: i32,
         name: String,
-        script_id: i32,
+        script_id: String,
         report_var_metadata: &mut ReportVarMetadata,
     ) {
         let metadata = Metadata::Global { name, script_id };
@@ -78,9 +78,9 @@ impl MapLibAdapter {
     pub fn create_local_map(
         &mut self,
         name: String,
-        script_id: i32,
+        script_id: String,
         bytecode_loc: i32,
-        probe_id: i32,
+        probe_id: String,
         map: DataType,
         report_var_metadata: &mut ReportVarMetadata,
     ) -> (String, i32) {
@@ -109,7 +109,7 @@ impl MapLibAdapter {
     pub fn create_global_map(
         &mut self,
         name: String,
-        script_id: i32,
+        script_id: String,
         map: DataType,
         report_var_metadata: &mut ReportVarMetadata,
     ) -> (String, i32) {

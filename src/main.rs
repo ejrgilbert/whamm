@@ -174,6 +174,7 @@ fn run_instr(
     }
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
+    report_var_metadata.print_metadata();
 }
 
 fn get_symbol_table(ast: &mut Whamm, run_verifier: bool, err: &mut ErrorGen) -> SymbolTable {

@@ -553,7 +553,7 @@ pub fn test_ast_special_cases() {
     run_test_on_valid_list(SPECIAL.iter().map(|s| s.to_string()).collect(), &mut err);
 }
 
-fn print_ast(ast: &Whamm) {
+pub(crate) fn print_ast(ast: &Whamm) {
     let mut visitor = AsStrVisitor { indent: 0 };
     println!("{}", visitor.visit_whamm(ast));
 }
@@ -628,8 +628,6 @@ fn test_global_stmts() {
 
             assert_eq!(1, event.probes().len());
             assert_eq!(1, event.probes().get("alt").unwrap().len());
-
-            let probe = event.probes().get("alt").unwrap().first().unwrap();
         }
         None => {
             error!("Could not get ast from script: {}", script);
@@ -735,7 +733,7 @@ pub fn test_report_decl() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
-        report i32 a;
+        i32 a;
         wasm::br:before {
             a = 1;
             report bool b;

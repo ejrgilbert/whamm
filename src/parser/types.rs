@@ -383,7 +383,7 @@ pub enum Definition {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Global {
     pub def: Definition,
-
+    pub report: bool,
     pub ty: DataType,
     pub var_name: Expr, // Should be VarId
     pub value: Option<Value>,
@@ -945,6 +945,7 @@ impl ProvidedGlobal {
                 } else {
                     Definition::CompilerDynamic
                 },
+                report: false,
                 ty,
                 var_name: Expr::VarId {
                     is_comp_provided: true,
