@@ -166,10 +166,10 @@ impl InstrGenerator<'_, '_, '_, '_, '_> {
                         self.err.add_error(*e);
                         return false;
                     }
-                },
+                }
                 "after" => {
                     is_success &= self.emit_probe_as_if();
-                },
+                }
                 "alt" => {
                     is_success &= self.emit_probe_as_if_else();
                 }

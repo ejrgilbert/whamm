@@ -1,10 +1,10 @@
+use crate::common::{run_whamm, setup_logger, try_path};
+use log::{debug, error};
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
-use log::{debug, error};
 use wabt::{wasm2wat, wat2wasm};
-use crate::common::{run_whamm, setup_logger, try_path};
 const OUTPUT_WHAMMED_WAST: &str = "output/tests/wast_suite/should_pass";
 const OUTPUT_UNINSTR_WAST: &str = "output/tests/wast_suite/should_fail";
 
@@ -12,58 +12,67 @@ pub fn main() -> Result<(), std::io::Error> {
     setup_logger();
     // Find all the wast files to run as tests
     let wast_tests = find_wast_tests();
-    
+
     let mut all_wast_should_pass = vec![];
     let mut all_wast_should_fail = vec![];
     for test in wast_tests {
         let f = File::open(test.clone())?;
         let mut reader = BufReader::new(f);
-        
+
         // Convention: Only one module per wast!
         let module_wat = get_wasm_module(&mut reader)?;
         if module_wat.is_empty() {
-            panic!("Could not find the Wasm module in the wast file: {:?}", test.clone());
+            panic!(
+                "Could not find the Wasm module in the wast file: {:?}",
+                test.clone()
+            );
         }
         let module_wasm = match wat2wasm(module_wat.as_bytes()) {
             Err(e) => {
-                panic!("Unable to convert wat to wasm for module: {}\nDue to error: {:?}", module_wat, e);
+                panic!(
+                    "Unable to convert wat to wasm for module: {}\nDue to error: {:?}",
+                    module_wat, e
+                );
             }
-            Ok(res) => res
+            Ok(res) => res,
         };
-        
+
         // Get the `whamm!` scripts and corresponding test cases for this module
         let test_cases = get_test_cases(reader);
 
         debug!("{module_wat}\n");
-        
+
         for test_case in test_cases.iter() {
             test_case.print();
         }
 
         match generate_should_fail_bin_wast(&module_wasm, &test_cases, &test) {
-            Err(e) =>  {
-                panic!("Unable to write UN-instrumented wast file due to error: {:?}", e);
-            },
+            Err(e) => {
+                panic!(
+                    "Unable to write UN-instrumented wast file due to error: {:?}",
+                    e
+                );
+            }
             Ok(mut files) => {
                 all_wast_should_fail.append(&mut files);
             }
         };
-        
+
         match generate_instrumented_bin_wast(&module_wasm, &test_cases, &test) {
-            Err(e) =>  {
-                panic!("Unable to write instrumented wast file due to error: {:?}", e);
-            },
-            Ok(mut files) => {
-                all_wast_should_pass.append(&mut files)
+            Err(e) => {
+                panic!(
+                    "Unable to write instrumented wast file due to error: {:?}",
+                    e
+                );
             }
+            Ok(mut files) => all_wast_should_pass.append(&mut files),
         };
     }
-    
+
     // Now that we've generated the wast files, let's run them on the configured interpreters!
     run_wast_tests(all_wast_should_fail, all_wast_should_pass);
     Ok(())
 }
-
 
 fn run_wast_tests(wast_should_fail: Vec<String>, wast_should_pass: Vec<String>) {
     let inters = get_available_interpreters();
@@ -71,12 +80,12 @@ fn run_wast_tests(wast_should_fail: Vec<String>, wast_should_pass: Vec<String>) 
         To fix, add an executable binary under {INT_PATH} for one of the following interpreter options:\n\
         1. the wizeng interpreter, named '{WIZENG_SPEC_INT}'. https://github.com/titzer/wizard-engine/tree/master\n\
         2. the Wasm reference interpreter, named '{WASM_REF_INT}'. https://github.com/WebAssembly/spec/tree/main/interpreter\n");
-    
+
     println!("available interpreters:");
     for (i, inter) in inters.iter().enumerate() {
         println!("{i}. {inter}");
     }
-    
+
     run_wast_tests_that_should_fail(&inters, wast_should_fail);
     run_wast_tests_that_should_pass(&inters, wast_should_pass);
 }
@@ -124,7 +133,7 @@ const WASM_REF_INT: &str = "wasm";
 fn get_available_interpreters() -> Vec<String> {
     let supported_interpreters = [WASM_REF_INT, WIZENG_SPEC_INT];
     let mut available_interpreters = Vec::new();
-    
+
     for interpreter in supported_interpreters.iter() {
         let int_path = format!("{INT_PATH}/{interpreter}");
         match Command::new(&int_path).output() {
@@ -136,7 +145,7 @@ fn get_available_interpreters() -> Vec<String> {
             }
         }
     }
-    
+
     available_interpreters
 }
 
@@ -144,7 +153,11 @@ fn get_available_interpreters() -> Vec<String> {
 // ---- WAST FILE GENERATION ----
 // ==============================
 
-fn generate_should_fail_bin_wast(module_wasm: &Vec<u8>, test_cases: &[WastTestCase], wast_path: &Path) -> Result<Vec<String>, std::io::Error> {
+fn generate_should_fail_bin_wast(
+    module_wasm: &Vec<u8>,
+    test_cases: &[WastTestCase],
+    wast_path: &Path,
+) -> Result<Vec<String>, std::io::Error> {
     let mut created_wast_files = vec![];
     for (test_idx, test_case) in test_cases.iter().enumerate() {
         for (assertion_idx, assertion) in test_case.assertions.iter().enumerate() {
@@ -162,7 +175,11 @@ fn generate_should_fail_bin_wast(module_wasm: &Vec<u8>, test_cases: &[WastTestCa
     Ok(created_wast_files)
 }
 
-fn generate_instrumented_bin_wast(module_wasm: &[u8], test_cases: &[WastTestCase], wast_path: &Path) -> Result<Vec<String>, std::io::Error> {
+fn generate_instrumented_bin_wast(
+    module_wasm: &[u8],
+    test_cases: &[WastTestCase],
+    wast_path: &Path,
+) -> Result<Vec<String>, std::io::Error> {
     let mut created_wast_files = vec![];
     for (idx, test_case) in test_cases.iter().enumerate() {
         // instrument A COPY OF the module with the whamm script
@@ -173,26 +190,34 @@ fn generate_instrumented_bin_wast(module_wasm: &[u8], test_cases: &[WastTestCase
         let instrumented_module_wasm = run_whamm(
             module_to_instrument,
             &test_case.whamm_script,
-            &format!("{:?}", wast_path)
+            &format!("{:?}", wast_path),
         );
         let instrumented_module_wat = wasm2wat(&instrumented_module_wasm).unwrap();
 
         debug!("AFTER INSTRUMENTATION");
         debug!("{instrumented_module_wat}");
-        
+
         // create the wast
         // call.wast -> call.idx.bin.wast
         let file_name = new_wast_name(wast_path, idx, None);
         let new_file_path = format!("{OUTPUT_WHAMMED_WAST}/{file_name}");
         try_path(&new_file_path);
-        
-        write_bin_wast_file(&new_file_path, &instrumented_module_wasm, &test_case.assertions)?;
+
+        write_bin_wast_file(
+            &new_file_path,
+            &instrumented_module_wasm,
+            &test_case.assertions,
+        )?;
         created_wast_files.push(new_file_path);
     }
     Ok(created_wast_files)
 }
 
-fn write_bin_wast_file(file_path: &String, module_wasm: &Vec<u8>, assertions: &[String]) -> Result<(), std::io::Error> {
+fn write_bin_wast_file(
+    file_path: &String,
+    module_wasm: &Vec<u8>,
+    assertions: &[String],
+) -> Result<(), std::io::Error> {
     let mut wast_file = File::create(file_path)?;
 
     // output the module binary with format: (module binary "<binary>")
@@ -206,7 +231,9 @@ fn write_bin_wast_file(file_path: &String, module_wasm: &Vec<u8>, assertions: &[
         wast_file.write_all(&[b'\n'])?;
     }
     wast_file.write_all(&[b'\n'])?;
-    wast_file.flush().expect("Failed to flush out the wast file");
+    wast_file
+        .flush()
+        .expect("Failed to flush out the wast file");
 
     Ok(())
 }
@@ -255,7 +282,7 @@ fn get_wasm_module(reader: &mut BufReader<File>) -> Result<String, std::io::Erro
     let mut num_left_parens = 0;
     let mut num_right_parens = 0;
     let mut is_module = false;
-    
+
     let mut line = String::new();
     while reader.read_line(&mut line)? > 0 {
         if line.starts_with(MODULE_PREFIX_PATTERN) {
@@ -281,7 +308,7 @@ fn get_wasm_module(reader: &mut BufReader<File>) -> Result<String, std::io::Erro
         }
         line.clear();
     }
-    
+
     Ok(module)
 }
 
@@ -289,7 +316,7 @@ fn get_wasm_module(reader: &mut BufReader<File>) -> Result<String, std::io::Erro
 #[derive(Default)]
 struct WastTestCase {
     whamm_script: String,
-    assertions: Vec<String>
+    assertions: Vec<String>,
 }
 impl WastTestCase {
     fn print(&self) {
@@ -307,7 +334,7 @@ impl WastTestCase {
 /// Convention: All test cases under a `whamm!` script should be run on the same instrumented module.
 fn get_test_cases(reader: BufReader<File>) -> Vec<WastTestCase> {
     let mut test_cases = Vec::new();
-    
+
     let mut first = true;
     let mut matched = false;
     let mut curr_test = WastTestCase::default();

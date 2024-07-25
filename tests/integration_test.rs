@@ -1,12 +1,12 @@
 mod common;
 
+use crate::common::run_whamm;
 use log::error;
 use std::fs;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use wabt::{wasm2wat, Wat2Wasm};
 use whamm::common::error::ErrorGen;
-use crate::common::run_whamm;
 
 const APP_WASM_PATH: &str = "tests/apps/dfinity/users.wasm";
 
@@ -32,7 +32,7 @@ fn instrument_dfinity_with_fault_injection() {
         let instrumented_module = run_whamm(
             &fs::read(APP_WASM_PATH).unwrap(),
             &script_text,
-            &format!("{:?}", script_path.clone().as_path())
+            &format!("{:?}", script_path.clone().as_path()),
         );
 
         if !Path::new(OUT_BASE_DIR).exists() {
@@ -108,7 +108,12 @@ fn run_whamm_bin(original_wasm_path: &str, monitor_path: &str, instrumented_wasm
     assert!(res.status.success());
 }
 
-fn run_basic_instrumentation(original_wat_path: &str, original_wasm_path: &str, monitor_path: &str, instrumented_wasm_path: &str) {
+fn run_basic_instrumentation(
+    original_wat_path: &str,
+    original_wasm_path: &str,
+    monitor_path: &str,
+    instrumented_wasm_path: &str,
+) {
     run_wat2wasm(original_wat_path, original_wasm_path);
     run_whamm_bin(original_wasm_path, monitor_path, instrumented_wasm_path);
 }
@@ -121,7 +126,12 @@ fn instrument_handwritten_wasm_call() {
     let monitor_path = "tests/scripts/instr.mm";
     let instrumented_wasm_path = "output/integration-handwritten_add.wasm";
 
-    run_basic_instrumentation(original_wat_path, original_wasm_path, monitor_path, instrumented_wasm_path);
+    run_basic_instrumentation(
+        original_wat_path,
+        original_wasm_path,
+        monitor_path,
+        instrumented_wasm_path,
+    );
     run_wasm2wat(instrumented_wasm_path);
 }
 
@@ -133,7 +143,12 @@ fn instrument_no_matches() {
     let monitor_path = "tests/scripts/instr.mm";
     let instrumented_wasm_path = "output/integration-no_matched_events.wasm";
 
-    run_basic_instrumentation(original_wat_path, original_wasm_path, monitor_path, instrumented_wasm_path);
+    run_basic_instrumentation(
+        original_wat_path,
+        original_wasm_path,
+        monitor_path,
+        instrumented_wasm_path,
+    );
     run_wasm2wat(instrumented_wasm_path);
 }
 
@@ -167,11 +182,15 @@ fn instrument_control_flow() {
     fs::write("output/output.wat", wat_data).unwrap();
 }
 
-fn test_with_wasmtime(original_wat_path: &str, original_wasm_path: &str, 
-                      monitor_path: &str, instrumented_wasm_path: &str) {
+fn test_with_wasmtime(
+    original_wat_path: &str,
+    original_wasm_path: &str,
+    monitor_path: &str,
+    instrumented_wasm_path: &str,
+) {
     // executable is located at target/debug/whamm
     let wasmtime = "wasmtime";
-    
+
     run_wat2wasm(original_wat_path, original_wasm_path);
 
     // running on its own SHOULD fail

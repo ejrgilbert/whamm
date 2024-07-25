@@ -1,8 +1,8 @@
 pub mod wast_harness;
 
+use orca::ir::module::Module as WasmModule;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use orca::ir::module::Module as WasmModule;
 use whamm::parser::types::Whamm;
 use whamm::parser::whamm_parser::*;
 
@@ -73,11 +73,7 @@ fn get_ast(script: &str, err: &mut ErrorGen) -> Option<Whamm> {
 }
 
 pub fn run_whamm(wasm_module_bytes: &[u8], whamm_script: &String, script_path: &str) -> Vec<u8> {
-    let mut err = ErrorGen::new(
-        script_path.to_string(),
-        whamm_script.clone(),
-        0
-    );
+    let mut err = ErrorGen::new(script_path.to_string(), whamm_script.clone(), 0);
 
     let ast_res = get_ast(whamm_script, &mut err);
     assert!(
@@ -90,14 +86,12 @@ pub fn run_whamm(wasm_module_bytes: &[u8], whamm_script: &String, script_path: &
 
     // Build the behavior tree from the AST
     let simple_ast = build_simple_ast(&whamm, &mut err);
-    
+
     let mut symbol_table = build_symbol_table(&mut whamm, &mut err);
     symbol_table.reset();
-    
-    let mut app_wasm = WasmModule::parse_only_module(
-        wasm_module_bytes,
-        false
-    ).expect("Failed to parse Wasm module");
+
+    let mut app_wasm = WasmModule::parse_only_module(wasm_module_bytes, false)
+        .expect("Failed to parse Wasm module");
 
     // Create the memory tracker
     if app_wasm.memories.len() > 1 {
@@ -129,7 +123,7 @@ pub fn run_whamm(wasm_module_bytes: &[u8], whamm_script: &String, script_path: &
     );
     instr.run();
     err.fatal_report("Integration Test");
-    
+
     app_wasm.encode_only_module()
 }
 
@@ -140,9 +134,7 @@ fn try_path(path: &String) {
     }
 }
 
-pub fn setup_fault_injection(
-    variation: &str
-) -> Vec<(PathBuf, String)> {
+pub fn setup_fault_injection(variation: &str) -> Vec<(PathBuf, String)> {
     setup_logger();
     let scripts = get_test_scripts(format!("fault_injection/{variation}").as_str());
     if scripts.is_empty() {
