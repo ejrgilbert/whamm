@@ -1,11 +1,19 @@
+pub mod wast_harness;
+
+use std::collections::HashMap;
 use std::path::PathBuf;
+use orca::ir::module::Module as WasmModule;
 use whamm::parser::types::Whamm;
 use whamm::parser::whamm_parser::*;
 
 use glob::{glob, glob_with};
 use log::{error, info, warn};
 use whamm::common::error::ErrorGen;
-use whamm::verifier::types::SymbolTable;
+use whamm::emitter::rewriting::module_emitter::{MemoryTracker, ModuleEmitter};
+use whamm::emitter::rewriting::visiting_emitter::VisitingEmitter;
+use whamm::generator::init_generator::InitGenerator;
+use whamm::generator::instr_generator::InstrGenerator;
+use whamm::generator::simple_ast::build_simple_ast;
 use whamm::verifier::verifier::build_symbol_table;
 
 // ====================
@@ -17,7 +25,7 @@ pub fn setup_logger() {
 }
 
 const TEST_RSC_DIR: &str = "tests/scripts/";
-const PATTERN: &str = "*.mm";
+const MM_PATTERN: &str = "*.mm";
 const TODO: &str = "*.TODO";
 
 fn get_test_scripts(sub_dir: &str) -> Vec<(PathBuf, String)> {
@@ -28,7 +36,7 @@ fn get_test_scripts(sub_dir: &str) -> Vec<(PathBuf, String)> {
         require_literal_leading_dot: false,
     };
 
-    for path in glob(&(TEST_RSC_DIR.to_owned() + sub_dir + "/" + &*PATTERN.to_owned()))
+    for path in glob(&(TEST_RSC_DIR.to_owned() + sub_dir + "/" + &*MM_PATTERN.to_owned()))
         .expect("Failed to read glob pattern")
     {
         let file_name = path.as_ref().unwrap();
@@ -64,76 +72,102 @@ fn get_ast(script: &str, err: &mut ErrorGen) -> Option<Whamm> {
     }
 }
 
-fn parse_all_scripts(
-    scripts: Vec<(PathBuf, String)>,
-    err: &mut ErrorGen,
-) -> Vec<(PathBuf, String, Whamm)> {
-    let mut mm_scripts = vec![];
-    for (path, script) in scripts {
-        info!("Parsing: {}", script);
-        let ast_res = get_ast(&script, err);
-        assert!(
-            ast_res.is_some(),
-            "script = '{}' is not recognized as valid, but it should be",
-            &script
-        );
-        mm_scripts.push((path, script, ast_res.unwrap()));
-    }
-    mm_scripts
+pub fn run_whamm(wasm_module_bytes: &[u8], whamm_script: &String, script_path: &str) -> Vec<u8> {
+    let mut err = ErrorGen::new(
+        script_path.to_string(),
+        whamm_script.clone(),
+        0
+    );
+
+    let ast_res = get_ast(whamm_script, &mut err);
+    assert!(
+        ast_res.is_some(),
+        "script = '{}' is not recognized as valid, but it should be",
+        &whamm_script
+    );
+    let mut whamm = ast_res.unwrap();
+    err.fatal_report("WAST Test Harness");
+
+    // Build the behavior tree from the AST
+    let simple_ast = build_simple_ast(&whamm, &mut err);
+    
+    let mut symbol_table = build_symbol_table(&mut whamm, &mut err);
+    symbol_table.reset();
+    
+    let mut app_wasm = WasmModule::parse_only_module(
+        wasm_module_bytes,
+        false
+    ).expect("Failed to parse Wasm module");
+
+    // Create the memory tracker
+    if app_wasm.memories.len() > 1 {
+        // TODO -- make this work with multi-memory
+        panic!("only single memory is supported")
+    };
+    let mut mem_tracker = MemoryTracker {
+        mem_id: 0,                  // Assuming the ID of the first memory is 0!
+        curr_mem_offset: 1_052_576, // Set default memory base address to DEFAULT + 4KB = 1048576 bytes + 4000 bytes = 1052576 bytes
+        emitted_strings: HashMap::new(),
+    };
+
+    // Phase 0 of instrumentation (emit globals and provided fns)
+    let mut init = InitGenerator {
+        emitter: ModuleEmitter::new(&mut app_wasm, &mut symbol_table, &mut mem_tracker),
+        context_name: "".to_string(),
+        err: &mut err,
+    };
+    assert!(init.run(&mut whamm));
+    err.fatal_report("Integration Test");
+
+    // Phase 1 of instrumentation (actually emits the instrumentation code)
+    // This structure is necessary since we need to have the fns/globals injected (a single time)
+    // and ready to use in every body/predicate.
+    let mut instr = InstrGenerator::new(
+        VisitingEmitter::new(&mut app_wasm, &mut symbol_table, &mem_tracker),
+        simple_ast,
+        &mut err,
+    );
+    instr.run();
+    err.fatal_report("Integration Test");
+    
+    app_wasm.encode_only_module()
 }
 
-fn process_scripts(
-    scripts: Vec<(PathBuf, String)>,
-    err: &mut ErrorGen,
-) -> Vec<(String, String, Whamm, SymbolTable)> {
-    let asts = parse_all_scripts(scripts, err);
-
-    // Build the symbol table from the AST
-    let mut result = vec![];
-    for (path, script_str, mut ast) in asts {
-        let mut symbol_table = build_symbol_table(&mut ast, err);
-        symbol_table.reset();
-
-        result.push((
-            path.into_os_string().into_string().unwrap(),
-            script_str.clone(),
-            ast,
-            symbol_table,
-        ));
+/// create output path if it doesn't exist
+fn try_path(path: &String) {
+    if !PathBuf::from(path).exists() {
+        std::fs::create_dir_all(PathBuf::from(path).parent().unwrap()).unwrap();
     }
-
-    result
 }
 
 pub fn setup_fault_injection(
-    variation: &str,
-    err: &mut ErrorGen,
-) -> Vec<(String, String, Whamm, SymbolTable)> {
+    variation: &str
+) -> Vec<(PathBuf, String)> {
     setup_logger();
     let scripts = get_test_scripts(format!("fault_injection/{variation}").as_str());
     if scripts.is_empty() {
         warn!("No test scripts found for `fault_injection/{variation}` test.");
     }
 
-    process_scripts(scripts, err)
+    scripts
 }
 
-pub fn setup_wizard_monitors(err: &mut ErrorGen) -> Vec<(String, String, Whamm, SymbolTable)> {
+pub fn setup_wizard_monitors() -> Vec<(PathBuf, String)> {
     setup_logger();
     let scripts = get_test_scripts("wizard_monitors");
     if scripts.is_empty() {
         warn!("No test scripts found for `wizard_monitors` test.");
     }
 
-    process_scripts(scripts, err)
+    scripts
 }
 
-pub fn setup_replay(err: &mut ErrorGen) -> Vec<(String, String, Whamm, SymbolTable)> {
+pub fn setup_replay() -> Vec<(PathBuf, String)> {
     setup_logger();
     let scripts = get_test_scripts("replay");
     if scripts.is_empty() {
         warn!("No test scripts found for `replay` test.");
     }
 
-    process_scripts(scripts, err)
+    scripts
 }

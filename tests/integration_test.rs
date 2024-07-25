@@ -1,23 +1,22 @@
 mod common;
 
 use log::error;
-use orca::ir::module::Module as WasmModule;
-use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use wabt::{wasm2wat, Wat2Wasm};
 use whamm::common::error::ErrorGen;
-use whamm::emitter::rewriting::module_emitter::{MemoryTracker, ModuleEmitter};
-use whamm::emitter::rewriting::visiting_emitter::VisitingEmitter;
-use whamm::generator::init_generator::InitGenerator;
-use whamm::generator::instr_generator::InstrGenerator;
-use whamm::generator::simple_ast::build_simple_ast;
+use crate::common::run_whamm;
 
 const APP_WASM_PATH: &str = "tests/apps/dfinity/users.wasm";
 
 const OUT_BASE_DIR: &str = "target";
 const OUT_WASM_NAME: &str = "out.wasm";
+
+#[test]
+fn run_wast_tests() {
+    common::wast_harness::main().expect("WAST Tests failed!");
+}
 
 /// This test just confirms that a wasm module can be instrumented with the preconfigured
 /// scripts without errors occurring.
@@ -25,50 +24,16 @@ const OUT_WASM_NAME: &str = "out.wasm";
 fn instrument_dfinity_with_fault_injection() {
     common::setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-    let processed_scripts = common::setup_fault_injection("dfinity", &mut err);
+    let processed_scripts = common::setup_fault_injection("dfinity");
     assert!(!processed_scripts.is_empty());
     err.fatal_report("Integration Test");
 
-    for (script_path, script_text, mut whamm, mut symbol_table) in processed_scripts {
-        // Build the behavior tree from the AST
-        let simple_ast = build_simple_ast(&whamm, &mut err);
-
-        let buff = fs::read(APP_WASM_PATH).unwrap();
-        let mut app_wasm =
-            WasmModule::parse_only_module(&buff, false).expect("Failed to parse Wasm module");
-        let mut err = ErrorGen::new(script_path.clone(), script_text, 0);
-
-        // Create the memory tracker
-        if app_wasm.memories.len() > 1 {
-            // TODO -- make this work with multi-memory
-            panic!("only single memory is supported")
-        };
-        let mut mem_tracker = MemoryTracker {
-            mem_id: 0,                  // Assuming the ID of the first memory is 0!
-            curr_mem_offset: 1_052_576, // Set default memory base address to DEFAULT + 4KB = 1048576 bytes + 4000 bytes = 1052576 bytes
-            emitted_strings: HashMap::new(),
-        };
-
-        // Phase 0 of instrumentation (emit globals and provided fns)
-        let mut init = InitGenerator {
-            emitter: ModuleEmitter::new(&mut app_wasm, &mut symbol_table, &mut mem_tracker),
-            context_name: "".to_string(),
-            err: &mut err,
-        };
-        assert!(init.run(&mut whamm));
-        err.fatal_report("Integration Test");
-
-        // Phase 1 of instrumentation (actually emits the instrumentation code)
-        // This structure is necessary since we need to have the fns/globals injected (a single time)
-        // and ready to use in every body/predicate.
-        let mut instr = InstrGenerator::new(
-            VisitingEmitter::new(&mut app_wasm, &mut symbol_table, &mem_tracker),
-            simple_ast,
-            &mut err,
+    for (script_path, script_text) in processed_scripts {
+        let instrumented_module = run_whamm(
+            &fs::read(APP_WASM_PATH).unwrap(),
+            &script_text,
+            &format!("{:?}", script_path.clone().as_path())
         );
-        // TODO add assertions here once I have error logic in place to check that it worked!
-        instr.run();
-        err.fatal_report("Integration Test");
 
         if !Path::new(OUT_BASE_DIR).exists() {
             if let Err(err) = fs::create_dir(OUT_BASE_DIR) {
@@ -78,7 +43,7 @@ fn instrument_dfinity_with_fault_injection() {
         }
 
         let out_wasm_path = format!("{OUT_BASE_DIR}/{OUT_WASM_NAME}");
-        if let Err(e) = app_wasm.emit_wasm(&out_wasm_path) {
+        if let Err(e) = fs::write(&out_wasm_path, instrumented_module) {
             err.add_error(ErrorGen::get_unexpected_error(
                 true,
                 Some(format!(
@@ -108,70 +73,68 @@ fn instrument_dfinity_with_fault_injection() {
     }
 }
 
-#[test]
-fn instrument_handwritten_wasm_call() {
-    common::setup_logger();
-    // executable is located at target/debug/whamm
-    let executable = "target/debug/whamm";
-
+fn run_wat2wasm(original_wat_path: &str, original_wasm_path: &str) {
     // if you want to change the wat file
     // (calling wat2wasm from a child process doesn't work
     //  since somehow the executable can't write to the file system directly)
-    let file_data = fs::read("tests/apps/handwritten/add.wat").unwrap();
+    let file_data = fs::read(original_wat_path).unwrap();
     let wasm_data = Wat2Wasm::new()
         .write_debug_names(true)
         .convert(file_data)
         .unwrap();
-    fs::write("tests/apps/handwritten/add.wasm", wasm_data).unwrap();
+    fs::write(original_wasm_path, wasm_data).unwrap();
+}
+
+fn run_wasm2wat(instrumented_wasm_path: &str) {
+    let file_data = fs::read(instrumented_wasm_path).unwrap();
+    let wat_data = wasm2wat(file_data).unwrap();
+    println!("{}", wat_data);
+}
+
+fn run_whamm_bin(original_wasm_path: &str, monitor_path: &str, instrumented_wasm_path: &str) {
+    // executable is located at target/debug/whamm
+    let executable = "target/debug/whamm";
 
     let res = Command::new(executable)
         .arg("instr")
         .arg("--script")
-        .arg("tests/scripts/instr.mm")
+        .arg(monitor_path)
         .arg("--app")
-        .arg("tests/apps/handwritten/add.wasm")
+        .arg(original_wasm_path)
         .arg("--output-path")
-        .arg("output/integration-handwritten_add.wasm")
+        .arg(instrumented_wasm_path)
         .output()
         .expect("failed to execute process");
     assert!(res.status.success());
+}
 
-    let file_data = fs::read("output/integration-handwritten_add.wasm").unwrap();
-    let wat_data = wasm2wat(file_data).unwrap();
-    println!("{}", wat_data);
+fn run_basic_instrumentation(original_wat_path: &str, original_wasm_path: &str, monitor_path: &str, instrumented_wasm_path: &str) {
+    run_wat2wasm(original_wat_path, original_wasm_path);
+    run_whamm_bin(original_wasm_path, monitor_path, instrumented_wasm_path);
+}
+
+#[test]
+fn instrument_handwritten_wasm_call() {
+    common::setup_logger();
+    let original_wat_path = "tests/apps/handwritten/add.wat";
+    let original_wasm_path = "tests/apps/handwritten/add.wasm";
+    let monitor_path = "tests/scripts/instr.mm";
+    let instrumented_wasm_path = "output/integration-handwritten_add.wasm";
+
+    run_basic_instrumentation(original_wat_path, original_wasm_path, monitor_path, instrumented_wasm_path);
+    run_wasm2wat(instrumented_wasm_path);
 }
 
 #[test]
 fn instrument_no_matches() {
     common::setup_logger();
-    // executable is located at target/debug/whamm
-    let executable = "target/debug/whamm";
+    let original_wat_path = "tests/apps/handwritten/no_matched_events.wat";
+    let original_wasm_path = "tests/apps/handwritten/no_matched_events.wasm";
+    let monitor_path = "tests/scripts/instr.mm";
+    let instrumented_wasm_path = "output/integration-no_matched_events.wasm";
 
-    // if you want to change the wat file
-    // (calling wat2wasm from a child process doesn't work
-    //  since somehow the executable can't write to the file system directly)
-    let file_data = fs::read("tests/apps/handwritten/no_matched_events.wat").unwrap();
-    let wasm_data = Wat2Wasm::new()
-        .write_debug_names(true)
-        .convert(file_data)
-        .unwrap();
-    fs::write("tests/apps/handwritten/no_matched_events.wasm", wasm_data).unwrap();
-
-    let res = Command::new(executable)
-        .arg("instr")
-        .arg("--script")
-        .arg("tests/scripts/instr.mm")
-        .arg("--app")
-        .arg("tests/apps/handwritten/no_matched_events.wasm")
-        .arg("--output-path")
-        .arg("output/integration-no_matched_events.wasm")
-        .output()
-        .expect("failed to execute process");
-    assert!(res.status.success());
-
-    let file_data = fs::read("output/integration-no_matched_events.wasm").unwrap();
-    let wat_data = wasm2wat(file_data).unwrap();
-    println!("{}", wat_data);
+    run_basic_instrumentation(original_wat_path, original_wasm_path, monitor_path, instrumented_wasm_path);
+    run_wasm2wat(instrumented_wasm_path);
 }
 
 #[test]
@@ -204,11 +167,34 @@ fn instrument_control_flow() {
     fs::write("output/output.wat", wat_data).unwrap();
 }
 
+fn test_with_wasmtime(original_wat_path: &str, original_wasm_path: &str, 
+                      monitor_path: &str, instrumented_wasm_path: &str) {
+    // executable is located at target/debug/whamm
+    let wasmtime = "wasmtime";
+    
+    run_wat2wasm(original_wat_path, original_wasm_path);
+
+    // running on its own SHOULD fail
+    let res = Command::new(wasmtime)
+        .arg(original_wasm_path)
+        .output()
+        .expect("failed to execute process");
+    assert!(!res.status.success());
+
+    run_whamm_bin(original_wasm_path, monitor_path, instrumented_wasm_path);
+
+    // running should now be successful!
+    let res = Command::new(wasmtime)
+        .arg(instrumented_wasm_path)
+        .output()
+        .expect("failed to execute process");
+    assert!(res.status.success());
+}
+
 #[test]
 fn instrument_spin_with_fault_injection() {
     common::setup_logger();
-    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-    let processed_scripts = common::setup_fault_injection("spin", &mut err);
+    let processed_scripts = common::setup_fault_injection("spin");
     // TODO -- change this when you've supported this monitor type
     assert_eq!(processed_scripts.len(), 0);
 }
@@ -216,8 +202,7 @@ fn instrument_spin_with_fault_injection() {
 #[test]
 fn instrument_with_wizard_monitors() {
     common::setup_logger();
-    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-    let processed_scripts = common::setup_wizard_monitors(&mut err);
+    let processed_scripts = common::setup_wizard_monitors();
     // TODO -- change this when you've supported this monitor type
     assert_eq!(processed_scripts.len(), 0);
 }
@@ -225,8 +210,7 @@ fn instrument_with_wizard_monitors() {
 #[test]
 fn instrument_with_replay() {
     common::setup_logger();
-    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-    let processed_scripts = common::setup_replay(&mut err);
+    let processed_scripts = common::setup_replay();
     // TODO -- change this when you've supported this monitor type
     assert_eq!(processed_scripts.len(), 0);
 }
