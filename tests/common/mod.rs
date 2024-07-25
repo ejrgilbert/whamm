@@ -90,8 +90,8 @@ pub fn run_whamm(wasm_module_bytes: &[u8], whamm_script: &String, script_path: &
     let mut symbol_table = build_symbol_table(&mut whamm, &mut err);
     symbol_table.reset();
 
-    let mut app_wasm = WasmModule::parse(wasm_module_bytes, false)
-        .expect("Failed to parse Wasm module");
+    let mut app_wasm =
+        WasmModule::parse(wasm_module_bytes, false).expect("Failed to parse Wasm module");
 
     // Create the memory tracker
     if app_wasm.memories.len() > 1 {
