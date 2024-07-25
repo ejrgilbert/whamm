@@ -90,7 +90,7 @@ pub fn run_whamm(wasm_module_bytes: &[u8], whamm_script: &String, script_path: &
     let mut symbol_table = build_symbol_table(&mut whamm, &mut err);
     symbol_table.reset();
 
-    let mut app_wasm = WasmModule::parse_only_module(wasm_module_bytes, false)
+    let mut app_wasm = WasmModule::parse(wasm_module_bytes, false)
         .expect("Failed to parse Wasm module");
 
     // Create the memory tracker
@@ -124,7 +124,7 @@ pub fn run_whamm(wasm_module_bytes: &[u8], whamm_script: &String, script_path: &
     instr.run();
     err.fatal_report("Integration Test");
 
-    app_wasm.encode_only_module()
+    app_wasm.encode()
 }
 
 /// create output path if it doesn't exist
