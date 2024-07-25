@@ -11,6 +11,7 @@ use orca::iterator::iterator_trait::Iterator as OrcaIterator;
 use orca::iterator::module_iterator::ModuleIterator;
 use orca::opcode::Opcode;
 use std::iter::Iterator;
+use orca::ModuleBuilder;
 use wasmparser::BlockType;
 
 const UNEXPECTED_ERR_MSG: &str =

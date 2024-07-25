@@ -108,7 +108,7 @@ fn run_instr(
 
     // Read app Wasm into Orca module
     let buff = std::fs::read(app_wasm_path).unwrap();
-    let mut app_wasm = WasmModule::parse_only_module(&buff, false).unwrap();
+    let mut app_wasm = WasmModule::parse(&buff, false).unwrap();
 
     // TODO Configure the generator based on target (wizard vs bytecode rewriting)
 
