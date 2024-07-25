@@ -14,6 +14,12 @@
 
 ;; NOTE: For wizard, don't do manipulations that change arg* (that requires the frame accessor). Instead change global state for now?
 ;; WHAMM --> wasm:opcode:call:before { arg0 = 1; }
+
+;; Use something like below to assert on the values of some report variable dynamically.
+;; REPORT_TRACE(ID) --> 1, 3, 5, 6, 7
+
+;; Use something like below to assert on report variable values!
+;; WITH_WHAMM --> (assert_return (invoke "instrument_me") (i32.const 1))
 (assert_return (invoke "instrument_me") (i32.const 1))
 (assert_return (invoke "instrument_me") (i32.const 1))
 ;; WHAMM --> wasm:opcode:call:before { arg0 = 1; }
