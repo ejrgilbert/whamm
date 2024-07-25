@@ -34,42 +34,12 @@ fn instrument_dfinity_with_fault_injection() {
             &script_text,
             &format!("{:?}", script_path.clone().as_path()),
         );
-
-        if !Path::new(OUT_BASE_DIR).exists() {
-            if let Err(err) = fs::create_dir(OUT_BASE_DIR) {
-                error!("{}", err.to_string());
-                panic!("Could not create base output path.");
-            }
-        }
-
-        let out_wasm_path = format!("{OUT_BASE_DIR}/{OUT_WASM_NAME}");
-        if let Err(e) = fs::write(&out_wasm_path, instrumented_module) {
-            err.add_error(ErrorGen::get_unexpected_error(
-                true,
-                Some(format!(
-                    "Failed to dump instrumented wasm to {} from error: {}",
-                    &out_wasm_path, e
-                )),
-                None,
-            ))
-        }
         err.fatal_report("Integration Test");
 
-        let mut wasm2wat = Command::new("wasm2wat");
-        wasm2wat.stdout(Stdio::null()).arg(out_wasm_path);
-
         // wasm2wat verification check
-        match wasm2wat.status() {
-            Ok(code) => {
-                if !code.success() {
-                    panic!("`wasm2wat` verification check failed!");
-                }
-            }
-            Err(err) => {
-                error!("{}", err.to_string());
-                panic!("`wasm2wat` verification check failed!");
-            }
-        };
+        if let Err(e) = wasm2wat(&instrumented_module) {
+            panic!("`wasm2wat` verification check failed with error: {e}");
+        }
     }
 }
 
