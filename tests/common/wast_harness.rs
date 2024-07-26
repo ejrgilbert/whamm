@@ -148,11 +148,11 @@ fn get_available_interpreters() -> Vec<String> {
             Ok(res) => {
                 if (*interpreter).eq(WIZENG_SPEC_INT) {
                     // This is a special case, if run without a valid Wasm file, the expected exit code is 3
-                    match res.status.code() {
-                        Some(code) => assert_eq!(code, 3),
-                        None => {
-                            println!("no code to compare");
-                            panic!();
+                    if let Some(code) = res.status.code() {
+                        if code == 3 {
+                            // The binary is configured, add!
+                            available_interpreters.push(int_path);
+                            continue;
                         }
                     }
                 }
