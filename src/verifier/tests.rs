@@ -2,7 +2,7 @@ use crate::parser::tests;
 use crate::verifier::verifier;
 
 use crate::common::error::ErrorGen;
-use log::{error, info};
+use log::{debug, error, info};
 
 // =================
 // = Setup Logging =
@@ -318,7 +318,7 @@ pub fn test_build_table() {
         match tests::get_ast(script, &mut err) {
             Some(mut ast) => {
                 let table = verifier::build_symbol_table(&mut ast, &mut err);
-                println!("{:#?}", table);
+                debug!("{:#?}", table);
             }
             None => {
                 error!("Could not get ast from script: {}", script);
@@ -347,7 +347,7 @@ wasm::call:alt /
     match tests::get_ast(script, &mut err) {
         Some(mut ast) => {
             let table = verifier::build_symbol_table(&mut ast, &mut err);
-            println!("{:#?}", table);
+            debug!("{:#?}", table);
 
             // 7 scopes: whamm, strcmp, script0, wasm, alt_call_by_name, alt_call_by_id, opcode, call, alt
             let num_scopes = 9;
@@ -358,7 +358,7 @@ wasm::call:alt /
             // asserts on very high level table structure
             assert_eq!(num_scopes, table.scopes.len());
 
-            println!("==================\n{:#?}", table.records);
+            debug!("==================\n{:#?}", table.records);
             assert_eq!(num_recs, table.records.len());
         }
         None => {

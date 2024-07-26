@@ -13,12 +13,14 @@
 ## Getting Started ##
 Take a look at the official [`whamm!` book](https://ejrgilbert.github.io/whamm/intro.html) for how to get started with this language.
 
-### Tutorials ###
+### Build ###
 
 To run basic build:
 ```shell
 cargo build
 ```
+
+### Test ###
 
 To run tests:
 ```shell
@@ -26,6 +28,8 @@ cargo test
 cargo test parser # Only run the tests for the `parser` module
 cargo test -- --nocapture # With stdout tracing
 ```
+
+### Run ###
 
 To run project (there are example Scripts in `tests/scripts` folder):
 ```shell

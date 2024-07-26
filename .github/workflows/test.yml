@@ -102,6 +102,6 @@ jobs:
       - name: Build
         run: |
           rustup target add wasm32-unknown-unknown
-          cargo build --verbose
+          cargo build
       - name: Run tests
         run: cargo test --verbose -- --nocapture

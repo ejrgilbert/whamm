@@ -81,6 +81,8 @@ fn run_wast_tests(wast_should_fail: Vec<String>, wast_should_pass: Vec<String>) 
         1. the wizeng interpreter, named '{WIZENG_SPEC_INT}'. https://github.com/titzer/wizard-engine/tree/master\n\
         2. the Wasm reference interpreter, named '{WASM_REF_INT}'. https://github.com/WebAssembly/spec/tree/main/interpreter\n");
 
+    // TODO -- remove, debugging GitHub actions
+    assert_eq!(inters.len(), 2);
     println!("\n>>> available interpreters:");
     for (i, inter) in inters.iter().enumerate() {
         println!("{i}. {inter}");
@@ -128,7 +130,7 @@ fn run_wast_test(inter: &String, wast_file_name: &String) -> Output {
         .expect("failed to execute process")
 }
 
-const INT_PATH: &str = "output/tests/interpreters";
+const INT_PATH: &str = "./output/tests/interpreters";
 const WIZENG_SPEC_INT: &str = "spectest.x86-linux";
 const WASM_REF_INT: &str = "wasm";
 fn get_available_interpreters() -> Vec<String> {
@@ -138,7 +140,10 @@ fn get_available_interpreters() -> Vec<String> {
     for interpreter in supported_interpreters.iter() {
         let int_path = format!("{INT_PATH}/{interpreter}");
         match Command::new(&int_path).output() {
-            Err(..) => {}
+            Err(e) => {
+                // TODO -- remove, debugging GitHub actions
+                panic!("Failed to run interpreter binary: {}", e);
+            }
             Ok(res) => {
                 if res.status.success() {
                     available_interpreters.push(int_path);

@@ -5,7 +5,7 @@ use glob::{glob, glob_with};
 
 use crate::common::error::ErrorGen;
 use crate::parser::print_visitor::AsStrVisitor;
-use log::{error, info, warn};
+use log::{debug, error, info, warn};
 
 // =================
 // = Setup Logging =
@@ -518,7 +518,7 @@ pub fn test_ast_special_cases() {
 
 fn print_ast(ast: &Whamm) {
     let mut visitor = AsStrVisitor { indent: 0 };
-    println!("{}", visitor.visit_whamm(ast));
+    debug!("{}", visitor.visit_whamm(ast));
 }
 
 #[test]
