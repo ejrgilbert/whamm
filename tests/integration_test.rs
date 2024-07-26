@@ -1,17 +1,11 @@
 mod common;
 
-use crate::common::run_whamm;
-use log::error;
+use crate::common::{run_basic_instrumentation, run_whamm, run_whamm_bin, wasm2wat_on_file};
 use std::fs;
-use std::path::Path;
-use std::process::{Command, Stdio};
-use wabt::{wasm2wat, Wat2Wasm};
+use std::process::Command;
 use whamm::common::error::ErrorGen;
 
 const APP_WASM_PATH: &str = "tests/apps/dfinity/users.wasm";
-
-const OUT_BASE_DIR: &str = "target";
-const OUT_WASM_NAME: &str = "out.wasm";
 
 #[test]
 fn run_wast_tests() {
@@ -29,63 +23,13 @@ fn instrument_dfinity_with_fault_injection() {
     err.fatal_report("Integration Test");
 
     for (script_path, script_text) in processed_scripts {
-        let instrumented_module = run_whamm(
+        let _ = run_whamm(
             &fs::read(APP_WASM_PATH).unwrap(),
             &script_text,
             &format!("{:?}", script_path.clone().as_path()),
         );
         err.fatal_report("Integration Test");
-
-        // wasm2wat verification check
-        if let Err(e) = wasm2wat(&instrumented_module) {
-            panic!("`wasm2wat` verification check failed with error: {e}");
-        }
     }
-}
-
-fn run_wat2wasm(original_wat_path: &str, original_wasm_path: &str) {
-    // if you want to change the wat file
-    // (calling wat2wasm from a child process doesn't work
-    //  since somehow the executable can't write to the file system directly)
-    let file_data = fs::read(original_wat_path).unwrap();
-    let wasm_data = Wat2Wasm::new()
-        .write_debug_names(true)
-        .convert(file_data)
-        .unwrap();
-    fs::write(original_wasm_path, wasm_data).unwrap();
-}
-
-fn run_wasm2wat(instrumented_wasm_path: &str) {
-    let file_data = fs::read(instrumented_wasm_path).unwrap();
-    let wat_data = wasm2wat(file_data).unwrap();
-    println!("{}", wat_data);
-}
-
-fn run_whamm_bin(original_wasm_path: &str, monitor_path: &str, instrumented_wasm_path: &str) {
-    // executable is located at target/debug/whamm
-    let executable = "target/debug/whamm";
-
-    let res = Command::new(executable)
-        .arg("instr")
-        .arg("--script")
-        .arg(monitor_path)
-        .arg("--app")
-        .arg(original_wasm_path)
-        .arg("--output-path")
-        .arg(instrumented_wasm_path)
-        .output()
-        .expect("failed to execute process");
-    assert!(res.status.success());
-}
-
-fn run_basic_instrumentation(
-    original_wat_path: &str,
-    original_wasm_path: &str,
-    monitor_path: &str,
-    instrumented_wasm_path: &str,
-) {
-    run_wat2wasm(original_wat_path, original_wasm_path);
-    run_whamm_bin(original_wasm_path, monitor_path, instrumented_wasm_path);
 }
 
 #[test]
@@ -102,7 +46,6 @@ fn instrument_handwritten_wasm_call() {
         monitor_path,
         instrumented_wasm_path,
     );
-    run_wasm2wat(instrumented_wasm_path);
 }
 
 #[test]
@@ -119,15 +62,12 @@ fn instrument_no_matches() {
         monitor_path,
         instrumented_wasm_path,
     );
-    run_wasm2wat(instrumented_wasm_path);
 }
 
 #[test]
 fn instrument_control_flow() {
     common::setup_logger();
-    let executable = "target/debug/whamm";
-
-    // run cargo run on control flow
+    // Build the control_flow Rust project
     let a = Command::new("cargo")
         .arg("build")
         .arg("--target")
@@ -137,47 +77,13 @@ fn instrument_control_flow() {
         .expect("failed to execute process");
     assert!(a.status.success());
 
-    let res = Command::new(executable)
-        .arg("instr")
-        .arg("--script")
-        .arg("tests/scripts/instr.mm")
-        .arg("--app")
-        .arg("wasm_playground/control_flow/target/wasm32-unknown-unknown/debug/cf.wasm")
-        .output()
-        .expect("failed to execute process");
-    assert!(res.status.success());
-
-    let file_data = fs::read("output/output.wasm").unwrap();
-    let wat_data = wasm2wat(file_data).unwrap();
-    fs::write("output/output.wat", wat_data).unwrap();
-}
-
-fn test_with_wasmtime(
-    original_wat_path: &str,
-    original_wasm_path: &str,
-    monitor_path: &str,
-    instrumented_wasm_path: &str,
-) {
-    // executable is located at target/debug/whamm
-    let wasmtime = "wasmtime";
-
-    run_wat2wasm(original_wat_path, original_wasm_path);
-
-    // running on its own SHOULD fail
-    let res = Command::new(wasmtime)
-        .arg(original_wasm_path)
-        .output()
-        .expect("failed to execute process");
-    assert!(!res.status.success());
+    let monitor_path = "tests/scripts/instr.mm";
+    let original_wasm_path =
+        "wasm_playground/control_flow/target/wasm32-unknown-unknown/debug/cf.wasm";
+    let instrumented_wasm_path = "output/integration-control_flow.wasm";
 
     run_whamm_bin(original_wasm_path, monitor_path, instrumented_wasm_path);
-
-    // running should now be successful!
-    let res = Command::new(wasmtime)
-        .arg(instrumented_wasm_path)
-        .output()
-        .expect("failed to execute process");
-    assert!(res.status.success());
+    wasm2wat_on_file(instrumented_wasm_path);
 }
 
 #[test]

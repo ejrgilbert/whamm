@@ -545,9 +545,11 @@ impl Event for OpcodeEvent {
                     // low FIDs are imports (if fid < module.imports.len(), fid is an import)
                     let func_info = if let Some(import) = app_wasm.imports.get(*fid as usize) {
                         // This is an imported function (FIDs too large will return None)
-                        if import.name == "call_new" {
-                            println!("call_new!!");
-                        }
+
+                        // UNCOMMENT FOR DEBUGGING PURPOSES
+                        // if import.name == "call_new" {
+                        //     println!("call_new!!");
+                        // }
                         FuncInfo {
                             func_kind: "import".to_string(),
                             module: import.module.to_string(),

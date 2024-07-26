@@ -18,9 +18,10 @@
 ;; Use something like below to assert on the values of some report variable dynamically.
 ;; REPORT_TRACE(ID) --> 1, 3, 5, 6, 7
 
+(assert_return (invoke "instrument_me") (i32.const 1))
 ;; Use something like below to assert on report variable values!
-;; WITH_WHAMM --> (assert_return (invoke "instrument_me") (i32.const 1))
+;; WITH_WHAMM --> (assert_return (invoke "get_report_var" (i32.const 1)) (i32.const 7))
 (assert_return (invoke "instrument_me") (i32.const 1))
-(assert_return (invoke "instrument_me") (i32.const 1))
+
 ;; WHAMM --> wasm:opcode:call:before { arg0 = 1; }
 (assert_return (invoke "instrument_me") (i32.const 1))

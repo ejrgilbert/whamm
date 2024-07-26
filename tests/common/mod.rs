@@ -2,12 +2,15 @@ pub mod wast_harness;
 
 use orca::ir::module::Module as WasmModule;
 use std::collections::HashMap;
+use std::fs;
 use std::path::PathBuf;
+use std::process::Command;
 use whamm::parser::types::Whamm;
 use whamm::parser::whamm_parser::*;
 
 use glob::{glob, glob_with};
-use log::{error, info, warn};
+use log::{debug, error, info, warn};
+use wabt::{wasm2wat, wat2wasm};
 use whamm::common::error::ErrorGen;
 use whamm::emitter::rewriting::module_emitter::{MemoryTracker, ModuleEmitter};
 use whamm::emitter::rewriting::visiting_emitter::VisitingEmitter;
@@ -40,7 +43,7 @@ fn get_test_scripts(sub_dir: &str) -> Vec<(PathBuf, String)> {
         .expect("Failed to read glob pattern")
     {
         let file_name = path.as_ref().unwrap();
-        let unparsed_file = std::fs::read_to_string(file_name)
+        let unparsed_file = fs::read_to_string(file_name)
             .unwrap_or_else(|_| panic!("Unable to read file at {:?}", &path));
         scripts.push((file_name.clone(), unparsed_file));
     }
@@ -72,7 +75,11 @@ fn get_ast(script: &str, err: &mut ErrorGen) -> Option<Whamm> {
     }
 }
 
-pub fn run_whamm(wasm_module_bytes: &[u8], whamm_script: &String, script_path: &str) -> Vec<u8> {
+pub fn run_whamm(
+    wasm_module_bytes: &[u8],
+    whamm_script: &String,
+    script_path: &str,
+) -> (Vec<u8>, String) {
     let mut err = ErrorGen::new(script_path.to_string(), whamm_script.clone(), 0);
 
     let ast_res = get_ast(whamm_script, &mut err);
@@ -82,7 +89,7 @@ pub fn run_whamm(wasm_module_bytes: &[u8], whamm_script: &String, script_path: &
         &whamm_script
     );
     let mut whamm = ast_res.unwrap();
-    err.fatal_report("WAST Test Harness");
+    err.fatal_report("IntegrationTest");
 
     // Build the behavior tree from the AST
     let simple_ast = build_simple_ast(&whamm, &mut err);
@@ -111,7 +118,7 @@ pub fn run_whamm(wasm_module_bytes: &[u8], whamm_script: &String, script_path: &
         err: &mut err,
     };
     assert!(init.run(&mut whamm));
-    err.fatal_report("Integration Test");
+    err.fatal_report("IntegrationTest");
 
     // Phase 1 of instrumentation (actually emits the instrumentation code)
     // This structure is necessary since we need to have the fns/globals injected (a single time)
@@ -122,15 +129,76 @@ pub fn run_whamm(wasm_module_bytes: &[u8], whamm_script: &String, script_path: &
         &mut err,
     );
     instr.run();
-    err.fatal_report("Integration Test");
+    err.fatal_report("IntegrationTest");
 
-    app_wasm.encode()
+    let instrumented_module_wasm = app_wasm.encode();
+    let instrumented_module_wat = match wasm2wat(&instrumented_module_wasm) {
+        Err(e) => panic!("`wasm2wat` verification check failed with error: {}", e),
+        Ok(wat) => wat,
+    };
+
+    (instrumented_module_wasm, instrumented_module_wat)
+}
+
+pub fn run_whamm_bin(original_wasm_path: &str, monitor_path: &str, instrumented_wasm_path: &str) {
+    // executable is located at target/debug/whamm
+    let executable = "target/debug/whamm";
+
+    let res = Command::new(executable)
+        .arg("instr")
+        .arg("--script")
+        .arg(monitor_path)
+        .arg("--app")
+        .arg(original_wasm_path)
+        .arg("--output-path")
+        .arg(instrumented_wasm_path)
+        .output()
+        .expect("failed to execute process");
+    assert!(res.status.success());
+}
+
+pub fn run_basic_instrumentation(
+    original_wat_path: &str,
+    original_wasm_path: &str,
+    monitor_path: &str,
+    instrumented_wasm_path: &str,
+) {
+    wat2wasm_on_file(original_wat_path, original_wasm_path);
+    run_whamm_bin(original_wasm_path, monitor_path, instrumented_wasm_path);
+    wasm2wat_on_file(instrumented_wasm_path);
+}
+
+pub fn wat2wasm_on_file(original_wat_path: &str, original_wasm_path: &str) {
+    // if you want to change the wat file
+    // (calling wat2wasm from a child process doesn't work
+    //  since somehow the executable can't write to the file system directly)
+    let file_data = fs::read(original_wat_path).unwrap();
+    let wasm_data = match wat2wasm(file_data) {
+        Err(e) => {
+            panic!("wat2wasm failed with error: {}", e)
+        }
+        Ok(data) => data,
+    };
+
+    fs::write(original_wasm_path, wasm_data).unwrap();
+}
+
+pub fn wasm2wat_on_file(instrumented_wasm_path: &str) {
+    let file_data = fs::read(instrumented_wasm_path).unwrap();
+    let wat_data = match wasm2wat(file_data) {
+        Err(e) => {
+            panic!("wasm2wat failed with error: {}", e)
+        }
+        Ok(data) => data,
+    };
+
+    debug!("{}", wat_data);
 }
 
 /// create output path if it doesn't exist
 fn try_path(path: &String) {
     if !PathBuf::from(path).exists() {
-        std::fs::create_dir_all(PathBuf::from(path).parent().unwrap()).unwrap();
+        fs::create_dir_all(PathBuf::from(path).parent().unwrap()).unwrap();
     }
 }
 

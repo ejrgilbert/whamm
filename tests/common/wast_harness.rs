@@ -4,7 +4,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
-use wabt::{wasm2wat, wat2wasm};
+use wabt::wat2wasm;
 const OUTPUT_WHAMMED_WAST: &str = "output/tests/wast_suite/should_pass";
 const OUTPUT_UNINSTR_WAST: &str = "output/tests/wast_suite/should_fail";
 
@@ -81,10 +81,11 @@ fn run_wast_tests(wast_should_fail: Vec<String>, wast_should_pass: Vec<String>) 
         1. the wizeng interpreter, named '{WIZENG_SPEC_INT}'. https://github.com/titzer/wizard-engine/tree/master\n\
         2. the Wasm reference interpreter, named '{WASM_REF_INT}'. https://github.com/WebAssembly/spec/tree/main/interpreter\n");
 
-    println!("available interpreters:");
+    println!("\n>>> available interpreters:");
     for (i, inter) in inters.iter().enumerate() {
         println!("{i}. {inter}");
     }
+    println!();
 
     run_wast_tests_that_should_fail(&inters, wast_should_fail);
     run_wast_tests_that_should_pass(&inters, wast_should_pass);
@@ -187,12 +188,11 @@ fn generate_instrumented_bin_wast(
         // (which is then instrumented in subsequent tests)
         let cloned_module = module_wasm.to_vec();
         let module_to_instrument = cloned_module.as_slice();
-        let instrumented_module_wasm = run_whamm(
+        let (instrumented_module_wasm, instrumented_module_wat) = run_whamm(
             module_to_instrument,
             &test_case.whamm_script,
             &format!("{:?}", wast_path),
         );
-        let instrumented_module_wat = wasm2wat(&instrumented_module_wasm).unwrap();
 
         debug!("AFTER INSTRUMENTATION");
         debug!("{instrumented_module_wat}");
