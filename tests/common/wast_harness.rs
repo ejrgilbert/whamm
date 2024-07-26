@@ -142,15 +142,28 @@ fn get_available_interpreters() -> Vec<String> {
         match Command::new(&int_path).output() {
             Err(e) => {
                 // TODO -- remove, debugging GitHub actions
-                panic!("Failed to run interpreter binary: {}", e);
+                println!("Failed to run interpreter binary: {}", e);
+                panic!();
             }
             Ok(res) => {
+                if (*interpreter).eq(WIZENG_SPEC_INT) {
+                    // This is a special case, if run without a valid Wasm file, the expected exit code is 3
+                    match res.status.code() {
+                        Some(code) => assert_eq!(code, 3),
+                        None => {
+                            println!("no code to compare");
+                            panic!();
+                        }
+                    }
+                }
+                
                 if res.status.success() {
                     available_interpreters.push(int_path);
                 }
             }
         }
     }
+    
 
     available_interpreters
 }
