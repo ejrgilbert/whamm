@@ -1,0 +1,108 @@
+name: Rust Testing
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Check Code style quickly by running `rustfmt` over all code
+  rustfmt:
+    name: Rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - run: rustup component add rustfmt
+      - run: cargo fmt --all -- --check
+
+
+  build_and_test:
+    name: Build project and run all unit AND integration tests
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: plinioh/setup-binary-action@v1.0.0
+        with:
+          binaryName: wasm2wat
+          binaryUrl: https://github.com/WebAssembly/wabt/releases/download/1.0.34/wabt-1.0.34-ubuntu.tar.gz
+          binaryPathInArchive: wabt-1.0.34/bin/wasm2wat
+      - uses: plinioh/setup-binary-action@v1.0.0
+        with:
+          binaryName: wasm
+          binaryUrl: https://github.com/WebAssembly/wabt/releases/download/1.0.34/wabt-1.0.34-ubuntu.tar.gz
+          binaryPathInArchive: wabt-1.0.34/bin/wasm2wat
+      - name: Set-up OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5
+      #          echo "[INFO] Installing OCaml..."
+      #          apt-get update -y
+      #          apt-get install -y opam
+      - name: Setup progress
+        run: |
+          echo "[INFO] Installing 'progress'..."
+          git clone https://github.com/titzer/progress.git
+          echo "$GITHUB_WORKSPACE/progress/bin" >> $GITHUB_PATH
+      - name: Setup Virgil
+        run: |
+          echo "[INFO] Testing 'progress' is on PATH..."
+          which progress.x86-64-linux
+          
+          echo "[INFO] Building 'virgil'..."
+          git clone https://github.com/titzer/virgil.git
+          pushd virgil && make && popd
+          echo "$GITHUB_WORKSPACE/virgil/bin" >> $GITHUB_PATH
+      - name: Setup Wizard-Engine
+        run: |
+          echo "[INFO] Testing 'virgil' is on PATH..."
+          which v3c
+          
+          echo "[INFO] Building 'wizeng'..."
+          echo "[TODO] -- SWITCH TO MAIN WIZENG BRANCH WHEN PR IS MERGED."
+          git clone --branch task/spectest-cli https://github.com/ejrgilbert/wizard-engine.git
+          pushd wizard-engine && make -j
+          popd
+          
+          echo "[INFO] Configuring the 'wizeng' interpreter..."
+          mkdir -p output/tests/interpreters
+          mv wizard-engine/bin/spectest.x86-linux output/tests/interpreters
+          
+          echo "[INFO] Testing the 'wizeng' interpreter configuration..."
+          ls -al output/tests/interpreters
+          ./output/tests/interpreters/spectest.x86-linux --help || [ $? == 3 ]
+          
+          echo "[INFO] Configuring OCaml..."
+          opam init -y
+          eval $(opam env)
+          opam install -y dune
+          opam install -y menhir
+          
+          echo "[INFO] Building the wasm ref interpreter..."
+          ./wizard-engine/test/wasm-spec/update.sh
+          pushd wizard-engine/test/wasm-spec/repos/spec/interpreter && make
+          popd
+
+          echo "[INFO] Configuring the wasm ref interpreter..."
+          mv wizard-engine/test/wasm-spec/repos/spec/interpreter/wasm output/tests/interpreters
+
+          echo "[INFO] Testing the wasm ref interpreter configuration..."
+          ./output/tests/interpreters/wasm --help
+      - name: Setup and Build Orca
+        run: |
+          cd .. && git clone https://github.com/thesuhas/orca.git
+          cd orca
+          cargo build
+      - name: Build
+        run: |
+          rustup target add wasm32-unknown-unknown
+          cargo build
+      - name: Run tests
+        run: cargo test --verbose -- --nocapture

@@ -10,6 +10,7 @@ use orca::ir::module::Module;
 use orca::iterator::iterator_trait::Iterator as OrcaIterator;
 use orca::iterator::module_iterator::ModuleIterator;
 use orca::opcode::Opcode;
+use orca::ModuleBuilder;
 use std::iter::Iterator;
 use wasmparser::BlockType;
 
