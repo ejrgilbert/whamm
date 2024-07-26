@@ -103,7 +103,6 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
             "insert_map_i32i32i32tuple_i32".to_string(),
             "get_i32_i32".to_string(),
             "get_i32_from_i32i32i32tuple".to_string(),
-            "add_report_var".to_string(),
             "add_report_map".to_string(),
             "output_report_maps".to_string(),
             "print_info".to_string(),

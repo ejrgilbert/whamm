@@ -7,6 +7,7 @@ pub struct ReportVarMetadata {
     pub variable_metadata: HashMap<usize, Metadata>,
     pub all_metadata: HashSet<Metadata>,
     pub curr_location: LocationData,
+    pub used_i32_gids: Vec<usize>,
     pub available_i32_gids: Vec<usize>,
     pub flush_soon: bool,
 }
@@ -20,6 +21,7 @@ impl ReportVarMetadata {
                 script_id: "0".to_string(),
             },
             available_i32_gids: vec![],
+            used_i32_gids: vec![],
             flush_soon: false,
         }
     }
@@ -39,9 +41,7 @@ impl ReportVarMetadata {
     }
     pub fn put_global_metadata(&mut self, gid: usize, name: String) {
         let script_id = match &self.curr_location {
-            LocationData::Global { script_id } => {
-                script_id.clone()
-            }
+            LocationData::Global { script_id } => script_id.clone(),
             _ => panic!("Error: Expected global location data"),
         };
         let metadata = Metadata::Global { name, script_id };
@@ -50,11 +50,7 @@ impl ReportVarMetadata {
             panic!("Duplicate metadata entry!");
         }
     }
-    pub fn put_local_metadata(
-        &mut self,
-        gid: usize,
-        name: String,
-    ) {
+    pub fn put_local_metadata(&mut self, gid: usize, name: String) {
         let script_id;
         let bytecode_loc;
         let probe_id;
@@ -114,7 +110,7 @@ pub enum Metadata {
     Local {
         name: String,
         script_id: String,
-        bytecode_loc: (i32,i32),
+        bytecode_loc: (i32, i32),
         probe_id: String,
     },
 }

@@ -4,12 +4,13 @@ use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::emitter::rewriting::rules::{Arg, LocInfo, Provider, WhammProvider};
 use crate::emitter::rewriting::{emit_expr, whamm_type_to_wasm};
-use crate::emitter::rewriting::{emit_stmt, Emitter};
+use crate::emitter::rewriting::{emit_stmt, print_report_all, Emitter};
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{DataType, Definition, Expr, ProbeSpec, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca::ir::module::Module;
 use orca::ir::types::{Global, Location as OrcaLocation};
+use orca::iterator::component_iterator::ComponentIterator;
 use orca::iterator::iterator_trait::Iterator as OrcaIterator;
 use orca::iterator::module_iterator::ModuleIterator;
 use orca::opcode::Opcode;
@@ -331,7 +332,16 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     }
     fn set_curr_loc(&mut self) {
         let loc = match self.app_iter.curr_loc() {
-            OrcaLocation::Module { func_idx, instr_idx,  .. } | OrcaLocation::Component { func_idx, instr_idx, .. } => (func_idx as i32, instr_idx as i32),
+            OrcaLocation::Module {
+                func_idx,
+                instr_idx,
+                ..
+            }
+            | OrcaLocation::Component {
+                func_idx,
+                instr_idx,
+                ..
+            } => (func_idx as i32, instr_idx as i32),
         };
         //set the current location in bytecode and load some new globals for potential report vars
         self.report_var_metadata.set_loc(
@@ -345,16 +355,22 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
 impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
     fn emit_body(&mut self, body: &mut [Statement]) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
-        for _ in 0 .. self.curr_num_reports{
+        for _ in 0..self.curr_num_reports {
             let default_global = whamm_type_to_wasm(&DataType::I32);
             let gid = self.app_iter.module.add_global(default_global);
             self.report_var_metadata
                 .available_i32_gids
                 .push(gid as usize);
-        
         }
         for stmt in body.iter_mut() {
             is_success &= self.emit_stmt(stmt)?;
+            //now emit the changes to the report vars if needed
+            print_report_all(
+                &mut self.app_iter,
+                self.table,
+                self.report_var_metadata,
+                UNEXPECTED_ERR_MSG,
+            );
         }
         Ok(is_success)
     }
@@ -398,7 +414,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
         }
 
         // everything else can be emitted as normal!
-        
+
         emit_stmt(
             stmt,
             &mut self.app_iter,

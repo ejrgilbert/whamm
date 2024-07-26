@@ -431,7 +431,7 @@ impl SymbolTableBuilder<'_> {
 
     fn visit_provided_globals(&mut self, globals: &HashMap<String, ProvidedGlobal>) {
         for (name, ProvidedGlobal { global, .. }) in globals.iter() {
-            self.add_global(global.ty.clone(), name.clone(), true,false, None);
+            self.add_global(global.ty.clone(), name.clone(), true, false, None);
         }
     }
 }
@@ -698,7 +698,13 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
             } = &var_id
             {
                 // Add symbol to table
-                self.add_global(ty.clone(), name.clone(), *is_comp_provided, is_report_var, loc.clone());
+                self.add_global(
+                    ty.clone(),
+                    name.clone(),
+                    *is_comp_provided,
+                    is_report_var,
+                    loc.clone(),
+                );
             } else {
                 self.err.unexpected_error(
                     true,

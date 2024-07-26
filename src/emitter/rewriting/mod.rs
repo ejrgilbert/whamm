@@ -334,6 +334,11 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                             .expect("Map function not in symbol table");
                         injector.i32_const(to_call.1 as i32);
                         injector.call(*fn_id as u32);
+                        let add_map_to_report_id = table
+                            .lookup("add_report_map")
+                            .expect("Map function not in symbol table");
+                        injector.i32_const(to_call.1 as i32);
+                        injector.call(*add_map_to_report_id as u32);
                         return Ok(true);
                     }
 
@@ -362,6 +367,7 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                             )));
                         }
                         let id = report_var_metadata.available_i32_gids.remove(0);
+                        report_var_metadata.used_i32_gids.push(id);
                         report_var_metadata.put_local_metadata(id, var_name.clone());
                         *addr = Some(VarAddr::Global { addr: id as u32 });
                         return Ok(true);
@@ -507,7 +513,7 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
         if let Expr::VarId { name, .. } = map {
             match get_map_info(table, name) {
                 Ok((map_id, key_ty, val_ty)) => {
-                        //no Record in ST, so always flush after a set_map
+                    //no Record in ST, so always flush after a set_map
                     report_var_metadata.flush_soon = true;
                     let to_call = map_lib_adapter.set_map_insert(key_ty, val_ty);
                     let fn_id = table
@@ -1247,4 +1253,27 @@ fn get_map_info(
         }
     }
     return Ok((map_id, key_ty, val_ty));
+}
+fn print_report_all<'a, T: Opcode<'a> + ModuleBuilder>(
+    injector: &mut T,
+    table: &mut SymbolTable,
+    report_var_metadata: &mut ReportVarMetadata,
+    err_msg: &str,
+) {
+    if !report_var_metadata.flush_soon {
+        return;
+    }
+    for gid in report_var_metadata.used_i32_gids.iter() {
+        let fn_id = table
+            .lookup("print_info")
+            .expect("print_info function not in symbol table");
+        injector.i32_const(*gid as i32);
+        injector.global_get(*gid as u32);
+        injector.call(*fn_id as u32);
+    }
+    let fn_id = table
+        .lookup("output_report_maps")
+        .expect("output_report_maps function not in symbol table");
+    injector.call(*fn_id as u32);
+    report_var_metadata.flush_soon = false;
 }

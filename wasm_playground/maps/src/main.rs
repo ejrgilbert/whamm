@@ -12,7 +12,6 @@ use std::sync::Mutex;
 static MY_MAPS: Lazy<Mutex<HashMap<i32, AnyMap>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
 #[no_mangle]
-static REPORT_VARS: Lazy<Mutex<Vec<i32>>> = Lazy::new(|| Mutex::new(Vec::new()));
 static REPORT_MAPS: Lazy<Mutex<Vec<i32>>> = Lazy::new(|| Mutex::new(Vec::new()));
 
 //this should initialize a map of maps -> from string (name) to any type of map
@@ -840,10 +839,7 @@ pub fn get_i32_i32(name: i32, key: i32) -> i32 {
     get_i32(name, &key)
 }
 //This is the stuff for report var 
-#[no_mangle]
-pub fn add_report_var(name: i32) {
-    REPORT_VARS.lock().unwrap().push(name);
-}
+
 #[no_mangle]
 pub fn add_report_map(name: i32) {
     REPORT_MAPS.lock().unwrap().push(name);
@@ -854,7 +850,7 @@ pub fn output_report_maps() {
         print_map(*name);
     }
 }
-#[no_mangle] 
+#[no_mangle]
 pub fn print_info(gid: i32, val: i32){
     println!("GID: {} -> {}", gid, val);
 }
@@ -878,6 +874,10 @@ pub fn bar(a: i32) -> i32 {
 pub fn inner_fn(a: i32) -> i32 {
     return a*15 - 3;  
 }
+// #[no_mangle]
+// pub extern "C" fn _start() {
+//     main();
+// }
 
 fn main() {
     let b = foo(5);

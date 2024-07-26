@@ -565,7 +565,6 @@ impl Event for OpcodeEvent {
                             },
                         }
                     };
-
                     // define static_data
                     loc_info.static_data.insert(
                         "target_fn_name".to_string(),
