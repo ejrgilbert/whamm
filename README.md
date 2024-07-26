@@ -24,11 +24,11 @@ cargo build
 
 In order to run the tests, a WebAssembly interpreter must be configured.
 The supported interpreters are:
-1. the Wizard engine interpreter. https://github.com/titzer/wizard-engine/tree/master\n\
-2. the Wasm reference interpreter. https://github.com/WebAssembly/spec/tree/main/interpreter\n
-Note that the Wizard interpreter does not run on Macs (yet...), so the Wasm reference interpreter will need to be configured in this context.
+1. the Wizard engine interpreter. https://github.com/titzer/wizard-engine/tree/master
+2. the Wasm reference interpreter. https://github.com/WebAssembly/spec/tree/main/interpreter
+   - Note that the Wizard interpreter does not run on Macs (yet...), so the Wasm reference interpreter will need to be configured in this context.
 
-**How to build the [Wizard GH project]() to acquire these binaries.**
+**How to build the [Wizard GH project]() to acquire these binaries:**
 1. [Install OCaml](https://opam.ocaml.org/doc/Install.html)
 2. Download [`progress`](https://github.com/titzer/progress) and ensure the `progress` binary is on your `PATH`
 3. Download and build [`wizeng`](https://github.com/titzer/wizard-engine/blob/master/doc/Building.md)
