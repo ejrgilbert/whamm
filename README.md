@@ -25,8 +25,8 @@ cargo build
 In order to run the tests, a WebAssembly interpreter must be configured.
 The supported interpreters are:
 1. the Wizard engine interpreter. https://github.com/titzer/wizard-engine/tree/master
-2. the Wasm reference interpreter. https://github.com/WebAssembly/spec/tree/main/interpreter
    - Note that the Wizard interpreter does not run on Macs (yet...), so the Wasm reference interpreter will need to be configured in this context.
+2. the Wasm reference interpreter. https://github.com/WebAssembly/spec/tree/main/interpreter
 
 **How to build the [Wizard GH project]() to acquire these binaries:**
 1. [Install OCaml](https://opam.ocaml.org/doc/Install.html)
@@ -36,10 +36,10 @@ The supported interpreters are:
 4. Build the Wasm reference interpreter through the Wizard repo, after running the below commands, the binary `wasm` should be located at `wizard-engine/test/wasm-spec/repos/spec/interpreter/wasm`
    ```bash
    # Configure OCaml
-   opam init -y
+   opam init
    eval $(opam env)
-   opam install -y dune
-   opam install -y menhir
+   opam install dune
+   opam install menhir
    
    # Build the wasm ref interpreter
    ./wizard-engine/test/wasm-spec/update.sh
