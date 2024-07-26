@@ -9,7 +9,7 @@ use crate::parser::types::Expr::{BinOp as ExprBinOp, VarId};
 use crate::parser::types::{BinOp, DataType, Expr, Value, Whamm};
 use crate::verifier::types::{Record, ScopeType, SymbolTable};
 use crate::verifier::verifier;
-use log::error;
+use log::{debug, error};
 use std::process::exit;
 
 pub fn setup_logger() {
@@ -22,7 +22,7 @@ fn get_rec<'a>(table: &'a mut SymbolTable, name: &str) -> Option<&'a mut Record>
         None => {
             error!("Variable symbol does not exist for name {}!", name);
             println!("{:#?}", table);
-            exit(1);
+            panic!();
         }
     };
 
@@ -82,21 +82,21 @@ fn hardcode_compiler_constants(table: &mut SymbolTable, err: &mut ErrorGen) {
         err.report();
     }
     move_through_scopes_til_match(ScopeType::Script, table, err);
-    println!("Scope name: {}", table.get_curr_scope().unwrap().name);
+    debug!("Scope name: {}", table.get_curr_scope().unwrap().name);
     // enter wasm scope
     if let Err(e) = table.enter_scope() {
         err.add_error(*e);
         err.report();
     }
     move_through_scopes_til_match(ScopeType::Provider, table, err);
-    println!("Scope name: {}", table.get_curr_scope().unwrap().name);
+    debug!("Scope name: {}", table.get_curr_scope().unwrap().name);
     // enter opcode scope
     if let Err(e) = table.enter_scope() {
         err.add_error(*e);
         err.report();
     }
     move_through_scopes_til_match(ScopeType::Package, table, err);
-    println!("Scope name: {}", table.get_curr_scope().unwrap().name);
+    debug!("Scope name: {}", table.get_curr_scope().unwrap().name);
     // enter call scope
     if let Err(e) = table.enter_scope() {
         err.add_error(*e);
@@ -272,7 +272,7 @@ wasm::call:alt /
             hardcode_compiler_constants(&mut table, &mut err);
 
             let folded_expr = ExprFolder::fold_expr(pred, &table);
-            println!("{:#?}", folded_expr);
+            debug!("{:#?}", folded_expr);
 
             // ExprFolder should not be able to simplify the Call expressions at all.
             if let ExprBinOp { lhs, op, rhs, .. } = pred {
