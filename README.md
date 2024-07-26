@@ -22,6 +22,36 @@ cargo build
 
 ### Test ###
 
+In order to run the tests, a WebAssembly interpreter must be configured.
+The supported interpreters are:
+1. the Wizard engine interpreter. https://github.com/titzer/wizard-engine/tree/master\n\
+2. the Wasm reference interpreter. https://github.com/WebAssembly/spec/tree/main/interpreter\n
+Note that the Wizard interpreter does not run on Macs (yet...), so the Wasm reference interpreter will need to be configured in this context.
+
+**How to build the [Wizard GH project]() to acquire these binaries.**
+1. [Install OCaml](https://opam.ocaml.org/doc/Install.html)
+2. Download [`progress`](https://github.com/titzer/progress) and ensure the `progress` binary is on your `PATH`
+3. Download and build [`wizeng`](https://github.com/titzer/wizard-engine/blob/master/doc/Building.md)
+   - After running `make -j`, the binary `spectest.x86-linux` should be located at `wizard-engine/bin/spectest.x86-linux`
+4. Build the Wasm reference interpreter through the Wizard repo, after running the below commands, the binary `wasm` should be located at `wizard-engine/test/wasm-spec/repos/spec/interpreter/wasm`
+   ```bash
+   # Configure OCaml
+   opam init -y
+   eval $(opam env)
+   opam install -y dune
+   opam install -y menhir
+   
+   # Build the wasm ref interpreter
+   ./wizard-engine/test/wasm-spec/update.sh
+   pushd wizard-engine/test/wasm-spec/repos/spec/interpreter
+   make
+   popd
+   ```
+
+The interpreter binaries must be runnable using the following commands (this can be done by placing symbolic links to the respective binaries):
+1. For Wizard: `./output/tests/interpreters/spectest.x86-linux`
+2. For Wasm-Ref: `./output/tests/interpreters/wasm`
+
 To run tests:
 ```shell
 cargo test
