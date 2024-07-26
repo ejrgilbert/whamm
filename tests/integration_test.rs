@@ -36,8 +36,7 @@ fn instrument_dfinity_with_fault_injection() {
         let simple_ast = build_simple_ast(&whamm, &mut err);
 
         let buff = fs::read(APP_WASM_PATH).unwrap();
-        let mut app_wasm =
-            WasmModule::parse_only_module(&buff, false).expect("Failed to parse Wasm module");
+        let mut app_wasm = WasmModule::parse(&buff, false).expect("Failed to parse Wasm module");
         let mut err = ErrorGen::new(script_path.clone(), script_text, 0);
 
         // Create the memory tracker

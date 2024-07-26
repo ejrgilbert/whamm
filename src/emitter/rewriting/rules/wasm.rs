@@ -559,7 +559,7 @@ impl Event for OpcodeEvent {
                                 Some(name) => name.clone(),
                                 None => "".to_string(),
                             },
-                            name: match &app_wasm.get_fname(*fid as usize) {
+                            name: match &app_wasm.get_fname((*fid as usize).try_into().unwrap()) {
                                 Some(name) => name.clone(),
                                 None => "".to_string(),
                             },

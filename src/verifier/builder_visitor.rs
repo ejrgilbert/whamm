@@ -376,6 +376,7 @@ impl SymbolTableBuilder<'_> {
             ty: ty.clone(),
             value: None,
             is_comp_provided: false,
+            is_report_var: false,
             addr: None,
             loc: var_id.loc().clone(),
         };
@@ -401,6 +402,7 @@ impl SymbolTableBuilder<'_> {
         ty: DataType,
         name: String,
         is_comp_provided: bool,
+        is_report_var: bool,
         loc: Option<Location>,
     ) {
         /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
@@ -417,6 +419,7 @@ impl SymbolTableBuilder<'_> {
                 name,
                 value: None,
                 is_comp_provided,
+                is_report_var,
                 addr: None,
                 loc,
             },
@@ -428,7 +431,7 @@ impl SymbolTableBuilder<'_> {
 
     fn visit_provided_globals(&mut self, globals: &HashMap<String, ProvidedGlobal>) {
         for (name, ProvidedGlobal { global, .. }) in globals.iter() {
-            self.add_global(global.ty.clone(), name.clone(), true, None);
+            self.add_global(global.ty.clone(), name.clone(), true,false, None);
         }
     }
 }
@@ -676,8 +679,12 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
                 None,
             );
         }
+        let mut is_report_var = false;
         let stmt = match &stmt {
-            Statement::ReportDecl { decl, .. } => &**decl,
+            Statement::ReportDecl { decl, .. } => {
+                is_report_var = true;
+                &**decl
+            }
             _ => stmt,
         };
         if let Statement::Decl {
@@ -691,7 +698,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
             } = &var_id
             {
                 // Add symbol to table
-                self.add_global(ty.clone(), name.clone(), *is_comp_provided, loc.clone());
+                self.add_global(ty.clone(), name.clone(), *is_comp_provided, is_report_var, loc.clone());
             } else {
                 self.err.unexpected_error(
                     true,

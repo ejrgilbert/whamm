@@ -405,6 +405,7 @@ pub trait Probe {
     fn get_mode_provided_fns(&self) -> &Vec<ProvidedFunction>;
     fn get_mode_provided_fns_mut(&mut self) -> &mut Vec<ProvidedFunction>;
     fn get_mode_provided_globals(&self) -> &HashMap<String, ProvidedGlobal>;
+    fn get_num_reports(&self) -> i32;
 }
 pub trait Event {
     fn name(&self) -> String;
@@ -933,9 +934,9 @@ impl Mode for WhammMode {
 pub struct WhammProbe {
     pub mode: WhammMode,
     pub loc: Option<Location>,
-
     pub predicate: Option<Expr>,
     pub body: Option<Vec<Statement>>,
+    pub num_reports: i32,
 }
 impl Probe for WhammProbe {
     fn mode_name(&self) -> String {
@@ -977,6 +978,9 @@ impl Probe for WhammProbe {
     fn get_mode_provided_globals(&self) -> &HashMap<String, ProvidedGlobal> {
         self.mode.get_provided_globals()
     }
+    fn get_num_reports(&self) -> i32 {
+        self.num_reports
+    }
 }
 impl WhammProbe {
     fn new(
@@ -989,6 +993,33 @@ impl WhammProbe {
             mode,
             loc,
             predicate,
+            num_reports: match &body {
+                Some(b) => {
+                    let mut count = 0;
+                    for stmt in b {
+                        match stmt {
+                            Statement::ReportDecl { .. } => count += 1,
+                            Statement::If { conseq, alt, .. } => {
+                                for stmt in &conseq.stmts {
+                                    match stmt {
+                                        Statement::ReportDecl { .. } => count += 1,
+                                        _ => (),
+                                    }
+                                }
+                                for stmt in &alt.stmts {
+                                    match stmt {
+                                        Statement::ReportDecl { .. } => count += 1,
+                                        _ => (),
+                                    }
+                                }
+                            }
+                            _ => (),
+                        }
+                    }
+                    count
+                }
+                None => 0,
+            },
             body,
         }
     }

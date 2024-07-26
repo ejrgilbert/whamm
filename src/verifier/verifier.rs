@@ -105,6 +105,7 @@ impl TypeChecker<'_> {
                 name,
                 value: None,
                 is_comp_provided,
+                is_report_var: false,
                 addr: None,
                 loc: loc.clone(),
             },

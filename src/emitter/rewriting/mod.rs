@@ -4,7 +4,7 @@ pub mod visiting_emitter;
 
 use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::map_lib_adapter::MapLibAdapter;
-use crate::emitter::report_var_metadata::{ReportVarMetadata, LocationData};
+use crate::emitter::report_var_metadata::{LocationData, ReportVarMetadata};
 use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{BinOp, DataType, Expr, Statement, UnOp, Value};
@@ -112,7 +112,15 @@ fn emit_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
             }
         }
         Statement::Return { .. } => unimplemented!(),
-        Statement::ReportDecl { .. } => todo!(),
+        Statement::ReportDecl { .. } => emit_report_decl_stmt(
+            stmt,
+            injector,
+            table,
+            mem_tracker,
+            map_lib_adapter,
+            report_var_metadata,
+            err_msg,
+        ),
         Statement::SetMap { .. } => emit_set_map_stmt(
             stmt,
             injector,
@@ -148,6 +156,7 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                                 name: name.clone(),
                                 value: None,
                                 is_comp_provided: false,
+                                is_report_var: false,
                                 addr: None,
                                 loc: None,
                             },
@@ -250,6 +259,7 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                                     name: name.clone(),
                                     value: None,
                                     is_comp_provided: false,
+                                    is_report_var: true,
                                     addr: None,
                                     loc: None,
                                 },
@@ -293,14 +303,13 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                                 script_id,
                                 bytecode_loc: bytecode_loc_cur,
                                 probe_id: probe_id_cur,
+                                num_reports: _,
                             } => {
                                 script_name = script_id;
                                 bytecode_loc = bytecode_loc_cur;
                                 probe_id = probe_id_cur;
                             }
-                            LocationData::Global{
-                                ..
-                            } => {
+                            LocationData::Global { .. } => {
                                 //ERR here because the location data should be local at this point via the visiting emitter
                                 return Err(Box::new(ErrorGen::get_unexpected_error(
                                     true,
@@ -309,7 +318,14 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                                 )));
                             }
                         }
-                        let to_call = map_lib_adapter.create_local_map(var_name.clone(),script_name.clone(), *bytecode_loc, probe_id.clone(), ty.clone(), report_var_metadata);
+                        let to_call = map_lib_adapter.create_local_map(
+                            var_name.clone(),
+                            script_name.clone(),
+                            *bytecode_loc,
+                            probe_id.clone(),
+                            ty.clone(),
+                            report_var_metadata,
+                        );
                         *addr = Some(VarAddr::MapId {
                             addr: to_call.1 as u32,
                         });
@@ -320,32 +336,55 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                         injector.call(*fn_id as u32);
                         return Ok(true);
                     }
-    
+
                     _ => {}
                 }
                 match &mut addr {
-                    Some(VarAddr::Global { addr: _addr }) | Some(VarAddr::MapId { addr: _addr }) => {
-                        // The global should already exist, do any initial setup here!
-                        return Ok(true)
-                    }
-                    Some(VarAddr::Local { .. }) | None => {
-                        // If the local already exists, it would be because the probe has been
-                        // emitted at another opcode location. Simply overwrite the previously saved
-                        // address.
+                    Some(VarAddr::Global { .. }) | None => {
                         let wasm_ty = whamm_type_to_wasm(ty).ty.content_type;
-                        let id = injector.add_local(OrcaType::from(wasm_ty));
-                        *addr = Some(VarAddr::Local { addr: id });
-                        return Ok(true)
+                        if wasm_ty != ValType::I32 {
+                            return Err(Box::new(ErrorGen::get_unexpected_error(
+                                true,
+                                Some(format!(
+                                    "{err_msg} Expected I32 type for report var, found: {:?}. Further support is upcoming",
+                                    wasm_ty
+                                )),
+                                None,
+                            )));
+                        }
+                        if report_var_metadata.available_i32_gids.is_empty() {
+                            return Err(Box::new(ErrorGen::get_unexpected_error(
+                                true,
+                                Some(format!(
+                                    "{err_msg} No available global I32s for report vars"
+                                )),
+                                None,
+                            )));
+                        }
+                        let id = report_var_metadata.available_i32_gids.remove(0);
+                        report_var_metadata.put_local_metadata(id, var_name.clone());
+                        *addr = Some(VarAddr::Global { addr: id as u32 });
+                        return Ok(true);
+                    }
+                    Some(VarAddr::Local { .. }) | Some(VarAddr::MapId { .. }) => {
+                        //this shouldn't happen for report vars - need to err
+                        return Err(Box::new(ErrorGen::get_unexpected_error(
+                            true,
+                            Some(format!("{err_msg} Expected Global VarAddr.")),
+                            None,
+                        )));
                     }
                 }
             }
-            _ => return Err(Box::new(ErrorGen::get_unexpected_error(
-                false,
-                Some(format!(
-                    "{err_msg} Wrong statement type, should be `assign`"
-                )),
-                None,
-            ))),
+            _ => {
+                return Err(Box::new(ErrorGen::get_unexpected_error(
+                    false,
+                    Some(format!(
+                        "{err_msg} Wrong statement type, should be `assign`"
+                    )),
+                    None,
+                )))
+            }
         }
     }
     Err(Box::new(ErrorGen::get_unexpected_error(
@@ -391,12 +430,16 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                     Some(Record::Var {
                         value,
                         is_comp_provided,
+                        is_report_var,
                         ..
                     }) => {
                         *value = Some(val.clone());
-
                         if *is_comp_provided {
                             return Ok(true);
+                        }
+                        if *is_report_var {
+                            //you changed a report variable: need to turn dirty bool to true and then print somewhere
+                            report_var_metadata.flush_soon = true;
                         }
                     }
                     Some(ty) => {
@@ -464,6 +507,8 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
         if let Expr::VarId { name, .. } = map {
             match get_map_info(table, name) {
                 Ok((map_id, key_ty, val_ty)) => {
+                        //no Record in ST, so always flush after a set_map
+                    report_var_metadata.flush_soon = true;
                     let to_call = map_lib_adapter.set_map_insert(key_ty, val_ty);
                     let fn_id = table
                         .lookup(&to_call)

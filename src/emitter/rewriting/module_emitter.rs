@@ -381,7 +381,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 });
                 //now save off the global variable metadata
                 self.report_var_metadata
-                    .put_global_metadata(global_id as usize, name, script_name);
+                    .put_global_metadata(global_id as usize, name);
                 Ok(true)
             }
             Some(&mut ref ty) => Err(Box::new(ErrorGen::get_unexpected_error(

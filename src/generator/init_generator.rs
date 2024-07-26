@@ -103,6 +103,11 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
             "insert_map_i32i32i32tuple_i32".to_string(),
             "get_i32_i32".to_string(),
             "get_i32_from_i32i32i32tuple".to_string(),
+            "add_report_var".to_string(),
+            "add_report_map".to_string(),
+            "output_report_maps".to_string(),
+            "print_info".to_string(),
+            "print_map".to_string(),
         ];
         for lib_fn in lib_map_fns.iter() {
             let id_option = self.emitter.app_wasm.get_fid_by_name(lib_fn);

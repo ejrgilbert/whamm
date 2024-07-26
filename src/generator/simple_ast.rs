@@ -64,6 +64,7 @@ pub struct SimpleProbe {
     pub script_id: String,
     pub predicate: Option<Expr>,
     pub body: Option<Vec<Statement>>,
+    pub num_reports: i32,
 }
 impl SimpleProbe {
     fn new(script_id: String, probe: &dyn Probe) -> Self {
@@ -71,6 +72,7 @@ impl SimpleProbe {
             script_id,
             predicate: probe.predicate().to_owned(),
             body: probe.body().to_owned(),
+            num_reports: probe.get_num_reports(),
         }
     }
 }

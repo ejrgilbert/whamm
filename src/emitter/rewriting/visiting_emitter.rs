@@ -1,15 +1,15 @@
 use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::map_lib_adapter::MapLibAdapter;
 use crate::emitter::report_var_metadata::ReportVarMetadata;
-use crate::emitter::rewriting::emit_expr;
 use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::emitter::rewriting::rules::{Arg, LocInfo, Provider, WhammProvider};
+use crate::emitter::rewriting::{emit_expr, whamm_type_to_wasm};
 use crate::emitter::rewriting::{emit_stmt, Emitter};
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{DataType, Definition, Expr, ProbeSpec, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca::ir::module::Module;
-use orca::ir::types::Location as OrcaLocation;
+use orca::ir::types::{Global, Location as OrcaLocation};
 use orca::iterator::iterator_trait::Iterator as OrcaIterator;
 use orca::iterator::module_iterator::ModuleIterator;
 use orca::opcode::Opcode;
@@ -25,10 +25,11 @@ pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     pub table: &'c mut SymbolTable,
     mem_tracker: &'d MemoryTracker,
     map_lib_adapter: &'e mut MapLibAdapter,
-    report_var_metadata: &'f mut ReportVarMetadata,
+    pub(crate) report_var_metadata: &'f mut ReportVarMetadata,
     instr_created_args: Vec<(String, usize)>,
     pub curr_probe_id: String,
     pub curr_script_id: String,
+    pub curr_num_reports: i32,
 }
 
 impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
@@ -49,6 +50,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             instr_created_args: vec![],
             curr_probe_id: "____0".to_string(),
             curr_script_id: "script0".to_string(),
+            curr_num_reports: 0,
         };
 
         a
@@ -119,6 +121,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                         name: arg_name.to_string(),
                         value: None,
                         is_comp_provided: false,
+                        is_report_var: false,
                         addr: Some(VarAddr::Local { addr: arg_local_id }),
                         loc: None,
                     },
@@ -326,10 +329,30 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             }
         }
     }
+    fn set_curr_loc(&mut self) {
+        let loc = match self.app_iter.curr_loc() {
+            OrcaLocation::Module { func_idx, instr_idx,  .. } | OrcaLocation::Component { func_idx, instr_idx, .. } => (func_idx as i32, instr_idx as i32),
+        };
+        //set the current location in bytecode and load some new globals for potential report vars
+        self.report_var_metadata.set_loc(
+            self.curr_script_id.clone(),
+            loc,
+            self.curr_probe_id.clone(),
+            self.curr_num_reports,
+        );
+    }
 }
 impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
     fn emit_body(&mut self, body: &mut [Statement]) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
+        for _ in 0 .. self.curr_num_reports{
+            let default_global = whamm_type_to_wasm(&DataType::I32);
+            let gid = self.app_iter.module.add_global(default_global);
+            self.report_var_metadata
+                .available_i32_gids
+                .push(gid as usize);
+        
+        }
         for stmt in body.iter_mut() {
             is_success &= self.emit_stmt(stmt)?;
         }
@@ -338,6 +361,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
 
     fn emit_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>> {
         // Check if this is calling a provided, static function!
+        self.set_curr_loc();
         if let Statement::Expr {
             expr: Expr::Call {
                 fn_target, args, ..
@@ -374,12 +398,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
         }
 
         // everything else can be emitted as normal!
-        let loc = match self.app_iter.curr_loc() {
-            OrcaLocation::Module { func_idx, .. } => func_idx,
-            OrcaLocation::Component { func_idx, .. } => func_idx,
-        };
-        //TODO: pass the script and probe ID in through the whamm visitor that calls VisitingEmiiter
-        self.report_var_metadata.set_loc(self.curr_script_id.clone(), loc as i32, self.curr_probe_id.clone());
+        
         emit_stmt(
             stmt,
             &mut self.app_iter,
@@ -392,6 +411,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
     }
 
     fn emit_expr(&mut self, expr: &mut Expr) -> Result<bool, Box<WhammError>> {
+        self.set_curr_loc();
         emit_expr(
             expr,
             &mut self.app_iter,

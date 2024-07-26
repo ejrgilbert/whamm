@@ -11,6 +11,10 @@ use std::sync::Mutex;
 #[no_mangle]
 static MY_MAPS: Lazy<Mutex<HashMap<i32, AnyMap>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
+#[no_mangle]
+static REPORT_VARS: Lazy<Mutex<Vec<i32>>> = Lazy::new(|| Mutex::new(Vec::new()));
+static REPORT_MAPS: Lazy<Mutex<Vec<i32>>> = Lazy::new(|| Mutex::new(Vec::new()));
+
 //this should initialize a map of maps -> from string (name) to any type of map
 
 //strings, i32, maps, tuples, bool - all variations
@@ -40,7 +44,8 @@ pub enum AnyMap {
     bool_bool_Map(HashMap<bool, bool>),
 }
 
-trait MapOperations {
+
+pub trait MapOperations {
     fn insert(&mut self, key: Box<dyn Any>, value: Box<dyn Any>) -> bool;
     fn get_i32(&self, key: &dyn Any) -> Option<i32>;
     fn get_string(&self, key: &dyn Any) -> Option<String>;
@@ -48,6 +53,7 @@ trait MapOperations {
     fn get_map_mut(&mut self, key: &dyn Any) -> Option<&mut AnyMap>;
     fn get_map(&self, key: &dyn Any) -> Option<Box<AnyMap>>;
     fn get_bool(&self, key: &dyn Any) -> Option<bool>;
+    fn dump_map(&self) -> String;
 }
 impl MapOperations for AnyMap {
     #[no_mangle]
@@ -353,6 +359,27 @@ impl MapOperations for AnyMap {
         }
         None
     }
+    fn dump_map(&self) -> String {
+        match self {
+            AnyMap::i32_i32_Map(ref map) => {
+                let mut result = String::new();
+                for (key, value) in map.iter() {
+                    result.push_str(&format!("{}: {}\n", key, value));
+                }
+                result
+            }
+            AnyMap::tuple_i32_Map(ref map) => {
+                let mut result = String::new();
+                for (key, value) in map.iter() {
+                    result.push_str(&format!("{}: {}\n", key.dump_tuple(), value));
+                }
+                result
+            }
+            _ => {
+                "Not implemented".to_string()
+            }
+        }    
+    }
 }
 //have to support strings, i32, maps, tuples, and bool - all variations (yet again)
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
@@ -383,6 +410,19 @@ pub enum TupleVariant {
     bool_tuple(bool, Box<TupleVariant>),
     bool_bool(bool, bool),
     i32_i32_i32(i32, i32, i32),
+}
+
+impl TupleVariant {
+    pub fn dump_tuple(&self) -> String {
+        match self {
+            TupleVariant::i32_i32_i32(a, b, c) => {
+                format!("({}, {}, {})", a, b, c)
+            }
+            _ => {
+                "Not implemented".to_string()
+            }
+        }
+    }
 }
 //to make a map to/from a map or string they have to boxed
 
@@ -799,14 +839,48 @@ pub fn get_i32_from_i32i32i32tuple(name: i32, key0: i32, key1: i32, key2: i32) -
 pub fn get_i32_i32(name: i32, key: i32) -> i32 {
     get_i32(name, &key)
 }
+//This is the stuff for report var 
+#[no_mangle]
+pub fn add_report_var(name: i32) {
+    REPORT_VARS.lock().unwrap().push(name);
+}
+#[no_mangle]
+pub fn add_report_map(name: i32) {
+    REPORT_MAPS.lock().unwrap().push(name);
+}
+#[no_mangle]
+pub fn output_report_maps() {
+    for name in REPORT_MAPS.lock().unwrap().iter() {
+        print_map(*name);
+    }
+}
+#[no_mangle] 
+pub fn print_info(gid: i32, val: i32){
+    println!("GID: {} -> {}", gid, val);
+}
+#[no_mangle]
+pub fn print_map(map_id: i32){
+    let binding = MY_MAPS.lock().unwrap();
+    let map = binding.get(&map_id).unwrap();
+    println!("MapId: {} -> {}", map_id, map.dump_map());
+}
+#[no_mangle]
+pub fn foo(a: i32) -> i32 {
+    return inner_fn(a);
+}
 
 #[no_mangle]
-pub fn do_something(a: i32) -> i32 {
+pub fn bar(a: i32) -> i32 {
+    return inner_fn(a);
+}
+
+#[no_mangle]
+pub fn inner_fn(a: i32) -> i32 {
     return a*15 - 3;  
 }
 
 fn main() {
-    let b = do_something(5);
-    do_something(b);
+    let b = foo(5);
+    bar(2);
     print!("{}", b);
 }

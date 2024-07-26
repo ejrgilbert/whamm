@@ -52,7 +52,7 @@ impl MapLibAdapter {
         map_id: i32,
         name: String,
         script_id: String,
-        bytecode_loc: i32,
+        bytecode_loc: (i32, i32),
         probe_id: String,
         report_var_metadata: &mut ReportVarMetadata,
     ) {
@@ -79,7 +79,7 @@ impl MapLibAdapter {
         &mut self,
         name: String,
         script_id: String,
-        bytecode_loc: i32,
+        bytecode_loc: (i32, i32),
         probe_id: String,
         map: DataType,
         report_var_metadata: &mut ReportVarMetadata,

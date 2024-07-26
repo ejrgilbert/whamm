@@ -110,7 +110,7 @@ fn run_instr(
 
     // Read app Wasm into Orca module
     let buff = std::fs::read(app_wasm_path).unwrap();
-    let mut app_wasm = WasmModule::parse_only_module(&buff, false).unwrap();
+    let mut app_wasm = WasmModule::parse(&buff, false).unwrap();
 
     // TODO Configure the generator based on target (wizard vs bytecode rewriting)
 
@@ -160,6 +160,11 @@ fn run_instr(
     instr.run();
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
+    report_var_metadata.print_metadata();
+    for _ in report_var_metadata.available_i32_gids.iter() {
+        //should be 0, but good for cleanup
+        app_wasm.remove_global();
+    }
 
     try_path(&output_wasm_path);
     if let Err(e) = app_wasm.emit_wasm(&output_wasm_path) {
@@ -174,7 +179,6 @@ fn run_instr(
     }
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
-    report_var_metadata.print_metadata();
 }
 
 fn get_symbol_table(ast: &mut Whamm, run_verifier: bool, err: &mut ErrorGen) -> SymbolTable {
