@@ -1,12 +1,12 @@
 pub mod wast_harness;
 
 use orca::ir::module::Module as WasmModule;
-use whamm::emitter::map_lib_adapter::MapLibAdapter;
-use whamm::emitter::report_var_metadata::ReportVarMetadata;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
+use whamm::emitter::map_lib_adapter::MapLibAdapter;
+use whamm::emitter::report_var_metadata::ReportVarMetadata;
 use whamm::parser::types::Whamm;
 use whamm::parser::whamm_parser::*;
 
@@ -117,9 +117,13 @@ pub fn run_whamm(
 
     // Phase 0 of instrumentation (emit globals and provided fns)
     let mut init = InitGenerator {
-        emitter: ModuleEmitter::new(&mut app_wasm, &mut symbol_table, &mut mem_tracker,
+        emitter: ModuleEmitter::new(
+            &mut app_wasm,
+            &mut symbol_table,
+            &mut mem_tracker,
             &mut map_knower,
-            &mut report_var_metadata,),
+            &mut report_var_metadata,
+        ),
         context_name: "".to_string(),
         err: &mut err,
     };
@@ -130,9 +134,13 @@ pub fn run_whamm(
     // This structure is necessary since we need to have the fns/globals injected (a single time)
     // and ready to use in every body/predicate.
     let mut instr = InstrGenerator::new(
-        VisitingEmitter::new(&mut app_wasm, &mut symbol_table, &mem_tracker,
+        VisitingEmitter::new(
+            &mut app_wasm,
+            &mut symbol_table,
+            &mem_tracker,
             &mut map_knower,
-            &mut report_var_metadata,),
+            &mut report_var_metadata,
+        ),
         simple_ast,
         &mut err,
     );
