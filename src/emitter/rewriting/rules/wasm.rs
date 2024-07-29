@@ -557,13 +557,14 @@ impl Event for OpcodeEvent {
                         }
                     } else {
                         // This is a local function
+                        let relative_id = *fid - app_wasm.num_imported_functions as u32;
                         FuncInfo {
                             func_kind: "local".to_string(),
                             module: match &app_wasm.module_name {
                                 Some(name) => name.clone(),
                                 None => "".to_string(),
                             },
-                            name: match &app_wasm.get_fname((*fid as usize).try_into().unwrap()) {
+                            name: match &app_wasm.get_fname(relative_id) {
                                 Some(name) => name.clone(),
                                 None => "".to_string(),
                             },
