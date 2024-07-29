@@ -21,6 +21,7 @@ wasm:opcode:call:after /
  {
     if(true) {
         report i32 c;
+        c=3; 
     };
     report i32 a;
     a = 5;
