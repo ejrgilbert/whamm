@@ -12,7 +12,6 @@ use orca::iterator::module_iterator::ModuleIterator;
 use orca::opcode::Opcode;
 use orca::ModuleBuilder;
 use std::iter::Iterator;
-use wasmparser::BlockType;
 
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";

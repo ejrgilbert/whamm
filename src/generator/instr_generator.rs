@@ -4,7 +4,7 @@ use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::rewriting::Emitter;
 use crate::generator::simple_ast::SimpleAST;
 use crate::generator::types::ExprFolder;
-use crate::parser::types::{Block, Expr, Statement};
+use crate::parser::types::{Block, Expr};
 
 const UNEXPECTED_ERR_MSG: &str =
     "InstrGenerator: Looks like you've found a bug...please report this behavior!";

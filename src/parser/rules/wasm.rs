@@ -3,7 +3,7 @@ use crate::parser::rules::{
     PackageInfo, Probe, WhammMode, WhammProbe,
 };
 use crate::parser::types::{
-    Block, DataType, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal, Statement,
+    Block, DataType, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal,
 };
 use std::collections::HashMap;
 use termcolor::Buffer;
