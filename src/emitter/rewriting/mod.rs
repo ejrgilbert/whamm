@@ -144,7 +144,7 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                     // emitted at another opcode location. Simply overwrite the previously saved
                     // address.
                     let wasm_ty = whamm_type_to_wasm_type(ty);
-                    let id = injector.add_local(OrcaType::from(wasm_ty));
+                    let id = injector.add_local(wasm_ty);
                     *addr = Some(VarAddr::Local { addr: id });
                     Ok(true)
                 }

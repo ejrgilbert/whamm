@@ -96,7 +96,7 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
                  ty: arg_ty,
              }| {
                 // create local for the param in the module
-                let arg_local_id = self.app_iter.add_local(arg_ty.clone());
+                let arg_local_id = self.app_iter.add_local(*arg_ty);
                 arg_locals.push((arg_name.to_string(), arg_local_id));
             },
         );
