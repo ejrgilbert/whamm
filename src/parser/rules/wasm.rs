@@ -3,7 +3,7 @@ use crate::parser::rules::{
     PackageInfo, Probe, WhammMode, WhammProbe,
 };
 use crate::parser::types::{
-    DataType, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal, Statement,
+    Block, DataType, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal,
 };
 use std::collections::HashMap;
 use termcolor::Buffer;
@@ -152,7 +152,7 @@ impl Package for WasmPackage {
         probe_spec: &ProbeSpec,
         loc: Option<Location>,
         predicate: Option<Expr>,
-        body: Option<Vec<Statement>>,
+        body: Option<Block>,
         printing_info: bool,
     ) -> (bool, bool) {
         match self {
@@ -477,6 +477,9 @@ impl OpcodeEvent {
         }
     }
     fn call(loc: Option<Location>) -> Self {
+        // TODO add the following functionality:
+        // - `result` global
+        // -
         let fns = vec![ProvidedFunction::new(
             "alt_call_by_id".to_string(),
             "Insert an alternate call (targeting the passed function ID) into the Wasm bytecode. Will also emit the original parameters onto the stack.".to_string(),
@@ -1582,7 +1585,7 @@ impl Event for OpcodeEvent {
         probe_spec: &ProbeSpec,
         loc: Option<Location>,
         predicate: Option<Expr>,
-        body: Option<Vec<Statement>>,
+        body: Option<Block>,
     ) -> bool {
         let mut matched_modes = false;
         let probes = self.probes_mut();

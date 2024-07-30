@@ -1,10 +1,10 @@
 use crate::common::error::{ErrorGen, WhammError};
-use crate::emitter::rewriting::emit_expr;
 use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::emitter::rewriting::rules::{Arg, LocInfo, Provider, WhammProvider};
+use crate::emitter::rewriting::{block_type_to_wasm, emit_expr};
 use crate::emitter::rewriting::{emit_stmt, Emitter};
 use crate::generator::types::ExprFolder;
-use crate::parser::types::{DataType, Definition, Expr, ProbeSpec, Statement, Value};
+use crate::parser::types::{Block, DataType, Definition, Expr, ProbeSpec, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca::ir::module::Module;
 use orca::iterator::iterator_trait::Iterator as OrcaIterator;
@@ -12,7 +12,6 @@ use orca::iterator::module_iterator::ModuleIterator;
 use orca::opcode::Opcode;
 use orca::ModuleBuilder;
 use std::iter::Iterator;
-use wasmparser::BlockType;
 
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
@@ -87,6 +86,8 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
         // So, we can just save off the first * items in the stack as the args
         // to the call.
         let mut arg_recs: Vec<(String, usize)> = vec![]; // vec to retain order!
+
+        let mut arg_locals: Vec<(String, u32)> = vec![];
         args.iter().for_each(
             |Arg {
                  name: arg_name,
@@ -94,9 +95,17 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
              }| {
                 // create local for the param in the module
                 let arg_local_id = self.app_iter.add_local(arg_ty.clone());
+                arg_locals.push((arg_name.to_string(), arg_local_id));
+            },
+        );
 
+        // Save args in reverse order (the leftmost arg is at the bottom of the stack)
+        arg_locals
+            .iter()
+            .rev()
+            .for_each(|(arg_name, arg_local_id)| {
                 // emit an opcode in the event to assign the ToS to this new local
-                self.app_iter.local_set(arg_local_id);
+                self.app_iter.local_set(*arg_local_id);
 
                 // place in symbol table with var addr for future reference
                 let id = self.table.put(
@@ -106,13 +115,14 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
                         name: arg_name.to_string(),
                         value: None,
                         is_comp_provided: false,
-                        addr: Some(VarAddr::Local { addr: arg_local_id }),
+                        addr: Some(VarAddr::Local {
+                            addr: *arg_local_id,
+                        }),
                         loc: None,
                     },
                 );
-                arg_recs.push((arg_name.to_string(), id));
-            },
-        );
+                arg_recs.insert(0, (arg_name.to_string(), id));
+            });
         self.instr_created_args = arg_recs;
         true
     }
@@ -201,14 +211,14 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
     pub fn emit_if(
         &mut self,
         condition: &mut Expr,
-        conseq: &mut [Statement],
+        conseq: &mut Block,
     ) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
         // emit the condition of the `if` expression
         is_success &= self.emit_expr(condition)?;
 
         // emit the beginning of the if block
-        self.app_iter.if_stmt(BlockType::Empty);
+        self.app_iter.if_stmt(block_type_to_wasm(conseq));
 
         is_success &= self.emit_body(conseq)?;
 
@@ -220,14 +230,14 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
     pub(crate) fn emit_if_with_orig_as_else(
         &mut self,
         condition: &mut Expr,
-        conseq: &mut [Statement],
+        conseq: &mut Block,
     ) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
 
         // emit the condition of the `if` expression
         is_success &= self.emit_expr(condition)?;
         // emit the beginning of the if block
-        self.app_iter.if_stmt(BlockType::Empty);
+        self.app_iter.if_stmt(block_type_to_wasm(conseq));
 
         is_success &= self.emit_body(conseq)?;
 
@@ -315,9 +325,9 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
     }
 }
 impl Emitter for VisitingEmitter<'_, '_, '_, '_> {
-    fn emit_body(&mut self, body: &mut [Statement]) -> Result<bool, Box<WhammError>> {
+    fn emit_body(&mut self, body: &mut Block) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
-        for stmt in body.iter_mut() {
+        for stmt in body.stmts.iter_mut() {
             is_success &= self.emit_stmt(stmt)?;
         }
         Ok(is_success)

@@ -372,7 +372,7 @@ fn is_valid_script(script: &str, err: &mut ErrorGen) -> bool {
     match tests::get_ast(script, err) {
         Some(mut ast) => {
             let mut table = verifier::build_symbol_table(&mut ast, err);
-            verifier::type_check(&ast, &mut table, err)
+            verifier::type_check(&mut ast, &mut table, err)
         }
         None => {
             error!("Should fail at type checking, not parsing: {}", script);
@@ -415,7 +415,7 @@ pub fn test_template() {
     match tests::get_ast(script, &mut err) {
         Some(mut ast) => {
             let mut table = verifier::build_symbol_table(&mut ast, &mut err);
-            let res = verifier::type_check(&ast, &mut table, &mut err);
+            let res = verifier::type_check(&mut ast, &mut table, &mut err);
             err.report();
             assert!(!err.has_errors);
             assert!(res);
@@ -460,7 +460,7 @@ pub fn expect_fatal_error() {
     match tests::get_ast(script, &mut err) {
         Some(mut ast) => {
             let mut table = verifier::build_symbol_table(&mut ast, &mut err);
-            let res = verifier::type_check(&ast, &mut table, &mut err);
+            let res = verifier::type_check(&mut ast, &mut table, &mut err);
             err.report();
             assert!(err.has_errors);
             assert!(!res);
@@ -490,7 +490,7 @@ pub fn test_recursive_calls() {
     match tests::get_ast(script, &mut err) {
         Some(mut ast) => {
             let mut table = verifier::build_symbol_table(&mut ast, &mut err);
-            let res = verifier::type_check(&ast, &mut table, &mut err);
+            let res = verifier::type_check(&mut ast, &mut table, &mut err);
             err.report();
             assert!(!err.has_errors);
             assert!(res);

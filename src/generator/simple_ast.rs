@@ -63,7 +63,7 @@ pub type SimpleAstProbes =
 pub struct SimpleProbe {
     pub script_id: String,
     pub predicate: Option<Expr>,
-    pub body: Option<Vec<Statement>>,
+    pub body: Option<Block>,
 }
 impl SimpleProbe {
     fn new(script_id: String, probe: &dyn Probe) -> Self {

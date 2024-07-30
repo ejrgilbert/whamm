@@ -2,9 +2,7 @@ use crate::parser::rules::{
     event_factory, mode_factory, print_mode_docs, Event, EventInfo, FromStr, Mode, ModeInfo,
     NameOptions, Package, PackageInfo, Probe,
 };
-use crate::parser::types::{
-    Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal, Statement,
-};
+use crate::parser::types::{Block, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal};
 use std::collections::HashMap;
 use termcolor::Buffer;
 
@@ -137,7 +135,7 @@ impl Package for CorePackage {
         probe_spec: &ProbeSpec,
         loc: Option<Location>,
         predicate: Option<Expr>,
-        body: Option<Vec<Statement>>,
+        body: Option<Block>,
         printing_info: bool,
     ) -> (bool, bool) {
         match self {
@@ -257,7 +255,7 @@ impl Event for CoreEvent {
         probe_spec: &ProbeSpec,
         loc: Option<Location>,
         predicate: Option<Expr>,
-        body: Option<Vec<Statement>>,
+        body: Option<Block>,
     ) -> bool {
         let mut matched_modes = false;
         let probes = self.probes_mut();
@@ -364,7 +362,7 @@ struct CoreProbe {
     pub loc: Option<Location>,
 
     pub predicate: Option<Expr>,
-    pub body: Option<Vec<Statement>>,
+    pub body: Option<Block>,
 }
 impl Probe for CoreProbe {
     fn mode_name(&self) -> String {
@@ -377,11 +375,11 @@ impl Probe for CoreProbe {
         &mut self.predicate
     }
 
-    fn body(&self) -> &Option<Vec<Statement>> {
+    fn body(&self) -> &Option<Block> {
         &self.body
     }
 
-    fn body_mut(&mut self) -> &mut Option<Vec<Statement>> {
+    fn body_mut(&mut self) -> &mut Option<Block> {
         &mut self.body
     }
 
@@ -412,7 +410,7 @@ impl CoreProbe {
         mode: CoreMode,
         loc: Option<Location>,
         predicate: Option<Expr>,
-        body: Option<Vec<Statement>>,
+        body: Option<Block>,
     ) -> Self {
         Self {
             mode,

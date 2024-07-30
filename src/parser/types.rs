@@ -186,6 +186,7 @@ pub enum Value {
 #[derive(Clone, Debug)]
 pub struct Block {
     pub stmts: Vec<Statement>,
+    pub return_ty: Option<DataType>,
     pub loc: Option<Location>,
 }
 impl Block {
@@ -795,7 +796,7 @@ impl Script {
         &mut self,
         probe_spec: &ProbeSpec,
         predicate: Option<Expr>,
-        body: Option<Vec<Statement>>,
+        body: Option<Block>,
     ) -> Result<(), Box<WhammError>> {
         let (matched_providers, matched_packages, matched_events, matched_modes): (
             bool,
@@ -967,6 +968,7 @@ impl ProvidedFunction {
                 return_ty,
                 body: Block {
                     stmts: vec![],
+                    return_ty: None,
                     loc: None,
                 },
             },

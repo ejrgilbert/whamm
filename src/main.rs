@@ -59,13 +59,7 @@ fn try_main() -> Result<(), failure::Error> {
             run_info(spec, globals, functions);
         }
         Cmd::Instr(args) => {
-            run_instr(
-                args.app,
-                args.script,
-                args.output_path,
-                args.virgil,
-                args.run_verifier,
-            );
+            run_instr(args.app, args.script, args.output_path, args.virgil);
         }
     }
 
@@ -92,14 +86,13 @@ fn run_instr(
     script_path: String,
     output_wasm_path: String,
     _emit_virgil: bool,
-    run_verifier: bool,
 ) {
     // Set up error reporting mechanism
     let mut err = ErrorGen::new(script_path.clone(), "".to_string(), MAX_ERRORS);
 
     // Process the script
     let mut whamm = get_script_ast(&script_path, &mut err);
-    let mut symbol_table = get_symbol_table(&mut whamm, run_verifier, &mut err);
+    let mut symbol_table = get_symbol_table(&mut whamm, &mut err);
     let simple_ast = build_simple_ast(&whamm, &mut err);
     err.check_too_many();
 
@@ -160,15 +153,15 @@ fn run_instr(
     err.check_has_errors();
 }
 
-fn get_symbol_table(ast: &mut Whamm, run_verifier: bool, err: &mut ErrorGen) -> SymbolTable {
+fn get_symbol_table(ast: &mut Whamm, err: &mut ErrorGen) -> SymbolTable {
     let mut st = build_symbol_table(ast, err);
     err.check_too_many();
-    verify_ast(ast, &mut st, run_verifier, err);
+    verify_ast(ast, &mut st, err);
     st
 }
 
-fn verify_ast(ast: &Whamm, st: &mut SymbolTable, run_verifier: bool, err: &mut ErrorGen) {
-    if run_verifier && !type_check(ast, st, err) {
+fn verify_ast(ast: &mut Whamm, st: &mut SymbolTable, err: &mut ErrorGen) {
+    if !type_check(ast, st, err) {
         error!("AST failed verification!");
     }
     err.check_too_many();

@@ -3,7 +3,7 @@ pub mod rules;
 pub mod visiting_emitter;
 
 use crate::common::error::{ErrorGen, WhammError};
-use crate::parser::types::{BinOp, DataType, Expr, Statement, UnOp, Value};
+use crate::parser::types::{BinOp, Block, DataType, Expr, Statement, UnOp, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 
 use crate::emitter::rewriting::module_emitter::MemoryTracker;
@@ -14,7 +14,7 @@ use orca::{InitExpr, ModuleBuilder};
 use wasmparser::{BlockType, ValType};
 
 pub trait Emitter {
-    fn emit_body(&mut self, body: &mut [Statement]) -> Result<bool, Box<WhammError>>;
+    fn emit_body(&mut self, body: &mut Block) -> Result<bool, Box<WhammError>>;
     fn emit_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>>;
     fn emit_expr(&mut self, expr: &mut Expr) -> Result<bool, Box<WhammError>>;
 }
@@ -31,13 +31,13 @@ pub trait Emitter {
 // ==================================================================
 
 fn emit_body<'a, T: Opcode<'a> + ModuleBuilder>(
-    body: &mut [Statement],
+    body: &mut Block,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
-    for stmt in body.iter_mut() {
+    for stmt in body.stmts.iter_mut() {
         emit_stmt(stmt, injector, table, mem_tracker, err_msg)?;
     }
     Ok(true)
@@ -53,32 +53,18 @@ fn emit_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
     match stmt {
         Statement::Decl { .. } => emit_decl_stmt(stmt, injector, table, err_msg),
         Statement::Assign { .. } => emit_assign_stmt(stmt, injector, table, mem_tracker, err_msg),
-        Statement::Expr { expr, .. } => emit_expr(expr, injector, table, mem_tracker, err_msg),
+        Statement::Expr { expr, .. } | Statement::Return { expr, .. } => {
+            emit_expr(expr, injector, table, mem_tracker, err_msg)
+        }
         Statement::If {
             cond, conseq, alt, ..
         } => {
             if alt.stmts.is_empty() {
-                emit_if(
-                    cond,
-                    conseq.stmts.as_mut_slice(),
-                    injector,
-                    table,
-                    mem_tracker,
-                    err_msg,
-                )
+                emit_if(cond, conseq, injector, table, mem_tracker, err_msg)
             } else {
-                emit_if_else(
-                    cond,
-                    conseq.stmts.as_mut_slice(),
-                    alt.stmts.as_mut_slice(),
-                    injector,
-                    table,
-                    mem_tracker,
-                    err_msg,
-                )
+                emit_if_else(cond, conseq, alt, injector, table, mem_tracker, err_msg)
             }
         }
-        Statement::Return { .. } => unimplemented!(),
     }
 }
 
@@ -287,6 +273,15 @@ pub fn whamm_type_to_wasm(ty: &DataType) -> Global {
         DataType::AssumeGood => unimplemented!(),
     }
 }
+pub fn block_type_to_wasm(block: &Block) -> BlockType {
+    match &block.return_ty {
+        None => BlockType::Empty,
+        Some(return_ty) => {
+            let wasm_ty = whamm_type_to_wasm(return_ty).ty.content_type;
+            BlockType::Type(wasm_ty)
+        }
+    }
+}
 
 fn emit_set<'a, T: Opcode<'a>>(
     var_id: &mut Expr,
@@ -345,7 +340,7 @@ fn emit_set<'a, T: Opcode<'a>>(
 
 fn emit_if_preamble<'a, T: Opcode<'a> + ModuleBuilder>(
     condition: &mut Expr,
-    conseq: &mut [Statement],
+    conseq: &mut Block,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
@@ -356,7 +351,7 @@ fn emit_if_preamble<'a, T: Opcode<'a> + ModuleBuilder>(
     // emit the condition of the `if` expression
     is_success &= emit_expr(condition, injector, table, mem_tracker, err_msg)?;
     // emit the beginning of the if block
-    injector.if_stmt(BlockType::Empty);
+    injector.if_stmt(block_type_to_wasm(conseq));
 
     // emit the consequent body
     is_success &= emit_body(conseq, injector, table, mem_tracker, err_msg)?;
@@ -368,8 +363,8 @@ fn emit_if_preamble<'a, T: Opcode<'a> + ModuleBuilder>(
 
 fn emit_if_else_preamble<'a, T: Opcode<'a> + ModuleBuilder>(
     condition: &mut Expr,
-    conseq: &mut [Statement],
-    alternate: &mut [Statement],
+    conseq: &mut Block,
+    alternate: &mut Block,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
@@ -392,7 +387,7 @@ fn emit_if_else_preamble<'a, T: Opcode<'a> + ModuleBuilder>(
 
 fn emit_if<'a, T: Opcode<'a> + ModuleBuilder>(
     condition: &mut Expr,
-    conseq: &mut [Statement],
+    conseq: &mut Block,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
@@ -409,8 +404,8 @@ fn emit_if<'a, T: Opcode<'a> + ModuleBuilder>(
 
 fn emit_if_else<'a, T: Opcode<'a> + ModuleBuilder>(
     condition: &mut Expr,
-    conseq: &mut [Statement],
-    alternate: &mut [Statement],
+    conseq: &mut Block,
+    alternate: &mut Block,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
@@ -458,14 +453,22 @@ fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
             // change conseq and alt types to stmt for easier API call
             is_success &= emit_if_else(
                 cond,
-                &mut vec![Statement::Expr {
-                    expr: (**conseq).clone(),
+                &mut Block {
+                    stmts: vec![Statement::Expr {
+                        expr: (**conseq).clone(),
+                        loc: None,
+                    }],
+                    return_ty: None,
                     loc: None,
-                }],
-                &mut vec![Statement::Expr {
-                    expr: (**alt).clone(),
+                },
+                &mut Block {
+                    stmts: vec![Statement::Expr {
+                        expr: (**alt).clone(),
+                        loc: None,
+                    }],
+                    return_ty: None,
                     loc: None,
-                }],
+                },
                 injector,
                 table,
                 mem_tracker,

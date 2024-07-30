@@ -255,7 +255,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_> {
             is_success &= self.visit_expr(pred);
         }
         if let Some(body) = probe.body_mut() {
-            is_success &= self.visit_stmts(body);
+            is_success &= self.visit_stmts(body.stmts.as_mut_slice());
         }
 
         trace!("Exiting: CodeGenerator::visit_probe");

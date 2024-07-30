@@ -6,8 +6,8 @@ use crate::common::terminal::{magenta_italics, white};
 use crate::parser::rules::core::CorePackage;
 use crate::parser::rules::wasm::WasmPackage;
 use crate::parser::types::{
-    print_fns, print_global_vars, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal,
-    SpecPart, Statement,
+    print_fns, print_global_vars, Block, Expr, Location, ProbeSpec, ProvidedFunction,
+    ProvidedGlobal, SpecPart,
 };
 use glob::Pattern;
 use std::collections::HashMap;
@@ -60,7 +60,7 @@ pub trait Provider {
         probe_spec: &ProbeSpec,
         loc: Option<Location>,
         predicate: Option<Expr>,
-        body: Option<Vec<Statement>>,
+        body: Option<Block>,
         printing_info: bool,
     ) -> (bool, bool, bool);
 }
@@ -74,7 +74,7 @@ pub fn provider_factory<P: Provider + NameOptions + FromStr + 'static>(
     probe_spec: &ProbeSpec,
     loc: Option<Location>,
     predicate: Option<Expr>,
-    body: Option<Vec<Statement>>,
+    body: Option<Block>,
     printing_info: bool,
 ) -> Result<(bool, bool, bool, bool), Box<WhammError>> {
     if let Some(SpecPart {
@@ -273,7 +273,7 @@ pub trait Package {
         probe_spec: &ProbeSpec,
         loc: Option<Location>,
         predicate: Option<Expr>,
-        body: Option<Vec<Statement>>,
+        body: Option<Block>,
         printing_info: bool,
     ) -> (bool, bool);
 }
@@ -299,7 +299,7 @@ fn package_factory<P: Package + NameOptions + FromStr + 'static>(
     probe_spec: &ProbeSpec,
     loc: Option<Location>,
     predicate: Option<Expr>,
-    body: Option<Vec<Statement>>,
+    body: Option<Block>,
     printing_info: bool,
 ) -> (bool, bool, bool) {
     if let Some(SpecPart {
@@ -393,8 +393,8 @@ pub trait Probe {
     fn mode_name(&self) -> String;
     fn predicate(&self) -> &Option<Expr>;
     fn predicate_mut(&mut self) -> &mut Option<Expr>;
-    fn body(&self) -> &Option<Vec<Statement>>;
-    fn body_mut(&mut self) -> &mut Option<Vec<Statement>>;
+    fn body(&self) -> &Option<Block>;
+    fn body_mut(&mut self) -> &mut Option<Block>;
     fn print_mode_docs(
         &self,
         print_globals: bool,
@@ -427,7 +427,7 @@ pub trait Event {
         probe_spec: &ProbeSpec,
         loc: Option<Location>,
         predicate: Option<Expr>,
-        body: Option<Vec<Statement>>,
+        body: Option<Block>,
     ) -> bool;
 }
 
@@ -450,7 +450,7 @@ fn event_factory<E: Event + NameOptions + FromStr + 'static>(
     probe_spec: &ProbeSpec,
     loc: Option<Location>,
     predicate: Option<Expr>,
-    body: Option<Vec<Statement>>,
+    body: Option<Block>,
     printing_info: bool,
 ) -> (bool, bool) {
     if let Some(SpecPart {
@@ -781,7 +781,7 @@ impl Provider for WhammProvider {
         probe_spec: &ProbeSpec,
         loc: Option<Location>,
         predicate: Option<Expr>,
-        body: Option<Vec<Statement>>,
+        body: Option<Block>,
         printing_info: bool,
     ) -> (bool, bool, bool) {
         match self {
@@ -935,7 +935,7 @@ pub struct WhammProbe {
     pub loc: Option<Location>,
 
     pub predicate: Option<Expr>,
-    pub body: Option<Vec<Statement>>,
+    pub body: Option<Block>,
 }
 impl Probe for WhammProbe {
     fn mode_name(&self) -> String {
@@ -948,11 +948,11 @@ impl Probe for WhammProbe {
         &mut self.predicate
     }
 
-    fn body(&self) -> &Option<Vec<Statement>> {
+    fn body(&self) -> &Option<Block> {
         &self.body
     }
 
-    fn body_mut(&mut self) -> &mut Option<Vec<Statement>> {
+    fn body_mut(&mut self) -> &mut Option<Block> {
         &mut self.body
     }
 
@@ -983,7 +983,7 @@ impl WhammProbe {
         mode: WhammMode,
         loc: Option<Location>,
         predicate: Option<Expr>,
-        body: Option<Vec<Statement>>,
+        body: Option<Block>,
     ) -> Self {
         Self {
             mode,

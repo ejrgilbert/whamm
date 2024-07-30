@@ -4,7 +4,7 @@ use crate::common::error::ErrorGen;
 use crate::parser::rules::{Event, Package, Probe, Provider};
 use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Fn, Location, Script, Statement, UnOp, Value, Whamm,
-    WhammVisitor, WhammVisitorMut,
+    WhammVisitorMut,
 };
 use crate::verifier::builder_visitor::SymbolTableBuilder;
 use crate::verifier::types::{Record, SymbolTable};
@@ -111,8 +111,8 @@ impl TypeChecker<'_> {
     }
 }
 
-impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
-    fn visit_whamm(&mut self, whamm: &Whamm) -> Option<DataType> {
+impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
+    fn visit_whamm(&mut self, whamm: &mut Whamm) -> Option<DataType> {
         // not printing events and globals now
         self.table.reset();
 
@@ -123,25 +123,25 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         // skip the compiler provided functions
         // we only need to type check user provided functions
 
-        whamm.scripts.iter().for_each(|script| {
+        whamm.scripts.iter_mut().for_each(|script| {
             self.visit_script(script);
         });
 
         None
     }
 
-    fn visit_script(&mut self, script: &Script) -> Option<DataType> {
+    fn visit_script(&mut self, script: &mut Script) -> Option<DataType> {
         self.table.enter_named_scope(&script.name);
         self.in_script_global = true;
-        script.global_stmts.iter().for_each(|stmt| {
+        script.global_stmts.iter_mut().for_each(|stmt| {
             self.visit_stmt(stmt);
         });
         self.in_script_global = false;
-        script.fns.iter().for_each(|function| {
+        script.fns.iter_mut().for_each(|function| {
             self.visit_fn(function);
         });
 
-        script.providers.iter().for_each(|(_, provider)| {
+        script.providers.iter_mut().for_each(|(_, provider)| {
             self.visit_provider(provider);
         });
 
@@ -149,10 +149,10 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         None
     }
 
-    fn visit_provider(&mut self, provider: &Box<dyn Provider>) -> Option<DataType> {
+    fn visit_provider(&mut self, provider: &mut Box<dyn Provider>) -> Option<DataType> {
         let _ = self.table.enter_scope();
 
-        provider.packages().for_each(|package| {
+        provider.packages_mut().for_each(|package| {
             self.visit_package(package);
         });
 
@@ -160,10 +160,10 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         None
     }
 
-    fn visit_package(&mut self, package: &dyn Package) -> Option<DataType> {
+    fn visit_package(&mut self, package: &mut dyn Package) -> Option<DataType> {
         let _ = self.table.enter_scope();
 
-        package.events().for_each(|event| {
+        package.events_mut().for_each(|event| {
             self.visit_event(event);
         });
 
@@ -172,11 +172,11 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         None
     }
 
-    fn visit_event(&mut self, event: &dyn Event) -> Option<DataType> {
+    fn visit_event(&mut self, event: &mut dyn Event) -> Option<DataType> {
         let _ = self.table.enter_scope();
 
-        event.probes().iter().for_each(|(_, probe)| {
-            probe.iter().for_each(|probe| {
+        event.probes_mut().iter_mut().for_each(|(_, probe)| {
+            probe.iter_mut().for_each(|probe| {
                 self.visit_probe(probe);
             });
         });
@@ -186,11 +186,11 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         None
     }
 
-    fn visit_probe(&mut self, probe: &Box<dyn Probe>) -> Option<DataType> {
+    fn visit_probe(&mut self, probe: &mut Box<dyn Probe>) -> Option<DataType> {
         let _ = self.table.enter_scope();
 
         // type check predicate
-        if let Some(predicate) = &probe.predicate() {
+        if let Some(predicate) = &mut probe.predicate_mut() {
             let predicate_loc = predicate.loc().clone().unwrap();
             if let Some(ty) = self.visit_expr(predicate) {
                 if ty != DataType::Boolean {
@@ -204,10 +204,8 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         }
 
         // type check action
-        if let Some(body) = &probe.body() {
-            for stmt in body {
-                self.visit_stmt(stmt);
-            }
+        if let Some(body) = &mut probe.body_mut() {
+            self.visit_block(body);
         }
 
         let _ = self.table.exit_scope();
@@ -215,12 +213,12 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         None
     }
 
-    fn visit_fn(&mut self, function: &Fn) -> Option<DataType> {
+    fn visit_fn(&mut self, function: &mut Fn) -> Option<DataType> {
         // TODO: not typechecking user provided functions yet
         // type check body
 
         self.table.enter_named_scope(&function.name.name);
-        if let Some(check_ret_type) = self.visit_block(&function.body) {
+        if let Some(check_ret_type) = self.visit_block(&mut function.body) {
             //figure out how to deal with void functions (return type is ())
             if check_ret_type != function.return_ty {
                 self.err.type_check_error(
@@ -239,16 +237,16 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         Some(function.return_ty.clone())
     }
 
-    fn visit_formal_param(&mut self, _param: &(Expr, DataType)) -> Option<DataType> {
+    fn visit_formal_param(&mut self, _param: &mut (Expr, DataType)) -> Option<DataType> {
         unimplemented!()
     }
 
-    fn visit_block(&mut self, block: &Block) -> Option<DataType> {
+    fn visit_block(&mut self, block: &mut Block) -> Option<DataType> {
         let mut ret_type = None;
         let num_statements = block.stmts.len();
         let start_of_range: usize;
         for i in 0..num_statements {
-            let temp = self.visit_stmt(&block.stmts[i]);
+            let temp = self.visit_stmt(&mut block.stmts[i]);
             if temp.is_some() && ret_type.is_none() {
                 ret_type = temp;
             } else if ret_type.is_some() {
@@ -268,14 +266,16 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                         .to_string(),
                     Some(loc.line_col),
                 );
+                block.return_ty = ret_type.clone();
                 return ret_type;
             }
         }
+        block.return_ty = ret_type.clone();
         //add a check for return statement type matching the function return type if provided
         ret_type
     }
 
-    fn visit_stmt(&mut self, stmt: &Statement) -> Option<DataType> {
+    fn visit_stmt(&mut self, stmt: &mut Statement) -> Option<DataType> {
         if self.in_script_global {
             match stmt {
                 //allow declarations and assignment
@@ -399,7 +399,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         }
     }
 
-    fn visit_expr(&mut self, expr: &Expr) -> Option<DataType> {
+    fn visit_expr(&mut self, expr: &mut Expr) -> Option<DataType> {
         match expr {
             Expr::Primitive { val, .. } => self.visit_value(val),
             Expr::BinOp { lhs, rhs, op, .. } => {
@@ -717,19 +717,19 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
         }
     }
 
-    fn visit_unop(&mut self, _unop: &UnOp) -> Option<DataType> {
+    fn visit_unop(&mut self, _unop: &mut UnOp) -> Option<DataType> {
         unimplemented!()
     }
 
-    fn visit_binop(&mut self, _binop: &BinOp) -> Option<DataType> {
+    fn visit_binop(&mut self, _binop: &mut BinOp) -> Option<DataType> {
         unimplemented!()
     }
 
-    fn visit_datatype(&mut self, _datatype: &DataType) -> Option<DataType> {
+    fn visit_datatype(&mut self, _datatype: &mut DataType) -> Option<DataType> {
         unimplemented!()
     }
 
-    fn visit_value(&mut self, val: &Value) -> Option<DataType> {
+    fn visit_value(&mut self, val: &mut Value) -> Option<DataType> {
         match val {
             Value::Integer { .. } => Some(DataType::I32),
             Value::Str { .. } => Some(DataType::Str),
@@ -738,7 +738,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
                 // this ty does not contain the DataType in ty_info
                 // Whamm parser doesn't give the ty_info for Tuples
                 let tys = vals
-                    .iter()
+                    .iter_mut()
                     .map(|val| self.visit_expr(val))
                     .collect::<Vec<_>>();
 
@@ -762,7 +762,7 @@ impl WhammVisitor<Option<DataType>> for TypeChecker<'_> {
     }
 }
 
-pub fn type_check(ast: &Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> bool {
+pub fn type_check(ast: &mut Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> bool {
     let mut type_checker = TypeChecker {
         table: st,
         err,

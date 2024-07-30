@@ -17,7 +17,7 @@ use whamm::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use whamm::generator::init_generator::InitGenerator;
 use whamm::generator::instr_generator::InstrGenerator;
 use whamm::generator::simple_ast::build_simple_ast;
-use whamm::verifier::verifier::build_symbol_table;
+use whamm::verifier::verifier::{build_symbol_table, type_check};
 
 // ====================
 // = Helper Functions =
@@ -91,11 +91,14 @@ pub fn run_whamm(
     let mut whamm = ast_res.unwrap();
     err.fatal_report("IntegrationTest");
 
-    // Build the behavior tree from the AST
-    let simple_ast = build_simple_ast(&whamm, &mut err);
-
+    // Verify phase
     let mut symbol_table = build_symbol_table(&mut whamm, &mut err);
     symbol_table.reset();
+    type_check(&mut whamm, &mut symbol_table, &mut err);
+    err.fatal_report("IntegrationTest");
+
+    // Translate to the simple AST
+    let simple_ast = build_simple_ast(&whamm, &mut err);
 
     let mut app_wasm =
         WasmModule::parse(wasm_module_bytes, false).expect("Failed to parse Wasm module");
