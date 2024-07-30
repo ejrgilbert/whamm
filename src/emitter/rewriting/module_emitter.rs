@@ -250,6 +250,10 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
     pub fn emit_string(&mut self, value: &mut Value) -> Result<bool, Box<WhammError>> {
         match value {
             Value::Str { val, .. } => {
+                if self.mem_tracker.emitted_strings.contains_key(val) {
+                    // the string has already been emitted into the module, don't emit again
+                    return Ok(true);
+                }
                 // assuming that the data ID is the index of the object in the Vec
                 let data_id = self.app_wasm.data.len();
                 let val_bytes = val.as_bytes().to_owned();
