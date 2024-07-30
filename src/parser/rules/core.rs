@@ -2,9 +2,7 @@ use crate::parser::rules::{
     event_factory, mode_factory, print_mode_docs, Event, EventInfo, FromStr, Mode, ModeInfo,
     NameOptions, Package, PackageInfo, Probe,
 };
-use crate::parser::types::{
-    Block, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal,
-};
+use crate::parser::types::{Block, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal};
 use std::collections::HashMap;
 use termcolor::Buffer;
 

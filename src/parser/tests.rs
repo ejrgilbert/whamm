@@ -493,7 +493,7 @@ wasm::call:alt /
 
             // probe body
             assert!(&probe.body().is_some());
-            assert_eq!(1, probe.body().as_ref().unwrap().len());
+            assert_eq!(1, probe.body().as_ref().unwrap().stmts.len());
 
             print_ast(&ast);
 
