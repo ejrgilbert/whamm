@@ -48,7 +48,43 @@ Below is an example `.wast` test:
 
 Below is an example `.wast` test using imports:
 ```webassembly
-;; TODO
+(module
+    (func (export "dummy") (param i32) (result i32)
+        local.get 0
+    )
+)
+
+(register "test")
+
+;; @instrument
+(module
+    ;; Imports
+    (type (;0;) (func (param i32) (result i32)))
+    (import "test" "dummy" (func $dummy (type 0)))
+
+    ;; Globals
+    (global $var (mut i32) (i32.const 0))
+
+    ;; Global getters
+    (func $get_global_var (result i32)
+        (global.get $var)
+    )
+
+    ;; Test case functions
+    (func $foo
+        (call $dummy (i32.const 0))
+        global.set $var
+    )
+
+    (start $foo)
+    (export "foo" (func $foo))
+    (export "get_global_var" (func $get_global_var))
+    (memory (;0;) 1)
+ )
+ 
+;; WHAMM --> i32 count; wasm:opcode:call:alt / arg0 == 0 / { count = 5; return 1; }
+(assert_return (invoke "get_global_var") (i32.const 1)) ;; alt, so global should be return value
+(assert_return (invoke "get_count") (i32.const 5))
 ```
 
 There are several conventions to follow when writing `.wast` test cases for `whamm`.
