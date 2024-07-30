@@ -477,6 +477,9 @@ impl OpcodeEvent {
         }
     }
     fn call(loc: Option<Location>) -> Self {
+        // TODO add the following functionality:
+        // - `result` global 
+        // - 
         let fns = vec![ProvidedFunction::new(
             "alt_call_by_id".to_string(),
             "Insert an alternate call (targeting the passed function ID) into the Wasm bytecode. Will also emit the original parameters onto the stack.".to_string(),

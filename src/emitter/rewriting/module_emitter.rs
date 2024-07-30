@@ -5,7 +5,7 @@ use orca::{DataSegment, DataSegmentKind, InitExpr};
 use std::collections::HashMap;
 
 use orca::ir::types::{DataType as OrcaType, Value as OrcaValue};
-use wasmparser::BlockType;
+use wasmparser::{BlockType, GlobalType};
 
 use crate::emitter::rewriting::{emit_body, emit_expr, emit_stmt, whamm_type_to_wasm, Emitter};
 use orca::ir::function::FunctionBuilder;
@@ -291,6 +291,27 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
             }
         }
     }
+    
+    pub(crate) fn emit_global_getter(
+        &mut self,
+        global_id: &u32,
+        name: String,
+        ty: &GlobalType,
+    ) -> Result<bool, Box<WhammError>> {
+        let getter_params = vec![];
+        let getter_res = vec![OrcaType::from(ty.content_type)];
+        
+        let mut getter = FunctionBuilder::new(&getter_params, &getter_res);
+        getter
+            .global_get(*global_id);
+        
+        let getter_id = getter.finish(self.app_wasm);
+        
+        let fn_name = format!("get_{name}");
+        self.app_wasm.add_export_func(fn_name.leak(), getter_id);
+        
+        Ok(true)
+    }
 
     pub(crate) fn emit_global(
         &mut self,
@@ -313,16 +334,16 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
         };
 
         let rec = self.table.get_record_mut(&rec_id);
-        match rec {
+        let (global_id, ty) = match rec {
             Some(Record::Var { ref mut addr, .. }) => {
                 // emit global variable and set addr in symbol table
                 // this is used for user-defined global vars in the script...
                 let default_global = whamm_type_to_wasm(&ty);
-                let global_id = self.app_wasm.add_global(default_global);
+                let global_id = self.app_wasm.add_global(default_global.clone());
                 *addr = Some(VarAddr::Global { addr: global_id });
-                Ok(true)
+                (global_id, default_global.ty)
             }
-            Some(&mut ref ty) => Err(Box::new(ErrorGen::get_unexpected_error(
+            Some(&mut ref ty) => return Err(Box::new(ErrorGen::get_unexpected_error(
                 true,
                 Some(format!(
                     "{UNEXPECTED_ERR_MSG} \
@@ -331,7 +352,7 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
                 )),
                 None,
             ))),
-            None => Err(Box::new(ErrorGen::get_unexpected_error(
+            None => return Err(Box::new(ErrorGen::get_unexpected_error(
                 true,
                 Some(format!(
                     "{UNEXPECTED_ERR_MSG} \
@@ -339,7 +360,9 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
                 )),
                 None,
             ))),
-        }
+        };
+
+        self.emit_global_getter(&global_id, name, &ty)
     }
 
     pub fn emit_global_stmts(&mut self, stmts: &mut [Statement]) -> Result<bool, Box<WhammError>> {
