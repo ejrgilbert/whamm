@@ -187,7 +187,7 @@ pub enum Value {
 pub struct Block {
     pub stmts: Vec<Statement>,
     pub return_ty: Option<DataType>,
-    pub loc: Option<Location>
+    pub loc: Option<Location>,
 }
 impl Block {
     pub fn loc(&self) -> &Option<Location> {
@@ -969,7 +969,7 @@ impl ProvidedFunction {
                 body: Block {
                     stmts: vec![],
                     return_ty: None,
-                    loc: None
+                    loc: None,
                 },
             },
         }

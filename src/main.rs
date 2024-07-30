@@ -59,12 +59,7 @@ fn try_main() -> Result<(), failure::Error> {
             run_info(spec, globals, functions);
         }
         Cmd::Instr(args) => {
-            run_instr(
-                args.app,
-                args.script,
-                args.output_path,
-                args.virgil
-            );
+            run_instr(args.app, args.script, args.output_path, args.virgil);
         }
     }
 
@@ -90,7 +85,7 @@ fn run_instr(
     app_wasm_path: String,
     script_path: String,
     output_wasm_path: String,
-    _emit_virgil: bool
+    _emit_virgil: bool,
 ) {
     // Set up error reporting mechanism
     let mut err = ErrorGen::new(script_path.clone(), "".to_string(), MAX_ERRORS);

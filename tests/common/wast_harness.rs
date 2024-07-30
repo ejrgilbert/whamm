@@ -13,7 +13,7 @@ pub fn main() -> Result<(), std::io::Error> {
     setup_logger();
     // Find all the wast files to run as tests
     let wast_tests = find_wast_tests();
-    
+
     // TODO -- remove old output dir
 
     let mut all_wast_should_pass = vec![];
@@ -156,7 +156,12 @@ fn generate_should_fail_bin_wast(
             }
             // create the wast
             // call.wast -> call.idx.bin.wast
-            let new_file_path = new_wast_path(wast_path, test_idx, Some(assertion_idx), OUTPUT_UNINSTR_WAST);
+            let new_file_path = new_wast_path(
+                wast_path,
+                test_idx,
+                Some(assertion_idx),
+                OUTPUT_UNINSTR_WAST,
+            );
 
             // Write new wast files, one assertion at a time
             write_bin_wast_file(
@@ -165,7 +170,7 @@ fn generate_should_fail_bin_wast(
                 &test_setup.support_stmts,
                 &test_setup.target_module,
                 &"None".to_string(),
-                &[assertion.clone()]
+                &[assertion.clone()],
             )?;
             created_wast_files.push(new_file_path);
         }
@@ -300,7 +305,7 @@ fn find_wast_tests() -> Vec<PathBuf> {
 struct WastTestSetup {
     target_module: Vec<u8>,
     support_modules: Vec<Vec<u8>>,
-    support_stmts: Vec<String>
+    support_stmts: Vec<String>,
 }
 
 /// Parses the setup information from the wast file passed as a buffer.
@@ -311,7 +316,10 @@ struct WastTestSetup {
 /// (register "test")
 /// ;; @instrument
 /// (module <the actual targeted module to instrument>)
-fn get_test_setup(reader: &mut BufReader<File>, file_path: &PathBuf) -> Result<WastTestSetup, std::io::Error> {
+fn get_test_setup(
+    reader: &mut BufReader<File>,
+    file_path: &PathBuf,
+) -> Result<WastTestSetup, std::io::Error> {
     let mut mod_to_instr = false;
 
     let mut setup = WastTestSetup::default();
@@ -343,15 +351,17 @@ fn get_test_setup(reader: &mut BufReader<File>, file_path: &PathBuf) -> Result<W
                 // When we get to the target module, we know the setup is done!
                 break;
             } else {
-                setup.support_modules.push(match wat2wasm(module.as_bytes()) {
-                    Err(e) => {
-                        panic!(
-                            "Unable to convert wat to wasm for module: {}\nDue to error: {:?}",
-                            module, e
-                        );
-                    }
-                    Ok(res) => res,
-                });
+                setup
+                    .support_modules
+                    .push(match wat2wasm(module.as_bytes()) {
+                        Err(e) => {
+                            panic!(
+                                "Unable to convert wat to wasm for module: {}\nDue to error: {:?}",
+                                module, e
+                            );
+                        }
+                        Ok(res) => res,
+                    });
             }
             mod_to_instr = false;
         } else if line.starts_with('(') {
@@ -363,7 +373,10 @@ fn get_test_setup(reader: &mut BufReader<File>, file_path: &PathBuf) -> Result<W
 }
 
 /// Parses the wasm module from the wast file passed as a buffer.
-fn get_wasm_module(start_line: &str, reader: &mut BufReader<File>) -> Result<String, std::io::Error> {
+fn get_wasm_module(
+    start_line: &str,
+    reader: &mut BufReader<File>,
+) -> Result<String, std::io::Error> {
     let mut module: String = start_line.to_string();
     let mut num_left_parens = count_matched_chars(&module, &'(');
     let mut num_right_parens = count_matched_chars(&module, &')');
@@ -381,7 +394,7 @@ fn get_wasm_module(start_line: &str, reader: &mut BufReader<File>) -> Result<Str
             // we're done parsing the module!
             break;
         }
-        
+
         line.clear();
     }
     fn count_matched_chars(s: &str, c: &char) -> usize {
@@ -415,7 +428,7 @@ impl WastTestCase {
 #[derive(Clone)]
 struct Assertion {
     str: String,
-    passes_uninstrumented: bool
+    passes_uninstrumented: bool,
 }
 
 /// Creates a vector of test cases from the passed buffer.
@@ -444,7 +457,7 @@ fn get_test_cases(reader: BufReader<File>) -> Vec<WastTestCase> {
             // this is an assertion within the current test case
             curr_test.assertions.push(Assertion {
                 str: line,
-                passes_uninstrumented: passes_uninstr
+                passes_uninstrumented: passes_uninstr,
             });
         } else if line.starts_with(PASSES_UNINSTR_PATTERN) {
             passes_uninstr = true;
@@ -462,7 +475,12 @@ fn get_test_cases(reader: BufReader<File>) -> Vec<WastTestCase> {
 // ---- UTILITIES ----
 // ===================
 
-fn new_wast_path(wast_path: &Path, idx: usize, idx2: Option<usize>, target_parent_dir: &str) -> String {
+fn new_wast_path(
+    wast_path: &Path,
+    idx: usize,
+    idx2: Option<usize>,
+    target_parent_dir: &str,
+) -> String {
     // figure out name
     let file_name = wast_path.file_name().unwrap().to_str().unwrap().to_string();
     let file_ext = wast_path.extension().unwrap().to_str().unwrap();
@@ -472,16 +490,19 @@ fn new_wast_path(wast_path: &Path, idx: usize, idx2: Option<usize>, target_paren
     } else {
         format!("{file_name_stripped}whamm{idx}.bin.wast")
     };
-    
+
     // Figure out path
     let new_sub_path = match wast_path.strip_prefix(WAST_SUITE_DIR) {
         Ok(p) => p.to_str().unwrap(),
-        Err(e) => panic!("Could not strip prefix from path '{:?}' due to error: {:?}", wast_path, e)
+        Err(e) => panic!(
+            "Could not strip prefix from path '{:?}' due to error: {:?}",
+            wast_path, e
+        ),
     };
 
     let new_path = format!("{target_parent_dir}/{}/{new_name}", new_sub_path);
     try_path(&new_path);
-    
+
     new_path
 }
 

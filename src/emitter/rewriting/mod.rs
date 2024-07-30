@@ -53,33 +53,16 @@ fn emit_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
     match stmt {
         Statement::Decl { .. } => emit_decl_stmt(stmt, injector, table, err_msg),
         Statement::Assign { .. } => emit_assign_stmt(stmt, injector, table, mem_tracker, err_msg),
-        Statement::Expr {
-            expr, ..
-        } | Statement::Return {
-            expr, ..
-        } => emit_expr(expr, injector, table, mem_tracker, err_msg),
+        Statement::Expr { expr, .. } | Statement::Return { expr, .. } => {
+            emit_expr(expr, injector, table, mem_tracker, err_msg)
+        }
         Statement::If {
             cond, conseq, alt, ..
         } => {
             if alt.stmts.is_empty() {
-                emit_if(
-                    cond,
-                    conseq,
-                    injector,
-                    table,
-                    mem_tracker,
-                    err_msg,
-                )
+                emit_if(cond, conseq, injector, table, mem_tracker, err_msg)
             } else {
-                emit_if_else(
-                    cond,
-                    conseq,
-                    alt,
-                    injector,
-                    table,
-                    mem_tracker,
-                    err_msg,
-                )
+                emit_if_else(cond, conseq, alt, injector, table, mem_tracker, err_msg)
             }
         }
     }
@@ -476,7 +459,7 @@ fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
                         loc: None,
                     }],
                     return_ty: None,
-                    loc: None
+                    loc: None,
                 },
                 &mut Block {
                     stmts: vec![Statement::Expr {
@@ -484,7 +467,7 @@ fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
                         loc: None,
                     }],
                     return_ty: None,
-                    loc: None
+                    loc: None,
                 },
                 injector,
                 table,

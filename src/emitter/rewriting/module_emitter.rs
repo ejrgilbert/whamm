@@ -291,7 +291,7 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
             }
         }
     }
-    
+
     pub(crate) fn emit_global_getter(
         &mut self,
         global_id: &u32,
@@ -300,16 +300,15 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
     ) -> Result<bool, Box<WhammError>> {
         let getter_params = vec![];
         let getter_res = vec![OrcaType::from(ty.content_type)];
-        
+
         let mut getter = FunctionBuilder::new(&getter_params, &getter_res);
-        getter
-            .global_get(*global_id);
-        
+        getter.global_get(*global_id);
+
         let getter_id = getter.finish(self.app_wasm);
-        
+
         let fn_name = format!("get_{name}");
         self.app_wasm.add_export_func(fn_name.leak(), getter_id);
-        
+
         Ok(true)
     }
 
@@ -343,23 +342,27 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
                 *addr = Some(VarAddr::Global { addr: global_id });
                 (global_id, default_global.ty)
             }
-            Some(&mut ref ty) => return Err(Box::new(ErrorGen::get_unexpected_error(
-                true,
-                Some(format!(
-                    "{UNEXPECTED_ERR_MSG} \
+            Some(&mut ref ty) => {
+                return Err(Box::new(ErrorGen::get_unexpected_error(
+                    true,
+                    Some(format!(
+                        "{UNEXPECTED_ERR_MSG} \
                 Incorrect global variable record, expected Record::Var, found: {:?}",
-                    ty
-                )),
-                None,
-            ))),
-            None => return Err(Box::new(ErrorGen::get_unexpected_error(
-                true,
-                Some(format!(
-                    "{UNEXPECTED_ERR_MSG} \
+                        ty
+                    )),
+                    None,
+                )))
+            }
+            None => {
+                return Err(Box::new(ErrorGen::get_unexpected_error(
+                    true,
+                    Some(format!(
+                        "{UNEXPECTED_ERR_MSG} \
                 Global variable symbol does not exist!"
-                )),
-                None,
-            ))),
+                    )),
+                    None,
+                )))
+            }
         };
 
         self.emit_global_getter(&global_id, name, &ty)

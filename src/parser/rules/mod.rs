@@ -5,7 +5,10 @@ use crate::common::error::{ErrorGen, WhammError};
 use crate::common::terminal::{magenta_italics, white};
 use crate::parser::rules::core::CorePackage;
 use crate::parser::rules::wasm::WasmPackage;
-use crate::parser::types::{print_fns, print_global_vars, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal, SpecPart, Statement, Block};
+use crate::parser::types::{
+    print_fns, print_global_vars, Block, Expr, Location, ProbeSpec, ProvidedFunction,
+    ProvidedGlobal, SpecPart, Statement,
+};
 use glob::Pattern;
 use std::collections::HashMap;
 use termcolor::Buffer;

@@ -2,7 +2,9 @@ use crate::parser::rules::{
     event_factory, mode_factory, Event, EventInfo, FromStr, Mode, NameOptions, Package,
     PackageInfo, Probe, WhammMode, WhammProbe,
 };
-use crate::parser::types::{Block, DataType, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal, Statement};
+use crate::parser::types::{
+    Block, DataType, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal, Statement,
+};
 use std::collections::HashMap;
 use termcolor::Buffer;
 
@@ -476,8 +478,8 @@ impl OpcodeEvent {
     }
     fn call(loc: Option<Location>) -> Self {
         // TODO add the following functionality:
-        // - `result` global 
-        // - 
+        // - `result` global
+        // -
         let fns = vec![ProvidedFunction::new(
             "alt_call_by_id".to_string(),
             "Insert an alternate call (targeting the passed function ID) into the Wasm bytecode. Will also emit the original parameters onto the stack.".to_string(),

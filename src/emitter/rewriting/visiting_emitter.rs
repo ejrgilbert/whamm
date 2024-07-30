@@ -1,7 +1,7 @@
 use crate::common::error::{ErrorGen, WhammError};
-use crate::emitter::rewriting::{block_type_to_wasm, emit_expr};
 use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::emitter::rewriting::rules::{Arg, LocInfo, Provider, WhammProvider};
+use crate::emitter::rewriting::{block_type_to_wasm, emit_expr};
 use crate::emitter::rewriting::{emit_stmt, Emitter};
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{Block, DataType, Definition, Expr, ProbeSpec, Statement, Value};
@@ -87,20 +87,24 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
         // So, we can just save off the first * items in the stack as the args
         // to the call.
         let mut arg_recs: Vec<(String, usize)> = vec![]; // vec to retain order!
-        
+
         let mut arg_locals: Vec<(String, u32)> = vec![];
-        args.iter().for_each( |Arg {
-                                   name: arg_name,
-                                   ty: arg_ty,
-                               }| {
-            // create local for the param in the module
-            let arg_local_id = self.app_iter.add_local(arg_ty.clone());
-            arg_locals.push((arg_name.to_string(), arg_local_id));
-        });
-        
+        args.iter().for_each(
+            |Arg {
+                 name: arg_name,
+                 ty: arg_ty,
+             }| {
+                // create local for the param in the module
+                let arg_local_id = self.app_iter.add_local(arg_ty.clone());
+                arg_locals.push((arg_name.to_string(), arg_local_id));
+            },
+        );
+
         // Save args in reverse order (the leftmost arg is at the bottom of the stack)
-        arg_locals.iter().rev().for_each(
-            |(arg_name, arg_local_id)| {
+        arg_locals
+            .iter()
+            .rev()
+            .for_each(|(arg_name, arg_local_id)| {
                 // emit an opcode in the event to assign the ToS to this new local
                 self.app_iter.local_set(*arg_local_id);
 
@@ -112,13 +116,14 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
                         name: arg_name.to_string(),
                         value: None,
                         is_comp_provided: false,
-                        addr: Some(VarAddr::Local { addr: *arg_local_id }),
+                        addr: Some(VarAddr::Local {
+                            addr: *arg_local_id,
+                        }),
                         loc: None,
                     },
                 );
                 arg_recs.insert(0, (arg_name.to_string(), id));
-            },
-        );
+            });
         self.instr_created_args = arg_recs;
         true
     }

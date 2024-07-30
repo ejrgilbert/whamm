@@ -197,7 +197,7 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
                 Block {
                     stmts,
                     return_ty: None,
-                    loc: None
+                    loc: None,
                 }
             });
 
