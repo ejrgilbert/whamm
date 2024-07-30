@@ -1,20 +1,21 @@
 use crate::common::{run_whamm, setup_logger, try_path};
 use log::{debug, error};
-use std::fs::File;
+use std::fs::{remove_dir_all, File};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use wabt::wat2wasm;
 
+const OUTPUT_DIR: &str = "output/tests/wast_suite";
 const OUTPUT_WHAMMED_WAST: &str = "output/tests/wast_suite/should_pass";
 const OUTPUT_UNINSTR_WAST: &str = "output/tests/wast_suite/should_fail";
 
 pub fn main() -> Result<(), std::io::Error> {
     setup_logger();
+    clean();
+
     // Find all the wast files to run as tests
     let wast_tests = find_wast_tests();
-
-    // TODO -- remove old output dir
 
     let mut all_wast_should_pass = vec![];
     let mut all_wast_should_fail = vec![];
@@ -59,6 +60,11 @@ pub fn main() -> Result<(), std::io::Error> {
     // Now that we've generated the wast files, let's run them on the configured interpreters!
     run_wast_tests(all_wast_should_fail, all_wast_should_pass);
     Ok(())
+}
+
+/// Clear out the previous test directory
+fn clean() {
+    remove_dir_all(Path::new(OUTPUT_DIR)).ok();
 }
 
 fn run_wast_tests(wast_should_fail: Vec<String>, wast_should_pass: Vec<String>) {
