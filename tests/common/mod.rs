@@ -1,16 +1,16 @@
 pub mod wast_harness;
 
-use orca::ir::module::Module as WasmModule;
 use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use whamm::parser::types::Whamm;
 use whamm::parser::whamm_parser::*;
 
 use glob::{glob, glob_with};
-use log::{debug, error, info, warn};
-use wabt::{wasm2wat, wat2wasm};
+use log::{error, info, warn};
+use orca::Module;
+use wabt::wat2wasm;
 use whamm::common::error::ErrorGen;
 use whamm::emitter::rewriting::module_emitter::{MemoryTracker, ModuleEmitter};
 use whamm::emitter::rewriting::visiting_emitter::VisitingEmitter;
@@ -18,7 +18,6 @@ use whamm::generator::init_generator::InitGenerator;
 use whamm::generator::instr_generator::InstrGenerator;
 use whamm::generator::simple_ast::build_simple_ast;
 use whamm::verifier::verifier::{build_symbol_table, type_check};
-
 // ====================
 // = Helper Functions =
 // ====================
@@ -75,11 +74,12 @@ fn get_ast(script: &str, err: &mut ErrorGen) -> Option<Whamm> {
     }
 }
 
+const TEST_DEBUG_DIR: &str = "output/tests/debug_me/";
 pub fn run_whamm(
-    wasm_module_bytes: &[u8],
+    app_wasm: &mut Module,
     whamm_script: &String,
     script_path: &str,
-) -> (Vec<u8>, String) {
+) -> Vec<u8> {
     let mut err = ErrorGen::new(script_path.to_string(), whamm_script.clone(), 0);
 
     let ast_res = get_ast(whamm_script, &mut err);
@@ -100,9 +100,6 @@ pub fn run_whamm(
     // Translate to the simple AST
     let simple_ast = build_simple_ast(&whamm, &mut err);
 
-    let mut app_wasm =
-        WasmModule::parse(wasm_module_bytes, false).expect("Failed to parse Wasm module");
-
     // Create the memory tracker
     if app_wasm.memories.len() > 1 {
         // TODO -- make this work with multi-memory
@@ -116,7 +113,7 @@ pub fn run_whamm(
 
     // Phase 0 of instrumentation (emit globals and provided fns)
     let mut init = InitGenerator {
-        emitter: ModuleEmitter::new(&mut app_wasm, &mut symbol_table, &mut mem_tracker),
+        emitter: ModuleEmitter::new(app_wasm, &mut symbol_table, &mut mem_tracker),
         context_name: "".to_string(),
         err: &mut err,
     };
@@ -127,20 +124,20 @@ pub fn run_whamm(
     // This structure is necessary since we need to have the fns/globals injected (a single time)
     // and ready to use in every body/predicate.
     let mut instr = InstrGenerator::new(
-        VisitingEmitter::new(&mut app_wasm, &mut symbol_table, &mem_tracker),
+        VisitingEmitter::new(app_wasm, &mut symbol_table, &mem_tracker),
         simple_ast,
         &mut err,
     );
     instr.run();
     err.fatal_report("IntegrationTest");
 
-    let instrumented_module_wasm = app_wasm.encode();
-    let instrumented_module_wat = match wasm2wat(&instrumented_module_wasm) {
-        Err(e) => panic!("`wasm2wat` verification check failed with error: {}", e),
-        Ok(wat) => wat,
-    };
-
-    (instrumented_module_wasm, instrumented_module_wat)
+    // make sure that this is a valid file by running wasm2wat through CLI
+    let wasm_file_path = format!("{TEST_DEBUG_DIR}/{}.wasm", Path::new(script_path).file_name().unwrap().to_str().unwrap().strip_suffix('\"').unwrap());
+    try_path(&wasm_file_path);
+    app_wasm.emit_wasm(&wasm_file_path.clone()).unwrap_or_else(|_| panic!("Failed to emit wasm to file: {wasm_file_path}"));
+    wasm2wat_on_file(wasm_file_path.as_str());
+    
+    app_wasm.encode()
 }
 
 pub fn run_whamm_bin(original_wasm_path: &str, monitor_path: &str, instrumented_wasm_path: &str) {
@@ -187,15 +184,12 @@ pub fn wat2wasm_on_file(original_wat_path: &str, original_wasm_path: &str) {
 }
 
 pub fn wasm2wat_on_file(instrumented_wasm_path: &str) {
-    let file_data = fs::read(instrumented_wasm_path).unwrap();
-    let wat_data = match wasm2wat(file_data) {
-        Err(e) => {
-            panic!("wasm2wat failed with error: {}", e)
-        }
-        Ok(data) => data,
-    };
+    let res = Command::new("wasm2wat")
+        .arg(instrumented_wasm_path)
+        .output()
+        .expect("failed to execute process");
 
-    debug!("{}", wat_data);
+    assert!(res.status.success());
 }
 
 /// create output path if it doesn't exist

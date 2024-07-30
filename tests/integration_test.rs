@@ -3,6 +3,7 @@ mod common;
 use crate::common::{run_basic_instrumentation, run_whamm, run_whamm_bin, wasm2wat_on_file};
 use std::fs;
 use std::process::Command;
+use orca::Module;
 use whamm::common::error::ErrorGen;
 
 const APP_WASM_PATH: &str = "tests/apps/dfinity/users.wasm";
@@ -23,8 +24,10 @@ fn instrument_dfinity_with_fault_injection() {
     err.fatal_report("Integration Test");
 
     for (script_path, script_text) in processed_scripts {
+        let wasm = fs::read(APP_WASM_PATH).unwrap();
+        let mut module_to_instrument = Module::parse(&wasm, false).unwrap();
         let _ = run_whamm(
-            &fs::read(APP_WASM_PATH).unwrap(),
+            &mut module_to_instrument,
             &script_text,
             &format!("{:?}", script_path.clone().as_path()),
         );

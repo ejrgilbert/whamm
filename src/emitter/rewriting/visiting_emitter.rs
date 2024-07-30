@@ -12,6 +12,8 @@ use orca::iterator::module_iterator::ModuleIterator;
 use orca::opcode::Opcode;
 use orca::ModuleBuilder;
 use std::iter::Iterator;
+use orca::ir::types::BlockType;
+use crate::emitter::rewriting::rules::wasm::OpcodeEvent;
 
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
@@ -235,10 +237,28 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
     ) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
 
+        // The consequent and alternate blocks must have the same type...
+        // this means that the result of the `if` should be the same as
+        // the result of the original instruction!
+        let orig_ty_id = OpcodeEvent::get_ty_info_for_instr(self.app_iter.module, self.app_iter.curr_op().unwrap()).1;
+
         // emit the condition of the `if` expression
         is_success &= self.emit_expr(condition)?;
         // emit the beginning of the if block
-        self.app_iter.if_stmt(block_type_to_wasm(conseq));
+        let block_ty = match orig_ty_id {
+            Some(ty_id) => {
+                let ty = match self.app_iter.module.types.get(ty_id as usize) {
+                    Some(ty) => ty.results.clone(),
+                    None => Box::new([])
+                };
+                
+                // we only care about the result of the original
+                BlockType::FuncType(self.app_iter.module.add_type(&[], &ty))
+            },
+            None => BlockType::Empty
+        };
+        self.app_iter.if_stmt(block_ty);
+
 
         is_success &= self.emit_body(conseq)?;
 

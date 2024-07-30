@@ -489,7 +489,7 @@ impl OpcodeEvent {
                     name: "func_id".to_string(),
                     loc: None,
                 },
-                DataType::U32,
+                DataType::I32,
             )],
             DataType::Tuple { ty_info: vec![] },
             true
