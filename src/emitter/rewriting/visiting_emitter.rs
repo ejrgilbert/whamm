@@ -1,10 +1,10 @@
 use crate::common::error::{ErrorGen, WhammError};
-use crate::emitter::rewriting::emit_expr;
+use crate::emitter::rewriting::{block_type_to_wasm, emit_expr};
 use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::emitter::rewriting::rules::{Arg, LocInfo, Provider, WhammProvider};
 use crate::emitter::rewriting::{emit_stmt, Emitter};
 use crate::generator::types::ExprFolder;
-use crate::parser::types::{DataType, Definition, Expr, ProbeSpec, Statement, Value};
+use crate::parser::types::{Block, DataType, Definition, Expr, ProbeSpec, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca::ir::module::Module;
 use orca::iterator::iterator_trait::Iterator as OrcaIterator;
@@ -207,14 +207,14 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
     pub fn emit_if(
         &mut self,
         condition: &mut Expr,
-        conseq: &mut [Statement],
+        conseq: &mut Block,
     ) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
         // emit the condition of the `if` expression
         is_success &= self.emit_expr(condition)?;
 
         // emit the beginning of the if block
-        self.app_iter.if_stmt(BlockType::Empty);
+        self.app_iter.if_stmt(block_type_to_wasm(conseq));
 
         is_success &= self.emit_body(conseq)?;
 
@@ -226,14 +226,14 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
     pub(crate) fn emit_if_with_orig_as_else(
         &mut self,
         condition: &mut Expr,
-        conseq: &mut [Statement],
+        conseq: &mut Block,
     ) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
 
         // emit the condition of the `if` expression
         is_success &= self.emit_expr(condition)?;
         // emit the beginning of the if block
-        self.app_iter.if_stmt(BlockType::Empty);
+        self.app_iter.if_stmt(block_type_to_wasm(conseq));
 
         is_success &= self.emit_body(conseq)?;
 
@@ -321,9 +321,9 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
     }
 }
 impl Emitter for VisitingEmitter<'_, '_, '_, '_> {
-    fn emit_body(&mut self, body: &mut [Statement]) -> Result<bool, Box<WhammError>> {
+    fn emit_body(&mut self, body: &mut Block) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
-        for stmt in body.iter_mut() {
+        for stmt in body.stmts.iter_mut() {
             is_success &= self.emit_stmt(stmt)?;
         }
         Ok(is_success)

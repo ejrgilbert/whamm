@@ -188,13 +188,17 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
                 None => (None, None),
             };
 
-            let this_body: Option<Vec<Statement>> = this_body.map(|b| {
+            let this_body: Option<Block> = this_body.map(|b| {
                 let mut stmts = vec![];
                 //each stmt_from_rule returns a vector
                 for stmt in b {
                     stmts.push(stmt);
                 }
-                stmts
+                Block {
+                    stmts,
+                    return_ty: None,
+                    loc: None
+                }
             });
 
             // Add probe definition to the script
@@ -216,6 +220,7 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
             let mut return_ty = DataType::Tuple { ty_info: vec![] };
             let mut body = Block {
                 stmts: vec![],
+                return_ty: None,
                 loc: Some(Location {
                     line_col: fn_name_line_col.clone(),
                     path: None,
@@ -346,6 +351,7 @@ pub fn block_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
     //create the block object and return it in the wrapper with result
     Block {
         stmts: body_vec,
+        return_ty: None,
         loc: Some(Location {
             line_col: block_loc,
             path: None,
@@ -440,6 +446,7 @@ fn alt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
                     err.add_errors(errors);
                     return Block {
                         stmts: vec![],
+                        return_ty: None,
                         loc: Some(Location {
                             line_col: alt_loc,
                             path: None,
@@ -457,6 +464,7 @@ fn alt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
                         conseq: inner_block,
                         alt: Block {
                             stmts: vec![],
+                            return_ty: None,
                             loc: Some(Location {
                                 line_col: alt_loc.clone(),
                                 path: None,
@@ -467,6 +475,7 @@ fn alt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
                             path: None,
                         }),
                     }],
+                    return_ty: None,
                     loc: Some(Location {
                         line_col: alt_loc.clone(),
                         path: None,
@@ -484,6 +493,7 @@ fn alt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
                         path: None,
                     }),
                 }],
+                return_ty: None,
                 loc: Some(Location {
                     line_col: alt_loc.clone(),
                     path: None,
@@ -500,6 +510,7 @@ fn alt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
             );
             Block {
                 stmts: vec![],
+                return_ty: None,
                 loc: Some(Location {
                     line_col: alt_loc,
                     path: None,
@@ -867,6 +878,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                         conseq: block,
                         alt: Block {
                             stmts: vec![],
+                            return_ty: None,
                             loc: Some(Location {
                                 line_col: if_stmt_line_col.clone(),
                                 path: None,

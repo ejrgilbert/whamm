@@ -4,7 +4,7 @@ use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::rewriting::Emitter;
 use crate::generator::simple_ast::SimpleAST;
 use crate::generator::types::ExprFolder;
-use crate::parser::types::{Expr, Statement};
+use crate::parser::types::{Block, Expr, Statement};
 
 const UNEXPECTED_ERR_MSG: &str =
     "InstrGenerator: Looks like you've found a bug...please report this behavior!";
@@ -30,7 +30,7 @@ pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e> {
     curr_instr_args: Vec<Arg>,
     curr_probe_mode: String,
     /// The current probe's body and predicate
-    curr_probe: Option<(Option<Vec<Statement>>, Option<Expr>)>,
+    curr_probe: Option<(Option<Block>, Option<Expr>)>,
 }
 impl<'a, 'b, 'c, 'd, 'e> InstrGenerator<'a, 'b, 'c, 'd, 'e> {
     pub fn new(

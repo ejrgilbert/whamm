@@ -2,9 +2,7 @@ use crate::parser::rules::{
     event_factory, mode_factory, Event, EventInfo, FromStr, Mode, NameOptions, Package,
     PackageInfo, Probe, WhammMode, WhammProbe,
 };
-use crate::parser::types::{
-    DataType, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal, Statement,
-};
+use crate::parser::types::{Block, DataType, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal, Statement};
 use std::collections::HashMap;
 use termcolor::Buffer;
 
@@ -152,7 +150,7 @@ impl Package for WasmPackage {
         probe_spec: &ProbeSpec,
         loc: Option<Location>,
         predicate: Option<Expr>,
-        body: Option<Vec<Statement>>,
+        body: Option<Block>,
         printing_info: bool,
     ) -> (bool, bool) {
         match self {
@@ -1585,7 +1583,7 @@ impl Event for OpcodeEvent {
         probe_spec: &ProbeSpec,
         loc: Option<Location>,
         predicate: Option<Expr>,
-        body: Option<Vec<Statement>>,
+        body: Option<Block>,
     ) -> bool {
         let mut matched_modes = false;
         let probes = self.probes_mut();
