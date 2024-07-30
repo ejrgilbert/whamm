@@ -206,9 +206,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
         // type check action
         if let Some(body) = &mut probe.body_mut() {
             self.visit_block(body);
-            // for stmt in body.stmts.iter_mut() {
-            //     self.visit_stmt(stmt);
-            // }
         }
 
         let _ = self.table.exit_scope();
