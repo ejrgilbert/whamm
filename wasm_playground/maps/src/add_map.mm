@@ -9,21 +9,12 @@ wasm:opcode:call:before /
     report i32 a;
     a = 5;
     report map<i32, i32> m;
+    m[1] = 2;
     whatever = 3;
 }
-// wasm:opcode:call:after {
-//     report i32 e;
-//     e = 5;
-// }
-wasm:opcode:call:after / 
+wasm:opcode:call:before / 
     target_fn_name == "foo"
 /
  {
-    if(true) {
-        report i32 c;
-        c=3; 
-    };
-    report i32 a;
-    a = 5;
-    report map<i32, i32> m;
+    a = 3;
 }

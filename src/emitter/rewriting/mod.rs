@@ -192,7 +192,10 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
             };
             match ty {
                 DataType::Map { .. } => {
-                    let to_call = map_lib_adapter.create_no_meta_map(ty.clone());
+                    let to_call = match map_lib_adapter.create_no_meta_map(ty.clone()) {
+                        Ok(to_call) => to_call,
+                        Err(e) => return Err(e),
+                    };
                     *addr = Some(VarAddr::MapId {
                         addr: to_call.1 as u32,
                     });
@@ -318,14 +321,17 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                                 )));
                             }
                         }
-                        let to_call = map_lib_adapter.create_local_map(
+                        let to_call = match map_lib_adapter.create_local_map(
                             var_name.clone(),
                             script_name.clone(),
                             *bytecode_loc,
                             probe_id.clone(),
                             ty.clone(),
                             report_var_metadata,
-                        );
+                        ) {
+                            Ok(to_call) => to_call,
+                            Err(e) => return Err(e),
+                        };
                         *addr = Some(VarAddr::MapId {
                             addr: to_call.1 as u32,
                         });
@@ -1148,7 +1154,10 @@ fn emit_get_map<'a, T: Opcode<'a> + ModuleBuilder>(
         if let Expr::VarId { name, .. } = map {
             match get_map_info(table, name) {
                 Ok((map_id, key_ty, val_ty)) => {
-                    let to_call = map_lib_adapter.create_map_get(key_ty, val_ty);
+                    let to_call = match map_lib_adapter.create_map_get(key_ty, val_ty) {
+                        Ok(to_call) => to_call,
+                        Err(e) => return Err(e),
+                    };
                     let fn_id = table
                         .lookup(&to_call)
                         .expect("Map function not in symbol table")

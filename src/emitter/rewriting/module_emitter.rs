@@ -380,9 +380,13 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                     addr: global_id.clone(),
                 });
                 //now save off the global variable metadata
-                self.report_var_metadata
-                    .put_global_metadata(global_id as usize, name);
-                Ok(true)
+                match self
+                    .report_var_metadata
+                    .put_global_metadata(global_id as usize, name)
+                {
+                    Ok(_) => Ok(true),
+                    Err(e) => Err(e),
+                }
             }
             Some(&mut ref ty) => Err(Box::new(ErrorGen::get_unexpected_error(
                 true,
