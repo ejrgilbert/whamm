@@ -175,37 +175,6 @@ impl OpcodeEvent {
                         (vec![], None)
                     }
                 }
-                // // module.types includes import type information, pull param/return info
-                // //     via module.get_type with the FID (works with imported OR local funcs)
-                // if let Some(import) = app_wasm.imports.get(*fid as usize) {
-                //     // This is an imported function (FIDs too large will return None)
-                //     match import.ty {
-                //         TypeRef::Func(ty_id) => {
-                //             if let Some(ty) = app_wasm.types.get(ty_id as usize) {
-                //                 (ty.params.to_vec(), Some(ty_id.clone()))
-                //             } else {
-                //                 // no type info found!!
-                //                 warn!("No type information found for import with FID {fid}");
-                //                 (vec![], None)
-                //             }
-                //         }
-                //         _ => {
-                //             // no type info found!!
-                //             warn!("No type information found for import with FID {fid}");
-                //             (vec![], None)
-                //         }
-                //     }
-                // } else {
-                //     // this is a local function
-                //     let ty_id = *fid - app_wasm.num_imported_functions as u32;
-                //     if let Some(ty) =
-                //         app_wasm.get_type(ty_id)
-                //     {
-                //         (ty.params.to_vec(), Some(ty_id))
-                //     } else {
-                //         (vec![], None)
-                //     }
-                // }
             }
             Operator::Block { .. } => {
                 // TODO -- define type info
