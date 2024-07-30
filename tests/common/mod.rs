@@ -75,11 +75,7 @@ fn get_ast(script: &str, err: &mut ErrorGen) -> Option<Whamm> {
 }
 
 const TEST_DEBUG_DIR: &str = "output/tests/debug_me/";
-pub fn run_whamm(
-    app_wasm: &mut Module,
-    whamm_script: &String,
-    script_path: &str,
-) -> Vec<u8> {
+pub fn run_whamm(app_wasm: &mut Module, whamm_script: &String, script_path: &str) -> Vec<u8> {
     let mut err = ErrorGen::new(script_path.to_string(), whamm_script.clone(), 0);
 
     let ast_res = get_ast(whamm_script, &mut err);
@@ -132,11 +128,22 @@ pub fn run_whamm(
     err.fatal_report("IntegrationTest");
 
     // make sure that this is a valid file by running wasm2wat through CLI
-    let wasm_file_path = format!("{TEST_DEBUG_DIR}/{}.wasm", Path::new(script_path).file_name().unwrap().to_str().unwrap().strip_suffix('\"').unwrap());
+    let wasm_file_path = format!(
+        "{TEST_DEBUG_DIR}/{}.wasm",
+        Path::new(script_path)
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .strip_suffix('\"')
+            .unwrap()
+    );
     try_path(&wasm_file_path);
-    app_wasm.emit_wasm(&wasm_file_path.clone()).unwrap_or_else(|_| panic!("Failed to emit wasm to file: {wasm_file_path}"));
+    app_wasm
+        .emit_wasm(&wasm_file_path.clone())
+        .unwrap_or_else(|_| panic!("Failed to emit wasm to file: {wasm_file_path}"));
     wasm2wat_on_file(wasm_file_path.as_str());
-    
+
     app_wasm.encode()
 }
 

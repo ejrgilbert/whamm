@@ -160,7 +160,7 @@ impl OpcodeEvent {
                 function_index: fid,
             } => {
                 match app_wasm.get_fn_kind(*fid) {
-                    Some(FuncKind::Import(ty_id)) | Some(FuncKind::Local(ty_id))=> {
+                    Some(FuncKind::Import(ty_id)) | Some(FuncKind::Local(ty_id)) => {
                         if let Some(ty) = app_wasm.types.get(ty_id as usize) {
                             (ty.params.to_vec(), Some(ty_id.clone()))
                         } else {
@@ -168,13 +168,13 @@ impl OpcodeEvent {
                             warn!("No type information found for import with FID {fid}");
                             (vec![], None)
                         }
-                    },
+                    }
                     None => {
                         // no type info found!!
                         warn!("No type information found for import with FID {fid}");
                         (vec![], None)
                     }
-                } 
+                }
                 // // module.types includes import type information, pull param/return info
                 // //     via module.get_type with the FID (works with imported OR local funcs)
                 // if let Some(import) = app_wasm.imports.get(*fid as usize) {

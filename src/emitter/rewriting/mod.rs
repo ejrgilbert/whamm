@@ -259,7 +259,7 @@ pub fn whamm_type_to_wasm_global(ty: &DataType) -> Global {
             },
             init_expr: InitExpr::Value(OrcaValue::I32(0)),
         },
-        _ => unimplemented!()
+        _ => unimplemented!(),
     }
 }
 pub fn whamm_type_to_wasm_type(ty: &DataType) -> OrcaType {

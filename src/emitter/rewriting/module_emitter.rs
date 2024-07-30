@@ -7,7 +7,9 @@ use std::collections::HashMap;
 use orca::ir::types::{BlockType, DataType as OrcaType, Value as OrcaValue};
 use wasmparser::GlobalType;
 
-use crate::emitter::rewriting::{emit_body, emit_expr, emit_stmt, Emitter, whamm_type_to_wasm_global};
+use crate::emitter::rewriting::{
+    emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global, Emitter,
+};
 use orca::ir::function::FunctionBuilder;
 use orca::ir::module::Module;
 use orca::opcode::Opcode;

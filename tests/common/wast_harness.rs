@@ -1,10 +1,10 @@
 use crate::common::{run_whamm, setup_logger, try_path};
 use log::{debug, error};
+use orca::Module;
 use std::fs::{remove_dir_all, File};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
-use orca::Module;
 
 const OUTPUT_DIR: &str = "output/tests/wast_suite";
 const OUTPUT_WHAMMED_WAST: &str = "output/tests/wast_suite/should_pass";
@@ -195,7 +195,8 @@ fn generate_instrumented_bin_wast(
         // copy, so you don't accidentally manipulate the core module
         // (which is then instrumented in subsequent tests)
         let cloned_module = test_setup.target_module_wat.clone();
-        let buff = wat::parse_bytes(cloned_module.as_slice()).expect("couldn't convert the input wat to Wasm");
+        let buff = wat::parse_bytes(cloned_module.as_slice())
+            .expect("couldn't convert the input wat to Wasm");
         let mut module_to_instrument = Module::parse(&buff, false).unwrap();
         let instrumented_module_wasm = run_whamm(
             &mut module_to_instrument,
@@ -234,7 +235,7 @@ fn write_bin_wast_file(
     for module in support_modules_wat {
         // wat2wasm
         let module_wasm = wat::parse_bytes(module).expect("couldn't convert the input wat to Wasm");
-        
+
         wast_file.write_all("(module binary ".as_bytes())?;
         wast_file.write_all(vec_as_hex(module_wasm.as_ref()).as_bytes())?;
         wast_file.write_all(")\n\n".as_bytes())?;
@@ -350,9 +351,7 @@ fn get_test_setup(
                 // When we get to the target module, we know the setup is done!
                 break;
             } else {
-                setup
-                    .support_modules_wat
-                    .push(Vec::from(module.as_bytes()));
+                setup.support_modules_wat.push(Vec::from(module.as_bytes()));
             }
             mod_to_instr = false;
         } else if line.starts_with('(') {

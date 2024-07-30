@@ -361,7 +361,7 @@ impl Fn {
 pub enum Definition {
     User,
     CompilerStatic,
-    CompilerDynamic
+    CompilerDynamic,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

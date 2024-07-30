@@ -1,9 +1,9 @@
 mod common;
 
 use crate::common::{run_basic_instrumentation, run_whamm, run_whamm_bin, wasm2wat_on_file};
+use orca::Module;
 use std::fs;
 use std::process::Command;
-use orca::Module;
 use whamm::common::error::ErrorGen;
 
 const APP_WASM_PATH: &str = "tests/apps/dfinity/users.wasm";
