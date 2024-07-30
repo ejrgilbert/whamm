@@ -193,6 +193,7 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
             let arg_name = format!("arg{}", i);
             self.table.remove_record(&arg_name);
         }
+        self.instr_created_args.clear();
     }
 
     pub(crate) fn fold_expr(&mut self, expr: &mut Expr) -> bool {
