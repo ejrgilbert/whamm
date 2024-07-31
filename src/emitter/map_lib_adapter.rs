@@ -99,7 +99,7 @@ impl MapLibAdapter {
         //create the map based on the types of the key and value in the map
         //"map" is the type of the declaration statement
         match map {
-            DataType::Map { key_ty, val_ty } => match self.create_map_insert(*key_ty, *val_ty) {
+            DataType::Map { key_ty, val_ty } => match self.create_map_fname(*key_ty, *val_ty) {
                 Ok(func_name) => Ok((func_name, map_id)),
                 Err(e) => Err(e),
             },
@@ -130,7 +130,7 @@ impl MapLibAdapter {
             )));
         }
         match map {
-            DataType::Map { key_ty, val_ty } => match self.create_map_insert(*key_ty, *val_ty) {
+            DataType::Map { key_ty, val_ty } => match self.create_map_fname(*key_ty, *val_ty) {
                 Ok(func_name) => Ok((func_name, map_id)),
                 Err(e) => Err(e),
             },
@@ -145,7 +145,7 @@ impl MapLibAdapter {
         let map_id = self.get_map_count();
         self.increment_map_count();
         match map {
-            DataType::Map { key_ty, val_ty } => match self.create_map_insert(*key_ty, *val_ty) {
+            DataType::Map { key_ty, val_ty } => match self.create_map_fname(*key_ty, *val_ty) {
                 Ok(func_name) => Ok((func_name, map_id)),
                 Err(e) => Err(e),
             },
@@ -158,7 +158,7 @@ impl MapLibAdapter {
     }
 
     //The stuff that actually calls the emitter stuff
-    pub fn create_map_insert(
+    pub fn create_map_fname(
         &mut self,
         key: DataType,
         val: DataType,
@@ -219,7 +219,7 @@ impl MapLibAdapter {
             ))),
         }
     }
-    pub fn set_map_insert(
+    pub fn insert_map_fname(
         &mut self,
         key: DataType,
         val: DataType,
@@ -277,7 +277,7 @@ impl MapLibAdapter {
             ))),
         }
     }
-    pub fn create_map_get(
+    pub fn get_map_fname(
         &mut self,
         key: DataType,
         val: DataType,

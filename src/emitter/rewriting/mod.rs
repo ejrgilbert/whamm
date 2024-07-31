@@ -520,7 +520,7 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                 Ok((map_id, key_ty, val_ty)) => {
                     //no Record in ST, so always flush after a set_map
                     report_var_metadata.flush_soon = true;
-                    let to_call = match map_lib_adapter.set_map_insert(key_ty, val_ty) {
+                    let to_call = match map_lib_adapter.insert_map_fname(key_ty, val_ty) {
                         Ok(to_call) => to_call,
                         Err(e) => return Err(e),
                     };
@@ -1155,7 +1155,7 @@ fn emit_get_map<'a, T: Opcode<'a> + ModuleBuilder>(
         if let Expr::VarId { name, .. } = map {
             match get_map_info(table, name) {
                 Ok((map_id, key_ty, val_ty)) => {
-                    let to_call = match map_lib_adapter.create_map_get(key_ty, val_ty) {
+                    let to_call = match map_lib_adapter.get_map_fname(key_ty, val_ty) {
                         Ok(to_call) => to_call,
                         Err(e) => return Err(e),
                     };
