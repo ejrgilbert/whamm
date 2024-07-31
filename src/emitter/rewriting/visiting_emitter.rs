@@ -1,5 +1,6 @@
 use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::rewriting::module_emitter::MemoryTracker;
+use crate::emitter::rewriting::rules::wasm::OpcodeEvent;
 use crate::emitter::rewriting::rules::{Arg, LocInfo, Provider, WhammProvider};
 use crate::emitter::rewriting::{block_type_to_wasm, emit_expr};
 use crate::emitter::rewriting::{emit_stmt, Emitter};
@@ -7,6 +8,7 @@ use crate::generator::types::ExprFolder;
 use crate::parser::types::{Block, DataType, Definition, Expr, ProbeSpec, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca::ir::module::Module;
+use orca::ir::types::BlockType;
 use orca::iterator::iterator_trait::Iterator as OrcaIterator;
 use orca::iterator::module_iterator::ModuleIterator;
 use orca::opcode::Opcode;
@@ -94,7 +96,7 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
                  ty: arg_ty,
              }| {
                 // create local for the param in the module
-                let arg_local_id = self.app_iter.add_local(arg_ty.clone());
+                let arg_local_id = self.app_iter.add_local(*arg_ty);
                 arg_locals.push((arg_name.to_string(), arg_local_id));
             },
         );
@@ -193,6 +195,7 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
             let arg_name = format!("arg{}", i);
             self.table.remove_record(&arg_name);
         }
+        self.instr_created_args.clear();
     }
 
     pub(crate) fn fold_expr(&mut self, expr: &mut Expr) -> bool {
@@ -234,10 +237,31 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
     ) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
 
+        // The consequent and alternate blocks must have the same type...
+        // this means that the result of the `if` should be the same as
+        // the result of the original instruction!
+        let orig_ty_id = OpcodeEvent::get_ty_info_for_instr(
+            self.app_iter.module,
+            self.app_iter.curr_op().unwrap(),
+        )
+        .1;
+
         // emit the condition of the `if` expression
         is_success &= self.emit_expr(condition)?;
         // emit the beginning of the if block
-        self.app_iter.if_stmt(block_type_to_wasm(conseq));
+        let block_ty = match orig_ty_id {
+            Some(ty_id) => {
+                let ty = match self.app_iter.module.types.get(ty_id as usize) {
+                    Some(ty) => ty.results.clone(),
+                    None => Box::new([]),
+                };
+
+                // we only care about the result of the original
+                BlockType::FuncType(self.app_iter.module.add_type(&[], &ty))
+            }
+            None => BlockType::Empty,
+        };
+        self.app_iter.if_stmt(block_ty);
 
         is_success &= self.emit_body(conseq)?;
 

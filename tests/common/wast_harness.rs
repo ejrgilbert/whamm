@@ -1,10 +1,10 @@
 use crate::common::{run_whamm, setup_logger, try_path};
 use log::{debug, error};
+use orca::Module;
 use std::fs::{remove_dir_all, File};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
-use wabt::wat2wasm;
 
 const OUTPUT_DIR: &str = "output/tests/wast_suite";
 const OUTPUT_WHAMMED_WAST: &str = "output/tests/wast_suite/should_pass";
@@ -172,9 +172,9 @@ fn generate_should_fail_bin_wast(
             // Write new wast files, one assertion at a time
             write_bin_wast_file(
                 &new_file_path,
-                &test_setup.support_modules,
+                &test_setup.support_modules_wat,
                 &test_setup.support_stmts,
-                &test_setup.target_module,
+                &test_setup.target_module_wat,
                 &"None".to_string(),
                 &[assertion.clone()],
             )?;
@@ -194,16 +194,15 @@ fn generate_instrumented_bin_wast(
         // instrument A COPY OF the module with the whamm script
         // copy, so you don't accidentally manipulate the core module
         // (which is then instrumented in subsequent tests)
-        let cloned_module = test_setup.target_module.to_vec();
-        let module_to_instrument = cloned_module.as_slice();
-        let (instrumented_module_wasm, instrumented_module_wat) = run_whamm(
-            module_to_instrument,
+        let cloned_module = test_setup.target_module_wat.clone();
+        let buff = wat::parse_bytes(cloned_module.as_slice())
+            .expect("couldn't convert the input wat to Wasm");
+        let mut module_to_instrument = Module::parse(&buff, false).unwrap();
+        let instrumented_module_wasm = run_whamm(
+            &mut module_to_instrument,
             &test_case.whamm_script,
             &format!("{:?}", wast_path),
         );
-
-        debug!("AFTER INSTRUMENTATION");
-        debug!("{instrumented_module_wat}");
 
         // create the wast
         // call.wast -> call.idx.bin.wast
@@ -211,7 +210,7 @@ fn generate_instrumented_bin_wast(
 
         write_bin_wast_file(
             &new_file_path,
-            &test_setup.support_modules,
+            &test_setup.support_modules_wat,
             &test_setup.support_stmts,
             &instrumented_module_wasm,
             &test_case.whamm_script,
@@ -224,7 +223,7 @@ fn generate_instrumented_bin_wast(
 
 fn write_bin_wast_file(
     file_path: &String,
-    support_modules: &Vec<Vec<u8>>,
+    support_modules_wat: &Vec<Vec<u8>>,
     support_stmts: &Vec<String>,
     target_module: &Vec<u8>,
     whamm_script: &String,
@@ -233,9 +232,12 @@ fn write_bin_wast_file(
     let mut wast_file = File::create(file_path)?;
 
     // output the support modules with format: (module binary "<binary>")
-    for module in support_modules {
+    for module in support_modules_wat {
+        // wat2wasm
+        let module_wasm = wat::parse_bytes(module).expect("couldn't convert the input wat to Wasm");
+
         wast_file.write_all("(module binary ".as_bytes())?;
-        wast_file.write_all(vec_as_hex(module.as_slice()).as_bytes())?;
+        wast_file.write_all(vec_as_hex(module_wasm.as_ref()).as_bytes())?;
         wast_file.write_all(")\n\n".as_bytes())?;
     }
 
@@ -309,8 +311,8 @@ fn find_wast_tests() -> Vec<PathBuf> {
 /// Holds the setup for a single test case encoded in the wast.
 #[derive(Default)]
 struct WastTestSetup {
-    target_module: Vec<u8>,
-    support_modules: Vec<Vec<u8>>,
+    target_module_wat: Vec<u8>,
+    support_modules_wat: Vec<Vec<u8>>,
     support_stmts: Vec<String>,
 }
 
@@ -345,29 +347,11 @@ fn get_test_setup(
                 }
 
                 debug!("{module}\n");
-                setup.target_module = match wat2wasm(module.as_bytes()) {
-                    Err(e) => {
-                        panic!(
-                            "Unable to convert wat to wasm for module: {}\nDue to error: {:?}",
-                            module, e
-                        );
-                    }
-                    Ok(res) => res,
-                };
+                setup.target_module_wat = Vec::from(module.as_bytes());
                 // When we get to the target module, we know the setup is done!
                 break;
             } else {
-                setup
-                    .support_modules
-                    .push(match wat2wasm(module.as_bytes()) {
-                        Err(e) => {
-                            panic!(
-                                "Unable to convert wat to wasm for module: {}\nDue to error: {:?}",
-                                module, e
-                            );
-                        }
-                        Ok(res) => res,
-                    });
+                setup.support_modules_wat.push(Vec::from(module.as_bytes()));
             }
             mod_to_instr = false;
         } else if line.starts_with('(') {
@@ -513,7 +497,7 @@ fn new_wast_path(
 }
 
 /// Creates a String representing the &[u8] in hex format.
-fn vec_as_hex(vec: &[u8]) -> String {
+pub fn vec_as_hex(vec: &[u8]) -> String {
     // opening quote
     let mut res = "\"".to_string();
 

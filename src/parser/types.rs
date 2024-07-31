@@ -169,7 +169,7 @@ impl DataType {
                 white(true, ">".to_string(), buffer);
             }
             DataType::AssumeGood => {
-                yellow(true, "unknown".to_string(), buffer);
+                yellow(true, "unknown, not type checked".to_string(), buffer);
             }
         }
     }
