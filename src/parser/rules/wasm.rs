@@ -553,10 +553,10 @@ impl OpcodeEvent {
             ),
         );
         globals.insert(
-            "arg([0..9])+".to_string(),
+            "arg[0:9]+".to_string(),
             ProvidedGlobal::new(
-                "arg([0..9])+".to_string(),
-                "The argument to the call at the specific index ([0..9])+.\
+                "arg[0:9]+".to_string(),
+                "The argument to the call at the specific index, e.g. [0:9]+.\
                 Keep in mind, the number of arguments to a call changes based on the targeted function.".to_string(),
                 DataType::AssumeGood,
                 false
