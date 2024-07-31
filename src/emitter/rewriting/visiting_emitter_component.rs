@@ -6,32 +6,32 @@ use crate::emitter::rewriting::{emit_stmt, Emitter};
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{Block, DataType, Definition, Expr, ProbeSpec, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
-use orca::ir::module::Module;
+use orca::iterator::component_iterator::ComponentIterator;
 use orca::iterator::iterator_trait::Iterator as OrcaIterator;
-use orca::iterator::module_iterator::ModuleIterator;
 use orca::opcode::Opcode;
-use orca::ModuleBuilder;
+use orca::{Component, ModuleBuilder};
+use std::collections::HashMap;
 use std::iter::Iterator;
 
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
 
-pub struct VisitingEmitter<'a, 'b, 'c, 'd> {
-    pub app_iter: ModuleIterator<'a, 'b>,
+pub struct VisitingEmitterComponent<'a, 'b, 'c, 'd> {
+    pub app_iter: ComponentIterator<'a, 'b>,
     pub table: &'c mut SymbolTable,
     mem_tracker: &'d MemoryTracker,
     instr_created_args: Vec<(String, usize)>,
 }
 
-impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
+impl<'a, 'b, 'c, 'd> VisitingEmitterComponent<'a, 'b, 'c, 'd> {
     // note: only used in integration test
     pub fn new(
-        app_wasm: &'a mut Module<'b>,
+        app_wasm: &'a mut Component<'b>,
         table: &'c mut SymbolTable,
         mem_tracker: &'d MemoryTracker,
     ) -> Self {
         let a = Self {
-            app_iter: ModuleIterator::new(app_wasm, vec![]),
+            app_iter: ComponentIterator::new(app_wasm, HashMap::new()),
             table,
             mem_tracker,
             instr_created_args: vec![],
@@ -75,7 +75,7 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
 
     pub(crate) fn get_loc_info<'e>(&self, rule: &'e WhammProvider) -> Option<LocInfo<'e>> {
         if let Some(curr_instr) = self.app_iter.curr_op() {
-            rule.get_loc_info(self.app_iter.module, curr_instr)
+            rule.get_loc_info_comp(self.app_iter.comp, curr_instr)
         } else {
             None
         }
@@ -266,7 +266,7 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
             _ => return Ok(false),
         };
 
-        if let Some(func_id) = self.app_iter.module.get_fid_by_name(fn_name.as_str()) {
+        if let Some(func_id) = self.app_iter.comp.get_fid_by_name(fn_name.as_str(), 0) {
             let is_success = self.emit_args()?;
             self.app_iter.call(func_id);
             Ok(is_success)
@@ -324,7 +324,7 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
         }
     }
 }
-impl Emitter for VisitingEmitter<'_, '_, '_, '_> {
+impl Emitter for VisitingEmitterComponent<'_, '_, '_, '_> {
     fn emit_body(&mut self, body: &mut Block) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
         for stmt in body.stmts.iter_mut() {

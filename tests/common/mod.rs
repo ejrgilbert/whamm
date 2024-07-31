@@ -12,10 +12,11 @@ use glob::{glob, glob_with};
 use log::{debug, error, info, warn};
 use wabt::{wasm2wat, wat2wasm};
 use whamm::common::error::ErrorGen;
-use whamm::emitter::rewriting::module_emitter::{MemoryTracker, ModuleEmitter};
-use whamm::emitter::rewriting::visiting_emitter::VisitingEmitter;
-use whamm::generator::init_generator::InitGenerator;
-use whamm::generator::instr_generator::InstrGenerator;
+use whamm::emitter::rewriting::module_emitter::ModuleEmitter;
+use whamm::emitter::rewriting::visiting_emitter_module::VisitingEmitterModule;
+use whamm::emitter::rewriting::MemoryTracker;
+use whamm::generator::init_generator::InitGeneratorModule;
+use whamm::generator::instr_generator::InstrGeneratorModule;
 use whamm::generator::simple_ast::build_simple_ast;
 use whamm::verifier::verifier::{build_symbol_table, type_check};
 
@@ -115,7 +116,7 @@ pub fn run_whamm(
     };
 
     // Phase 0 of instrumentation (emit globals and provided fns)
-    let mut init = InitGenerator {
+    let mut init = InitGeneratorModule {
         emitter: ModuleEmitter::new(&mut app_wasm, &mut symbol_table, &mut mem_tracker),
         context_name: "".to_string(),
         err: &mut err,
@@ -126,8 +127,8 @@ pub fn run_whamm(
     // Phase 1 of instrumentation (actually emits the instrumentation code)
     // This structure is necessary since we need to have the fns/globals injected (a single time)
     // and ready to use in every body/predicate.
-    let mut instr = InstrGenerator::new(
-        VisitingEmitter::new(&mut app_wasm, &mut symbol_table, &mem_tracker),
+    let mut instr = InstrGeneratorModule::new(
+        VisitingEmitterModule::new(&mut app_wasm, &mut symbol_table, &mem_tracker),
         simple_ast,
         &mut err,
     );

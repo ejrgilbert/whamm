@@ -58,6 +58,10 @@ pub struct InstrArgs {
     /// Whether to emit Virgil code as the instrumentation code
     #[arg(short, long, action, default_value = "false")]
     pub virgil: bool,
+
+    /// Whether we are loading a Component or a Module
+    #[arg(short, long, action, default_value = "false")]
+    pub component: bool,
 }
 
 // pub fn print_completion<G: Generator>(gen: G, app: &mut App) {

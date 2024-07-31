@@ -1,7 +1,8 @@
 pub mod component_emitter;
 pub mod module_emitter;
 pub mod rules;
-pub mod visiting_emitter;
+pub mod visiting_emitter_component;
+pub mod visiting_emitter_module;
 
 use crate::common::error::{ErrorGen, WhammError};
 use crate::parser::types::{BinOp, Block, DataType, Expr, Statement, UnOp, Value};

@@ -2,6 +2,7 @@ use crate::emitter::rewriting::rules::core::CorePackage;
 use crate::emitter::rewriting::rules::wasm::{OpcodeEvent, WasmPackage};
 use crate::parser::rules::WhammProviderKind;
 use crate::parser::types::{ProbeSpec, SpecPart, Value};
+use orca::Component;
 use std::collections::HashMap;
 
 use crate::generator::simple_ast::{SimpleAstProbes, SimpleProbe};
@@ -176,7 +177,8 @@ impl<'a> LocInfo<'a> {
 
 pub trait Provider {
     /// Pass some location to the provider and get back two types of data:
-    fn get_loc_info(&self, app_wasm: &Module, instr: &Operator) -> Option<LocInfo>;
+    fn get_loc_info_module(&self, app_wasm: &Module, instr: &Operator) -> Option<LocInfo>;
+    fn get_loc_info_comp(&self, app_wasm: &Component, instr: &Operator) -> Option<LocInfo>;
     fn add_packages(
         &mut self,
         ast_packages: &HashMap<String, HashMap<String, HashMap<String, Vec<SimpleProbe>>>>,
@@ -184,12 +186,15 @@ pub trait Provider {
 }
 pub trait Package {
     /// Pass some location to the provider and get back two types of data:
-    fn get_loc_info(&self, app_wasm: &Module, instr: &Operator) -> Option<LocInfo>;
+    fn get_loc_info_module(&self, app_wasm: &Module, instr: &Operator) -> Option<LocInfo>;
+    fn get_loc_info_comp(&self, app_wasm: &Component, instr: &Operator) -> Option<LocInfo>;
     fn add_events(&mut self, ast_events: &HashMap<String, HashMap<String, Vec<SimpleProbe>>>);
 }
 pub trait Event {
     /// Pass some location to the provider and get back two types of data:
-    fn get_loc_info(&self, app_wasm: &Module, instr: &Operator) -> Option<LocInfo>;
+    fn get_loc_info_module(&self, app_wasm: &Module, instr: &Operator) -> Option<LocInfo>;
+    fn get_loc_info_component(&self, app_wasm: &Component, instr: &Operator) -> Option<LocInfo>;
+    fn get_loc_info<'a>(&'a self, instr: &Operator) -> Option<LocInfo>;
     fn add_probes(&mut self, ast_probes: &HashMap<String, Vec<SimpleProbe>>);
 }
 
@@ -222,7 +227,7 @@ impl WhammProvider {
     }
 }
 impl Provider for WhammProvider {
-    fn get_loc_info(&self, app_wasm: &Module, instr: &Operator) -> Option<LocInfo> {
+    fn get_loc_info_module(&self, app_wasm: &Module, instr: &Operator) -> Option<LocInfo> {
         let mut loc_info = LocInfo::new();
         match self.kind {
             WhammProviderKind::Core | WhammProviderKind::Wasm => {
@@ -231,11 +236,11 @@ impl Provider for WhammProvider {
         }
 
         // Make sure we have arg symbol data to save off params in the behavior tree for all cases!
-        loc_info.args = OpcodeEvent::get_args_for_instr(app_wasm, instr);
+        loc_info.args = OpcodeEvent::get_args_for_instr_module(app_wasm, instr);
 
         // Get location info from the rest of the configured rules
         self.packages.iter().for_each(|package| {
-            if let Some(mut other_loc_info) = package.get_loc_info(app_wasm, instr) {
+            if let Some(mut other_loc_info) = package.get_loc_info_module(app_wasm, instr) {
                 loc_info.append(&mut other_loc_info);
             }
         });
@@ -246,6 +251,32 @@ impl Provider for WhammProvider {
             None
         }
     }
+
+    fn get_loc_info_comp(&self, app_wasm: &Component, instr: &Operator) -> Option<LocInfo> {
+        let mut loc_info = LocInfo::new();
+        match self.kind {
+            WhammProviderKind::Core | WhammProviderKind::Wasm => {
+                // nothing to add
+            }
+        }
+
+        // Make sure we have arg symbol data to save off params in the behavior tree for all cases!
+        loc_info.args = OpcodeEvent::get_args_for_instr_comp(app_wasm, instr);
+
+        // Get location info from the rest of the configured rules
+        self.packages.iter().for_each(|package| {
+            if let Some(mut other_loc_info) = package.get_loc_info_comp(app_wasm, instr) {
+                loc_info.append(&mut other_loc_info);
+            }
+        });
+
+        if loc_info.has_match() {
+            Some(loc_info)
+        } else {
+            None
+        }
+    }
+
     fn add_packages(
         &mut self,
         ast_packages: &HashMap<String, HashMap<String, HashMap<String, Vec<SimpleProbe>>>>,
