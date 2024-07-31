@@ -10,6 +10,7 @@ use crate::parser::types::{
     UnOp, Value, Whamm, WhammVisitorMut,
 };
 use log::{trace, warn};
+use orca::FunctionBuilder;
 use std::collections::HashMap;
 
 /// Serves as the first phase of instrumenting a module by setting up
@@ -28,6 +29,7 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
     pub fn run(&mut self, whamm: &mut Whamm) -> bool {
         // Reset the symbol table in the emitter just in case
         self.emitter.reset_children();
+        self.on_startup();
         // Generate globals and fns defined by `whamm` (this should modify the app_wasm)
         self.visit_whamm(whamm)
     }
@@ -71,12 +73,7 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
         });
         is_success
     }
-}
-impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
-    fn visit_whamm(&mut self, whamm: &mut Whamm) -> bool {
-        trace!("Entering: CodeGenerator::visit_whamm");
-        self.context_name = "whamm".to_string();
-        let mut is_success = true;
+    fn lib_fn_set(&mut self) {
         //add library functions to the symbol table - skips if not in the wasm module
         let lib_map_fns = [
             "create_i32_i32".to_string(),
@@ -107,6 +104,9 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
             "output_report_maps".to_string(),
             "print_info".to_string(),
             "print_map".to_string(),
+            "insert_i32_string".to_string(),
+            "get_string_from_i32string".to_string(),
+            "print_meta".to_string(),
         ];
         for lib_fn in lib_map_fns.iter() {
             let id_option = self.emitter.app_wasm.get_fid_by_name(lib_fn);
@@ -129,6 +129,43 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
                 }
             }
         }
+    }
+    fn on_startup(&mut self) {
+        self.lib_fn_set();
+        self.create_start();
+    }
+    fn create_start(&mut self) {
+        match self.emitter.app_wasm.start {
+            Some(_) => {
+                println!("Start function already exists");
+            }
+            None => {
+                //time to make a start fn
+                println!("No start function found, creating one");
+                match self.emitter.app_wasm.get_fid_by_name("_start") {
+                    Some(_) => {
+                        println!("start function is _start");
+                    }
+                    None => {
+                        let start_fn = FunctionBuilder::new(&vec![], &vec![]);
+                        let start_id = start_fn.finish(self.emitter.app_wasm);
+                        self.emitter.app_wasm.start = Some(start_id);
+                        self.emitter.app_wasm.set_fn_name(
+                            start_id - self.emitter.app_wasm.num_import_func(),
+                            "_start",
+                        );
+                    } //strcmp doesn't need to call add_export_fn so this probably doesnt either
+                      //in app_wasm, not sure if need to have it in the ST
+                }
+            }
+        }
+    }
+}
+impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
+    fn visit_whamm(&mut self, whamm: &mut Whamm) -> bool {
+        trace!("Entering: CodeGenerator::visit_whamm");
+        self.context_name = "whamm".to_string();
+        let mut is_success = true;
         // visit fns
         whamm
             .fns

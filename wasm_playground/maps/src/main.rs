@@ -1,7 +1,7 @@
 //library functions for maps in Whamm
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
-
+use std::slice;
 use std::any::Any;
 use std::collections::HashMap;
 
@@ -10,9 +10,6 @@ use std::sync::Mutex;
 
 #[no_mangle]
 static MY_MAPS: Lazy<Mutex<HashMap<i32, AnyMap>>> = Lazy::new(|| Mutex::new(HashMap::new()));
-
-#[no_mangle]
-static REPORT_MAPS: Lazy<Mutex<Vec<i32>>> = Lazy::new(|| Mutex::new(Vec::new()));
 
 //this should initialize a map of maps -> from string (name) to any type of map
 
@@ -363,21 +360,37 @@ impl MapOperations for AnyMap {
             AnyMap::i32_i32_Map(ref map) => {
                 let mut result = String::new();
                 for (key, value) in map.iter() {
-                    result.push_str(&format!("{}: {}", key, value));
+                    result.push_str(&format!("{}: {},", key, value));
                 }
                 if result.is_empty() {
                     result = "Empty map".to_string();
-                } 
+                } else {
+                    result.pop();
+                }
                 result
             }
             AnyMap::tuple_i32_Map(ref map) => {
                 let mut result = String::new();
                 for (key, value) in map.iter() {
-                    result.push_str(&format!("{}: {}", key.dump_tuple(), value));
+                    result.push_str(&format!("{}: {},", key.dump_tuple(), value));
                 }
                 if result.is_empty() {
                     result = "Empty map".to_string();
-                } 
+                } else {
+                    result.pop();
+                }
+                result
+            }
+            AnyMap::i32_string_Map(ref map) => {
+                let mut result = String::new();
+                for (key, value) in map.iter() {
+                    result.push_str(&format!("{}: {},", key, value));
+                }
+                if result.is_empty() {
+                    result = "Empty map".to_string();
+                } else {
+                    result.pop();
+                }
                 result
             }
             _ => {
@@ -850,29 +863,81 @@ pub fn get_i32_from_i32i32i32tuple(name: i32, key0: i32, key1: i32, key2: i32) -
 pub fn get_i32_i32(name: i32, key: i32) -> i32 {
     get_i32(name, &key)
 }
+#[no_mangle]
+pub fn insert_i32_string(name: i32, key: i32, offset: i32, length: i32){
+    let value = string_from_data(offset, length);
+    if ! insert_i32_string_inner(name, key, value){
+        panic!("Failed to insert into i32_string map");
+    }
+}
+#[no_mangle]
+pub fn get_string_from_i32string(name: i32, key: i32) -> String {
+    get_string(name, &key)
+}
+#[no_mangle]
+pub fn string_from_data(offset: i32, length: i32) -> String {
+    let callee_ptr: *const u8 = offset as *const u8;
+    let callee_slice: &[u8] = unsafe { slice::from_raw_parts(callee_ptr, usize::try_from(length).unwrap()) }; 
+    String::from_utf8(callee_slice.to_vec()).unwrap()
+}
 //This is the stuff for report var 
 
+// #[no_mangle]
+// pub fn add_report_map(name: i32) {
+//     REPORT_MAPS.lock().unwrap().push(name);
+// }
+// #[no_mangle]
+// pub fn output_report_maps() {
+//     for name in REPORT_MAPS.lock().unwrap().iter() {
+//         print_map(*name);
+//     }
+//     println!();
+// }
+// #[no_mangle]
+// pub fn print_info(gid: i32, val: i32){
+//     println!("GID: {} -> {}", gid, val);
+// }
 #[no_mangle]
-pub fn add_report_map(name: i32) {
-    REPORT_MAPS.lock().unwrap().push(name);
-}
-#[no_mangle]
-pub fn output_report_maps() {
-    for name in REPORT_MAPS.lock().unwrap().iter() {
-        print_map(*name);
-    }
-    println!();
-}
-#[no_mangle]
-pub fn print_info(gid: i32, val: i32){
-    println!("GID: {} -> {}", gid, val);
-}
-#[no_mangle]
-pub fn print_map(map_id: i32){
+pub fn print_map(map_id: i32) -> String {
     let binding = MY_MAPS.lock().unwrap();
     let map = binding.get(&map_id).unwrap();
-    println!("MapId: {} -> {}", map_id, map.dump_map());
+    format!("{}\n", map.dump_map())
 }
+#[no_mangle]
+pub fn print_meta() {
+    let mut running_output: String = String::new();
+    let binding = MY_MAPS.lock().unwrap();
+    let var_meta = binding.get(&0).expect("No metadata for variables found");
+    let map_meta = binding.get(&1).expect("No metadata for maps found");
+    match var_meta {
+        AnyMap::i32_string_Map(map) => {
+            for (key, value) in map.iter() {
+                running_output.push_str(&format!("GID: {}\t{}\t", key, value));
+                let map = binding.get(&key).expect("Metadata but no map found");
+                running_output.push_str(&format!("{}\n", map.dump_map()));
+            }
+        }
+        _ => {
+            panic!("Invalid metadata for variables");
+        }
+    }
+    match map_meta {
+        AnyMap::i32_string_Map(map) => {
+            for (key, value) in map.iter() {
+                running_output.push_str(&format!("MapId: {}\t{}\t", key, value));
+                let map = binding.get(&key).expect("Metadata but no map found");
+                running_output.push_str(&format!("{}\n", map.dump_map()));
+            }
+        }
+        _ => {
+            panic!("Invalid metadata for maps");
+        }
+    }
+    println!("{}", running_output);
+}
+
+
+//MAIN STARTS HERE
 #[no_mangle]
 pub fn foo(a: i32) -> i32 {
     return inner_fn(a);

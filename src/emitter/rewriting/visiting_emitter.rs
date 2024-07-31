@@ -24,8 +24,8 @@ const UNEXPECTED_ERR_MSG: &str =
 pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     pub app_iter: ModuleIterator<'a, 'b>,
     pub table: &'c mut SymbolTable,
-    mem_tracker: &'d MemoryTracker,
-    map_lib_adapter: &'e mut MapLibAdapter,
+    pub mem_tracker: &'d mut MemoryTracker,
+    pub map_lib_adapter: &'e mut MapLibAdapter,
     pub(crate) report_var_metadata: &'f mut ReportVarMetadata,
     instr_created_args: Vec<(String, usize)>,
     pub curr_probe_id: String,
@@ -38,7 +38,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     pub fn new(
         app_wasm: &'a mut Module<'b>,
         table: &'c mut SymbolTable,
-        mem_tracker: &'d MemoryTracker,
+        mem_tracker: &'d mut MemoryTracker,
         map_lib_adapter: &'e mut MapLibAdapter,
         report_var_metadata: &'f mut ReportVarMetadata,
     ) -> Self {
@@ -365,12 +365,17 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
         for stmt in body.iter_mut() {
             is_success &= self.emit_stmt(stmt)?;
             //now emit the changes to the report vars if needed
-            print_report_all(
+            match print_report_all(
                 &mut self.app_iter,
                 self.table,
                 self.report_var_metadata,
                 UNEXPECTED_ERR_MSG,
-            );
+            ) {
+                Ok(_) => {}
+                Err(e) => {
+                    return Err(e);
+                }
+            }
         }
         Ok(is_success)
     }

@@ -137,7 +137,7 @@ pub fn run_whamm(
         VisitingEmitter::new(
             &mut app_wasm,
             &mut symbol_table,
-            &mem_tracker,
+            &mut mem_tracker,
             &mut map_knower,
             &mut report_var_metadata,
         ),

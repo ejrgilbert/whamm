@@ -364,7 +364,6 @@ struct CoreProbe {
     pub loc: Option<Location>,
     pub predicate: Option<Expr>,
     pub body: Option<Vec<Statement>>,
-    pub num_reports: i32,
 }
 impl Probe for CoreProbe {
     fn mode_name(&self) -> String {
@@ -406,9 +405,6 @@ impl Probe for CoreProbe {
     fn get_mode_provided_globals(&self) -> &HashMap<String, ProvidedGlobal> {
         self.mode.get_provided_globals()
     }
-    fn get_num_reports(&self) -> i32 {
-        self.num_reports
-    }
 }
 impl CoreProbe {
     fn new(
@@ -421,33 +417,6 @@ impl CoreProbe {
             mode,
             loc,
             predicate,
-            num_reports: match &body {
-                Some(b) => {
-                    let mut count = 0;
-                    for stmt in b {
-                        match stmt {
-                            Statement::ReportDecl { .. } => count += 1,
-                            Statement::If { conseq, alt, .. } => {
-                                for stmt in &conseq.stmts {
-                                    match stmt {
-                                        Statement::ReportDecl { .. } => count += 1,
-                                        _ => (),
-                                    }
-                                }
-                                for stmt in &alt.stmts {
-                                    match stmt {
-                                        Statement::ReportDecl { .. } => count += 1,
-                                        _ => (),
-                                    }
-                                }
-                            }
-                            _ => (),
-                        }
-                    }
-                    count
-                }
-                None => 0,
-            },
             body,
         }
     }

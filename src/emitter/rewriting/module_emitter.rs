@@ -321,13 +321,73 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
 
         let rec = self.table.get_record_mut(&rec_id);
         match rec {
-            Some(Record::Var { ref mut addr, .. }) => {
+            Some(Record::Var {
+                ref mut addr, ty, ..
+            }) => {
                 // emit global variable and set addr in symbol table
                 // this is used for user-defined global vars in the script...
-                let default_global = whamm_type_to_wasm(&ty);
-                let global_id = self.app_wasm.add_global(default_global);
-                *addr = Some(VarAddr::Global { addr: global_id });
-                Ok(true)
+                match ty {
+                    DataType::Map { .. } => {
+                        //time to instrument the start fn
+                        let start_id = match self.app_wasm.get_fid_by_name("_start") {
+                            Some(start_id) => start_id,
+                            None => {
+                                return Err(Box::new(ErrorGen::get_unexpected_error(
+                                    true,
+                                    Some(format!(
+                                        "{UNEXPECTED_ERR_MSG} \
+                                    No start function found in the module!"
+                                    )),
+                                    None,
+                                )));
+                            }
+                        };
+                        let mut start_fn = match self.app_wasm.get_fn(start_id) {
+                            Some(start_fn) => start_fn,
+                            None => {
+                                return Err(Box::new(ErrorGen::get_unexpected_error(
+                                    true,
+                                    Some(format!(
+                                        "{UNEXPECTED_ERR_MSG} \
+                                    No start function found in the module!"
+                                    )),
+                                    None,
+                                )));
+                            }
+                        };
+                        start_fn.before_at(0);
+                        let to_call = match self.map_lib_adapter.create_no_meta_map(ty.clone()) {
+                            Ok(to_call) => to_call,
+                            Err(e) => return Err(e),
+                        };
+                        *addr = Some(VarAddr::MapId {
+                            addr: to_call.1 as u32,
+                        });
+                        let fn_id = self
+                            .table
+                            .lookup(&to_call.0)
+                            .expect("Map function not in symbol table");
+                        start_fn.i32_const(to_call.1 as i32);
+                        start_fn.call(*fn_id as u32);
+
+                        Ok(true)
+                    }
+                    _ => {
+                        let default_global = whamm_type_to_wasm(&ty);
+                        let global_id = self.app_wasm.add_global(default_global);
+                        *addr = Some(VarAddr::Global {
+                            addr: global_id.clone(),
+                        });
+                        //now save off the global variable metadata
+                        match self
+                            .report_var_metadata
+                            .put_global_metadata(global_id as usize, name)
+                        {
+                            Ok(_) => Ok(true),
+                            Err(e) => Err(e),
+                        }
+                    }
+                }
             }
             Some(&mut ref ty) => Err(Box::new(ErrorGen::get_unexpected_error(
                 true,
@@ -371,21 +431,77 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
 
         let rec = self.table.get_record_mut(&rec_id);
         match rec {
-            Some(Record::Var { ref mut addr, .. }) => {
+            Some(Record::Var {
+                ref mut addr, ty, ..
+            }) => {
                 // emit global variable and set addr in symbol table
                 // this is used for user-defined global vars in the script...
-                let default_global = whamm_type_to_wasm(&ty);
-                let global_id = self.app_wasm.add_global(default_global);
-                *addr = Some(VarAddr::Global {
-                    addr: global_id.clone(),
-                });
-                //now save off the global variable metadata
-                match self
-                    .report_var_metadata
-                    .put_global_metadata(global_id as usize, name)
-                {
-                    Ok(_) => Ok(true),
-                    Err(e) => Err(e),
+                match ty {
+                    DataType::Map { .. } => {
+                        //time to instrument the start fn
+                        let start_id = match self.app_wasm.get_fid_by_name("_start") {
+                            Some(start_id) => start_id,
+                            None => {
+                                return Err(Box::new(ErrorGen::get_unexpected_error(
+                                    true,
+                                    Some(format!(
+                                        "{UNEXPECTED_ERR_MSG} \
+                                    No start function found in the module!"
+                                    )),
+                                    None,
+                                )));
+                            }
+                        };
+                        let mut start_fn = match self.app_wasm.get_fn(start_id) {
+                            Some(start_fn) => start_fn,
+                            None => {
+                                return Err(Box::new(ErrorGen::get_unexpected_error(
+                                    true,
+                                    Some(format!(
+                                        "{UNEXPECTED_ERR_MSG} \
+                                    No start function found in the module!"
+                                    )),
+                                    None,
+                                )));
+                            }
+                        };
+                        start_fn.before_at(0);
+                        //TODO: Test this is adding to the report vars
+                        let to_call = match self.map_lib_adapter.create_global_map(
+                            name,
+                            script_name,
+                            ty.clone(),
+                            &mut self.report_var_metadata,
+                        ) {
+                            Ok(to_call) => to_call,
+                            Err(e) => return Err(e),
+                        };
+                        *addr = Some(VarAddr::MapId {
+                            addr: to_call.1 as u32,
+                        });
+                        let fn_id = self
+                            .table
+                            .lookup(&to_call.0)
+                            .expect("Map function not in symbol table");
+                        start_fn.i32_const(to_call.1 as i32);
+                        start_fn.call(*fn_id as u32);
+                        Ok(true)
+                    }
+                    _ => {
+                        let default_global = whamm_type_to_wasm(&ty);
+                        let global_id = self.app_wasm.add_global(default_global);
+                        *addr = Some(VarAddr::Global {
+                            addr: global_id.clone(),
+                        });
+                        //now save off the global variable metadata
+                        match self
+                            .report_var_metadata
+                            .put_global_metadata(global_id as usize, name)
+                        {
+                            Ok(_) => Ok(true),
+                            Err(e) => Err(e),
+                        }
+                    }
                 }
             }
             Some(&mut ref ty) => Err(Box::new(ErrorGen::get_unexpected_error(

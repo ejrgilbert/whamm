@@ -150,7 +150,7 @@ fn run_instr(
         VisitingEmitter::new(
             &mut app_wasm,
             &mut symbol_table,
-            &mem_tracker,
+            &mut mem_tracker,
             &mut map_lib_adapter,
             &mut report_var_metadata,
         ),

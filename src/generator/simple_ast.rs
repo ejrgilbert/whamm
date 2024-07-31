@@ -67,12 +67,12 @@ pub struct SimpleProbe {
     pub num_reports: i32,
 }
 impl SimpleProbe {
-    fn new(script_id: String, probe: &dyn Probe) -> Self {
+    fn new(script_id: String, probe: &dyn Probe, num_reports: i32) -> Self {
         Self {
             script_id,
             predicate: probe.predicate().to_owned(),
             body: probe.body().to_owned(),
-            num_reports: probe.get_num_reports(),
+            num_reports,
         }
     }
 }
@@ -105,6 +105,7 @@ pub fn build_simple_ast(ast: &Whamm, err: &mut ErrorGen) -> SimpleAST {
         curr_provider_name: "".to_string(),
         curr_package_name: "".to_string(),
         curr_event_name: "".to_string(),
+        curr_num_reports: 0,
     };
     visitor.visit_whamm(ast);
 
@@ -119,6 +120,7 @@ pub struct SimpleASTBuilder<'a, 'b> {
     curr_provider_name: String,
     curr_package_name: String,
     curr_event_name: String,
+    curr_num_reports: i32,
 }
 impl SimpleASTBuilder<'_, '_> {
     // =======
@@ -158,16 +160,16 @@ impl SimpleASTBuilder<'_, '_> {
         self.curr_event_name = event_name;
     }
 
-    fn add_probe_to_ast(&mut self, probe: &dyn Probe) {
+    fn add_probe_to_ast(&mut self, probe: &dyn Probe, num_reports: i32) {
         if let Some(provider) = self.ast.probes.get_mut(&self.curr_provider_name) {
             if let Some(package) = provider.get_mut(&self.curr_package_name) {
                 if let Some(event) = package.get_mut(&self.curr_event_name) {
                     if let Some(probes) = event.get_mut(&probe.mode_name()) {
-                        probes.push(SimpleProbe::new(self.script_id.clone(), probe));
+                        probes.push(SimpleProbe::new(self.script_id.clone(), probe, num_reports));
                     } else {
                         event.insert(
                             probe.mode_name().clone(),
-                            vec![SimpleProbe::new(self.script_id.clone(), probe)],
+                            vec![SimpleProbe::new(self.script_id.clone(), probe, num_reports)],
                         );
                     }
                 }
@@ -247,7 +249,20 @@ impl WhammVisitor<()> for SimpleASTBuilder<'_, '_> {
     }
 
     fn visit_probe(&mut self, probe: &Box<dyn Probe>) {
-        self.add_probe_to_ast(probe.as_ref());
+        //visit the statements in the probe and check for report_decls
+        let stmts = match probe.body(){
+            Some(stmts) => stmts,
+            None => {
+                self.add_probe_to_ast(probe.as_ref(), 0);
+                return;
+            }
+        };
+        for stmt in stmts {
+            self.visit_stmt(stmt);
+        }
+        self.add_probe_to_ast(probe.as_ref(), self.curr_num_reports);
+        self.curr_num_reports = 0;
+
     }
 
     fn visit_fn(&mut self, _f: &Fn) {
@@ -258,13 +273,22 @@ impl WhammVisitor<()> for SimpleASTBuilder<'_, '_> {
         unreachable!()
     }
 
-    fn visit_block(&mut self, _block: &Block) {
-        unreachable!()
+    fn visit_block(&mut self, block: &Block) {
+        for stmt in &block.stmts {
+            self.visit_stmt(stmt);
+        }
     }
 
-    fn visit_stmt(&mut self, _assign: &Statement) {
-        // Not visiting event/probe bodies
-        unreachable!()
+    fn visit_stmt(&mut self, stmt: &Statement) {
+        // for checking for report_decls
+        match stmt {
+            Statement::ReportDecl { .. } => self.curr_num_reports += 1,
+            Statement::If { conseq, alt, .. } => {
+                self.visit_block(conseq);
+                self.visit_block(alt);
+            }
+            _ => {}
+        }
     }
 
     fn visit_expr(&mut self, _call: &Expr) {

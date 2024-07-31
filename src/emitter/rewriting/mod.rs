@@ -374,7 +374,10 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                         }
                         let id = report_var_metadata.available_i32_gids.remove(0);
                         report_var_metadata.used_i32_gids.push(id);
-                        report_var_metadata.put_local_metadata(id, var_name.clone());
+                        match report_var_metadata.put_local_metadata(id, var_name.clone()) {
+                            Ok(_) => {}
+                            Err(e) => return Err(e),
+                        }
                         *addr = Some(VarAddr::Global { addr: id as u32 });
                         return Ok(true);
                     }
@@ -1268,21 +1271,24 @@ fn print_report_all<'a, T: Opcode<'a> + ModuleBuilder>(
     table: &mut SymbolTable,
     report_var_metadata: &mut ReportVarMetadata,
     err_msg: &str,
-) {
+) -> Result<(), Box<WhammError>> {
     if !report_var_metadata.flush_soon {
-        return;
+        return Ok(());
     }
-    for gid in report_var_metadata.used_i32_gids.iter() {
-        let fn_id = table
-            .lookup("print_info")
-            .expect("print_info function not in symbol table");
-        injector.i32_const(*gid as i32);
-        injector.global_get(*gid as u32);
-        injector.call(*fn_id as u32);
-    }
-    let fn_id = table
-        .lookup("output_report_maps")
-        .expect("output_report_maps function not in symbol table");
-    injector.call(*fn_id as u32);
+    let fn_id = match table.lookup("print_meta") {
+        Some(rec_id) => *rec_id,
+        _ => {
+            return Err(Box::new(ErrorGen::get_unexpected_error(
+                true,
+                Some(format!(
+                    "{err_msg} \
+                    print_meta function not in symbol table!"
+                )),
+                None,
+            )));
+        }
+    };
+    injector.call(fn_id as u32);
     report_var_metadata.flush_soon = false;
+    Ok(())
 }

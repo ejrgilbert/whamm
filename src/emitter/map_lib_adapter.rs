@@ -22,7 +22,7 @@ impl Default for MapLibAdapter {
 }
 impl MapLibAdapter {
     pub fn new() -> Self {
-        MapLibAdapter { map_count: 0 }
+        MapLibAdapter { map_count: 2 }
     }
     pub fn get_map_count(&self) -> i32 {
         self.map_count
@@ -231,6 +231,7 @@ impl MapLibAdapter {
         match key {
             DataType::I32 => match val {
                 DataType::I32 => "insert_i32_i32".to_string(),
+                DataType::Str => "insert_i32_string".to_string(),
                 _ => {
                     panic!("Error: Not yet supported value type for map");
                 }
