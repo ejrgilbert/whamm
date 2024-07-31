@@ -29,7 +29,10 @@ impl InitGenerator<'_, '_, '_, '_, '_> {
         // Reset the symbol table in the emitter just in case
         self.emitter.reset_children();
         // Generate globals and fns defined by `whamm` (this should modify the app_wasm)
-        self.visit_whamm(whamm)
+        let is_success = self.visit_whamm(whamm);
+        self.emitter.memory_grow(); // account for emitted strings in memory
+
+        is_success
     }
 
     // Private helper functions

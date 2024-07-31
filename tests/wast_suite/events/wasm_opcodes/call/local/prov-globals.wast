@@ -32,7 +32,7 @@
     (start $five_params)
     (export "five_params" (func $five_params))
     (export "get_global_var" (func $get_global_var))
-    (memory (;0;) 27)
+    (memory (;0;) 1)
 )
 
 ;; ----------------------------------------------
