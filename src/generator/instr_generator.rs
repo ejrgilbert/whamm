@@ -241,7 +241,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         };
         //now set up the actual module editing
         start_fn.before_at(0);
-        let create_i32_string = match self.emitter.map_lib_adapter.create_map_insert(DataType::I32, DataType::Str) {
+        let create_i32_string = match self.emitter.map_lib_adapter.create_map_fname(DataType::I32, DataType::Str) {
             Ok(string) => string,
             Err(e) => {
                 self.err.add_error(*e);
