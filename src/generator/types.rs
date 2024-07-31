@@ -365,7 +365,7 @@ impl ExprFolder {
                 cond,
                 conseq,
                 alt,
-                loc,
+                ..
             } => {
                 let cond = ExprFolder::fold_expr(cond, table);
                 let conseq = ExprFolder::fold_expr(conseq, table);
