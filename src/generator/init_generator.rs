@@ -133,6 +133,7 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
     fn on_startup(&mut self) {
         self.lib_fn_set();
         self.create_start();
+        self.create_report_init();
     }
     fn create_start(&mut self) {
         match self.emitter.app_wasm.start {
@@ -157,6 +158,25 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
                     } //strcmp doesn't need to call add_export_fn so this probably doesnt either
                       //in app_wasm, not sure if need to have it in the ST
                 }
+            }
+        }
+    }
+    fn create_report_init(&mut self) {
+        match self.emitter.app_wasm.get_fid_by_name("report_init") {
+            Some(_) => {
+                println!("report_init function already exists");
+                self.err.add_error(ErrorGen::get_unexpected_error(
+                    true,
+                    Some("report_init function already exists - needs to be created by Whamm".to_string()),
+                    None,
+                ));
+            }
+            None => {
+                //time to make a report_init fn
+                println!("No report_init function found, creating one");
+                let report_init_fn = FunctionBuilder::new(&[], &[]);
+                let report_init_id = report_init_fn.finish(self.emitter.app_wasm);
+                self.emitter.app_wasm.set_fn_name(report_init_id - self.emitter.app_wasm.num_import_func(), "report_init");
             }
         }
     }
