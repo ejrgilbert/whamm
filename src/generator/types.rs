@@ -362,10 +362,7 @@ impl ExprFolder {
     fn fold_ternary(ternary: &Expr, table: &SymbolTable) -> Expr {
         match ternary {
             Expr::Ternary {
-                cond,
-                conseq,
-                alt,
-                ..
+                cond, conseq, alt, ..
             } => {
                 let cond = ExprFolder::fold_expr(cond, table);
                 let conseq = ExprFolder::fold_expr(conseq, table);
