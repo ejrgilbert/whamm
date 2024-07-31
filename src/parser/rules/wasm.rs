@@ -549,7 +549,7 @@ impl OpcodeEvent {
                         for faster short-circuiting."
                     .to_string(),
                 DataType::Str,
-                true
+                true,
             ),
         );
         globals.insert(

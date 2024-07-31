@@ -468,15 +468,15 @@ wasm::call:alt /
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
 
     let ast = get_ast(script, &mut err);
-    
+
     // script
     assert_eq!(1, ast.scripts.len()); // a single script
     assert_eq!(0, ast.globals.len());
     assert_eq!(1, ast.fns.len()); // strcmp
-    
+
     let script = ast.scripts.first().unwrap();
     assert_eq!(1, script.fns.len()); // my_func
-    // provider
+                                     // provider
     assert_eq!(1, script.providers.len());
     let provider = script.providers.get("wasm").unwrap();
     assert_eq!("wasm", provider.name());
