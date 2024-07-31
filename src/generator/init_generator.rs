@@ -155,7 +155,7 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
                         self.emitter.app_wasm.start = Some(start_id);
                         self.emitter.app_wasm.set_fn_name(
                             start_id - self.emitter.app_wasm.num_import_func(),
-                            "_start",
+                            "start",
                         );
                     } //strcmp doesn't need to call add_export_fn so this probably doesnt either
                       //in app_wasm, not sure if need to have it in the ST
@@ -192,11 +192,7 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
                 println!("No global_map_init function found, creating one");
                 let mut global_map_init_fn = FunctionBuilder::new(&[], &[]);
                 global_map_init_fn.i32_const(0);
-                let to_call = match self
-                    .emitter
-                    .app_wasm
-                    .get_fid_by_name("create_i32_string")
-                {
+                let to_call = match self.emitter.app_wasm.get_fid_by_name("create_i32_string") {
                     Some(to_call) => to_call,
                     None => {
                         self.err.add_error(ErrorGen::get_unexpected_error(
