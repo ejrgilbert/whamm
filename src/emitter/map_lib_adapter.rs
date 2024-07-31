@@ -1,11 +1,11 @@
 use crate::common::error::{ErrorGen, WhammError};
-use crate::parser::types::{DataType, Whamm};
+use crate::parser::types::DataType;
 // //this is the code that knows which functions to call in lib.rs based on what is in the AST -> will be in emitter folder eventually
 use crate::emitter::report_var_metadata::{Metadata, ReportVarMetadata};
-use core::panic;
 
 pub struct MapLibAdapter {
     map_count: i32,
+    pub init_bool_location: u32,
 }
 impl Default for MapLibAdapter {
     fn default() -> Self {
@@ -14,7 +14,10 @@ impl Default for MapLibAdapter {
 }
 impl MapLibAdapter {
     pub fn new() -> Self {
-        MapLibAdapter { map_count: 2 }
+        MapLibAdapter {
+            map_count: 2,
+            init_bool_location: 0,
+        }
     }
     pub fn get_map_count(&self) -> i32 {
         self.map_count

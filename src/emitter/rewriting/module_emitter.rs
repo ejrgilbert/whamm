@@ -6,7 +6,6 @@ use orca::{DataSegment, DataSegmentKind, InitExpr};
 use std::collections::HashMap;
 
 use orca::ir::types::{BlockType as OrcaBlockType, DataType as OrcaType, Value as OrcaValue};
-use wasmparser::BlockType;
 
 use crate::emitter::map_lib_adapter::MapLibAdapter;
 use crate::emitter::rewriting::{emit_body, emit_expr, emit_stmt, whamm_type_to_wasm, Emitter};
@@ -34,7 +33,7 @@ pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     pub emitting_func: Option<FunctionBuilder<'b>>,
     pub table: &'c mut SymbolTable,
     mem_tracker: &'d mut MemoryTracker,
-    map_lib_adapter: &'e mut MapLibAdapter,
+    pub map_lib_adapter: &'e mut MapLibAdapter,
     report_var_metadata: &'f mut ReportVarMetadata,
     fn_providing_contexts: Vec<String>,
 }
@@ -329,33 +328,33 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 match ty {
                     DataType::Map { .. } => {
                         //time to instrument the start fn
-                        let start_id = match self.app_wasm.get_fid_by_name("_start") {
-                            Some(start_id) => start_id,
+                        let init_id = match self.app_wasm.get_fid_by_name("global_map_init") {
+                            Some(init_id) => init_id,
                             None => {
                                 return Err(Box::new(ErrorGen::get_unexpected_error(
                                     true,
                                     Some(format!(
                                         "{UNEXPECTED_ERR_MSG} \
-                                    No start function found in the module!"
+                                    No global_map_init found in the module!"
                                     )),
                                     None,
                                 )));
                             }
                         };
-                        let mut start_fn = match self.app_wasm.get_fn(start_id) {
-                            Some(start_fn) => start_fn,
+                        let mut init_fn = match self.app_wasm.get_fn(init_id) {
+                            Some(init_fn) => init_fn,
                             None => {
                                 return Err(Box::new(ErrorGen::get_unexpected_error(
                                     true,
                                     Some(format!(
                                         "{UNEXPECTED_ERR_MSG} \
-                                    No start function found in the module!"
+                                    No global_map_init found in the module!"
                                     )),
                                     None,
                                 )));
                             }
                         };
-                        start_fn.before_at(0);
+                        init_fn.before_at(0);
                         let to_call = match self.map_lib_adapter.create_no_meta_map(ty.clone()) {
                             Ok(to_call) => to_call,
                             Err(e) => return Err(e),
@@ -367,8 +366,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                             .table
                             .lookup(&to_call.0)
                             .expect("Map function not in symbol table");
-                        start_fn.i32_const(to_call.1);
-                        start_fn.call(*fn_id as u32);
+                        init_fn.i32_const(to_call.1);
+                        init_fn.call(*fn_id as u32);
 
                         Ok(true)
                     }
@@ -437,34 +436,34 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 match ty {
                     DataType::Map { .. } => {
                         //time to instrument the start fn
-                        let start_id = match self.app_wasm.get_fid_by_name("_start") {
-                            Some(start_id) => start_id,
+                        //time to instrument the start fn
+                        let init_id = match self.app_wasm.get_fid_by_name("global_map_init") {
+                            Some(init_id) => init_id,
                             None => {
                                 return Err(Box::new(ErrorGen::get_unexpected_error(
                                     true,
                                     Some(format!(
                                         "{UNEXPECTED_ERR_MSG} \
-                                    No start function found in the module!"
+                                    No global_map_init found in the module!"
                                     )),
                                     None,
                                 )));
                             }
                         };
-                        let mut start_fn = match self.app_wasm.get_fn(start_id) {
-                            Some(start_fn) => start_fn,
+                        let mut init_fn = match self.app_wasm.get_fn(init_id) {
+                            Some(init_fn) => init_fn,
                             None => {
                                 return Err(Box::new(ErrorGen::get_unexpected_error(
                                     true,
                                     Some(format!(
                                         "{UNEXPECTED_ERR_MSG} \
-                                    No start function found in the module!"
+                                    No global_map_init found in the module!"
                                     )),
                                     None,
                                 )));
                             }
                         };
-                        start_fn.before_at(0);
-                        //TODO: Test this is adding to the report vars
+                        init_fn.before_at(0);
                         let to_call = match self.map_lib_adapter.create_global_map(
                             name,
                             script_name,
@@ -481,8 +480,9 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                             .table
                             .lookup(&to_call.0)
                             .expect("Map function not in symbol table");
-                        start_fn.i32_const(to_call.1);
-                        start_fn.call(*fn_id as u32);
+                        init_fn.i32_const(to_call.1);
+                        init_fn.call(*fn_id as u32);
+
                         Ok(true)
                     }
                     _ => {

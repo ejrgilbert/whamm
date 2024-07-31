@@ -7,6 +7,7 @@ wasm:opcode:call:before /
         report i32 c;
     };
     report i32 a;
+    map<i32, i32> m;
     a = 5;
     whatever = 3;
 }
