@@ -6,11 +6,11 @@ use crate::parser::types::{DataType, ProbeSpec, SpecPart, Value};
 use log::warn;
 use orca::ir::component::Component;
 use orca::ir::module::Module;
-use orca::ir::types::DataType as OrcaType;
+use orca::ir::types::{DataType as OrcaType, FuncKind};
 use std::collections::HashMap;
 
 use crate::generator::simple_ast::SimpleProbe;
-use wasmparser::{Operator, TypeRef};
+use wasmparser::Operator;
 
 pub struct WasmPackage {
     kind: WasmPackageKind,
@@ -176,268 +176,251 @@ impl OpcodeEvent {
         }
     }
 
-    pub fn get_args_for_instr_comp(app_wasm: &Component, instr: &Operator) -> Vec<Arg> {
-        let ty_list: Vec<OrcaType> = match instr {
-            Operator::Call {
-                function_index: fid,
-            } => {
-                // module.types includes import type information, pull param/return info
-                //     via module.get_type with the FID (works with imported OR local funcs)
-                if let Some(import) = app_wasm.modules[0].imports.get(*fid as usize) {
-                    // This is an imported function (FIDs too large will return None)
-                    match import.ty {
-                        TypeRef::Func(ty_id) => {
-                            if let Some(ty) = app_wasm.modules[0].types.get(ty_id as usize) {
-                                ty.params.to_vec()
-                            } else {
-                                // no type info found!!
-                                warn!("No type information found for import with FID {fid}");
-                                vec![]
-                            }
-                        }
-                        _ => {
-                            // no type info found!!
-                            warn!("No type information found for import with FID {fid}");
-                            vec![]
-                        }
-                    }
-                } else {
-                    // this is a local function
-                    if let Some(ty) = app_wasm.modules[0]
-                        .get_type(*fid - app_wasm.modules[0].num_imported_functions as u32)
-                    {
-                        ty.params.to_vec()
-                    } else {
-                        vec![]
-                    }
-                }
-            }
-            _ => Self::get_args_for_instr(instr),
-        };
-        let mut args = vec![];
-        for (idx, ty) in ty_list.iter().enumerate() {
-            args.push(Arg::new(format!("arg{}", idx), ty.to_owned()));
-        }
-        args
-    }
-
-    pub fn get_args_for_instr_module(app_wasm: &Module, instr: &Operator) -> Vec<Arg> {
-        let ty_list: Vec<OrcaType> = match instr {
-            Operator::Call {
-                function_index: fid,
-            } => {
-                // module.types includes import type information, pull param/return info
-                //     via module.get_type with the FID (works with imported OR local funcs)
-                if let Some(import) = app_wasm.imports.get(*fid as usize) {
-                    // This is an imported function (FIDs too large will return None)
-                    match import.ty {
-                        TypeRef::Func(ty_id) => {
-                            if let Some(ty) = app_wasm.types.get(ty_id as usize) {
-                                ty.params.to_vec()
-                            } else {
-                                // no type info found!!
-                                warn!("No type information found for import with FID {fid}");
-                                vec![]
-                            }
-                        }
-                        _ => {
-                            // no type info found!!
-                            warn!("No type information found for import with FID {fid}");
-                            vec![]
-                        }
-                    }
-                } else {
-                    // this is a local function
-                    if let Some(ty) =
-                        app_wasm.get_type(*fid - app_wasm.num_imported_functions as u32)
-                    {
-                        ty.params.to_vec()
-                    } else {
-                        vec![]
-                    }
-                }
-            }
-            _ => Self::get_args_for_instr(instr),
-        };
-        let mut args = vec![];
-        for (idx, ty) in ty_list.iter().enumerate() {
-            args.push(Arg::new(format!("arg{}", idx), ty.to_owned()));
-        }
-        args
-    }
-
-    pub fn get_args_for_instr(instr: &Operator) -> Vec<OrcaType> {
+    pub fn get_ty_info_for_instr_comp(app_wasm: &Component, instr: &Operator) -> (Vec<Arg>, Option<u32>) {
         // TODO: there are 500 of them in wasmparser::Operator
         // compared to 48 of them in walrus::ir::Instr
         // How do we compress the Operators we need to concern
-        match instr {
+        let (ty_list, ty_id): (Vec<OrcaType>, Option<u32>) = match instr {
+            Operator::Call {
+                function_index: fid,
+            } => {
+                match app_wasm.modules[0].get_fn_kind(*fid) {
+                    Some(FuncKind::Import(ty_id)) | Some(FuncKind::Local(ty_id)) => {
+                        if let Some(ty) = app_wasm.modules[0].types.get(ty_id as usize) {
+                            (ty.params.to_vec(), Some(ty_id))
+                        } else {
+                            // no type info found!!
+                            warn!("No type information found for import with FID {fid}");
+                            (vec![], None)
+                        }
+                    }
+                    None => {
+                        // no type info found!!
+                        warn!("No type information found for import with FID {fid}");
+                        (vec![], None)
+                    }
+                }
+            }
+            _ => return Self::get_args_for_instr(instr),
+        };
+        let mut args = vec![];
+        for (idx, ty) in ty_list.iter().enumerate() {
+            args.push(Arg::new(format!("arg{}", idx), ty.to_owned()));
+        }
+        (args, ty_id)
+    }
+
+    pub fn get_ty_info_for_instr_module(app_wasm: &Module, instr: &Operator) -> (Vec<Arg>, Option<u32>) {
+        // TODO: there are 500 of them in wasmparser::Operator
+        // compared to 48 of them in walrus::ir::Instr
+        // How do we compress the Operators we need to concern
+        let (ty_list, ty_id): (Vec<OrcaType>, Option<u32>) = match instr {
+            Operator::Call {
+                function_index: fid,
+            } => {
+                match app_wasm.get_fn_kind(*fid) {
+                    Some(FuncKind::Import(ty_id)) | Some(FuncKind::Local(ty_id)) => {
+                        if let Some(ty) = app_wasm.types.get(ty_id as usize) {
+                            (ty.params.to_vec(), Some(ty_id))
+                        } else {
+                            // no type info found!!
+                            warn!("No type information found for import with FID {fid}");
+                            (vec![], None)
+                        }
+                    }
+                    None => {
+                        // no type info found!!
+                        warn!("No type information found for import with FID {fid}");
+                        (vec![], None)
+                    }
+                }
+            }
+            _ => return Self::get_args_for_instr(instr),
+        };
+        let mut args = vec![];
+        for (idx, ty) in ty_list.iter().enumerate() {
+            args.push(Arg::new(format!("arg{}", idx), ty.to_owned()));
+        }
+        (args, ty_id)
+    }
+
+    pub fn get_args_for_instr(instr: &Operator) -> (Vec<Arg>, Option<u32>) {
+        // TODO: there are 500 of them in wasmparser::Operator
+        // compared to 48 of them in walrus::ir::Instr
+        // How do we compress the Operators we need to concern
+        let (ty_list, ty_id): (Vec<OrcaType>, Option<u32>) = match instr {
             Operator::Block { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
 
             Operator::Loop { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
 
             Operator::CallIndirect { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::LocalGet { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::LocalSet { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::LocalTee { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::GlobalGet { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::GlobalSet { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::I32Const { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::I64Const { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::F32Const { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::F64Const { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::Select { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::Unreachable { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::Br { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::BrIf { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::BrTable { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::Drop { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::Return { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::MemorySize { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::MemoryGrow { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::MemoryInit { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::DataDrop { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::MemoryCopy { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::MemoryFill { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::AtomicFence { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::TableGet { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::TableSet { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::TableGrow { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::TableSize { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::TableFill { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::RefNull { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::RefIsNull { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::RefFunc { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::V128Bitselect { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::I8x16Swizzle { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::I8x16Shuffle { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::TableInit { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::ElemDrop { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             Operator::TableCopy { .. } => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
             _ => {
-                // TODO -- define args
-                vec![]
+                // TODO -- define type info
+                (vec![], None)
             }
+        };
+        let mut args = vec![];
+        for (idx, ty) in ty_list.iter().enumerate() {
+            args.push(Arg::new(format!("arg{}", idx), ty.to_owned()));
         }
+        (args, ty_id)
     }
 
     // ======================

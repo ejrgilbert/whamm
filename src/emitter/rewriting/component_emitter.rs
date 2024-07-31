@@ -6,9 +6,9 @@ use orca::{DataSegment, DataSegmentKind, InitExpr};
 use orca::ir::types::{BlockType, DataType as OrcaType, Value as OrcaValue};
 use wasmparser::GlobalType;
 
-use crate::emitter::rewriting::MemoryTracker;
+use crate::emitter::rewriting::{MemoryTracker, whamm_type_to_wasm_global};
 use crate::emitter::rewriting::{
-    emit_body, emit_expr, emit_stmt, whamm_type_to_wasm, Emitter, StringAddr,
+    emit_body, emit_expr, emit_stmt, Emitter, StringAddr,
 };
 use orca::ir::component::Component;
 use orca::ir::function::FunctionBuilder;
@@ -326,7 +326,7 @@ impl<'a, 'b, 'c, 'd> ComponentEmitter<'a, 'b, 'c, 'd> {
             Some(Record::Var { ref mut addr, .. }) => {
                 // emit global variable and set addr in symbol table
                 // this is used for user-defined global vars in the script...
-                let default_global = whamm_type_to_wasm(&ty);
+                let default_global = whamm_type_to_wasm_global(&ty);
                 let global_id = self.app_wasm.modules[0].add_global(default_global.clone());
                 *addr = Some(VarAddr::Global { addr: global_id });
                 (global_id, default_global.ty)

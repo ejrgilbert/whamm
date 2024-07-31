@@ -1,5 +1,6 @@
 ;; Test `wasm:opcode:call` event
 
+;; @instrument
 (module
     ;; Globals
     (global $var (mut i32) (i32.const 0))
@@ -22,10 +23,16 @@
         i32.add
         global.set $var
     )
+    (func $dummy_no_params
+        ;; function with no params and no returns
+        i32.const 1
+        drop
+    )
 
     ;; Test case functions
     (func $five_params
         (call $dummy_five_params (i32.const 0) (i32.const 1) (i32.const 2) (i32.const 3) (i32.const 4))
+        (call $dummy_no_params)
     )
 
     (start $five_params)
@@ -34,15 +41,13 @@
     (memory (;0;) 1)
 )
 
-;; --------------------------------------------
-;; ==== FUNCS, predicate, `alt_call_by_id` ====
-;; TODO
-;; ----------------------------------------------
-;; ==== FUNCS, predicate, `alt_call_by_name` ====
-;; TODO
-;; ---------------------------------------
-;; ==== FUNCS, body, `alt_call_by_id` ====
-;; TODO
-;; -----------------------------------------
-;; ==== FUNCS, body, `alt_call_by_name` ====
-;; TODO
+;; =================================
+;; ---- `CALL`: local functions ----
+;; =================================
+
+;; -------------------------------
+;; ==== ARGS, predicate, arg0 ====
+;; WHAMM --> i32 count; wasm:opcode:call:before { count = 1; }
+(assert_return (invoke "get_count") (i32.const 1))
+;; @passes_uninstr
+(assert_return (invoke "get_global_var") (i32.const 10))

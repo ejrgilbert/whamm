@@ -355,13 +355,26 @@ pub fn get_test_scripts(sub_dir: &str) -> Vec<String> {
     scripts
 }
 
-pub fn get_ast(script: &str, err: &mut ErrorGen) -> Option<Whamm> {
+pub fn get_ast(script: &str, err: &mut ErrorGen) -> Whamm {
     info!("Getting the AST");
-    parse_script(&script.to_string(), err)
+    match parse_script(&script.to_string(), err) {
+        Some(ast) => {
+            print_ast(&ast);
+            ast
+        }
+        None => {
+            error!("Could not get ast from script: {}", script);
+            if err.has_errors {
+                err.report();
+            }
+            assert!(!err.has_errors);
+            panic!();
+        }
+    }
 }
 
 fn is_valid_script(script: &str, err: &mut ErrorGen) -> bool {
-    get_ast(script, err).is_some()
+    parse_script(&script.to_string(), err).is_some()
 }
 
 pub fn run_test_on_valid_list(scripts: Vec<String>, err: &mut ErrorGen) {
@@ -453,61 +466,48 @@ wasm::call:alt /
     "#;
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
 
-    match get_ast(script, &mut err) {
-        Some(ast) => {
-            // script
-            assert_eq!(1, ast.scripts.len()); // a single script
-            let script = ast.scripts.first().unwrap();
-            //functions length - strcmp and my_func
-            assert_eq!(1, script.fns.len());
-            // provider
-            assert_eq!(1, script.providers.len());
-            let provider = script.providers.get("wasm").unwrap();
-            assert_eq!("wasm", provider.name());
-            assert_eq!(0, provider.get_provided_globals().len());
-            assert_eq!(0, provider.get_provided_fns().len());
+    let ast = get_ast(script, &mut err);
 
-            assert_eq!(1, provider.len_packages());
-            let package = provider.packages().next().unwrap();
-            assert_eq!("opcode", package.name());
-            assert_eq!(1, package.get_provided_globals().len());
-            assert_eq!(0, package.get_provided_fns().len());
+    // script
+    assert_eq!(1, ast.scripts.len()); // a single script
+    assert_eq!(0, ast.globals.len());
+    assert_eq!(1, ast.fns.len()); // strcmp
 
-            assert_eq!(1, package.len_events());
-            let event = package.events().next().unwrap();
-            assert_eq!("call", event.name());
-            // TODO -- change to 6 when add back: arg[0:9]+
-            assert_eq!(3, event.get_provided_globals().len());
-            assert_eq!(2, event.get_provided_fns().len());
+    let script = ast.scripts.first().unwrap();
+    assert_eq!(1, script.fns.len()); // my_func
+                                     // provider
+    assert_eq!(1, script.providers.len());
+    let provider = script.providers.get("wasm").unwrap();
+    assert_eq!("wasm", provider.name());
+    assert_eq!(0, provider.get_provided_globals().len());
+    assert_eq!(0, provider.get_provided_fns().len());
 
-            assert_eq!(1, event.probes().len());
-            assert_eq!(1, event.probes().get("alt").unwrap().len());
+    assert_eq!(1, provider.len_packages());
+    let package = provider.packages().next().unwrap();
+    assert_eq!("opcode", package.name());
+    assert_eq!(1, package.get_provided_globals().len());
+    assert_eq!(0, package.get_provided_fns().len());
 
-            let probe = event.probes().get("alt").unwrap().first().unwrap();
-            assert_eq!(0, probe.get_mode_provided_globals().len());
-            assert_eq!(0, probe.get_mode_provided_fns().len());
-            assert_eq!("alt", probe.mode_name());
+    assert_eq!(1, package.len_events());
+    let event = package.events().next().unwrap();
+    assert_eq!("call", event.name());
+    assert_eq!(5, event.get_provided_globals().len());
+    assert_eq!(2, event.get_provided_fns().len());
 
-            // probe predicate
-            assert!(probe.predicate().is_some());
+    assert_eq!(1, event.probes().len());
+    assert_eq!(1, event.probes().get("alt").unwrap().len());
 
-            // probe body
-            assert!(&probe.body().is_some());
-            assert_eq!(1, probe.body().as_ref().unwrap().stmts.len());
+    let probe = event.probes().get("alt").unwrap().first().unwrap();
+    assert_eq!(0, probe.get_mode_provided_globals().len());
+    assert_eq!(0, probe.get_mode_provided_fns().len());
+    assert_eq!("alt", probe.mode_name());
 
-            print_ast(&ast);
+    // probe predicate
+    assert!(probe.predicate().is_some());
 
-            if err.has_errors {
-                err.report()
-            }
-            assert!(!err.has_errors);
-        }
-        None => {
-            error!("Could not get ast from script: {}", script);
-            err.report();
-            panic!();
-        }
-    };
+    // probe body
+    assert!(&probe.body().is_some());
+    assert_eq!(1, probe.body().as_ref().unwrap().stmts.len());
 }
 #[test]
 pub fn test_ast_special_cases() {
@@ -536,18 +536,7 @@ pub fn testing_strcmp() {
     
     "#;
 
-    match get_ast(script, &mut err) {
-        Some(ast) => {
-            print_ast(&ast);
-        }
-        None => {
-            error!("Could not get ast from script: {}", script);
-            if err.has_errors {
-                err.report();
-            }
-            assert!(!err.has_errors);
-        }
-    };
+    assert!(is_valid_script(script, &mut err));
 }
 
 #[test]
@@ -569,18 +558,7 @@ fn test_global_stmts() {
         }
     "#;
 
-    match get_ast(script, &mut err) {
-        Some(ast) => {
-            print_ast(&ast);
-        }
-        None => {
-            error!("Could not get ast from script: {}", script);
-            if err.has_errors {
-                err.report();
-            }
-            assert!(!err.has_errors);
-        }
-    };
+    assert!(is_valid_script(script, &mut err));
 }
 
 #[test]
@@ -598,18 +576,7 @@ pub fn testing_block() {
     
     "#;
 
-    match get_ast(script, &mut err) {
-        Some(ast) => {
-            print_ast(&ast);
-        }
-        None => {
-            error!("Could not get ast from script: {}", script);
-            if err.has_errors {
-                err.report();
-            }
-            assert!(!err.has_errors);
-        }
-    };
+    assert!(is_valid_script(script, &mut err));
 }
 #[test]
 pub fn testing_global_def() {
@@ -629,18 +596,7 @@ pub fn testing_global_def() {
     
     "#;
 
-    match get_ast(script, &mut err) {
-        Some(ast) => {
-            print_ast(&ast);
-        }
-        None => {
-            error!("Could not get ast from script: {}", script);
-            if err.has_errors {
-                err.report();
-            }
-            assert!(!err.has_errors);
-        }
-    };
+    assert!(is_valid_script(script, &mut err));
 }
 // ===================
 // = Full File Tests =

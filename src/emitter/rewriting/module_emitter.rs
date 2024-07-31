@@ -6,10 +6,11 @@ use orca::{DataSegment, DataSegmentKind, InitExpr};
 use orca::ir::types::{BlockType, DataType as OrcaType, Value as OrcaValue};
 use wasmparser::GlobalType;
 
-use crate::emitter::rewriting::MemoryTracker;
+use crate::emitter::rewriting::{MemoryTracker, whamm_type_to_wasm_global};
 use crate::emitter::rewriting::{
-    emit_body, emit_expr, emit_stmt, whamm_type_to_wasm, Emitter, StringAddr,
+    emit_body, emit_expr, emit_stmt, Emitter, StringAddr,
 };
+
 use orca::ir::function::FunctionBuilder;
 use orca::ir::module::Module;
 use orca::opcode::Opcode;
@@ -240,6 +241,10 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
     pub fn emit_string(&mut self, value: &mut Value) -> Result<bool, Box<WhammError>> {
         match value {
             Value::Str { val, .. } => {
+                if self.mem_tracker.emitted_strings.contains_key(val) {
+                    // the string has already been emitted into the module, don't emit again
+                    return Ok(true);
+                }
                 // assuming that the data ID is the index of the object in the Vec
                 let data_id = self.app_wasm.data.len();
                 let val_bytes = val.as_bytes().to_owned();
@@ -327,7 +332,7 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
             Some(Record::Var { ref mut addr, .. }) => {
                 // emit global variable and set addr in symbol table
                 // this is used for user-defined global vars in the script...
-                let default_global = whamm_type_to_wasm(&ty);
+                let default_global = whamm_type_to_wasm_global(&ty);
                 let global_id = self.app_wasm.add_global(default_global.clone());
                 *addr = Some(VarAddr::Global { addr: global_id });
                 (global_id, default_global.ty)
