@@ -1,17 +1,10 @@
 use crate::common::error::{ErrorGen, WhammError};
-use crate::parser::types::{DataType, Expr, Value};
+use crate::parser::types::DataType;
 // //this is the code that knows which functions to call in lib.rs based on what is in the AST -> will be in emitter folder eventually
 use crate::emitter::report_var_metadata::{Metadata, ReportVarMetadata};
 use core::panic;
 
-pub fn get_key_unwrapped(key: Expr) -> Value {
-    match key {
-        Expr::Primitive { val, .. } => val,
-        _ => {
-            panic!("Error: Expected a primitive value for the key in map get");
-        }
-    }
-}
+
 pub struct MapLibAdapter {
     map_count: i32,
 }
