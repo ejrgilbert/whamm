@@ -1275,20 +1275,21 @@ fn print_report_all<'a, T: Opcode<'a> + ModuleBuilder>(
     if !report_var_metadata.flush_soon {
         return Ok(());
     }
-    let fn_id = match table.lookup("print_meta") {
-        Some(rec_id) => *rec_id,
-        _ => {
-            return Err(Box::new(ErrorGen::get_unexpected_error(
-                true,
-                Some(format!(
-                    "{err_msg} \
-                    print_meta function not in symbol table!"
-                )),
-                None,
-            )));
-        }
-    };
-    injector.call(fn_id as u32);
-    report_var_metadata.flush_soon = false;
+    //TODO - uncomment this when we have metadata maps correctly initialized
+    // let fn_id = match table.lookup("print_meta") {
+    //     Some(rec_id) => *rec_id,
+    //     _ => {
+    //         return Err(Box::new(ErrorGen::get_unexpected_error(
+    //             true,
+    //             Some(format!(
+    //                 "{err_msg} \
+    //                 print_meta function not in symbol table!"
+    //             )),
+    //             None,
+    //         )));
+    //     }
+    // };
+    // injector.call(fn_id as u32);
+    // report_var_metadata.flush_soon = false;
     Ok(())
 }
