@@ -210,7 +210,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         //     //now set the new key value for the new maps
         //     map_meta_str.insert(*key as i32, val);
         // }
-        // //first, we need to create the maps in _start 
+        // //first, we need to create the maps in _start
         // let start_id = match module.get_fid_by_name("__wasm_call_ctors") {
         //     Some(start_id) => start_id,
         //     None => {

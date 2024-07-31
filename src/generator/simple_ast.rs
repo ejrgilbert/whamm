@@ -250,7 +250,7 @@ impl WhammVisitor<()> for SimpleASTBuilder<'_, '_> {
 
     fn visit_probe(&mut self, probe: &Box<dyn Probe>) {
         //visit the statements in the probe and check for report_decls
-        let stmts = match probe.body(){
+        let stmts = match probe.body() {
             Some(stmts) => stmts,
             None => {
                 self.add_probe_to_ast(probe.as_ref(), 0);
@@ -262,7 +262,6 @@ impl WhammVisitor<()> for SimpleASTBuilder<'_, '_> {
         }
         self.add_probe_to_ast(probe.as_ref(), self.curr_num_reports);
         self.curr_num_reports = 0;
-
     }
 
     fn visit_fn(&mut self, _f: &Fn) {
