@@ -26,7 +26,7 @@ pub struct StringAddr {
     pub mem_offset: usize,
     pub len: usize,
 }
-use wasmparser::{GlobalType};
+use wasmparser::GlobalType;
 
 pub trait Emitter {
     fn emit_body(&mut self, body: &mut Block) -> Result<bool, Box<WhammError>>;

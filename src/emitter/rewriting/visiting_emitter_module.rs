@@ -1,4 +1,5 @@
 use crate::common::error::{ErrorGen, WhammError};
+use crate::emitter::rewriting::rules::wasm::OpcodeEvent;
 use crate::emitter::rewriting::rules::{Arg, LocInfo, Provider, WhammProvider};
 use crate::emitter::rewriting::MemoryTracker;
 use crate::emitter::rewriting::{block_type_to_wasm, emit_expr};
@@ -13,7 +14,6 @@ use orca::iterator::module_iterator::ModuleIterator;
 use orca::opcode::Opcode;
 use orca::ModuleBuilder;
 use std::iter::Iterator;
-use crate::emitter::rewriting::rules::wasm::OpcodeEvent;
 
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";

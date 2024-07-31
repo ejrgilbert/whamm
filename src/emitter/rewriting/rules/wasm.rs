@@ -176,7 +176,10 @@ impl OpcodeEvent {
         }
     }
 
-    pub fn get_ty_info_for_instr_comp(app_wasm: &Component, instr: &Operator) -> (Vec<Arg>, Option<u32>) {
+    pub fn get_ty_info_for_instr_comp(
+        app_wasm: &Component,
+        instr: &Operator,
+    ) -> (Vec<Arg>, Option<u32>) {
         // TODO: there are 500 of them in wasmparser::Operator
         // compared to 48 of them in walrus::ir::Instr
         // How do we compress the Operators we need to concern
@@ -210,7 +213,10 @@ impl OpcodeEvent {
         (args, ty_id)
     }
 
-    pub fn get_ty_info_for_instr_module(app_wasm: &Module, instr: &Operator) -> (Vec<Arg>, Option<u32>) {
+    pub fn get_ty_info_for_instr_module(
+        app_wasm: &Module,
+        instr: &Operator,
+    ) -> (Vec<Arg>, Option<u32>) {
         // TODO: there are 500 of them in wasmparser::Operator
         // compared to 48 of them in walrus::ir::Instr
         // How do we compress the Operators we need to concern

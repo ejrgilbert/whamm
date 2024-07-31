@@ -6,10 +6,8 @@ use orca::{DataSegment, DataSegmentKind, InitExpr};
 use orca::ir::types::{BlockType, DataType as OrcaType, Value as OrcaValue};
 use wasmparser::GlobalType;
 
-use crate::emitter::rewriting::{MemoryTracker, whamm_type_to_wasm_global};
-use crate::emitter::rewriting::{
-    emit_body, emit_expr, emit_stmt, Emitter, StringAddr,
-};
+use crate::emitter::rewriting::{emit_body, emit_expr, emit_stmt, Emitter, StringAddr};
+use crate::emitter::rewriting::{whamm_type_to_wasm_global, MemoryTracker};
 
 use orca::ir::function::FunctionBuilder;
 use orca::ir::module::Module;
