@@ -1,6 +1,6 @@
 use crate::common::error::{ErrorGen, WhammError};
-use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::emitter::rewriting::rules::{Arg, LocInfo, Provider, WhammProvider};
+use crate::emitter::rewriting::MemoryTracker;
 use crate::emitter::rewriting::{block_type_to_wasm, emit_expr};
 use crate::emitter::rewriting::{emit_stmt, Emitter};
 use crate::generator::types::ExprFolder;

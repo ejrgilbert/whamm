@@ -4,7 +4,8 @@ use cli::{Cmd, WhammCli};
 use std::collections::HashMap;
 
 use crate::common::error::ErrorGen;
-use crate::emitter::rewriting::module_emitter::{MemoryTracker, ModuleEmitter};
+use crate::emitter::rewriting::module_emitter::ModuleEmitter;
+use crate::emitter::rewriting::MemoryTracker;
 use crate::generator::init_generator::InitGenerator;
 use crate::generator::instr_generator::InstrGenerator;
 use crate::parser::whamm_parser::*;
