@@ -5,7 +5,7 @@ use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca::{DataSegment, DataSegmentKind, InitExpr};
 use std::collections::HashMap;
 
-use orca::ir::types::{DataType as OrcaType, Value as OrcaValue};
+use orca::ir::types::{BlockType as OrcaBlockType, DataType as OrcaType, Value as OrcaValue};
 use wasmparser::BlockType;
 
 use crate::emitter::map_lib_adapter::MapLibAdapter;
@@ -94,8 +94,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
 
         #[rustfmt::skip]
         strcmp
-            .block(BlockType::Empty) // label = @1
-            .block(BlockType::Empty) // label = @2
+            .block(OrcaBlockType::Empty) // label = @1
+            .block(OrcaBlockType::Empty) // label = @2
             // 1. Check if sizes are equal, if not return 0
             .local_get(str0_size)
             .local_get(str1_size)
@@ -111,7 +111,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             // 3. iterate over each string and check equivalence of chars, if any not equal, return 0
             .i32_const(0)
             .local_set(i)
-            .loop_stmt(BlockType::Empty)
+            .loop_stmt(OrcaBlockType::Empty)
             // Check if we've reached the end of the string
             .local_get(i)
             .local_get(str0_size)  // (can compare with either str size, equal at this point)

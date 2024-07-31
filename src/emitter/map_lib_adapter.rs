@@ -1,5 +1,5 @@
 use crate::common::error::{ErrorGen, WhammError};
-use crate::parser::types::DataType;
+use crate::parser::types::{DataType, Whamm};
 // //this is the code that knows which functions to call in lib.rs based on what is in the AST -> will be in emitter folder eventually
 use crate::emitter::report_var_metadata::{Metadata, ReportVarMetadata};
 use core::panic;
@@ -99,7 +99,7 @@ impl MapLibAdapter {
         //create the map based on the types of the key and value in the map
         //"map" is the type of the declaration statement
         match map {
-            DataType::Map { key_ty, val_ty } => match self.create_map_insert(*key_ty, *val_ty) {
+            DataType::Map { key_ty, val_ty } => match self.create_map_fname(*key_ty, *val_ty) {
                 Ok(func_name) => Ok((func_name, map_id)),
                 Err(e) => Err(e),
             },
@@ -130,7 +130,7 @@ impl MapLibAdapter {
             )));
         }
         match map {
-            DataType::Map { key_ty, val_ty } => match self.create_map_insert(*key_ty, *val_ty) {
+            DataType::Map { key_ty, val_ty } => match self.create_map_fname(*key_ty, *val_ty) {
                 Ok(func_name) => Ok((func_name, map_id)),
                 Err(e) => Err(e),
             },
@@ -145,7 +145,7 @@ impl MapLibAdapter {
         let map_id = self.get_map_count();
         self.increment_map_count();
         match map {
-            DataType::Map { key_ty, val_ty } => match self.create_map_insert(*key_ty, *val_ty) {
+            DataType::Map { key_ty, val_ty } => match self.create_map_fname(*key_ty, *val_ty) {
                 Ok(func_name) => Ok((func_name, map_id)),
                 Err(e) => Err(e),
             },
@@ -158,7 +158,7 @@ impl MapLibAdapter {
     }
 
     //The stuff that actually calls the emitter stuff
-    pub fn create_map_insert(
+    pub fn create_map_fname(
         &mut self,
         key: DataType,
         val: DataType,
@@ -219,17 +219,26 @@ impl MapLibAdapter {
             ))),
         }
     }
-    pub fn set_map_insert(&mut self, key: DataType, val: DataType) -> String {
-        match key {
+    pub fn insert_map_fname(
+        &mut self,
+        key: DataType,
+        val: DataType,
+    ) -> Result<String, Box<WhammError>> {
+        match &key {
             DataType::I32 => match val {
-                DataType::I32 => "insert_i32_i32".to_string(),
-                DataType::Str => "insert_i32_string".to_string(),
-                _ => {
-                    panic!("Error: Not yet supported value type for map");
-                }
+                DataType::I32 => Ok("insert_i32_i32".to_string()),
+                DataType::Str => Ok("insert_i32_string".to_string()),
+                _ => Err(Box::new(ErrorGen::get_unexpected_error(
+                    true,
+                    Some(format!(
+                        "not yet supported type for map: {:?} -> {:?}",
+                        key, val
+                    )),
+                    None,
+                ))),
             },
             DataType::Tuple { ty_info } => {
-                if ty_info
+                if *ty_info
                     == vec![
                         Box::new(DataType::I32),
                         Box::new(DataType::I32),
@@ -237,21 +246,38 @@ impl MapLibAdapter {
                     ]
                 {
                     match val {
-                        DataType::I32 => "insert_map_i32i32i32tuple_i32".to_string(),
-                        _ => {
-                            panic!("Error: Not yet supported value type for map");
-                        }
+                        DataType::I32 => Ok("insert_i32i32i32tuple_i32".to_string()),
+                        _ => Err(Box::new(ErrorGen::get_unexpected_error(
+                            true,
+                            Some(format!(
+                                "not yet supported type for map: {:?} -> {:?}",
+                                key, val
+                            )),
+                            None,
+                        ))),
                     }
                 } else {
-                    panic!("Error: Not yet supported key type for map");
+                    Err(Box::new(ErrorGen::get_unexpected_error(
+                        true,
+                        Some(format!(
+                            "not yet supported type for map: {:?} -> {:?}",
+                            key, val
+                        )),
+                        None,
+                    )))
                 }
             }
-            _ => {
-                panic!("Error: Not yet supported key type for map");
-            }
+            _ => Err(Box::new(ErrorGen::get_unexpected_error(
+                true,
+                Some(format!(
+                    "not yet supported type for map: {:?} -> {:?}",
+                    key, val
+                )),
+                None,
+            ))),
         }
     }
-    pub fn create_map_get(
+    pub fn get_map_fname(
         &mut self,
         key: DataType,
         val: DataType,

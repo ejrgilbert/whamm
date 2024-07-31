@@ -9,7 +9,7 @@ use crate::generator::types::ExprFolder;
 use crate::parser::types::{DataType, Definition, Expr, ProbeSpec, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca::ir::module::Module;
-use orca::ir::types::Location as OrcaLocation;
+use orca::ir::types::{BlockType as OrcaBlockType, Location as OrcaLocation};
 
 use orca::iterator::iterator_trait::Iterator as OrcaIterator;
 use orca::iterator::module_iterator::ModuleIterator;
@@ -225,7 +225,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         is_success &= self.emit_expr(condition)?;
 
         // emit the beginning of the if block
-        self.app_iter.if_stmt(BlockType::Empty);
+        self.app_iter.if_stmt(OrcaBlockType::Empty);
 
         is_success &= self.emit_body(conseq)?;
 
@@ -244,7 +244,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         // emit the condition of the `if` expression
         is_success &= self.emit_expr(condition)?;
         // emit the beginning of the if block
-        self.app_iter.if_stmt(BlockType::Empty);
+        self.app_iter.if_stmt(OrcaBlockType::Empty);
 
         is_success &= self.emit_body(conseq)?;
 
