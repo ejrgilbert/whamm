@@ -8,10 +8,10 @@ use crate::verifier::types::{Record, SymbolTable, VarAddr};
 
 use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::generator::types::ExprFolder;
-use orca::ir::types::{DataType as OrcaType, Global, Value as OrcaValue};
+use orca::ir::types::{BlockType, DataType as OrcaType, Global, Value as OrcaValue};
 use orca::opcode::Opcode;
 use orca::{InitExpr, ModuleBuilder};
-use wasmparser::{BlockType, ValType};
+use wasmparser::ValType;
 
 pub trait Emitter {
     fn emit_body(&mut self, body: &mut Block) -> Result<bool, Box<WhammError>>;
@@ -278,7 +278,7 @@ pub fn block_type_to_wasm(block: &Block) -> BlockType {
         None => BlockType::Empty,
         Some(return_ty) => {
             let wasm_ty = whamm_type_to_wasm(return_ty).ty.content_type;
-            BlockType::Type(wasm_ty)
+            BlockType::Type(wasm_ty.into())
         }
     }
 }

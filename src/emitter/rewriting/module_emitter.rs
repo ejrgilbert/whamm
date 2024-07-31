@@ -4,8 +4,8 @@ use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca::{DataSegment, DataSegmentKind, InitExpr};
 use std::collections::HashMap;
 
-use orca::ir::types::{DataType as OrcaType, Value as OrcaValue};
-use wasmparser::{BlockType, GlobalType};
+use orca::ir::types::{BlockType, DataType as OrcaType, Value as OrcaValue};
+use wasmparser::GlobalType;
 
 use crate::emitter::rewriting::{emit_body, emit_expr, emit_stmt, whamm_type_to_wasm, Emitter};
 use orca::ir::function::FunctionBuilder;

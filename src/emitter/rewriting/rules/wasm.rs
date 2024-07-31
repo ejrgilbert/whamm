@@ -182,7 +182,7 @@ impl OpcodeEvent {
                 } else {
                     // this is a local function
                     if let Some(ty) =
-                        app_wasm.get_type(*fid - app_wasm.num_imported_functions as u32)
+                        app_wasm.get_local_func_ty(*fid - app_wasm.num_imported_functions as u32)
                     {
                         ty.params.to_vec()
                     } else {
