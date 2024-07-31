@@ -202,7 +202,7 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                     let fn_id = table
                         .lookup(&to_call.0)
                         .expect("Map function not in symbol table");
-                    injector.i32_const(to_call.1 as i32);
+                    injector.i32_const(to_call.1);
                     injector.call(*fn_id as u32);
                     return Ok(true);
                 }
@@ -238,7 +238,7 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
     stmt: &mut Statement,
     injector: &mut T,
     table: &mut SymbolTable,
-    mem_tracker: &MemoryTracker,
+    _mem_tracker: &MemoryTracker,
     map_lib_adapter: &mut MapLibAdapter,
     report_var_metadata: &mut ReportVarMetadata,
     err_msg: &str,
@@ -338,12 +338,12 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                         let fn_id = table
                             .lookup(&to_call.0)
                             .expect("Map function not in symbol table");
-                        injector.i32_const(to_call.1 as i32);
+                        injector.i32_const(to_call.1);
                         injector.call(*fn_id as u32);
                         let add_map_to_report_id = table
                             .lookup("add_report_map")
                             .expect("Map function not in symbol table");
-                        injector.i32_const(to_call.1 as i32);
+                        injector.i32_const(to_call.1);
                         injector.call(*add_map_to_report_id as u32);
                         return Ok(true);
                     }
@@ -525,11 +525,10 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                     //no Record in ST, so always flush after a set_map
                     report_var_metadata.flush_soon = true;
                     let to_call = map_lib_adapter.set_map_insert(key_ty, val_ty);
-                    let fn_id = table
+                    let fn_id = *table
                         .lookup(&to_call)
-                        .expect("Map function not in symbol table")
-                        .clone(); //clone to close the borrow
-                                  //now actualy emit the set call - name then key then value
+                        .expect("Map function not in symbol table"); //clone to close the borrow
+                                                                     //now actualy emit the set call - name then key then value
                     injector.i32_const(map_id as i32);
                     emit_expr(
                         key,
@@ -1153,7 +1152,7 @@ fn emit_get_map<'a, T: Opcode<'a> + ModuleBuilder>(
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     if let Expr::GetMap { map, key, .. } = expr {
-        let ref mut map = **map;
+        let map = &mut (**map);
         if let Expr::VarId { name, .. } = map {
             match get_map_info(table, name) {
                 Ok((map_id, key_ty, val_ty)) => {
@@ -1161,10 +1160,9 @@ fn emit_get_map<'a, T: Opcode<'a> + ModuleBuilder>(
                         Ok(to_call) => to_call,
                         Err(e) => return Err(e),
                     };
-                    let fn_id = table
+                    let fn_id = *table
                         .lookup(&to_call)
-                        .expect("Map function not in symbol table")
-                        .clone(); //clone to close the borrow
+                        .expect("Map function not in symbol table"); //clone to close the borrow
                     injector.i32_const(map_id as i32);
                     emit_expr(
                         key,
@@ -1215,7 +1213,7 @@ fn get_map_info(
             match addr {
                 Some(VarAddr::MapId { addr }) => {
                     //save off the map_id for the later set call
-                    map_id = addr.clone();
+                    map_id = *addr;
                     if let DataType::Map {
                         key_ty: k,
                         val_ty: v,
@@ -1259,18 +1257,18 @@ fn get_map_info(
         None => {
             return Err(Box::new(ErrorGen::get_unexpected_error(
                 true,
-                Some(format!("Variable symbol does not exist!")),
+                Some("Variable symbol does not exist!".to_string()),
                 None,
             )));
         }
     }
-    return Ok((map_id, key_ty, val_ty));
+    Ok((map_id, key_ty, val_ty))
 }
 fn print_report_all<'a, T: Opcode<'a> + ModuleBuilder>(
-    injector: &mut T,
-    table: &mut SymbolTable,
+    _injector: &mut T,
+    _table: &mut SymbolTable,
     report_var_metadata: &mut ReportVarMetadata,
-    err_msg: &str,
+    _err_msg: &str,
 ) -> Result<(), Box<WhammError>> {
     if !report_var_metadata.flush_soon {
         return Ok(());

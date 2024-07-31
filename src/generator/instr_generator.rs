@@ -1,18 +1,11 @@
-use std::collections::HashMap;
-use std::string;
-
-use orca::ir::types::Value as OrcaValue;
-use orca::{DataSegment, DataSegmentKind, InitExpr, Opcode};
-
 use crate::common::error::ErrorGen;
-use crate::emitter::report_var_metadata::convert_meta_to_string;
-use crate::emitter::rewriting::module_emitter::StringAddr;
+
 use crate::emitter::rewriting::rules::{provider_factory, Arg, LocInfo, WhammProvider};
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::rewriting::Emitter;
 use crate::generator::simple_ast::{SimpleAST, SimpleProbe};
 use crate::generator::types::ExprFolder;
-use crate::parser::types::{DataType, Expr, ProbeSpec, Statement};
+use crate::parser::types::{Expr, ProbeSpec, Statement};
 
 const UNEXPECTED_ERR_MSG: &str =
     "InstrGenerator: Looks like you've found a bug...please report this behavior!";
@@ -334,7 +327,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             //remove the last chars while they are digits, then add 1 and put it back
             let mut running_count = 0;
             let mut last_digit = emitter_probe_id.pop().unwrap();
-            while last_digit.is_digit(10) {
+            while last_digit.is_ascii_digit() {
                 running_count = running_count * 10 + last_digit.to_digit(10).unwrap();
                 last_digit = emitter_probe_id.pop().unwrap();
             }

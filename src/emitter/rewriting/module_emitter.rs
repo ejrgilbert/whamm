@@ -302,7 +302,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     pub(crate) fn emit_global(
         &mut self,
         name: String,
-        ty: DataType,
+        _ty: DataType,
         _val: &Option<Value>,
     ) -> Result<bool, Box<WhammError>> {
         let rec_id = match self.table.lookup(&name) {
@@ -367,17 +367,15 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                             .table
                             .lookup(&to_call.0)
                             .expect("Map function not in symbol table");
-                        start_fn.i32_const(to_call.1 as i32);
+                        start_fn.i32_const(to_call.1);
                         start_fn.call(*fn_id as u32);
 
                         Ok(true)
                     }
                     _ => {
-                        let default_global = whamm_type_to_wasm(&ty);
+                        let default_global = whamm_type_to_wasm(ty);
                         let global_id = self.app_wasm.add_global(default_global);
-                        *addr = Some(VarAddr::Global {
-                            addr: global_id.clone(),
-                        });
+                        *addr = Some(VarAddr::Global { addr: global_id });
                         //now save off the global variable metadata
                         match self
                             .report_var_metadata
@@ -411,7 +409,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     pub fn emit_report_global(
         &mut self,
         name: String,
-        ty: DataType,
+        _ty: DataType,
         _val: &Option<Value>,
         script_name: String,
     ) -> Result<bool, Box<WhammError>> {
@@ -471,7 +469,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                             name,
                             script_name,
                             ty.clone(),
-                            &mut self.report_var_metadata,
+                            self.report_var_metadata,
                         ) {
                             Ok(to_call) => to_call,
                             Err(e) => return Err(e),
@@ -483,16 +481,14 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                             .table
                             .lookup(&to_call.0)
                             .expect("Map function not in symbol table");
-                        start_fn.i32_const(to_call.1 as i32);
+                        start_fn.i32_const(to_call.1);
                         start_fn.call(*fn_id as u32);
                         Ok(true)
                     }
                     _ => {
-                        let default_global = whamm_type_to_wasm(&ty);
+                        let default_global = whamm_type_to_wasm(ty);
                         let global_id = self.app_wasm.add_global(default_global);
-                        *addr = Some(VarAddr::Global {
-                            addr: global_id.clone(),
-                        });
+                        *addr = Some(VarAddr::Global { addr: global_id });
                         //now save off the global variable metadata
                         match self
                             .report_var_metadata

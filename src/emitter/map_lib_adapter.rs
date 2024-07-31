@@ -4,7 +4,6 @@ use crate::parser::types::DataType;
 use crate::emitter::report_var_metadata::{Metadata, ReportVarMetadata};
 use core::panic;
 
-
 pub struct MapLibAdapter {
     map_count: i32,
 }
@@ -152,7 +151,7 @@ impl MapLibAdapter {
             },
             _ => Err(Box::new(ErrorGen::get_unexpected_error(
                 true,
-                Some(format!("Non-map at no_meta")),
+                Some("Non-map at no_meta".to_string()),
                 None,
             ))),
         }

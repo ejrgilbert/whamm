@@ -9,8 +9,8 @@ use crate::generator::types::ExprFolder;
 use crate::parser::types::{DataType, Definition, Expr, ProbeSpec, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca::ir::module::Module;
-use orca::ir::types::{Global, Location as OrcaLocation};
-use orca::iterator::component_iterator::ComponentIterator;
+use orca::ir::types::Location as OrcaLocation;
+
 use orca::iterator::iterator_trait::Iterator as OrcaIterator;
 use orca::iterator::module_iterator::ModuleIterator;
 use orca::opcode::Opcode;

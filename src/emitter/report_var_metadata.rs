@@ -13,6 +13,12 @@ pub struct ReportVarMetadata {
     pub available_i32_gids: Vec<usize>,
     pub flush_soon: bool,
 }
+impl Default for ReportVarMetadata {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ReportVarMetadata {
     pub fn new() -> Self {
         ReportVarMetadata {

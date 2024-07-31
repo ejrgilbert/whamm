@@ -147,7 +147,7 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
                         println!("start function is _start");
                     }
                     None => {
-                        let start_fn = FunctionBuilder::new(&vec![], &vec![]);
+                        let start_fn = FunctionBuilder::new(&[], &[]);
                         let start_id = start_fn.finish(self.emitter.app_wasm);
                         self.emitter.app_wasm.start = Some(start_id);
                         self.emitter.app_wasm.set_fn_name(
