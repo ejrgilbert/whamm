@@ -390,7 +390,7 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                 return Err(Box::new(ErrorGen::get_unexpected_error(
                     false,
                     Some(format!(
-                        "{err_msg} Wrong statement type, should be `assign`"
+                        "{err_msg} Wrong statement type, should be `decl`"
                     )),
                     None,
                 )))
