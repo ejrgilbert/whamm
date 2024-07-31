@@ -845,7 +845,7 @@ pub fn create_map_i32i32i32tuple_i32(name: i32) {
 }
 
 #[no_mangle]
-pub fn insert_map_i32i32i32tuple_i32(name: i32, key0: i32, key1: i32, key2: i32, value: i32) {
+pub fn insert_i32i32i32tuple_i32(name: i32, key0: i32, key1: i32, key2: i32, value: i32) {
     insert_tuple_i32_inner(name, TupleVariant::i32_i32_i32(key0, key1, key2), value);
 }
 #[no_mangle]

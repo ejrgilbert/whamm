@@ -1,5 +1,5 @@
 use crate::common::error::{ErrorGen, WhammError};
-use crate::parser::types::DataType;
+use crate::parser::types::{DataType, Whamm};
 // //this is the code that knows which functions to call in lib.rs based on what is in the AST -> will be in emitter folder eventually
 use crate::emitter::report_var_metadata::{Metadata, ReportVarMetadata};
 use core::panic;
@@ -219,17 +219,26 @@ impl MapLibAdapter {
             ))),
         }
     }
-    pub fn set_map_insert(&mut self, key: DataType, val: DataType) -> String {
-        match key {
+    pub fn set_map_insert(
+        &mut self,
+        key: DataType,
+        val: DataType,
+    ) -> Result<String, Box<WhammError>> {
+        match &key {
             DataType::I32 => match val {
-                DataType::I32 => "insert_i32_i32".to_string(),
-                DataType::Str => "insert_i32_string".to_string(),
-                _ => {
-                    panic!("Error: Not yet supported value type for map");
-                }
+                DataType::I32 => Ok("insert_i32_i32".to_string()),
+                DataType::Str => Ok("insert_i32_string".to_string()),
+                _ => Err(Box::new(ErrorGen::get_unexpected_error(
+                    true,
+                    Some(format!(
+                        "not yet supported type for map: {:?} -> {:?}",
+                        key, val
+                    )),
+                    None,
+                ))),
             },
             DataType::Tuple { ty_info } => {
-                if ty_info
+                if *ty_info
                     == vec![
                         Box::new(DataType::I32),
                         Box::new(DataType::I32),
@@ -237,18 +246,35 @@ impl MapLibAdapter {
                     ]
                 {
                     match val {
-                        DataType::I32 => "insert_map_i32i32i32tuple_i32".to_string(),
-                        _ => {
-                            panic!("Error: Not yet supported value type for map");
-                        }
+                        DataType::I32 => Ok("insert_i32i32i32tuple_i32".to_string()),
+                        _ => Err(Box::new(ErrorGen::get_unexpected_error(
+                            true,
+                            Some(format!(
+                                "not yet supported type for map: {:?} -> {:?}",
+                                key, val
+                            )),
+                            None,
+                        ))),
                     }
                 } else {
-                    panic!("Error: Not yet supported key type for map");
+                    Err(Box::new(ErrorGen::get_unexpected_error(
+                        true,
+                        Some(format!(
+                            "not yet supported type for map: {:?} -> {:?}",
+                            key, val
+                        )),
+                        None,
+                    )))
                 }
             }
-            _ => {
-                panic!("Error: Not yet supported key type for map");
-            }
+            _ => Err(Box::new(ErrorGen::get_unexpected_error(
+                true,
+                Some(format!(
+                    "not yet supported type for map: {:?} -> {:?}",
+                    key, val
+                )),
+                None,
+            ))),
         }
     }
     pub fn create_map_get(

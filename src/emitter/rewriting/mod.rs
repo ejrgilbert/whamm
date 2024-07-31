@@ -10,7 +10,9 @@ use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{BinOp, DataType, Expr, Statement, UnOp, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
-use orca::ir::types::{DataType as OrcaType, Global, Value as OrcaValue};
+use orca::ir::types::{
+    BlockType as OrcaBlockType, DataType as OrcaType, Global, Value as OrcaValue,
+};
 use orca::opcode::Opcode;
 use orca::{InitExpr, ModuleBuilder};
 use wasmparser::{BlockType, ValType};
@@ -518,7 +520,10 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                 Ok((map_id, key_ty, val_ty)) => {
                     //no Record in ST, so always flush after a set_map
                     report_var_metadata.flush_soon = true;
-                    let to_call = map_lib_adapter.set_map_insert(key_ty, val_ty);
+                    let to_call = match map_lib_adapter.set_map_insert(key_ty, val_ty) {
+                        Ok(to_call) => to_call,
+                        Err(e) => return Err(e),
+                    };
                     let fn_id = *table
                         .lookup(&to_call)
                         .expect("Map function not in symbol table"); //clone to close the borrow
@@ -668,7 +673,7 @@ fn emit_if_preamble<'a, T: Opcode<'a> + ModuleBuilder>(
         err_msg,
     )?;
     // emit the beginning of the if block
-    injector.if_stmt(BlockType::Empty);
+    injector.if_stmt(OrcaBlockType::Empty);
 
     // emit the consequent body
     is_success &= emit_body(

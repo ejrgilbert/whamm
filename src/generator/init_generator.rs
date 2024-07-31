@@ -97,7 +97,7 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
             "create_tuple_tuple".to_string(),
             "create_tuple_map".to_string(),
             "insert_i32_i32".to_string(),
-            "insert_map_i32i32i32tuple_i32".to_string(),
+            "insert_i32i32i32tuple_i32".to_string(),
             "get_i32_i32".to_string(),
             "get_i32_from_i32i32i32tuple".to_string(),
             "add_report_map".to_string(),
