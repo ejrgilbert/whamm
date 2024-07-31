@@ -358,7 +358,7 @@ impl Mode for CoreMode {
         &self.info.globals
     }
 }
-
+#[allow(dead_code)] //because locations in CoreProbes may be useful for errors later
 struct CoreProbe {
     pub mode: CoreMode,
     pub loc: Option<Location>,

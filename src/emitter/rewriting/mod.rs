@@ -1,3 +1,4 @@
+#![allow(clippy::too_many_arguments)]
 pub mod module_emitter;
 pub mod rules;
 pub mod visiting_emitter;
@@ -13,7 +14,6 @@ use orca::ir::types::{DataType as OrcaType, Global, Value as OrcaValue};
 use orca::opcode::Opcode;
 use orca::{InitExpr, ModuleBuilder};
 use wasmparser::{BlockType, ValType};
-
 pub trait Emitter {
     fn emit_body(&mut self, body: &mut [Statement]) -> Result<bool, Box<WhammError>>;
     fn emit_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>>;
@@ -190,24 +190,21 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                     None,
                 )));
             };
-            match ty {
-                DataType::Map { .. } => {
-                    let to_call = match map_lib_adapter.create_no_meta_map(ty.clone()) {
-                        Ok(to_call) => to_call,
-                        Err(e) => return Err(e),
-                    };
-                    *addr = Some(VarAddr::MapId {
-                        addr: to_call.1 as u32,
-                    });
-                    let fn_id = table
-                        .lookup(&to_call.0)
-                        .expect("Map function not in symbol table");
-                    injector.i32_const(to_call.1);
-                    injector.call(*fn_id as u32);
-                    return Ok(true);
-                }
 
-                _ => {}
+            if let DataType::Map { .. } = ty {
+                let to_call = match map_lib_adapter.create_no_meta_map(ty.clone()) {
+                    Ok(to_call) => to_call,
+                    Err(e) => return Err(e),
+                };
+                *addr = Some(VarAddr::MapId {
+                    addr: to_call.1 as u32,
+                });
+                let fn_id = table
+                    .lookup(&to_call.0)
+                    .expect("Map function not in symbol table");
+                injector.i32_const(to_call.1);
+                injector.call(*fn_id as u32);
+                return Ok(true);
             }
             match &mut addr {
                 Some(VarAddr::Global { addr: _addr }) | Some(VarAddr::MapId { addr: _addr }) => {
@@ -296,59 +293,55 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                         None,
                     )));
                 };
-                match ty {
-                    DataType::Map { .. } => {
-                        let script_name;
-                        let bytecode_loc;
-                        let probe_id;
-                        match &report_var_metadata.curr_location {
-                            LocationData::Local {
-                                script_id,
-                                bytecode_loc: bytecode_loc_cur,
-                                probe_id: probe_id_cur,
-                                num_reports: _,
-                            } => {
-                                script_name = script_id;
-                                bytecode_loc = bytecode_loc_cur;
-                                probe_id = probe_id_cur;
-                            }
-                            LocationData::Global { .. } => {
-                                //ERR here because the location data should be local at this point via the visiting emitter
-                                return Err(Box::new(ErrorGen::get_unexpected_error(
-                                    true,
-                                    Some(format!("{err_msg} Expected Local LocationData - shouldn't be called outside visit-gen")),
-                                    None,
-                                )));
-                            }
+                if let DataType::Map { .. } = ty {
+                    let script_name;
+                    let bytecode_loc;
+                    let probe_id;
+                    match &report_var_metadata.curr_location {
+                        LocationData::Local {
+                            script_id,
+                            bytecode_loc: bytecode_loc_cur,
+                            probe_id: probe_id_cur,
+                            num_reports: _,
+                        } => {
+                            script_name = script_id;
+                            bytecode_loc = bytecode_loc_cur;
+                            probe_id = probe_id_cur;
                         }
-                        let to_call = match map_lib_adapter.create_local_map(
-                            var_name.clone(),
-                            script_name.clone(),
-                            *bytecode_loc,
-                            probe_id.clone(),
-                            ty.clone(),
-                            report_var_metadata,
-                        ) {
-                            Ok(to_call) => to_call,
-                            Err(e) => return Err(e),
-                        };
-                        *addr = Some(VarAddr::MapId {
-                            addr: to_call.1 as u32,
-                        });
-                        let fn_id = table
-                            .lookup(&to_call.0)
-                            .expect("Map function not in symbol table");
-                        injector.i32_const(to_call.1);
-                        injector.call(*fn_id as u32);
-                        let add_map_to_report_id = table
-                            .lookup("add_report_map")
-                            .expect("Map function not in symbol table");
-                        injector.i32_const(to_call.1);
-                        injector.call(*add_map_to_report_id as u32);
-                        return Ok(true);
+                        LocationData::Global { .. } => {
+                            //ERR here because the location data should be local at this point via the visiting emitter
+                            return Err(Box::new(ErrorGen::get_unexpected_error(
+                                true,
+                                Some(format!("{err_msg} Expected Local LocationData - shouldn't be called outside visit-gen")),
+                                None,
+                            )));
+                        }
                     }
-
-                    _ => {}
+                    let to_call = match map_lib_adapter.create_local_map(
+                        var_name.clone(),
+                        script_name.clone(),
+                        *bytecode_loc,
+                        probe_id.clone(),
+                        ty.clone(),
+                        report_var_metadata,
+                    ) {
+                        Ok(to_call) => to_call,
+                        Err(e) => return Err(e),
+                    };
+                    *addr = Some(VarAddr::MapId {
+                        addr: to_call.1 as u32,
+                    });
+                    let fn_id = table
+                        .lookup(&to_call.0)
+                        .expect("Map function not in symbol table");
+                    injector.i32_const(to_call.1);
+                    injector.call(*fn_id as u32);
+                    let add_map_to_report_id = table
+                        .lookup("add_report_map")
+                        .expect("Map function not in symbol table");
+                    injector.i32_const(to_call.1);
+                    injector.call(*add_map_to_report_id as u32);
+                    return Ok(true);
                 }
                 match &mut addr {
                     Some(VarAddr::Global { .. }) | None => {
@@ -518,6 +511,7 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
     report_var_metadata: &mut ReportVarMetadata,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
+    #[allow(clippy::collapsible_match)]
     if let Statement::SetMap { map, key, val, .. } = stmt {
         if let Expr::VarId { name, .. } = map {
             match get_map_info(table, name) {

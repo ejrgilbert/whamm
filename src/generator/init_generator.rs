@@ -35,7 +35,7 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
     }
 
     // Private helper functions
-    fn visit_globals(&mut self, globals: &HashMap<String, Global>, script_name: &String) -> bool {
+    fn visit_globals(&mut self, globals: &HashMap<String, Global>, script_name: &str) -> bool {
         let mut is_success = true;
         for (name, global) in globals.iter() {
             // do not inject globals into Wasm that are used/defined by the compiler
@@ -46,7 +46,7 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
                         name.clone(),
                         global.ty.clone(),
                         &global.value,
-                        script_name.clone(),
+                        script_name.to_owned(),
                     ) {
                         Err(e) => self.err.add_error(*e),
                         Ok(res) => is_success &= res,
