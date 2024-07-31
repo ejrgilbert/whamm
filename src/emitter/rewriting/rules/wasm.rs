@@ -573,6 +573,13 @@ impl Event for OpcodeEvent {
                             val: func_info.module.to_string(),
                         }),
                     );
+                    loc_info.static_data.insert(
+                        "imm0".to_string(),
+                        Some(Value::Integer {
+                            ty: DataType::I32,
+                            val: *fid as i32,
+                        }),
+                    );
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_spec(), &self.probes);

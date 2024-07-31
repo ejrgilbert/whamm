@@ -111,8 +111,9 @@ fn run_instr(
         panic!("only single memory is supported")
     };
     let mut mem_tracker = MemoryTracker {
-        mem_id: 0,                  // Assuming the ID of the first memory is 0!
+        mem_id: 0,                     // Assuming the ID of the first memory is 0!
         curr_mem_offset: 1_052_576, // Set default memory base address to DEFAULT + 4KB = 1048576 bytes + 4000 bytes = 1052576 bytes
+        required_initial_mem_size: 27, // Size memory must be to account for the added data
         emitted_strings: HashMap::new(),
     };
 
