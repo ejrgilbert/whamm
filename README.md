@@ -42,7 +42,7 @@ The supported interpreters are:
    eval $(opam env)
    opam install dune
    opam install menhir
-   
+
    # Build the wasm ref interpreter
    ./wizard-engine/test/wasm-spec/update.sh
    pushd wizard-engine/test/wasm-spec/repos/spec/interpreter
@@ -87,7 +87,7 @@ language-intuition perspective. This is primarily because reading through the sp
 levels of granularity, everything being provided by what proceeds it. If we were to move `mode` to the front, but then have
 event-specific options, this property would no longer hold.
 
-Currently available: 
+Currently available:
 - `wasm:bytecode`
 
 To be added:
