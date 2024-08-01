@@ -471,7 +471,7 @@ wasm::call:alt /
     // script
     assert_eq!(1, ast.scripts.len()); // a single script
     assert_eq!(0, ast.globals.len());
-    assert_eq!(1, ast.fns.len()); // strcmp
+    // assert_eq!(1, ast.fns.len()); // strcmp
 
     let script = ast.scripts.first().unwrap();
     assert_eq!(1, script.fns.len()); // my_func

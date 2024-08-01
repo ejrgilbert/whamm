@@ -30,7 +30,7 @@ pub trait Emitter {
 // ==================================================================
 // ==================================================================
 
-fn emit_body<'a, T: Opcode<'a> + ModuleBuilder>(
+pub(crate) fn emit_body<'a, T: Opcode<'a> + ModuleBuilder>(
     body: &mut Block,
     injector: &mut T,
     table: &mut SymbolTable,
@@ -43,7 +43,7 @@ fn emit_body<'a, T: Opcode<'a> + ModuleBuilder>(
     Ok(true)
 }
 
-fn emit_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
+pub(crate) fn emit_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
     stmt: &mut Statement,
     injector: &mut T,
     table: &mut SymbolTable,
@@ -68,7 +68,7 @@ fn emit_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
     }
 }
 
-fn emit_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
+pub(crate) fn emit_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
     stmt: &mut Statement,
     injector: &mut T,
     table: &mut SymbolTable,
@@ -429,8 +429,7 @@ fn emit_if_else<'a, T: Opcode<'a> + ModuleBuilder>(
     Ok(is_success)
 }
 
-// TODO: emit_expr has two mutable references to the name object, the injector has module data in it
-fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
+pub fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
     expr: &mut Expr,
     injector: &mut T,
     table: &mut SymbolTable,

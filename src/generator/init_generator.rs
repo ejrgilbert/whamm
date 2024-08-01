@@ -66,6 +66,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_> {
         let mut is_success = true;
 
         // visit fns
+        // Note: imported functions, like `puts` and `puti` must come before local functions
         whamm
             .fns
             .iter_mut()

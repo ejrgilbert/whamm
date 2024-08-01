@@ -1,4 +1,5 @@
 pub mod rewriting;
+pub mod wizard;
 
 #[cfg(test)]
 pub mod tests;
@@ -13,6 +14,8 @@ use wasmparser::Operator;
 // =================================================
 // ==== Emitter Trait --> Used By All Emitters! ====
 // =================================================
+
+// TODO: These emitter trait are used nowhere!!
 
 pub trait ModuleEmitter {
     fn enter_scope(&mut self) -> Result<(), Box<WhammError>>;

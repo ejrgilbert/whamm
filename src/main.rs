@@ -59,7 +59,15 @@ fn try_main() -> Result<(), failure::Error> {
             run_info(spec, globals, functions);
         }
         Cmd::Instr(args) => {
-            run_instr(args.app, args.script, args.output_path, args.virgil);
+            if args.wizard {
+                run_wizard_gen(args.script, args.output_path);
+            } else if args.app.is_none() {
+                return Err(failure::err_msg(
+                    "App Wasm path is required for instrumentation",
+                ));
+            } else {
+                run_rewrite_instr(args.app.unwrap(), args.script, args.output_path);
+            }
         }
     }
 
@@ -81,12 +89,63 @@ fn run_info(spec: String, print_globals: bool, print_functions: bool) {
     err.fatal_report("PrintInfo");
 }
 
-fn run_instr(
-    app_wasm_path: String,
-    script_path: String,
-    output_wasm_path: String,
-    _emit_virgil: bool,
-) {
+use crate::parser::print_visitor::AsStrVisitor;
+use crate::parser::types::WhammVisitor;
+pub fn print_ast(ast: &Whamm) {
+    let mut visitor = AsStrVisitor { indent: 0 };
+    println!("{}", visitor.visit_whamm(ast));
+}
+
+fn run_wizard_gen(script_path: String, output_wasm_path: String) {
+    // Set up error reporting mechanism
+    let mut err = ErrorGen::new(script_path.clone(), "".to_string(), MAX_ERRORS);
+
+    // Process the script
+    let mut whamm = get_script_ast(&script_path, &mut err);
+    let mut symbol_table = get_symbol_table(&mut whamm, &mut err);
+    err.check_too_many();
+
+    // TODO:: is the memory tracker necessary here?
+    let mut mem_tracker = MemoryTracker {
+        mem_id: 0,                  // Assuming the ID of the first memory is 0!
+        curr_mem_offset: 1_052_576, // Set default memory base address to DEFAULT + 4KB = 1048576 bytes + 4000 bytes = 1052576 bytes
+        emitted_strings: HashMap::new(),
+    };
+    // print_ast(&whamm);
+
+    let mut module = orca::Module::new();
+
+    // inserted memory for InitGenerator
+    module.memories.push(wasmparser::MemoryType {
+        memory64: false,
+        shared: false,
+        initial: 2,
+        maximum: Some(2),
+        page_size_log2: None,
+    });
+
+    // TODO: how reusable is the InitGenerator?
+    let mut init = InitGenerator {
+        emitter: ModuleEmitter::new(&mut module, &mut symbol_table, &mut mem_tracker),
+        context_name: "".to_string(),
+        err: &mut err,
+    };
+    init.run(&mut whamm);
+
+    try_path(&output_wasm_path);
+    if let Err(e) = module.emit_wasm(&output_wasm_path) {
+        err.add_error(ErrorGen::get_unexpected_error(
+            true,
+            Some(format!(
+                "Failed to dump instrumented wasm to {} from error: {}",
+                &output_wasm_path, e
+            )),
+            None,
+        ))
+    }
+}
+
+fn run_rewrite_instr(app_wasm_path: String, script_path: String, output_wasm_path: String) {
     // Set up error reporting mechanism
     let mut err = ErrorGen::new(script_path.clone(), "".to_string(), MAX_ERRORS);
 
@@ -102,8 +161,6 @@ fn run_instr(
     // Read app Wasm into Orca module
     let buff = std::fs::read(app_wasm_path).unwrap();
     let mut app_wasm = WasmModule::parse(&buff, false).unwrap();
-
-    // TODO Configure the generator based on target (wizard vs bytecode rewriting)
 
     // Create the memory tracker
     if app_wasm.memories.len() > 1 {
