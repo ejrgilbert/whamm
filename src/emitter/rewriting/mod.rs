@@ -8,16 +8,15 @@ use crate::emitter::map_lib_adapter::MapLibAdapter;
 use crate::emitter::report_var_metadata::{LocationData, ReportVarMetadata};
 use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::generator::types::ExprFolder;
-use crate::parser::types::{BinOp, DataType, Expr, Statement, UnOp, Value};
+use crate::parser::types::{BinOp, Block, DataType, Expr, Statement, UnOp, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
-use orca::ir::types::{
-    BlockType as OrcaBlockType, DataType as OrcaType, Global, Value as OrcaValue,
-};
+use orca::ir::types::{BlockType, DataType as OrcaType, Global, Value as OrcaValue};
 use orca::opcode::Opcode;
 use orca::{InitExpr, ModuleBuilder};
-use wasmparser::{BlockType, ValType};
+use wasmparser::{GlobalType, ValType};
+
 pub trait Emitter {
-    fn emit_body(&mut self, body: &mut [Statement]) -> Result<bool, Box<WhammError>>;
+    fn emit_body(&mut self, body: &mut Block) -> Result<bool, Box<WhammError>>;
     fn emit_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>>;
     fn emit_expr(&mut self, expr: &mut Expr) -> Result<bool, Box<WhammError>>;
 }
@@ -34,7 +33,7 @@ pub trait Emitter {
 // ==================================================================
 
 fn emit_body<'a, T: Opcode<'a> + ModuleBuilder>(
-    body: &mut [Statement],
+    body: &mut Block,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
@@ -42,7 +41,7 @@ fn emit_body<'a, T: Opcode<'a> + ModuleBuilder>(
     report_var_metadata: &mut ReportVarMetadata,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
-    for stmt in body.iter_mut() {
+    for stmt in body.stmts.iter_mut() {
         emit_stmt(
             stmt,
             injector,
@@ -76,7 +75,7 @@ fn emit_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
             report_var_metadata,
             err_msg,
         ),
-        Statement::Expr { expr, .. } => emit_expr(
+        Statement::Expr { expr, .. } | Statement::Return { expr, .. } => emit_expr(
             expr,
             injector,
             table,
@@ -85,13 +84,14 @@ fn emit_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
             report_var_metadata,
             err_msg,
         ),
+
         Statement::If {
             cond, conseq, alt, ..
         } => {
             if alt.stmts.is_empty() {
                 emit_if(
                     cond,
-                    conseq.stmts.as_mut_slice(),
+                    conseq,
                     injector,
                     table,
                     mem_tracker,
@@ -102,8 +102,8 @@ fn emit_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
             } else {
                 emit_if_else(
                     cond,
-                    conseq.stmts.as_mut_slice(),
-                    alt.stmts.as_mut_slice(),
+                    conseq,
+                    alt,
                     injector,
                     table,
                     mem_tracker,
@@ -113,7 +113,6 @@ fn emit_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                 )
             }
         }
-        Statement::Return { .. } => unimplemented!(),
         Statement::ReportDecl { .. } => emit_report_decl_stmt(
             stmt,
             injector,
@@ -194,31 +193,48 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
             };
 
             if let DataType::Map { .. } = ty {
-                let to_call = match map_lib_adapter.create_no_meta_map(ty.clone()) {
+                let (fn_name, map_id) = match map_lib_adapter.create_no_meta_map(ty.clone()) {
                     Ok(to_call) => to_call,
                     Err(e) => return Err(e),
                 };
                 *addr = Some(VarAddr::MapId {
-                    addr: to_call.1 as u32,
+                    addr: map_id as u32,
                 });
-                let fn_id = table
-                    .lookup(&to_call.0)
-                    .expect("Map function not in symbol table");
-                injector.i32_const(to_call.1);
-                injector.call(*fn_id as u32);
+                let fn_id = match table.lookup_rec(&fn_name) {
+                    Some(id) => match id {
+                        Record::LibFn { fn_id, .. } => fn_id,
+                        _ => {
+                            return Err(Box::new(ErrorGen::get_unexpected_error(
+                                true,
+                                Some(format!("{err_msg} Map function not in symbol table")),
+                                None,
+                            )))
+                        }
+                    },
+                    None => {
+                        return Err(Box::new(ErrorGen::get_unexpected_error(
+                            true,
+                            Some(format!("{err_msg} Map function not in symbol table")),
+                            None,
+                        )));
+                    }
+                };
+
+                injector.i32_const(map_id);
+                injector.call(*fn_id);
                 return Ok(true);
             }
             match &mut addr {
                 Some(VarAddr::Global { addr: _addr }) | Some(VarAddr::MapId { addr: _addr }) => {
-                    // The global should already exist, do any initial setup here!
+                    //ignore, initial setup is done in init_gen
                     Ok(true)
                 }
                 Some(VarAddr::Local { .. }) | None => {
                     // If the local already exists, it would be because the probe has been
                     // emitted at another opcode location. Simply overwrite the previously saved
                     // address.
-                    let wasm_ty = whamm_type_to_wasm(ty).ty.content_type;
-                    let id = injector.add_local(OrcaType::from(wasm_ty));
+                    let wasm_ty = whamm_type_to_wasm_type(ty);
+                    let id = injector.add_local(wasm_ty);
                     *addr = Some(VarAddr::Local { addr: id });
                     Ok(true)
                 }
@@ -251,22 +267,18 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                     var_name = name.clone();
                     let var_rec_id = match table.lookup(name) {
                         Some(rec_id) => *rec_id,
-                        None => {
-                            // TODO -- add variables from body into symbol table
-                            //         (at this point, the verifier should have run to catch variable initialization without declaration)
-                            table.put(
-                                name.clone(),
-                                Record::Var {
-                                    ty: ty.clone(),
-                                    name: name.clone(),
-                                    value: None,
-                                    is_comp_provided: false,
-                                    is_report_var: true,
-                                    addr: None,
-                                    loc: None,
-                                },
-                            )
-                        }
+                        None => table.put(
+                            name.clone(),
+                            Record::Var {
+                                ty: ty.clone(),
+                                name: name.clone(),
+                                value: None,
+                                is_comp_provided: false,
+                                is_report_var: true,
+                                addr: None,
+                                loc: None,
+                            },
+                        ),
                     };
                     match table.get_record_mut(&var_rec_id) {
                         Some(Record::Var { addr, .. }) => addr,
@@ -314,12 +326,12 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                             //ERR here because the location data should be local at this point via the visiting emitter
                             return Err(Box::new(ErrorGen::get_unexpected_error(
                                 true,
-                                Some(format!("{err_msg} Expected Local LocationData - shouldn't be called outside visit-gen")),
+                                Some(format!("{err_msg} Expected Local LocationData - shouldn't be called outside visit-generic")),
                                 None,
                             )));
                         }
                     }
-                    let to_call = match map_lib_adapter.create_local_map(
+                    let (fn_name, map_id) = match map_lib_adapter.create_local_map(
                         var_name.clone(),
                         script_name.clone(),
                         *bytecode_loc,
@@ -331,24 +343,35 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                         Err(e) => return Err(e),
                     };
                     *addr = Some(VarAddr::MapId {
-                        addr: to_call.1 as u32,
+                        addr: map_id as u32,
                     });
-                    let fn_id = table
-                        .lookup(&to_call.0)
-                        .expect("Map function not in symbol table");
-                    injector.i32_const(to_call.1);
-                    injector.call(*fn_id as u32);
-                    let add_map_to_report_id = table
-                        .lookup("add_report_map")
-                        .expect("Map function not in symbol table");
-                    injector.i32_const(to_call.1);
-                    injector.call(*add_map_to_report_id as u32);
+                    let fn_id = match table.lookup_rec(&fn_name) {
+                        Some(id) => match id {
+                            Record::LibFn { fn_id, .. } => fn_id,
+                            _ => {
+                                return Err(Box::new(ErrorGen::get_unexpected_error(
+                                    true,
+                                    Some(format!("{err_msg} Map function not in symbol table")),
+                                    None,
+                                )))
+                            }
+                        },
+                        None => {
+                            return Err(Box::new(ErrorGen::get_unexpected_error(
+                                true,
+                                Some(format!("{err_msg} Map function not in symbol table")),
+                                None,
+                            )));
+                        }
+                    };
+                    injector.i32_const(map_id);
+                    injector.call(*fn_id);
                     return Ok(true);
                 }
                 match &mut addr {
                     Some(VarAddr::Global { .. }) | None => {
-                        let wasm_ty = whamm_type_to_wasm(ty).ty.content_type;
-                        if wasm_ty != ValType::I32 {
+                        let wasm_ty = whamm_type_to_wasm_type(ty);
+                        if wasm_ty != OrcaType::I32 {
                             return Err(Box::new(ErrorGen::get_unexpected_error(
                                 true,
                                 Some(format!(
@@ -389,9 +412,7 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
             _ => {
                 return Err(Box::new(ErrorGen::get_unexpected_error(
                     false,
-                    Some(format!(
-                        "{err_msg} Wrong statement type, should be `assign`"
-                    )),
+                    Some(format!("{err_msg} Wrong statement type, should be `decl`")),
                     None,
                 )))
             }
@@ -513,46 +534,65 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
     report_var_metadata: &mut ReportVarMetadata,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
-    #[allow(clippy::collapsible_match)]
-    if let Statement::SetMap { map, key, val, .. } = stmt {
-        if let Expr::VarId { name, .. } = map {
-            match get_map_info(table, name) {
-                Ok((map_id, key_ty, val_ty)) => {
-                    //no Record in ST, so always flush after a set_map
-                    report_var_metadata.flush_soon = true;
-                    let to_call = match map_lib_adapter.insert_map_fname(key_ty, val_ty) {
-                        Ok(to_call) => to_call,
-                        Err(e) => return Err(e),
-                    };
-                    let fn_id = *table
-                        .lookup(&to_call)
-                        .expect("Map function not in symbol table"); //clone to close the borrow
-                                                                     //now actualy emit the set call - name then key then value
-                    injector.i32_const(map_id as i32);
-                    emit_expr(
-                        key,
-                        injector,
-                        table,
-                        mem_tracker,
-                        map_lib_adapter,
-                        report_var_metadata,
-                        err_msg,
-                    )?;
-                    emit_expr(
-                        val,
-                        injector,
-                        table,
-                        mem_tracker,
-                        map_lib_adapter,
-                        report_var_metadata,
-                        err_msg,
-                    )?;
-                    injector.call(fn_id as u32);
-                    return Ok(true);
-                }
-                Err(e) => {
-                    return Err(e);
-                }
+    if let Statement::SetMap {
+        map: Expr::VarId { name, .. },
+        key,
+        val,
+        ..
+    } = stmt
+    {
+        match get_map_info(table, name) {
+            Ok((map_id, key_ty, val_ty)) => {
+                //no Record in ST, so always flush after a set_map
+                report_var_metadata.flush_soon = true;
+                let to_call = match map_lib_adapter.insert_map_fname(key_ty, val_ty) {
+                    Ok(to_call) => to_call,
+                    Err(e) => return Err(e),
+                };
+                let fn_id = match table.lookup_rec(&to_call) {
+                    Some(id) => match id {
+                        Record::LibFn { fn_id, .. } => *fn_id,
+                        _ => {
+                            return Err(Box::new(ErrorGen::get_unexpected_error(
+                                true,
+                                Some(format!("{err_msg} Map function not in symbol table")),
+                                None,
+                            )))
+                        }
+                    },
+                    None => {
+                        return Err(Box::new(ErrorGen::get_unexpected_error(
+                            true,
+                            Some(format!("{err_msg} Map function not in symbol table")),
+                            None,
+                        )));
+                    }
+                };
+
+                injector.i32_const(map_id as i32);
+                emit_expr(
+                    key,
+                    injector,
+                    table,
+                    mem_tracker,
+                    map_lib_adapter,
+                    report_var_metadata,
+                    err_msg,
+                )?;
+                emit_expr(
+                    val,
+                    injector,
+                    table,
+                    mem_tracker,
+                    map_lib_adapter,
+                    report_var_metadata,
+                    err_msg,
+                )?;
+                injector.call(fn_id);
+                return Ok(true);
+            }
+            Err(e) => {
+                return Err(e);
             }
         }
     }
@@ -569,29 +609,39 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
 // transform a whamm type to default wasm type, used for creating new global
 // TODO: Might be more generic to also include Local
 // TODO: Do we really want to depend on wasmparser::ValType, or create a wrapper?
-pub fn whamm_type_to_wasm(ty: &DataType) -> Global {
+pub fn whamm_type_to_wasm_global(ty: &DataType) -> Global {
+    let orca_ty = whamm_type_to_wasm_type(ty);
+    match orca_ty {
+        OrcaType::I32 => Global {
+            ty: GlobalType {
+                content_type: ValType::I32,
+                mutable: true,
+                shared: false,
+            },
+            init_expr: InitExpr::Value(OrcaValue::I32(0)),
+        },
+        _ => unimplemented!(),
+    }
+}
+pub fn whamm_type_to_wasm_type(ty: &DataType) -> OrcaType {
     match ty {
-        DataType::I32 | DataType::U32 | DataType::Boolean => Global {
-            ty: wasmparser::GlobalType {
-                content_type: ValType::I32,
-                mutable: true,
-                shared: false,
-            },
-            init_expr: InitExpr::Value(OrcaValue::I32(0)),
-        },
+        DataType::I32 | DataType::U32 | DataType::Boolean => OrcaType::I32,
         // the ID used to track this var in the lib
-        DataType::Map { .. } => Global {
-            ty: wasmparser::GlobalType {
-                content_type: ValType::I32,
-                mutable: true,
-                shared: false,
-            },
-            init_expr: InitExpr::Value(OrcaValue::I32(0)),
-        },
+        DataType::Map { .. } => OrcaType::I32,
         DataType::Null => unimplemented!(),
         DataType::Str => unimplemented!(),
         DataType::Tuple { .. } => unimplemented!(),
         DataType::AssumeGood => unimplemented!(),
+    }
+}
+
+pub fn block_type_to_wasm(block: &Block) -> BlockType {
+    match &block.return_ty {
+        None => BlockType::Empty,
+        Some(return_ty) => {
+            let wasm_ty = whamm_type_to_wasm_type(return_ty);
+            BlockType::Type(wasm_ty)
+        }
     }
 }
 
@@ -625,7 +675,11 @@ fn emit_set<'a, T: Opcode<'a>>(
                     Some(VarAddr::Local { addr }) => {
                         injector.local_set(*addr);
                     },
-                    Some(VarAddr::MapId { .. }) | None => {
+                    Some(VarAddr::MapId { .. }) => {
+                        return Err(Box::new(ErrorGen::get_type_check_error_from_loc(false,
+                            format!("Attempted to assign a var to Map: {}", name), loc)));
+                    }
+                    None => {
                         return Err(Box::new(ErrorGen::get_type_check_error_from_loc(false,
                                                                                     format!("Variable assigned before declared: {}", name), loc)));
                     }
@@ -652,7 +706,7 @@ fn emit_set<'a, T: Opcode<'a>>(
 
 fn emit_if_preamble<'a, T: Opcode<'a> + ModuleBuilder>(
     condition: &mut Expr,
-    conseq: &mut [Statement],
+    conseq: &mut Block,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
@@ -673,8 +727,7 @@ fn emit_if_preamble<'a, T: Opcode<'a> + ModuleBuilder>(
         err_msg,
     )?;
     // emit the beginning of the if block
-    injector.if_stmt(OrcaBlockType::Empty);
-
+    injector.if_stmt(block_type_to_wasm(conseq));
     // emit the consequent body
     is_success &= emit_body(
         conseq,
@@ -693,8 +746,8 @@ fn emit_if_preamble<'a, T: Opcode<'a> + ModuleBuilder>(
 
 fn emit_if_else_preamble<'a, T: Opcode<'a> + ModuleBuilder>(
     condition: &mut Expr,
-    conseq: &mut [Statement],
-    alternate: &mut [Statement],
+    conseq: &mut Block,
+    alternate: &mut Block,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
@@ -736,7 +789,7 @@ fn emit_if_else_preamble<'a, T: Opcode<'a> + ModuleBuilder>(
 
 fn emit_if<'a, T: Opcode<'a> + ModuleBuilder>(
     condition: &mut Expr,
-    conseq: &mut [Statement],
+    conseq: &mut Block,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
@@ -764,8 +817,8 @@ fn emit_if<'a, T: Opcode<'a> + ModuleBuilder>(
 
 fn emit_if_else<'a, T: Opcode<'a> + ModuleBuilder>(
     condition: &mut Expr,
-    conseq: &mut [Statement],
-    alternate: &mut [Statement],
+    conseq: &mut Block,
+    alternate: &mut Block,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
@@ -843,14 +896,22 @@ fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
             // change conseq and alt types to stmt for easier API call
             is_success &= emit_if_else(
                 cond,
-                &mut vec![Statement::Expr {
-                    expr: (**conseq).clone(),
+                &mut Block {
+                    stmts: vec![Statement::Expr {
+                        expr: (**conseq).clone(),
+                        loc: None,
+                    }],
+                    return_ty: None,
                     loc: None,
-                }],
-                &mut vec![Statement::Expr {
-                    expr: (**alt).clone(),
+                },
+                &mut Block {
+                    stmts: vec![Statement::Expr {
+                        expr: (**alt).clone(),
+                        loc: None,
+                    }],
+                    return_ty: None,
                     loc: None,
-                }],
+                },
                 injector,
                 table,
                 mem_tracker,
@@ -946,7 +1007,18 @@ fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
                         Some(VarAddr::Local { addr }) => {
                             injector.local_get(*addr);
                         }
-                        Some(VarAddr::MapId { .. }) | None => {
+                        Some(VarAddr::MapId { .. }) => {
+                            return Err(Box::new(ErrorGen::get_unexpected_error(
+                                true,
+                                Some(format!(
+                                    "{err_msg} \
+                                        Variable you are trying to use in expr is a Map object {}",
+                                    name
+                                )),
+                                None,
+                            )));
+                        }
+                        None => {
                             return Err(Box::new(ErrorGen::get_unexpected_error(
                                 true,
                                 Some(format!(
@@ -990,8 +1062,8 @@ fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
                 err_msg,
             )?;
         }
-        Expr::GetMap { .. } => {
-            is_success &= emit_get_map(
+        Expr::MapGet { .. } => {
+            is_success &= emit_map_get(
                 expr,
                 injector,
                 table,
@@ -1141,7 +1213,7 @@ fn emit_value<'a, T: Opcode<'a> + ModuleBuilder>(
     }
     Ok(is_success)
 }
-fn emit_get_map<'a, T: Opcode<'a> + ModuleBuilder>(
+fn emit_map_get<'a, T: Opcode<'a> + ModuleBuilder>(
     expr: &mut Expr,
     injector: &mut T,
     table: &mut SymbolTable,
@@ -1150,7 +1222,7 @@ fn emit_get_map<'a, T: Opcode<'a> + ModuleBuilder>(
     report_var_metadata: &mut ReportVarMetadata,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
-    if let Expr::GetMap { map, key, .. } = expr {
+    if let Expr::MapGet { map, key, .. } = expr {
         let map = &mut (**map);
         if let Expr::VarId { name, .. } = map {
             match get_map_info(table, name) {
@@ -1159,9 +1231,25 @@ fn emit_get_map<'a, T: Opcode<'a> + ModuleBuilder>(
                         Ok(to_call) => to_call,
                         Err(e) => return Err(e),
                     };
-                    let fn_id = *table
-                        .lookup(&to_call)
-                        .expect("Map function not in symbol table"); //clone to close the borrow
+                    let fn_id = match table.lookup_rec(&to_call) {
+                        Some(id) => match id {
+                            Record::LibFn { fn_id, .. } => *fn_id,
+                            _ => {
+                                return Err(Box::new(ErrorGen::get_unexpected_error(
+                                    true,
+                                    Some(format!("{err_msg} Map function not in symbol table")),
+                                    None,
+                                )))
+                            }
+                        },
+                        None => {
+                            return Err(Box::new(ErrorGen::get_unexpected_error(
+                                true,
+                                Some(format!("{err_msg} Map function not in symbol table")),
+                                None,
+                            )));
+                        }
+                    };
                     injector.i32_const(map_id as i32);
                     emit_expr(
                         key,
@@ -1172,7 +1260,7 @@ fn emit_get_map<'a, T: Opcode<'a> + ModuleBuilder>(
                         report_var_metadata,
                         err_msg,
                     )?;
-                    injector.call(fn_id as u32);
+                    injector.call(fn_id);
                     return Ok(true);
                 }
                 Err(e) => {
@@ -1185,7 +1273,7 @@ fn emit_get_map<'a, T: Opcode<'a> + ModuleBuilder>(
         false,
         Some(format!(
             "{err_msg} \
-            Wrong statement type, should be `get_map`"
+            Wrong statement type, should be `map_get`"
         )),
         None,
     )))

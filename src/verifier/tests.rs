@@ -375,17 +375,9 @@ pub fn test_build_table() {
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
 
     for script in VALID_SCRIPTS {
-        match tests::get_ast(script, &mut err) {
-            Some(mut ast) => {
-                let table = verifier::build_symbol_table(&mut ast, &mut err);
-                debug!("{:#?}", table);
-            }
-            None => {
-                error!("Could not get ast from script: {}", script);
-                err.report();
-                panic!();
-            }
-        };
+        let mut ast = tests::get_ast(script, &mut err);
+        let table = verifier::build_symbol_table(&mut ast, &mut err);
+        debug!("{:#?}", table);
     }
 }
 #[test]
@@ -404,42 +396,25 @@ wasm::call:alt /
     "#;
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
 
-    match tests::get_ast(script, &mut err) {
-        Some(mut ast) => {
-            let table = verifier::build_symbol_table(&mut ast, &mut err);
-            debug!("{:#?}", table);
+    let mut ast = tests::get_ast(script, &mut err);
+    let table = verifier::build_symbol_table(&mut ast, &mut err);
+    debug!("{:#?}", table);
 
-            // 7 scopes: whamm, strcmp, script0, wasm, alt_call_by_name, alt_call_by_id, opcode, call, alt
-            let num_scopes = 9;
-            // records: num_scopes PLUS (str_addr, func_id, func_name, value, wasm_opcode_loc, target_fn_name, target_fn_type, target_imp_module)
-            // TODO -- change to + 8 when add back: arg[0:9]+
-            let num_recs = num_scopes + 8;
+    // 7 scopes: whamm, strcmp, script0, wasm, alt_call_by_name, alt_call_by_id, opcode, call, alt
+    let num_scopes = 9;
+    // records: num_scopes PLUS (str_addr, func_id, func_name, value, wasm_opcode_loc, target_imp_name, target_fn_type, target_imp_module, imm0, arg[0:9]+)
+    let num_recs = num_scopes + 10;
+    // asserts on very high level table structure
+    assert_eq!(num_scopes, table.scopes.len());
 
-            // asserts on very high level table structure
-            assert_eq!(num_scopes, table.scopes.len());
-
-            debug!("==================\n{:#?}", table.records);
-            assert_eq!(num_recs, table.records.len());
-        }
-        None => {
-            error!("Could not get ast from script: {}", script);
-            panic!();
-        }
-    };
+    debug!("==================\n{:#?}", table.records);
+    assert_eq!(num_recs, table.records.len());
 }
 
 fn is_valid_script(script: &str, err: &mut ErrorGen) -> bool {
-    match tests::get_ast(script, err) {
-        Some(mut ast) => {
-            let mut table = verifier::build_symbol_table(&mut ast, err);
-            verifier::type_check(&ast, &mut table, err)
-        }
-        None => {
-            error!("Should fail at type checking, not parsing: {}", script);
-            assert!(false);
-            false
-        }
-    }
+    let mut ast = tests::get_ast(script, err);
+    let mut table = verifier::build_symbol_table(&mut ast, err);
+    verifier::type_check(&mut ast, &mut table, err)
 }
 
 // These tests are mostly making sure errors are reported at the right location
@@ -472,19 +447,12 @@ pub fn test_template() {
         wasm::call:alt {
         }
     "#;
-    match tests::get_ast(script, &mut err) {
-        Some(mut ast) => {
-            let mut table = verifier::build_symbol_table(&mut ast, &mut err);
-            let res = verifier::type_check(&ast, &mut table, &mut err);
-            err.report();
-            assert!(!err.has_errors);
-            assert!(res);
-        }
-        None => {
-            error!("Could not get ast from script: {}", script);
-            panic!();
-        }
-    };
+    let mut ast = tests::get_ast(script, &mut err);
+    let mut table = verifier::build_symbol_table(&mut ast, &mut err);
+    let res = verifier::type_check(&mut ast, &mut table, &mut err);
+    err.report();
+    assert!(!err.has_errors);
+    assert!(res);
 }
 #[test]
 pub fn test_expect_fatal() {
@@ -517,19 +485,12 @@ pub fn expect_fatal_error() {
             i32 strcmp;
         }
     "#;
-    match tests::get_ast(script, &mut err) {
-        Some(mut ast) => {
-            let mut table = verifier::build_symbol_table(&mut ast, &mut err);
-            let res = verifier::type_check(&ast, &mut table, &mut err);
-            err.report();
-            assert!(err.has_errors);
-            assert!(!res);
-        }
-        None => {
-            error!("Could not get ast from script: {}", script);
-            panic!();
-        }
-    };
+    let mut ast = tests::get_ast(script, &mut err);
+    let mut table = verifier::build_symbol_table(&mut ast, &mut err);
+    let res = verifier::type_check(&mut ast, &mut table, &mut err);
+    err.report();
+    assert!(err.has_errors);
+    assert!(!res);
 }
 #[test]
 pub fn test_recursive_calls() {
@@ -547,19 +508,12 @@ pub fn test_recursive_calls() {
             i32 b = make5(a);
         }
     "#;
-    match tests::get_ast(script, &mut err) {
-        Some(mut ast) => {
-            let mut table = verifier::build_symbol_table(&mut ast, &mut err);
-            let res = verifier::type_check(&ast, &mut table, &mut err);
-            err.report();
-            assert!(!err.has_errors);
-            assert!(res);
-        }
-        None => {
-            error!("Could not get ast from script: {}", script);
-            panic!();
-        }
-    };
+    let mut ast = tests::get_ast(script, &mut err);
+    let mut table = verifier::build_symbol_table(&mut ast, &mut err);
+    let res = verifier::type_check(&mut ast, &mut table, &mut err);
+    err.report();
+    assert!(!err.has_errors);
+    assert!(res);
 }
 #[test]
 pub fn testing_map() {
@@ -574,21 +528,12 @@ pub fn testing_map() {
     }
     "#;
 
-    match tests::get_ast(script, &mut err) {
-        Some(mut ast) => {
-            let mut table = verifier::build_symbol_table(&mut ast, &mut err);
-            let res = verifier::type_check(&ast, &mut table, &mut err);
-            err.report();
-            assert!(!err.has_errors);
-            assert!(res);
-        }
-        None => {
-            error!("Could not get ast from script: {}", script);
-            if err.has_errors {
-                err.report();
-            }
-        }
-    };
+    let mut ast = tests::get_ast(script, &mut err);
+    let mut table = verifier::build_symbol_table(&mut ast, &mut err);
+    let res = verifier::type_check(&mut ast, &mut table, &mut err);
+    err.report();
+    assert!(!err.has_errors);
+    assert!(res);
 }
 #[test]
 pub fn test_report_decl() {
@@ -600,22 +545,12 @@ pub fn test_report_decl() {
             a = 1;
             report bool b;
         }"#;
-    match tests::get_ast(script, &mut err) {
-        Some(mut ast) => {
-            let mut table = verifier::build_symbol_table(&mut ast, &mut err);
-            let res = verifier::type_check(&ast, &mut table, &mut err);
-            err.report();
-            assert!(!err.has_errors);
-            assert!(res);
-            crate::parser::tests::print_ast(&ast);
-        }
-        None => {
-            error!("Could not get ast from script: {}", script);
-            if err.has_errors {
-                err.report();
-            }
-        }
-    };
+    let mut ast = tests::get_ast(script, &mut err);
+    let mut table = verifier::build_symbol_table(&mut ast, &mut err);
+    let res = verifier::type_check(&mut ast, &mut table, &mut err);
+    err.report();
+    assert!(!err.has_errors);
+    assert!(res);
 }
 //TODO: uncomment after BEGIN is working
 

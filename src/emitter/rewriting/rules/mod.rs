@@ -231,7 +231,7 @@ impl Provider for WhammProvider {
         }
 
         // Make sure we have arg symbol data to save off params in the behavior tree for all cases!
-        loc_info.args = OpcodeEvent::get_args_for_instr(app_wasm, instr);
+        loc_info.args = OpcodeEvent::get_ty_info_for_instr(app_wasm, instr).0;
 
         // Get location info from the rest of the configured rules
         self.packages.iter().for_each(|package| {

@@ -9,11 +9,15 @@ wasm:opcode:call:before /
     report i32 a;
     map<i32, i32> m;
     a = 5;
+    report map<i32, i32> m;
+    m[1] = 2;
     whatever = 3;
+    arg0 = 1;
 }
 wasm:opcode:call:after / 
     target_fn_name == "foo"
 /
  {
+    report i32 b;
     a = 3;
 }

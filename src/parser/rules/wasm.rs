@@ -3,7 +3,7 @@ use crate::parser::rules::{
     PackageInfo, Probe, WhammMode, WhammProbe,
 };
 use crate::parser::types::{
-    DataType, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal, Statement,
+    Block, DataType, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal,
 };
 use std::collections::HashMap;
 use termcolor::Buffer;
@@ -152,7 +152,7 @@ impl Package for WasmPackage {
         probe_spec: &ProbeSpec,
         loc: Option<Location>,
         predicate: Option<Expr>,
-        body: Option<Vec<Statement>>,
+        body: Option<Block>,
         printing_info: bool,
     ) -> (bool, bool) {
         match self {
@@ -275,15 +275,21 @@ impl OpcodeEventKind {
         }
     }
 
-    fn get_args(&self) -> Vec<DataType> {
+    /// Only specify the number of args since the arg type
+    /// isn't necessarily consistent based on just which opcode
+    /// we're at.
+    /// (Sometimes a specific opcode's arg0 is i32, sometimes it's not)
+    fn get_num_args(&self) -> u32 {
         match self {
-            OpcodeEventKind::BrIf => vec![DataType::I32],
-            _ => vec![],
+            OpcodeEventKind::Call => 0, // dynamically determined
+            OpcodeEventKind::BrIf => 1,
+            _ => 0,
         }
     }
 
     fn get_immediates(&self) -> Vec<DataType> {
         match self {
+            OpcodeEventKind::Call => vec![DataType::I32],
             OpcodeEventKind::BrIf => vec![DataType::I32],
             _ => vec![],
         }
@@ -412,21 +418,21 @@ impl OpcodeEvent {
 
     fn init_globals(kind: OpcodeEventKind) -> HashMap<String, ProvidedGlobal> {
         let mut globals = HashMap::new();
-        Self::gen_args(&mut globals, kind.get_args());
+        Self::gen_args(&mut globals, kind.get_num_args());
         Self::gen_immediates(&mut globals, kind.get_immediates());
 
         globals
     }
 
-    fn gen_args(globals: &mut HashMap<String, ProvidedGlobal>, args: Vec<DataType>) {
-        for (idx, ty) in args.iter().enumerate() {
-            let name = format!("arg{}", idx);
+    fn gen_args(globals: &mut HashMap<String, ProvidedGlobal>, args: u32) {
+        for i in 0..args {
+            let name = format!("arg{}", i);
             globals.insert(
                 name.clone(),
                 ProvidedGlobal::new(
                     name.to_string(),
-                    format!("The argument to the opcode at index {}.", idx),
-                    ty.to_owned(),
+                    format!("The argument to the opcode at index {}.", i),
+                    DataType::AssumeGood,
                     false,
                 ),
             );
@@ -477,6 +483,9 @@ impl OpcodeEvent {
         }
     }
     fn call(loc: Option<Location>) -> Self {
+        // TODO add the following functionality:
+        // - `result` global
+        // -
         let fns = vec![ProvidedFunction::new(
             "alt_call_by_id".to_string(),
             "Insert an alternate call (targeting the passed function ID) into the Wasm bytecode. Will also emit the original parameters onto the stack.".to_string(),
@@ -486,7 +495,7 @@ impl OpcodeEvent {
                     name: "func_id".to_string(),
                     loc: None,
                 },
-                DataType::U32,
+                DataType::I32,
             )],
             DataType::Tuple { ty_info: vec![] },
             true
@@ -542,6 +551,16 @@ impl OpcodeEvent {
                 DataType::Str,
                 true,
             ),
+        );
+        globals.insert(
+            "arg[0:9]+".to_string(),
+            ProvidedGlobal::new(
+                "arg[0:9]+".to_string(),
+                "The argument to the call at the specific index, e.g. [0:9]+.\
+                Keep in mind, the number of arguments to a call changes based on the targeted function.".to_string(),
+                DataType::AssumeGood,
+                false
+            )
         );
 
         Self {
@@ -1582,7 +1601,7 @@ impl Event for OpcodeEvent {
         probe_spec: &ProbeSpec,
         loc: Option<Location>,
         predicate: Option<Expr>,
-        body: Option<Vec<Statement>>,
+        body: Option<Block>,
     ) -> bool {
         let mut matched_modes = false;
         let probes = self.probes_mut();

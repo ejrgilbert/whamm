@@ -9,9 +9,11 @@ use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Fn, Global, ProvidedFunction, Script, Statement,
     UnOp, Value, Whamm, WhammVisitorMut,
 };
-use log::{trace, warn};
 use orca::ir::types::{Global as OrcaGlobal, Value as OrcaValue};
 use orca::{FunctionBuilder, InitExpr, Opcode};
+use crate::verifier::types::Record;
+use log::{info, trace, warn};
+use orca::FunctionBuilder;
 use std::collections::HashMap;
 use wasmparser::ValType;
 
@@ -33,7 +35,10 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
         self.emitter.reset_children();
         self.on_startup();
         // Generate globals and fns defined by `whamm` (this should modify the app_wasm)
-        self.visit_whamm(whamm)
+        let is_success = self.visit_whamm(whamm);
+        self.emitter.memory_grow(); // account for emitted strings in memory
+
+        is_success
     }
 
     // Private helper functions
@@ -102,9 +107,6 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
             "insert_i32i32i32tuple_i32".to_string(),
             "get_i32_i32".to_string(),
             "get_i32_from_i32i32i32tuple".to_string(),
-            "add_report_map".to_string(),
-            "output_report_maps".to_string(),
-            "print_info".to_string(),
             "print_map".to_string(),
             "insert_i32_string".to_string(),
             "get_string_from_i32string".to_string(),
@@ -117,10 +119,14 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
                 None => std::u32::MAX,
             };
             match self.emitter.table.get_curr_scope_mut() {
-                Some(scope) => {
-                    if id != std::u32::MAX {
-                        scope.put(lib_fn.clone(), id as usize);
-                    }
+                Some(_) => {
+                    self.emitter.table.put(
+                        lib_fn.to_string(),
+                        Record::LibFn {
+                            name: lib_fn.to_string(),
+                            fn_id: id,
+                        },
+                    );
                 }
                 _ => {
                     self.err.add_error(ErrorGen::get_unexpected_error(
@@ -140,14 +146,14 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
     fn create_start(&mut self) {
         match self.emitter.app_wasm.start {
             Some(_) => {
-                println!("Start function already exists");
+                info!("Start function already exists");
             }
             None => {
                 //time to make a start fn
-                println!("No start function found, creating one");
+                info!("No start function found, creating one");
                 match self.emitter.app_wasm.get_fid_by_name("_start") {
                     Some(_) => {
-                        println!("start function is _start");
+                        info!("start function is _start");
                     }
                     None => {
                         let start_fn = FunctionBuilder::new(&[], &[]);
@@ -413,7 +419,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
             is_success &= self.visit_expr(pred);
         }
         if let Some(body) = probe.body_mut() {
-            is_success &= self.visit_stmts(body);
+            is_success &= self.visit_stmts(body.stmts.as_mut_slice());
         }
 
         trace!("Exiting: CodeGenerator::visit_probe");
@@ -539,7 +545,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
                 // ignore, will not have a string to emit
                 true
             }
-            Expr::GetMap { map, key, .. } => {
+            Expr::MapGet { map, key, .. } => {
                 let mut is_success = true;
                 is_success &= self.visit_expr(map);
                 is_success &= self.visit_expr(key);

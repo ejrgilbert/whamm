@@ -58,10 +58,6 @@ pub struct InstrArgs {
     /// Whether to emit Virgil code as the instrumentation code
     #[arg(short, long, action, default_value = "false")]
     pub virgil: bool,
-
-    /// Whether to run the verifier on the specified script
-    #[arg(long, short, action, default_value = "true")]
-    pub run_verifier: bool,
 }
 
 // pub fn print_completion<G: Generator>(gen: G, app: &mut App) {

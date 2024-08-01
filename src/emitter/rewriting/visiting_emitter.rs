@@ -2,21 +2,21 @@ use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::map_lib_adapter::MapLibAdapter;
 use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::rewriting::module_emitter::MemoryTracker;
+use crate::emitter::rewriting::rules::wasm::OpcodeEvent;
 use crate::emitter::rewriting::rules::{Arg, LocInfo, Provider, WhammProvider};
-use crate::emitter::rewriting::{emit_expr, whamm_type_to_wasm};
+use crate::emitter::rewriting::{block_type_to_wasm, emit_expr, whamm_type_to_wasm_global};
 use crate::emitter::rewriting::{emit_stmt, print_report_all, Emitter};
+
 use crate::generator::types::ExprFolder;
-use crate::parser::types::{DataType, Definition, Expr, ProbeSpec, Statement, Value};
+use crate::parser::types::{Block, DataType, Definition, Expr, ProbeSpec, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca::ir::module::Module;
 use orca::ir::types::{BlockType as OrcaBlockType, Location as OrcaLocation};
-
 use orca::iterator::iterator_trait::Iterator as OrcaIterator;
 use orca::iterator::module_iterator::ModuleIterator;
 use orca::opcode::Opcode;
 use orca::ModuleBuilder;
 use std::iter::Iterator;
-use wasmparser::BlockType;
 
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
@@ -28,8 +28,6 @@ pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     pub map_lib_adapter: &'e mut MapLibAdapter,
     pub(crate) report_var_metadata: &'f mut ReportVarMetadata,
     instr_created_args: Vec<(String, usize)>,
-    pub curr_probe_id: String,
-    pub curr_script_id: String,
     pub curr_num_reports: i32,
 }
 
@@ -49,8 +47,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             map_lib_adapter,
             report_var_metadata,
             instr_created_args: vec![],
-            curr_probe_id: "____0".to_string(),
-            curr_script_id: "script0".to_string(),
             curr_num_reports: 0,
         };
 
@@ -103,16 +99,26 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         // So, we can just save off the first * items in the stack as the args
         // to the call.
         let mut arg_recs: Vec<(String, usize)> = vec![]; // vec to retain order!
+
+        let mut arg_locals: Vec<(String, u32)> = vec![];
         args.iter().for_each(
             |Arg {
                  name: arg_name,
                  ty: arg_ty,
              }| {
                 // create local for the param in the module
-                let arg_local_id = self.app_iter.add_local(arg_ty.clone());
+                let arg_local_id = self.app_iter.add_local(*arg_ty);
+                arg_locals.push((arg_name.to_string(), arg_local_id));
+            },
+        );
 
+        // Save args in reverse order (the leftmost arg is at the bottom of the stack)
+        arg_locals
+            .iter()
+            .rev()
+            .for_each(|(arg_name, arg_local_id)| {
                 // emit an opcode in the event to assign the ToS to this new local
-                self.app_iter.local_set(arg_local_id);
+                self.app_iter.local_set(*arg_local_id);
 
                 // place in symbol table with var addr for future reference
                 let id = self.table.put(
@@ -123,13 +129,14 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                         value: None,
                         is_comp_provided: false,
                         is_report_var: false,
-                        addr: Some(VarAddr::Local { addr: arg_local_id }),
+                        addr: Some(VarAddr::Local {
+                            addr: *arg_local_id,
+                        }),
                         loc: None,
                     },
                 );
-                arg_recs.push((arg_name.to_string(), id));
-            },
-        );
+                arg_recs.insert(0, (arg_name.to_string(), id));
+            });
         self.instr_created_args = arg_recs;
         true
     }
@@ -200,6 +207,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             let arg_name = format!("arg{}", i);
             self.table.remove_record(&arg_name);
         }
+        self.instr_created_args.clear();
     }
 
     pub(crate) fn fold_expr(&mut self, expr: &mut Expr) -> bool {
@@ -218,14 +226,15 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     pub fn emit_if(
         &mut self,
         condition: &mut Expr,
-        conseq: &mut [Statement],
+        conseq: &mut Block,
     ) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
         // emit the condition of the `if` expression
         is_success &= self.emit_expr(condition)?;
 
         // emit the beginning of the if block
-        self.app_iter.if_stmt(OrcaBlockType::Empty);
+
+        self.app_iter.if_stmt(block_type_to_wasm(conseq));
 
         is_success &= self.emit_body(conseq)?;
 
@@ -237,15 +246,36 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     pub(crate) fn emit_if_with_orig_as_else(
         &mut self,
         condition: &mut Expr,
-        conseq: &mut [Statement],
+        conseq: &mut Block,
     ) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
+
+        // The consequent and alternate blocks must have the same type...
+        // this means that the result of the `if` should be the same as
+        // the result of the original instruction!
+        let orig_ty_id = OpcodeEvent::get_ty_info_for_instr(
+            self.app_iter.module,
+            self.app_iter.curr_op().unwrap(),
+        )
+        .1;
 
         // emit the condition of the `if` expression
         is_success &= self.emit_expr(condition)?;
         // emit the beginning of the if block
-        self.app_iter.if_stmt(OrcaBlockType::Empty);
 
+        let block_ty = match orig_ty_id {
+            Some(ty_id) => {
+                let ty = match self.app_iter.module.types.get(ty_id as usize) {
+                    Some(ty) => ty.results.clone(),
+                    None => Box::new([]),
+                };
+
+                // we only care about the result of the original
+                OrcaBlockType::FuncType(self.app_iter.module.add_type(&[], &ty))
+            }
+            None => OrcaBlockType::Empty,
+        };
+        self.app_iter.if_stmt(block_ty);
         is_success &= self.emit_body(conseq)?;
 
         // emit the beginning of the else
@@ -330,41 +360,20 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             }
         }
     }
-    fn set_curr_loc(&mut self) {
-        let loc = match self.app_iter.curr_loc() {
-            OrcaLocation::Module {
-                func_idx,
-                instr_idx,
-                ..
-            }
-            | OrcaLocation::Component {
-                func_idx,
-                instr_idx,
-                ..
-            } => (func_idx as i32, instr_idx as i32),
-        };
-        //set the current location in bytecode and load some new globals for potential report vars
-        self.report_var_metadata.set_loc(
-            self.curr_script_id.clone(),
-            loc,
-            self.curr_probe_id.clone(),
-            self.curr_num_reports,
-        );
-    }
 }
 impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
-    fn emit_body(&mut self, body: &mut [Statement]) -> Result<bool, Box<WhammError>> {
+    fn emit_body(&mut self, body: &mut Block) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
         for _ in 0..self.curr_num_reports {
-            let default_global = whamm_type_to_wasm(&DataType::I32);
+            let default_global = whamm_type_to_wasm_global(&DataType::I32);
             let gid = self.app_iter.module.add_global(default_global);
             self.report_var_metadata
                 .available_i32_gids
                 .push(gid as usize);
         }
-        for stmt in body.iter_mut() {
+        for stmt in body.stmts.iter_mut() {
             is_success &= self.emit_stmt(stmt)?;
-            //now emit the changes to the report vars if needed
+            //now emit the call to print the changes to the report vars if needed
             match print_report_all(
                 &mut self.app_iter,
                 self.table,
@@ -382,7 +391,6 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
 
     fn emit_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>> {
         // Check if this is calling a provided, static function!
-        self.set_curr_loc();
         if let Statement::Expr {
             expr: Expr::Call {
                 fn_target, args, ..
@@ -432,7 +440,6 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
     }
 
     fn emit_expr(&mut self, expr: &mut Expr) -> Result<bool, Box<WhammError>> {
-        self.set_curr_loc();
         emit_expr(
             expr,
             &mut self.app_iter,

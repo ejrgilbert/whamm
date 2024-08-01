@@ -214,6 +214,15 @@ impl SymbolTable {
 
         new_rec_id
     }
+    pub fn lookup_rec(&self, key: &str) -> Option<&Record> {
+        match self.lookup(key) {
+            Some(id) => match self.get_record(id) {
+                Some(rec) => Some(rec),
+                None => None,
+            },
+            None => None,
+        }
+    }
 
     pub fn lookup(&self, key: &str) -> Option<&usize> {
         match self.get_curr_scope() {
@@ -426,6 +435,10 @@ pub enum Record {
         /// The address of this var post-injection
         addr: Option<VarAddr>,
         loc: Option<Location>,
+    },
+    LibFn {
+        name: String,
+        fn_id: u32,
     },
 }
 impl Record {

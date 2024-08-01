@@ -1,5 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
+use log::info;
+
 use crate::common::error::{ErrorGen, WhammError};
 
 pub struct ReportVarMetadata {
@@ -119,7 +121,7 @@ impl ReportVarMetadata {
         if !self.all_metadata.insert(metadata) {
             return Err(Box::new(ErrorGen::get_unexpected_error(
                 true,
-                Some(format!("Duplicate metadata for map with name: {}", name)),
+                Some(format!("Duplicate metadata with name: {}", name)),
                 None,
             )));
         }
@@ -129,14 +131,14 @@ impl ReportVarMetadata {
         if self.all_metadata.is_empty() {
             return;
         }
-        println!("Metadata:");
+        info!("Metadata:");
 
         // Collect and sort variable_metadata by key
         let mut sorted_variable_metadata: Vec<_> = self.variable_metadata.iter().collect();
         sorted_variable_metadata.sort_by_key(|&(key, _)| key);
 
         for (key, value) in sorted_variable_metadata {
-            println!("GID: {} -> {:?}", key, value);
+            info!("GID: {} -> {:?}", key, value);
         }
 
         // Collect and sort map_metadata by key
@@ -144,7 +146,7 @@ impl ReportVarMetadata {
         sorted_map_metadata.sort_by_key(|&(key, _)| key);
 
         for (key, value) in sorted_map_metadata {
-            println!("MapID: {} -> {:?}", key, value);
+            info!("MapID: {} -> {:?}", key, value);
         }
     }
 }

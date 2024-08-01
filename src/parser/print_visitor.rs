@@ -316,7 +316,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         self.increase_indent();
         match probe.body() {
             Some(b) => {
-                for stmt in b {
+                for stmt in b.stmts.iter() {
                     s += &format!("{} {};{}", self.get_indent(), self.visit_stmt(stmt), NL)
                 }
             }
@@ -422,7 +422,7 @@ impl WhammVisitor<String> for AsStrVisitor {
                 )
             }
             Statement::ReportDecl { decl, .. } => {
-                format!("{} {}", "report", self.visit_stmt(decl))
+                format!("report {}", self.visit_stmt(decl))
             }
         }
     }
@@ -473,7 +473,7 @@ impl WhammVisitor<String> for AsStrVisitor {
                 s += &format!("{}{}", self.visit_unop(op), self.visit_expr(expr));
                 s
             }
-            Expr::GetMap { map, key, .. } => {
+            Expr::MapGet { map, key, .. } => {
                 let mut s = "".to_string();
                 s += &format!("(map) {}[{}]", self.visit_expr(map), self.visit_expr(key));
                 s

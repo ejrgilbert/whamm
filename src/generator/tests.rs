@@ -10,7 +10,6 @@ use crate::parser::types::{BinOp, DataType, Expr, Value, Whamm};
 use crate::verifier::types::{Record, ScopeType, SymbolTable};
 use crate::verifier::verifier;
 use log::{debug, error};
-use std::process::exit;
 
 pub fn setup_logger() {
     let _ = env_logger::builder().is_test(true).try_init();
@@ -163,23 +162,15 @@ fn assert_simplified_predicate(pred: &Expr) {
 }
 
 fn basic_run(script: &str, err: &mut ErrorGen) {
-    match tests::get_ast(script, err) {
-        Some(mut whamm) => {
-            let mut table = verifier::build_symbol_table(&mut whamm, err);
-            table.reset();
+    let mut whamm = tests::get_ast(script, err);
+    let mut table = verifier::build_symbol_table(&mut whamm, err);
+    table.reset();
 
-            let pred = get_pred(&whamm);
-            hardcode_compiler_constants(&mut table, err);
+    let pred = get_pred(&whamm);
+    hardcode_compiler_constants(&mut table, err);
 
-            let folded_expr = ExprFolder::fold_expr(pred, &table);
-            assert_simplified_predicate(&folded_expr);
-        }
-        None => {
-            error!("Could not get ast from script: {}", script);
-            err.report();
-            panic!();
-        }
-    };
+    let folded_expr = ExprFolder::fold_expr(pred, &table);
+    assert_simplified_predicate(&folded_expr);
 }
 
 #[test]
@@ -263,32 +254,25 @@ wasm::call:alt /
     "#;
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
 
-    match tests::get_ast(script, &mut err) {
-        Some(mut whamm) => {
-            let mut table = verifier::build_symbol_table(&mut whamm, &mut err);
-            table.reset();
+    let mut whamm = tests::get_ast(script, &mut err);
+    let mut table = verifier::build_symbol_table(&mut whamm, &mut err);
+    table.reset();
 
-            let pred = get_pred(&whamm);
-            hardcode_compiler_constants(&mut table, &mut err);
+    let pred = get_pred(&whamm);
+    hardcode_compiler_constants(&mut table, &mut err);
 
-            let folded_expr = ExprFolder::fold_expr(pred, &table);
-            debug!("{:#?}", folded_expr);
+    let folded_expr = ExprFolder::fold_expr(pred, &table);
+    debug!("{:#?}", folded_expr);
 
-            // ExprFolder should not be able to simplify the Call expressions at all.
-            if let ExprBinOp { lhs, op, rhs, .. } = pred {
-                assert_eq!(*op, BinOp::And);
-                asserts_on_call(lhs);
-                asserts_on_call(rhs);
-            } else {
-                // failed!
-                error!("ExprFolder did not fold correctly...");
-                println!("{:#?}", folded_expr);
-                panic!();
-            }
-        }
-        None => {
-            error!("Could not get ast from script: {}", script);
-            panic!();
-        }
-    };
+    // ExprFolder should not be able to simplify the Call expressions at all.
+    if let ExprBinOp { lhs, op, rhs, .. } = pred {
+        assert_eq!(*op, BinOp::And);
+        asserts_on_call(lhs);
+        asserts_on_call(rhs);
+    } else {
+        // failed!
+        error!("ExprFolder did not fold correctly...");
+        println!("{:#?}", folded_expr);
+        panic!();
+    }
 }

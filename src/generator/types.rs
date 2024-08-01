@@ -16,7 +16,7 @@ impl ExprFolder {
             Expr::Call { .. } => ExprFolder::fold_call(expr, table),
             Expr::VarId { .. } => ExprFolder::fold_var_id(expr, table),
             Expr::Primitive { .. } => ExprFolder::fold_primitive(expr, table),
-            Expr::GetMap { .. } => expr.clone(),
+            Expr::MapGet { .. } => ExprFolder::fold_map_get(expr, table),
         }
     }
 
@@ -187,6 +187,19 @@ impl ExprFolder {
 
         // Cannot fold anymore
         binop.clone()
+    }
+
+    fn fold_map_get(expr: &Expr, table: &SymbolTable) -> Expr {
+        if let Expr::MapGet { map, key, .. } = &expr {
+            let map = ExprFolder::fold_expr(map, table);
+            let key = ExprFolder::fold_expr(key, table);
+            return Expr::MapGet {
+                map: Box::new(map),
+                key: Box::new(key),
+                loc: None,
+            };
+        }
+        return expr.clone();
     }
 
     // similar to the logic of fold_binop
@@ -360,8 +373,41 @@ impl ExprFolder {
         None
     }
 
-    fn fold_ternary(_ternary: &Expr, _table: &SymbolTable) -> Expr {
-        todo!()
+    fn fold_ternary(ternary: &Expr, table: &SymbolTable) -> Expr {
+        match ternary {
+            Expr::Ternary {
+                cond, conseq, alt, ..
+            } => {
+                let cond = ExprFolder::fold_expr(cond, table);
+                let conseq = ExprFolder::fold_expr(conseq, table);
+                let alt = ExprFolder::fold_expr(alt, table);
+
+                // check if the condition folds to true/false!
+                let cond_val = ExprFolder::get_single_bool(&cond);
+                return if let Some(cond_bool) = cond_val {
+                    // the condition folds to a primitive bool!
+                    if cond_bool {
+                        // it's a true, evaluates to the conseq
+                        conseq
+                    } else {
+                        // it's a false, evaluates to the alt
+                        alt
+                    }
+                } else {
+                    // condition doesn't fold to a primitive, return folded variation.
+                    Expr::Ternary {
+                        cond: Box::new(cond),
+                        conseq: Box::new(conseq),
+                        alt: Box::new(alt),
+                        loc: None,
+                    }
+                };
+            }
+            _ => {
+                // ignore
+            }
+        }
+        ternary.clone()
     }
 
     fn fold_call(call: &Expr, _table: &SymbolTable) -> Expr {

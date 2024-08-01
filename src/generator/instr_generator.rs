@@ -1,4 +1,8 @@
 use std::collections::HashMap;
+use orca::iterator::iterator_trait::Iterator;
+use orca::Location as OrcaLocation;
+
+use crate::common::error::ErrorGen;
 
 use orca::ir::types::{BlockType as OrcaBlockType, Value as OrcaValue};
 use orca::{DataSegment, DataSegmentKind, InitExpr, Opcode};
@@ -12,7 +16,7 @@ use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::rewriting::Emitter;
 use crate::generator::simple_ast::{SimpleAST, SimpleProbe};
 use crate::generator::types::ExprFolder;
-use crate::parser::types::{DataType, Expr, ProbeSpec, Statement};
+use crate::parser::types::{Block, Expr, ProbeSpec, Statement, DataType};
 
 const UNEXPECTED_ERR_MSG: &str =
     "InstrGenerator: Looks like you've found a bug...please report this behavior!";
@@ -37,7 +41,7 @@ pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     curr_instr_args: Vec<Arg>,
     curr_probe_mode: String,
     /// The current probe's body and predicate
-    curr_probe: Option<(Option<Vec<Statement>>, Option<Expr>)>,
+    curr_probe: Option<(Option<Block>, Option<Expr>)>,
 }
 impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub fn new(
@@ -50,7 +54,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             ast,
             err,
             curr_instr_args: vec![],
-            curr_probe_mode: "____0".to_string(),
+            curr_probe_mode: "".to_string(),
             curr_probe: None,
         }
     }
@@ -98,7 +102,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     // This location has matched some rules, inject each matched probe!
                     loc_info.probes.iter().for_each(|(probe_spec, probe)| {
                         // Enter the scope for this matched probe
-                        self.set_curr_probe(probe_spec, probe);
+                        self.set_curr_loc(probe_spec, probe);
                         is_success = self
                             .emitter
                             .enter_scope_via_spec(&probe.script_id, probe_spec);
@@ -145,10 +149,11 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             });
         }
         // is_success &= self.after_run();
+
         is_success
     }
-    fn set_curr_probe(&mut self, probe_spec: &ProbeSpec, probe: &&SimpleProbe) {
-        self.emitter.curr_script_id = probe.script_id.clone();
+    fn set_curr_loc(&mut self, probe_spec: &ProbeSpec, probe: &SimpleProbe) {
+        let curr_script_id = probe.script_id.clone();
         self.emitter.curr_num_reports = probe.num_reports;
         let curr_provider = match &probe_spec.provider {
             Some(provider) => provider.name.clone(),
@@ -166,26 +171,29 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             Some(mode) => mode.name.clone(),
             None => "".to_string(),
         };
-        let mut curr_probe_id = format!(
-            "{}_{}_{}_{}",
-            curr_provider, curr_package, curr_event, curr_mode
+        let curr_probe_id = format!(
+            "{}_{}:{}:{}:{}",
+            probe.probe_number, curr_provider, curr_package, curr_event, curr_mode
         );
-        let mut emitter_probe_id = self.emitter.curr_probe_id.clone();
-        if emitter_probe_id.is_empty() || curr_probe_id.is_empty() {
-            emitter_probe_id = curr_probe_id + "0";
-        } else {
-            //remove the last chars while they are digits, then add 1 and put it back
-            let mut running_count = 0;
-            let mut last_digit = emitter_probe_id.pop().unwrap();
-            while last_digit.is_ascii_digit() {
-                running_count = running_count * 10 + last_digit.to_digit(10).unwrap();
-                last_digit = emitter_probe_id.pop().unwrap();
+        let loc = match self.emitter.app_iter.curr_loc() {
+            OrcaLocation::Module {
+                func_idx,
+                instr_idx,
+                ..
             }
-            running_count += 1;
-            curr_probe_id.push_str(&running_count.to_string());
-            emitter_probe_id = curr_probe_id;
-        }
-        self.emitter.curr_probe_id = emitter_probe_id;
+            | OrcaLocation::Component {
+                func_idx,
+                instr_idx,
+                ..
+            } => (func_idx as i32, instr_idx as i32),
+        };
+        //set the current location in bytecode and load some new globals for potential report vars
+        self.emitter.report_var_metadata.set_loc(
+            curr_script_id,
+            loc,
+            curr_probe_id,
+            self.emitter.curr_num_reports, //this is still used in the emitter to determine how many new globals to emit
+        );
     }
 }
 impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
@@ -199,25 +207,16 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
         if self.pred_is_true() {
             // The predicate has been reduced to a 'true', emit un-predicated body
             self.emit_body();
-            // Place the original arguments back on the stack.
-            if let Err(e) = self.emitter.emit_args() {
-                self.err.add_error(*e);
-                return false;
+            if self.curr_probe_mode != "alt" {
+                self.replace_args();
             }
         } else {
             // The predicate still has some conditionals (remember we already checked for
             // it being false in run() above)
             match self.curr_probe_mode.as_str() {
-                "before" => {
+                "before" | "after" => {
                     is_success &= self.emit_probe_as_if();
-                    // Place the original arguments back on the stack.
-                    if let Err(e) = self.emitter.emit_args() {
-                        self.err.add_error(*e);
-                        return false;
-                    }
-                }
-                "after" => {
-                    is_success &= self.emit_probe_as_if();
+                    self.replace_args();
                 }
                 "alt" => {
                     is_success &= self.emit_probe_as_if_else();
@@ -248,6 +247,15 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
             // If no args, just return true
             true
         }
+    }
+    fn replace_args(&mut self) -> bool {
+        // Place the original arguments back on the stack.
+        self.emitter.before();
+        if let Err(e) = self.emitter.emit_args() {
+            self.err.add_error(*e);
+            return false;
+        }
+        true
     }
 
     fn pred_is_true(&mut self) -> bool {

@@ -1,9 +1,8 @@
 pub mod wast_harness;
 
-use orca::ir::module::Module as WasmModule;
 use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use whamm::emitter::map_lib_adapter::MapLibAdapter;
 use whamm::emitter::report_var_metadata::ReportVarMetadata;
@@ -11,16 +10,16 @@ use whamm::parser::types::Whamm;
 use whamm::parser::whamm_parser::*;
 
 use glob::{glob, glob_with};
-use log::{debug, error, info, warn};
-use wabt::{wasm2wat, wat2wasm};
+use log::{error, info, warn};
+use orca::Module;
+use wabt::wat2wasm;
 use whamm::common::error::ErrorGen;
 use whamm::emitter::rewriting::module_emitter::{MemoryTracker, ModuleEmitter};
 use whamm::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use whamm::generator::init_generator::InitGenerator;
 use whamm::generator::instr_generator::InstrGenerator;
 use whamm::generator::simple_ast::build_simple_ast;
-use whamm::verifier::verifier::build_symbol_table;
-
+use whamm::verifier::verifier::{build_symbol_table, type_check};
 // ====================
 // = Helper Functions =
 // ====================
@@ -77,11 +76,8 @@ fn get_ast(script: &str, err: &mut ErrorGen) -> Option<Whamm> {
     }
 }
 
-pub fn run_whamm(
-    wasm_module_bytes: &[u8],
-    whamm_script: &String,
-    script_path: &str,
-) -> (Vec<u8>, String) {
+const TEST_DEBUG_DIR: &str = "output/tests/debug_me/";
+pub fn run_whamm(mut app_wasm: &mut Module, whamm_script: &String, script_path: &str) -> Vec<u8> {
     let mut err = ErrorGen::new(script_path.to_string(), whamm_script.clone(), 0);
 
     let ast_res = get_ast(whamm_script, &mut err);
@@ -93,14 +89,14 @@ pub fn run_whamm(
     let mut whamm = ast_res.unwrap();
     err.fatal_report("IntegrationTest");
 
-    // Build the behavior tree from the AST
-    let simple_ast = build_simple_ast(&whamm, &mut err);
-
+    // Verify phase
     let mut symbol_table = build_symbol_table(&mut whamm, &mut err);
     symbol_table.reset();
+    type_check(&mut whamm, &mut symbol_table, &mut err);
+    err.fatal_report("IntegrationTest");
 
-    let mut app_wasm =
-        WasmModule::parse(wasm_module_bytes, false).expect("Failed to parse Wasm module");
+    // Translate to the simple AST
+    let simple_ast = build_simple_ast(&whamm, &mut err);
 
     // Create the memory tracker
     if app_wasm.memories.len() > 1 {
@@ -108,8 +104,9 @@ pub fn run_whamm(
         panic!("only single memory is supported")
     };
     let mut mem_tracker = MemoryTracker {
-        mem_id: 0,                  // Assuming the ID of the first memory is 0!
+        mem_id: 0,                     // Assuming the ID of the first memory is 0!
         curr_mem_offset: 1_052_576, // Set default memory base address to DEFAULT + 4KB = 1048576 bytes + 4000 bytes = 1052576 bytes
+        required_initial_mem_size: 27, // Size memory must be to account for the added data
         emitted_strings: HashMap::new(),
     };
     let mut map_knower = MapLibAdapter::new();
@@ -124,6 +121,7 @@ pub fn run_whamm(
             &mut map_knower,
             &mut report_var_metadata,
         ),
+
         context_name: "".to_string(),
         err: &mut err,
     };
@@ -147,13 +145,24 @@ pub fn run_whamm(
     instr.run();
     err.fatal_report("IntegrationTest");
 
-    let instrumented_module_wasm = app_wasm.encode();
-    let instrumented_module_wat = match wasm2wat(&instrumented_module_wasm) {
-        Err(e) => panic!("`wasm2wat` verification check failed with error: {}", e),
-        Ok(wat) => wat,
-    };
+    // make sure that this is a valid file by running wasm2wat through CLI
+    let wasm_file_path = format!(
+        "{TEST_DEBUG_DIR}/{}.wasm",
+        Path::new(script_path)
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .strip_suffix('\"')
+            .unwrap()
+    );
+    try_path(&wasm_file_path);
+    app_wasm
+        .emit_wasm(&wasm_file_path.clone())
+        .unwrap_or_else(|_| panic!("Failed to emit wasm to file: {wasm_file_path}"));
+    wasm2wat_on_file(wasm_file_path.as_str());
 
-    (instrumented_module_wasm, instrumented_module_wat)
+    app_wasm.encode()
 }
 
 pub fn run_whamm_bin(original_wasm_path: &str, monitor_path: &str, instrumented_wasm_path: &str) {
@@ -200,15 +209,12 @@ pub fn wat2wasm_on_file(original_wat_path: &str, original_wasm_path: &str) {
 }
 
 pub fn wasm2wat_on_file(instrumented_wasm_path: &str) {
-    let file_data = fs::read(instrumented_wasm_path).unwrap();
-    let wat_data = match wasm2wat(file_data) {
-        Err(e) => {
-            panic!("wasm2wat failed with error: {}", e)
-        }
-        Ok(data) => data,
-    };
+    let res = Command::new("wasm2wat")
+        .arg(instrumented_wasm_path)
+        .output()
+        .expect("failed to execute process");
 
-    debug!("{}", wat_data);
+    assert!(res.status.success());
 }
 
 /// create output path if it doesn't exist

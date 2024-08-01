@@ -63,16 +63,18 @@ pub type SimpleAstProbes =
 pub struct SimpleProbe {
     pub script_id: String,
     pub predicate: Option<Expr>,
-    pub body: Option<Vec<Statement>>,
+    pub body: Option<Block>,
     pub num_reports: i32,
+    pub probe_number: i32,
 }
 impl SimpleProbe {
-    fn new(script_id: String, probe: &dyn Probe, num_reports: i32) -> Self {
+    fn new(script_id: String, probe: &dyn Probe, num_reports: i32, probe_number: i32) -> Self {
         Self {
             script_id,
             predicate: probe.predicate().to_owned(),
             body: probe.body().to_owned(),
             num_reports,
+            probe_number,
         }
     }
 }
@@ -106,6 +108,7 @@ pub fn build_simple_ast(ast: &Whamm, err: &mut ErrorGen) -> SimpleAST {
         curr_package_name: "".to_string(),
         curr_event_name: "".to_string(),
         curr_num_reports: 0,
+        probe_count: 0,
     };
     visitor.visit_whamm(ast);
 
@@ -121,6 +124,7 @@ pub struct SimpleASTBuilder<'a, 'b> {
     curr_package_name: String,
     curr_event_name: String,
     curr_num_reports: i32,
+    probe_count: i32,
 }
 impl SimpleASTBuilder<'_, '_> {
     // =======
@@ -165,12 +169,24 @@ impl SimpleASTBuilder<'_, '_> {
             if let Some(package) = provider.get_mut(&self.curr_package_name) {
                 if let Some(event) = package.get_mut(&self.curr_event_name) {
                     if let Some(probes) = event.get_mut(&probe.mode_name()) {
-                        probes.push(SimpleProbe::new(self.script_id.clone(), probe, num_reports));
+                        probes.push(SimpleProbe::new(
+                            self.script_id.clone(),
+                            probe,
+                            num_reports,
+                            self.probe_count,
+                        ));
+                        self.probe_count += 1;
                     } else {
                         event.insert(
                             probe.mode_name().clone(),
-                            vec![SimpleProbe::new(self.script_id.clone(), probe, num_reports)],
+                            vec![SimpleProbe::new(
+                                self.script_id.clone(),
+                                probe,
+                                num_reports,
+                                self.probe_count,
+                            )],
                         );
+                        self.probe_count += 1;
                     }
                 }
             }
@@ -250,14 +266,11 @@ impl WhammVisitor<()> for SimpleASTBuilder<'_, '_> {
 
     fn visit_probe(&mut self, probe: &Box<dyn Probe>) {
         //visit the statements in the probe and check for report_decls
-        let stmts = match probe.body() {
-            Some(stmts) => stmts,
-            None => {
-                self.add_probe_to_ast(probe.as_ref(), 0);
-                return;
-            }
-        };
-        for stmt in stmts {
+        if probe.body().is_none() {
+            self.add_probe_to_ast(probe.as_ref(), 0);
+            return;
+        }
+        for stmt in &probe.body().as_ref().unwrap().stmts {
             self.visit_stmt(stmt);
         }
         self.add_probe_to_ast(probe.as_ref(), self.curr_num_reports);
