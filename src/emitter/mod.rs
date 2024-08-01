@@ -6,7 +6,7 @@ pub mod tests;
 
 use crate::common::error::WhammError;
 use crate::emitter::rewriting::rules::{Arg, LocInfo, WhammProvider};
-use crate::parser::types::{DataType, Expr, Fn, ProbeSpec, Statement, Value};
+use crate::parser::types::{Block, DataType, Expr, Fn, ProbeSpec, Statement, Value};
 
 use orca::ir::types::DataType as OrcaType;
 use wasmparser::Operator;
@@ -47,7 +47,7 @@ pub trait ModuleEmitter {
     /// Will configure the emitter to emit subsequent statements in the outer block of some branching logic
     fn finish_branch(&mut self) -> bool;
     fn emit_global_stmts(&mut self, stmts: &mut Vec<Statement>) -> Result<bool, Box<WhammError>>;
-    fn emit_body(&mut self, body: &mut Vec<Statement>) -> Result<bool, Box<WhammError>>;
+    fn emit_body(&mut self, body: &mut Block) -> Result<bool, Box<WhammError>>;
     fn emit_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>>;
 
     fn dump_to_file(&mut self, output_wasm_path: String) -> Result<bool, Box<WhammError>>;
@@ -96,7 +96,7 @@ pub trait VisitingEmitter {
     /// Will configure the emitter to emit subsequent statements in the outer block of some branching logic
     fn finish_branch(&mut self) -> bool;
     fn emit_global_stmts(&mut self, stmts: &mut Vec<Statement>) -> Result<bool, Box<WhammError>>;
-    fn emit_body(&mut self, body: &mut Vec<Statement>) -> Result<bool, Box<WhammError>>;
+    fn emit_body(&mut self, body: &mut Block) -> Result<bool, Box<WhammError>>;
     fn emit_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>>;
 
     fn dump_to_file(&mut self, output_wasm_path: String) -> Result<bool, Box<WhammError>>;

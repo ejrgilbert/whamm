@@ -63,7 +63,7 @@ pub type SimpleAstProbes =
 pub struct SimpleProbe {
     pub script_id: String,
     pub predicate: Option<Expr>,
-    pub body: Option<Vec<Statement>>,
+    pub body: Option<Block>,
     pub num_reports: i32,
     pub probe_number: i32,
 }

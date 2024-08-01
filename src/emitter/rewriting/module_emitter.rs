@@ -6,9 +6,10 @@ use orca::{DataSegment, DataSegmentKind, InitExpr};
 use std::collections::HashMap;
 
 use orca::ir::types::{BlockType as OrcaBlockType, DataType as OrcaType, Value as OrcaValue};
-
+use wasmparser::GlobalType;
 use crate::emitter::map_lib_adapter::MapLibAdapter;
 use crate::emitter::rewriting::{emit_body, emit_expr, emit_stmt, whamm_type_to_wasm, Emitter};
+
 use orca::ir::function::FunctionBuilder;
 use orca::ir::module::Module;
 use orca::opcode::Opcode;
@@ -19,6 +20,7 @@ const UNEXPECTED_ERR_MSG: &str =
 pub struct MemoryTracker {
     pub mem_id: u32,
     pub curr_mem_offset: usize,
+    pub required_initial_mem_size: u64,
     pub emitted_strings: HashMap<String, StringAddr>,
 }
 
@@ -256,6 +258,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     pub fn emit_string(&mut self, value: &mut Value) -> Result<bool, Box<WhammError>> {
         match value {
             Value::Str { val, .. } => {
+                if self.mem_tracker.emitted_strings.contains_key(val) {
+                    // the string has already been emitted into the module, don't emit again
+                    return Ok(true);
+                }
                 // assuming that the data ID is the index of the object in the Vec
                 let data_id = self.app_wasm.data.len();
                 let val_bytes = val.as_bytes().to_owned();
@@ -296,6 +302,37 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 )))
             }
         }
+    }
+
+    pub(crate) fn memory_grow(&mut self) {
+        // If we've emitted any strings, bump the app's memory up to account for that
+        if !self.mem_tracker.emitted_strings.is_empty() {
+            if let Some(mem) = self.app_wasm.memories.get_mut(0) {
+                if mem.initial < self.mem_tracker.required_initial_mem_size {
+                    mem.initial = self.mem_tracker.required_initial_mem_size;
+                }
+            }
+        }
+    }
+
+    pub(crate) fn emit_global_getter(
+        &mut self,
+        global_id: &u32,
+        name: String,
+        ty: &GlobalType,
+    ) -> Result<bool, Box<WhammError>> {
+        let getter_params = vec![];
+        let getter_res = vec![OrcaType::from(ty.content_type)];
+
+        let mut getter = FunctionBuilder::new(&getter_params, &getter_res);
+        getter.global_get(*global_id);
+
+        let getter_id = getter.finish(self.app_wasm);
+
+        let fn_name = format!("get_{name}");
+        self.app_wasm.add_export_func(fn_name.leak(), getter_id);
+
+        Ok(true)
     }
 
     pub(crate) fn emit_global(
@@ -430,24 +467,30 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                     }
                 }
             }
-            Some(&mut ref ty) => Err(Box::new(ErrorGen::get_unexpected_error(
-                true,
-                Some(format!(
-                    "{UNEXPECTED_ERR_MSG} \
+            Some(&mut ref ty) => {
+                return Err(Box::new(ErrorGen::get_unexpected_error(
+                    true,
+                    Some(format!(
+                        "{UNEXPECTED_ERR_MSG} \
                 Incorrect global variable record, expected Record::Var, found: {:?}",
-                    ty
-                )),
-                None,
-            ))),
-            None => Err(Box::new(ErrorGen::get_unexpected_error(
-                true,
-                Some(format!(
-                    "{UNEXPECTED_ERR_MSG} \
+                        ty
+                    )),
+                    None,
+                )))
+            }
+            None => {
+                return Err(Box::new(ErrorGen::get_unexpected_error(
+                    true,
+                    Some(format!(
+                        "{UNEXPECTED_ERR_MSG} \
                 Global variable symbol does not exist!"
-                )),
-                None,
-            ))),
-        }
+                    )),
+                    None,
+                )))
+            }
+        };
+
+        self.emit_global_getter(&global_id, name, &ty)
     }
     pub fn emit_global_stmts(&mut self, stmts: &mut [Statement]) -> Result<bool, Box<WhammError>> {
         // NOTE: This should be done in the Module entrypoint
@@ -496,7 +539,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     }
 }
 impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
-    fn emit_body(&mut self, body: &mut [Statement]) -> Result<bool, Box<WhammError>> {
+    fn emit_body(&mut self, body: &mut Block) -> Result<bool, Box<WhammError>> {
+
         if let Some(emitting_func) = &mut self.emitting_func {
             emit_body(
                 body,

@@ -2,15 +2,16 @@ use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::map_lib_adapter::MapLibAdapter;
 use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::rewriting::module_emitter::MemoryTracker;
+use crate::emitter::rewriting::rules::wasm::OpcodeEvent;
 use crate::emitter::rewriting::rules::{Arg, LocInfo, Provider, WhammProvider};
-use crate::emitter::rewriting::{emit_expr, whamm_type_to_wasm};
+use crate::emitter::rewriting::{emit_expr, whamm_type_to_wasm, block_type_to_wasm};
 use crate::emitter::rewriting::{emit_stmt, print_report_all, Emitter};
+
 use crate::generator::types::ExprFolder;
-use crate::parser::types::{DataType, Definition, Expr, ProbeSpec, Statement, Value};
+use crate::parser::types::{Block, DataType, Definition, Expr, ProbeSpec, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca::ir::module::Module;
 use orca::ir::types::{BlockType as OrcaBlockType, Location as OrcaLocation};
-
 use orca::iterator::iterator_trait::Iterator as OrcaIterator;
 use orca::iterator::module_iterator::ModuleIterator;
 use orca::opcode::Opcode;
@@ -98,6 +99,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         // So, we can just save off the first * items in the stack as the args
         // to the call.
         let mut arg_recs: Vec<(String, usize)> = vec![]; // vec to retain order!
+
+        let mut arg_locals: Vec<(String, u32)> = vec![];
         args.iter().for_each(
             |Arg {
                  name: arg_name,
@@ -105,9 +108,17 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
              }| {
                 // create local for the param in the module
                 let arg_local_id = self.app_iter.add_local(*arg_ty);
+                arg_locals.push((arg_name.to_string(), arg_local_id));
+            },
+        );
 
+        // Save args in reverse order (the leftmost arg is at the bottom of the stack)
+        arg_locals
+            .iter()
+            .rev()
+            .for_each(|(arg_name, arg_local_id)| {
                 // emit an opcode in the event to assign the ToS to this new local
-                self.app_iter.local_set(arg_local_id);
+                self.app_iter.local_set(*arg_local_id);
 
                 // place in symbol table with var addr for future reference
                 let id = self.table.put(
@@ -122,9 +133,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                         loc: None,
                     },
                 );
-                arg_recs.push((arg_name.to_string(), id));
-            },
-        );
+                arg_recs.insert(0, (arg_name.to_string(), id));
+            });
         self.instr_created_args = arg_recs;
         true
     }
@@ -195,6 +205,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             let arg_name = format!("arg{}", i);
             self.table.remove_record(&arg_name);
         }
+        self.instr_created_args.clear();
     }
 
     pub(crate) fn fold_expr(&mut self, expr: &mut Expr) -> bool {
@@ -213,14 +224,15 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     pub fn emit_if(
         &mut self,
         condition: &mut Expr,
-        conseq: &mut [Statement],
+        conseq: &mut Block,
     ) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
         // emit the condition of the `if` expression
         is_success &= self.emit_expr(condition)?;
 
         // emit the beginning of the if block
-        self.app_iter.if_stmt(OrcaBlockType::Empty);
+
+        self.app_iter.if_stmt(block_type_to_wasm(conseq));
 
         is_success &= self.emit_body(conseq)?;
 
@@ -232,15 +244,36 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     pub(crate) fn emit_if_with_orig_as_else(
         &mut self,
         condition: &mut Expr,
-        conseq: &mut [Statement],
+        conseq: &mut Block,
     ) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
+
+        // The consequent and alternate blocks must have the same type...
+        // this means that the result of the `if` should be the same as
+        // the result of the original instruction!
+        let orig_ty_id = OpcodeEvent::get_ty_info_for_instr(
+            self.app_iter.module,
+            self.app_iter.curr_op().unwrap(),
+        )
+        .1;
 
         // emit the condition of the `if` expression
         is_success &= self.emit_expr(condition)?;
         // emit the beginning of the if block
-        self.app_iter.if_stmt(OrcaBlockType::Empty);
 
+        let block_ty = match orig_ty_id {
+            Some(ty_id) => {
+                let ty = match self.app_iter.module.types.get(ty_id as usize) {
+                    Some(ty) => ty.results.clone(),
+                    None => Box::new([]),
+                };
+
+                // we only care about the result of the original
+                BlockType::FuncType(self.app_iter.module.add_type(&[], &ty))
+            }
+            None => BlockType::Empty,
+        };
+        self.app_iter.if_stmt(block_ty);
         is_success &= self.emit_body(conseq)?;
 
         // emit the beginning of the else
@@ -327,7 +360,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     }
 }
 impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
-    fn emit_body(&mut self, body: &mut [Statement]) -> Result<bool, Box<WhammError>> {
+    fn emit_body(&mut self, body: &mut Block) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
         for _ in 0..self.curr_num_reports {
             let default_global = whamm_type_to_wasm(&DataType::I32);
@@ -336,7 +369,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
                 .available_i32_gids
                 .push(gid as usize);
         }
-        for stmt in body.iter_mut() {
+        for stmt in body.stmts.iter_mut() {
             is_success &= self.emit_stmt(stmt)?;
             //now emit the call to print the changes to the report vars if needed
             match print_report_all(

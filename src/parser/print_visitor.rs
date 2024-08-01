@@ -316,7 +316,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         self.increase_indent();
         match probe.body() {
             Some(b) => {
-                for stmt in b {
+                for stmt in b.stmts.iter() {
                     s += &format!("{} {};{}", self.get_indent(), self.visit_stmt(stmt), NL)
                 }
             }

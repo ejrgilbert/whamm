@@ -31,7 +31,10 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
         self.emitter.reset_children();
         self.on_startup();
         // Generate globals and fns defined by `whamm` (this should modify the app_wasm)
-        self.visit_whamm(whamm)
+        let is_success = self.visit_whamm(whamm);
+        self.emitter.memory_grow(); // account for emitted strings in memory
+
+        is_success
     }
 
     // Private helper functions
@@ -353,7 +356,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
             is_success &= self.visit_expr(pred);
         }
         if let Some(body) = probe.body_mut() {
-            is_success &= self.visit_stmts(body);
+            is_success &= self.visit_stmts(body.stmts.as_mut_slice());
         }
 
         trace!("Exiting: CodeGenerator::visit_probe");

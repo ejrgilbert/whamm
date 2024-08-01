@@ -27,6 +27,7 @@ Below is an example `.wast` test:
 ```webassembly
 ;; Test `wasm:opcode:call` event
 
+;; @instrument
 (module
     ;; Auxiliary definitions
     (func $other (param i32) (result i32) (local.get 1))
@@ -45,8 +46,51 @@ Below is an example `.wast` test:
 (assert_return (invoke "instrument_me") (i32.const 1)) ;; will be run with the above WHAMM instrumentation
 ```
 
+Below is an example `.wast` test using imports:
+```webassembly
+(module
+    (func (export "dummy") (param i32) (result i32)
+        local.get 0
+    )
+)
+
+(register "test")
+
+;; @instrument
+(module
+    ;; Imports
+    (type (;0;) (func (param i32) (result i32)))
+    (import "test" "dummy" (func $dummy (type 0)))
+
+    ;; Globals
+    (global $var (mut i32) (i32.const 0))
+
+    ;; Global getters
+    (func $get_global_var (result i32)
+        (global.get $var)
+    )
+
+    ;; Test case functions
+    (func $foo
+        (call $dummy (i32.const 0))
+        global.set $var
+    )
+
+    (start $foo)
+    (export "foo" (func $foo))
+    (export "get_global_var" (func $get_global_var))
+    (memory (;0;) 1)
+ )
+ 
+;; WHAMM --> i32 count; wasm:opcode:call:alt / arg0 == 0 / { count = 5; return 1; }
+(assert_return (invoke "get_global_var") (i32.const 1)) ;; alt, so global should be return value
+(assert_return (invoke "get_count") (i32.const 5))
+```
+
 There are several conventions to follow when writing `.wast` test cases for `whamm`.
-1. Only one `module` per `.wast` file.
+1. Only one `module`-to-instrument per `.wast` file.
+   - The test setup goes at the top (which can include multiple modules when considering testing imports).
+   - The `module`-to-instrument is the final part of the setup and is marked by `;; @instrument` above the module.
 2. Use comment to specify the `whamm!` script, syntax: `;; WHAMM --> <whamm_script>`
    - The scripts are run on the `module` in the `.wast` file.
    - If there are multiple `asserts` under a `whamm!` comment, they are all run against the instrumented variation of the `module` that results from that `whamm!` script.

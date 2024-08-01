@@ -8,7 +8,8 @@ use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::rewriting::Emitter;
 use crate::generator::simple_ast::{SimpleAST, SimpleProbe};
 use crate::generator::types::ExprFolder;
-use crate::parser::types::{Expr, ProbeSpec, Statement};
+use crate::parser::types::{Expr, ProbeSpec, Statement, Block};
+
 
 const UNEXPECTED_ERR_MSG: &str =
     "InstrGenerator: Looks like you've found a bug...please report this behavior!";
@@ -33,7 +34,7 @@ pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     curr_instr_args: Vec<Arg>,
     curr_probe_mode: String,
     /// The current probe's body and predicate
-    curr_probe: Option<(Option<Vec<Statement>>, Option<Expr>)>,
+    curr_probe: Option<(Option<Block>, Option<Expr>)>,
 }
 impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub fn new(
@@ -196,25 +197,16 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
         if self.pred_is_true() {
             // The predicate has been reduced to a 'true', emit un-predicated body
             self.emit_body();
-            // Place the original arguments back on the stack.
-            if let Err(e) = self.emitter.emit_args() {
-                self.err.add_error(*e);
-                return false;
+            if self.curr_probe_mode != "alt" {
+                self.replace_args();
             }
         } else {
             // The predicate still has some conditionals (remember we already checked for
             // it being false in run() above)
             match self.curr_probe_mode.as_str() {
-                "before" => {
+                "before" | "after" => {
                     is_success &= self.emit_probe_as_if();
-                    // Place the original arguments back on the stack.
-                    if let Err(e) = self.emitter.emit_args() {
-                        self.err.add_error(*e);
-                        return false;
-                    }
-                }
-                "after" => {
-                    is_success &= self.emit_probe_as_if();
+                    self.replace_args();
                 }
                 "alt" => {
                     is_success &= self.emit_probe_as_if_else();
@@ -245,6 +237,15 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
             // If no args, just return true
             true
         }
+    }
+    fn replace_args(&mut self) -> bool {
+        // Place the original arguments back on the stack.
+        self.emitter.before();
+        if let Err(e) = self.emitter.emit_args() {
+            self.err.add_error(*e);
+            return false;
+        }
+        true
     }
 
     fn pred_is_true(&mut self) -> bool {

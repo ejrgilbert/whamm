@@ -15,9 +15,10 @@ use orca::ir::types::{
 };
 use orca::opcode::Opcode;
 use orca::{InitExpr, ModuleBuilder};
-use wasmparser::ValType;
+use wasmparser::{GlobalType, ValType};
+
 pub trait Emitter {
-    fn emit_body(&mut self, body: &mut [Statement]) -> Result<bool, Box<WhammError>>;
+    fn emit_body(&mut self, body: &mut Block) -> Result<bool, Box<WhammError>>;
     fn emit_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>>;
     fn emit_expr(&mut self, expr: &mut Expr) -> Result<bool, Box<WhammError>>;
 }
@@ -34,7 +35,7 @@ pub trait Emitter {
 // ==================================================================
 
 fn emit_body<'a, T: Opcode<'a> + ModuleBuilder>(
-    body: &mut [Statement],
+    body: &mut Block,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
@@ -85,6 +86,7 @@ fn emit_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
             report_var_metadata,
             err_msg,
         ),
+
         Statement::If {
             cond, conseq, alt, ..
         } => {
@@ -225,8 +227,8 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                     // If the local already exists, it would be because the probe has been
                     // emitted at another opcode location. Simply overwrite the previously saved
                     // address.
-                    let wasm_ty = whamm_type_to_wasm(ty).ty.content_type;
-                    let id = injector.add_local(OrcaType::from(wasm_ty));
+                    let wasm_ty = whamm_type_to_wasm_type(ty);
+                    let id = injector.add_local(wasm_ty);
                     *addr = Some(VarAddr::Local { addr: id });
                     Ok(true)
                 }
@@ -583,29 +585,39 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
 // transform a whamm type to default wasm type, used for creating new global
 // TODO: Might be more generic to also include Local
 // TODO: Do we really want to depend on wasmparser::ValType, or create a wrapper?
-pub fn whamm_type_to_wasm(ty: &DataType) -> Global {
+pub fn whamm_type_to_wasm_global(ty: &DataType) -> Global {
+    let orca_ty = whamm_type_to_wasm_type(ty);
+    match orca_ty {
+        OrcaType::I32 => Global {
+            ty: GlobalType {
+                content_type: ValType::I32,
+                mutable: true,
+                shared: false,
+            },
+            init_expr: InitExpr::Value(OrcaValue::I32(0)),
+        },
+        _ => unimplemented!(),
+    }
+}
+pub fn whamm_type_to_wasm_type(ty: &DataType) -> OrcaType {
     match ty {
-        DataType::I32 | DataType::U32 | DataType::Boolean => Global {
-            ty: wasmparser::GlobalType {
-                content_type: ValType::I32,
-                mutable: true,
-                shared: false,
-            },
-            init_expr: InitExpr::Value(OrcaValue::I32(0)),
-        },
+        DataType::I32 | DataType::U32 | DataType::Boolean => OrcaType::I32,
         // the ID used to track this var in the lib
-        DataType::Map { .. } => Global {
-            ty: wasmparser::GlobalType {
-                content_type: ValType::I32,
-                mutable: true,
-                shared: false,
-            },
-            init_expr: InitExpr::Value(OrcaValue::I32(0)),
-        },
+        DataType::Map { .. } => OrcaType::I32,
         DataType::Null => unimplemented!(),
         DataType::Str => unimplemented!(),
         DataType::Tuple { .. } => unimplemented!(),
         DataType::AssumeGood => unimplemented!(),
+    }
+}
+
+pub fn block_type_to_wasm(block: &Block) -> BlockType {
+    match &block.return_ty {
+        None => BlockType::Empty,
+        Some(return_ty) => {
+            let wasm_ty = whamm_type_to_wasm_type(return_ty);
+            BlockType::Type(wasm_ty)
+        }
     }
 }
 
@@ -666,7 +678,7 @@ fn emit_set<'a, T: Opcode<'a>>(
 
 fn emit_if_preamble<'a, T: Opcode<'a> + ModuleBuilder>(
     condition: &mut Expr,
-    conseq: &mut [Statement],
+    conseq: &mut Block,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
@@ -687,8 +699,7 @@ fn emit_if_preamble<'a, T: Opcode<'a> + ModuleBuilder>(
         err_msg,
     )?;
     // emit the beginning of the if block
-    injector.if_stmt(OrcaBlockType::Empty);
-
+    injector.if_stmt(block_type_to_wasm(conseq));
     // emit the consequent body
     is_success &= emit_body(
         conseq,
@@ -707,8 +718,8 @@ fn emit_if_preamble<'a, T: Opcode<'a> + ModuleBuilder>(
 
 fn emit_if_else_preamble<'a, T: Opcode<'a> + ModuleBuilder>(
     condition: &mut Expr,
-    conseq: &mut [Statement],
-    alternate: &mut [Statement],
+    conseq: &mut Block,
+    alternate: &mut Block,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
@@ -750,7 +761,7 @@ fn emit_if_else_preamble<'a, T: Opcode<'a> + ModuleBuilder>(
 
 fn emit_if<'a, T: Opcode<'a> + ModuleBuilder>(
     condition: &mut Expr,
-    conseq: &mut [Statement],
+    conseq: &mut Block,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
@@ -778,8 +789,8 @@ fn emit_if<'a, T: Opcode<'a> + ModuleBuilder>(
 
 fn emit_if_else<'a, T: Opcode<'a> + ModuleBuilder>(
     condition: &mut Expr,
-    conseq: &mut [Statement],
-    alternate: &mut [Statement],
+    conseq: &mut Block,
+    alternate: &mut Block,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
@@ -857,14 +868,22 @@ fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
             // change conseq and alt types to stmt for easier API call
             is_success &= emit_if_else(
                 cond,
-                &mut vec![Statement::Expr {
-                    expr: (**conseq).clone(),
+                &mut Block {
+                    stmts: vec![Statement::Expr {
+                        expr: (**conseq).clone(),
+                        loc: None,
+                    }],
+                    return_ty: None,
                     loc: None,
-                }],
-                &mut vec![Statement::Expr {
-                    expr: (**alt).clone(),
+                },
+                &mut Block {
+                    stmts: vec![Statement::Expr {
+                        expr: (**alt).clone(),
+                        loc: None,
+                    }],
+                    return_ty: None,
                     loc: None,
-                }],
+                },
                 injector,
                 table,
                 mem_tracker,

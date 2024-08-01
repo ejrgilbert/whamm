@@ -373,8 +373,41 @@ impl ExprFolder {
         None
     }
 
-    fn fold_ternary(_ternary: &Expr, _table: &SymbolTable) -> Expr {
-        todo!()
+    fn fold_ternary(ternary: &Expr, table: &SymbolTable) -> Expr {
+        match ternary {
+            Expr::Ternary {
+                cond, conseq, alt, ..
+            } => {
+                let cond = ExprFolder::fold_expr(cond, table);
+                let conseq = ExprFolder::fold_expr(conseq, table);
+                let alt = ExprFolder::fold_expr(alt, table);
+
+                // check if the condition folds to true/false!
+                let cond_val = ExprFolder::get_single_bool(&cond);
+                return if let Some(cond_bool) = cond_val {
+                    // the condition folds to a primitive bool!
+                    if cond_bool {
+                        // it's a true, evaluates to the conseq
+                        conseq
+                    } else {
+                        // it's a false, evaluates to the alt
+                        alt
+                    }
+                } else {
+                    // condition doesn't fold to a primitive, return folded variation.
+                    Expr::Ternary {
+                        cond: Box::new(cond),
+                        conseq: Box::new(conseq),
+                        alt: Box::new(alt),
+                        loc: None,
+                    }
+                };
+            }
+            _ => {
+                // ignore
+            }
+        }
+        ternary.clone()
     }
 
     fn fold_call(call: &Expr, _table: &SymbolTable) -> Expr {
