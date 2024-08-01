@@ -421,7 +421,8 @@ pub enum Record {
         name: String,
         value: Option<Value>,
         is_comp_provided: bool, // TODO -- this is only necessary for `new_target_fn_name`, remove after deprecating!
-
+        //this is for if the variable is a report var
+        is_report_var: bool,
         /// The address of this var post-injection
         addr: Option<VarAddr>,
         loc: Option<Location>,
@@ -459,4 +460,5 @@ impl Record {
 pub enum VarAddr {
     Local { addr: u32 },
     Global { addr: u32 },
+    MapId { addr: u32 },
 }

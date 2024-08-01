@@ -10,7 +10,6 @@ use crate::parser::types::{BinOp, DataType, Expr, Value, Whamm};
 use crate::verifier::types::{Record, ScopeType, SymbolTable};
 use crate::verifier::verifier;
 use log::{debug, error};
-use std::process::exit;
 
 pub fn setup_logger() {
     let _ = env_logger::builder().is_test(true).try_init();
@@ -137,15 +136,15 @@ fn hardcode_compiler_constants(table: &mut SymbolTable, err: &mut ErrorGen) {
         panic!();
     }
 
-    // define target_imp_name
-    let target_imp_name = get_rec(table, "target_imp_name");
-    if let Some(Record::Var { value, .. }) = target_imp_name {
+    // define target_fn_name
+    let target_fn_name = get_rec(table, "target_fn_name");
+    if let Some(Record::Var { value, .. }) = target_fn_name {
         *value = Some(Value::Str {
             ty: DataType::Str,
             val: "call_new".to_string(),
         })
     } else {
-        error!("Could not find symbol for `target_imp_name`");
+        error!("Could not find symbol for `target_fn_name`");
         panic!();
     }
 }
@@ -204,7 +203,7 @@ pub fn basic_with_compiler_vars() {
 wasm::call:alt /
     target_fn_type == "import" &&
     target_imp_module == "ic0" &&
-    target_imp_name == "call_new" &&
+    target_fn_name == "call_new" &&
     i
 / {}
     "#,
@@ -248,7 +247,7 @@ pub fn basic_with_fn_call() {
 wasm::call:alt /
     target_fn_type == "import" &&
     target_imp_module == "ic0" &&
-    target_imp_name == "call_new" &&
+    target_fn_name == "call_new" &&
     strcmp((arg0, arg1), "bookings") &&
     strcmp((arg2, arg3), "record")
 / {}

@@ -376,6 +376,7 @@ impl SymbolTableBuilder<'_> {
             ty: ty.clone(),
             value: None,
             is_comp_provided: false,
+            is_report_var: false,
             addr: None,
             loc: var_id.loc().clone(),
         };
@@ -401,6 +402,7 @@ impl SymbolTableBuilder<'_> {
         ty: DataType,
         name: String,
         is_comp_provided: bool,
+        is_report_var: bool,
         loc: Option<Location>,
     ) {
         /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
@@ -417,6 +419,7 @@ impl SymbolTableBuilder<'_> {
                 name,
                 value: None,
                 is_comp_provided,
+                is_report_var,
                 addr: None,
                 loc,
             },
@@ -428,7 +431,7 @@ impl SymbolTableBuilder<'_> {
 
     fn visit_provided_globals(&mut self, globals: &HashMap<String, ProvidedGlobal>) {
         for (name, ProvidedGlobal { global, .. }) in globals.iter() {
-            self.add_global(global.ty.clone(), name.clone(), true, None);
+            self.add_global(global.ty.clone(), name.clone(), true, false, None);
         }
     }
 }
@@ -478,31 +481,42 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
 
         script.fns.iter_mut().for_each(|f| self.visit_fn(f));
         script.global_stmts.iter_mut().for_each(|stmt| {
-            if let Statement::Decl { ty, var_id, .. } = stmt {
-                if let Expr::VarId { name, .. } = &var_id {
-                    // Add global variable to script globals (triggers the init_generator to emit them!)
-                    script.globals.insert(
-                        name.clone(),
-                        Global {
-                            def: Definition::User,
-                            ty: ty.clone(),
-                            var_name: var_id.clone(),
-                            value: None,
-                        },
-                    );
-                } else {
-                    self.err.unexpected_error(
-                        true,
-                        Some(format!(
-                            "{} \
-                Variable declaration var_id is not the correct Expr variant!!",
-                            UNEXPECTED_ERR_MSG
-                        )),
-                        None,
-                    );
+            let mut is_report_var = false;
+            let stmt = match stmt {
+                Statement::ReportDecl { decl, .. } => {
+                    is_report_var = true;
+                    &mut **decl
                 }
+                _ => stmt,
+            };
+            match stmt {
+                Statement::Decl { ty, var_id, .. } => {
+                    if let Expr::VarId { name, .. } = &var_id {
+                        // Add global variable to script globals (triggers the init_generator to emit them!)
+                        script.globals.insert(
+                            name.clone(),
+                            Global {
+                                def: Definition::User,
+                                report: is_report_var,
+                                ty: ty.clone(),
+                                var_name: var_id.clone(),
+                                value: None,
+                            },
+                        );
+                    } else {
+                        self.err.unexpected_error(
+                            true,
+                            Some(format!(
+                                "{} \
+                    Variable declaration var_id is not the correct Expr variant!!",
+                                UNEXPECTED_ERR_MSG
+                            )),
+                            None,
+                        );
+                    }
+                }
+                _ => {}
             }
-
             self.visit_stmt(stmt)
         });
         script
@@ -646,7 +660,14 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
                 None,
             );
         }
-
+        let mut is_report_var = false;
+        let stmt = match &stmt {
+            Statement::ReportDecl { decl, .. } => {
+                is_report_var = true;
+                &**decl
+            }
+            _ => stmt,
+        };
         if let Statement::Decl {
             ty, var_id, loc, ..
         } = stmt
@@ -658,7 +679,13 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
             } = &var_id
             {
                 // Add symbol to table
-                self.add_global(ty.clone(), name.clone(), *is_comp_provided, loc.clone());
+                self.add_global(
+                    ty.clone(),
+                    name.clone(),
+                    *is_comp_provided,
+                    is_report_var,
+                    loc.clone(),
+                );
             } else {
                 self.err.unexpected_error(
                     true,

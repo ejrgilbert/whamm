@@ -1,9 +1,11 @@
 extern crate core;
 
 use cli::{Cmd, WhammCli};
+use emitter::report_var_metadata::ReportVarMetadata;
 use std::collections::HashMap;
 
 use crate::common::error::ErrorGen;
+use crate::emitter::map_lib_adapter::MapLibAdapter;
 use crate::emitter::rewriting::module_emitter::{MemoryTracker, ModuleEmitter};
 use crate::generator::init_generator::InitGenerator;
 use crate::generator::instr_generator::InstrGenerator;
@@ -105,7 +107,7 @@ fn run_instr(
 
     // TODO Configure the generator based on target (wizard vs bytecode rewriting)
 
-    // Create the memory tracker
+    // Create the memory tracker + the map and metadata tracker
     if app_wasm.memories.len() > 1 {
         // TODO -- make this work with multi-memory
         panic!("only single memory is supported")
@@ -116,10 +118,18 @@ fn run_instr(
         required_initial_mem_size: 27, // Size memory must be to account for the added data
         emitted_strings: HashMap::new(),
     };
+    let mut map_lib_adapter = MapLibAdapter::new();
+    let mut report_var_metadata = ReportVarMetadata::new();
 
     // Phase 0 of instrumentation (emit globals and provided fns)
     let mut init = InitGenerator {
-        emitter: ModuleEmitter::new(&mut app_wasm, &mut symbol_table, &mut mem_tracker),
+        emitter: ModuleEmitter::new(
+            &mut app_wasm,
+            &mut symbol_table,
+            &mut mem_tracker,
+            &mut map_lib_adapter,
+            &mut report_var_metadata,
+        ),
         context_name: "".to_string(),
         err: &mut err,
     };
@@ -131,13 +141,25 @@ fn run_instr(
     // This structure is necessary since we need to have the fns/globals injected (a single time)
     // and ready to use in every body/predicate.
     let mut instr = InstrGenerator::new(
-        VisitingEmitter::new(&mut app_wasm, &mut symbol_table, &mem_tracker),
+        VisitingEmitter::new(
+            &mut app_wasm,
+            &mut symbol_table,
+            &mut mem_tracker,
+            &mut map_lib_adapter,
+            &mut report_var_metadata,
+        ),
         simple_ast,
         &mut err,
     );
     instr.run();
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
+    report_var_metadata.print_metadata();
+    for gid in report_var_metadata.available_i32_gids.iter() {
+        //should be 0, but good for cleanup
+        err.add_compiler_warn(format!("Unused i32 GID: {}", gid));
+        app_wasm.remove_global();
+    }
 
     try_path(&output_wasm_path);
     if let Err(e) = app_wasm.emit_wasm(&output_wasm_path) {
