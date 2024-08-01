@@ -340,15 +340,16 @@ wasm::call:alt /
     let table = verifier::build_symbol_table(&mut ast, &mut err);
     debug!("{:#?}", table);
 
-    // 7 scopes: whamm, strcmp, script0, wasm, alt_call_by_name, alt_call_by_id, opcode, call, alt
-    let num_scopes = 9;
-    // records: num_scopes PLUS (str_addr, func_id, func_name, value, wasm_opcode_loc, target_imp_name, target_fn_type, target_imp_module, imm0, arg[0:9]+)
-    let num_recs = num_scopes + 10;
+    // 11 scopes: whamm, strcmp, script0, wasm, alt_call_by_name, alt_call_by_id, opcode, call, alt, puti, puts
+    let num_scopes = 11;
+    // records: num_scopes PLUS (str_addr, func_id, func_name, value, target_imp_name, target_fn_type, target_imp_module, imm0, arg[0:9]+, wasm_bytecode_loc)
+    let _num_recs = num_scopes + 10;
 
     // asserts on very high level table structure
-    // assert_eq!(num_scopes, table.scopes.len());
+    assert_eq!(num_scopes, table.scopes.len());
 
     // debug!("==================\n{:#?}", table.records);
+    // TODO: I'm not sure where the extra 2 came from
     // assert_eq!(num_recs, table.records.len());
 }
 
