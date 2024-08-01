@@ -413,7 +413,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                                 )));
                             }
                         };
-                        start_fn.before_at(0);
+                        init_fn.before_at(0);
                         let (fn_name, map_id) = match report_mode {
                             true => {
                                 match self.map_lib_adapter.create_global_map(
@@ -455,8 +455,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                                 )));
                             }
                         };
-                        start_fn.i32_const(map_id);
-                        start_fn.call(*fn_id);
+                        init_fn.i32_const(map_id);
+                        init_fn.call(*fn_id);
                         Ok(true)
                     }
                     _ => {

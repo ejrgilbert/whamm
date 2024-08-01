@@ -13,7 +13,6 @@ use orca::ir::types::{Global as OrcaGlobal, Value as OrcaValue};
 use orca::{FunctionBuilder, InitExpr, Opcode};
 use crate::verifier::types::Record;
 use log::{info, trace, warn};
-use orca::FunctionBuilder;
 use std::collections::HashMap;
 use wasmparser::ValType;
 
@@ -196,25 +195,7 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
             None => {
                 //time to make a global_map_init fn
                 println!("No global_map_init function found, creating one");
-                let mut global_map_init_fn = FunctionBuilder::new(&[], &[]);
-                global_map_init_fn.i32_const(0);
-                let to_call = match self.emitter.app_wasm.get_fid_by_name("create_i32_string") {
-                    Some(to_call) => to_call,
-                    None => {
-                        self.err.add_error(ErrorGen::get_unexpected_error(
-                            true,
-                            Some(format!(
-                                "
-                            No string function found in the module!"
-                            )),
-                            None,
-                        ));
-                        return;
-                    }
-                };
-                global_map_init_fn.call(to_call);
-                global_map_init_fn.i32_const(1);
-                global_map_init_fn.call(to_call);
+                let global_map_init_fn = FunctionBuilder::new(&[], &[]);
                 let global_map_init_id = global_map_init_fn.finish(self.emitter.app_wasm);
                 self.emitter.app_wasm.set_fn_name(
                     global_map_init_id - self.emitter.app_wasm.num_import_func(),

@@ -1,9 +1,6 @@
 use std::collections::HashMap;
 use orca::iterator::iterator_trait::Iterator;
 use orca::Location as OrcaLocation;
-
-use crate::common::error::ErrorGen;
-
 use orca::ir::types::{BlockType as OrcaBlockType, Value as OrcaValue};
 use orca::{DataSegment, DataSegmentKind, InitExpr, Opcode};
 
