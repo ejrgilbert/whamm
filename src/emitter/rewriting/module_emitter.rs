@@ -1,6 +1,6 @@
 use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::report_var_metadata::ReportVarMetadata;
-use crate::parser::types::{DataType, Definition, Expr, Fn, Statement, Value};
+use crate::parser::types::{Block, DataType, Definition, Expr, Fn, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca::{DataSegment, DataSegmentKind, InitExpr};
 use std::collections::HashMap;
@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use orca::ir::types::{BlockType as OrcaBlockType, DataType as OrcaType, Value as OrcaValue};
 use wasmparser::GlobalType;
 use crate::emitter::map_lib_adapter::MapLibAdapter;
-use crate::emitter::rewriting::{emit_body, emit_expr, emit_stmt, whamm_type_to_wasm, Emitter};
+use crate::emitter::rewriting::{emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global, Emitter};
 
 use orca::ir::function::FunctionBuilder;
 use orca::ir::module::Module;
@@ -449,7 +449,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                         Ok(true)
                     }
                     _ => {
-                        let default_global = whamm_type_to_wasm(ty);
+                        let default_global = whamm_type_to_wasm_global(ty);
                         let global_id = self.app_wasm.add_global(default_global);
                         *addr = Some(VarAddr::Global { addr: global_id });
                         //now save off the global variable metadata
@@ -489,8 +489,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 )))
             }
         };
-
-        self.emit_global_getter(&global_id, name, &ty)
+        Ok(true)
     }
     pub fn emit_global_stmts(&mut self, stmts: &mut [Statement]) -> Result<bool, Box<WhammError>> {
         // NOTE: This should be done in the Module entrypoint

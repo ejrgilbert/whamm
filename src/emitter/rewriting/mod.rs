@@ -8,10 +8,10 @@ use crate::emitter::map_lib_adapter::MapLibAdapter;
 use crate::emitter::report_var_metadata::{LocationData, ReportVarMetadata};
 use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::generator::types::ExprFolder;
-use crate::parser::types::{BinOp, DataType, Expr, Statement, UnOp, Value};
+use crate::parser::types::{BinOp, Block, DataType, Expr, Statement, UnOp, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca::ir::types::{
-    BlockType as OrcaBlockType, DataType as OrcaType, Global, Value as OrcaValue,
+    BlockType, DataType as OrcaType, Global, Value as OrcaValue,
 };
 use orca::opcode::Opcode;
 use orca::{InitExpr, ModuleBuilder};
@@ -43,7 +43,7 @@ fn emit_body<'a, T: Opcode<'a> + ModuleBuilder>(
     report_var_metadata: &mut ReportVarMetadata,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
-    for stmt in body.iter_mut() {
+    for stmt in body.stmts.iter_mut() {
         emit_stmt(
             stmt,
             injector,
@@ -77,7 +77,7 @@ fn emit_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
             report_var_metadata,
             err_msg,
         ),
-        Statement::Expr { expr, .. } => emit_expr(
+        Statement::Expr { expr, .. } | Statement::Return { expr, .. }=> emit_expr(
             expr,
             injector,
             table,
@@ -93,7 +93,7 @@ fn emit_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
             if alt.stmts.is_empty() {
                 emit_if(
                     cond,
-                    conseq.stmts.as_mut_slice(),
+                    conseq,
                     injector,
                     table,
                     mem_tracker,
@@ -104,8 +104,8 @@ fn emit_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
             } else {
                 emit_if_else(
                     cond,
-                    conseq.stmts.as_mut_slice(),
-                    alt.stmts.as_mut_slice(),
+                    conseq,
+                    alt,
                     injector,
                     table,
                     mem_tracker,
@@ -115,7 +115,6 @@ fn emit_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                 )
             }
         }
-        Statement::Return { .. } => unimplemented!(),
         Statement::ReportDecl { .. } => emit_report_decl_stmt(
             stmt,
             injector,
@@ -355,8 +354,8 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                 }
                 match &mut addr {
                     Some(VarAddr::Global { .. }) | None => {
-                        let wasm_ty = whamm_type_to_wasm(ty).ty.content_type;
-                        if wasm_ty != ValType::I32 {
+                        let wasm_ty = whamm_type_to_wasm_type(ty);
+                        if wasm_ty != OrcaType::I32 {
                             return Err(Box::new(ErrorGen::get_unexpected_error(
                                 true,
                                 Some(format!(

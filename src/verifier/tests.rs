@@ -529,21 +529,12 @@ pub fn testing_map() {
     }
     "#;
 
-    match tests::get_ast(script, &mut err) {
-        Some(mut ast) => {
-            let mut table = verifier::build_symbol_table(&mut ast, &mut err);
-            let res = verifier::type_check(&ast, &mut table, &mut err);
-            err.report();
-            assert!(!err.has_errors);
-            assert!(res);
-        }
-        None => {
-            error!("Could not get ast from script: {}", script);
-            if err.has_errors {
-                err.report();
-            }
-        }
-    };
+    let mut ast = tests::get_ast(script, &mut err);
+    let mut table = verifier::build_symbol_table(&mut ast, &mut err);
+    let res = verifier::type_check(&mut ast, &mut table, &mut err);
+    err.report();
+    assert!(!err.has_errors);
+    assert!(res);
 }
 #[test]
 pub fn test_report_decl() {
@@ -555,22 +546,12 @@ pub fn test_report_decl() {
             a = 1;
             report bool b;
         }"#;
-    match tests::get_ast(script, &mut err) {
-        Some(mut ast) => {
-            let mut table = verifier::build_symbol_table(&mut ast, &mut err);
-            let res = verifier::type_check(&ast, &mut table, &mut err);
-            err.report();
-            assert!(!err.has_errors);
-            assert!(res);
-            crate::parser::tests::print_ast(&ast);
-        }
-        None => {
-            error!("Could not get ast from script: {}", script);
-            if err.has_errors {
-                err.report();
-            }
-        }
-    };
+        let mut ast = tests::get_ast(script, &mut err);
+        let mut table = verifier::build_symbol_table(&mut ast, &mut err);
+        let res = verifier::type_check(&mut ast, &mut table, &mut err);
+        err.report();
+        assert!(!err.has_errors);
+        assert!(res);
 }
 //TODO: uncomment after BEGIN is working
 

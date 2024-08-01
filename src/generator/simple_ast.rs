@@ -273,7 +273,7 @@ impl WhammVisitor<()> for SimpleASTBuilder<'_, '_> {
                 return;
             }
         };
-        for stmt in stmts {
+        for stmt in &stmts.stmts {
             self.visit_stmt(stmt);
         }
         self.add_probe_to_ast(probe.as_ref(), self.curr_num_reports);

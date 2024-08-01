@@ -4,7 +4,7 @@ use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::emitter::rewriting::rules::wasm::OpcodeEvent;
 use crate::emitter::rewriting::rules::{Arg, LocInfo, Provider, WhammProvider};
-use crate::emitter::rewriting::{emit_expr, whamm_type_to_wasm, block_type_to_wasm};
+use crate::emitter::rewriting::{emit_expr, whamm_type_to_wasm_global, block_type_to_wasm};
 use crate::emitter::rewriting::{emit_stmt, print_report_all, Emitter};
 
 use crate::generator::types::ExprFolder;
@@ -129,7 +129,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                         value: None,
                         is_comp_provided: false,
                         is_report_var: false,
-                        addr: Some(VarAddr::Local { addr: arg_local_id }),
+                        addr: Some(VarAddr::Local { addr: *arg_local_id }),
                         loc: None,
                     },
                 );
@@ -269,9 +269,9 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 };
 
                 // we only care about the result of the original
-                BlockType::FuncType(self.app_iter.module.add_type(&[], &ty))
+                OrcaBlockType::FuncType(self.app_iter.module.add_type(&[], &ty))
             }
-            None => BlockType::Empty,
+            None => OrcaBlockType::Empty,
         };
         self.app_iter.if_stmt(block_ty);
         is_success &= self.emit_body(conseq)?;
@@ -363,7 +363,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
     fn emit_body(&mut self, body: &mut Block) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
         for _ in 0..self.curr_num_reports {
-            let default_global = whamm_type_to_wasm(&DataType::I32);
+            let default_global = whamm_type_to_wasm_global(&DataType::I32);
             let gid = self.app_iter.module.add_global(default_global);
             self.report_var_metadata
                 .available_i32_gids

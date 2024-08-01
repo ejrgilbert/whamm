@@ -647,18 +647,8 @@ pub fn testing_map() {
         }
     "#;
 
-    match get_ast(script, &mut err) {
-        Some(ast) => {
-            print_ast(&ast);
-        }
-        None => {
-            error!("Could not get ast from script: {}", script);
-            if err.has_errors {
-                err.report();
-            }
-            assert!(!err.has_errors);
-        }
-    };
+    assert!(is_valid_script(script, &mut err));
+
 }
 #[test]
 pub fn test_report_decl() {
@@ -671,18 +661,8 @@ pub fn test_report_decl() {
             report bool b;
         }
     "#;
-    match get_ast(script, &mut err) {
-        Some(ast) => {
-            print_ast(&ast);
-        }
-        None => {
-            error!("Could not get ast from script: {}", script);
-            if err.has_errors {
-                err.report();
-            }
-            assert!(!err.has_errors);
-        }
-    };
+    assert!(is_valid_script(script, &mut err));
+
 }
 // ===================
 // = Full File Tests =
