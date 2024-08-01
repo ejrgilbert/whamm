@@ -73,24 +73,6 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
         }
     }
 
-    fn emit_puts(&mut self, f: &Fn) -> Result<bool, Box<WhammError>> {
-        let puts_type_id = self.app_wasm.add_type(&[OrcaType::I32], &[]);
-        let puts_func_id = self
-            .app_wasm
-            .add_import_func("wizeng", "puts", puts_type_id);
-        self.app_wasm.set_fn_name(puts_func_id, "puts");
-        set_fn_addr(self.table, f, puts_func_id)
-    }
-
-    fn emit_puti(&mut self, f: &Fn) -> Result<bool, Box<WhammError>> {
-        let puti_type_id = self.app_wasm.add_type(&[OrcaType::I32, OrcaType::I32], &[]);
-        let puti_func_id = self
-            .app_wasm
-            .add_import_func("wizeng", "puti", puti_type_id);
-        self.app_wasm.set_fn_name(puti_func_id, "puti");
-        set_fn_addr(self.table, f, puti_func_id)
-    }
-
     fn emit_whamm_strcmp_fn(&mut self, f: &Fn) -> Result<bool, Box<WhammError>> {
         let strcmp_params = vec![OrcaType::I32, OrcaType::I32, OrcaType::I32, OrcaType::I32];
         let strcmp_result = vec![OrcaType::I32];
@@ -191,8 +173,8 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
             .i32_const(0)
             .return_stmt();
 
-        let strcmp_id = strcmp.finish(self.app_wasm);
-        self.app_wasm.set_fn_name(strcmp_id, "strcmp");
+        let strcmp_id = strcmp.finish_module(self.app_wasm);
+        self.app_wasm.set_fn_name(strcmp_id, "strcmp".to_string());
 
         set_fn_addr(self.table, f, strcmp_id)
     }
@@ -303,10 +285,10 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
         let mut getter = FunctionBuilder::new(&getter_params, &getter_res);
         getter.global_get(*global_id);
 
-        let getter_id = getter.finish(self.app_wasm);
+        let getter_id = getter.finish_module(self.app_wasm);
 
         let fn_name = format!("get_{name}");
-        self.app_wasm.add_export_func(fn_name.leak(), getter_id);
+        self.app_wasm.add_export_func(fn_name, getter_id);
 
         Ok(true)
     }

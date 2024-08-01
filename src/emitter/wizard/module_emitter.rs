@@ -46,12 +46,15 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
         }
     }
 
+    pub fn export_mnemonic(&mut self, mnemonic: String, func_id: u32) {
+        self.app_wasm.add_export_func(mnemonic, func_id);
+    }
+
     fn emit_provided_fn(&mut self, context: &str, f: &Fn) -> Result<bool, Box<WhammError>> {
         match (context, f.name.name.as_str()) {
-            ("whamm", "strcmp") => Ok(true),
-            // the following are wizard-only functions, no need to emit for bytecode rewriting
-            ("whamm", "puti") => self.emit_puts(f),
-            ("whamm", "puts") => self.emit_puti(f),
+            ("whamm", "strcmp") => self.emit_whamm_strcmp_fn(f),
+            ("whamm", "puti") => self.emit_puti(f),
+            ("whamm", "puts") => self.emit_puts(f),
             _ => Err(Box::new(ErrorGen::get_unexpected_error(
                 true,
                 Some(format!(
@@ -107,20 +110,20 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
     }
 
     fn emit_puts(&mut self, f: &Fn) -> Result<bool, Box<WhammError>> {
-        let puts_type_id = self.app_wasm.add_type(&[OrcaType::I32], &[]);
-        let puts_func_id = self
-            .app_wasm
-            .add_import_func("wizeng", "puts", puts_type_id);
-        self.app_wasm.set_fn_name(puts_func_id, "puts");
+        let puts_type_id = self.app_wasm.add_type(&[OrcaType::I32, OrcaType::I32], &[]);
+        let puts_func_id =
+            self.app_wasm
+                .add_import_func("wizeng".to_string(), "puts".to_string(), puts_type_id);
+        self.app_wasm.set_fn_name(puts_func_id, "puts".to_string());
         self.set_fn_addr(f, puts_func_id)
     }
 
     fn emit_puti(&mut self, f: &Fn) -> Result<bool, Box<WhammError>> {
-        let puti_type_id = self.app_wasm.add_type(&[OrcaType::I32, OrcaType::I32], &[]);
-        let puti_func_id = self
-            .app_wasm
-            .add_import_func("wizeng", "puti", puti_type_id);
-        self.app_wasm.set_fn_name(puti_func_id, "puti");
+        let puti_type_id = self.app_wasm.add_type(&[OrcaType::I32], &[]);
+        let puti_func_id =
+            self.app_wasm
+                .add_import_func("wizeng".to_string(), "puti".to_string(), puti_type_id);
+        self.app_wasm.set_fn_name(puti_func_id, "puti".to_string());
         self.set_fn_addr(f, puti_func_id)
     }
 
@@ -224,8 +227,8 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
             .i32_const(0)
             .return_stmt();
 
-        let strcmp_id = strcmp.finish(self.app_wasm);
-        self.app_wasm.set_fn_name(strcmp_id, "strcmp");
+        let strcmp_id = strcmp.finish_module(self.app_wasm);
+        self.app_wasm.set_fn_name(strcmp_id, "strcmp".to_string());
 
         self.set_fn_addr(f, strcmp_id)
     }
@@ -325,10 +328,10 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
         let mut getter = FunctionBuilder::new(&getter_params, &getter_res);
         getter.global_get(*global_id);
 
-        let getter_id = getter.finish(self.app_wasm);
+        let getter_id = getter.finish_module(self.app_wasm);
 
         let fn_name = format!("get_{name}");
-        self.app_wasm.add_export_func(fn_name.leak(), getter_id);
+        self.app_wasm.add_export_func(fn_name, getter_id);
 
         Ok(true)
     }

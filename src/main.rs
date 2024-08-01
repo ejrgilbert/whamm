@@ -126,6 +126,8 @@ fn run_wizard_gen(script_path: String, output_wasm_path: String) {
     });
 
     // TODO: how reusable is the InitGenerator?
+    // Currently, most of the wizard emitter/generator is copied directly from
+    // the rewriting ones
     let mut init = crate::emitter::wizard::init_generator::InitGenerator {
         emitter: crate::emitter::wizard::module_emitter::ModuleEmitter::new(
             &mut module,

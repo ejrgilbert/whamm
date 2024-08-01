@@ -160,7 +160,7 @@ pub(crate) fn emit_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
     }
 }
 
-fn emit_assign_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
+pub(crate) fn emit_assign_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
     stmt: &mut Statement,
     injector: &mut T,
     table: &mut SymbolTable,

@@ -97,7 +97,7 @@ jobs:
           ./output/tests/interpreters/wasm --help
       - name: Setup and Build Orca
         run: |
-          cd .. && git clone https://github.com/thesuhas/orca.git
+          cd .. && git clone https://github.com/thesuhas/orca.git --branch small-update
           cd orca
           cargo build
       - name: Build

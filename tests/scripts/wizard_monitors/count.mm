@@ -3,4 +3,5 @@
 i32 count;
 wasm:opcode:call:before {
     count++;
+    puti(count);
 }

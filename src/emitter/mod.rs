@@ -15,7 +15,7 @@ use wasmparser::Operator;
 // ==== Emitter Trait --> Used By All Emitters! ====
 // =================================================
 
-// TODO: These emitter trait are used nowhere!!
+// TODO: These emitter traits are used nowhere!!
 
 pub trait ModuleEmitter {
     fn enter_scope(&mut self) -> Result<(), Box<WhammError>>;
