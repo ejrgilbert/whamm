@@ -11,6 +11,7 @@ use wasmparser::GlobalType;
 use crate::emitter::rewriting::{
     emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global, Emitter,
 };
+
 use orca::ir::function::FunctionBuilder;
 use orca::ir::module::Module;
 use orca::opcode::Opcode;
@@ -47,10 +48,10 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
 
     fn emit_provided_fn(&mut self, context: &str, f: &Fn) -> Result<bool, Box<WhammError>> {
         match (context, f.name.name.as_str()) {
-            ("whamm", "strcmp") => self.emit_whamm_strcmp_fn(f),
+            ("whamm", "strcmp") => Ok(true),
             // the following are wizard-only functions, no need to emit for bytecode rewriting
-            ("whamm", "puti") => Ok(true),
-            ("whamm", "puts") => Ok(true),
+            ("whamm", "puti") => self.emit_puts(f),
+            ("whamm", "puts") => self.emit_puti(f),
             _ => Err(Box::new(ErrorGen::get_unexpected_error(
                 true,
                 Some(format!(

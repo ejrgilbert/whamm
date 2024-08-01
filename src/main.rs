@@ -125,8 +125,12 @@ fn run_wizard_gen(script_path: String, output_wasm_path: String) {
     });
 
     // TODO: how reusable is the InitGenerator?
-    let mut init = InitGenerator {
-        emitter: ModuleEmitter::new(&mut module, &mut symbol_table, &mut mem_tracker),
+    let mut init = crate::emitter::wizard::init_generator::InitGenerator {
+        emitter: crate::emitter::wizard::module_emitter::ModuleEmitter::new(
+            &mut module,
+            &mut symbol_table,
+            &mut mem_tracker,
+        ),
         context_name: "".to_string(),
         err: &mut err,
     };
