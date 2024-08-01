@@ -20,6 +20,7 @@ const UNEXPECTED_ERR_MSG: &str =
 pub struct MemoryTracker {
     pub mem_id: u32,
     pub curr_mem_offset: usize,
+    pub required_initial_mem_size: u64,
     pub emitted_strings: HashMap<String, StringAddr>,
 }
 
@@ -275,6 +276,17 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
                     )),
                     None,
                 )))
+            }
+        }
+    }
+
+    pub(crate) fn memory_grow(&mut self) {
+        // If we've emitted any strings, bump the app's memory up to account for that
+        if !self.mem_tracker.emitted_strings.is_empty() {
+            if let Some(mem) = self.app_wasm.memories.get_mut(0) {
+                if mem.initial < self.mem_tracker.required_initial_mem_size {
+                    mem.initial = self.mem_tracker.required_initial_mem_size;
+                }
             }
         }
     }
