@@ -433,21 +433,27 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                         *addr = Some(VarAddr::MapId {
                             addr: map_id as u32,
                         });
-                        let fn_id = match self.table.lookup(&fn_name) {
-                            Some(fn_id) => fn_id,
+                        let fn_id = match self.table.lookup_rec(&fn_name) {
+                            Some(id) => match id {
+                                Record::LibFn { fn_id, .. } => fn_id,
+                                _ => {
+                                    return Err(Box::new(ErrorGen::get_unexpected_error(
+                                        true,
+                                        Some(format!("Map function not in symbol table")),
+                                        None,
+                                    )))
+                                }
+                            },
                             None => {
                                 return Err(Box::new(ErrorGen::get_unexpected_error(
                                     true,
-                                    Some(format!(
-                                        "{UNEXPECTED_ERR_MSG} \
-                                    Map function not in symbol table"
-                                    )),
+                                    Some(format!("Map function not in symbol table")),
                                     None,
                                 )));
                             }
                         };
                         start_fn.i32_const(map_id);
-                        start_fn.call(*fn_id as u32);
+                        start_fn.call(*fn_id);
                         Ok(true)
                     }
                     _ => {
