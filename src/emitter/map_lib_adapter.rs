@@ -71,7 +71,10 @@ impl MapLibAdapter {
                 temp
             }
         };
-        (self.put_map_metadata(map_id, metadata, report_var_metadata), map_id)
+        (
+            self.put_map_metadata(map_id, metadata, report_var_metadata),
+            map_id,
+        )
     }
     pub fn create_global_map_meta(
         &mut self,
@@ -89,7 +92,10 @@ impl MapLibAdapter {
                 temp
             }
         };
-        (self.put_map_metadata(map_id, metadata, report_var_metadata), map_id)
+        (
+            self.put_map_metadata(map_id, metadata, report_var_metadata),
+            map_id,
+        )
     }
     pub fn create_local_map(
         &mut self,
@@ -161,7 +167,7 @@ impl MapLibAdapter {
         }
     }
     pub fn create_no_meta_map(&mut self, map: DataType) -> Result<(String, i32), Box<WhammError>> {
-        //this one isn't abstracted away because no map_metadata needs to be stored 
+        //this one isn't abstracted away because no map_metadata needs to be stored
         let map_id = self.get_map_count();
         self.increment_map_count();
         match map {
