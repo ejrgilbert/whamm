@@ -46,7 +46,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             ast,
             err,
             curr_instr_args: vec![],
-            curr_probe_mode: "____0".to_string(),
+            curr_probe_mode: "".to_string(),
             curr_probe: None,
         }
     }

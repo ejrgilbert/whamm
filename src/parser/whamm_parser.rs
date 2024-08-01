@@ -574,7 +574,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
             };
             match expr_primary(var_id_rule.clone()) {
                 Ok(expr) => match expr {
-                    Expr::GetMap { map, key, .. } => {
+                    Expr::MapGet { map, key, .. } => {
                         is_map = true;
                         var_id = *map;
                         key_assigned = *key;
@@ -1253,7 +1253,7 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                     return Err(errors);
                 }
             };
-            Ok(Expr::GetMap {
+            Ok(Expr::MapGet {
                 map: Box::new(map_expr),
                 key: Box::new(key_expr),
                 loc: Some(Location {

@@ -200,8 +200,17 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                 *addr = Some(VarAddr::MapId {
                     addr: map_id as u32,
                 });
-                let fn_id = match table.lookup(&fn_name) {
-                    Some(id) => id,
+                let fn_id = match table.lookup_rec(&fn_name) {
+                    Some(id) => match id {
+                        Record::LibFn { fn_id, .. } => fn_id,
+                        _ => {
+                            return Err(Box::new(ErrorGen::get_unexpected_error(
+                                true,
+                                Some(format!("{err_msg} Map function not in symbol table")),
+                                None,
+                            )))
+                        }
+                    },
                     None => {
                         return Err(Box::new(ErrorGen::get_unexpected_error(
                             true,
@@ -212,7 +221,7 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                 };
 
                 injector.i32_const(map_id);
-                injector.call(*fn_id as u32);
+                injector.call(*fn_id);
                 return Ok(true);
             }
             match &mut addr {
@@ -336,8 +345,17 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                     *addr = Some(VarAddr::MapId {
                         addr: map_id as u32,
                     });
-                    let fn_id = match table.lookup(&fn_name) {
-                        Some(id) => id,
+                    let fn_id = match table.lookup_rec(&fn_name) {
+                        Some(id) => match id {
+                            Record::LibFn { fn_id, .. } => fn_id,
+                            _ => {
+                                return Err(Box::new(ErrorGen::get_unexpected_error(
+                                    true,
+                                    Some(format!("{err_msg} Map function not in symbol table")),
+                                    None,
+                                )))
+                            }
+                        },
                         None => {
                             return Err(Box::new(ErrorGen::get_unexpected_error(
                                 true,
@@ -347,7 +365,7 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                         }
                     };
                     injector.i32_const(map_id);
-                    injector.call(*fn_id as u32);
+                    injector.call(*fn_id);
                     return Ok(true);
                 }
                 match &mut addr {
@@ -531,8 +549,17 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                     Ok(to_call) => to_call,
                     Err(e) => return Err(e),
                 };
-                let fn_id = match table.lookup(&to_call) {
-                    Some(id) => *id,
+                let fn_id = match table.lookup_rec(&to_call) {
+                    Some(id) => match id {
+                        Record::LibFn { fn_id, .. } => *fn_id,
+                        _ => {
+                            return Err(Box::new(ErrorGen::get_unexpected_error(
+                                true,
+                                Some(format!("{err_msg} Map function not in symbol table")),
+                                None,
+                            )))
+                        }
+                    },
                     None => {
                         return Err(Box::new(ErrorGen::get_unexpected_error(
                             true,
@@ -561,7 +588,7 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                     report_var_metadata,
                     err_msg,
                 )?;
-                injector.call(fn_id as u32);
+                injector.call(fn_id);
                 return Ok(true);
             }
             Err(e) => {
@@ -1035,8 +1062,8 @@ fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
                 err_msg,
             )?;
         }
-        Expr::GetMap { .. } => {
-            is_success &= emit_get_map(
+        Expr::MapGet { .. } => {
+            is_success &= emit_map_get(
                 expr,
                 injector,
                 table,
@@ -1186,7 +1213,7 @@ fn emit_value<'a, T: Opcode<'a> + ModuleBuilder>(
     }
     Ok(is_success)
 }
-fn emit_get_map<'a, T: Opcode<'a> + ModuleBuilder>(
+fn emit_map_get<'a, T: Opcode<'a> + ModuleBuilder>(
     expr: &mut Expr,
     injector: &mut T,
     table: &mut SymbolTable,
@@ -1195,7 +1222,7 @@ fn emit_get_map<'a, T: Opcode<'a> + ModuleBuilder>(
     report_var_metadata: &mut ReportVarMetadata,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
-    if let Expr::GetMap { map, key, .. } = expr {
+    if let Expr::MapGet { map, key, .. } = expr {
         let map = &mut (**map);
         if let Expr::VarId { name, .. } = map {
             match get_map_info(table, name) {
@@ -1204,8 +1231,17 @@ fn emit_get_map<'a, T: Opcode<'a> + ModuleBuilder>(
                         Ok(to_call) => to_call,
                         Err(e) => return Err(e),
                     };
-                    let fn_id = match table.lookup(&to_call) {
-                        Some(id) => *id,
+                    let fn_id = match table.lookup_rec(&to_call) {
+                        Some(id) => match id {
+                            Record::LibFn { fn_id, .. } => *fn_id,
+                            _ => {
+                                return Err(Box::new(ErrorGen::get_unexpected_error(
+                                    true,
+                                    Some(format!("{err_msg} Map function not in symbol table")),
+                                    None,
+                                )))
+                            }
+                        },
                         None => {
                             return Err(Box::new(ErrorGen::get_unexpected_error(
                                 true,
@@ -1224,7 +1260,7 @@ fn emit_get_map<'a, T: Opcode<'a> + ModuleBuilder>(
                         report_var_metadata,
                         err_msg,
                     )?;
-                    injector.call(fn_id as u32);
+                    injector.call(fn_id);
                     return Ok(true);
                 }
                 Err(e) => {
@@ -1237,7 +1273,7 @@ fn emit_get_map<'a, T: Opcode<'a> + ModuleBuilder>(
         false,
         Some(format!(
             "{err_msg} \
-            Wrong statement type, should be `get_map`"
+            Wrong statement type, should be `map_get`"
         )),
         None,
     )))

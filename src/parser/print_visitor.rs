@@ -473,7 +473,7 @@ impl WhammVisitor<String> for AsStrVisitor {
                 s += &format!("{}{}", self.visit_unop(op), self.visit_expr(expr));
                 s
             }
-            Expr::GetMap { map, key, .. } => {
+            Expr::MapGet { map, key, .. } => {
                 let mut s = "".to_string();
                 s += &format!("(map) {}[{}]", self.visit_expr(map), self.visit_expr(key));
                 s

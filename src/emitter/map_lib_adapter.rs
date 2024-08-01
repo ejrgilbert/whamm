@@ -38,10 +38,7 @@ impl MapLibAdapter {
         report_var_metadata
             .map_metadata
             .insert(map_id, map_data.clone());
-        if !report_var_metadata.all_metadata.insert(map_data) {
-            return false;
-        }
-        true
+        report_var_metadata.all_metadata.insert(map_data)
     }
     // -------------------------------------
     // Map creation fns

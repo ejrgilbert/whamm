@@ -748,7 +748,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
 
                 Some(DataType::AssumeGood)
             }
-            Expr::GetMap { map, key, loc } => {
+            Expr::MapGet { map, key, loc } => {
                 //ensure that map is a map, then get the other stuff from the map info
                 let map_ty = self.visit_expr(map);
                 let key_ty = self.visit_expr(key);

@@ -11,6 +11,7 @@ wasm:opcode:call:before /
     report map<i32, i32> m;
     m[1] = 2;
     whatever = 3;
+    arg0 = 1;
 }
 wasm:opcode:call:after / 
     target_fn_name == "foo"

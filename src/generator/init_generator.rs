@@ -9,6 +9,7 @@ use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Fn, Global, ProvidedFunction, Script, Statement,
     UnOp, Value, Whamm, WhammVisitorMut,
 };
+use crate::verifier::types::Record;
 use log::{info, trace, warn};
 use orca::FunctionBuilder;
 use std::collections::HashMap;
@@ -115,10 +116,14 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
                 None => std::u32::MAX,
             };
             match self.emitter.table.get_curr_scope_mut() {
-                Some(scope) => {
-                    if id != std::u32::MAX {
-                        scope.put(lib_fn.clone(), id as usize);
-                    }
+                Some(_) => {
+                    self.emitter.table.put(
+                        lib_fn.to_string(),
+                        Record::LibFn {
+                            name: lib_fn.to_string(),
+                            fn_id: id,
+                        },
+                    );
                 }
                 _ => {
                     self.err.add_error(ErrorGen::get_unexpected_error(
@@ -482,7 +487,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
                 // ignore, will not have a string to emit
                 true
             }
-            Expr::GetMap { map, key, .. } => {
+            Expr::MapGet { map, key, .. } => {
                 let mut is_success = true;
                 is_success &= self.visit_expr(map);
                 is_success &= self.visit_expr(key);

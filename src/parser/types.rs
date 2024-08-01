@@ -303,7 +303,7 @@ pub enum Expr {
         val: Value,
         loc: Option<Location>,
     },
-    GetMap {
+    MapGet {
         map: Box<Expr>, //This should be a VarId
         key: Box<Expr>,
         loc: Option<Location>,
@@ -317,7 +317,7 @@ impl Expr {
             | Expr::BinOp { loc, .. }
             | Expr::Call { loc, .. }
             | Expr::VarId { loc, .. }
-            | Expr::GetMap { loc, .. }
+            | Expr::MapGet { loc, .. }
             | Expr::Primitive { loc, .. } => loc,
         }
     }
