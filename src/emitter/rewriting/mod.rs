@@ -648,7 +648,11 @@ fn emit_set<'a, T: Opcode<'a>>(
                     Some(VarAddr::Local { addr }) => {
                         injector.local_set(*addr);
                     },
-                    Some(VarAddr::MapId { .. }) | None => {
+                    Some(VarAddr::MapId { .. }) => {
+                        return Err(Box::new(ErrorGen::get_type_check_error_from_loc(false,
+                            format!("Attempted to assign a var to Map: {}", name), loc)));
+                    }
+                    None => {
                         return Err(Box::new(ErrorGen::get_type_check_error_from_loc(false,
                                                                                     format!("Variable assigned before declared: {}", name), loc)));
                     }
@@ -976,7 +980,18 @@ fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
                         Some(VarAddr::Local { addr }) => {
                             injector.local_get(*addr);
                         }
-                        Some(VarAddr::MapId { .. }) | None => {
+                        Some(VarAddr::MapId { .. }) => {
+                            return Err(Box::new(ErrorGen::get_unexpected_error(
+                                true,
+                                Some(format!(
+                                    "{err_msg} \
+                                        Variable you are trying to use in expr is a Map object {}",
+                                    name
+                                )),
+                                None,
+                            )));
+                        }
+                        None => {
                             return Err(Box::new(ErrorGen::get_unexpected_error(
                                 true,
                                 Some(format!(
