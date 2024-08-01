@@ -450,17 +450,25 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                     }
                     _ => {
                         let default_global = whamm_type_to_wasm_global(ty);
-                        let global_id = self.app_wasm.add_global(default_global);
+                        let global_id = self.app_wasm.add_global(default_global.clone());
                         *addr = Some(VarAddr::Global { addr: global_id });
                         //now save off the global variable metadata
                         let mut is_success = Ok(true);
                         if report_mode {
                             is_success = match self
                                 .report_var_metadata
-                                .put_global_metadata(global_id as usize, name)
+                                .put_global_metadata(global_id as usize, name.clone())
                             {
                                 Ok(b) => Ok(b),
                                 Err(e) => Err(e),
+                            }
+                        }
+                        match is_success {
+                            Ok(_) => {
+                                is_success = self.emit_global_getter(&global_id, name, &default_global.ty)
+                            }
+                            Err(e) => {
+                                return Err(e);
                             }
                         }
                         is_success
@@ -488,8 +496,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                     None,
                 )))
             }
-        };
-        Ok(true)
+        }
     }
     pub fn emit_global_stmts(&mut self, stmts: &mut [Statement]) -> Result<bool, Box<WhammError>> {
         // NOTE: This should be done in the Module entrypoint
