@@ -1062,8 +1062,8 @@ fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
                 err_msg,
             )?;
         }
-        Expr::GetMap { .. } => {
-            is_success &= emit_get_map(
+        Expr::MapGet { .. } => {
+            is_success &= emit_map_get(
                 expr,
                 injector,
                 table,
@@ -1213,7 +1213,7 @@ fn emit_value<'a, T: Opcode<'a> + ModuleBuilder>(
     }
     Ok(is_success)
 }
-fn emit_get_map<'a, T: Opcode<'a> + ModuleBuilder>(
+fn emit_map_get<'a, T: Opcode<'a> + ModuleBuilder>(
     expr: &mut Expr,
     injector: &mut T,
     table: &mut SymbolTable,
@@ -1222,7 +1222,7 @@ fn emit_get_map<'a, T: Opcode<'a> + ModuleBuilder>(
     report_var_metadata: &mut ReportVarMetadata,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
-    if let Expr::GetMap { map, key, .. } = expr {
+    if let Expr::MapGet { map, key, .. } = expr {
         let map = &mut (**map);
         if let Expr::VarId { name, .. } = map {
             match get_map_info(table, name) {
@@ -1273,7 +1273,7 @@ fn emit_get_map<'a, T: Opcode<'a> + ModuleBuilder>(
         false,
         Some(format!(
             "{err_msg} \
-            Wrong statement type, should be `get_map`"
+            Wrong statement type, should be `map_get`"
         )),
         None,
     )))

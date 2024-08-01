@@ -369,7 +369,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                     true,
                     Some(format!(
                         "{UNEXPECTED_ERR_MSG} \
-                Global variable symbol does not exist in this scope! - in emit_report_global"
+                Global variable symbol does not exist in this scope! - in emit_global_inner"
                     )),
                     None,
                 )));

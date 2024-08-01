@@ -487,7 +487,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
                 // ignore, will not have a string to emit
                 true
             }
-            Expr::GetMap { map, key, .. } => {
+            Expr::MapGet { map, key, .. } => {
                 let mut is_success = true;
                 is_success &= self.visit_expr(map);
                 is_success &= self.visit_expr(key);

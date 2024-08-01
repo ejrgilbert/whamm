@@ -16,7 +16,7 @@ impl ExprFolder {
             Expr::Call { .. } => ExprFolder::fold_call(expr, table),
             Expr::VarId { .. } => ExprFolder::fold_var_id(expr, table),
             Expr::Primitive { .. } => ExprFolder::fold_primitive(expr, table),
-            Expr::GetMap { .. } => ExprFolder::fold_map_get(expr, table),
+            Expr::MapGet { .. } => ExprFolder::fold_map_get(expr, table),
         }
     }
 
@@ -190,10 +190,10 @@ impl ExprFolder {
     }
 
     fn fold_map_get(expr: &Expr, table: &SymbolTable) -> Expr {
-        if let Expr::GetMap { map, key, .. } = &expr {
+        if let Expr::MapGet { map, key, .. } = &expr {
             let map = ExprFolder::fold_expr(map, table);
             let key = ExprFolder::fold_expr(key, table);
-            return Expr::GetMap {
+            return Expr::MapGet {
                 map: Box::new(map),
                 key: Box::new(key),
                 loc: None,
