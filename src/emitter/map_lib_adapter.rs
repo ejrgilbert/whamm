@@ -49,13 +49,13 @@ impl MapLibAdapter {
 
     pub fn create_local_map_meta(
         &mut self,
-        map_id: i32,
+        map_id: Option<i32>,
         name: String,
         script_id: String,
         bytecode_loc: (i32, i32),
         probe_id: String,
         report_var_metadata: &mut ReportVarMetadata,
-    ) -> bool {
+    ) -> (bool, i32) {
         //call the put code for the metadata
         let metadata = Metadata::Local {
             name,
@@ -63,17 +63,33 @@ impl MapLibAdapter {
             bytecode_loc,
             probe_id,
         };
-        self.put_map_metadata(map_id, metadata, report_var_metadata)
+        let map_id = match map_id {
+            Some(id) => id,
+            None => {
+                let temp = self.get_map_count();
+                self.increment_map_count();
+                temp
+            }
+        };
+        (self.put_map_metadata(map_id, metadata, report_var_metadata), map_id)
     }
     pub fn create_global_map_meta(
         &mut self,
-        map_id: i32,
+        map_id: Option<i32>,
         name: String,
         script_id: String,
         report_var_metadata: &mut ReportVarMetadata,
-    ) -> bool {
+    ) -> (bool, i32) {
         let metadata = Metadata::Global { name, script_id };
-        self.put_map_metadata(map_id, metadata, report_var_metadata)
+        let map_id = match map_id {
+            Some(id) => id,
+            None => {
+                let temp = self.get_map_count();
+                self.increment_map_count();
+                temp
+            }
+        };
+        (self.put_map_metadata(map_id, metadata, report_var_metadata), map_id)
     }
     pub fn create_local_map(
         &mut self,
@@ -85,10 +101,8 @@ impl MapLibAdapter {
         report_var_metadata: &mut ReportVarMetadata,
     ) -> Result<(String, i32), Box<WhammError>> {
         //create the metadata for the map
-        let map_id = self.get_map_count();
-        self.increment_map_count();
-        let result = self.create_local_map_meta(
-            map_id,
+        let (result, map_id) = self.create_local_map_meta(
+            None,
             name.clone(),
             script_id,
             bytecode_loc,
@@ -125,10 +139,8 @@ impl MapLibAdapter {
         map: DataType,
         report_var_metadata: &mut ReportVarMetadata,
     ) -> Result<(String, i32), Box<WhammError>> {
-        let map_id = self.get_map_count();
-        self.increment_map_count();
-        let result =
-            self.create_global_map_meta(map_id, name.clone(), script_id, report_var_metadata);
+        let (result, map_id) =
+            self.create_global_map_meta(None, name.clone(), script_id, report_var_metadata);
         if !result {
             return Err(Box::new(ErrorGen::get_unexpected_error(
                 true,
@@ -149,6 +161,7 @@ impl MapLibAdapter {
         }
     }
     pub fn create_no_meta_map(&mut self, map: DataType) -> Result<(String, i32), Box<WhammError>> {
+        //this one isn't abstracted away because no map_metadata needs to be stored 
         let map_id = self.get_map_count();
         self.increment_map_count();
         match map {
