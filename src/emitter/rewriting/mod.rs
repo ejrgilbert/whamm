@@ -1352,8 +1352,8 @@ fn get_map_info(
     Ok((map_id, key_ty, val_ty))
 }
 fn print_report_all<'a, T: Opcode<'a> + ModuleBuilder>(
-    _injector: &mut T,
-    _table: &mut SymbolTable,
+    injector: &mut T,
+    table: &mut SymbolTable,
     report_var_metadata: &mut ReportVarMetadata,
     _err_msg: &str,
 ) -> Result<(), Box<WhammError>> {
@@ -1361,15 +1361,21 @@ fn print_report_all<'a, T: Opcode<'a> + ModuleBuilder>(
         return Ok(());
     }
     //TODO - uncomment this when we have metadata maps correctly initialized
-    // let fn_id = match table.lookup("print_meta") {
-    //     Some(rec_id) => *rec_id,
-    //     _ => {
+    // let fn_id = match table.lookup_rec("print_meta") {
+    //     Some(id) => match id {
+    //         Record::LibFn { fn_id, .. } => *fn_id,
+    //         _ => {
+    //             return Err(Box::new(ErrorGen::get_unexpected_error(
+    //                 true,
+    //                 Some(format!("print_meta not in symbol table")),
+    //                 None,
+    //             )))
+    //         }
+    //     },
+    //     None => {
     //         return Err(Box::new(ErrorGen::get_unexpected_error(
     //             true,
-    //             Some(format!(
-    //                 "{err_msg} \
-    //                 print_meta function not in symbol table!"
-    //             )),
+    //             Some(format!("Wrong record in symbol table")),
     //             None,
     //         )));
     //     }
