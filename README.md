@@ -3,7 +3,7 @@
 </picture>
 
 # whamm! #
-![build](https://github.com/ejrgilbert/whamm/actions/workflows/rust.yml/badge.svg)
+![build](https://github.com/ejrgilbert/whamm/actions/workflows/test.yml/badge.svg)
 [![book](https://img.shields.io/badge/book-WIP-4d76ae.svg)](https://ejrgilbert.github.io/whamm/intro.html)
 
 ## Debugging Wasm? Put some `whamm!` on it! ##
