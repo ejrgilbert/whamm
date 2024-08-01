@@ -145,7 +145,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
         });
         self.in_function = false;
         script.providers.iter_mut().for_each(|(_, provider)| {
-
             self.visit_provider(provider);
         });
 

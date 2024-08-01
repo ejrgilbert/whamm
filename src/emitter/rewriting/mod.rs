@@ -10,9 +10,7 @@ use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{BinOp, Block, DataType, Expr, Statement, UnOp, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
-use orca::ir::types::{
-    BlockType, DataType as OrcaType, Global, Value as OrcaValue,
-};
+use orca::ir::types::{BlockType, DataType as OrcaType, Global, Value as OrcaValue};
 use orca::opcode::Opcode;
 use orca::{InitExpr, ModuleBuilder};
 use wasmparser::{GlobalType, ValType};
@@ -77,7 +75,7 @@ fn emit_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
             report_var_metadata,
             err_msg,
         ),
-        Statement::Expr { expr, .. } | Statement::Return { expr, .. }=> emit_expr(
+        Statement::Expr { expr, .. } | Statement::Return { expr, .. } => emit_expr(
             expr,
             injector,
             table,

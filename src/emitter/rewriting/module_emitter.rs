@@ -5,10 +5,12 @@ use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca::{DataSegment, DataSegmentKind, InitExpr};
 use std::collections::HashMap;
 
+use crate::emitter::map_lib_adapter::MapLibAdapter;
+use crate::emitter::rewriting::{
+    emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global, Emitter,
+};
 use orca::ir::types::{BlockType as OrcaBlockType, DataType as OrcaType, Value as OrcaValue};
 use wasmparser::GlobalType;
-use crate::emitter::map_lib_adapter::MapLibAdapter;
-use crate::emitter::rewriting::{emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global, Emitter};
 
 use orca::ir::function::FunctionBuilder;
 use orca::ir::module::Module;
@@ -465,7 +467,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                         }
                         match is_success {
                             Ok(_) => {
-                                is_success = self.emit_global_getter(&global_id, name, &default_global.ty)
+                                is_success =
+                                    self.emit_global_getter(&global_id, name, &default_global.ty)
                             }
                             Err(e) => {
                                 return Err(e);
@@ -546,7 +549,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
 }
 impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
     fn emit_body(&mut self, body: &mut Block) -> Result<bool, Box<WhammError>> {
-
         if let Some(emitting_func) = &mut self.emitting_func {
             emit_body(
                 body,

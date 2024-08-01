@@ -400,7 +400,6 @@ wasm::call:alt /
     let table = verifier::build_symbol_table(&mut ast, &mut err);
     debug!("{:#?}", table);
 
-
     // 7 scopes: whamm, strcmp, script0, wasm, alt_call_by_name, alt_call_by_id, opcode, call, alt
     let num_scopes = 9;
     // records: num_scopes PLUS (str_addr, func_id, func_name, value, wasm_opcode_loc, target_imp_name, target_fn_type, target_imp_module, imm0, arg[0:9]+)
@@ -546,12 +545,12 @@ pub fn test_report_decl() {
             a = 1;
             report bool b;
         }"#;
-        let mut ast = tests::get_ast(script, &mut err);
-        let mut table = verifier::build_symbol_table(&mut ast, &mut err);
-        let res = verifier::type_check(&mut ast, &mut table, &mut err);
-        err.report();
-        assert!(!err.has_errors);
-        assert!(res);
+    let mut ast = tests::get_ast(script, &mut err);
+    let mut table = verifier::build_symbol_table(&mut ast, &mut err);
+    let res = verifier::type_check(&mut ast, &mut table, &mut err);
+    err.report();
+    assert!(!err.has_errors);
+    assert!(res);
 }
 //TODO: uncomment after BEGIN is working
 

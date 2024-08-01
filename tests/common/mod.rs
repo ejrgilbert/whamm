@@ -77,7 +77,7 @@ fn get_ast(script: &str, err: &mut ErrorGen) -> Option<Whamm> {
 }
 
 const TEST_DEBUG_DIR: &str = "output/tests/debug_me/";
-pub fn run_whamm(mut app_wasm:&mut Module, whamm_script: &String, script_path: &str) -> Vec<u8> {
+pub fn run_whamm(mut app_wasm: &mut Module, whamm_script: &String, script_path: &str) -> Vec<u8> {
     let mut err = ErrorGen::new(script_path.to_string(), whamm_script.clone(), 0);
 
     let ast_res = get_ast(whamm_script, &mut err);
@@ -139,7 +139,6 @@ pub fn run_whamm(mut app_wasm:&mut Module, whamm_script: &String, script_path: &
             &mut map_knower,
             &mut report_var_metadata,
         ),
-
         simple_ast,
         &mut err,
     );

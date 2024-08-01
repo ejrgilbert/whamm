@@ -648,7 +648,6 @@ pub fn testing_map() {
     "#;
 
     assert!(is_valid_script(script, &mut err));
-
 }
 #[test]
 pub fn test_report_decl() {
@@ -662,7 +661,6 @@ pub fn test_report_decl() {
         }
     "#;
     assert!(is_valid_script(script, &mut err));
-
 }
 // ===================
 // = Full File Tests =

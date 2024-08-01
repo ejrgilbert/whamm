@@ -4,7 +4,7 @@ use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::emitter::rewriting::rules::wasm::OpcodeEvent;
 use crate::emitter::rewriting::rules::{Arg, LocInfo, Provider, WhammProvider};
-use crate::emitter::rewriting::{emit_expr, whamm_type_to_wasm_global, block_type_to_wasm};
+use crate::emitter::rewriting::{block_type_to_wasm, emit_expr, whamm_type_to_wasm_global};
 use crate::emitter::rewriting::{emit_stmt, print_report_all, Emitter};
 
 use crate::generator::types::ExprFolder;
@@ -129,7 +129,9 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                         value: None,
                         is_comp_provided: false,
                         is_report_var: false,
-                        addr: Some(VarAddr::Local { addr: *arg_local_id }),
+                        addr: Some(VarAddr::Local {
+                            addr: *arg_local_id,
+                        }),
                         loc: None,
                     },
                 );
