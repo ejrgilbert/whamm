@@ -285,6 +285,17 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
         }
     }
 
+    pub(crate) fn memory_grow(&mut self) {
+        // If we've emitted any strings, bump the app's memory up to account for that
+        if !self.mem_tracker.emitted_strings.is_empty() {
+            if let Some(mem) = self.app_wasm.memories.get_mut(0) {
+                if mem.initial < self.mem_tracker.required_initial_mem_size {
+                    mem.initial = self.mem_tracker.required_initial_mem_size;
+                }
+            }
+        }
+    }
+
     pub(crate) fn emit_global_getter(
         &mut self,
         global_id: &u32,

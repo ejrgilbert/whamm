@@ -45,7 +45,7 @@
     (start $five_params)
     (export "five_params" (func $five_params))
     (export "get_global_var" (func $get_global_var))
-    (memory (;0;) 27) ;; TODO -- Memory must have enough pages to account for the injected strings! Make this work via whamm!
+    (memory (;0;) 1)
 )
 
 ;; -------------------------------------------------
