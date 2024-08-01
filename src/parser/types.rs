@@ -511,7 +511,43 @@ impl Whamm {
             false,
         );
 
-        vec![strcmp]
+        let puti_params = vec![(
+            Expr::VarId {
+                is_comp_provided: true,
+                name: "value".to_string(),
+                loc: None,
+            },
+            DataType::I32,
+        )];
+
+        let puti = ProvidedFunction::new(
+            "puti".to_string(),
+            "[WIZARD] Print an integer to the console.".to_string(),
+            puti_params,
+            DataType::Null,
+            false,
+        );
+
+        let puts_params = vec![(
+            Expr::VarId {
+                is_comp_provided: true,
+                name: "value".to_string(),
+                loc: None,
+            },
+            DataType::Str,
+        )];
+
+        let puts = ProvidedFunction::new(
+            "puts".to_string(),
+            "[WIZARD] Print a string to the console.".to_string(),
+            puts_params,
+            DataType::Null,
+            false,
+        );
+
+        // Note: the ordering here is very important
+        // imported functions, like `puts` and `puti` must come before local functions
+        vec![puti, puts, strcmp]
     }
 
     fn get_provided_globals() -> HashMap<String, ProvidedGlobal> {

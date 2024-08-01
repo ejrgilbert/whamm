@@ -46,8 +46,8 @@ pub enum Cmd {
 #[derive(Debug, Args)]
 pub struct InstrArgs {
     /// The path to the application's Wasm module we want to instrument.
-    #[arg(short, long, value_parser)]
-    pub app: String,
+    #[arg(short, long, value_parser, required_unless_present = "wizard")]
+    pub app: Option<String>,
     /// The path to the Script containing the instrumentation Probe definitions.
     #[arg(short, long, value_parser)]
     pub script: String,
@@ -55,9 +55,9 @@ pub struct InstrArgs {
     #[arg(short, long, value_parser, default_value = "./output/output.wasm")]
     pub output_path: String,
 
-    /// Whether to emit Virgil code as the instrumentation code
+    /// Whether to emit mon.wasm for instrumenting with Wizard Engine
     #[arg(short, long, action, default_value = "false")]
-    pub virgil: bool,
+    pub wizard: bool,
 }
 
 // pub fn print_completion<G: Generator>(gen: G, app: &mut App) {

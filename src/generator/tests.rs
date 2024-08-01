@@ -10,7 +10,6 @@ use crate::parser::types::{BinOp, DataType, Expr, Value, Whamm};
 use crate::verifier::types::{Record, ScopeType, SymbolTable};
 use crate::verifier::verifier;
 use log::{debug, error};
-use std::process::exit;
 
 pub fn setup_logger() {
     let _ = env_logger::builder().is_test(true).try_init();

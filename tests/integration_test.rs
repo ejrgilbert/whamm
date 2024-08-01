@@ -101,8 +101,7 @@ fn instrument_spin_with_fault_injection() {
 fn instrument_with_wizard_monitors() {
     common::setup_logger();
     let processed_scripts = common::setup_wizard_monitors();
-    // TODO -- change this when you've supported this monitor type
-    assert_eq!(processed_scripts.len(), 0);
+    assert_eq!(processed_scripts.len(), 1);
 }
 
 #[test]

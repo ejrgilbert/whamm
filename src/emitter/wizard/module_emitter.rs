@@ -1,8 +1,9 @@
+// Wizard emitter
+// here app.wasm is just mon.wasm
 use crate::common::error::{ErrorGen, WhammError};
 use crate::parser::types::{Block, DataType, Definition, Expr, Fn, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca::{DataSegment, DataSegmentKind, InitExpr};
-use std::collections::HashMap;
 
 use orca::ir::types::{BlockType, DataType as OrcaType, Value as OrcaValue};
 use wasmparser::GlobalType;
@@ -10,6 +11,7 @@ use wasmparser::GlobalType;
 use crate::emitter::rewriting::{
     emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global, Emitter,
 };
+
 use orca::ir::function::FunctionBuilder;
 use orca::ir::module::Module;
 use orca::opcode::Opcode;
@@ -17,18 +19,7 @@ use orca::opcode::Opcode;
 const UNEXPECTED_ERR_MSG: &str =
     "ModuleEmitter: Looks like you've found a bug...please report this behavior!";
 
-pub struct MemoryTracker {
-    pub mem_id: u32,
-    pub curr_mem_offset: usize,
-    pub required_initial_mem_size: u64,
-    pub emitted_strings: HashMap<String, StringAddr>,
-}
-
-pub struct StringAddr {
-    pub data_id: u32,
-    pub mem_offset: usize,
-    pub len: usize,
-}
+use crate::emitter::rewriting::module_emitter::{MemoryTracker, StringAddr};
 
 pub struct ModuleEmitter<'a, 'b, 'c, 'd> {
     pub app_wasm: &'a mut Module<'b>,
@@ -55,12 +46,15 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
         }
     }
 
+    pub fn export_mnemonic(&mut self, mnemonic: String, func_id: u32) {
+        self.app_wasm.add_export_func(mnemonic, func_id);
+    }
+
     fn emit_provided_fn(&mut self, context: &str, f: &Fn) -> Result<bool, Box<WhammError>> {
         match (context, f.name.name.as_str()) {
             ("whamm", "strcmp") => self.emit_whamm_strcmp_fn(f),
-            // the following are wizard-only functions, no need to emit for bytecode rewriting
-            ("whamm", "puti") => Ok(true),
-            ("whamm", "puts") => Ok(true),
+            ("whamm", "puti") => self.emit_puti(f),
+            ("whamm", "puts") => self.emit_puts(f),
             _ => Err(Box::new(ErrorGen::get_unexpected_error(
                 true,
                 Some(format!(
@@ -71,6 +65,66 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
                 None,
             ))),
         }
+    }
+
+    fn set_fn_addr(&mut self, f: &Fn, func_id: u32) -> Result<bool, Box<WhammError>> {
+        let rec_id = match self.table.lookup(&f.name.name) {
+            Some(rec_id) => *rec_id,
+            _ => {
+                return Err(Box::new(ErrorGen::get_unexpected_error(
+                    true,
+                    Some(format!(
+                        "{UNEXPECTED_ERR_MSG} \
+                `puts` fn symbol does not exist in this scope!"
+                    )),
+                    None,
+                )));
+            }
+        };
+
+        return if let Some(rec) = self.table.get_record_mut(&rec_id) {
+            if let Record::Fn { addr, .. } = rec {
+                *addr = Some(func_id);
+                Ok(true)
+            } else {
+                return Err(Box::new(ErrorGen::get_unexpected_error(
+                    true,
+                    Some(format!(
+                        "{UNEXPECTED_ERR_MSG} \
+                Incorrect global variable record, expected Record::Var, found: {:?}",
+                        rec
+                    )),
+                    None,
+                )));
+            }
+        } else {
+            return Err(Box::new(ErrorGen::get_unexpected_error(
+                true,
+                Some(format!(
+                    "{UNEXPECTED_ERR_MSG} \
+            Global variable symbol does not exist!"
+                )),
+                None,
+            )));
+        };
+    }
+
+    fn emit_puts(&mut self, f: &Fn) -> Result<bool, Box<WhammError>> {
+        let puts_type_id = self.app_wasm.add_type(&[OrcaType::I32, OrcaType::I32], &[]);
+        let puts_func_id =
+            self.app_wasm
+                .add_import_func("wizeng".to_string(), "puts".to_string(), puts_type_id);
+        self.app_wasm.set_fn_name(puts_func_id, "puts".to_string());
+        self.set_fn_addr(f, puts_func_id)
+    }
+
+    fn emit_puti(&mut self, f: &Fn) -> Result<bool, Box<WhammError>> {
+        let puti_type_id = self.app_wasm.add_type(&[OrcaType::I32], &[]);
+        let puti_func_id =
+            self.app_wasm
+                .add_import_func("wizeng".to_string(), "puti".to_string(), puti_type_id);
+        self.app_wasm.set_fn_name(puti_func_id, "puti".to_string());
+        self.set_fn_addr(f, puti_func_id)
     }
 
     fn emit_whamm_strcmp_fn(&mut self, f: &Fn) -> Result<bool, Box<WhammError>> {
@@ -176,7 +230,7 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
         let strcmp_id = strcmp.finish_module(self.app_wasm);
         self.app_wasm.set_fn_name(strcmp_id, "strcmp".to_string());
 
-        set_fn_addr(self.table, f, strcmp_id)
+        self.set_fn_addr(f, strcmp_id)
     }
 
     pub(crate) fn enter_scope(&mut self) -> Result<(), Box<WhammError>> {
@@ -258,17 +312,6 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
                     )),
                     None,
                 )))
-            }
-        }
-    }
-
-    pub(crate) fn memory_grow(&mut self) {
-        // If we've emitted any strings, bump the app's memory up to account for that
-        if !self.mem_tracker.emitted_strings.is_empty() {
-            if let Some(mem) = self.app_wasm.memories.get_mut(0) {
-                if mem.initial < self.mem_tracker.required_initial_mem_size {
-                    mem.initial = self.mem_tracker.required_initial_mem_size;
-                }
             }
         }
     }
@@ -437,50 +480,4 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_> {
             Err(self.get_unexpected_err())
         }
     }
-}
-
-pub(crate) fn set_fn_addr(
-    table: &mut SymbolTable,
-    f: &Fn,
-    func_id: u32,
-) -> Result<bool, Box<WhammError>> {
-    let rec_id = match table.lookup(&f.name.name) {
-        Some(rec_id) => *rec_id,
-        _ => {
-            return Err(Box::new(ErrorGen::get_unexpected_error(
-                true,
-                Some(format!(
-                    "{UNEXPECTED_ERR_MSG} \
-            `puts` fn symbol does not exist in this scope!"
-                )),
-                None,
-            )));
-        }
-    };
-
-    return if let Some(rec) = table.get_record_mut(&rec_id) {
-        if let Record::Fn { addr, .. } = rec {
-            *addr = Some(func_id);
-            Ok(true)
-        } else {
-            return Err(Box::new(ErrorGen::get_unexpected_error(
-                true,
-                Some(format!(
-                    "{UNEXPECTED_ERR_MSG} \
-            Incorrect global variable record, expected Record::Var, found: {:?}",
-                    rec
-                )),
-                None,
-            )));
-        }
-    } else {
-        return Err(Box::new(ErrorGen::get_unexpected_error(
-            true,
-            Some(format!(
-                "{UNEXPECTED_ERR_MSG} \
-        Global variable symbol does not exist!"
-            )),
-            None,
-        )));
-    };
 }
