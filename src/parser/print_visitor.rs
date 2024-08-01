@@ -422,7 +422,7 @@ impl WhammVisitor<String> for AsStrVisitor {
                 )
             }
             Statement::ReportDecl { decl, .. } => {
-                format!("{} {}", "report", self.visit_stmt(decl))
+                format!("report {}", self.visit_stmt(decl))
             }
         }
     }

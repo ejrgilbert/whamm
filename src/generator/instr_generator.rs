@@ -1,3 +1,6 @@
+use orca::iterator::iterator_trait::Iterator;
+use orca::Location as OrcaLocation;
+
 use crate::common::error::ErrorGen;
 
 use crate::emitter::rewriting::rules::{provider_factory, Arg, LocInfo, WhammProvider};
@@ -91,7 +94,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     // This location has matched some rules, inject each matched probe!
                     loc_info.probes.iter().for_each(|(probe_spec, probe)| {
                         // Enter the scope for this matched probe
-                        self.set_curr_probe(probe_spec, probe);
+                        self.set_curr_loc(probe_spec, probe);
                         is_success = self
                             .emitter
                             .enter_scope_via_spec(&probe.script_id, probe_spec);
@@ -137,168 +140,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 }
             });
         }
-        // //after running, emit the metadata from the report_var_metadata into maps 0 and 1 in app_wasm
-        // let ref report_var_metadata = self.emitter.report_var_metadata;
-        // let ref mut module = self.emitter.app_iter.module;
-        // let ref var_meta = report_var_metadata.variable_metadata;
-        // let ref map_meta = report_var_metadata.map_metadata;
-        // let mut var_meta_str: HashMap<i32, String> = HashMap::new();
-        // let mut map_meta_str: HashMap<i32, String> = HashMap::new();
-        // //convert the metadata into strings, add those to the data section, then use those to populate the maps
-        // for (key, value) in var_meta.iter() {
-        //     //first, emit the string to data section
-        //     let val = convert_meta_to_string(value);
-        //     let data_id = module.data.len();
-        //         let val_bytes = val.as_bytes().to_owned();
-        //         let data_segment = DataSegment {
-        //             data: val_bytes,
-        //             kind: DataSegmentKind::Active {
-        //                 memory_index: self.emitter.mem_tracker.mem_id,
-        //                 offset_expr: InitExpr::Value(OrcaValue::I32(
-        //                     self.emitter.mem_tracker.curr_mem_offset as i32,
-        //                 )),
-        //             },
-        //         };
-        //         module.data.push(data_segment);
-        //         // save the memory addresses/lens, so they can be used as appropriate
-        //         self.emitter.mem_tracker.emitted_strings.insert(
-        //             val.clone(),
-        //             StringAddr {
-        //                 data_id: data_id as u32,
-        //                 mem_offset: self.emitter.mem_tracker.curr_mem_offset,
-        //                 len: val.len(),
-        //             },
-        //         );
-        //         // update curr_mem_offset to account for new data
-        //     self.emitter.mem_tracker.curr_mem_offset += val.len();
-        //     //now set the new key value for the new maps
-        //     var_meta_str.insert(*key as i32, val);
-        // }
-        // for (key, value) in map_meta.iter() {
-        //     //first, emit the string to data section
-        //     let val = convert_meta_to_string(value);
-        //     let data_id = module.data.len();
-        //         let val_bytes = val.as_bytes().to_owned();
-        //         let data_segment = DataSegment {
-        //             data: val_bytes,
-        //             kind: DataSegmentKind::Active {
-        //                 memory_index: self.emitter.mem_tracker.mem_id,
-        //                 offset_expr: InitExpr::Value(OrcaValue::I32(
-        //                     self.emitter.mem_tracker.curr_mem_offset as i32,
-        //                 )),
-        //             },
-        //         };
-        //         module.data.push(data_segment);
-        //         // save the memory addresses/lens, so they can be used as appropriate
-        //         self.emitter.mem_tracker.emitted_strings.insert(
-        //             val.clone(),
-        //             StringAddr {
-        //                 data_id: data_id as u32,
-        //                 mem_offset: self.emitter.mem_tracker.curr_mem_offset,
-        //                 len: val.len(),
-        //             },
-        //         );
-        //         // update curr_mem_offset to account for new data
-        //     self.emitter.mem_tracker.curr_mem_offset += val.len();
-        //     //now set the new key value for the new maps
-        //     map_meta_str.insert(*key as i32, val);
-        // }
-        // //first, we need to create the maps in _start
-        // let start_id = match module.get_fid_by_name("__wasm_call_ctors") {
-        //     Some(start_id) => start_id,
-        //     None => {
-        //         self.err.add_error(ErrorGen::get_unexpected_error(
-        //             true,
-        //             Some(format!(
-        //                 "{UNEXPECTED_ERR_MSG} \
-        //             No start function found in the module!"
-        //             )),
-        //             None,
-        //         ));
-        //         return false;
-        //     }
-        // };
-        // let mut start_fn = match module.get_fn(start_id - module.num_import_func()) {
-        //     Some(start_fn) => start_fn,
-        //     None => {
-        //         self.err.add_error(ErrorGen::get_unexpected_error(
-        //             true,
-        //             Some(format!(
-        //                 "{UNEXPECTED_ERR_MSG} \
-        //             No start function found in the module!"
-        //             )),
-        //             None,
-        //         ));
-        //         return false;
-        //     }
-        // };
-        // //now set up the actual module editing
-        // start_fn.before_at(0);
-        // let create_i32_string = match self.emitter.map_lib_adapter.create_map_insert(DataType::I32, DataType::Str) {
-        //     Ok(string) => string,
-        //     Err(e) => {
-        //         self.err.add_error(*e);
-        //         return false;
-        //     }
-        // };
-        // let mut to_call = self.emitter.table
-        //     .lookup(&create_i32_string)
-        //     .expect("Map function not in symbol table")
-        //     .clone(); //clone to close the borrow
-        // //now create the maps
-        // start_fn.i32_const(0);
-        // start_fn.call(to_call as u32);
-        // start_fn.i32_const(1);
-        // start_fn.call(to_call as u32);
-        // //set "to_call" to the insert function
-        // to_call = self.emitter.table
-        //     .lookup(&"insert_i32_string".to_string())
-        //     .expect("Map function not in symbol table")
-        //     .clone(); //clone to close the borrow
-
-        // //now, for each of the maps, emit the correct stuff
-        // for (key, val) in var_meta_str.iter() {
-        //     if let Some(val_addr) = self.emitter.mem_tracker.emitted_strings.get(val) {
-        //         //now, emit the map entry
-        //         start_fn.i32_const(0);
-        //         start_fn.i32_const(*key as i32);
-        //         start_fn.i32_const(val_addr.mem_offset as i32);
-        //         start_fn.i32_const(val_addr.len as i32);
-        //         start_fn.call(to_call as u32);
-        //     } else {
-        //         self.err.add_error(ErrorGen::get_unexpected_error(
-        //             true,
-        //             Some(format!(
-        //                 "Failed to find emitted string for metadata with key: {}",
-        //                 key
-        //             )),
-        //             None,
-        //         ));
-        //     }
-        // }
-        // for (key, val) in map_meta_str.iter() {
-        //     if let Some(val_addr) = self.emitter.mem_tracker.emitted_strings.get(val) {
-        //         //now, emit the map entry
-        //         start_fn.i32_const(0);
-        //         start_fn.i32_const(*key as i32);
-        //         start_fn.i32_const(val_addr.mem_offset as i32);
-        //         start_fn.i32_const(val_addr.len as i32);
-        //         start_fn.call(to_call as u32);
-        //     } else {
-        //         self.err.add_error(ErrorGen::get_unexpected_error(
-        //             true,
-        //             Some(format!(
-        //                 "Failed to find emitted string for metadata with key: {}",
-        //                 key
-        //             )),
-        //             None,
-        //         ));
-        //     }
-        // }
         is_success
     }
-    fn set_curr_probe(&mut self, probe_spec: &ProbeSpec, probe: &&SimpleProbe) {
-        self.emitter.curr_script_id = probe.script_id.clone();
+    fn set_curr_loc(&mut self, probe_spec: &ProbeSpec, probe: &SimpleProbe) {
+        let curr_script_id = probe.script_id.clone();
         self.emitter.curr_num_reports = probe.num_reports;
         let curr_provider = match &probe_spec.provider {
             Some(provider) => provider.name.clone(),
@@ -316,26 +161,29 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             Some(mode) => mode.name.clone(),
             None => "".to_string(),
         };
-        let mut curr_probe_id = format!(
-            "{}_{}_{}_{}",
-            curr_provider, curr_package, curr_event, curr_mode
+        let curr_probe_id = format!(
+            "{}_{}:{}:{}:{}",
+            probe.probe_number, curr_provider, curr_package, curr_event, curr_mode
         );
-        let mut emitter_probe_id = self.emitter.curr_probe_id.clone();
-        if emitter_probe_id.is_empty() || curr_probe_id.is_empty() {
-            emitter_probe_id = curr_probe_id + "0";
-        } else {
-            //remove the last chars while they are digits, then add 1 and put it back
-            let mut running_count = 0;
-            let mut last_digit = emitter_probe_id.pop().unwrap();
-            while last_digit.is_ascii_digit() {
-                running_count = running_count * 10 + last_digit.to_digit(10).unwrap();
-                last_digit = emitter_probe_id.pop().unwrap();
+        let loc = match self.emitter.app_iter.curr_loc() {
+            OrcaLocation::Module {
+                func_idx,
+                instr_idx,
+                ..
             }
-            running_count += 1;
-            curr_probe_id.push_str(&running_count.to_string());
-            emitter_probe_id = curr_probe_id;
-        }
-        self.emitter.curr_probe_id = emitter_probe_id;
+            | OrcaLocation::Component {
+                func_idx,
+                instr_idx,
+                ..
+            } => (func_idx as i32, instr_idx as i32),
+        };
+        //set the current location in bytecode and load some new globals for potential report vars
+        self.emitter.report_var_metadata.set_loc(
+            curr_script_id,
+            loc,
+            curr_probe_id,
+            self.emitter.curr_num_reports, //this is still used in the emitter to determine how many new globals to emit
+        );
     }
 }
 impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {

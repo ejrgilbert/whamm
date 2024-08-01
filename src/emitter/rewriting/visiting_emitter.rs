@@ -16,7 +16,6 @@ use orca::iterator::module_iterator::ModuleIterator;
 use orca::opcode::Opcode;
 use orca::ModuleBuilder;
 use std::iter::Iterator;
-use wasmparser::BlockType;
 
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
@@ -28,8 +27,6 @@ pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     pub map_lib_adapter: &'e mut MapLibAdapter,
     pub(crate) report_var_metadata: &'f mut ReportVarMetadata,
     instr_created_args: Vec<(String, usize)>,
-    pub curr_probe_id: String,
-    pub curr_script_id: String,
     pub curr_num_reports: i32,
 }
 
@@ -49,8 +46,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             map_lib_adapter,
             report_var_metadata,
             instr_created_args: vec![],
-            curr_probe_id: "____0".to_string(),
-            curr_script_id: "script0".to_string(),
             curr_num_reports: 0,
         };
 
@@ -109,7 +104,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                  ty: arg_ty,
              }| {
                 // create local for the param in the module
-                let arg_local_id = self.app_iter.add_local(arg_ty.clone());
+                let arg_local_id = self.app_iter.add_local(*arg_ty);
 
                 // emit an opcode in the event to assign the ToS to this new local
                 self.app_iter.local_set(arg_local_id);
@@ -330,27 +325,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             }
         }
     }
-    fn set_curr_loc(&mut self) {
-        let loc = match self.app_iter.curr_loc() {
-            OrcaLocation::Module {
-                func_idx,
-                instr_idx,
-                ..
-            }
-            | OrcaLocation::Component {
-                func_idx,
-                instr_idx,
-                ..
-            } => (func_idx as i32, instr_idx as i32),
-        };
-        //set the current location in bytecode and load some new globals for potential report vars
-        self.report_var_metadata.set_loc(
-            self.curr_script_id.clone(),
-            loc,
-            self.curr_probe_id.clone(),
-            self.curr_num_reports,
-        );
-    }
 }
 impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
     fn emit_body(&mut self, body: &mut [Statement]) -> Result<bool, Box<WhammError>> {
@@ -364,7 +338,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
         }
         for stmt in body.iter_mut() {
             is_success &= self.emit_stmt(stmt)?;
-            //now emit the changes to the report vars if needed
+            //now emit the call to print the changes to the report vars if needed
             match print_report_all(
                 &mut self.app_iter,
                 self.table,
@@ -382,7 +356,6 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
 
     fn emit_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>> {
         // Check if this is calling a provided, static function!
-        self.set_curr_loc();
         if let Statement::Expr {
             expr: Expr::Call {
                 fn_target, args, ..
@@ -432,7 +405,6 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
     }
 
     fn emit_expr(&mut self, expr: &mut Expr) -> Result<bool, Box<WhammError>> {
-        self.set_curr_loc();
         emit_expr(
             expr,
             &mut self.app_iter,

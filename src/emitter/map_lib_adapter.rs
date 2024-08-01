@@ -1,8 +1,7 @@
 use crate::common::error::{ErrorGen, WhammError};
-use crate::parser::types::{DataType, Whamm};
+use crate::parser::types::DataType;
 // //this is the code that knows which functions to call in lib.rs based on what is in the AST -> will be in emitter folder eventually
 use crate::emitter::report_var_metadata::{Metadata, ReportVarMetadata};
-use core::panic;
 
 pub struct MapLibAdapter {
     map_count: i32,
@@ -14,8 +13,12 @@ impl Default for MapLibAdapter {
 }
 impl MapLibAdapter {
     pub fn new() -> Self {
+        //Reserve map 0 for the var metadata map and map 1 for the map metadata map
         MapLibAdapter { map_count: 2 }
     }
+    // -------------------------------------
+    // Helpers
+    // -------------------------------------
     pub fn get_map_count(&self) -> i32 {
         self.map_count
     }
@@ -40,6 +43,10 @@ impl MapLibAdapter {
         }
         true
     }
+    // -------------------------------------
+    // Map creation fns
+    // -------------------------------------
+
     pub fn create_local_map_meta(
         &mut self,
         map_id: i32,
@@ -156,6 +163,9 @@ impl MapLibAdapter {
             ))),
         }
     }
+    // -------------------------------------
+    // Get "to_call" for map functions
+    // -------------------------------------
 
     //The stuff that actually calls the emitter stuff
     pub fn create_map_fname(

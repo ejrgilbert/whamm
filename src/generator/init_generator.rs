@@ -9,7 +9,7 @@ use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Fn, Global, ProvidedFunction, Script, Statement,
     UnOp, Value, Whamm, WhammVisitorMut,
 };
-use log::{trace, warn};
+use log::{info, trace, warn};
 use orca::FunctionBuilder;
 use std::collections::HashMap;
 
@@ -100,9 +100,6 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
             "insert_i32i32i32tuple_i32".to_string(),
             "get_i32_i32".to_string(),
             "get_i32_from_i32i32i32tuple".to_string(),
-            "add_report_map".to_string(),
-            "output_report_maps".to_string(),
-            "print_info".to_string(),
             "print_map".to_string(),
             "insert_i32_string".to_string(),
             "get_string_from_i32string".to_string(),
@@ -137,14 +134,14 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
     fn create_start(&mut self) {
         match self.emitter.app_wasm.start {
             Some(_) => {
-                println!("Start function already exists");
+                info!("Start function already exists");
             }
             None => {
                 //time to make a start fn
-                println!("No start function found, creating one");
+                info!("No start function found, creating one");
                 match self.emitter.app_wasm.get_fid_by_name("_start") {
                     Some(_) => {
-                        println!("start function is _start");
+                        info!("start function is _start");
                     }
                     None => {
                         let start_fn = FunctionBuilder::new(&[], &[]);
@@ -152,7 +149,7 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
                         self.emitter.app_wasm.start = Some(start_id);
                         self.emitter.app_wasm.set_fn_name(
                             start_id - self.emitter.app_wasm.num_import_func(),
-                            "_start",
+                            "start",
                         );
                     } //strcmp doesn't need to call add_export_fn so this probably doesnt either
                       //in app_wasm, not sure if need to have it in the ST

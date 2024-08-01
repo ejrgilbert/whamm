@@ -6,7 +6,6 @@ use orca::{DataSegment, DataSegmentKind, InitExpr};
 use std::collections::HashMap;
 
 use orca::ir::types::{BlockType as OrcaBlockType, DataType as OrcaType, Value as OrcaValue};
-use wasmparser::BlockType;
 
 use crate::emitter::map_lib_adapter::MapLibAdapter;
 use crate::emitter::rewriting::{emit_body, emit_expr, emit_stmt, whamm_type_to_wasm, Emitter};
@@ -305,106 +304,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         _ty: DataType,
         _val: &Option<Value>,
     ) -> Result<bool, Box<WhammError>> {
-        let rec_id = match self.table.lookup(&name) {
-            Some(rec_id) => *rec_id,
-            _ => {
-                return Err(Box::new(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} \
-                Global variable symbol does not exist in this scope!"
-                    )),
-                    None,
-                )));
-            } // Ignore, continue to emit
-        };
-
-        let rec = self.table.get_record_mut(&rec_id);
-        match rec {
-            Some(Record::Var {
-                ref mut addr, ty, ..
-            }) => {
-                // emit global variable and set addr in symbol table
-                // this is used for user-defined global vars in the script...
-                match ty {
-                    DataType::Map { .. } => {
-                        //time to instrument the start fn
-                        let start_id = match self.app_wasm.get_fid_by_name("_start") {
-                            Some(start_id) => start_id,
-                            None => {
-                                return Err(Box::new(ErrorGen::get_unexpected_error(
-                                    true,
-                                    Some(format!(
-                                        "{UNEXPECTED_ERR_MSG} \
-                                    No start function found in the module!"
-                                    )),
-                                    None,
-                                )));
-                            }
-                        };
-                        let mut start_fn = match self.app_wasm.get_fn(start_id) {
-                            Some(start_fn) => start_fn,
-                            None => {
-                                return Err(Box::new(ErrorGen::get_unexpected_error(
-                                    true,
-                                    Some(format!(
-                                        "{UNEXPECTED_ERR_MSG} \
-                                    No start function found in the module!"
-                                    )),
-                                    None,
-                                )));
-                            }
-                        };
-                        start_fn.before_at(0);
-                        let to_call = match self.map_lib_adapter.create_no_meta_map(ty.clone()) {
-                            Ok(to_call) => to_call,
-                            Err(e) => return Err(e),
-                        };
-                        *addr = Some(VarAddr::MapId {
-                            addr: to_call.1 as u32,
-                        });
-                        let fn_id = self
-                            .table
-                            .lookup(&to_call.0)
-                            .expect("Map function not in symbol table");
-                        start_fn.i32_const(to_call.1);
-                        start_fn.call(*fn_id as u32);
-
-                        Ok(true)
-                    }
-                    _ => {
-                        let default_global = whamm_type_to_wasm(ty);
-                        let global_id = self.app_wasm.add_global(default_global);
-                        *addr = Some(VarAddr::Global { addr: global_id });
-                        //now save off the global variable metadata
-                        match self
-                            .report_var_metadata
-                            .put_global_metadata(global_id as usize, name)
-                        {
-                            Ok(_) => Ok(true),
-                            Err(e) => Err(e),
-                        }
-                    }
-                }
-            }
-            Some(&mut ref ty) => Err(Box::new(ErrorGen::get_unexpected_error(
-                true,
-                Some(format!(
-                    "{UNEXPECTED_ERR_MSG} \
-                Incorrect global variable record, expected Record::Var, found: {:?}",
-                    ty
-                )),
-                None,
-            ))),
-            None => Err(Box::new(ErrorGen::get_unexpected_error(
-                true,
-                Some(format!(
-                    "{UNEXPECTED_ERR_MSG} \
-                Global variable symbol does not exist!"
-                )),
-                None,
-            ))),
-        }
+        self.emit_global_inner(name, _ty, _val, "unused".to_string(), false)
     }
     pub fn emit_report_global(
         &mut self,
@@ -412,6 +312,16 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         _ty: DataType,
         _val: &Option<Value>,
         script_name: String,
+    ) -> Result<bool, Box<WhammError>> {
+        self.emit_global_inner(name, _ty, _val, script_name, true)
+    }
+    pub fn emit_global_inner(
+        &mut self,
+        name: String,
+        _ty: DataType,
+        _val: &Option<Value>,
+        script_name: String,
+        report_mode: bool,
     ) -> Result<bool, Box<WhammError>> {
         let rec_id = match self.table.lookup(&name) {
             Some(rec_id) => *rec_id,
@@ -436,7 +346,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 // this is used for user-defined global vars in the script...
                 match ty {
                     DataType::Map { .. } => {
-                        //time to instrument the start fn
+                        //TODO - target a function like global_init or something. _start will break because MY_MAPS isn't initialized yet
                         let start_id = match self.app_wasm.get_fid_by_name("_start") {
                             Some(start_id) => start_id,
                             None => {
@@ -464,24 +374,40 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                             }
                         };
                         start_fn.before_at(0);
-                        //TODO: Test this is adding to the report vars
-                        let to_call = match self.map_lib_adapter.create_global_map(
-                            name,
-                            script_name,
-                            ty.clone(),
-                            self.report_var_metadata,
-                        ) {
-                            Ok(to_call) => to_call,
-                            Err(e) => return Err(e),
+                        let (fn_name, map_id) = match report_mode {
+                            true => {
+                                match self.map_lib_adapter.create_global_map(
+                                    name,
+                                    script_name,
+                                    ty.clone(),
+                                    self.report_var_metadata,
+                                ) {
+                                    Ok(to_call) => to_call,
+                                    Err(e) => return Err(e),
+                                }
+                            }
+                            false => match self.map_lib_adapter.create_no_meta_map(ty.clone()) {
+                                Ok(to_call) => to_call,
+                                Err(e) => return Err(e),
+                            },
                         };
                         *addr = Some(VarAddr::MapId {
-                            addr: to_call.1 as u32,
+                            addr: map_id as u32,
                         });
-                        let fn_id = self
-                            .table
-                            .lookup(&to_call.0)
-                            .expect("Map function not in symbol table");
-                        start_fn.i32_const(to_call.1);
+                        let fn_id = match self.table.lookup(&fn_name) {
+                            Some(fn_id) => fn_id,
+                            None => {
+                                return Err(Box::new(ErrorGen::get_unexpected_error(
+                                    true,
+                                    Some(format!(
+                                        "{UNEXPECTED_ERR_MSG} \
+                                    Map function not in symbol table"
+                                    )),
+                                    None,
+                                )));
+                            }
+                        };
+                        start_fn.i32_const(map_id);
                         start_fn.call(*fn_id as u32);
                         Ok(true)
                     }
@@ -490,13 +416,17 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                         let global_id = self.app_wasm.add_global(default_global);
                         *addr = Some(VarAddr::Global { addr: global_id });
                         //now save off the global variable metadata
-                        match self
-                            .report_var_metadata
-                            .put_global_metadata(global_id as usize, name)
-                        {
-                            Ok(_) => Ok(true),
-                            Err(e) => Err(e),
+                        let mut is_success = Ok(true);
+                        if report_mode {
+                            is_success = match self
+                                .report_var_metadata
+                                .put_global_metadata(global_id as usize, name)
+                            {
+                                Ok(b) => Ok(b),
+                                Err(e) => Err(e),
+                            }
                         }
+                        is_success
                     }
                 }
             }
