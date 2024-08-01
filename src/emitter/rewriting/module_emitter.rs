@@ -37,7 +37,7 @@ pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     pub emitting_func: Option<FunctionBuilder<'b>>,
     pub table: &'c mut SymbolTable,
     mem_tracker: &'d mut MemoryTracker,
-    map_lib_adapter: &'e mut MapLibAdapter,
+    pub map_lib_adapter: &'e mut MapLibAdapter,
     report_var_metadata: &'f mut ReportVarMetadata,
     fn_providing_contexts: Vec<String>,
 }
@@ -385,28 +385,29 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 // this is used for user-defined global vars in the script...
                 match ty {
                     DataType::Map { .. } => {
-                        //TODO - target a function like global_init or something. _start will break because MY_MAPS isn't initialized yet
-                        let start_id = match self.app_wasm.get_fid_by_name("_start") {
-                            Some(start_id) => start_id,
+                        //time to instrument the start fn
+                        let init_id = match self.app_wasm.get_fid_by_name("global_map_init") {
+                            Some(init_id) => init_id,
+
                             None => {
                                 return Err(Box::new(ErrorGen::get_unexpected_error(
                                     true,
                                     Some(format!(
                                         "{UNEXPECTED_ERR_MSG} \
-                                    No start function found in the module!"
+                                    No global_map_init found in the module!"
                                     )),
                                     None,
                                 )));
                             }
                         };
-                        let mut start_fn = match self.app_wasm.get_fn(start_id) {
-                            Some(start_fn) => start_fn,
+                        let mut init_fn = match self.app_wasm.get_fn(init_id) {
+                            Some(init_fn) => init_fn,
                             None => {
                                 return Err(Box::new(ErrorGen::get_unexpected_error(
                                     true,
                                     Some(format!(
                                         "{UNEXPECTED_ERR_MSG} \
-                                    No start function found in the module!"
+                                    No global_map_init found in the module!"
                                     )),
                                     None,
                                 )));
@@ -429,10 +430,12 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                                 Ok(to_call) => to_call,
                                 Err(e) => return Err(e),
                             },
+
                         };
                         *addr = Some(VarAddr::MapId {
                             addr: map_id as u32,
                         });
+
                         let fn_id = match self.table.lookup_rec(&fn_name) {
                             Some(id) => match id {
                                 Record::LibFn { fn_id, .. } => fn_id,

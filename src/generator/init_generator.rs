@@ -9,10 +9,13 @@ use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Fn, Global, ProvidedFunction, Script, Statement,
     UnOp, Value, Whamm, WhammVisitorMut,
 };
+use orca::ir::types::{Global as OrcaGlobal, Value as OrcaValue};
+use orca::{FunctionBuilder, InitExpr, Opcode};
 use crate::verifier::types::Record;
 use log::{info, trace, warn};
 use orca::FunctionBuilder;
 use std::collections::HashMap;
+use wasmparser::ValType;
 
 /// Serves as the first phase of instrumenting a module by setting up
 /// the groundwork.
@@ -138,6 +141,7 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
     fn on_startup(&mut self) {
         self.lib_fn_set();
         self.create_start();
+        self.create_global_map_init();
     }
     fn create_start(&mut self) {
         match self.emitter.app_wasm.start {
@@ -162,6 +166,60 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
                     } //strcmp doesn't need to call add_export_fn so this probably doesnt either
                       //in app_wasm, not sure if need to have it in the ST
                 }
+            }
+        }
+    }
+    fn create_global_map_init(&mut self) {
+        //make a global bool for whether to run the global_map_init fn
+        let starting_global = OrcaGlobal {
+            ty: wasmparser::GlobalType {
+                content_type: ValType::I32,
+                mutable: true,
+                shared: false,
+            },
+            init_expr: InitExpr::Value(OrcaValue::I32(1)),
+        };
+        self.emitter.map_lib_adapter.init_bool_location =
+            self.emitter.app_wasm.add_global(starting_global);
+        match self.emitter.app_wasm.get_fid_by_name("global_map_init") {
+            Some(_) => {
+                println!("global_map_init function already exists");
+                self.err.add_error(ErrorGen::get_unexpected_error(
+                    true,
+                    Some(
+                        "global_map_init function already exists - needs to be created by Whamm"
+                            .to_string(),
+                    ),
+                    None,
+                ));
+            }
+            None => {
+                //time to make a global_map_init fn
+                println!("No global_map_init function found, creating one");
+                let mut global_map_init_fn = FunctionBuilder::new(&[], &[]);
+                global_map_init_fn.i32_const(0);
+                let to_call = match self.emitter.app_wasm.get_fid_by_name("create_i32_string") {
+                    Some(to_call) => to_call,
+                    None => {
+                        self.err.add_error(ErrorGen::get_unexpected_error(
+                            true,
+                            Some(format!(
+                                "
+                            No string function found in the module!"
+                            )),
+                            None,
+                        ));
+                        return;
+                    }
+                };
+                global_map_init_fn.call(to_call);
+                global_map_init_fn.i32_const(1);
+                global_map_init_fn.call(to_call);
+                let global_map_init_id = global_map_init_fn.finish(self.emitter.app_wasm);
+                self.emitter.app_wasm.set_fn_name(
+                    global_map_init_id - self.emitter.app_wasm.num_import_func(),
+                    "global_map_init",
+                );
             }
         }
     }

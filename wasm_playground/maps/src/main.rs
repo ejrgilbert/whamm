@@ -910,4 +910,5 @@ fn main() {
     let b = foo(5);
     bar(2);
     print!("{}", b);
+    create_i32_string(1);
 }

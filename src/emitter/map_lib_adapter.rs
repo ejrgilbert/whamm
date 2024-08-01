@@ -5,6 +5,7 @@ use crate::emitter::report_var_metadata::{Metadata, ReportVarMetadata};
 
 pub struct MapLibAdapter {
     map_count: i32,
+    pub init_bool_location: u32,
 }
 impl Default for MapLibAdapter {
     fn default() -> Self {
@@ -13,8 +14,12 @@ impl Default for MapLibAdapter {
 }
 impl MapLibAdapter {
     pub fn new() -> Self {
+
         //Reserve map 0 for the var metadata map and map 1 for the map metadata map
-        MapLibAdapter { map_count: 2 }
+        MapLibAdapter {
+            map_count: 2,
+            init_bool_location: 0,
+        }
     }
     // -------------------------------------
     // Helpers
