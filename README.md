@@ -8,7 +8,9 @@
 
 ## Debugging Wasm? Put some `whamm!` on it! ##
 
-`whamm!` is a tool for "Wasm Application Monitoring and Manipulation"<sup>[1](#silent_h)</sup>, a DSL inspired by the D language.
+`whamm!` is a tool for "Wasm Application Monitoring and Manipulation"[^silent-h], a DSL inspired by the D language.
+
+[^silent-h]: The 'h' is silent.
 
 ## Getting Started ##
 Take a look at the official [`whamm!` book](https://ejrgilbert.github.io/whamm/intro.html) for how to get started with this language.
@@ -40,7 +42,7 @@ The supported interpreters are:
    eval $(opam env)
    opam install dune
    opam install menhir
-   
+
    # Build the wasm ref interpreter
    ./wizard-engine/test/wasm-spec/update.sh
    pushd wizard-engine/test/wasm-spec/repos/spec/interpreter
@@ -85,7 +87,7 @@ language-intuition perspective. This is primarily because reading through the sp
 levels of granularity, everything being provided by what proceeds it. If we were to move `mode` to the front, but then have
 event-specific options, this property would no longer hold.
 
-Currently available: 
+Currently available:
 - `wasm:bytecode`
 
 To be added:
@@ -117,5 +119,3 @@ mdbook serve --open
 ```
 
 This can be useful for offline learning OR for debugging documentation while doing updates (any local changes will automatically be updated in the served book pages).
-
-<a name="silent_h">1</a>: The 'h' is silent.
