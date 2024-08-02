@@ -149,6 +149,12 @@ impl ReportVarMetadata {
             info!("MapID: {} -> {:?}", key, value);
         }
     }
+    pub fn mutating_map(&mut self, map_id: i32) {
+        //check if the map you are changing is in map_metadata -> flush soon if it is
+        if self.map_metadata.contains_key(&map_id) {
+            self.flush_soon = true;
+        }
+    }
 }
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Metadata {

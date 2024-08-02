@@ -543,8 +543,7 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
     {
         match get_map_info(table, name) {
             Ok((map_id, key_ty, val_ty)) => {
-                //no Record in ST, so always flush after a set_map
-                report_var_metadata.flush_soon = true;
+                report_var_metadata.mutating_map(map_id as i32);
                 let to_call = match map_lib_adapter.insert_map_fname(key_ty, val_ty) {
                     Ok(to_call) => to_call,
                     Err(e) => return Err(e),
