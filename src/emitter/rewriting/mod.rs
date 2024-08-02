@@ -1,17 +1,32 @@
+pub mod component_emitter;
 pub mod module_emitter;
 pub mod rules;
-pub mod visiting_emitter;
+pub mod visiting_emitter_component;
+pub mod visiting_emitter_module;
 
 use crate::common::error::{ErrorGen, WhammError};
 use crate::parser::types::{BinOp, Block, DataType, Expr, Statement, UnOp, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
+use std::collections::HashMap;
 
-use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::generator::types::ExprFolder;
 use orca::ir::types::{BlockType, DataType as OrcaType, Global, Value as OrcaValue};
 use orca::opcode::Opcode;
 use orca::{InitExpr, ModuleBuilder};
-use wasmparser::{GlobalType, ValType};
+use wasmparser::ValType;
+
+pub struct MemoryTracker {
+    pub mem_id: u32,
+    pub curr_mem_offset: usize,
+    pub emitted_strings: HashMap<String, StringAddr>,
+}
+
+pub struct StringAddr {
+    pub data_id: u32,
+    pub mem_offset: usize,
+    pub len: usize,
+}
+use wasmparser::GlobalType;
 
 pub trait Emitter {
     fn emit_body(&mut self, body: &mut Block) -> Result<bool, Box<WhammError>>;

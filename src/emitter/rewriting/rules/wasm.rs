@@ -4,6 +4,7 @@ use crate::emitter::rewriting::rules::{
 use crate::parser::rules::wasm::{OpcodeEventKind, WasmPackageKind};
 use crate::parser::types::{DataType, ProbeSpec, SpecPart, Value};
 use log::warn;
+use orca::ir::component::Component;
 use orca::ir::module::Module;
 use orca::ir::types::{DataType as OrcaType, FuncKind};
 use std::collections::HashMap;
@@ -32,7 +33,7 @@ impl WasmPackage {
     }
 }
 impl Package for WasmPackage {
-    fn get_loc_info(&self, app_wasm: &Module, instr: &Operator) -> Option<LocInfo> {
+    fn get_loc_info_module(&self, app_wasm: &Module, instr: &Operator) -> Option<LocInfo> {
         let mut loc_info = LocInfo::new();
         match self.kind {
             WasmPackageKind::Opcode => {
@@ -42,7 +43,7 @@ impl Package for WasmPackage {
 
         // Get location info from the rest of the configured rules
         self.events.iter().for_each(|event| {
-            if let Some(mut other_loc_info) = event.get_loc_info(app_wasm, instr) {
+            if let Some(mut other_loc_info) = event.get_loc_info_module(app_wasm, instr) {
                 loc_info.append(&mut other_loc_info);
             }
         });
@@ -53,6 +54,29 @@ impl Package for WasmPackage {
             None
         }
     }
+
+    fn get_loc_info_comp(&self, app_wasm: &Component, instr: &Operator) -> Option<LocInfo> {
+        let mut loc_info = LocInfo::new();
+        match self.kind {
+            WasmPackageKind::Opcode => {
+                // nothing to add
+            }
+        }
+
+        // Get location info from the rest of the configured rules
+        self.events.iter().for_each(|event| {
+            if let Some(mut other_loc_info) = event.get_loc_info_component(app_wasm, instr) {
+                loc_info.append(&mut other_loc_info);
+            }
+        });
+
+        if loc_info.has_match() {
+            Some(loc_info)
+        } else {
+            None
+        }
+    }
+
     fn add_events(&mut self, ast_events: &HashMap<String, HashMap<String, Vec<SimpleProbe>>>) {
         let events = match self.kind {
             WasmPackageKind::Opcode => event_factory::<OpcodeEvent>(ast_events),
@@ -151,7 +175,48 @@ impl OpcodeEvent {
             mode: None,
         }
     }
-    pub fn get_ty_info_for_instr(app_wasm: &Module, instr: &Operator) -> (Vec<Arg>, Option<u32>) {
+
+    pub fn get_ty_info_for_instr_comp(
+        app_wasm: &Component,
+        instr: &Operator,
+    ) -> (Vec<Arg>, Option<u32>) {
+        // TODO: there are 500 of them in wasmparser::Operator
+        // compared to 48 of them in walrus::ir::Instr
+        // How do we compress the Operators we need to concern
+        let (ty_list, ty_id): (Vec<OrcaType>, Option<u32>) = match instr {
+            Operator::Call {
+                function_index: fid,
+            } => {
+                match app_wasm.modules[0].get_fn_kind(*fid) {
+                    Some(FuncKind::Import(ty_id)) | Some(FuncKind::Local(ty_id)) => {
+                        if let Some(ty) = app_wasm.modules[0].types.get(ty_id as usize) {
+                            (ty.params.to_vec(), Some(ty_id))
+                        } else {
+                            // no type info found!!
+                            warn!("No type information found for import with FID {fid}");
+                            (vec![], None)
+                        }
+                    }
+                    None => {
+                        // no type info found!!
+                        warn!("No type information found for import with FID {fid}");
+                        (vec![], None)
+                    }
+                }
+            }
+            _ => return Self::get_args_for_instr(instr),
+        };
+        let mut args = vec![];
+        for (idx, ty) in ty_list.iter().enumerate() {
+            args.push(Arg::new(format!("arg{}", idx), ty.to_owned()));
+        }
+        (args, ty_id)
+    }
+
+    pub fn get_ty_info_for_instr_module(
+        app_wasm: &Module,
+        instr: &Operator,
+    ) -> (Vec<Arg>, Option<u32>) {
         // TODO: there are 500 of them in wasmparser::Operator
         // compared to 48 of them in walrus::ir::Instr
         // How do we compress the Operators we need to concern
@@ -176,6 +241,20 @@ impl OpcodeEvent {
                     }
                 }
             }
+            _ => return Self::get_args_for_instr(instr),
+        };
+        let mut args = vec![];
+        for (idx, ty) in ty_list.iter().enumerate() {
+            args.push(Arg::new(format!("arg{}", idx), ty.to_owned()));
+        }
+        (args, ty_id)
+    }
+
+    pub fn get_args_for_instr(instr: &Operator) -> (Vec<Arg>, Option<u32>) {
+        // TODO: there are 500 of them in wasmparser::Operator
+        // compared to 48 of them in walrus::ir::Instr
+        // How do we compress the Operators we need to concern
+        let (ty_list, ty_id): (Vec<OrcaType>, Option<u32>) = match instr {
             Operator::Block { .. } => {
                 // TODO -- define type info
                 (vec![], None)
@@ -343,7 +422,6 @@ impl OpcodeEvent {
                 (vec![], None)
             }
         };
-
         let mut args = vec![];
         for (idx, ty) in ty_list.iter().enumerate() {
             args.push(Arg::new(format!("arg{}", idx), ty.to_owned()));
@@ -507,22 +585,9 @@ impl OpcodeEvent {
     }
 }
 impl Event for OpcodeEvent {
-    fn get_loc_info(&self, app_wasm: &Module, instr: &Operator) -> Option<LocInfo> {
+    fn get_loc_info_module(&self, app_wasm: &Module, instr: &Operator) -> Option<LocInfo> {
         let mut loc_info = LocInfo::new();
-
         match self.kind {
-            OpcodeEventKind::Block => {
-                if let Operator::Block { .. } = instr {
-                    // TODO define static vars
-                    loc_info.add_probes(self.probe_spec(), &self.probes);
-                }
-            }
-            OpcodeEventKind::Loop => {
-                if let Operator::Loop { .. } = instr {
-                    // TODO define static vars
-                    loc_info.add_probes(self.probe_spec(), &self.probes);
-                }
-            }
             OpcodeEventKind::Call => {
                 if let Operator::Call {
                     function_index: fid,
@@ -582,6 +647,96 @@ impl Event for OpcodeEvent {
                     );
 
                     // add the probes for this event
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
+                if loc_info.has_match() {
+                    Some(loc_info)
+                } else {
+                    None
+                }
+            }
+            _ => self.get_loc_info(instr),
+        }
+    }
+
+    fn get_loc_info_component(&self, app_wasm: &Component, instr: &Operator) -> Option<LocInfo> {
+        let mut loc_info = LocInfo::new();
+        match self.kind {
+            OpcodeEventKind::Call => {
+                if let Operator::Call {
+                    function_index: fid,
+                } = instr
+                {
+                    // low FIDs are imports (if fid < module.imports.len(), fid is an import)
+                    let func_info = if let Some(import) = app_wasm.imports.get(*fid as usize) {
+                        // This is an imported function (FIDs too large will return None)
+
+                        // UNCOMMENT FOR DEBUGGING PURPOSES
+                        // if import.name == "call_new" {
+                        //     println!("call_new!!");
+                        // }
+                        FuncInfo {
+                            func_kind: "import".to_string(),
+                            module: import.name.0.to_string(), // TODO: Need to fix this
+                            name: import.name.0.to_string(),
+                        }
+                    } else {
+                        // This is a local function
+                        FuncInfo {
+                            func_kind: "local".to_string(),
+                            module: "".to_string(),
+                            // TODO -- fix this when orca supports pulling func names
+                            name: "".to_string(),
+                        }
+                    };
+
+                    // define static_data
+                    loc_info.static_data.insert(
+                        "target_imp_name".to_string(),
+                        Some(Value::Str {
+                            ty: DataType::Str,
+                            val: func_info.name.to_string(),
+                        }),
+                    );
+                    loc_info.static_data.insert(
+                        "target_fn_type".to_string(),
+                        Some(Value::Str {
+                            ty: DataType::Str,
+                            val: func_info.func_kind.to_string(),
+                        }),
+                    );
+                    loc_info.static_data.insert(
+                        "target_imp_module".to_string(),
+                        Some(Value::Str {
+                            ty: DataType::Str,
+                            val: func_info.module.to_string(),
+                        }),
+                    );
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
+                if loc_info.has_match() {
+                    Some(loc_info)
+                } else {
+                    None
+                }
+            }
+            _ => self.get_loc_info(instr),
+        }
+    }
+    fn get_loc_info<'a>(&'a self, instr: &Operator) -> Option<LocInfo> {
+        let mut loc_info = LocInfo::new();
+        match self.kind {
+            OpcodeEventKind::Block => {
+                if let Operator::Block { .. } = instr {
+                    // TODO define static vars
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
+            }
+            OpcodeEventKind::Loop => {
+                if let Operator::Loop { .. } = instr {
+                    // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
@@ -883,14 +1038,17 @@ impl Event for OpcodeEvent {
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
+            OpcodeEventKind::Call => {
+                panic!("Should call either module variant or component variant of this function")
+            }
         }
-
         if loc_info.has_match() {
             Some(loc_info)
         } else {
             None
         }
     }
+
     fn add_probes(&mut self, probes: &HashMap<String, Vec<SimpleProbe>>) {
         self.probes = probe_factory(probes);
     }

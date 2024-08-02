@@ -8,27 +8,25 @@ use wasmparser::GlobalType;
 
 use crate::emitter::rewriting::{emit_body, emit_expr, emit_stmt, Emitter, StringAddr};
 use crate::emitter::rewriting::{whamm_type_to_wasm_global, MemoryTracker};
-
+use orca::ir::component::Component;
 use orca::ir::function::FunctionBuilder;
-use orca::ir::module::Module;
 use orca::opcode::Opcode;
 
 const UNEXPECTED_ERR_MSG: &str =
     "ModuleEmitter: Looks like you've found a bug...please report this behavior!";
 
-pub struct ModuleEmitter<'a, 'b, 'c, 'd> {
-    pub app_wasm: &'a mut Module<'b>,
+pub struct ComponentEmitter<'a, 'b, 'c, 'd> {
+    pub app_wasm: &'a mut Component<'b>,
     pub emitting_func: Option<FunctionBuilder<'b>>,
     pub table: &'c mut SymbolTable,
-
     mem_tracker: &'d mut MemoryTracker,
     fn_providing_contexts: Vec<String>,
 }
 
-impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
+impl<'a, 'b, 'c, 'd> ComponentEmitter<'a, 'b, 'c, 'd> {
     // note: only used in integration test
     pub fn new(
-        app_wasm: &'a mut Module<'b>,
+        app_wasm: &'a mut Component<'b>,
         table: &'c mut SymbolTable,
         mem_tracker: &'d mut MemoryTracker,
     ) -> Self {
@@ -157,9 +155,9 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
             .i32_const(0)
             .return_stmt();
 
-        let strcmp_id = strcmp.finish_module(self.app_wasm);
-        self.app_wasm
-            .set_fn_name(strcmp_id - self.app_wasm.num_import_func(), "strcmp");
+        let strcmp_id = strcmp.finish_component(self.app_wasm, 0);
+        let num_import_func = self.app_wasm.modules[0].num_import_func();
+        self.app_wasm.modules[0].set_fn_name(strcmp_id - num_import_func, "strcmp");
 
         let rec_id = match self.table.lookup(&f.name.name) {
             Some(rec_id) => *rec_id,
@@ -239,12 +237,8 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
     pub fn emit_string(&mut self, value: &mut Value) -> Result<bool, Box<WhammError>> {
         match value {
             Value::Str { val, .. } => {
-                if self.mem_tracker.emitted_strings.contains_key(val) {
-                    // the string has already been emitted into the module, don't emit again
-                    return Ok(true);
-                }
                 // assuming that the data ID is the index of the object in the Vec
-                let data_id = self.app_wasm.data.len();
+                let data_id = self.app_wasm.modules[0].data.len();
                 let val_bytes = val.as_bytes().to_owned();
                 let data_segment = DataSegment {
                     data: val_bytes,
@@ -255,7 +249,7 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
                         )),
                     },
                 };
-                self.app_wasm.data.push(data_segment);
+                self.app_wasm.modules[0].data.push(data_segment);
 
                 // save the memory addresses/lens, so they can be used as appropriate
                 self.mem_tracker.emitted_strings.insert(
@@ -285,17 +279,6 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
         }
     }
 
-    pub(crate) fn memory_grow(&mut self) {
-        // If we've emitted any strings, bump the app's memory up to account for that
-        if !self.mem_tracker.emitted_strings.is_empty() {
-            if let Some(mem) = self.app_wasm.memories.get_mut(0) {
-                if mem.initial < self.mem_tracker.required_initial_mem_size {
-                    mem.initial = self.mem_tracker.required_initial_mem_size;
-                }
-            }
-        }
-    }
-
     pub(crate) fn emit_global_getter(
         &mut self,
         global_id: &u32,
@@ -308,10 +291,10 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
         let mut getter = FunctionBuilder::new(&getter_params, &getter_res);
         getter.global_get(*global_id);
 
-        let getter_id = getter.finish_module(self.app_wasm);
+        let getter_id = getter.finish_component(self.app_wasm, 0);
 
         let fn_name = format!("get_{name}");
-        self.app_wasm.add_export_func(fn_name.leak(), getter_id);
+        self.app_wasm.modules[0].add_export_func(fn_name.leak(), getter_id);
 
         Ok(true)
     }
@@ -342,7 +325,7 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
                 // emit global variable and set addr in symbol table
                 // this is used for user-defined global vars in the script...
                 let default_global = whamm_type_to_wasm_global(&ty);
-                let global_id = self.app_wasm.add_global(default_global.clone());
+                let global_id = self.app_wasm.modules[0].add_global(default_global.clone());
                 *addr = Some(VarAddr::Global { addr: global_id });
                 (global_id, default_global.ty)
             }
@@ -376,7 +359,7 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
         // NOTE: This should be done in the Module entrypoint
         //       https://docs.rs/walrus/latest/walrus/struct.Module.html
 
-        if let Some(_start_fid) = self.app_wasm.start {
+        if let Some(_start_fid) = self.app_wasm.modules[0].start {
             // 1. create the emitting_func var, assign in self
             // 2. iterate over stmts and emit them! (will be different for Decl stmts)
             todo!()
@@ -418,7 +401,7 @@ impl<'a, 'b, 'c, 'd> ModuleEmitter<'a, 'b, 'c, 'd> {
         ))
     }
 }
-impl Emitter for ModuleEmitter<'_, '_, '_, '_> {
+impl Emitter for ComponentEmitter<'_, '_, '_, '_> {
     fn emit_body(&mut self, body: &mut Block) -> Result<bool, Box<WhammError>> {
         if let Some(emitting_func) = &mut self.emitting_func {
             emit_body(
