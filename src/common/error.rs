@@ -422,8 +422,16 @@ impl ErrorGen {
         };
         self.add_warn(warn);
     }
+    pub fn add_compiler_warn(&mut self, message: String) {
+        let warn = WhammWarning {
+            ty: WarnType::CompilerWarning { message },
+            warn_loc: None,
+            info_loc: None,
+        };
+        self.add_warn(warn);
+    }
 }
-
+#[derive(Clone)]
 pub struct CodeLocation {
     // True if this is an error-causing code location, false if not (just informational)
     pub is_err: bool,
@@ -587,7 +595,7 @@ impl CodeLocation {
         }
     }
 }
-
+#[derive(Clone)]
 pub struct WhammError {
     pub fatal: bool,
     /// The location within the input string causing the error
@@ -805,18 +813,21 @@ impl WhammError {
 }
 pub enum WarnType {
     TypeCheckWarning { message: String },
+    CompilerWarning { message: String },
     Warning { message: Option<String> },
 }
 impl WarnType {
     pub fn name(&self) -> &str {
         match self {
             WarnType::TypeCheckWarning { .. } => "TypeCheckWarning",
+            WarnType::CompilerWarning { .. } => "CompilerWarning",
             WarnType::Warning { .. } => "GeneralWarning",
         }
     }
     pub fn message(&self) -> Cow<'_, str> {
         match self {
             WarnType::TypeCheckWarning { ref message } => Cow::Borrowed(message),
+            WarnType::CompilerWarning { ref message } => Cow::Borrowed(message),
             WarnType::Warning { ref message } => {
                 if let Some(msg) = message {
                     Cow::Borrowed(msg)
@@ -827,6 +838,7 @@ impl WarnType {
         }
     }
 }
+#[derive(Clone)]
 pub enum ErrorType {
     InstrumentationError {
         message: String,

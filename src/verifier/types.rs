@@ -214,6 +214,15 @@ impl SymbolTable {
 
         new_rec_id
     }
+    pub fn lookup_rec(&self, key: &str) -> Option<&Record> {
+        match self.lookup(key) {
+            Some(id) => match self.get_record(id) {
+                Some(rec) => Some(rec),
+                None => None,
+            },
+            None => None,
+        }
+    }
 
     pub fn lookup(&self, key: &str) -> Option<&usize> {
         match self.get_curr_scope() {
@@ -421,10 +430,15 @@ pub enum Record {
         name: String,
         value: Option<Value>,
         is_comp_provided: bool, // TODO -- this is only necessary for `new_target_fn_name`, remove after deprecating!
-
+        //this is for if the variable is a report var
+        is_report_var: bool,
         /// The address of this var post-injection
         addr: Option<VarAddr>,
         loc: Option<Location>,
+    },
+    LibFn {
+        name: String,
+        fn_id: u32,
     },
 }
 impl Record {
@@ -459,4 +473,5 @@ impl Record {
 pub enum VarAddr {
     Local { addr: u32 },
     Global { addr: u32 },
+    MapId { addr: u32 },
 }

@@ -9,7 +9,9 @@ use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Fn, Global, ProvidedFunction, Script, Statement,
     UnOp, Value, Whamm, WhammVisitorMut,
 };
-use log::{trace, warn};
+use crate::verifier::types::Record;
+use log::{info, trace, warn};
+use orca::FunctionBuilder;
 use std::collections::HashMap;
 
 /// Serves as the first phase of instrumenting a module by setting up
@@ -19,15 +21,16 @@ use std::collections::HashMap;
 /// emit some compiler-provided functions and user-defined globals.
 /// This process should ideally be generic, made to perform a specific
 /// instrumentation technique by the Emitter field.
-pub struct InitGenerator<'a, 'b, 'c, 'd, 'e> {
-    pub emitter: ModuleEmitter<'a, 'b, 'c, 'd>,
+pub struct InitGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
+    pub emitter: ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f>,
     pub context_name: String,
-    pub err: &'e mut ErrorGen,
+    pub err: &'g mut ErrorGen,
 }
-impl InitGenerator<'_, '_, '_, '_, '_> {
+impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
     pub fn run(&mut self, whamm: &mut Whamm) -> bool {
         // Reset the symbol table in the emitter just in case
         self.emitter.reset_children();
+        self.on_startup();
         // Generate globals and fns defined by `whamm` (this should modify the app_wasm)
         let is_success = self.visit_whamm(whamm);
         self.emitter.memory_grow(); // account for emitted strings in memory
@@ -36,17 +39,30 @@ impl InitGenerator<'_, '_, '_, '_, '_> {
     }
 
     // Private helper functions
-    fn visit_globals(&mut self, globals: &HashMap<String, Global>) -> bool {
+    fn visit_globals(&mut self, globals: &HashMap<String, Global>, script_name: &str) -> bool {
         let mut is_success = true;
         for (name, global) in globals.iter() {
             // do not inject globals into Wasm that are used/defined by the compiler
             if global.is_from_user() {
-                match self
-                    .emitter
-                    .emit_global(name.clone(), global.ty.clone(), &global.value)
-                {
-                    Err(e) => self.err.add_error(*e),
-                    Ok(res) => is_success &= res,
+                if global.report {
+                    //emit global and add the metadata to the report_var_metadata
+                    match self.emitter.emit_report_global(
+                        name.clone(),
+                        global.ty.clone(),
+                        &global.value,
+                        script_name.to_owned(),
+                    ) {
+                        Err(e) => self.err.add_error(*e),
+                        Ok(res) => is_success &= res,
+                    }
+                } else {
+                    match self
+                        .emitter
+                        .emit_global(name.clone(), global.ty.clone(), &global.value)
+                    {
+                        Err(e) => self.err.add_error(*e),
+                        Ok(res) => is_success &= res,
+                    }
                 }
             }
         }
@@ -61,13 +77,100 @@ impl InitGenerator<'_, '_, '_, '_, '_> {
         });
         is_success
     }
+    fn lib_fn_set(&mut self) {
+        //add library functions to the symbol table - skips if not in the wasm module
+        let lib_map_fns = [
+            "create_i32_i32".to_string(),
+            "create_i32_bool".to_string(),
+            "create_i32_string".to_string(),
+            "create_i32_tuple".to_string(),
+            "create_i32_map".to_string(),
+            "create_string_i32".to_string(),
+            "create_string_bool".to_string(),
+            "create_string_string".to_string(),
+            "create_string_tuple".to_string(),
+            "create_string_map".to_string(),
+            "create_bool_i32".to_string(),
+            "create_bool_bool".to_string(),
+            "create_bool_string".to_string(),
+            "create_bool_tuple".to_string(),
+            "create_bool_map".to_string(),
+            "create_tuple_i32".to_string(),
+            "create_tuple_bool".to_string(),
+            "create_tuple_string".to_string(),
+            "create_tuple_tuple".to_string(),
+            "create_tuple_map".to_string(),
+            "insert_i32_i32".to_string(),
+            "insert_i32i32i32tuple_i32".to_string(),
+            "get_i32_i32".to_string(),
+            "get_i32_from_i32i32i32tuple".to_string(),
+            "print_map".to_string(),
+            "insert_i32_string".to_string(),
+            "get_string_from_i32string".to_string(),
+            "print_meta".to_string(),
+        ];
+        for lib_fn in lib_map_fns.iter() {
+            let id_option = self.emitter.app_wasm.get_fid_by_name(lib_fn);
+            let id = match id_option {
+                Some(id_option) => id_option,
+                None => std::u32::MAX,
+            };
+            match self.emitter.table.get_curr_scope_mut() {
+                Some(_) => {
+                    self.emitter.table.put(
+                        lib_fn.to_string(),
+                        Record::LibFn {
+                            name: lib_fn.to_string(),
+                            fn_id: id,
+                        },
+                    );
+                }
+                _ => {
+                    self.err.add_error(ErrorGen::get_unexpected_error(
+                        true,
+                        Some("No scope found in Visit Whamm".to_string()),
+                        None,
+                    ));
+                }
+            }
+        }
+    }
+    fn on_startup(&mut self) {
+        self.lib_fn_set();
+        self.create_start();
+    }
+    fn create_start(&mut self) {
+        match self.emitter.app_wasm.start {
+            Some(_) => {
+                info!("Start function already exists");
+            }
+            None => {
+                //time to make a start fn
+                info!("No start function found, creating one");
+                match self.emitter.app_wasm.get_fid_by_name("_start") {
+                    Some(_) => {
+                        info!("start function is _start");
+                    }
+                    None => {
+                        let start_fn = FunctionBuilder::new(&[], &[]);
+                        let start_id = start_fn.finish(self.emitter.app_wasm);
+                        self.emitter.app_wasm.start = Some(start_id);
+                        self.emitter.app_wasm.set_fn_name(
+                            start_id - self.emitter.app_wasm.num_import_func(),
+                            "start",
+                        );
+                    } //strcmp doesn't need to call add_export_fn so this probably doesnt either
+                      //in app_wasm, not sure if need to have it in the ST
+                }
+            }
+        }
+    }
 }
-impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_> {
+impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
     fn visit_whamm(&mut self, whamm: &mut Whamm) -> bool {
         trace!("Entering: CodeGenerator::visit_whamm");
         self.context_name = "whamm".to_string();
         let mut is_success = true;
-
         // visit fns
         whamm
             .fns
@@ -102,7 +205,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_> {
             is_success &= self.visit_fn(f);
         });
         // inject globals
-        is_success &= self.visit_globals(&script.globals);
+        is_success &= self.visit_globals(&script.globals, &script.name);
         // visit providers
         script.providers.iter_mut().for_each(|(_name, provider)| {
             is_success &= self.visit_provider(provider);
@@ -335,6 +438,15 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_> {
 
                 is_success
             }
+            Statement::ReportDecl { decl, .. } => self.visit_stmt(decl),
+            Statement::SetMap { map, key, val, .. } => {
+                let mut is_success = true;
+                is_success &= self.visit_expr(map);
+                is_success &= self.visit_expr(key);
+                is_success &= self.visit_expr(val);
+
+                is_success
+            }
         }
     }
 
@@ -374,6 +486,13 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_> {
             Expr::VarId { .. } => {
                 // ignore, will not have a string to emit
                 true
+            }
+            Expr::MapGet { map, key, .. } => {
+                let mut is_success = true;
+                is_success &= self.visit_expr(map);
+                is_success &= self.visit_expr(key);
+
+                is_success
             }
         }
     }

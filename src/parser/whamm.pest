@@ -31,8 +31,9 @@ PROBE_ID = @{
     | "]")+
 }
 //disallowed IDs should have the full list of reserved names like return
+get_map = { ID ~ "[" ~ expr ~ "]"}
 
-DISALLOWED_ID = _{ "return" | "if" | "while" | "else" }
+DISALLOWED_ID = _{ "return" | "if" | "while" | "else" | "map" }
 ID = @{ (!DISALLOWED_ID ~ (ASCII_ALPHA | "_")+ ~ ( ASCII_DIGIT | (ASCII_ALPHA | "_")+ )*) |
         (DISALLOWED_ID ~ (ASCII_ALPHA | "_" | ASCII_DIGIT)+)
 }
@@ -74,12 +75,15 @@ block = { "{" ~ statement* ~ "}" }
 
 // var ops
 ret = { "return" ~ expr ? }
+
+report_declaration = { "report" ~ declaration }
+assignment = { (get_map | ID) ~ "=" ~ (ternary | expr) }
 declaration = { TYPE ~ !RESERVED_KEYWORDS ~ ID }
-assignment = { ID ~ "=" ~ (ternary | expr) }
+
 initialize = { TYPE ~ ID ~ "=" ~ (ternary | expr) }
-statement = { ( ( initialize | if_stmt | fn_call | declaration | assignment | incrementor | decrementor | ret ) ~ ";" )+ }
-incrementor = { ID ~ "++"}
-decrementor = { ID ~ "--"}
+statement = { ( ( initialize | if_stmt | fn_call | report_declaration | declaration | assignment | incrementor | decrementor | ret ) ~ ";" )+ }
+incrementor = { (get_map | ID) ~ "++"}
+decrementor = { (get_map | ID) ~ "--"}
 // =====================
 // ---- Expressions ----
 // =====================
@@ -92,10 +96,11 @@ prefix = _{ UNOP }
 UNOP = _{ neg }
     neg = { "!" }
 
-val = _{ BOOL | ID | I32 | STRING | tuple}
+val = _{ BOOL | get_map | ID | I32 | STRING | tuple}
 operand = _{ fn_call | "(" ~ expr ~ ")" | val }
 
 tuple = { "(" ~ ")" | "(" ~ (val) ~ ( "," ~ val )* ~ ")" }
+
 
 BINOP = _{ LOGOP | RELOP | SUMOP | MULOP }
     // Logical operators

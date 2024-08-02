@@ -1,10 +1,14 @@
+use orca::iterator::iterator_trait::Iterator;
+use orca::Location as OrcaLocation;
+
 use crate::common::error::ErrorGen;
+
 use crate::emitter::rewriting::rules::{provider_factory, Arg, LocInfo, WhammProvider};
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::rewriting::Emitter;
-use crate::generator::simple_ast::SimpleAST;
+use crate::generator::simple_ast::{SimpleAST, SimpleProbe};
 use crate::generator::types::ExprFolder;
-use crate::parser::types::{Block, Expr};
+use crate::parser::types::{Block, Expr, ProbeSpec};
 
 const UNEXPECTED_ERR_MSG: &str =
     "InstrGenerator: Looks like you've found a bug...please report this behavior!";
@@ -22,21 +26,20 @@ fn get_loc_info<'a>(rule: &'a WhammProvider, emitter: &VisitingEmitter) -> Optio
 /// passed emitter to emit instrumentation code.
 /// This process should ideally be generic, made to perform a specific
 /// instrumentation technique by the passed Emitter type.
-pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e> {
-    pub emitter: VisitingEmitter<'a, 'b, 'c, 'd>,
+pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
+    pub emitter: VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f>,
     pub ast: SimpleAST,
-    pub err: &'e mut ErrorGen,
-
+    pub err: &'g mut ErrorGen,
     curr_instr_args: Vec<Arg>,
     curr_probe_mode: String,
     /// The current probe's body and predicate
     curr_probe: Option<(Option<Block>, Option<Expr>)>,
 }
-impl<'a, 'b, 'c, 'd, 'e> InstrGenerator<'a, 'b, 'c, 'd, 'e> {
+impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub fn new(
-        emitter: VisitingEmitter<'a, 'b, 'c, 'd>,
+        emitter: VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f>,
         ast: SimpleAST,
-        err: &'e mut ErrorGen,
+        err: &'g mut ErrorGen,
     ) -> Self {
         Self {
             emitter,
@@ -91,6 +94,7 @@ impl<'a, 'b, 'c, 'd, 'e> InstrGenerator<'a, 'b, 'c, 'd, 'e> {
                     // This location has matched some rules, inject each matched probe!
                     loc_info.probes.iter().for_each(|(probe_spec, probe)| {
                         // Enter the scope for this matched probe
+                        self.set_curr_loc(probe_spec, probe);
                         is_success = self
                             .emitter
                             .enter_scope_via_spec(&probe.script_id, probe_spec);
@@ -136,11 +140,53 @@ impl<'a, 'b, 'c, 'd, 'e> InstrGenerator<'a, 'b, 'c, 'd, 'e> {
                 }
             });
         }
-
         is_success
     }
+    fn set_curr_loc(&mut self, probe_spec: &ProbeSpec, probe: &SimpleProbe) {
+        let curr_script_id = probe.script_id.clone();
+        self.emitter.curr_num_reports = probe.num_reports;
+        let curr_provider = match &probe_spec.provider {
+            Some(provider) => provider.name.clone(),
+            None => "".to_string(),
+        };
+        let curr_package = match &probe_spec.package {
+            Some(package) => package.name.clone(),
+            None => "".to_string(),
+        };
+        let curr_event = match &probe_spec.event {
+            Some(event) => event.name.clone(),
+            None => "".to_string(),
+        };
+        let curr_mode = match &probe_spec.mode {
+            Some(mode) => mode.name.clone(),
+            None => "".to_string(),
+        };
+        let curr_probe_id = format!(
+            "{}_{}:{}:{}:{}",
+            probe.probe_number, curr_provider, curr_package, curr_event, curr_mode
+        );
+        let loc = match self.emitter.app_iter.curr_loc() {
+            OrcaLocation::Module {
+                func_idx,
+                instr_idx,
+                ..
+            }
+            | OrcaLocation::Component {
+                func_idx,
+                instr_idx,
+                ..
+            } => (func_idx as i32, instr_idx as i32),
+        };
+        //set the current location in bytecode and load some new globals for potential report vars
+        self.emitter.report_var_metadata.set_loc(
+            curr_script_id,
+            loc,
+            curr_probe_id,
+            self.emitter.curr_num_reports, //this is still used in the emitter to determine how many new globals to emit
+        );
+    }
 }
-impl InstrGenerator<'_, '_, '_, '_, '_> {
+impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
     fn emit_probe(&mut self) -> bool {
         let mut is_success = true;
 

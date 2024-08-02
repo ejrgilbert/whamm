@@ -22,7 +22,6 @@ fn instrument_dfinity_with_fault_injection() {
     let processed_scripts = common::setup_fault_injection("dfinity");
     assert!(!processed_scripts.is_empty());
     err.fatal_report("Integration Test");
-
     for (script_path, script_text) in processed_scripts {
         let wasm = fs::read(APP_WASM_PATH).unwrap();
         let mut module_to_instrument = Module::parse(&wasm, false).unwrap();

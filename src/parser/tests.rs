@@ -63,7 +63,7 @@ wasm::call:alt / strcmp((arg2, arg3), "record") / {
 wasm::call:alt /
     target_fn_type == "import" &&
     target_imp_module == "ic0" &&
-    target_imp_name == "call_new" &&
+    target_fn_name == "call_new" &&
     strcmp((arg0, arg1), "bookings") &&
     strcmp((arg2, arg3), "record")
 / {
@@ -222,16 +222,49 @@ wasm:opcode:br:before {
         }
     
     "#,
+    //maps
+    r#"
+        map<i32, i32> count;
+        my_fn() -> i32{
+            count[0] = 0;
+            return count[0];
+        }
+        BEGIN {
+            count[1] = my_fn();
+        }
+    "#,
+    r#"
+        map<i32, i32> count;
+        BEGIN {
+            count[1] = 1+1;
+        }
+    "#,
     // valid "variants" of reserved keywords
     "wasm:opcode:call:alt { i32 arg; }",
     "wasm:opcode:call:alt { arg = 1; }",
     "wasm:opcode:call:alt { arg0 = 1; }",
+    //using tuples
+    r#"
+        (i32, i32) sample = (1, 2);
+        dummy_fn() {
+            a = strcmp(sample, "bookings");
+            strcmp((arg0, arg1), "bookings");
+        }
+        i32 i;
+        i = 5; 
+        i32 j = 5;
+        BEGIN{
+            strcmp((arg0, arg1), "bookings");
+        }
+    
+    "#,
 ];
 
 const FATAL_SCRIPTS: &[&str] = &[
     // invalid probe specification
     r#"
 core::br:before / i == 1 / { i = 0; }  // SHOULD FAIL HERE
+
     "#,
 ];
 
@@ -312,8 +345,27 @@ map<i32, i32> count;
     r#"
 map<i32, i32> arg0;
     "#,
+    r#"
+        map<i32> count;
+        my_fn() -> i32{
+            count[0] = 0;
+            return count[0];
+        }
+        BEGIN {
+            count[1] = my_fn();
+        }
+    "#,
+    r#"
+        map<i32, i32> count;
+        my_fn() -> i32{
+            count[0] = 0;
+            return count[0];
+        }
+        BEGIN {
+            count[] = my_fn();
+        }
+    "#,
 ];
-
 const SPECIAL: &[&str] = &["BEGIN { }", "END { }", "wasm:::alt { }", "wasm:::alt { }"];
 
 // ====================
@@ -457,7 +509,7 @@ my_func() -> i32{
 wasm::call:alt /
     target_fn_type == "import" &&
     target_imp_module == "ic0" &&
-    target_imp_name == "call_new" &&
+    target_fn_name == "call_new" &&
     strcmp((arg0, arg1), "bookings") &&
     strcmp((arg2, arg3), "record")
 / {
@@ -465,7 +517,6 @@ wasm::call:alt /
 }
     "#;
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-
     let ast = get_ast(script, &mut err);
 
     // script
@@ -509,6 +560,7 @@ wasm::call:alt /
     assert!(&probe.body().is_some());
     assert_eq!(1, probe.body().as_ref().unwrap().stmts.len());
 }
+
 #[test]
 pub fn test_ast_special_cases() {
     setup_logger();
@@ -516,7 +568,7 @@ pub fn test_ast_special_cases() {
     run_test_on_valid_list(SPECIAL.iter().map(|s| s.to_string()).collect(), &mut err);
 }
 
-fn print_ast(ast: &Whamm) {
+pub(crate) fn print_ast(ast: &Whamm) {
     let mut visitor = AsStrVisitor { indent: 0 };
     debug!("{}", visitor.visit_whamm(ast));
 }
@@ -544,20 +596,15 @@ fn test_global_stmts() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
-        i32 a;
-        a = 1;
         dummy_fn() {
             a = strcmp((arg0, arg1), "bookings");
             strcmp((arg0, arg1), "bookings");
         }
-        BEGIN{
+        wasm::call:alt{
+            (i32, i32) a = (arg0, arg1);
             strcmp((arg0, arg1), "bookings");
         }
-        END {
-            a = 2;
-        }
     "#;
-
     assert!(is_valid_script(script, &mut err));
 }
 
@@ -571,7 +618,11 @@ pub fn testing_block() {
             strcmp((arg0, arg1), "bookings");
         }
         BEGIN{
-            strcmp((arg0, arg1), "bookings");
+            if (0 == 1) {
+                strcmp((arg0, arg1), "bookings");
+            } else {
+                dummy_fn();
+            };
         }
     
     "#;
@@ -583,19 +634,46 @@ pub fn testing_global_def() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
-        dummy_fn() {
-            a = strcmp((arg0, arg1), "bookings");
-            strcmp((arg0, arg1), "bookings");
-        }
         i32 i;
         i = 5; 
         i32 j = 5;
         BEGIN{
-            strcmp((arg0, arg1), "bookings");
+            strcmp((i, j), "bookings");
         }
-    
     "#;
 
+    assert!(is_valid_script(script, &mut err));
+}
+#[test]
+pub fn testing_map() {
+    setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let script = r#"
+        map<i32, map<i32, i32>> count;
+        my_fn() -> i32 {
+            map<i32, i32> a;
+            count[0] = a;
+            return a[0];
+        }
+        wasm::call:alt {
+            i32 a = my_fn();
+        }
+    "#;
+
+    assert!(is_valid_script(script, &mut err));
+}
+#[test]
+pub fn test_report_decl() {
+    setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let script = r#"
+        i32 a;
+        report i32 c; 
+        wasm::br:before {
+            a = 1;
+            report bool b;
+        }
+    "#;
     assert!(is_valid_script(script, &mut err));
 }
 // ===================

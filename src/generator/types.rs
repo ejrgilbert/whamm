@@ -16,6 +16,7 @@ impl ExprFolder {
             Expr::Call { .. } => ExprFolder::fold_call(expr, table),
             Expr::VarId { .. } => ExprFolder::fold_var_id(expr, table),
             Expr::Primitive { .. } => ExprFolder::fold_primitive(expr, table),
+            Expr::MapGet { .. } => ExprFolder::fold_map_get(expr, table),
         }
     }
 
@@ -186,6 +187,19 @@ impl ExprFolder {
 
         // Cannot fold anymore
         binop.clone()
+    }
+
+    fn fold_map_get(expr: &Expr, table: &SymbolTable) -> Expr {
+        if let Expr::MapGet { map, key, .. } = &expr {
+            let map = ExprFolder::fold_expr(map, table);
+            let key = ExprFolder::fold_expr(key, table);
+            return Expr::MapGet {
+                map: Box::new(map),
+                key: Box::new(key),
+                loc: None,
+            };
+        }
+        expr.clone()
     }
 
     // similar to the logic of fold_binop

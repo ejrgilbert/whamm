@@ -1,14 +1,17 @@
 use crate::common::error::{ErrorGen, WhammError};
+use crate::emitter::map_lib_adapter::MapLibAdapter;
+use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::emitter::rewriting::rules::wasm::OpcodeEvent;
 use crate::emitter::rewriting::rules::{Arg, LocInfo, Provider, WhammProvider};
-use crate::emitter::rewriting::{block_type_to_wasm, emit_expr};
-use crate::emitter::rewriting::{emit_stmt, Emitter};
+use crate::emitter::rewriting::{block_type_to_wasm, emit_expr, whamm_type_to_wasm_global};
+use crate::emitter::rewriting::{emit_stmt, print_report_all, Emitter};
+
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{Block, DataType, Definition, Expr, ProbeSpec, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca::ir::module::Module;
-use orca::ir::types::BlockType;
+use orca::ir::types::BlockType as OrcaBlockType;
 use orca::iterator::iterator_trait::Iterator as OrcaIterator;
 use orca::iterator::module_iterator::ModuleIterator;
 use orca::opcode::Opcode;
@@ -18,25 +21,33 @@ use std::iter::Iterator;
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
 
-pub struct VisitingEmitter<'a, 'b, 'c, 'd> {
+pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     pub app_iter: ModuleIterator<'a, 'b>,
     pub table: &'c mut SymbolTable,
-    mem_tracker: &'d MemoryTracker,
+    pub mem_tracker: &'d mut MemoryTracker,
+    pub map_lib_adapter: &'e mut MapLibAdapter,
+    pub(crate) report_var_metadata: &'f mut ReportVarMetadata,
     instr_created_args: Vec<(String, usize)>,
+    pub curr_num_reports: i32,
 }
 
-impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
+impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     // note: only used in integration test
     pub fn new(
         app_wasm: &'a mut Module<'b>,
         table: &'c mut SymbolTable,
-        mem_tracker: &'d MemoryTracker,
+        mem_tracker: &'d mut MemoryTracker,
+        map_lib_adapter: &'e mut MapLibAdapter,
+        report_var_metadata: &'f mut ReportVarMetadata,
     ) -> Self {
         let a = Self {
             app_iter: ModuleIterator::new(app_wasm, vec![]),
             table,
             mem_tracker,
+            map_lib_adapter,
+            report_var_metadata,
             instr_created_args: vec![],
+            curr_num_reports: 0,
         };
 
         a
@@ -75,7 +86,7 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
         }
     }
 
-    pub(crate) fn get_loc_info<'e>(&self, rule: &'e WhammProvider) -> Option<LocInfo<'e>> {
+    pub(crate) fn get_loc_info<'g>(&self, rule: &'g WhammProvider) -> Option<LocInfo<'g>> {
         if let Some(curr_instr) = self.app_iter.curr_op() {
             rule.get_loc_info(self.app_iter.module, curr_instr)
         } else {
@@ -117,6 +128,7 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
                         name: arg_name.to_string(),
                         value: None,
                         is_comp_provided: false,
+                        is_report_var: false,
                         addr: Some(VarAddr::Local {
                             addr: *arg_local_id,
                         }),
@@ -221,6 +233,7 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
         is_success &= self.emit_expr(condition)?;
 
         // emit the beginning of the if block
+
         self.app_iter.if_stmt(block_type_to_wasm(conseq));
 
         is_success &= self.emit_body(conseq)?;
@@ -249,6 +262,7 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
         // emit the condition of the `if` expression
         is_success &= self.emit_expr(condition)?;
         // emit the beginning of the if block
+
         let block_ty = match orig_ty_id {
             Some(ty_id) => {
                 let ty = match self.app_iter.module.types.get(ty_id as usize) {
@@ -257,12 +271,11 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
                 };
 
                 // we only care about the result of the original
-                BlockType::FuncType(self.app_iter.module.add_type(&[], &ty))
+                OrcaBlockType::FuncType(self.app_iter.module.add_type(&[], &ty))
             }
-            None => BlockType::Empty,
+            None => OrcaBlockType::Empty,
         };
         self.app_iter.if_stmt(block_ty);
-
         is_success &= self.emit_body(conseq)?;
 
         // emit the beginning of the else
@@ -348,11 +361,30 @@ impl<'a, 'b, 'c, 'd> VisitingEmitter<'a, 'b, 'c, 'd> {
         }
     }
 }
-impl Emitter for VisitingEmitter<'_, '_, '_, '_> {
+impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
     fn emit_body(&mut self, body: &mut Block) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
+        for _ in 0..self.curr_num_reports {
+            let default_global = whamm_type_to_wasm_global(&DataType::I32);
+            let gid = self.app_iter.module.add_global(default_global);
+            self.report_var_metadata
+                .available_i32_gids
+                .push(gid as usize);
+        }
         for stmt in body.stmts.iter_mut() {
             is_success &= self.emit_stmt(stmt)?;
+            //now emit the call to print the changes to the report vars if needed
+            match print_report_all(
+                &mut self.app_iter,
+                self.table,
+                self.report_var_metadata,
+                UNEXPECTED_ERR_MSG,
+            ) {
+                Ok(_) => {}
+                Err(e) => {
+                    return Err(e);
+                }
+            }
         }
         Ok(is_success)
     }
@@ -395,11 +427,14 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_> {
         }
 
         // everything else can be emitted as normal!
+
         emit_stmt(
             stmt,
             &mut self.app_iter,
             self.table,
             self.mem_tracker,
+            self.map_lib_adapter,
+            self.report_var_metadata,
             UNEXPECTED_ERR_MSG,
         )
     }
@@ -410,6 +445,8 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_> {
             &mut self.app_iter,
             self.table,
             self.mem_tracker,
+            self.map_lib_adapter,
+            self.report_var_metadata,
             UNEXPECTED_ERR_MSG,
         )
     }

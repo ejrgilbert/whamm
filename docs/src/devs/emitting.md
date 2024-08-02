@@ -66,7 +66,7 @@ Take the following probe definition for example:
 wasm:bytecode:call:alt /
     target_fn_type == "import" &&
     target_imp_module == "ic0" &&
-    target_imp_name == "call_perform"
+    target_fn_name == "call_perform"
 / { ... }
 ```
 
@@ -80,7 +80,7 @@ Now, take the next probe definition example:
 wasm:bytecode:call:alt /
     target_fn_type == "import" &&
     target_imp_module == "ic0" &&
-    target_imp_name == "call_new" &&
+    target_fn_name == "call_new" &&
     strcmp((arg0, arg1), "bookings") &&
     strcmp((arg2, arg3), "record")
 / { ... }

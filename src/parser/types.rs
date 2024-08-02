@@ -212,7 +212,12 @@ pub enum Statement {
         expr: Expr,
         loc: Option<Location>,
     },
-
+    SetMap {
+        map: Expr, // Should be VarId
+        key: Expr,
+        val: Expr,
+        loc: Option<Location>,
+    },
     Expr {
         expr: Expr,
         loc: Option<Location>,
@@ -227,6 +232,10 @@ pub enum Statement {
         alt: Block,
         loc: Option<Location>,
     },
+    ReportDecl {
+        decl: Box<Statement>,
+        loc: Option<Location>,
+    },
 }
 impl Statement {
     pub fn loc(&self) -> &Option<Location> {
@@ -235,6 +244,8 @@ impl Statement {
             | Statement::If { loc, .. }
             | Statement::Return { loc, .. }
             | Statement::Assign { loc, .. }
+            | Statement::SetMap { loc, .. }
+            | Statement::ReportDecl { loc, .. }
             | Statement::Expr { loc, .. } => loc,
         }
     }
@@ -292,6 +303,11 @@ pub enum Expr {
         val: Value,
         loc: Option<Location>,
     },
+    MapGet {
+        map: Box<Expr>, //This should be a VarId
+        key: Box<Expr>,
+        loc: Option<Location>,
+    },
 }
 impl Expr {
     pub fn loc(&self) -> &Option<Location> {
@@ -301,6 +317,7 @@ impl Expr {
             | Expr::BinOp { loc, .. }
             | Expr::Call { loc, .. }
             | Expr::VarId { loc, .. }
+            | Expr::MapGet { loc, .. }
             | Expr::Primitive { loc, .. } => loc,
         }
     }
@@ -367,7 +384,7 @@ pub enum Definition {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Global {
     pub def: Definition,
-
+    pub report: bool,
     pub ty: DataType,
     pub var_name: Expr, // Should be VarId
     pub value: Option<Value>,
@@ -929,6 +946,7 @@ impl ProvidedGlobal {
                 } else {
                     Definition::CompilerDynamic
                 },
+                report: false,
                 ty,
                 var_name: Expr::VarId {
                     is_comp_provided: true,
