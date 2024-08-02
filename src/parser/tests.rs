@@ -243,6 +243,22 @@ wasm:opcode:br:before {
     "wasm:opcode:call:alt { i32 arg; }",
     "wasm:opcode:call:alt { arg = 1; }",
     "wasm:opcode:call:alt { arg0 = 1; }",
+    //using tuples 
+    r#"
+        (i32, i32) sample = (1, 2);
+        dummy_fn() {
+            a = strcmp(sample, "bookings");
+            strcmp((arg0, arg1), "bookings");
+        }
+        i32 i;
+        i = 5; 
+        i32 j = 5;
+        BEGIN{
+            strcmp((arg0, arg1), "bookings");
+        }
+    
+    "#,
+
 ];
 
 const FATAL_SCRIPTS: &[&str] = &[
@@ -603,7 +619,11 @@ pub fn testing_block() {
             strcmp((arg0, arg1), "bookings");
         }
         BEGIN{
-            strcmp((arg0, arg1), "bookings");
+            if (0 == 1) {
+                strcmp((arg0, arg1), "bookings");
+            } else {
+                dummy_fn();
+            };
         }
     
     "#;
@@ -615,18 +635,12 @@ pub fn testing_global_def() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
-        (i32, i32) sample = (1, 2);
-        dummy_fn() {
-            a = strcmp(sample, "bookings");
-            strcmp((arg0, arg1), "bookings");
-        }
         i32 i;
         i = 5; 
         i32 j = 5;
         BEGIN{
-            strcmp((arg0, arg1), "bookings");
+            strcmp((i, j), "bookings");
         }
-    
     "#;
 
     assert!(is_valid_script(script, &mut err));
@@ -655,6 +669,7 @@ pub fn test_report_decl() {
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
         i32 a;
+        report i32 c; 
         wasm::br:before {
             a = 1;
             report bool b;
