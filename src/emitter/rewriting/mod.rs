@@ -1356,8 +1356,7 @@ fn print_report_all<'a, T: Opcode<'a> + ModuleBuilder>(
     report_var_metadata: &mut ReportVarMetadata,
     _err_msg: &str,
 ) -> Result<(), Box<WhammError>> {
-    if !report_var_metadata.flush_soon
-    {
+    if !report_var_metadata.flush_soon {
         return Ok(());
     }
     // TODO - uncomment this when we have metadata maps correctly initialized
