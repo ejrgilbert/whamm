@@ -1357,10 +1357,13 @@ fn print_report_all<'a, T: Opcode<'a> + ModuleBuilder>(
     report_var_metadata: &mut ReportVarMetadata,
     _err_msg: &str,
 ) -> Result<(), Box<WhammError>> {
-    if !report_var_metadata.flush_soon {
+    if !report_var_metadata.flush_soon
+        || (report_var_metadata.variable_metadata.is_empty()
+            && report_var_metadata.map_metadata.is_empty())
+    {
         return Ok(());
     }
-    //TODO - uncomment this when we have metadata maps correctly initialized
+    // TODO - uncomment this when we have metadata maps correctly initialized
     // let fn_id = match table.lookup_rec("print_meta") {
     //     Some(id) => match id {
     //         Record::LibFn { fn_id, .. } => *fn_id,

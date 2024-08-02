@@ -1,8 +1,8 @@
-use std::collections::HashMap;
+use orca::ir::types::{BlockType as OrcaBlockType, Value as OrcaValue};
 use orca::iterator::iterator_trait::Iterator;
 use orca::Location as OrcaLocation;
-use orca::ir::types::{BlockType as OrcaBlockType, Value as OrcaValue};
 use orca::{DataSegment, DataSegmentKind, InitExpr, Opcode};
+use std::collections::HashMap;
 
 use crate::common::error::{ErrorGen, WhammError};
 
@@ -13,7 +13,7 @@ use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::rewriting::Emitter;
 use crate::generator::simple_ast::{SimpleAST, SimpleProbe};
 use crate::generator::types::ExprFolder;
-use crate::parser::types::{Block, Expr, ProbeSpec, Statement, DataType};
+use crate::parser::types::{Block, DataType, Expr, ProbeSpec, Statement};
 
 const UNEXPECTED_ERR_MSG: &str =
     "InstrGenerator: Looks like you've found a bug...please report this behavior!";
@@ -343,7 +343,16 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
         app_iter.end();
     }
     fn after_run(&mut self) -> bool {
-        //after running, emit the metadata from the report_var_metadata into maps 0 and 1 in app_wasm
+        if self
+            .emitter
+            .report_var_metadata
+            .variable_metadata
+            .is_empty()
+            && self.emitter.report_var_metadata.map_metadata.is_empty()
+        {
+            return true;
+        }
+        //after running, emit the metadata from the report_var_metadata into maps 0 and 1 in app_wasm - if meta exists
         let ref report_var_metadata = self.emitter.report_var_metadata;
         let ref mut module = self.emitter.app_iter.module;
         let ref var_meta = report_var_metadata.variable_metadata;

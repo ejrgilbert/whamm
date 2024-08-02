@@ -9,10 +9,10 @@ use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Fn, Global, ProvidedFunction, Script, Statement,
     UnOp, Value, Whamm, WhammVisitorMut,
 };
-use orca::ir::types::{Global as OrcaGlobal, Value as OrcaValue};
-use orca::{FunctionBuilder, InitExpr, Opcode};
 use crate::verifier::types::Record;
 use log::{info, trace, warn};
+use orca::ir::types::{Global as OrcaGlobal, Value as OrcaValue};
+use orca::{FunctionBuilder, InitExpr, Opcode};
 use std::collections::HashMap;
 use wasmparser::ValType;
 

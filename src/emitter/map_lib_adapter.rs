@@ -14,7 +14,6 @@ impl Default for MapLibAdapter {
 }
 impl MapLibAdapter {
     pub fn new() -> Self {
-
         //Reserve map 0 for the var metadata map and map 1 for the map metadata map
         MapLibAdapter {
             map_count: 2,

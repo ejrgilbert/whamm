@@ -430,7 +430,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                                 Ok(to_call) => to_call,
                                 Err(e) => return Err(e),
                             },
-
                         };
                         *addr = Some(VarAddr::MapId {
                             addr: map_id as u32,
