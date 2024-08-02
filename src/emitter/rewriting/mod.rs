@@ -1357,8 +1357,6 @@ fn print_report_all<'a, T: Opcode<'a> + ModuleBuilder>(
     _err_msg: &str,
 ) -> Result<(), Box<WhammError>> {
     if !report_var_metadata.flush_soon
-        || (report_var_metadata.variable_metadata.is_empty()
-            && report_var_metadata.map_metadata.is_empty())
     {
         return Ok(());
     }
