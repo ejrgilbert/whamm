@@ -201,17 +201,8 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                     addr: map_id as u32,
                 });
                 let fn_id = match table.lookup_rec(&fn_name) {
-                    Some(id) => match id {
-                        Record::LibFn { fn_id, .. } => fn_id,
-                        _ => {
-                            return Err(Box::new(ErrorGen::get_unexpected_error(
-                                true,
-                                Some(format!("{err_msg} Map function not in symbol table")),
-                                None,
-                            )))
-                        }
-                    },
-                    None => {
+                    Some(Record::LibFn { fn_id, .. }) => fn_id,
+                    _ => {
                         return Err(Box::new(ErrorGen::get_unexpected_error(
                             true,
                             Some(format!("{err_msg} Map function not in symbol table")),
@@ -346,17 +337,8 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                         addr: map_id as u32,
                     });
                     let fn_id = match table.lookup_rec(&fn_name) {
-                        Some(id) => match id {
-                            Record::LibFn { fn_id, .. } => fn_id,
-                            _ => {
-                                return Err(Box::new(ErrorGen::get_unexpected_error(
-                                    true,
-                                    Some(format!("{err_msg} Map function not in symbol table")),
-                                    None,
-                                )))
-                            }
-                        },
-                        None => {
+                        Some(Record::LibFn { fn_id, .. }) => fn_id,
+                        _ => {
                             return Err(Box::new(ErrorGen::get_unexpected_error(
                                 true,
                                 Some(format!("{err_msg} Map function not in symbol table")),
@@ -550,17 +532,8 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
                     Err(e) => return Err(e),
                 };
                 let fn_id = match table.lookup_rec(&to_call) {
-                    Some(id) => match id {
-                        Record::LibFn { fn_id, .. } => *fn_id,
-                        _ => {
-                            return Err(Box::new(ErrorGen::get_unexpected_error(
-                                true,
-                                Some(format!("{err_msg} Map function not in symbol table")),
-                                None,
-                            )))
-                        }
-                    },
-                    None => {
+                    Some(Record::LibFn { fn_id, .. }) => *fn_id,
+                    _ => {
                         return Err(Box::new(ErrorGen::get_unexpected_error(
                             true,
                             Some(format!("{err_msg} Map function not in symbol table")),
@@ -1232,17 +1205,8 @@ fn emit_map_get<'a, T: Opcode<'a> + ModuleBuilder>(
                         Err(e) => return Err(e),
                     };
                     let fn_id = match table.lookup_rec(&to_call) {
-                        Some(id) => match id {
-                            Record::LibFn { fn_id, .. } => *fn_id,
-                            _ => {
-                                return Err(Box::new(ErrorGen::get_unexpected_error(
-                                    true,
-                                    Some(format!("{err_msg} Map function not in symbol table")),
-                                    None,
-                                )))
-                            }
-                        },
-                        None => {
+                        Some(Record::LibFn { fn_id, .. }) => *fn_id,
+                        _ => {
                             return Err(Box::new(ErrorGen::get_unexpected_error(
                                 true,
                                 Some(format!("{err_msg} Map function not in symbol table")),

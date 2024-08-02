@@ -434,20 +434,11 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                             addr: map_id as u32,
                         });
                         let fn_id = match self.table.lookup_rec(&fn_name) {
-                            Some(id) => match id {
-                                Record::LibFn { fn_id, .. } => fn_id,
-                                _ => {
-                                    return Err(Box::new(ErrorGen::get_unexpected_error(
-                                        true,
-                                        Some(format!("Map function not in symbol table")),
-                                        None,
-                                    )))
-                                }
-                            },
-                            None => {
+                            Some(Record::LibFn { fn_id, .. }) => fn_id,
+                            _ => {
                                 return Err(Box::new(ErrorGen::get_unexpected_error(
                                     true,
-                                    Some(format!("Map function not in symbol table")),
+                                    Some("Map function not in symbol table".to_string()),
                                     None,
                                 )));
                             }
@@ -484,27 +475,23 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                     }
                 }
             }
-            Some(&mut ref ty) => {
-                return Err(Box::new(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} \
+            Some(&mut ref ty) => Err(Box::new(ErrorGen::get_unexpected_error(
+                true,
+                Some(format!(
+                    "{UNEXPECTED_ERR_MSG} \
                 Incorrect global variable record, expected Record::Var, found: {:?}",
-                        ty
-                    )),
-                    None,
-                )))
-            }
-            None => {
-                return Err(Box::new(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} \
+                    ty
+                )),
+                None,
+            ))),
+            None => Err(Box::new(ErrorGen::get_unexpected_error(
+                true,
+                Some(format!(
+                    "{UNEXPECTED_ERR_MSG} \
                 Global variable symbol does not exist!"
-                    )),
-                    None,
-                )))
-            }
+                )),
+                None,
+            ))),
         }
     }
     pub fn emit_global_stmts(&mut self, stmts: &mut [Statement]) -> Result<bool, Box<WhammError>> {

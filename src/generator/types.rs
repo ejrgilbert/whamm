@@ -199,7 +199,7 @@ impl ExprFolder {
                 loc: None,
             };
         }
-        return expr.clone();
+        expr.clone()
     }
 
     // similar to the logic of fold_binop

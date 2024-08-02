@@ -243,7 +243,7 @@ wasm:opcode:br:before {
     "wasm:opcode:call:alt { i32 arg; }",
     "wasm:opcode:call:alt { arg = 1; }",
     "wasm:opcode:call:alt { arg0 = 1; }",
-    //using tuples 
+    //using tuples
     r#"
         (i32, i32) sample = (1, 2);
         dummy_fn() {
@@ -258,7 +258,6 @@ wasm:opcode:br:before {
         }
     
     "#,
-
 ];
 
 const FATAL_SCRIPTS: &[&str] = &[
