@@ -541,9 +541,9 @@ impl OpcodeEvent {
             ),
         );
         globals.insert(
-            "target_imp_name".to_string(),
+            "target_fn_name".to_string(),
             ProvidedGlobal::new(
-                "target_imp_name".to_string(),
+                "target_fn_name".to_string(),
                 "The name of the imported function. \
                         To improve performance, pair with `target_fn_type == \"import\"` \
                         for faster short-circuiting."

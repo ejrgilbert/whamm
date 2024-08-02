@@ -543,17 +543,22 @@ impl Event for OpcodeEvent {
                         }
                     } else {
                         // This is a local function
+                        let relative_id = *fid - app_wasm.num_imported_functions as u32;
                         FuncInfo {
                             func_kind: "local".to_string(),
-                            module: "".to_string(),
-                            // TODO -- fix this when orca supports pulling func names
-                            name: "".to_string(),
+                            module: match &app_wasm.module_name {
+                                Some(name) => name.clone(),
+                                None => "".to_string(),
+                            },
+                            name: match &app_wasm.get_fname(relative_id) {
+                                Some(name) => name.clone(),
+                                None => "".to_string(),
+                            },
                         }
                     };
-
                     // define static_data
                     loc_info.static_data.insert(
-                        "target_imp_name".to_string(),
+                        "target_fn_name".to_string(),
                         Some(Value::Str {
                             ty: DataType::Str,
                             val: func_info.name.to_string(),

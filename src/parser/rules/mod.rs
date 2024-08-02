@@ -933,7 +933,6 @@ impl Mode for WhammMode {
 pub struct WhammProbe {
     pub mode: WhammMode,
     pub loc: Option<Location>,
-
     pub predicate: Option<Expr>,
     pub body: Option<Block>,
 }

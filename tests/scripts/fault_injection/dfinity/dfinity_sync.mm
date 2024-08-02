@@ -8,7 +8,7 @@
 wasm:opcode:call:alt /
     target_fn_type == "import" &&
     target_imp_module == "ic0" &&
-    target_imp_name == "call_perform"
+    target_fn_name == "call_perform"
 / {
     alt_call_by_name("instr_inject_synchronous_fault");
 }
