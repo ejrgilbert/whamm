@@ -292,7 +292,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 self.mem_tracker.curr_mem_offset += val.len();
                 Ok(true)
             }
-            Value::Integer { .. } | Value::Tuple { .. } | Value::Boolean { .. } => {
+            Value::U32 { .. } | Value::I32 { .. } | Value::Tuple { .. } | Value::Boolean { .. } => {
                 Err(Box::new(ErrorGen::get_unexpected_error(
                     true,
                     Some(format!(

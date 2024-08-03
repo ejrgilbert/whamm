@@ -143,7 +143,7 @@ impl ExprFolder {
                         return res;
                     }
 
-                    let (lhs_val, rhs_val) = ExprFolder::get_int(&lhs, &rhs);
+                    let (lhs_val, rhs_val) = ExprFolder::get_i32(&lhs, &rhs);
                     if let Some(res) = ExprFolder::fold_ints(&lhs_val, &rhs_val, op) {
                         return res;
                     }
@@ -158,7 +158,7 @@ impl ExprFolder {
                         return res;
                     }
 
-                    let (lhs_val, rhs_val) = ExprFolder::get_int(&lhs, &rhs);
+                    let (lhs_val, rhs_val) = ExprFolder::get_i32(&lhs, &rhs);
                     if let Some(res) = ExprFolder::fold_ints(&lhs_val, &rhs_val, op) {
                         return res;
                     }
@@ -177,7 +177,7 @@ impl ExprFolder {
                 | BinOp::Multiply
                 | BinOp::Divide
                 | BinOp::Modulo => {
-                    let (lhs_val, rhs_val) = ExprFolder::get_int(&lhs, &rhs);
+                    let (lhs_val, rhs_val) = ExprFolder::get_i32(&lhs, &rhs);
                     if let Some(res) = ExprFolder::fold_ints(&lhs_val, &rhs_val, op) {
                         return res;
                     }
@@ -303,35 +303,35 @@ impl ExprFolder {
                         loc: None,
                     }),
                     BinOp::Add => Some(Expr::Primitive {
-                        val: Value::Integer {
+                        val: Value::I32 {
                             ty: DataType::I32,
                             val: lhs_int + rhs_int,
                         },
                         loc: None,
                     }),
                     BinOp::Subtract => Some(Expr::Primitive {
-                        val: Value::Integer {
+                        val: Value::I32 {
                             ty: DataType::I32,
                             val: lhs_int - rhs_int,
                         },
                         loc: None,
                     }),
                     BinOp::Multiply => Some(Expr::Primitive {
-                        val: Value::Integer {
+                        val: Value::I32 {
                             ty: DataType::I32,
                             val: lhs_int * rhs_int,
                         },
                         loc: None,
                     }),
                     BinOp::Divide => Some(Expr::Primitive {
-                        val: Value::Integer {
+                        val: Value::I32 {
                             ty: DataType::I32,
                             val: lhs_int / rhs_int,
                         },
                         loc: None,
                     }),
                     BinOp::Modulo => Some(Expr::Primitive {
-                        val: Value::Integer {
+                        val: Value::I32 {
                             ty: DataType::I32,
                             val: lhs_int % rhs_int,
                         },
@@ -460,19 +460,33 @@ impl ExprFolder {
         let rhs_val = ExprFolder::get_single_bool(rhs);
         (lhs_val, rhs_val)
     }
-    pub fn get_int(lhs: &Expr, rhs: &Expr) -> (Option<i32>, Option<i32>) {
+    pub fn get_i32(lhs: &Expr, rhs: &Expr) -> (Option<i32>, Option<i32>) {
         let lhs_val = match lhs {
             Expr::Primitive {
-                val: Value::Integer { val: lhs_val, .. },
+                val: Value::I32 { val: lhs_val, .. },
                 ..
             } => Some(*lhs_val),
+            Expr::Primitive {
+                val: Value::U32 { val: lhs_val, .. },
+                ..
+            } => {
+                // TODO -- check overflow here!
+                Some(*lhs_val as i32)
+            }
             _ => None,
         };
         let rhs_val = match rhs {
             Expr::Primitive {
-                val: Value::Integer { val: rhs_val, .. },
+                val: Value::I32 { val: rhs_val, .. },
                 ..
             } => Some(*rhs_val),
+            Expr::Primitive {
+                val: Value::U32 { val: rhs_val, .. },
+                ..
+            } => {
+                // TODO -- check overflow here!
+                Some(*rhs_val as i32)
+            }
             _ => None,
         };
         (lhs_val, rhs_val)

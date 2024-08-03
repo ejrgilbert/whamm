@@ -1129,7 +1129,12 @@ fn emit_value<'a, T: Opcode<'a> + ModuleBuilder>(
 ) -> Result<bool, Box<WhammError>> {
     let mut is_success = true;
     match val {
-        Value::Integer { val, .. } => {
+        Value::U32 { val, .. } => {
+            // TODO -- is this okay? What workaround do I have here?
+            injector.i32_const(*val as i32);
+            is_success &= true;
+        }
+        Value::I32 { val, .. } => {
             injector.i32_const(*val);
             is_success &= true;
         }

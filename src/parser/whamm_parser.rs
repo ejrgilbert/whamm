@@ -566,7 +566,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
             let var_id_line_col = LineColLocation::from(var_id_rule.as_span());
             let var_id: Expr;
             let mut key_assigned: Expr = Expr::Primitive {
-                val: Value::Integer {
+                val: Value::I32 {
                     ty: DataType::I32,
                     val: 0,
                 },
@@ -671,7 +671,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                     path: None,
                 }),
             };
-            let val = Value::Integer {
+            let val = Value::I32 {
                 ty: DataType::I32,
                 val: 1,
             };
@@ -721,7 +721,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                     path: None,
                 }),
             };
-            let val = Value::Integer {
+            let val = Value::I32 {
                 ty: DataType::I32,
                 val: 1,
             };
@@ -1180,7 +1180,7 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
 
             trace!("Exiting I32");
             return Ok(Expr::Primitive {
-                val: Value::Integer {
+                val: Value::I32 {
                     ty: DataType::I32,
                     val,
                 },
