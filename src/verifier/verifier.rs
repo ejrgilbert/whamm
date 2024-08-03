@@ -318,6 +318,14 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 if let (Some(lhs_ty), Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {
                     if lhs_ty == rhs_ty {
                         None
+                    } else if (lhs_ty == DataType::U32 || lhs_ty == DataType::I32)
+                        && (rhs_ty == DataType::I32 || rhs_ty == DataType::U32)
+                    {
+                        // TODO -- make this typechecking actually verify that the values won't overflow!
+                        let loc = Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
+                        self.err.add_typecheck_warn(format!("Comparisons between U32/I32 values, possible overflow issue! \
+                                Future versions of whamm will verify this compatibility.\n lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty), Some(loc.line_col));
+                        None
                     } else {
                         // using a struct in parser to merge two locations
                         let loc = Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
@@ -510,6 +518,15 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         | BinOp::Modulo => {
                             if lhs_ty == DataType::I32 && rhs_ty == DataType::I32 {
                                 Some(DataType::I32)
+                            } else if (lhs_ty == DataType::U32 || lhs_ty == DataType::I32)
+                                && (rhs_ty == DataType::I32 || rhs_ty == DataType::U32)
+                            {
+                                // TODO -- make this typechecking actually verify that the values won't overflow!
+                                let loc =
+                                    Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
+                                self.err.add_typecheck_warn(format!("Comparisons between U32/I32 values, possible overflow issue! \
+                                Future versions of whamm will verify this compatibility.\n lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty), Some(loc.line_col));
+                                Some(DataType::I32)
                             } else {
                                 let loc =
                                     Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
@@ -537,6 +554,15 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         BinOp::EQ | BinOp::NE => {
                             if lhs_ty == rhs_ty {
                                 Some(DataType::Boolean)
+                            } else if (lhs_ty == DataType::U32 || lhs_ty == DataType::I32)
+                                && (rhs_ty == DataType::I32 || rhs_ty == DataType::U32)
+                            {
+                                // TODO -- make this typechecking actually verify that the values won't overflow!
+                                let loc =
+                                    Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
+                                self.err.add_typecheck_warn(format!("Comparisons between U32/I32 values, possible overflow issue! \
+                                Future versions of whamm will verify this compatibility.\n lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty), Some(loc.line_col));
+                                Some(DataType::Boolean)
                             } else {
                                 // using a struct in parser to merge two locations
                                 let loc =
@@ -552,6 +578,15 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         }
                         BinOp::GT | BinOp::LT | BinOp::GE | BinOp::LE => {
                             if lhs_ty == DataType::I32 && rhs_ty == DataType::I32 {
+                                Some(DataType::Boolean)
+                            } else if (lhs_ty == DataType::U32 || lhs_ty == DataType::I32)
+                                && (rhs_ty == DataType::I32 || rhs_ty == DataType::U32)
+                            {
+                                // TODO -- make this typechecking actually verify that the values won't overflow!
+                                let loc =
+                                    Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
+                                self.err.add_typecheck_warn(format!("Comparisons between U32/I32 values, possible overflow issue! \
+                                Future versions of whamm will verify this compatibility.\n lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty), Some(loc.line_col));
                                 Some(DataType::Boolean)
                             } else {
                                 // using a struct in parser to merge two locations
@@ -868,7 +903,8 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
 
     fn visit_value(&mut self, val: &mut Value) -> Option<DataType> {
         match val {
-            Value::Integer { .. } => Some(DataType::I32),
+            Value::U32 { .. } => Some(DataType::U32),
+            Value::I32 { .. } => Some(DataType::I32),
             Value::Str { .. } => Some(DataType::Str),
             Value::Boolean { .. } => Some(DataType::Boolean),
             Value::Tuple { ty: _, vals } => {

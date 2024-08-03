@@ -543,7 +543,12 @@ impl WhammVisitor<String> for AsStrVisitor {
                 s += &format!("{}", val);
                 s
             }
-            Value::Integer { ty: _ty, val } => {
+            Value::U32 { val, .. } => {
+                let mut s = "".to_string();
+                s += &format!("{}", val);
+                s
+            }
+            Value::I32 { val, .. } => {
                 let mut s = "".to_string();
                 s += &format!("{}", val);
                 s

@@ -326,7 +326,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         // Assume the correct args since we've gone through typechecking at this point!
         let func_id = match args.as_ref().unwrap().iter().next().unwrap() {
             Expr::Primitive {
-                val: Value::Integer { val, .. },
+                val: Value::I32 { val, .. },
                 ..
             } => *val,
             _ => return Ok(false),

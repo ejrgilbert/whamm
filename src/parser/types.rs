@@ -83,7 +83,8 @@ impl Location {
 impl PartialEq for DataType {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (DataType::I32, DataType::I32)
+            (DataType::U32, DataType::U32)
+            | (DataType::I32, DataType::I32)
             | (DataType::Boolean, DataType::Boolean)
             | (DataType::Null, DataType::Null)
             | (DataType::Str, DataType::Str)
@@ -111,9 +112,7 @@ impl PartialEq for DataType {
     }
 }
 
-impl Eq for DataType {}
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq)]
 pub enum DataType {
     I32,
     U32,
@@ -178,7 +177,8 @@ impl DataType {
 // Values
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Value {
-    Integer { ty: DataType, val: i32 },
+    U32 { ty: DataType, val: u32 },
+    I32 { ty: DataType, val: i32 },
     Str { ty: DataType, val: String },
     Tuple { ty: DataType, vals: Vec<Expr> },
     Boolean { ty: DataType, val: bool },
@@ -255,7 +255,7 @@ impl Statement {
     pub fn dummy() -> Self {
         Self::Expr {
             expr: Expr::Primitive {
-                val: Value::Integer {
+                val: Value::I32 {
                     ty: DataType::I32,
                     val: 0,
                 },
