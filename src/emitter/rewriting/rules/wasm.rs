@@ -183,13 +183,11 @@ impl Event for OpcodeEvent {
             }
             OpcodeEventKind::Block { .. } => {
                 if let Operator::Block { .. } = instr {
-                    // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
             OpcodeEventKind::Loop { .. } => {
                 if let Operator::Loop { .. } = instr {
-                    // TODO define static vars
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
