@@ -1046,7 +1046,7 @@ macro_rules! for_each_opcode {
     Block, block, 0, vec![], HashMap::new(), vec![], "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/block"
     Loop, _loop, 0, vec![], HashMap::new(), vec![], "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/loop"
     If, _if, 1, vec![], HashMap::new(), vec![], "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"
-    // Else => visit_else
+    // Else => visit_else TODO
     // TryTable { try_table: $crate::TryTable } => visit_try_table
     // Throw { tag_index: u32 } => visit_throw
     // ThrowRef => visit_throw_ref
@@ -1056,29 +1056,29 @@ macro_rules! for_each_opcode {
     // Rethrow { relative_depth: u32 } => visit_rethrow
     // Delegate { relative_depth: u32 } => visit_delegate
     // CatchAll => visit_catch_all
-    // End => visit_end
+    // End => visit_end TODO
     Br, br, 1, vec![DataType::U32], HashMap::new(), vec![], "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
-    // BrIf { relative_depth: u32 } => visit_br_if
-    // BrTable { targets: $crate::BrTable<'a> } => visit_br_table
-    // Return => visit_return
+    // BrIf { relative_depth: u32 } => visit_br_if TODO
+    // BrTable { targets: $crate::BrTable<'a> } => visit_br_table TODO
+    // Return => visit_return TODO
     Call, call, 0, vec![DataType::U32], get_call_globals(), get_call_fns(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call"
-    // CallIndirect { type_index: u32, table_index: u32 } => visit_call_indirect
-    // ReturnCall { function_index: u32 } => visit_return_call
-    // ReturnCallIndirect { type_index: u32, table_index: u32 } => visit_return_call_indirect
+    // CallIndirect { type_index: u32, table_index: u32 } => visit_call_indirect TODO
+    // ReturnCall { function_index: u32 } => visit_return_call TODO
+    // ReturnCallIndirect { type_index: u32, table_index: u32 } => visit_return_call_indirect TODO
     // Drop => visit_drop
     // Select => visit_select
     // TypedSelect { ty: $crate::ValType } => visit_typed_select
-    // LocalGet { local_index: u32 } => visit_local_get
-    // LocalSet { local_index: u32 } => visit_local_set
-    // LocalTee { local_index: u32 } => visit_local_tee
-    // GlobalGet { global_index: u32 } => visit_global_get
-    // GlobalSet { global_index: u32 } => visit_global_set
+    // LocalGet { local_index: u32 } => visit_local_get TODO
+    // LocalSet { local_index: u32 } => visit_local_set TODO
+    // LocalTee { local_index: u32 } => visit_local_tee TODO
+    // GlobalGet { global_index: u32 } => visit_global_get TODO
+    // GlobalSet { global_index: u32 } => visit_global_set TODO
     // I32Load { memarg: $crate::MemArg } => visit_i32_load
     // I64Load { memarg: $crate::MemArg } => visit_i64_load
     // F32Load { memarg: $crate::MemArg } => visit_f32_load
     // F64Load { memarg: $crate::MemArg } => visit_f64_load
     // I32Load8S { memarg: $crate::MemArg } => visit_i32_load8_s
-    // I32Load8U { memarg: $crate::MemArg } => visit_i32_load8_u
+    // I32Load8U { memarg: $crate::MemArg } => visit_i32_load8_u TODO
     // I32Load16S { memarg: $crate::MemArg } => visit_i32_load16_s
     // I32Load16U { memarg: $crate::MemArg } => visit_i32_load16_u
     // I64Load8S { memarg: $crate::MemArg } => visit_i64_load8_s
@@ -1098,8 +1098,8 @@ macro_rules! for_each_opcode {
     // I64Store32 { memarg: $crate::MemArg } => visit_i64_store32
     // MemorySize { mem: u32 } => visit_memory_size
     // MemoryGrow { mem: u32 } => visit_memory_grow
-    // I32Const { value: i32 } => visit_i32_const
-    // I64Const { value: i64 } => visit_i64_const
+    // I32Const { value: i32 } => visit_i32_const TODO
+    // I64Const { value: i64 } => visit_i64_const TODO
     // F32Const { value: $crate::Ieee32 } => visit_f32_const
     // F64Const { value: $crate::Ieee64 } => visit_f64_const
     // RefNull { hty: $crate::HeapType } => visit_ref_null
@@ -1262,12 +1262,12 @@ macro_rules! for_each_opcode {
     // RefTestNullable { hty: $crate::HeapType } => visit_ref_test_nullable
     // RefCastNonNull { hty: $crate::HeapType } => visit_ref_cast_non_null
     // RefCastNullable { hty: $crate::HeapType } => visit_ref_cast_nullable
-    // BrOnCast {
+    // BrOnCast { TODO
     //     relative_depth: u32,
     //     from_ref_type: $crate::RefType,
     //     to_ref_type: $crate::RefType
     // } => visit_br_on_cast
-    // BrOnCastFail {
+    // BrOnCastFail { TODO
     //     relative_depth: u32,
     //     from_ref_type: $crate::RefType,
     //     to_ref_type: $crate::RefType
@@ -1691,11 +1691,11 @@ macro_rules! for_each_opcode {
     // I32x4RelaxedDotI8x16I7x16AddS => visit_i32x4_relaxed_dot_i8x16_i7x16_add_s
     //
     // // Typed Function references
-    // CallRef { type_index: u32 } => visit_call_ref
-    // ReturnCallRef { type_index: u32 } => visit_return_call_ref
+    // CallRef { type_index: u32 } => visit_call_ref TODO
+    // ReturnCallRef { type_index: u32 } => visit_return_call_ref TODO
     // RefAsNonNull => visit_ref_as_non_null
-    // BrOnNull { relative_depth: u32 } => visit_br_on_null
-    // BrOnNonNull { relative_depth: u32 } => visit_br_on_non_null
+    // BrOnNull { relative_depth: u32 } => visit_br_on_null TODO
+    // BrOnNonNull { relative_depth: u32 } => visit_br_on_non_null TODO
 }};}
 
 // ============================================
