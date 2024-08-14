@@ -193,6 +193,78 @@ impl Event for OpcodeEvent {
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
+            OpcodeEventKind::Else { .. } => {
+                if let Operator::Else { .. } = instr {
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
+            }
+            OpcodeEventKind::End { .. } => {
+                if let Operator::End { .. } = instr {
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
+            }
+            OpcodeEventKind::Br { .. } => {
+                if let Operator::Br { relative_depth } = instr {
+                    loc_info.static_data.insert(
+                        "imm0".to_string(),
+                        Some(Value::I32 {
+                            ty: DataType::I32,
+                            // TODO -- check to see if this is a bad idea?
+                            val: *relative_depth as i32,
+                        }),
+                    );
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
+            }
+            OpcodeEventKind::BrIf { .. } => {
+                if let Operator::BrIf { relative_depth } = instr {
+                    loc_info.static_data.insert(
+                        "imm0".to_string(),
+                        Some(Value::I32 {
+                            ty: DataType::I32,
+                            // TODO -- check to see if this is a bad idea?
+                            val: *relative_depth as i32,
+                        }),
+                    );
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
+            }
+            OpcodeEventKind::BrTable { .. } => {
+                if let Operator::BrTable { targets } = instr {
+                    loc_info.static_data.insert(
+                        "num_targets".to_string(),
+                        Some(Value::I32 {
+                            ty: DataType::I32,
+                            val: targets.len() as i32
+                        }),
+                    );
+                    loc_info.static_data.insert(
+                        "default_target".to_string(),
+                        Some(Value::I32 {
+                            ty: DataType::I32,
+                            val: targets.default() as i32
+                        }),
+                    );
+                    for (i, target) in targets.targets().enumerate() {
+                        if let Ok(target) = target {
+                            loc_info.static_data.insert(
+                                format!("imm{i}"),
+                                Some(Value::I32 {
+                                    ty: DataType::I32,
+                                    // TODO -- check to see if this is a bad idea?
+                                    val: target as i32
+                                }),
+                            );
+                        }
+                    };
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
+            }
+            OpcodeEventKind::Return { .. } => {
+                if let Operator::Return { .. } = instr {
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
+            }
             OpcodeEventKind::Call { .. } => {
                 if let Operator::Call {
                     function_index: fid,
@@ -247,21 +319,6 @@ impl Event for OpcodeEvent {
                         Some(Value::U32 {
                             ty: DataType::U32,
                             val: *fid,
-                        }),
-                    );
-
-                    // add the probes for this event
-                    loc_info.add_probes(self.probe_spec(), &self.probes);
-                }
-            }
-            OpcodeEventKind::Br { .. } => {
-                if let Operator::Br { relative_depth } = instr {
-                    loc_info.static_data.insert(
-                        "imm0".to_string(),
-                        Some(Value::I32 {
-                            ty: DataType::I32,
-                            // TODO -- check to see if this is a bad idea?
-                            val: *relative_depth as i32,
                         }),
                     );
 

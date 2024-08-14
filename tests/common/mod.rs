@@ -10,7 +10,7 @@ use whamm::parser::types::Whamm;
 use whamm::parser::whamm_parser::*;
 
 use glob::{glob, glob_with};
-use log::{error, info, warn};
+use log::{debug, error, info, warn};
 use orca::Module;
 use wabt::wat2wasm;
 use whamm::common::error::ErrorGen;
@@ -198,6 +198,7 @@ pub fn wat2wasm_on_file(original_wat_path: &str, original_wasm_path: &str) {
     // (calling wat2wasm from a child process doesn't work
     //  since somehow the executable can't write to the file system directly)
     let file_data = fs::read(original_wat_path).unwrap();
+    debug!("Running wat2wasm on file: {original_wat_path}");
     let wasm_data = match wat2wasm(file_data) {
         Err(e) => {
             panic!("wat2wasm failed with error: {}", e)
@@ -209,6 +210,7 @@ pub fn wat2wasm_on_file(original_wat_path: &str, original_wasm_path: &str) {
 }
 
 pub fn wasm2wat_on_file(instrumented_wasm_path: &str) {
+    debug!("Running wasm2wat on file: {instrumented_wasm_path}");
     let res = Command::new("wasm2wat")
         .arg(instrumented_wasm_path)
         .output()

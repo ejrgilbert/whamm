@@ -32,7 +32,6 @@ pub fn main() -> Result<(), std::io::Error> {
             test_case.print();
         }
 
-        // TODO -- retain original dir structure
         match generate_should_fail_bin_wast(&test_setup, &test_cases, &test) {
             Err(e) => {
                 panic!(
@@ -45,7 +44,6 @@ pub fn main() -> Result<(), std::io::Error> {
             }
         };
 
-        // TODO -- retain original dir structure
         match generate_instrumented_bin_wast(&test_setup, &test_cases, &test) {
             Err(e) => {
                 panic!(
@@ -86,6 +84,7 @@ fn run_wast_tests(wast_should_fail: Vec<String>, wast_should_pass: Vec<String>) 
 
 /// Run all the wast files that should FAIL on each of the configured interpreters
 fn run_wast_tests_that_should_fail(inters: &[String], wast_files: Vec<String>) {
+    debug!("Running wast tests that should fail.");
     for inter in inters.iter() {
         for wast in wast_files.iter() {
             let res = run_wast_test(inter, wast);
@@ -99,6 +98,7 @@ fn run_wast_tests_that_should_fail(inters: &[String], wast_files: Vec<String>) {
 
 /// Run all the wast files that should PASS on each of the configured interpreters
 fn run_wast_tests_that_should_pass(inters: &[String], wast_files: Vec<String>) {
+    debug!("Running wast tests that should pass.");
     for inter in inters.iter() {
         for wast in wast_files.iter() {
             let res = run_wast_test(inter, wast);

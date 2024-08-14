@@ -1046,7 +1046,7 @@ macro_rules! for_each_opcode {
     Block, block, 0, vec![], HashMap::new(), vec![], "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/block"
     Loop, _loop, 0, vec![], HashMap::new(), vec![], "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/loop"
     If, _if, 1, vec![], HashMap::new(), vec![], "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"
-    // Else => visit_else TODO
+    Else, _else, 0, vec![], HashMap::new(), vec![], "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"
     // TryTable { try_table: $crate::TryTable } => visit_try_table
     // Throw { tag_index: u32 } => visit_throw
     // ThrowRef => visit_throw_ref
@@ -1056,11 +1056,17 @@ macro_rules! for_each_opcode {
     // Rethrow { relative_depth: u32 } => visit_rethrow
     // Delegate { relative_depth: u32 } => visit_delegate
     // CatchAll => visit_catch_all
-    // End => visit_end TODO
-    Br, br, 1, vec![DataType::U32], HashMap::new(), vec![], "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
-    // BrIf { relative_depth: u32 } => visit_br_if TODO
-    // BrTable { targets: $crate::BrTable<'a> } => visit_br_table TODO
-    // Return => visit_return TODO
+    End, end, 0, vec![], HashMap::new(), vec![], "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/end"
+    // Br, br, 0, vec![DataType::U32], HashMap::new(), vec![], "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
+    // // BrIf { relative_depth: u32 } => visit_br_if TODO
+    // BrIf, br_if, 1, vec![DataType::U32], HashMap::new(), vec![], "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
+    // // BrTable { targets: $crate::BrTable<'a> } => visit_br_table TODO
+    // // can be any number of immediates! Just assume we have the immN used and check later while traversing the bytecode
+    // // Can predicate on the number of immediates available using a global!
+    // // TODO -- figure out how immN will work
+    // BrTable, br_table, 1, vec![DataType::AssumeGood], get_br_table_globals(), vec![], "https://musteresel.github.io/posts/2020/01/webassembly-text-br_table-example.html"
+    // // Return => visit_return TODO
+    // Return, _return, 0, vec![], HashMap::new(), vec![], "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/return"
     Call, call, 0, vec![DataType::U32], get_call_globals(), get_call_fns(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call"
     // CallIndirect { type_index: u32, table_index: u32 } => visit_call_indirect TODO
     // ReturnCall { function_index: u32 } => visit_return_call TODO
@@ -1785,4 +1791,32 @@ pub fn get_call_fns() -> Vec<ProvidedFunction> {
         DataType::Tuple { ty_info: vec![] },
         true
     )]
+}
+
+pub fn get_br_table_globals() -> HashMap<String, ProvidedGlobal> {
+    let mut globals = HashMap::new();
+
+    // add in the extra globals (that aren't args or immediates)
+    globals.insert(
+        "num_targets".to_string(),
+        ProvidedGlobal::new(
+            "num_targets".to_string(),
+            "The number of target branches for this br_table instruction (correlates with the number of immediates, e.g. `immN`).\
+            NOTE: This can be used in a predicate to ensure that the current br_table has the immN you need to interact with for the probe."
+                .to_string(),
+            DataType::Str,
+            true,
+        ),
+    );
+    globals.insert(
+        "default_target".to_string(),
+        ProvidedGlobal::new(
+            "default_target".to_string(),
+            "The default target of this br_table instruction."
+                .to_string(),
+            DataType::Str,
+            true,
+        ),
+    );
+    globals
 }
