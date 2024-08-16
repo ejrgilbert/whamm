@@ -1,15 +1,16 @@
 use crate::emitter::rewriting::rules::{
     event_factory, probe_factory, Arg, Event, FromStr, LocInfo, Package,
 };
+use crate::for_each_opcode;
+use crate::generator::simple_ast::SimpleProbe;
 use crate::parser::rules::wasm::{OpcodeEventKind, WasmPackageKind};
 use crate::parser::types::{DataType, ProbeSpec, SpecPart, Value};
 use log::warn;
+use orca::ir::id::TypeID;
+use orca::ir::module::module_functions::{FuncKind, ImportedFunction, LocalFunction};
 use orca::ir::module::Module;
-use orca::ir::types::{DataType as OrcaType, FuncKind};
+use orca::ir::types::DataType as OrcaType;
 use std::collections::HashMap;
-
-use crate::for_each_opcode;
-use crate::generator::simple_ast::SimpleProbe;
 use wasmparser::Operator;
 
 pub struct WasmPackage {
@@ -131,24 +132,20 @@ impl OpcodeEvent {
         // TODO: there are 500 of them in wasmparser::Operator
         // compared to 48 of them in walrus::ir::Instr
         // How do we compress the Operators we need to concern
-        let (ty_list, ty_id): (Vec<OrcaType>, Option<u32>) = match instr {
+        let (ty_list, ty_id): (Vec<OrcaType>, Option<TypeID>) = match instr {
             Operator::Call {
                 function_index: fid,
             } => {
-                match app_wasm.get_fn_kind(*fid) {
-                    Some(FuncKind::Import(ty_id)) | Some(FuncKind::Local(ty_id)) => {
-                        if let Some(ty) = app_wasm.types.get(ty_id as usize) {
-                            (ty.params.to_vec(), Some(ty_id))
+                match app_wasm.functions.get_kind(*fid) {
+                    FuncKind::Import(ImportedFunction { ty_id, .. })
+                    | FuncKind::Local(LocalFunction { ty_id, .. }) => {
+                        if let Some(ty) = app_wasm.types.get(*ty_id) {
+                            (ty.params.to_vec(), Some(*ty_id))
                         } else {
                             // no type info found!!
                             warn!("No type information found for import with FID {fid}");
                             (vec![], None)
                         }
-                    }
-                    None => {
-                        // no type info found!!
-                        warn!("No type information found for import with FID {fid}");
-                        (vec![], None)
                     }
                 }
             }
@@ -201,34 +198,28 @@ impl Event for OpcodeEvent {
                     function_index: fid,
                 } = instr
                 {
-                    // low FIDs are imports (if fid < module.imports.len(), fid is an import)
-                    let func_info = if let Some(import) = app_wasm.imports.get(*fid as usize) {
-                        // This is an imported function (FIDs too large will return None)
-
-                        // UNCOMMENT FOR DEBUGGING PURPOSES
-                        // if import.name == "call_new" {
-                        //     println!("call_new!!");
-                        // }
-                        FuncInfo {
-                            func_kind: "import".to_string(),
-                            module: import.module.to_string(),
-                            name: import.name.to_string(),
+                    let func_info = match app_wasm.functions.get_kind(*fid) {
+                        FuncKind::Import(ImportedFunction { import_id, .. }) => {
+                            let import = app_wasm.imports.get(*import_id);
+                            FuncInfo {
+                                func_kind: "import".to_string(),
+                                module: import.module.to_string(),
+                                name: import.name.to_string(),
+                            }
                         }
-                    } else {
-                        // This is a local function
-                        let relative_id = *fid - app_wasm.num_imported_functions as u32;
-                        FuncInfo {
+                        FuncKind::Local(LocalFunction { func_id, .. }) => FuncInfo {
                             func_kind: "local".to_string(),
                             module: match &app_wasm.module_name {
                                 Some(name) => name.clone(),
                                 None => "".to_string(),
                             },
-                            name: match &app_wasm.get_fname(relative_id) {
+                            name: match &app_wasm.functions.get_name(*func_id) {
                                 Some(name) => name.clone(),
                                 None => "".to_string(),
                             },
-                        }
+                        },
                     };
+
                     // define static_data
                     loc_info.static_data.insert(
                         "target_fn_name".to_string(),

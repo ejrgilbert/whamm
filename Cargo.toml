@@ -13,8 +13,8 @@ path = "src/main.rs"
 failure = "0.1.5"
 glob = "0.3.1"
 lazy_static = "1.4.0"
-orca = { path = "../orca" }
-wasmparser = "0.214.0"
+orca = { path = "../orca" } # Should be on branch "DO_NOT_DELETE/whamm_dependency"
+wasmparser = "0.215.0"
 
 # Logging
 env_logger = "0.10.2"
