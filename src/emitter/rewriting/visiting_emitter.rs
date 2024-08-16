@@ -17,6 +17,7 @@ use orca::iterator::module_iterator::ModuleIterator;
 use orca::module_builder::AddLocal;
 use orca::opcode::Opcode;
 use std::iter::Iterator;
+use orca::ir::id::FunctionID;
 
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
@@ -35,13 +36,14 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     // note: only used in integration test
     pub fn new(
         app_wasm: &'a mut Module<'b>,
+        injected_funcs: &Vec<FunctionID>,
         table: &'c mut SymbolTable,
         mem_tracker: &'d mut MemoryTracker,
         map_lib_adapter: &'e mut MapLibAdapter,
         report_var_metadata: &'f mut ReportVarMetadata,
     ) -> Self {
         let a = Self {
-            app_iter: ModuleIterator::new(app_wasm, vec![]),
+            app_iter: ModuleIterator::new(app_wasm, injected_funcs),
             table,
             mem_tracker,
             map_lib_adapter,

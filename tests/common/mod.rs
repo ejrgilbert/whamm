@@ -113,6 +113,7 @@ pub fn run_whamm(mut app_wasm: &mut Module, whamm_script: &String, script_path: 
     let mut report_var_metadata = ReportVarMetadata::new();
 
     // Phase 0 of instrumentation (emit globals and provided fns)
+    let mut injected_funcs = vec![];
     let mut init = InitGenerator {
         emitter: ModuleEmitter::new(
             &mut app_wasm,
@@ -124,6 +125,7 @@ pub fn run_whamm(mut app_wasm: &mut Module, whamm_script: &String, script_path: 
 
         context_name: "".to_string(),
         err: &mut err,
+        injected_funcs: &mut injected_funcs
     };
     assert!(init.run(&mut whamm));
     err.fatal_report("IntegrationTest");
@@ -133,7 +135,8 @@ pub fn run_whamm(mut app_wasm: &mut Module, whamm_script: &String, script_path: 
     // and ready to use in every body/predicate.
     let mut instr = InstrGenerator::new(
         VisitingEmitter::new(
-            &mut app_wasm,
+            app_wasm,
+            &injected_funcs,
             &mut symbol_table,
             &mut mem_tracker,
             &mut map_knower,

@@ -1057,7 +1057,8 @@ macro_rules! for_each_opcode {
     // Delegate { relative_depth: u32 } => visit_delegate
     // CatchAll => visit_catch_all
     End, end, 0, vec![], HashMap::new(), vec![], "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/end"
-    // Br, br, 0, vec![DataType::U32], HashMap::new(), vec![], "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
+    // TODO
+    Br, br, 0, vec![DataType::U32], HashMap::new(), vec![], "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
     // // BrIf { relative_depth: u32 } => visit_br_if TODO
     // BrIf, br_if, 1, vec![DataType::U32], HashMap::new(), vec![], "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
     // // BrTable { targets: $crate::BrTable<'a> } => visit_br_table TODO

@@ -13,6 +13,7 @@ use orca::ir::types::{BlockType as OrcaBlockType, DataType as OrcaType, Value as
 use wasmparser::GlobalType;
 
 use orca::ir::function::FunctionBuilder;
+use orca::ir::id::FunctionID;
 use orca::ir::module::Module;
 use orca::module_builder::AddLocal;
 use orca::opcode::Opcode;
@@ -63,7 +64,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         }
     }
 
-    fn emit_provided_fn(&mut self, context: &str, f: &Fn) -> Result<bool, Box<WhammError>> {
+    fn emit_provided_fn(&mut self, context: &str, f: &Fn) -> Result<FunctionID, Box<WhammError>> {
         if context == "whamm" && f.name.name == "strcmp" {
             self.emit_whamm_strcmp_fn(f)
         } else {
@@ -79,7 +80,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         }
     }
 
-    fn emit_whamm_strcmp_fn(&mut self, f: &Fn) -> Result<bool, Box<WhammError>> {
+    fn emit_whamm_strcmp_fn(&mut self, f: &Fn) -> Result<FunctionID, Box<WhammError>> {
         let strcmp_params = vec![OrcaType::I32, OrcaType::I32, OrcaType::I32, OrcaType::I32];
         let strcmp_result = vec![OrcaType::I32];
 
@@ -202,7 +203,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         return if let Some(rec) = self.table.get_record_mut(&rec_id) {
             if let Record::Fn { addr, .. } = rec {
                 *addr = Some(strcmp_id);
-                Ok(true)
+                Ok(strcmp_id)
             } else {
                 return Err(Box::new(ErrorGen::get_unexpected_error(
                     true,
@@ -237,7 +238,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         self.table.reset_children();
     }
 
-    pub(crate) fn emit_fn(&mut self, context: &str, f: &Fn) -> Result<bool, Box<WhammError>> {
+    pub(crate) fn emit_fn(&mut self, context: &str, f: &Fn) -> Result<FunctionID, Box<WhammError>> {
         // figure out if this is a provided fn.
         if f.def == Definition::CompilerDynamic {
             return if self.fn_providing_contexts.contains(&context.to_string()) {
@@ -325,7 +326,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         global_id: &u32,
         name: String,
         ty: &GlobalType,
-    ) -> Result<bool, Box<WhammError>> {
+    ) -> Result<FunctionID, Box<WhammError>> {
         let getter_params = vec![];
         let getter_res = vec![OrcaType::from(ty.content_type)];
 
@@ -337,25 +338,25 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         let fn_name = format!("get_{name}");
         self.app_wasm.exports.add_export_func(fn_name, getter_id);
 
-        Ok(true)
+        Ok(getter_id)
     }
 
     pub(crate) fn emit_global(
         &mut self,
         name: String,
-        _ty: DataType,
-        _val: &Option<Value>,
-    ) -> Result<bool, Box<WhammError>> {
-        self.emit_global_inner(name, _ty, _val, "unused".to_string(), false)
+        ty: DataType,
+        val: &Option<Value>,
+    ) -> Result<Option<FunctionID>, Box<WhammError>> {
+        self.emit_global_inner(name, ty, val, "unused".to_string(), false)
     }
     pub fn emit_report_global(
         &mut self,
         name: String,
-        _ty: DataType,
-        _val: &Option<Value>,
+        ty: DataType,
+        val: &Option<Value>,
         script_name: String,
-    ) -> Result<bool, Box<WhammError>> {
-        self.emit_global_inner(name, _ty, _val, script_name, true)
+    ) -> Result<Option<FunctionID>, Box<WhammError>> {
+        self.emit_global_inner(name, ty, val, script_name, true)
     }
     pub fn emit_global_inner(
         &mut self,
@@ -364,7 +365,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         _val: &Option<Value>,
         script_name: String,
         report_mode: bool,
-    ) -> Result<bool, Box<WhammError>> {
+    ) -> Result<Option<FunctionID>, Box<WhammError>> {
         let rec_id = match self.table.lookup(&name) {
             Some(rec_id) => *rec_id,
             _ => {
@@ -449,7 +450,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                         };
                         start_fn.i32_const(map_id);
                         start_fn.call(*fn_id);
-                        Ok(true)
+                        Ok(None)
                     }
                     _ => {
                         let default_global = whamm_type_to_wasm_global(ty);
@@ -466,16 +467,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                                 Err(e) => Err(e),
                             }
                         }
-                        match is_success {
-                            Ok(_) => {
-                                is_success =
-                                    self.emit_global_getter(&global_id, name, &default_global.ty)
-                            }
-                            Err(e) => {
-                                return Err(e);
-                            }
-                        }
-                        is_success
+                        Ok(Some(self.emit_global_getter(&global_id, name, &default_global.ty)?))
                     }
                 }
             }

@@ -13,6 +13,7 @@ use crate::verifier::types::Record;
 use log::{info, trace, warn};
 use orca::ir::function::FunctionBuilder;
 use std::collections::HashMap;
+use orca::ir::id::FunctionID;
 
 /// Serves as the first phase of instrumenting a module by setting up
 /// the groundwork.
@@ -21,12 +22,13 @@ use std::collections::HashMap;
 /// emit some compiler-provided functions and user-defined globals.
 /// This process should ideally be generic, made to perform a specific
 /// instrumentation technique by the Emitter field.
-pub struct InitGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
+pub struct InitGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> {
     pub emitter: ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f>,
     pub context_name: String,
     pub err: &'g mut ErrorGen,
+    pub injected_funcs: &'h mut Vec<FunctionID>
 }
-impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
+impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
     pub fn run(&mut self, whamm: &mut Whamm) -> bool {
         // Reset the symbol table in the emitter just in case
         self.emitter.reset_children();
@@ -34,7 +36,7 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
         // Generate globals and fns defined by `whamm` (this should modify the app_wasm)
         let is_success = self.visit_whamm(whamm);
         self.emitter.memory_grow(); // account for emitted strings in memory
-
+        
         is_success
     }
 
@@ -53,7 +55,10 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
                         script_name.to_owned(),
                     ) {
                         Err(e) => self.err.add_error(*e),
-                        Ok(res) => is_success &= res,
+                        Ok(Some(fid)) => {
+                            self.injected_funcs.push(fid);
+                        },
+                        Ok(None) => is_success &= true,
                     }
                 } else {
                     match self
@@ -61,7 +66,10 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
                         .emit_global(name.clone(), global.ty.clone(), &global.value)
                     {
                         Err(e) => self.err.add_error(*e),
-                        Ok(res) => is_success &= res,
+                        Ok(Some(fid)) => {
+                            self.injected_funcs.push(fid);
+                        },
+                        Ok(None) => is_success &= true,
                     }
                 }
             }
@@ -163,6 +171,7 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
                     None => {
                         let start_fn = FunctionBuilder::new(&[], &[]);
                         let start_id = start_fn.finish_module(0, self.emitter.app_wasm);
+                        self.injected_funcs.push(start_id);
                         self.emitter.app_wasm.start = Some(start_id);
                         self.emitter.app_wasm.set_fn_name(
                             start_id - self.emitter.app_wasm.num_import_func(),
@@ -175,7 +184,7 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
         }
     }
 }
-impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
+impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
     fn visit_whamm(&mut self, whamm: &mut Whamm) -> bool {
         trace!("Entering: CodeGenerator::visit_whamm");
         self.context_name = "whamm".to_string();
@@ -392,7 +401,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
             // Only emit the functions that will be used dynamically!
             match self.emitter.emit_fn(&self.context_name, f) {
                 Err(e) => self.err.add_error(*e),
-                Ok(res) => is_success = res,
+                Ok(res) => self.injected_funcs.push(res),
             }
         } else {
             // user provided function, visit the body to ensure
