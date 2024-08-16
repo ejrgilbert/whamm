@@ -10,9 +10,11 @@ use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{BinOp, Block, DataType, Expr, Statement, UnOp, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
-use orca::ir::types::{BlockType, DataType as OrcaType, Global, Value as OrcaValue};
+use orca::ir::module::module_globals::Global;
+use orca::ir::types::{BlockType, DataType as OrcaType, Value as OrcaValue};
+use orca::module_builder::AddLocal;
 use orca::opcode::Opcode;
-use orca::{InitExpr, ModuleBuilder};
+use orca::InitExpr;
 use wasmparser::{GlobalType, ValType};
 
 pub trait Emitter {
@@ -32,7 +34,7 @@ pub trait Emitter {
 // ==================================================================
 // ==================================================================
 
-fn emit_body<'a, T: Opcode<'a> + ModuleBuilder>(
+fn emit_body<'a, T: Opcode<'a> + AddLocal>(
     body: &mut Block,
     injector: &mut T,
     table: &mut SymbolTable,
@@ -55,7 +57,7 @@ fn emit_body<'a, T: Opcode<'a> + ModuleBuilder>(
     Ok(true)
 }
 
-fn emit_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
+fn emit_stmt<'a, T: Opcode<'a> + AddLocal>(
     stmt: &mut Statement,
     injector: &mut T,
     table: &mut SymbolTable,
@@ -134,7 +136,7 @@ fn emit_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
     }
 }
 
-fn emit_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
+fn emit_decl_stmt<'a, T: Opcode<'a> + AddLocal>(
     stmt: &mut Statement,
     injector: &mut T,
     table: &mut SymbolTable,
@@ -240,7 +242,7 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
         ))),
     }
 }
-fn emit_report_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
+fn emit_report_decl_stmt<'a, T: Opcode<'a> + AddLocal>(
     stmt: &mut Statement,
     injector: &mut T,
     table: &mut SymbolTable,
@@ -409,7 +411,7 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
     )))
 }
 
-fn emit_assign_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
+fn emit_assign_stmt<'a, T: Opcode<'a> + AddLocal>(
     stmt: &mut Statement,
     injector: &mut T,
     table: &mut SymbolTable,
@@ -507,7 +509,7 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
         }
     };
 }
-fn emit_set_map_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
+fn emit_set_map_stmt<'a, T: Opcode<'a> + AddLocal>(
     stmt: &mut Statement,
     injector: &mut T,
     table: &mut SymbolTable,
@@ -584,6 +586,7 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + ModuleBuilder>(
 // TODO: Do we really want to depend on wasmparser::ValType, or create a wrapper?
 pub fn whamm_type_to_wasm_global(ty: &DataType) -> Global {
     let orca_ty = whamm_type_to_wasm_type(ty);
+
     match orca_ty {
         OrcaType::I32 => Global {
             ty: GlobalType {
@@ -677,7 +680,7 @@ fn emit_set<'a, T: Opcode<'a>>(
     }
 }
 
-fn emit_if_preamble<'a, T: Opcode<'a> + ModuleBuilder>(
+fn emit_if_preamble<'a, T: Opcode<'a> + AddLocal>(
     condition: &mut Expr,
     conseq: &mut Block,
     injector: &mut T,
@@ -717,7 +720,7 @@ fn emit_if_preamble<'a, T: Opcode<'a> + ModuleBuilder>(
     Ok(is_success)
 }
 
-fn emit_if_else_preamble<'a, T: Opcode<'a> + ModuleBuilder>(
+fn emit_if_else_preamble<'a, T: Opcode<'a> + AddLocal>(
     condition: &mut Expr,
     conseq: &mut Block,
     alternate: &mut Block,
@@ -760,7 +763,7 @@ fn emit_if_else_preamble<'a, T: Opcode<'a> + ModuleBuilder>(
     Ok(is_success)
 }
 
-fn emit_if<'a, T: Opcode<'a> + ModuleBuilder>(
+fn emit_if<'a, T: Opcode<'a> + AddLocal>(
     condition: &mut Expr,
     conseq: &mut Block,
     injector: &mut T,
@@ -788,7 +791,7 @@ fn emit_if<'a, T: Opcode<'a> + ModuleBuilder>(
     Ok(is_success)
 }
 
-fn emit_if_else<'a, T: Opcode<'a> + ModuleBuilder>(
+fn emit_if_else<'a, T: Opcode<'a> + AddLocal>(
     condition: &mut Expr,
     conseq: &mut Block,
     alternate: &mut Block,
@@ -819,7 +822,7 @@ fn emit_if_else<'a, T: Opcode<'a> + ModuleBuilder>(
 }
 
 // TODO: emit_expr has two mutable references to the name object, the injector has module data in it
-fn emit_expr<'a, T: Opcode<'a> + ModuleBuilder>(
+fn emit_expr<'a, T: Opcode<'a> + AddLocal>(
     expr: &mut Expr,
     injector: &mut T,
     table: &mut SymbolTable,
@@ -1118,7 +1121,7 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, injector: &mut T) -> bool {
     true
 }
 
-fn emit_value<'a, T: Opcode<'a> + ModuleBuilder>(
+fn emit_value<'a, T: Opcode<'a> + AddLocal>(
     val: &mut Value,
     injector: &mut T,
     table: &mut SymbolTable,
@@ -1191,7 +1194,7 @@ fn emit_value<'a, T: Opcode<'a> + ModuleBuilder>(
     }
     Ok(is_success)
 }
-fn emit_map_get<'a, T: Opcode<'a> + ModuleBuilder>(
+fn emit_map_get<'a, T: Opcode<'a> + AddLocal>(
     expr: &mut Expr,
     injector: &mut T,
     table: &mut SymbolTable,
@@ -1320,7 +1323,7 @@ fn get_map_info(
     }
     Ok((map_id, key_ty, val_ty))
 }
-fn print_report_all<'a, T: Opcode<'a> + ModuleBuilder>(
+fn print_report_all<'a, T: Opcode<'a> + AddLocal>(
     _injector: &mut T,
     _table: &mut SymbolTable,
     report_var_metadata: &mut ReportVarMetadata,

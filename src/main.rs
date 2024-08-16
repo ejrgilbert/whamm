@@ -158,7 +158,7 @@ fn run_instr(
     for gid in report_var_metadata.available_i32_gids.iter() {
         //should be 0, but good for cleanup
         err.add_compiler_warn(format!("Unused i32 GID: {}", gid));
-        app_wasm.remove_global();
+        app_wasm.globals.remove();
     }
 
     try_path(&output_wasm_path);

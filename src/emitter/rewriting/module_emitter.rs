@@ -14,6 +14,7 @@ use wasmparser::GlobalType;
 
 use orca::ir::function::FunctionBuilder;
 use orca::ir::module::Module;
+use orca::module_builder::AddLocal;
 use orca::opcode::Opcode;
 
 const UNEXPECTED_ERR_MSG: &str =
@@ -178,9 +179,11 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             .i32_const(0)
             .return_stmt();
 
-        let strcmp_id = strcmp.finish(self.app_wasm);
-        self.app_wasm
-            .set_fn_name(strcmp_id - self.app_wasm.num_import_func(), "strcmp");
+        let strcmp_id = strcmp.finish_module(strcmp_params.len(), self.app_wasm);
+        self.app_wasm.set_fn_name(
+            strcmp_id - self.app_wasm.num_import_func(),
+            "strcmp".to_string(),
+        );
 
         let rec_id = match self.table.lookup(&f.name.name) {
             Some(rec_id) => *rec_id,
@@ -329,10 +332,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         let mut getter = FunctionBuilder::new(&getter_params, &getter_res);
         getter.global_get(*global_id);
 
-        let getter_id = getter.finish(self.app_wasm);
+        let getter_id = getter.finish_module(getter_params.len(), self.app_wasm);
 
         let fn_name = format!("get_{name}");
-        self.app_wasm.add_export_func(fn_name.leak(), getter_id);
+        self.app_wasm.exports.add_export_func(fn_name, getter_id);
 
         Ok(true)
     }
@@ -386,7 +389,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 match ty {
                     DataType::Map { .. } => {
                         //TODO - target a function like global_init or something. _start will break because MY_MAPS isn't initialized yet
-                        let start_id = match self.app_wasm.get_fid_by_name("_start") {
+                        let start_id = match self.app_wasm.functions.get_local_fid_by_name("_start")
+                        {
                             Some(start_id) => start_id,
                             None => {
                                 return Err(Box::new(ErrorGen::get_unexpected_error(
@@ -399,7 +403,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                                 )));
                             }
                         };
-                        let mut start_fn = match self.app_wasm.get_fn(start_id) {
+                        let mut start_fn = match self.app_wasm.functions.get_fn_modifier(start_id) {
                             Some(start_fn) => start_fn,
                             None => {
                                 return Err(Box::new(ErrorGen::get_unexpected_error(
@@ -449,7 +453,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                     }
                     _ => {
                         let default_global = whamm_type_to_wasm_global(ty);
-                        let global_id = self.app_wasm.add_global(default_global.clone());
+                        let global_id = self.app_wasm.globals.add(default_global.clone());
                         *addr = Some(VarAddr::Global { addr: global_id });
                         //now save off the global variable metadata
                         let mut is_success = Ok(true);

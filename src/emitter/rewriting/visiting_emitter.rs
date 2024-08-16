@@ -12,10 +12,10 @@ use crate::parser::types::{Block, DataType, Definition, Expr, ProbeSpec, Stateme
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca::ir::module::Module;
 use orca::ir::types::BlockType as OrcaBlockType;
-use orca::iterator::iterator_trait::Iterator as OrcaIterator;
+use orca::iterator::iterator_trait::{Instrumenter, Iterator as OrcaIterator};
 use orca::iterator::module_iterator::ModuleIterator;
+use orca::module_builder::AddLocal;
 use orca::opcode::Opcode;
-use orca::ModuleBuilder;
 use std::iter::Iterator;
 
 const UNEXPECTED_ERR_MSG: &str =
@@ -265,13 +265,13 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
 
         let block_ty = match orig_ty_id {
             Some(ty_id) => {
-                let ty = match self.app_iter.module.types.get(ty_id as usize) {
+                let ty = match self.app_iter.module.types.get(ty_id) {
                     Some(ty) => ty.results.clone(),
                     None => Box::new([]),
                 };
 
                 // we only care about the result of the original
-                OrcaBlockType::FuncType(self.app_iter.module.add_type(&[], &ty))
+                OrcaBlockType::FuncType(self.app_iter.module.types.add(&[], &ty))
             }
             None => OrcaBlockType::Empty,
         };
@@ -303,7 +303,12 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             _ => return Ok(false),
         };
 
-        if let Some(func_id) = self.app_iter.module.get_fid_by_name(fn_name.as_str()) {
+        if let Some(func_id) = self
+            .app_iter
+            .module
+            .functions
+            .get_local_fid_by_name(fn_name.as_str())
+        {
             let is_success = self.emit_args()?;
             self.app_iter.call(func_id);
             Ok(is_success)
@@ -366,7 +371,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
         let mut is_success = true;
         for _ in 0..self.curr_num_reports {
             let default_global = whamm_type_to_wasm_global(&DataType::I32);
-            let gid = self.app_iter.module.add_global(default_global);
+            let gid = self.app_iter.add_global(default_global);
             self.report_var_metadata
                 .available_i32_gids
                 .push(gid as usize);
