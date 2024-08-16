@@ -1813,8 +1813,7 @@ pub fn get_br_table_globals() -> HashMap<String, ProvidedGlobal> {
         "default_target".to_string(),
         ProvidedGlobal::new(
             "default_target".to_string(),
-            "The default target of this br_table instruction."
-                .to_string(),
+            "The default target of this br_table instruction.".to_string(),
             DataType::Str,
             true,
         ),

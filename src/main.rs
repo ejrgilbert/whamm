@@ -129,11 +129,11 @@ fn run_instr(
             &mut symbol_table,
             &mut mem_tracker,
             &mut map_lib_adapter,
-            &mut report_var_metadata
+            &mut report_var_metadata,
         ),
         context_name: "".to_string(),
         err: &mut err,
-        injected_funcs: &mut injected_funcs
+        injected_funcs: &mut injected_funcs,
     };
     init.run(&mut whamm);
     // If there were any errors encountered, report and exit!

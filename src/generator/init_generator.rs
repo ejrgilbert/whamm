@@ -12,8 +12,8 @@ use crate::parser::types::{
 use crate::verifier::types::Record;
 use log::{info, trace, warn};
 use orca::ir::function::FunctionBuilder;
-use std::collections::HashMap;
 use orca::ir::id::FunctionID;
+use std::collections::HashMap;
 
 /// Serves as the first phase of instrumenting a module by setting up
 /// the groundwork.
@@ -26,7 +26,7 @@ pub struct InitGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> {
     pub emitter: ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f>,
     pub context_name: String,
     pub err: &'g mut ErrorGen,
-    pub injected_funcs: &'h mut Vec<FunctionID>
+    pub injected_funcs: &'h mut Vec<FunctionID>,
 }
 impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
     pub fn run(&mut self, whamm: &mut Whamm) -> bool {
@@ -36,7 +36,7 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
         // Generate globals and fns defined by `whamm` (this should modify the app_wasm)
         let is_success = self.visit_whamm(whamm);
         self.emitter.memory_grow(); // account for emitted strings in memory
-        
+
         is_success
     }
 
@@ -57,7 +57,7 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
                         Err(e) => self.err.add_error(*e),
                         Ok(Some(fid)) => {
                             self.injected_funcs.push(fid);
-                        },
+                        }
                         Ok(None) => is_success &= true,
                     }
                 } else {
@@ -68,7 +68,7 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
                         Err(e) => self.err.add_error(*e),
                         Ok(Some(fid)) => {
                             self.injected_funcs.push(fid);
-                        },
+                        }
                         Ok(None) => is_success &= true,
                     }
                 }

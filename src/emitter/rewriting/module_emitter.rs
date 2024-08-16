@@ -457,17 +457,15 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                         let global_id = self.app_wasm.globals.add(default_global.clone());
                         *addr = Some(VarAddr::Global { addr: global_id });
                         //now save off the global variable metadata
-                        let mut is_success = Ok(true);
                         if report_mode {
-                            is_success = match self
-                                .report_var_metadata
-                                .put_global_metadata(global_id as usize, name.clone())
-                            {
-                                Ok(b) => Ok(b),
-                                Err(e) => Err(e),
-                            }
+                            self.report_var_metadata
+                                .put_global_metadata(global_id as usize, name.clone())?;
                         }
-                        Ok(Some(self.emit_global_getter(&global_id, name, &default_global.ty)?))
+                        Ok(Some(self.emit_global_getter(
+                            &global_id,
+                            name,
+                            &default_global.ty,
+                        )?))
                     }
                 }
             }

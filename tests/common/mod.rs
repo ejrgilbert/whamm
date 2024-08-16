@@ -125,7 +125,7 @@ pub fn run_whamm(mut app_wasm: &mut Module, whamm_script: &String, script_path: 
 
         context_name: "".to_string(),
         err: &mut err,
-        injected_funcs: &mut injected_funcs
+        injected_funcs: &mut injected_funcs,
     };
     assert!(init.run(&mut whamm));
     err.fatal_report("IntegrationTest");

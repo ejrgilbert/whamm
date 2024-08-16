@@ -10,6 +10,7 @@ use crate::emitter::rewriting::{emit_stmt, print_report_all, Emitter};
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{Block, DataType, Definition, Expr, ProbeSpec, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
+use orca::ir::id::FunctionID;
 use orca::ir::module::Module;
 use orca::ir::types::BlockType as OrcaBlockType;
 use orca::iterator::iterator_trait::{Instrumenter, Iterator as OrcaIterator};
@@ -17,7 +18,6 @@ use orca::iterator::module_iterator::ModuleIterator;
 use orca::module_builder::AddLocal;
 use orca::opcode::Opcode;
 use std::iter::Iterator;
-use orca::ir::id::FunctionID;
 
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";

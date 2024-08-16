@@ -1,6 +1,6 @@
-use std::iter::Iterator as StdIter;
 use orca::iterator::iterator_trait::Iterator;
 use orca::Location as OrcaLocation;
+use std::iter::Iterator as StdIter;
 
 use crate::common::error::ErrorGen;
 
