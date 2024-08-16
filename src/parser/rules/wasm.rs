@@ -1,13 +1,11 @@
 use crate::for_each_opcode;
-use crate::parser::rules::{
-    event_factory, get_call_fns, get_call_globals, mode_factory, Event, EventInfo, FromStr, Mode,
-    NameOptions, Package, PackageInfo, Probe, WhammMode, WhammProbe,
-};
+use crate::parser::rules::{event_factory, get_call_fns, get_call_globals, mode_factory, Event, EventInfo, FromStr, NameOptions, Package, PackageInfo, Probe, Mode, WhammModeKind};
 use crate::parser::types::{
     Block, DataType, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal,
 };
 use std::collections::HashMap;
 use termcolor::Buffer;
+use crate::parser::rules::core::{WhammMode, WhammProbe};
 
 pub enum WasmPackageKind {
     Opcode,
@@ -173,7 +171,7 @@ impl Package for WasmPackage {
 }
 
 macro_rules! define_opcode {
-    ($($op:ident, $name:ident, $num_args:expr, $imms:expr, $globals:expr, $fns:expr, $docs:expr)*) => {
+    ($($op:ident, $name:ident, $num_args:expr, $imms:expr, $globals:expr, $fns:expr, $supported_modes:expr, $docs:expr)*) => {
         /// Instructions as defined [here].
         ///
         /// [here]: https://webassembly.github.io/spec/core/binary/instructions.html
@@ -301,6 +299,7 @@ macro_rules! define_opcode {
                 Self {
                     kind,
                     info: EventInfo {
+                        supported_modes: $supported_modes,
                         docs: $docs.to_string(),
                         fns: $fns,
                         globals,

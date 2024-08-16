@@ -3,7 +3,7 @@ pub mod core;
 pub mod wasm;
 use crate::common::error::{ErrorGen, WhammError};
 use crate::common::terminal::{magenta_italics, white};
-use crate::parser::rules::core::CorePackage;
+use crate::parser::rules::core::{CorePackage, WhammModeKind};
 use crate::parser::rules::wasm::WasmPackage;
 use crate::parser::types::{
     print_fns, print_global_vars, Block, DataType, Expr, Location, ProbeSpec, ProvidedFunction,
@@ -434,6 +434,7 @@ pub trait Event {
 /// The base information needed for `Event`s, pulled out into a single struct.
 pub struct EventInfo {
     // Statically defined, always the same
+    pub supported_modes: Vec<WhammModeKind>,
     pub docs: String,
     pub fns: Vec<ProvidedFunction>,               // Comp-provided
     pub globals: HashMap<String, ProvidedGlobal>, // Comp-provided
@@ -822,176 +823,27 @@ pub struct ModeInfo {
     pub loc: Option<Location>,
 }
 
-pub enum WhammModeKind {
-    Before,
-    After,
-    Alt,
-}
-impl WhammModeKind {
-    fn name(&self) -> String {
-        match self {
-            Self::Before => "before".to_string(),
-            Self::After => "after".to_string(),
-            Self::Alt => "alt".to_string(),
-        }
-    }
-}
-
-/// The base modes provided by `whamm!` for an Event, these can be changed if desired.
-/// To do so, the type of enum for a Probe's possible modes will need to be changed.
-/// This means the Event's probes HashMap will need to point to a custom Probe type.
-pub struct WhammMode {
-    kind: WhammModeKind,
-    info: ModeInfo,
-}
-impl NameOptions for WhammMode {
-    fn get_name_options() -> Vec<String> {
-        // Violates DRY principle, but works for now.
-        // Maybe make this better some other time.
-        vec!["before".to_string(), "after".to_string(), "alt".to_string()]
-    }
-}
-impl FromStr for WhammMode {
-    fn from_str(name: String, loc: Option<Location>) -> Self {
-        match name.as_str() {
-            "before" => Self::before(loc),
-            "after" => Self::after(loc),
-            "alt" => Self::alt(loc),
-            _ => panic!("unsupported WhammMode: {name}"),
-        }
-    }
-}
-impl WhammMode {
-    // ======================
-    // ---- Constructors ----
-    // ======================
-
-    fn before(loc: Option<Location>) -> Self {
-        Self {
-            kind: WhammModeKind::Before,
-            info: ModeInfo {
-                docs: "This mode will cause the instrumentation logic to run *before* the \
+/// Expected inputs:
+/// IdentifierName, common_name, docs: &str
+#[macro_export]
+macro_rules! for_each_mode {
+($mac:ident) => { $mac! {
+    Before, before, "This mode will cause the instrumentation logic to run *before* the \
                     probed event (if the predicate evaluates to `true`)."
-                    .to_string(),
-                fns: vec![],
-                globals: HashMap::new(),
-                loc,
-            },
-        }
-    }
-    fn after(loc: Option<Location>) -> Self {
-        Self {
-            kind: WhammModeKind::After,
-            info: ModeInfo {
-                docs: "This mode will cause the instrumentation logic to run *after* the \
+    After, after, "This mode will cause the instrumentation logic to run *after* the \
                     probed event (if the predicate evaluates to `true`)."
-                    .to_string(),
-                fns: vec![],
-                globals: HashMap::new(),
-                loc,
-            },
-        }
-    }
-    fn alt(loc: Option<Location>) -> Self {
-        Self {
-            kind: WhammModeKind::Alt,
-            info: ModeInfo {
-                docs: "This mode will cause the instrumentation logic to run *instead of* the \
+    Alt, alt, "This mode will cause the instrumentation logic to run *instead of* the \
                     probed event (if the predicate evaluates to `true`)."
-                    .to_string(),
-                fns: vec![],
-                globals: HashMap::new(),
-                loc,
-            },
-        }
-    }
-}
-impl Mode for WhammMode {
-    fn name(&self) -> String {
-        self.kind.name()
-    }
-
-    fn docs(&self) -> &String {
-        &self.info.docs
-    }
-
-    fn get_provided_fns(&self) -> &Vec<ProvidedFunction> {
-        &self.info.fns
-    }
-
-    fn get_provided_fns_mut(&mut self) -> &mut Vec<ProvidedFunction> {
-        &mut self.info.fns
-    }
-
-    fn get_provided_globals(&self) -> &HashMap<String, ProvidedGlobal> {
-        &self.info.globals
-    }
-}
-
-/// The base definition of a probe for `whamm!`.
-/// This can be customized if desired.
-pub struct WhammProbe {
-    pub mode: WhammMode,
-    pub loc: Option<Location>,
-    pub predicate: Option<Expr>,
-    pub body: Option<Block>,
-}
-impl Probe for WhammProbe {
-    fn mode_name(&self) -> String {
-        self.mode.name()
-    }
-    fn predicate(&self) -> &Option<Expr> {
-        &self.predicate
-    }
-    fn predicate_mut(&mut self) -> &mut Option<Expr> {
-        &mut self.predicate
-    }
-
-    fn body(&self) -> &Option<Block> {
-        &self.body
-    }
-
-    fn body_mut(&mut self) -> &mut Option<Block> {
-        &mut self.body
-    }
-
-    fn print_mode_docs(
-        &self,
-        print_globals: bool,
-        print_functions: bool,
-        tabs: &mut usize,
-        buffer: &mut Buffer,
-    ) {
-        print_mode_docs(&self.mode, print_globals, print_functions, tabs, buffer);
-    }
-
-    fn get_mode_provided_fns(&self) -> &Vec<ProvidedFunction> {
-        self.mode.get_provided_fns()
-    }
-
-    fn get_mode_provided_fns_mut(&mut self) -> &mut Vec<ProvidedFunction> {
-        self.mode.get_provided_fns_mut()
-    }
-
-    fn get_mode_provided_globals(&self) -> &HashMap<String, ProvidedGlobal> {
-        self.mode.get_provided_globals()
-    }
-}
-impl WhammProbe {
-    fn new(
-        mode: WhammMode,
-        loc: Option<Location>,
-        predicate: Option<Expr>,
-        body: Option<Block>,
-    ) -> Self {
-        Self {
-            mode,
-            loc,
-            predicate,
-            body,
-        }
-    }
-}
+    
+    // special modes
+    SemanticAfter, semantic_after, "This mode will cause the instrumentation logic to run *semantically after*  the instrumented location, meaning it will find the point in the bytecode that will be executed *after* the point is reached (consider blocks and br* opcodes)."
+    Entry, entry, "This mode will cause the instrumentation logic to run *on entry* to the instrumentation point (e.g. functions bodies, blocks, etc.)."
+    Exit, exit, "This mode will cause the instrumentation logic to run *on exiting* to the instrumentation point (e.g. function bodies, blocks, etc.)."
+    
+    // core modes
+    Begin, begin, "Run this logic on application startup."
+    End, end, "Run this logic when the application exits."
+}};}
 
 // ===================================
 // Helper functions for glob matching.
@@ -1033,20 +885,20 @@ pub fn matches_globs(s: &str, globs: &[Pattern]) -> bool {
 /// we're at.
 /// (Sometimes a specific opcode's arg0 is i32, sometimes it's not)
 /// Expected inputs:
-/// IdentifierName, common_name, num_args: i32, imms: Vec<DataType>, globals: HashMap<String, ProvidedGlobal>, fns: Vec<ProvidedFunction>, docs: &str
+/// IdentifierName, common_name, num_args: i32, imms: Vec<DataType>, globals: HashMap<String, ProvidedGlobal>, fns: Vec<ProvidedFunction>, supported_modes: Vec<WhammModeKind>, docs: &str
 #[macro_export]
 macro_rules! for_each_opcode {
 ($mac:ident) => { $mac! {
-    Unreachable, unreachable, 0, vec![], HashMap::new(), vec![], "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/unreachable"
-    Nop, nop, 0, vec![], HashMap::new(), vec![], "https://www.w3.org/TR/wasm-core-2/#syntax-instr-control"
+    Unreachable, unreachable, 0, vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/unreachable"
+    Nop, nop, 0, vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), "https://www.w3.org/TR/wasm-core-2/#syntax-instr-control"
     // TODO -- support blockty as a struct to read/manipulate (provided global?)
     //         Block { blockty: $crate::BlockType } => visit_block
     //         Loop { blockty: $crate::BlockType } => visit_loop
     //         If { blockty: $crate::BlockType } => visit_if
-    Block, block, 0, vec![], HashMap::new(), vec![], "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/block"
-    Loop, _loop, 0, vec![], HashMap::new(), vec![], "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/loop"
-    If, _if, 1, vec![], HashMap::new(), vec![], "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"
-    Else, _else, 0, vec![], HashMap::new(), vec![], "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"
+    Block, block, 0, vec![], HashMap::new(), vec![], WhammModeKind::all_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/block"
+    Loop, _loop, 0, vec![], HashMap::new(), vec![], WhammModeKind::all_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/loop"
+    If, _if, 1, vec![], HashMap::new(), vec![], WhammModeKind::all_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"
+    Else, _else, 0, vec![], HashMap::new(), vec![], WhammModeKind::all_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"
     // TryTable { try_table: $crate::TryTable } => visit_try_table
     // Throw { tag_index: u32 } => visit_throw
     // ThrowRef => visit_throw_ref
@@ -1056,11 +908,11 @@ macro_rules! for_each_opcode {
     // Rethrow { relative_depth: u32 } => visit_rethrow
     // Delegate { relative_depth: u32 } => visit_delegate
     // CatchAll => visit_catch_all
-    End, end, 0, vec![], HashMap::new(), vec![], "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/end"
+    End, end, 0, vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/end"
     // TODO
-    Br, br, 0, vec![DataType::U32], HashMap::new(), vec![], "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
+    Br, br, 0, vec![DataType::U32], HashMap::new(), vec![], WhammModeKind::default_modes_and_semantic_aft(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
     // // BrIf { relative_depth: u32 } => visit_br_if TODO
-    // BrIf, br_if, 1, vec![DataType::U32], HashMap::new(), vec![], "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
+    // BrIf, br_if, 1, vec![DataType::U32], HashMap::new(), vec![], default_modes().push(WhammModeKind::SemanticAfter), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
     // // BrTable { targets: $crate::BrTable<'a> } => visit_br_table TODO
     // // can be any number of immediates! Just assume we have the immN used and check later while traversing the bytecode
     // // Can predicate on the number of immediates available using a global!
@@ -1068,7 +920,7 @@ macro_rules! for_each_opcode {
     // BrTable, br_table, 1, vec![DataType::AssumeGood], get_br_table_globals(), vec![], "https://musteresel.github.io/posts/2020/01/webassembly-text-br_table-example.html"
     // // Return => visit_return TODO
     // Return, _return, 0, vec![], HashMap::new(), vec![], "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/return"
-    Call, call, 0, vec![DataType::U32], get_call_globals(), get_call_fns(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call"
+    Call, call, 0, vec![DataType::U32], get_call_globals(), get_call_fns(), WhammModeKind::default_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call"
     // CallIndirect { type_index: u32, table_index: u32 } => visit_call_indirect TODO
     // ReturnCall { function_index: u32 } => visit_return_call TODO
     // ReturnCallIndirect { type_index: u32, table_index: u32 } => visit_return_call_indirect TODO

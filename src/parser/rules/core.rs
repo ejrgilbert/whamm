@@ -5,6 +5,7 @@ use crate::parser::rules::{
 use crate::parser::types::{Block, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal};
 use std::collections::HashMap;
 use termcolor::Buffer;
+use crate::for_each_mode;
 
 pub enum CorePackageKind {
     Default,
@@ -193,6 +194,7 @@ impl CoreEvent {
         Self {
             kind: CoreEventKind::Default,
             info: EventInfo {
+                supported_modes: vec![WhammModeKind::Begin, WhammModeKind::End],
                 docs: "".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
@@ -407,6 +409,173 @@ impl Probe for CoreProbe {
 impl CoreProbe {
     fn new(
         mode: CoreMode,
+        loc: Option<Location>,
+        predicate: Option<Expr>,
+        body: Option<Block>,
+    ) -> Self {
+        Self {
+            mode,
+            loc,
+            predicate,
+            body,
+        }
+    }
+}
+
+// The supported modes
+macro_rules! define_mode {
+($($mode:ident, $name:ident, $docs:expr)*) => {
+    /// The modes available to use as instrumentation rules.
+    #[derive(Debug)]
+    pub enum WhammModeKind {
+        $(
+            $mode,
+        )*
+    }
+    
+    impl WhammModeKind {
+        fn name(&self) -> String {
+            match self {
+                $(
+                    Self::$mode {..} => stringify!($name).to_string(),
+                )*
+            }
+        }
+
+        pub fn default_modes() -> Vec<Self> {
+            vec![Self::Before, Self::After, Self::Alt]
+        }
+        pub fn default_modes_and_semantic_aft() -> Vec<Self> {
+            vec![Self::Before, Self::After, Self::Alt, Self::SemanticAfter]
+        }
+        
+        pub fn all_modes() -> Vec<Self> {
+            vec![
+                $(
+                    Self::$mode,
+                )*
+            ]
+        }
+    }
+    
+    /// The base modes provided by `whamm!` for an Event, these can be changed if desired.
+    /// To do so, the type of enum for a Probe's possible modes will need to be changed.
+    /// This means the Event's probes HashMap will need to point to a custom Probe type.
+    pub struct WhammMode {
+        kind: WhammModeKind,
+        info: ModeInfo,
+    }
+    impl NameOptions for WhammMode {
+        fn get_name_options() -> Vec<String> {
+            vec![
+                $(stringify!($name).to_string()),*
+            ]
+        }
+    }
+    impl FromStr for WhammMode {
+        fn from_str(name: String, loc: Option<Location>) -> Self {
+            match name.as_str() {
+                $(stringify!($name) => Self::$name(loc),)*
+                 _ => panic!("unsupported WhammMode: {name}"),
+            }
+        }
+    }
+    impl WhammMode {
+        // ======================
+        // ---- Constructors ----
+        // ======================
+
+        $(
+        fn $name(loc: Option<Location>) -> Self {
+            Self {
+                kind: WhammModeKind::$mode,
+                info: ModeInfo {
+                    docs: $docs.to_string(),
+                    fns: vec![],
+                    globals: HashMap::new(),
+                    loc
+                }
+            }
+        }
+        )*
+    }
+};}
+for_each_mode!(define_mode);
+
+impl Mode for WhammMode {
+    fn name(&self) -> String {
+        self.kind.name()
+    }
+
+    fn docs(&self) -> &String {
+        &self.info.docs
+    }
+
+    fn get_provided_fns(&self) -> &Vec<ProvidedFunction> {
+        &self.info.fns
+    }
+
+    fn get_provided_fns_mut(&mut self) -> &mut Vec<ProvidedFunction> {
+        &mut self.info.fns
+    }
+
+    fn get_provided_globals(&self) -> &HashMap<String, ProvidedGlobal> {
+        &self.info.globals
+    }
+}
+
+/// The base definition of a probe for `whamm!`.
+/// This can be customized if desired.
+pub struct WhammProbe {
+    pub mode: WhammMode,
+    pub loc: Option<Location>,
+    pub predicate: Option<Expr>,
+    pub body: Option<Block>,
+}
+impl Probe for WhammProbe {
+    fn mode_name(&self) -> String {
+        self.mode.name()
+    }
+    fn predicate(&self) -> &Option<Expr> {
+        &self.predicate
+    }
+    fn predicate_mut(&mut self) -> &mut Option<Expr> {
+        &mut self.predicate
+    }
+
+    fn body(&self) -> &Option<Block> {
+        &self.body
+    }
+
+    fn body_mut(&mut self) -> &mut Option<Block> {
+        &mut self.body
+    }
+
+    fn print_mode_docs(
+        &self,
+        print_globals: bool,
+        print_functions: bool,
+        tabs: &mut usize,
+        buffer: &mut Buffer,
+    ) {
+        print_mode_docs(&self.mode, print_globals, print_functions, tabs, buffer);
+    }
+
+    fn get_mode_provided_fns(&self) -> &Vec<ProvidedFunction> {
+        self.mode.get_provided_fns()
+    }
+
+    fn get_mode_provided_fns_mut(&mut self) -> &mut Vec<ProvidedFunction> {
+        self.mode.get_provided_fns_mut()
+    }
+
+    fn get_mode_provided_globals(&self) -> &HashMap<String, ProvidedGlobal> {
+        self.mode.get_provided_globals()
+    }
+}
+impl WhammProbe {
+    pub(crate) fn new(
+        mode: WhammMode,
         loc: Option<Location>,
         predicate: Option<Expr>,
         body: Option<Block>,
