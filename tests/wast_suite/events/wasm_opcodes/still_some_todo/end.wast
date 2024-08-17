@@ -1,5 +1,3 @@
-;; modified from https://github.com/titzer/wizard-engine/blob/master/test/monitors/profile_monitor0.wat
-
 ;; @instrument
 (module
     ;; Globals
@@ -14,10 +12,14 @@
         local.get 0
         if
             i32.const 1
-            drop
+            global.get $var
+            i32.add
+            global.set $var
         else
-            i32.const 0
-            drop
+            i32.const 2
+            global.get $var
+            i32.add
+            global.set $var
         end
     )
 
@@ -36,12 +38,11 @@
 
 ;; ----------------------
 ;; ==== unpredicated ====
-;;;; WHAMM --> i32 count; wasm:opcode:end:before { return 3; }
+;; WHAMM --> i32 count; wasm:opcode:end:before { count++; }
 ;; @passes_uninstr
-(assert_return (invoke "get_global_var") (i32.const 1))
-;;(assert_return (invoke "get_count") (i32.const 1)) ;; only enter else 1 out of 2 times
-;;;; WHAMM --> i32 count; wasm:opcode:end:after { count = count + 2; }
-;;(assert_return (invoke "get_count") (i32.const 4))
+(assert_return (invoke "get_global_var") (i32.const 3))
+(assert_return (invoke "get_count") (i32.const 1)) ;; only enter else 1 out of 2 times
+;; WHAMM --> i32 count; wasm:opcode:end:after { count = count + 2; }
+(assert_return (invoke "get_count") (i32.const 4))
 
 ;; TODO -- target a specific `end` using `fn_id`/`pc`
-;; TODO -- fix commented-out test case after implemented logic that skips injected funcs at visit time.
