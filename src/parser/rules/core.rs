@@ -1,5 +1,5 @@
 use crate::parser::rules::{
-    event_factory, mode_factory, print_mode_docs, Event, EventInfo, FromStr, Mode, ModeInfo,
+    event_factory, print_mode_docs, Event, EventInfo, FromStr, Mode, ModeInfo,
     NameOptions, Package, PackageInfo, Probe,
 };
 use crate::parser::types::{Block, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal};
@@ -209,6 +209,10 @@ impl Event for CoreEvent {
         self.kind.name()
     }
 
+    fn supported_modes(&self) -> &Vec<WhammModeKind> {
+        &self.info.supported_modes
+    }
+
     fn loc(&self) -> &Option<Location> {
         &self.info.loc
     }
@@ -252,29 +256,28 @@ impl Event for CoreEvent {
         &self.info.globals
     }
 
-    fn assign_matching_modes(
-        &mut self,
-        probe_spec: &ProbeSpec,
-        loc: Option<Location>,
-        predicate: Option<Expr>,
-        body: Option<Block>,
-    ) -> bool {
-        // TODO -- check supported modes
-        let mut matched_modes = false;
-        let modes: Vec<Box<WhammMode>> = mode_factory(&self.info.supported_modes, probe_spec, loc.clone());
-        let probes = self.probes_mut();
-        for mode in modes {
-            matched_modes = true;
-            let modes = probes.entry(mode.name()).or_default();
-            modes.push(Box::new(WhammProbe::new(
-                *mode,
-                loc.clone(),
-                predicate.clone(),
-                body.clone(),
-            )));
-        }
-        matched_modes
-    }
+    // fn assign_matching_modes(
+    //     &mut self,
+    //     probe_spec: &ProbeSpec,
+    //     loc: Option<Location>,
+    //     predicate: Option<Expr>,
+    //     body: Option<Block>,
+    // ) -> bool {
+    //     let mut matched_modes = false;
+    //     let modes: Vec<Box<WhammMode>> = mode_factory(&self.info.supported_modes, probe_spec, loc.clone());
+    //     let probes = self.probes_mut();
+    //     for mode in modes {
+    //         matched_modes = true;
+    //         let modes = probes.entry(mode.name()).or_default();
+    //         modes.push(Box::new(WhammProbe::new(
+    //             *mode,
+    //             loc.clone(),
+    //             predicate.clone(),
+    //             body.clone(),
+    //         )));
+    //     }
+    //     matched_modes
+    // }
 }
 
 // The supported modes

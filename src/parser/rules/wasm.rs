@@ -1,11 +1,10 @@
 use crate::for_each_opcode;
-use crate::parser::rules::{event_factory, get_call_fns, get_call_globals, mode_factory, Event, EventInfo, FromStr, NameOptions, Package, PackageInfo, Probe, Mode, WhammModeKind};
+use crate::parser::rules::{event_factory, get_call_fns, get_call_globals, Event, EventInfo, FromStr, NameOptions, Package, PackageInfo, Probe, WhammModeKind};
 use crate::parser::types::{
     Block, DataType, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal,
 };
 use std::collections::HashMap;
 use termcolor::Buffer;
-use crate::parser::rules::core::{WhammMode, WhammProbe};
 
 pub enum WasmPackageKind {
     Opcode,
@@ -319,6 +318,10 @@ impl Event for OpcodeEvent {
         self.kind.name()
     }
 
+    fn supported_modes(&self) -> &Vec<WhammModeKind> {
+        &self.info.supported_modes
+    }
+
     fn loc(&self) -> &Option<Location> {
         &self.info.loc
     }
@@ -362,27 +365,26 @@ impl Event for OpcodeEvent {
         &self.info.globals
     }
 
-    fn assign_matching_modes(
-        &mut self,
-        probe_spec: &ProbeSpec,
-        loc: Option<Location>,
-        predicate: Option<Expr>,
-        body: Option<Block>,
-    ) -> bool {
-        // TODO -- check supported modes
-        let mut matched_modes = false;
-        let modes: Vec<Box<WhammMode>> = mode_factory(&self.info.supported_modes, probe_spec, loc.clone());
-        let probes = self.probes_mut();
-        for mode in modes {
-            matched_modes = true;
-            let modes = probes.entry(mode.name()).or_default();
-            modes.push(Box::new(WhammProbe::new(
-                *mode,
-                loc.clone(),
-                predicate.clone(),
-                body.clone(),
-            )));
-        }
-        matched_modes
-    }
+    // fn assign_matching_modes(
+    //     &mut self,
+    //     probe_spec: &ProbeSpec,
+    //     loc: Option<Location>,
+    //     predicate: Option<Expr>,
+    //     body: Option<Block>,
+    // ) -> bool {
+    //     let mut matched_modes = false;
+    //     let modes: Vec<Box<WhammMode>> = mode_factory(&self.info.supported_modes, probe_spec, loc.clone());
+    //     let probes = self.probes_mut();
+    //     for mode in modes {
+    //         matched_modes = true;
+    //         let modes = probes.entry(mode.name()).or_default();
+    //         modes.push(Box::new(WhammProbe::new(
+    //             *mode,
+    //             loc.clone(),
+    //             predicate.clone(),
+    //             body.clone(),
+    //         )));
+    //     }
+    //     matched_modes
+    // }
 }

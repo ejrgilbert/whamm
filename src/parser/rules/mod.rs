@@ -3,7 +3,7 @@ pub mod core;
 pub mod wasm;
 use crate::common::error::{ErrorGen, WhammError};
 use crate::common::terminal::{magenta_italics, white};
-use crate::parser::rules::core::{CorePackage, WhammModeKind};
+use crate::parser::rules::core::{CorePackage, WhammMode, WhammModeKind, WhammProbe};
 use crate::parser::rules::wasm::WasmPackage;
 use crate::parser::types::{
     print_fns, print_global_vars, Block, DataType, Expr, Location, ProbeSpec, ProvidedFunction,
@@ -409,6 +409,7 @@ pub trait Probe {
 pub trait Event {
     fn name(&self) -> String;
     fn loc(&self) -> &Option<Location>;
+    fn supported_modes(&self) -> &Vec<WhammModeKind>;
     fn docs(&self) -> &String;
     fn probes(&self) -> &HashMap<String, Vec<Box<dyn Probe>>>;
     fn probes_mut(&mut self) -> &mut HashMap<String, Vec<Box<dyn Probe>>>;
@@ -428,7 +429,22 @@ pub trait Event {
         loc: Option<Location>,
         predicate: Option<Expr>,
         body: Option<Block>,
-    ) -> bool;
+    ) -> bool {
+        let mut matched_modes = false;
+        let modes: Vec<Box<WhammMode>> = mode_factory(&self.supported_modes(), probe_spec, loc.clone());
+        let probes = self.probes_mut();
+        for mode in modes {
+            matched_modes = true;
+            let modes = probes.entry(mode.name()).or_default();
+            modes.push(Box::new(WhammProbe::new(
+                *mode,
+                loc.clone(),
+                predicate.clone(),
+                body.clone(),
+            )));
+        }
+        matched_modes
+    }
 }
 
 /// The base information needed for `Event`s, pulled out into a single struct.
