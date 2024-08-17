@@ -369,9 +369,10 @@ impl Event for OpcodeEvent {
         predicate: Option<Expr>,
         body: Option<Block>,
     ) -> bool {
+        // TODO -- check supported modes
         let mut matched_modes = false;
+        let modes: Vec<Box<WhammMode>> = mode_factory(&self.info.supported_modes, probe_spec, loc.clone());
         let probes = self.probes_mut();
-        let modes: Vec<Box<WhammMode>> = mode_factory(probe_spec, loc.clone());
         for mode in modes {
             matched_modes = true;
             let modes = probes.entry(mode.name()).or_default();

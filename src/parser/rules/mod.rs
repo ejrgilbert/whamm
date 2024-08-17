@@ -550,6 +550,7 @@ pub trait Mode {
 
 /// 0: Box<Self> the matched provider instance
 fn mode_factory<M: Mode + NameOptions + FromStr>(
+    supported_modes: &[WhammModeKind],
     probe_spec: &ProbeSpec,
     loc: Option<Location>,
 ) -> Vec<Box<M>> {
@@ -557,7 +558,12 @@ fn mode_factory<M: Mode + NameOptions + FromStr>(
         name: mode_patt, ..
     }) = &probe_spec.mode
     {
-        let matches = get_matches(M::get_name_options(), mode_patt);
+        let mut name_options = vec![];
+        for mode in supported_modes {
+            name_options.push(mode.name());
+        }
+        
+        let matches = get_matches(name_options, mode_patt);
         if matches.is_empty() {
             return vec![];
         }
@@ -895,10 +901,10 @@ macro_rules! for_each_opcode {
     //         Block { blockty: $crate::BlockType } => visit_block
     //         Loop { blockty: $crate::BlockType } => visit_loop
     //         If { blockty: $crate::BlockType } => visit_if
-    Block, block, 0, vec![], HashMap::new(), vec![], WhammModeKind::all_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/block"
-    Loop, _loop, 0, vec![], HashMap::new(), vec![], WhammModeKind::all_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/loop"
-    If, _if, 1, vec![], HashMap::new(), vec![], WhammModeKind::all_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"
-    Else, _else, 0, vec![], HashMap::new(), vec![], WhammModeKind::all_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"
+    Block, block, 0, vec![], HashMap::new(), vec![], WhammModeKind::block_type_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/block"
+    Loop, _loop, 0, vec![], HashMap::new(), vec![], WhammModeKind::block_type_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/loop"
+    If, _if, 1, vec![], HashMap::new(), vec![], WhammModeKind::block_type_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"
+    Else, _else, 0, vec![], HashMap::new(), vec![], WhammModeKind::block_type_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"
     // TryTable { try_table: $crate::TryTable } => visit_try_table
     // Throw { tag_index: u32 } => visit_throw
     // ThrowRef => visit_throw_ref
