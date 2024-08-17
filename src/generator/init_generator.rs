@@ -357,7 +357,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
             self.err.add_error(*e)
         }
         // let mut is_success = self.emitter.emit_probe(probe);
-        self.context_name += &format!(":{}", probe.mode_name());
+        self.context_name += &format!(":{}", probe.mode().name());
         let mut is_success = true;
 
         // visit fns

@@ -1,11 +1,11 @@
+use crate::for_each_mode;
 use crate::parser::rules::{
-    event_factory, print_mode_docs, Event, EventInfo, FromStr, Mode, ModeInfo,
+    event_factory, print_mode_docs, Event, EventInfo, FromStr, FromStrWithLoc, Mode, ModeInfo,
     NameOptions, Package, PackageInfo, Probe,
 };
 use crate::parser::types::{Block, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal};
 use std::collections::HashMap;
 use termcolor::Buffer;
-use crate::for_each_mode;
 
 pub enum CorePackageKind {
     Default,
@@ -29,9 +29,9 @@ impl NameOptions for CorePackage {
         vec!["default".to_string()]
     }
 }
-impl FromStr for CorePackage {
-    fn from_str(name: String, loc: Option<Location>) -> Self {
-        match name.as_str() {
+impl FromStrWithLoc for CorePackage {
+    fn from_str(name: &str, loc: Option<Location>) -> Self {
+        match name {
             "default" => Self::default(loc),
             _ => panic!("unsupported CorePackage: {name}"),
         }
@@ -177,9 +177,9 @@ impl NameOptions for CoreEvent {
         vec!["default".to_string()]
     }
 }
-impl FromStr for CoreEvent {
-    fn from_str(name: String, loc: Option<Location>) -> Self {
-        match name.as_str() {
+impl FromStrWithLoc for CoreEvent {
+    fn from_str(name: &str, loc: Option<Location>) -> Self {
+        match name {
             "default" => Self::default(loc),
             _ => panic!("unsupported CoreEvent: {name}"),
         }
@@ -284,13 +284,20 @@ impl Event for CoreEvent {
 macro_rules! define_mode {
 ($($mode:ident, $name:ident, $docs:expr)*) => {
     /// The modes available to use as instrumentation rules.
-    #[derive(Debug)]
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
     pub enum WhammModeKind {
         $(
             $mode,
         )*
     }
-    
+    impl FromStr for WhammModeKind {
+        fn from_str(name: &str) -> Self {
+            match name {
+                $(stringify!($name) => Self::$mode,)*
+                 _ => panic!("unsupported WhammModeKind: {name}"),
+            }
+        }
+    }
     impl WhammModeKind {
         pub fn name(&self) -> String {
             match self {
@@ -318,7 +325,7 @@ macro_rules! define_mode {
                 Self::Exit
             ]
         }
-        
+
         pub fn all_modes() -> Vec<Self> {
             vec![
                 $(
@@ -327,7 +334,7 @@ macro_rules! define_mode {
             ]
         }
     }
-    
+
     /// The base modes provided by `whamm!` for an Event, these can be changed if desired.
     /// To do so, the type of enum for a Probe's possible modes will need to be changed.
     /// This means the Event's probes HashMap will need to point to a custom Probe type.
@@ -342,9 +349,9 @@ macro_rules! define_mode {
             ]
         }
     }
-    impl FromStr for WhammMode {
-        fn from_str(name: String, loc: Option<Location>) -> Self {
-            match name.as_str() {
+    impl FromStrWithLoc for WhammMode {
+        fn from_str(name: &str, loc: Option<Location>) -> Self {
+            match name {
                 $(stringify!($name) => Self::$name(loc),)*
                  _ => panic!("unsupported WhammMode: {name}"),
             }
@@ -403,8 +410,8 @@ pub struct WhammProbe {
     pub body: Option<Block>,
 }
 impl Probe for WhammProbe {
-    fn mode_name(&self) -> String {
-        self.mode.name()
+    fn mode(&self) -> WhammModeKind {
+        self.mode.kind.clone()
     }
     fn predicate(&self) -> &Option<Expr> {
         &self.predicate

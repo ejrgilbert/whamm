@@ -204,19 +204,19 @@ impl SymbolTableBuilder<'_> {
         /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
         In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
         just in case it is non-fatal to avoid having 2 strings w/same name in record */
-        if check_duplicate_id(&probe.mode_name(), &None, true, &self.table, self.err) {
+        if check_duplicate_id(&probe.mode().name(), &None, true, &self.table, self.err) {
             return;
         }
 
         // create record
         let probe_rec = Record::Probe {
-            mode: probe.mode_name().clone(),
+            mode: probe.mode().name(),
             fns: vec![],
             globals: vec![],
         };
 
         // Add probe to scope
-        let id = self.table.put(probe.mode_name().clone(), probe_rec);
+        let id = self.table.put(probe.mode().name(), probe_rec);
 
         // Add probe to current event record
         match self.table.get_record_mut(&self.curr_event.unwrap()) {
@@ -237,7 +237,7 @@ impl SymbolTableBuilder<'_> {
 
         // set scope name and type
         self.table
-            .set_curr_scope_info(probe.mode_name().clone(), ScopeType::Probe);
+            .set_curr_scope_info(probe.mode().name(), ScopeType::Probe);
     }
 
     fn add_fn(&mut self, f: &mut Fn) {

@@ -1,5 +1,8 @@
 use crate::for_each_opcode;
-use crate::parser::rules::{event_factory, get_call_fns, get_call_globals, Event, EventInfo, FromStr, NameOptions, Package, PackageInfo, Probe, WhammModeKind};
+use crate::parser::rules::{
+    event_factory, get_call_fns, get_call_globals, Event, EventInfo, FromStrWithLoc, NameOptions,
+    Package, PackageInfo, Probe, WhammModeKind,
+};
 use crate::parser::types::{
     Block, DataType, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal,
 };
@@ -28,9 +31,9 @@ impl NameOptions for WasmPackage {
         vec!["opcode".to_string()]
     }
 }
-impl FromStr for WasmPackage {
-    fn from_str(name: String, loc: Option<Location>) -> Self {
-        match name.as_str() {
+impl FromStrWithLoc for WasmPackage {
+    fn from_str(name: &str, loc: Option<Location>) -> Self {
+        match name {
             "opcode" => Self::opcode(loc),
             _ => panic!("unsupported WasmPackage: {name}"),
         }
@@ -234,9 +237,9 @@ macro_rules! define_opcode {
                 ]
             }
         }
-        impl FromStr for OpcodeEvent {
-            fn from_str(name: String, loc: Option<Location>) -> Self {
-                match name.as_str() {
+        impl FromStrWithLoc for OpcodeEvent {
+            fn from_str(name: &str, loc: Option<Location>) -> Self {
+                match name {
                     $(stringify!($name) => Self::$name(loc),)*
                      _ => panic!("unsupported OpcodeEvent: {name}"),
                 }

@@ -1,10 +1,11 @@
 use crate::emitter::rewriting::rules::{
-    event_factory, probe_factory, Arg, Event, FromStr, LocInfo, Package,
+    event_factory, probe_factory, Arg, Event, FromStr, LocInfo, Package, ProbeSpec,
 };
 use crate::for_each_opcode;
 use crate::generator::simple_ast::SimpleProbe;
+use crate::parser::rules::core::WhammModeKind;
 use crate::parser::rules::wasm::{OpcodeEventKind, WasmPackageKind};
-use crate::parser::types::{DataType, ProbeSpec, SpecPart, Value};
+use crate::parser::types::{DataType, SpecPart, Value};
 use log::warn;
 use orca::ir::id::TypeID;
 use orca::ir::module::module_functions::{FuncKind, ImportedFunction, LocalFunction};
@@ -55,7 +56,10 @@ impl Package for WasmPackage {
             None
         }
     }
-    fn add_events(&mut self, ast_events: &HashMap<String, HashMap<String, Vec<SimpleProbe>>>) {
+    fn add_events(
+        &mut self,
+        ast_events: &HashMap<String, HashMap<WhammModeKind, Vec<SimpleProbe>>>,
+    ) {
         let events = match self.kind {
             WasmPackageKind::Opcode => event_factory::<OpcodeEvent>(ast_events),
         };
@@ -74,7 +78,7 @@ pub struct OpcodeEvent {
     kind: OpcodeEventKind,
     // Map from probe_mode_name -> Vec[probes_of_this_mode]
     // Retains ordering of instrumentation units (in order of scripts passed by user)
-    probes: HashMap<String, Vec<SimpleProbe>>,
+    probes: HashMap<WhammModeKind, Vec<SimpleProbe>>,
 }
 macro_rules! define_opcode_event {
 ($($op:ident, $name:ident, $num_args:expr, $imms:expr, $globals:expr, $fns:expr, $supported_modes:expr, $docs:expr)*) => {
@@ -334,7 +338,8 @@ impl Event for OpcodeEvent {
             None
         }
     }
-    fn add_probes(&mut self, probes: &HashMap<String, Vec<SimpleProbe>>) {
+
+    fn add_probes(&mut self, probes: &HashMap<WhammModeKind, Vec<SimpleProbe>>) {
         self.probes = probe_factory(probes);
     }
 }

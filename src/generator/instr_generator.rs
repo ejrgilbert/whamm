@@ -1,15 +1,15 @@
+use crate::common::error::ErrorGen;
 use orca::iterator::iterator_trait::Iterator;
 use orca::Location as OrcaLocation;
 use std::iter::Iterator as StdIter;
 
-use crate::common::error::ErrorGen;
-
-use crate::emitter::rewriting::rules::{provider_factory, Arg, LocInfo, WhammProvider};
+use crate::emitter::rewriting::rules::{provider_factory, Arg, LocInfo, ProbeSpec, WhammProvider};
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::rewriting::Emitter;
 use crate::generator::simple_ast::{SimpleAST, SimpleProbe};
 use crate::generator::types::ExprFolder;
-use crate::parser::types::{Block, Expr, ProbeSpec};
+use crate::parser::rules::core::WhammModeKind;
+use crate::parser::types::{Block, Expr};
 
 const UNEXPECTED_ERR_MSG: &str =
     "InstrGenerator: Looks like you've found a bug...please report this behavior!";
@@ -32,7 +32,7 @@ pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub ast: SimpleAST,
     pub err: &'g mut ErrorGen,
     curr_instr_args: Vec<Arg>,
-    curr_probe_mode: String,
+    curr_probe_mode: WhammModeKind,
     /// The current probe's body and predicate
     curr_probe: Option<(Option<Block>, Option<Expr>)>,
 }
@@ -47,17 +47,17 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             ast,
             err,
             curr_instr_args: vec![],
-            curr_probe_mode: "".to_string(),
+            curr_probe_mode: WhammModeKind::Begin,
             curr_probe: None,
         }
     }
 
     pub fn configure_probe_mode(&mut self) -> bool {
-        // TODO -- make the probe mode an enum!
-        match self.curr_probe_mode.as_str() {
-            "before" => self.emitter.before(),
-            "after" => self.emitter.after(),
-            "alt" => self.emitter.alternate(),
+        match self.curr_probe_mode {
+            WhammModeKind::Before => self.emitter.before(),
+            WhammModeKind::After => self.emitter.after(),
+            WhammModeKind::Alt => self.emitter.alternate(),
+            WhammModeKind::SemanticAfter => self.emitter.semantic_after(),
             _ => return false,
         }
         true
@@ -128,7 +128,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                         }
 
                         self.curr_instr_args = loc_info.args.clone(); // must clone so that this lives long enough
-                        self.curr_probe_mode = probe_spec.mode.as_ref().unwrap().name.clone();
+                        self.curr_probe_mode = probe_spec.mode.as_ref().unwrap().clone();
                         self.curr_probe = Some((body_clone, pred_clone));
 
                         // emit the probe (since the predicate is not false)
@@ -159,7 +159,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             None => "".to_string(),
         };
         let curr_mode = match &probe_spec.mode {
-            Some(mode) => mode.name.clone(),
+            Some(mode) => mode.name().clone(),
             None => "".to_string(),
         };
         let curr_probe_id = format!(
@@ -197,18 +197,18 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
         if self.pred_is_true() {
             // The predicate has been reduced to a 'true', emit un-predicated body
             self.emit_body();
-            if self.curr_probe_mode != "alt" {
+            if !matches!(self.curr_probe_mode, WhammModeKind::Alt) {
                 self.replace_args();
             }
         } else {
             // The predicate still has some conditionals (remember we already checked for
             // it being false in run() above)
-            match self.curr_probe_mode.as_str() {
-                "before" | "after" => {
+            match self.curr_probe_mode {
+                WhammModeKind::Before | WhammModeKind::After | WhammModeKind::SemanticAfter => {
                     is_success &= self.emit_probe_as_if();
                     self.replace_args();
                 }
-                "alt" => {
+                WhammModeKind::Alt => {
                     is_success &= self.emit_probe_as_if_else();
                 }
                 _ => {
@@ -216,7 +216,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
                         true,
                         Some(format!(
                             "{UNEXPECTED_ERR_MSG} Unexpected probe mode '{}'",
-                            self.curr_probe_mode
+                            self.curr_probe_mode.name()
                         )),
                         None,
                     );

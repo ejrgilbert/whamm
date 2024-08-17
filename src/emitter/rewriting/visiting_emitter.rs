@@ -3,12 +3,13 @@ use crate::emitter::map_lib_adapter::MapLibAdapter;
 use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::emitter::rewriting::rules::wasm::OpcodeEvent;
-use crate::emitter::rewriting::rules::{Arg, LocInfo, Provider, WhammProvider};
+use crate::emitter::rewriting::rules::{Arg, LocInfo, ProbeSpec, Provider, WhammProvider};
 use crate::emitter::rewriting::{block_type_to_wasm, emit_expr, whamm_type_to_wasm_global};
 use crate::emitter::rewriting::{emit_stmt, print_report_all, Emitter};
 
 use crate::generator::types::ExprFolder;
-use crate::parser::types::{Block, DataType, Definition, Expr, ProbeSpec, Statement, Value};
+use crate::parser;
+use crate::parser::types::{Block, DataType, Definition, Expr, SpecPart, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca::ir::id::FunctionID;
 use orca::ir::module::Module;
@@ -72,8 +73,23 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         self.app_iter.alternate();
     }
 
+    pub fn semantic_after(&mut self) {
+        self.app_iter.semantic_after();
+    }
+
     pub(crate) fn enter_scope_via_spec(&mut self, script_id: &str, probe_spec: &ProbeSpec) -> bool {
-        self.table.enter_scope_via_spec(script_id, probe_spec)
+        self.table.enter_scope_via_spec(
+            script_id,
+            &parser::types::ProbeSpec {
+                provider: probe_spec.provider.clone(),
+                package: probe_spec.package.clone(),
+                event: probe_spec.event.clone(),
+                mode: Some(SpecPart {
+                    name: probe_spec.mode.as_ref().unwrap().name(),
+                    loc: None,
+                }),
+            },
+        )
     }
 
     pub(crate) fn reset_children(&mut self) {

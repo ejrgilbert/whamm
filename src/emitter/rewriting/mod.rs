@@ -13,7 +13,7 @@ use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca::ir::module::module_globals::Global;
 use orca::ir::types::{BlockType, DataType as OrcaType, Value as OrcaValue};
 use orca::module_builder::AddLocal;
-use orca::opcode::Opcode;
+use orca::opcode::{MacroOpcode, Opcode};
 use orca::InitExpr;
 use wasmparser::{GlobalType, ValType};
 
@@ -34,7 +34,7 @@ pub trait Emitter {
 // ==================================================================
 // ==================================================================
 
-fn emit_body<'a, T: Opcode<'a> + AddLocal>(
+fn emit_body<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     body: &mut Block,
     injector: &mut T,
     table: &mut SymbolTable,
@@ -57,7 +57,7 @@ fn emit_body<'a, T: Opcode<'a> + AddLocal>(
     Ok(true)
 }
 
-fn emit_stmt<'a, T: Opcode<'a> + AddLocal>(
+fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     stmt: &mut Statement,
     injector: &mut T,
     table: &mut SymbolTable,
@@ -136,7 +136,7 @@ fn emit_stmt<'a, T: Opcode<'a> + AddLocal>(
     }
 }
 
-fn emit_decl_stmt<'a, T: Opcode<'a> + AddLocal>(
+fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     stmt: &mut Statement,
     injector: &mut T,
     table: &mut SymbolTable,
@@ -242,7 +242,7 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + AddLocal>(
         ))),
     }
 }
-fn emit_report_decl_stmt<'a, T: Opcode<'a> + AddLocal>(
+fn emit_report_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     stmt: &mut Statement,
     injector: &mut T,
     table: &mut SymbolTable,
@@ -411,7 +411,7 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + AddLocal>(
     )))
 }
 
-fn emit_assign_stmt<'a, T: Opcode<'a> + AddLocal>(
+fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     stmt: &mut Statement,
     injector: &mut T,
     table: &mut SymbolTable,
@@ -509,7 +509,7 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + AddLocal>(
         }
     };
 }
-fn emit_set_map_stmt<'a, T: Opcode<'a> + AddLocal>(
+fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     stmt: &mut Statement,
     injector: &mut T,
     table: &mut SymbolTable,
@@ -544,7 +544,7 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + AddLocal>(
                     }
                 };
 
-                injector.i32_const(map_id as i32);
+                injector.u32_const(map_id);
                 emit_expr(
                     key,
                     injector,
@@ -680,7 +680,7 @@ fn emit_set<'a, T: Opcode<'a>>(
     }
 }
 
-fn emit_if_preamble<'a, T: Opcode<'a> + AddLocal>(
+fn emit_if_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     condition: &mut Expr,
     conseq: &mut Block,
     injector: &mut T,
@@ -720,7 +720,7 @@ fn emit_if_preamble<'a, T: Opcode<'a> + AddLocal>(
     Ok(is_success)
 }
 
-fn emit_if_else_preamble<'a, T: Opcode<'a> + AddLocal>(
+fn emit_if_else_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     condition: &mut Expr,
     conseq: &mut Block,
     alternate: &mut Block,
@@ -763,7 +763,7 @@ fn emit_if_else_preamble<'a, T: Opcode<'a> + AddLocal>(
     Ok(is_success)
 }
 
-fn emit_if<'a, T: Opcode<'a> + AddLocal>(
+fn emit_if<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     condition: &mut Expr,
     conseq: &mut Block,
     injector: &mut T,
@@ -791,7 +791,7 @@ fn emit_if<'a, T: Opcode<'a> + AddLocal>(
     Ok(is_success)
 }
 
-fn emit_if_else<'a, T: Opcode<'a> + AddLocal>(
+fn emit_if_else<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     condition: &mut Expr,
     conseq: &mut Block,
     alternate: &mut Block,
@@ -822,7 +822,7 @@ fn emit_if_else<'a, T: Opcode<'a> + AddLocal>(
 }
 
 // TODO: emit_expr has two mutable references to the name object, the injector has module data in it
-fn emit_expr<'a, T: Opcode<'a> + AddLocal>(
+fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     expr: &mut Expr,
     injector: &mut T,
     table: &mut SymbolTable,
@@ -1121,7 +1121,7 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, injector: &mut T) -> bool {
     true
 }
 
-fn emit_value<'a, T: Opcode<'a> + AddLocal>(
+fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     val: &mut Value,
     injector: &mut T,
     table: &mut SymbolTable,
@@ -1133,8 +1133,7 @@ fn emit_value<'a, T: Opcode<'a> + AddLocal>(
     let mut is_success = true;
     match val {
         Value::U32 { val, .. } => {
-            // TODO -- is this okay? What workaround do I have here?
-            injector.i32_const(*val as i32);
+            injector.u32_const(*val);
             is_success &= true;
         }
         Value::I32 { val, .. } => {
@@ -1152,8 +1151,8 @@ fn emit_value<'a, T: Opcode<'a> + AddLocal>(
 
             if let Some(str_addr) = mem_tracker.emitted_strings.get(val) {
                 // emit Wasm instructions for the memory address and string length
-                injector.i32_const(str_addr.mem_offset as i32);
-                injector.i32_const(str_addr.len as i32);
+                injector.u32_const(str_addr.mem_offset as u32);
+                injector.u32_const(str_addr.len as u32);
                 is_success &= true;
             } else {
                 return Err(Box::new(ErrorGen::get_unexpected_error(
@@ -1194,7 +1193,7 @@ fn emit_value<'a, T: Opcode<'a> + AddLocal>(
     }
     Ok(is_success)
 }
-fn emit_map_get<'a, T: Opcode<'a> + AddLocal>(
+fn emit_map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     expr: &mut Expr,
     injector: &mut T,
     table: &mut SymbolTable,
@@ -1222,7 +1221,7 @@ fn emit_map_get<'a, T: Opcode<'a> + AddLocal>(
                             )));
                         }
                     };
-                    injector.i32_const(map_id as i32);
+                    injector.u32_const(map_id);
                     emit_expr(
                         key,
                         injector,

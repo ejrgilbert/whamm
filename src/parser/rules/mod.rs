@@ -16,8 +16,11 @@ use termcolor::Buffer;
 pub trait NameOptions {
     fn get_name_options() -> Vec<String>;
 }
+pub trait FromStrWithLoc {
+    fn from_str(name: &str, loc: Option<Location>) -> Self;
+}
 pub trait FromStr {
-    fn from_str(name: String, loc: Option<Location>) -> Self;
+    fn from_str(name: &str) -> Self;
 }
 
 // ==================
@@ -69,7 +72,7 @@ pub trait Provider {
 /// 1: bool, whether there were matched packages
 /// 2: bool, whether there were matched events
 /// 3: bool, whether there were matched modes
-pub fn provider_factory<P: Provider + NameOptions + FromStr + 'static>(
+pub fn provider_factory<P: Provider + NameOptions + FromStrWithLoc + 'static>(
     curr_providers: &mut HashMap<String, Box<dyn Provider>>,
     probe_spec: &ProbeSpec,
     loc: Option<Location>,
@@ -103,7 +106,7 @@ pub fn provider_factory<P: Provider + NameOptions + FromStr + 'static>(
             let already_has = curr_providers.contains_key(&m.clone());
             let provider = curr_providers
                 .entry(m.clone())
-                .or_insert(Box::new(P::from_str(m.clone(), loc.clone())));
+                .or_insert(Box::new(P::from_str(&m, loc.clone())));
 
             let (found_package, found_events, found_modes) = if let Some(SpecPart {
                 loc: package_loc,
@@ -294,7 +297,7 @@ pub struct PackageInfo {
 /// 0: Box<Self> the matched package instance
 /// 2: bool, whether there were matched events
 /// 3: bool, whether there were matched modes
-fn package_factory<P: Package + NameOptions + FromStr + 'static>(
+fn package_factory<P: Package + NameOptions + FromStrWithLoc + 'static>(
     curr_packages: &mut HashMap<String, Box<dyn Package>>,
     probe_spec: &ProbeSpec,
     loc: Option<Location>,
@@ -319,7 +322,7 @@ fn package_factory<P: Package + NameOptions + FromStr + 'static>(
             let already_has = curr_packages.contains_key(&m.clone());
             let package = curr_packages
                 .entry(m.clone())
-                .or_insert(Box::new(P::from_str(m.clone(), loc.clone())));
+                .or_insert(Box::new(P::from_str(&m, loc.clone())));
 
             let (found_match_for_event, found_match_for_mode) =
                 if let Some(SpecPart { loc: event_loc, .. }) = &probe_spec.event {
@@ -390,7 +393,7 @@ fn print_package_docs(
 // ===============
 
 pub trait Probe {
-    fn mode_name(&self) -> String;
+    fn mode(&self) -> WhammModeKind;
     fn predicate(&self) -> &Option<Expr>;
     fn predicate_mut(&mut self) -> &mut Option<Expr>;
     fn body(&self) -> &Option<Block>;
@@ -431,7 +434,8 @@ pub trait Event {
         body: Option<Block>,
     ) -> bool {
         let mut matched_modes = false;
-        let modes: Vec<Box<WhammMode>> = mode_factory(&self.supported_modes(), probe_spec, loc.clone());
+        let modes: Vec<Box<WhammMode>> =
+            mode_factory(self.supported_modes(), probe_spec, loc.clone());
         let probes = self.probes_mut();
         for mode in modes {
             matched_modes = true;
@@ -462,7 +466,7 @@ pub struct EventInfo {
 
 /// 0: Box<Self> the matched event instance
 /// 3: bool, whether there were matched modes
-fn event_factory<E: Event + NameOptions + FromStr + 'static>(
+fn event_factory<E: Event + NameOptions + FromStrWithLoc + 'static>(
     curr_events: &mut HashMap<String, Box<dyn Event>>,
     probe_spec: &ProbeSpec,
     loc: Option<Location>,
@@ -486,7 +490,7 @@ fn event_factory<E: Event + NameOptions + FromStr + 'static>(
             let already_has = curr_events.contains_key(&m.clone());
             let event = curr_events
                 .entry(m.clone())
-                .or_insert(Box::new(E::from_str(m.clone(), loc.clone())));
+                .or_insert(Box::new(E::from_str(&m, loc.clone())));
 
             let found_match_for_mode =
                 if let Some(SpecPart { loc: mode_loc, .. }) = &probe_spec.mode {
@@ -565,7 +569,7 @@ pub trait Mode {
 }
 
 /// 0: Box<Self> the matched provider instance
-fn mode_factory<M: Mode + NameOptions + FromStr>(
+fn mode_factory<M: Mode + NameOptions + FromStrWithLoc>(
     supported_modes: &[WhammModeKind],
     probe_spec: &ProbeSpec,
     loc: Option<Location>,
@@ -578,7 +582,7 @@ fn mode_factory<M: Mode + NameOptions + FromStr>(
         for mode in supported_modes {
             name_options.push(mode.name());
         }
-        
+
         let matches = get_matches(name_options, mode_patt);
         if matches.is_empty() {
             return vec![];
@@ -586,7 +590,7 @@ fn mode_factory<M: Mode + NameOptions + FromStr>(
 
         let mut modes = vec![];
         for m in matches {
-            let mode = M::from_str(m, loc.clone());
+            let mode = M::from_str(&m, loc.clone());
             modes.push(Box::new(mode));
         }
 
@@ -679,9 +683,9 @@ impl NameOptions for WhammProvider {
         vec!["core".to_string(), "wasm".to_string()]
     }
 }
-impl FromStr for WhammProvider {
-    fn from_str(name: String, loc: Option<Location>) -> Self {
-        match name.as_str() {
+impl FromStrWithLoc for WhammProvider {
+    fn from_str(name: &str, loc: Option<Location>) -> Self {
+        match name {
             "core" => Self::core(loc),
             "wasm" => Self::wasm(loc),
             _ => panic!("unsupported WhammProvider: {name}"),
@@ -856,12 +860,12 @@ macro_rules! for_each_mode {
                     probed event (if the predicate evaluates to `true`)."
     Alt, alt, "This mode will cause the instrumentation logic to run *instead of* the \
                     probed event (if the predicate evaluates to `true`)."
-    
+
     // special modes
     SemanticAfter, semantic_after, "This mode will cause the instrumentation logic to run *semantically after*  the instrumented location, meaning it will find the point in the bytecode that will be executed *after* the point is reached (consider blocks and br* opcodes)."
     Entry, entry, "This mode will cause the instrumentation logic to run *on entry* to the instrumentation point (e.g. functions bodies, blocks, etc.)."
     Exit, exit, "This mode will cause the instrumentation logic to run *on exiting* to the instrumentation point (e.g. function bodies, blocks, etc.)."
-    
+
     // core modes
     Begin, begin, "Run this logic on application startup."
     End, end, "Run this logic when the application exits."

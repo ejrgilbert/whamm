@@ -273,7 +273,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         s += &format!(
             "{} `{}` probe {{{}",
             self.get_indent(),
-            probe.mode_name(),
+            probe.mode().name(),
             NL
         );
         self.increase_indent();

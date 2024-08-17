@@ -5,8 +5,8 @@ use glob::{glob, glob_with};
 
 use crate::common::error::ErrorGen;
 use crate::parser::print_visitor::AsStrVisitor;
+use crate::parser::rules::core::WhammModeKind;
 use log::{debug, error, info, warn};
-
 // =================
 // = Setup Logging =
 // =================
@@ -551,7 +551,7 @@ wasm::call:alt /
     let probe = event.probes().get("alt").unwrap().first().unwrap();
     assert_eq!(0, probe.get_mode_provided_globals().len());
     assert_eq!(0, probe.get_mode_provided_fns().len());
-    assert_eq!("alt", probe.mode_name());
+    assert_eq!(WhammModeKind::Alt, probe.mode());
 
     // probe predicate
     assert!(probe.predicate().is_some());
