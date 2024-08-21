@@ -310,6 +310,18 @@ macro_rules! define_mode {
         pub fn default_modes() -> Vec<Self> {
             vec![Self::Before, Self::After, Self::Alt]
         }
+        pub fn default_modes_no_alt() -> Vec<Self> {
+            let mut defaults = Self::default_modes();
+            match defaults.iter().position(|val| {
+                matches!(val, Self::Alt)
+            }) {
+                Some(idx) => {
+                    defaults.remove(idx);
+                }
+                _ => {}
+            }
+            defaults
+        }
         pub fn default_modes_and_semantic_aft() -> Vec<Self> {
             let mut defaults = Self::default_modes();
             defaults.push(Self::SemanticAfter);

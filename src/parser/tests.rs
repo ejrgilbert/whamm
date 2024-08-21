@@ -7,9 +7,6 @@ use crate::common::error::ErrorGen;
 use crate::parser::print_visitor::AsStrVisitor;
 use crate::parser::rules::core::WhammModeKind;
 use log::{debug, error, info, warn};
-// =================
-// = Setup Logging =
-// =================
 
 pub fn setup_logger() {
     let _ = env_logger::builder().is_test(true).try_init();
@@ -256,16 +253,72 @@ wasm:opcode:br:before {
         BEGIN{
             strcmp((arg0, arg1), "bookings");
         }
-    
     "#,
+    // trigger available modes per event
+    "wasm:opcode:*:before {}",
+    "wasm:opcode:br*:before {}",
+    "wasm:opcode:unreachable:before {}",
+    "wasm:opcode:unreachable:after {}",
+    "wasm:opcode:unreachable:alt {}",
+    "wasm:opcode:nop:before {}",
+    "wasm:opcode:nop:after {}",
+    "wasm:opcode:nop:alt {}",
+    "wasm:opcode:block:before {}",
+    "wasm:opcode:block:after {}",
+    "wasm:opcode:block:alt {}",
+    "wasm:opcode:block:semantic_after {}",
+    "wasm:opcode:block:entry {}",
+    "wasm:opcode:block:exit {}",
+    "wasm:opcode:_loop:before {}",
+    "wasm:opcode:_loop:after {}",
+    "wasm:opcode:_loop:alt {}",
+    "wasm:opcode:_loop:semantic_after {}",
+    "wasm:opcode:_loop:entry {}",
+    "wasm:opcode:_loop:exit {}",
+    "wasm:opcode:_if:before {}",
+    "wasm:opcode:_if:after {}",
+    "wasm:opcode:_if:alt {}",
+    "wasm:opcode:_if:semantic_after {}",
+    "wasm:opcode:_if:entry {}",
+    "wasm:opcode:_if:exit {}",
+    "wasm:opcode:_else:before {}",
+    "wasm:opcode:_else:after {}",
+    "wasm:opcode:_else:alt {}",
+    "wasm:opcode:_else:semantic_after {}",
+    "wasm:opcode:_else:entry {}",
+    "wasm:opcode:_else:exit {}",
+    "wasm:opcode:end:before {}",
+    "wasm:opcode:end:after {}",
+    "wasm:opcode:br:before {}",
+    "wasm:opcode:br:after {}",
+    "wasm:opcode:br:alt {}",
+    "wasm:opcode:br:semantic_after {}",
+    "wasm:opcode:call:before {}",
+    "wasm:opcode:call:after {}",
+    "wasm:opcode:call:alt {}",
 ];
 
 const FATAL_SCRIPTS: &[&str] = &[
     // invalid probe specification
     r#"
 core::br:before / i == 1 / { i = 0; }  // SHOULD FAIL HERE
-
     "#,
+    // trigger unavailable modes per event
+    "wasm:opcode:unreachable:semantic_after {}",
+    "wasm:opcode:unreachable:entry {}",
+    "wasm:opcode:unreachable:exit {}",
+    "wasm:opcode:nop:semantic_after {}",
+    "wasm:opcode:nop:entry {}",
+    "wasm:opcode:nop:exit {}",
+    "wasm:opcode:end:alt {}",
+    "wasm:opcode:end:semantic_after {}",
+    "wasm:opcode:end:entry {}",
+    "wasm:opcode:end:exit {}",
+    "wasm:opcode:br:entry {}",
+    "wasm:opcode:br:exit {}",
+    "wasm:opcode:call:semantic_after {}",
+    "wasm:opcode:call:entry {}",
+    "wasm:opcode:call:exit {}",
 ];
 
 const INVALID_SCRIPTS: &[&str] = &[
