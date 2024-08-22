@@ -20,7 +20,6 @@
             block $neq
                 (i32.eq (local.get 0) (i32.const 1))
                 br_if $eq
-;;                br $neq
                 unreachable
             end
             ;; they are not equal, return '0'
@@ -43,6 +42,9 @@
     (start $start)
 )
 
-;; TODO -- See Issue#132
 ;; WHAMM --> i32 count; wasm:opcode:unreachable:alt { count++; }
 (assert_return (invoke "get_count") (i32.const 1))
+
+;; Need to do alt on unreachable so we can actually run the test!
+;; WHAMM --> i32 count; wasm:opcode:unreachable:alt { count = count + 2; } wasm:opcode:unreachable:before { count++; }
+(assert_return (invoke "get_count") (i32.const 3))

@@ -258,7 +258,6 @@ wasm:opcode:br:before {
     "wasm:opcode:*:before {}",
     "wasm:opcode:br*:before {}",
     "wasm:opcode:unreachable:before {}",
-    "wasm:opcode:unreachable:after {}",
     "wasm:opcode:unreachable:alt {}",
     "wasm:opcode:nop:before {}",
     "wasm:opcode:nop:after {}",
@@ -304,6 +303,7 @@ const FATAL_SCRIPTS: &[&str] = &[
 core::br:before / i == 1 / { i = 0; }  // SHOULD FAIL HERE
     "#,
     // trigger unavailable modes per event
+    "wasm:opcode:unreachable:after {}",
     "wasm:opcode:unreachable:semantic_after {}",
     "wasm:opcode:unreachable:entry {}",
     "wasm:opcode:unreachable:exit {}",
@@ -419,7 +419,7 @@ map<i32, i32> arg0;
         }
     "#,
 ];
-const SPECIAL: &[&str] = &["BEGIN { }", "END { }", "wasm:::alt { }", "wasm:::alt { }"];
+const SPECIAL: &[&str] = &["BEGIN { }", "END { }", "wasm:::alt { }"];
 
 // ====================
 // = Helper Functions =
@@ -583,13 +583,13 @@ wasm::call:alt /
     assert_eq!(1, script.providers.len());
     let provider = script.providers.get("wasm").unwrap();
     assert_eq!("wasm", provider.name());
-    assert_eq!(0, provider.get_provided_globals().len());
+    assert_eq!(3, provider.get_provided_globals().len());
     assert_eq!(0, provider.get_provided_fns().len());
 
     assert_eq!(1, provider.len_packages());
     let package = provider.packages().next().unwrap();
     assert_eq!("opcode", package.name());
-    assert_eq!(1, package.get_provided_globals().len());
+    assert_eq!(0, package.get_provided_globals().len());
     assert_eq!(0, package.get_provided_fns().len());
 
     assert_eq!(1, package.len_events());

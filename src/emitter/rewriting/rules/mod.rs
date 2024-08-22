@@ -3,9 +3,10 @@ use crate::emitter::rewriting::rules::wasm::{OpcodeEvent, WasmPackage};
 use crate::generator::simple_ast::{SimpleAstProbes, SimpleProbe};
 use crate::parser::rules::core::WhammModeKind;
 use crate::parser::rules::{FromStr, WhammProviderKind};
-use crate::parser::types::{SpecPart, Value};
+use crate::parser::types::{DataType, SpecPart, Value};
 use orca::ir::module::Module;
 use orca::ir::types::DataType as OrcaType;
+use orca::Location;
 use std::collections::HashMap;
 use wasmparser::Operator;
 
@@ -181,7 +182,7 @@ impl<'a> LocInfo<'a> {
 
 pub trait Provider {
     /// Pass some location to the provider and get back two types of data:
-    fn get_loc_info(&self, app_wasm: &Module, instr: &Operator) -> Option<LocInfo>;
+    fn get_loc_info(&self, app_wasm: &Module, loc: Location, instr: &Operator) -> Option<LocInfo>;
     fn add_packages(
         &mut self,
         ast_packages: &HashMap<String, HashMap<String, HashMap<WhammModeKind, Vec<SimpleProbe>>>>,
@@ -230,10 +231,60 @@ impl WhammProvider {
     }
 }
 impl Provider for WhammProvider {
-    fn get_loc_info(&self, app_wasm: &Module, instr: &Operator) -> Option<LocInfo> {
+    fn get_loc_info(&self, app_wasm: &Module, loc: Location, instr: &Operator) -> Option<LocInfo> {
         let mut loc_info = LocInfo::new();
         match self.kind {
-            WhammProviderKind::Core | WhammProviderKind::Wasm => {
+            WhammProviderKind::Wasm => {
+                let (fid, pc, fname) = match loc {
+                    Location::Module {
+                        func_idx,
+                        instr_idx,
+                    }
+                    | Location::Component {
+                        func_idx,
+                        instr_idx,
+                        ..
+                    } => {
+                        let fname = app_wasm.functions.get_name(func_idx).unwrap_or_default();
+
+                        (func_idx, instr_idx, fname)
+                    }
+                };
+
+                loc_info.static_data.insert(
+                    "fid".to_string(),
+                    Some(Value::U32 {
+                        ty: DataType::U32,
+                        val: fid,
+                    }),
+                );
+
+                loc_info.static_data.insert(
+                    "fname".to_string(),
+                    Some(Value::Str {
+                        ty: DataType::Str,
+                        val: fname,
+                    }),
+                );
+
+                // Don't think we need this right now...
+                // loc_info.static_data.insert(
+                //     "wasm_bytecode_loc".to_string(),
+                //     Some(Value::U32 {
+                //         ty: DataType::U32,
+                //         val: pc,
+                //     }),
+                // );
+
+                loc_info.static_data.insert(
+                    "pc".to_string(),
+                    Some(Value::U32 {
+                        ty: DataType::U32,
+                        val: pc as u32,
+                    }),
+                );
+            }
+            WhammProviderKind::Core => {
                 // nothing to add
             }
         }

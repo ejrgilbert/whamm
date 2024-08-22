@@ -101,12 +101,16 @@
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
+
+
 ;; WHAMM --> i32 count; wasm:opcode:nop:after { count++; }
 (assert_return (invoke "get_count") (i32.const 5)) ;; matches three nop's (hit 5x)
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
+
+
 ;; WHAMM --> i32 count; wasm:opcode:nop:alt { count++; }
 (assert_return (invoke "get_count") (i32.const 5)) ;; matches three nop's (hit 5x)
 ;; @passes_uninstr

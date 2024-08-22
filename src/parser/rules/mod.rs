@@ -706,6 +706,46 @@ impl WhammProvider {
         }
     }
     fn wasm(loc: Option<Location>) -> Self {
+        let mut globals = HashMap::new();
+        globals.insert(
+            "fid".to_string(),
+            ProvidedGlobal::new(
+                "fid".to_string(),
+                "The ID of the function the probe is located in.".to_string(),
+                DataType::U32,
+                true,
+            ),
+        );
+        globals.insert(
+            "fname".to_string(),
+            ProvidedGlobal::new(
+                "fname".to_string(),
+                "The name of the function the probe is located in. Empty string if not defined."
+                    .to_string(),
+                DataType::Str,
+                true,
+            ),
+        );
+        globals.insert(
+            "pc".to_string(),
+            ProvidedGlobal::new(
+                "pc".to_string(),
+                "The instruction offset of the probe within the function.".to_string(),
+                DataType::U32,
+                true,
+            ),
+        );
+        // Don't think we need this right now...
+        // globals.insert(
+        //     "wasm_bytecode_loc".to_string(),
+        //     ProvidedGlobal::new(
+        //         "wasm_bytecode_loc".to_string(),
+        //         "A unique identifier tied to the probe's location in the Wasm bytecode."
+        //             .to_string(),
+        //         DataType::U32,
+        //         true,
+        //     )
+        // );
         Self {
             kind: WhammProviderKind::Wasm,
             info: ProviderInfo {
@@ -713,7 +753,7 @@ impl WhammProvider {
                     "This provides various events to instrument that are specific to WebAssembly."
                         .to_string(),
                 fns: vec![],
-                globals: HashMap::new(),
+                globals,
                 loc,
                 packages: HashMap::new(),
             },
@@ -915,7 +955,7 @@ pub fn matches_globs(s: &str, globs: &[Pattern]) -> bool {
 #[macro_export]
 macro_rules! for_each_opcode {
 ($mac:ident) => { $mac! {
-    Unreachable, unreachable, 0, vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/unreachable"
+    Unreachable, unreachable, 0, vec![], HashMap::new(), vec![], vec![WhammModeKind::Before, WhammModeKind::Alt], "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/unreachable"
     Nop, nop, 0, vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), "https://www.w3.org/TR/wasm-core-2/#syntax-instr-control"
     // TODO -- support blockty as a struct to read/manipulate (provided global?)
     //         Block { blockty: $crate::BlockType } => visit_block
@@ -1683,7 +1723,7 @@ pub fn get_br_table_globals() -> HashMap<String, ProvidedGlobal> {
             "The number of target branches for this br_table instruction (correlates with the number of immediates, e.g. `immN`).\
             NOTE: This can be used in a predicate to ensure that the current br_table has the immN you need to interact with for the probe."
                 .to_string(),
-            DataType::Str,
+            DataType::U32,
             true,
         ),
     );
@@ -1692,7 +1732,7 @@ pub fn get_br_table_globals() -> HashMap<String, ProvidedGlobal> {
         ProvidedGlobal::new(
             "default_target".to_string(),
             "The default target of this br_table instruction.".to_string(),
-            DataType::Str,
+            DataType::U32,
             true,
         ),
     );

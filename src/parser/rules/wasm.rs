@@ -52,16 +52,7 @@ impl WasmPackage {
                     instrumentation of WebAssembly bytecode instructions."
                     .to_string(),
                 fns: vec![],
-                globals: HashMap::from([(
-                    "wasm_bytecode_loc".to_string(),
-                    ProvidedGlobal::new(
-                        "wasm_bytecode_loc".to_string(),
-                        "A unique identifier tied to the probe's location in the Wasm bytecode."
-                            .to_string(),
-                        DataType::I32,
-                        true,
-                    ),
-                )]),
+                globals: HashMap::new(),
                 loc,
                 events: HashMap::new(),
             },

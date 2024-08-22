@@ -90,8 +90,6 @@
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
-;; TODO -- disable `alt` on block
-;; TODO -- target a specific `block` using `fn_id`/`pc`
 
 ;; TODO -- `after` mode, find the end of the `block` and emit the body there! (Issue#132)
 ;;         that semantically makes sense for the after of a `block`
@@ -99,4 +97,6 @@
 ;;(assert_return (invoke "get_count") (i32.const 1)) ;; predicate == true (hit 1x)
 ;;;; WHAMM --> i32 count; wasm:opcode:br:alt / imm0 == 0 / { count++; }
 ;; TODO -- `entry`/`exit` of block?
+
 ;; TODO -- `BlockType` struct?
+;; TODO -- target a specific `block` using `fn_id`/`pc`

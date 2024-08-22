@@ -211,10 +211,9 @@ impl Event for OpcodeEvent {
                 if let Operator::Br { relative_depth } = instr {
                     loc_info.static_data.insert(
                         "imm0".to_string(),
-                        Some(Value::I32 {
-                            ty: DataType::I32,
-                            // TODO -- check to see if this is a bad idea?
-                            val: *relative_depth as i32,
+                        Some(Value::U32 {
+                            ty: DataType::U32,
+                            val: *relative_depth,
                         }),
                     );
                     loc_info.add_probes(self.probe_spec(), &self.probes);
@@ -224,10 +223,9 @@ impl Event for OpcodeEvent {
             //     if let Operator::BrIf { relative_depth } = instr {
             //         loc_info.static_data.insert(
             //             "imm0".to_string(),
-            //             Some(Value::I32 {
-            //                 ty: DataType::I32,
-            //                 // TODO -- check to see if this is a bad idea?
-            //                 val: *relative_depth as i32,
+            //             Some(Value::U32 {
+            //                 ty: DataType::U32,
+            //                 val: *relative_depth,
             //             }),
             //         );
             //         loc_info.add_probes(self.probe_spec(), &self.probes);
@@ -237,26 +235,25 @@ impl Event for OpcodeEvent {
             //     if let Operator::BrTable { targets } = instr {
             //         loc_info.static_data.insert(
             //             "num_targets".to_string(),
-            //             Some(Value::I32 {
-            //                 ty: DataType::I32,
-            //                 val: targets.len() as i32
+            //             Some(Value::U32 {
+            //                 ty: DataType::U32,
+            //                 val: targets.len() as u32
             //             }),
             //         );
             //         loc_info.static_data.insert(
             //             "default_target".to_string(),
-            //             Some(Value::I32 {
-            //                 ty: DataType::I32,
-            //                 val: targets.default() as i32
+            //             Some(Value::U32 {
+            //                 ty: DataType::U32,
+            //                 val: targets.default()
             //             }),
             //         );
             //         for (i, target) in targets.targets().enumerate() {
             //             if let Ok(target) = target {
             //                 loc_info.static_data.insert(
             //                     format!("imm{i}"),
-            //                     Some(Value::I32 {
-            //                         ty: DataType::I32,
-            //                         // TODO -- check to see if this is a bad idea?
-            //                         val: target as i32
+            //                     Some(Value::U32 {
+            //                         ty: DataType::U32,
+            //                         val: target
             //                     }),
             //                 );
             //             }
