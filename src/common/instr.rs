@@ -1,8 +1,3 @@
-use std::collections::HashMap;
-use std::path::PathBuf;
-use std::process::exit;
-use log::{error, info};
-use orca::Module;
 use crate::common::error::ErrorGen;
 use crate::emitter::map_lib_adapter::MapLibAdapter;
 use crate::emitter::report_var_metadata::ReportVarMetadata;
@@ -15,6 +10,11 @@ use crate::parser::types::Whamm;
 use crate::parser::whamm_parser::parse_script;
 use crate::verifier::types::SymbolTable;
 use crate::verifier::verifier::{build_symbol_table, type_check};
+use log::{error, info};
+use orca::Module;
+use std::collections::HashMap;
+use std::path::PathBuf;
+use std::process::exit;
 
 /// create output path if it doesn't exist
 pub(crate) fn try_path(path: &String) {
@@ -28,24 +28,29 @@ pub fn run_with_path(
     script_path: String,
     output_wasm_path: String,
     max_errors: i32,
-    _emit_virgil: bool
+    _emit_virgil: bool,
 ) {
     // Read app Wasm into Orca module
     let buff = std::fs::read(app_wasm_path).unwrap();
     let mut app_wasm = Module::parse(&buff, false).unwrap();
-    
+
     // read in the whamm script
     let whamm_script = match std::fs::read_to_string(script_path.clone()) {
-        Ok(unparsed_str) => {
-            unparsed_str
-        }
+        Ok(unparsed_str) => unparsed_str,
         Err(error) => {
             error!("Cannot read specified file {}: {}", script_path, error);
             exit(1);
         }
     };
-    
-    run(&mut app_wasm, &whamm_script, &script_path, Some(output_wasm_path), max_errors, _emit_virgil);
+
+    run(
+        &mut app_wasm,
+        &whamm_script,
+        &script_path,
+        Some(output_wasm_path),
+        max_errors,
+        _emit_virgil,
+    );
 }
 
 pub fn run(
@@ -140,7 +145,7 @@ pub fn run(
             ))
         }
     }
-    
+
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
     app_wasm.encode()

@@ -47,12 +47,18 @@ fn try_main() -> Result<(), failure::Error> {
             functions,
         } => {
             run_info(spec, globals, functions);
-        },
-        Cmd::Wast{wast_path} => {
+        }
+        Cmd::Wast { wast_path } => {
             run_wast(wast_path);
-        },
+        }
         Cmd::Instr(args) => {
-            common::instr::run_with_path(args.app, args.script, args.output_path, MAX_ERRORS, args.virgil);
+            common::instr::run_with_path(
+                args.app,
+                args.script,
+                args.output_path,
+                MAX_ERRORS,
+                args.virgil,
+            );
         }
     }
 
@@ -68,7 +74,8 @@ fn run_info(spec: String, print_globals: bool, print_functions: bool) {
 }
 
 fn run_wast(wast_path: String) {
-    wast::test_harness::setup_and_run_tests(&vec![PathBuf::from(wast_path)]).expect("WAST Test failed!");
+    wast::test_harness::setup_and_run_tests(&vec![PathBuf::from(wast_path)])
+        .expect("WAST Test failed!");
 
     println!("The wast test passed!");
 }

@@ -33,7 +33,7 @@ fn instrument_dfinity_with_fault_injection() {
             &format!("{:?}", script_path.clone().as_path()),
             None,
             0,
-            false
+            false,
         );
         err.fatal_report("Integration Test");
     }

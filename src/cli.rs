@@ -41,7 +41,7 @@ pub enum Cmd {
     },
 
     /// To instrument a Wasm application.
-    Instr(InstrArgs)
+    Instr(InstrArgs),
 }
 
 // #[derive(Debug, Args)]

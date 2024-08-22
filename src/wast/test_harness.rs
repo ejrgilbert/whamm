@@ -19,7 +19,7 @@ pub fn run_all() -> Result<(), std::io::Error> {
     // Find all the wast files to run as tests
     let wast_tests = find_wast_tests();
     setup_and_run_tests(&wast_tests)?;
-    
+
     Ok(())
 }
 
@@ -213,11 +213,7 @@ fn generate_instrumented_bin_wast(
         // make sure that this is a valid file by running wasm2wat through CLI
         let debug_file_path = format!(
             "{TEST_DEBUG_DIR}/{}.wasm",
-            wast_path
-                .file_name()
-                .unwrap()
-                .to_str()
-                .unwrap()
+            wast_path.file_name().unwrap().to_str().unwrap()
         );
         try_path(&debug_file_path);
         let instrumented_module_wasm = run(
@@ -226,7 +222,7 @@ fn generate_instrumented_bin_wast(
             &format!("{:?}", wast_path),
             Some(debug_file_path.clone()),
             0,
-            false
+            false,
         );
         wasm2wat_on_file(debug_file_path.as_str());
 
@@ -352,7 +348,7 @@ struct WastTestSetup {
 /// (module <the actual targeted module to instrument>)
 fn get_test_setup(
     reader: &mut BufReader<File>,
-    file_path: &PathBuf,
+    file_path: &Path,
 ) -> Result<WastTestSetup, std::io::Error> {
     let mut mod_to_instr = false;
 
@@ -368,7 +364,7 @@ fn get_test_setup(
                 if module.is_empty() {
                     panic!(
                         "Could not find the Wasm module-to-instrument in the wast file: {:?}",
-                        file_path.clone()
+                        file_path
                     );
                 }
 
