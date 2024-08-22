@@ -10,7 +10,7 @@ use crate::parser::types::{
     UnOp, Value, Whamm, WhammVisitorMut,
 };
 use crate::verifier::types::Record;
-use log::{info, trace, warn};
+use log::{debug, trace, warn};
 use orca::ir::function::FunctionBuilder;
 use orca::ir::id::FunctionID;
 use std::collections::HashMap;
@@ -154,11 +154,11 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
     fn create_start(&mut self) {
         match self.emitter.app_wasm.start {
             Some(_) => {
-                info!("Start function already exists");
+                debug!("Start function already exists");
             }
             None => {
                 //time to make a start fn
-                info!("No start function found, creating one");
+                debug!("No start function found, creating one");
                 match self
                     .emitter
                     .app_wasm
@@ -166,7 +166,7 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
                     .get_local_fid_by_name("_start")
                 {
                     Some(_) => {
-                        info!("start function is _start");
+                        debug!("start function is _start");
                     }
                     None => {
                         let start_fn = FunctionBuilder::new(&[], &[]);
