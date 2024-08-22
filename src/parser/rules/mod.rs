@@ -711,7 +711,7 @@ impl WhammProvider {
             "fid".to_string(),
             ProvidedGlobal::new(
                 "fid".to_string(),
-                "The ID of the function the probe is located in.".to_string(),
+                "The ID of the function the probe is located in (zero-based indexing).".to_string(),
                 DataType::U32,
                 true,
             ),
@@ -730,7 +730,7 @@ impl WhammProvider {
             "pc".to_string(),
             ProvidedGlobal::new(
                 "pc".to_string(),
-                "The instruction offset of the probe within the function.".to_string(),
+                "The instruction offset of the probe within the function (zero-based indexing).".to_string(),
                 DataType::U32,
                 true,
             ),
@@ -897,12 +897,13 @@ macro_rules! for_each_mode {
     Before, before, "This mode will cause the instrumentation logic to run *before* the \
                     probed event (if the predicate evaluates to `true`)."
     After, after, "This mode will cause the instrumentation logic to run *after* the \
-                    probed event (if the predicate evaluates to `true`)."
+                    probed event (if the predicate evaluates to `true`). \
+                    For block-structured opcodes, the probe will be injected after the 'end' of the block."
     Alt, alt, "This mode will cause the instrumentation logic to run *instead of* the \
                     probed event (if the predicate evaluates to `true`)."
 
     // special modes
-    SemanticAfter, semantic_after, "This mode will cause the instrumentation logic to run *semantically after*  the instrumented location, meaning it will find the point in the bytecode that will be executed *after* the point is reached (consider blocks and br* opcodes)."
+    AtTarget, at_target, "This mode will cause the probe body to be injected at the branch target of the instrumented location, meaning it will find the point in the bytecode that will be executed *semantically after* the point is reached (consider br* opcodes)."
     Entry, entry, "This mode will cause the instrumentation logic to run *on entry* to the instrumentation point (e.g. functions bodies, blocks, etc.)."
     Exit, exit, "This mode will cause the instrumentation logic to run *on exiting* to the instrumentation point (e.g. function bodies, blocks, etc.)."
 
@@ -976,9 +977,9 @@ macro_rules! for_each_opcode {
     // CatchAll => visit_catch_all
     End, end, 0, vec![], HashMap::new(), vec![], WhammModeKind::default_modes_no_alt(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/end"
     // TODO
-    Br, br, 0, vec![DataType::U32], HashMap::new(), vec![], WhammModeKind::default_modes_and_semantic_aft(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
+    Br, br, 0, vec![DataType::U32], HashMap::new(), vec![], WhammModeKind::branching_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
     // // BrIf { relative_depth: u32 } => visit_br_if TODO
-    // BrIf, br_if, 1, vec![DataType::U32], HashMap::new(), vec![], default_modes().push(WhammModeKind::SemanticAfter), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
+    // BrIf, br_if, 1, vec![DataType::U32], HashMap::new(), vec![], default_modes().push(WhammModeKind::AtTarget), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
     // // BrTable { targets: $crate::BrTable<'a> } => visit_br_table TODO
     // // can be any number of immediates! Just assume we have the immN used and check later while traversing the bytecode
     // // Can predicate on the number of immediates available using a global!

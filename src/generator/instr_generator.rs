@@ -53,11 +53,14 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     }
 
     pub fn configure_probe_mode(&mut self) -> bool {
+        // function entry/exit should be handled before this point!
         match self.curr_probe_mode {
             WhammModeKind::Before => self.emitter.before(),
             WhammModeKind::After => self.emitter.after(),
             WhammModeKind::Alt => self.emitter.alternate(),
-            WhammModeKind::SemanticAfter => self.emitter.semantic_after(),
+            WhammModeKind::AtTarget => self.emitter.semantic_after(),
+            WhammModeKind::Entry => self.emitter.block_entry(),
+            WhammModeKind::Exit => self.emitter.block_exit(),
             _ => return false,
         }
         true
@@ -166,7 +169,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             "{}_{}:{}:{}:{}",
             probe.probe_number, curr_provider, curr_package, curr_event, curr_mode
         );
-        let loc = match self.emitter.app_iter.curr_loc() {
+        let loc = match self.emitter.app_iter.curr_loc().0 {
             OrcaLocation::Module {
                 func_idx,
                 instr_idx,
@@ -204,7 +207,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
             // The predicate still has some conditionals (remember we already checked for
             // it being false in run() above)
             match self.curr_probe_mode {
-                WhammModeKind::Before | WhammModeKind::After | WhammModeKind::SemanticAfter => {
+                WhammModeKind::Before | WhammModeKind::After | WhammModeKind::AtTarget => {
                     is_success &= self.emit_probe_as_if();
                     self.replace_args();
                 }

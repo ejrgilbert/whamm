@@ -322,17 +322,16 @@ macro_rules! define_mode {
             }
             defaults
         }
-        pub fn default_modes_and_semantic_aft() -> Vec<Self> {
+        pub fn branching_modes() -> Vec<Self> {
             let mut defaults = Self::default_modes();
-            defaults.push(Self::SemanticAfter);
+            defaults.push(Self::AtTarget);
             defaults
         }
         pub fn block_type_modes() -> Vec<Self> {
             vec![
                 Self::Before,
-                Self::After,
                 Self::Alt,
-                Self::SemanticAfter,
+                Self::After,
                 Self::Entry,
                 Self::Exit
             ]

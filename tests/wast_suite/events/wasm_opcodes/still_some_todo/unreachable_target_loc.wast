@@ -62,7 +62,6 @@
     (start $start)
 )
 
-;; without targeting
 ;; WHAMM --> i32 count; wasm:opcode:unreachable:alt { count++; }
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var") (i32.const 2))

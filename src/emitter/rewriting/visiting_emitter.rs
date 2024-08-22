@@ -14,10 +14,10 @@ use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca::ir::id::FunctionID;
 use orca::ir::module::Module;
 use orca::ir::types::BlockType as OrcaBlockType;
-use orca::iterator::iterator_trait::{Instrumenter, Iterator as OrcaIterator};
+use orca::iterator::iterator_trait::{IteratingInstrumenter, Iterator as OrcaIterator};
 use orca::iterator::module_iterator::ModuleIterator;
 use orca::module_builder::AddLocal;
-use orca::opcode::Opcode;
+use orca::opcode::{Instrumenter, Opcode};
 use std::iter::Iterator;
 
 const UNEXPECTED_ERR_MSG: &str =
@@ -77,6 +77,14 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         self.app_iter.semantic_after();
     }
 
+    pub fn block_entry(&mut self) {
+        self.app_iter.block_entry();
+    }
+
+    pub fn block_exit(&mut self) {
+        self.app_iter.block_exit();
+    }
+
     pub(crate) fn enter_scope_via_spec(&mut self, script_id: &str, probe_spec: &ProbeSpec) -> bool {
         self.table.enter_scope_via_spec(
             script_id,
@@ -105,8 +113,13 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     }
 
     pub(crate) fn get_loc_info<'g>(&self, rule: &'g WhammProvider) -> Option<LocInfo<'g>> {
+        let (curr_loc, at_func_end) = self.app_iter.curr_loc();
+        if at_func_end {
+            // We're at the 'end' opcode of the function...don't instrument
+            return None;
+        }
         if let Some(curr_instr) = self.app_iter.curr_op() {
-            rule.get_loc_info(self.app_iter.module, self.app_iter.curr_loc(), curr_instr)
+            rule.get_loc_info(self.app_iter.module, curr_loc, curr_instr)
         } else {
             None
         }
@@ -236,7 +249,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     pub fn emit_orig(&mut self) -> bool {
         // ORCA TODO: can i get around this curr_op_owned() thing by curr_op?
         let orig = self.app_iter.curr_op_owned().unwrap().clone();
-        let loc = self.app_iter.curr_loc();
+        let loc = self.app_iter.curr_loc().0;
         self.app_iter.add_instr_at(loc, orig);
         true
     }

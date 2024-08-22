@@ -2,7 +2,7 @@ use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::parser::types::{Block, DataType, Definition, Expr, Fn, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
-use orca::{DataSegment, DataSegmentKind, InitExpr};
+use orca::{DataSegment, DataSegmentKind, InitExpr, Location};
 use std::collections::HashMap;
 
 use crate::emitter::map_lib_adapter::MapLibAdapter;
@@ -16,7 +16,7 @@ use orca::ir::function::FunctionBuilder;
 use orca::ir::id::FunctionID;
 use orca::ir::module::Module;
 use orca::module_builder::AddLocal;
-use orca::opcode::Opcode;
+use orca::opcode::{Instrumenter, Opcode};
 
 const UNEXPECTED_ERR_MSG: &str =
     "ModuleEmitter: Looks like you've found a bug...please report this behavior!";
@@ -417,7 +417,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                                 )));
                             }
                         };
-                        start_fn.before_at(0);
+                        start_fn.before_at(Location::Module {
+                            func_idx: start_id,
+                            instr_idx: 0
+                        });
                         let (fn_name, map_id) = match report_mode {
                             true => {
                                 match self.map_lib_adapter.create_global_map(
