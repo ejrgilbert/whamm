@@ -61,6 +61,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             WhammModeKind::SemanticAfter => self.emitter.semantic_after(),
             WhammModeKind::Entry => self.emitter.block_entry(),
             WhammModeKind::Exit => self.emitter.block_exit(),
+            WhammModeKind::BlockAlt => self.emitter.block_alt(),
             _ => return false,
         }
         true
@@ -207,7 +208,11 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
             // The predicate still has some conditionals (remember we already checked for
             // it being false in run() above)
             match self.curr_probe_mode {
-                WhammModeKind::Before | WhammModeKind::After | WhammModeKind::SemanticAfter | WhammModeKind::Entry | WhammModeKind::Exit => {
+                WhammModeKind::Before
+                | WhammModeKind::After
+                | WhammModeKind::SemanticAfter
+                | WhammModeKind::Entry
+                | WhammModeKind::Exit => {
                     is_success &= self.emit_probe_as_if();
                     self.replace_args();
                 }

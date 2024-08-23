@@ -44,7 +44,7 @@
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var") (i32.const 1))
 (assert_return (invoke "get_count") (i32.const 1)) ;; the if is only true 1 of the 2 times
-;; WHAMM --> i32 count; wasm:opcode:_else:after { count = count + 2; }
+;; WHAMM --> i32 count; wasm:opcode:_else:entry { count = count + 2; }
 (assert_return (invoke "get_count") (i32.const 2)) ;; the if is only true 1 of the 2 times
 
 

@@ -85,6 +85,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         self.app_iter.block_exit();
     }
 
+    pub fn block_alt(&mut self) {
+        self.app_iter.block_alt();
+    }
+
     pub(crate) fn enter_scope_via_spec(&mut self, script_id: &str, probe_spec: &ProbeSpec) -> bool {
         self.table.enter_scope_via_spec(
             script_id,

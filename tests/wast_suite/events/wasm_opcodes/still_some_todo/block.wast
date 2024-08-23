@@ -1,4 +1,4 @@
-;; Test `wasm:opcode:br` event
+;; Test `wasm:opcode:block` event
 
 ;; @instrument
 (module
@@ -55,6 +55,12 @@
         return
     )
 
+    (func (;4;) (param i32) (result i32)
+        block (result i32)
+            local.get 0
+        end
+    )
+
     (func $start
         (call $basic_br (i32.const 0))
         global.set $var0
@@ -74,6 +80,9 @@
         global.get $var1
         i32.add
         global.set $var1
+
+        (call 4 (i32.const 5))
+        drop
     )
 
     (export "get_global_var0" (func $get_global_var0))
@@ -85,18 +94,71 @@
 ;; ----------------------
 ;; ==== unpredicated ====
 ;; WHAMM --> i32 count; wasm:opcode:block:before { count++; }
-(assert_return (invoke "get_count") (i32.const 14))
+(assert_return (invoke "get_count") (i32.const 15))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
 
-;; TODO -- `after` mode, find the end of the `block` and emit the body there! (Issue#132)
-;;         that semantically makes sense for the after of a `block`
-;;;; WHAMM --> i32 count; wasm:opcode:br:after / imm0 == 0 / { count++; }
-;;(assert_return (invoke "get_count") (i32.const 1)) ;; predicate == true (hit 1x)
-;;;; WHAMM --> i32 count; wasm:opcode:br:alt / imm0 == 0 / { count++; }
-;; TODO -- `entry`/`exit` of block?
+;; target a specific `block` using `fn_id`/`fname`/`pc`
+;; WHAMM --> i32 count; wasm:opcode:block:before /fid == 2 && pc == 1/ { count++; }
+(assert_return (invoke "get_count") (i32.const 1))
+;; @passes_uninstr
+(assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
+;; @passes_uninstr
+(assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
 
-;; TODO -- `BlockType` struct?
-;; TODO -- target a specific `block` using `fn_id`/`pc`
+;; WHAMM --> i32 count; wasm:opcode:block:before /fid == 2 && pc == 2/ { count++; }
+(assert_return (invoke "get_count") (i32.const 0)) ;; location DNE
+;; @passes_uninstr
+(assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
+;; @passes_uninstr
+(assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
+
+;; WHAMM --> i32 count; wasm:opcode:block:before /fname == "more_nesting" && pc == 2/ { count++; }
+(assert_return (invoke "get_count") (i32.const 4))
+;; @passes_uninstr
+(assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
+;; @passes_uninstr
+(assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
+
+;; name of func 4 isn't set! so it is ""
+;; WHAMM --> i32 count; wasm:opcode:block:before /fname == "" && fid == 4/ { count++; }
+(assert_return (invoke "get_count") (i32.const 1))
+;; @passes_uninstr
+(assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
+;; @passes_uninstr
+(assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
+
+;; entry mode
+;; WHAMM --> i32 count; wasm:opcode:block:entry { count++; }
+(assert_return (invoke "get_count") (i32.const 15))
+;; @passes_uninstr
+(assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
+;; @passes_uninstr
+(assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
+
+;; exit mode
+;; WHAMM --> i32 count; wasm:opcode:block:exit { count++; }
+(assert_return (invoke "get_count") (i32.const 1))
+;; @passes_uninstr
+(assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
+;; @passes_uninstr
+(assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
+
+;; after mode
+;; WHAMM --> i32 count; wasm:opcode:block:after { count++; }
+(assert_return (invoke "get_count") (i32.const 6))
+;; @passes_uninstr
+(assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
+;; @passes_uninstr
+(assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
+
+;; alt mode
+;; WHAMM --> i32 count; wasm:opcode:block:alt /fid == 2 && pc == 0/ { count++; }
+(assert_return (invoke "get_count") (i32.const 1))
+(assert_return (invoke "get_global_var0") (i32.const 1))
+;; @passes_uninstr
+(assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
+
+;; TODO -- `BlockType` struct? Issue #139

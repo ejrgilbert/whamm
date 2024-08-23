@@ -195,7 +195,10 @@ impl CoreEvent {
         Self {
             kind: CoreEventKind::Default,
             info: EventInfo {
-                supported_modes: HashMap::from([(WhammModeKind::Begin.name(), WhammModeKind::Begin), (WhammModeKind::End.name(), WhammModeKind::End)]),
+                supported_modes: HashMap::from([
+                    (WhammModeKind::Begin.name(), WhammModeKind::Begin),
+                    (WhammModeKind::End.name(), WhammModeKind::End),
+                ]),
                 docs: "".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
@@ -439,7 +442,14 @@ impl Probe for WhammProbe {
         tabs: &mut usize,
         buffer: &mut Buffer,
     ) {
-        print_mode_docs(alias, &self.mode, print_globals, print_functions, tabs, buffer);
+        print_mode_docs(
+            alias,
+            &self.mode,
+            print_globals,
+            print_functions,
+            tabs,
+            buffer,
+        );
     }
 
     fn get_mode_provided_fns(&self) -> &Vec<ProvidedFunction> {

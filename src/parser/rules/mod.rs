@@ -612,7 +612,7 @@ fn print_mode_docs<M: Mode>(
 ) {
     let name = match alias {
         Some(alias) => alias.clone(),
-        None => mode.name()
+        None => mode.name(),
     };
     let docs = mode.docs();
 
@@ -737,7 +737,8 @@ impl WhammProvider {
             "pc".to_string(),
             ProvidedGlobal::new(
                 "pc".to_string(),
-                "The instruction offset of the probe within the function (zero-based indexing).".to_string(),
+                "The instruction offset of the probe within the function (zero-based indexing)."
+                    .to_string(),
                 DataType::U32,
                 true,
             ),
@@ -902,17 +903,24 @@ pub struct ModeInfo {
 macro_rules! for_each_mode {
 ($mac:ident) => { $mac! {
     Before, before, "This mode will cause the instrumentation logic to run *before* the \
-                    probed event (if the predicate evaluates to `true`)."
+                     probed event (if the predicate evaluates to `true`)."
     After, after, "This mode will cause the instrumentation logic to run *after* the \
-                    probed event (if the predicate evaluates to `true`). \
-                    For block-structured opcodes, the probe will be injected after the 'end' of the block."
+                   probed event (if the predicate evaluates to `true`). \
+                   For block-structured opcodes, the probe will be injected after the 'end' of the block."
     Alt, alt, "This mode will cause the instrumentation logic to run *instead of* the \
-                    probed event (if the predicate evaluates to `true`)."
+               probed event (if the predicate evaluates to `true`)."
 
     // special modes
-    SemanticAfter, semantic_after, "This mode will cause the instrumentation logic to run *semantically after* the instrumented location, meaning it will find the point in the bytecode that will be executed *after* the point is reached (consider blocks and br* opcodes)."
-    Entry, entry, "This mode will cause the instrumentation logic to run *on entry* to the instrumentation point (e.g. functions bodies, blocks, etc.)."
-    Exit, exit, "This mode will cause the instrumentation logic to run *on exiting* to the instrumentation point (e.g. function bodies, blocks, etc.)."
+    SemanticAfter, semantic_after, "This mode will cause the instrumentation logic to run \
+                                    *semantically after* the instrumented location, meaning \
+                                    it will find the point in the bytecode that will be executed \
+                                    *after* the point is reached (consider blocks and br* opcodes)."
+    Entry, entry, "This mode will cause the instrumentation logic to run *on entry* to the \
+                   instrumentation point (e.g. functions bodies, blocks, etc.)."
+    Exit, exit, "This mode will cause the instrumentation logic to run *on exiting* to the \
+                 instrumentation point (e.g. function bodies, blocks, etc.)."
+    BlockAlt, block_alt, "This mode will cause the instrumentation logic to run *instead of* the\
+                          probed block (if the predicate evaluates to `true`)."
 
     // core modes
     Begin, begin, "Run this logic on application startup."

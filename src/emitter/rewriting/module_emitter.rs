@@ -419,7 +419,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                         };
                         start_fn.before_at(Location::Module {
                             func_idx: start_id,
-                            instr_idx: 0
+                            instr_idx: 0,
                         });
                         let (fn_name, map_id) = match report_mode {
                             true => {

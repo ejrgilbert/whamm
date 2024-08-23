@@ -291,7 +291,7 @@ macro_rules! define_opcode {
                 HashMap::from([
                     (WhammModeKind::Before.name(), WhammModeKind::Before),
                     ("after".to_string(), WhammModeKind::SemanticAfter),
-                    (WhammModeKind::Alt.name(), WhammModeKind::Alt),
+                    (WhammModeKind::Alt.name(), WhammModeKind::BlockAlt),
                     (WhammModeKind::Entry.name(), WhammModeKind::Entry),
                     (WhammModeKind::Exit.name(), WhammModeKind::Exit),
                 ])
