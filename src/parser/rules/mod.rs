@@ -913,7 +913,7 @@ macro_rules! for_each_mode {
     // special modes
     SemanticAfter, semantic_after, "This mode will cause the instrumentation logic to run \
                                     *semantically after* the instrumented location, meaning \
-                                    it will find the point in the bytecode that will be executed \
+                                    it will find the target point in the bytecode that will be executed \
                                     *after* the point is reached (consider blocks and br* opcodes)."
     Entry, entry, "This mode will cause the instrumentation logic to run *on entry* to the \
                    instrumentation point (e.g. functions bodies, blocks, etc.)."
@@ -994,7 +994,7 @@ macro_rules! for_each_opcode {
     // TODO
     Br, br, false, 0, vec![DataType::U32], HashMap::new(), vec![], OpcodeEvent::branching_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
     // // BrIf { relative_depth: u32 } => visit_br_if TODO
-    // BrIf, br_if, 1, vec![DataType::U32], HashMap::new(), vec![], default_modes().push(WhammModeKind::AtTarget), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
+    BrIf, br_if, false, 1, vec![DataType::U32], HashMap::new(), vec![], OpcodeEvent::branching_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
     // // BrTable { targets: $crate::BrTable<'a> } => visit_br_table TODO
     // // can be any number of immediates! Just assume we have the immN used and check later while traversing the bytecode
     // // Can predicate on the number of immediates available using a global!

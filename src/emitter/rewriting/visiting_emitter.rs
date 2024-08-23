@@ -104,8 +104,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         )
     }
 
-    pub(crate) fn reset_children(&mut self) {
-        self.table.reset_children();
+    pub(crate) fn reset_table(&mut self) {
+        self.table.reset();
     }
 
     pub(crate) fn curr_instr_name(&self) -> String {

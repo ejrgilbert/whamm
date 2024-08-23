@@ -154,6 +154,7 @@ impl OpcodeEvent {
                 }
             }
             Operator::If { .. } => (vec![OrcaType::I32], None),
+            Operator::BrIf { .. } => (vec![OrcaType::I32], None),
             _ => {
                 // TODO -- define type info
                 (vec![], None)
@@ -219,18 +220,18 @@ impl Event for OpcodeEvent {
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
-            // OpcodeEventKind::BrIf { .. } => {
-            //     if let Operator::BrIf { relative_depth } = instr {
-            //         loc_info.static_data.insert(
-            //             "imm0".to_string(),
-            //             Some(Value::U32 {
-            //                 ty: DataType::U32,
-            //                 val: *relative_depth,
-            //             }),
-            //         );
-            //         loc_info.add_probes(self.probe_spec(), &self.probes);
-            //     }
-            // }
+            OpcodeEventKind::BrIf { .. } => {
+                if let Operator::BrIf { relative_depth } = instr {
+                    loc_info.static_data.insert(
+                        "imm0".to_string(),
+                        Some(Value::U32 {
+                            ty: DataType::U32,
+                            val: *relative_depth,
+                        }),
+                    );
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
+            }
             // OpcodeEventKind::BrTable { .. } => {
             //     if let Operator::BrTable { targets } = instr {
             //         loc_info.static_data.insert(

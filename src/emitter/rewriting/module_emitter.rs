@@ -234,8 +234,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     pub(crate) fn exit_scope(&mut self) -> Result<(), Box<WhammError>> {
         self.table.exit_scope()
     }
-    pub(crate) fn reset_children(&mut self) {
-        self.table.reset_children();
+    pub(crate) fn reset_table(&mut self) {
+        self.table.reset();
     }
 
     pub(crate) fn emit_fn(&mut self, context: &str, f: &Fn) -> Result<FunctionID, Box<WhammError>> {

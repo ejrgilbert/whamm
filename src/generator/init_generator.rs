@@ -31,7 +31,7 @@ pub struct InitGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> {
 impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
     pub fn run(&mut self, whamm: &mut Whamm) -> bool {
         // Reset the symbol table in the emitter just in case
-        self.emitter.reset_children();
+        self.emitter.reset_table();
         self.on_startup();
         // Generate globals and fns defined by `whamm` (this should modify the app_wasm)
         let is_success = self.visit_whamm(whamm);

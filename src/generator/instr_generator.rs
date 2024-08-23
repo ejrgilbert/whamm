@@ -69,7 +69,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
 
     pub fn run(&mut self) -> bool {
         // Reset the symbol table in the emitter just in case
-        self.emitter.reset_children();
+        self.emitter.reset_table();
 
         // Here we do the following logic:
         // 1. initialize the emitter rules

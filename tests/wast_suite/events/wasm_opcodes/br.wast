@@ -103,10 +103,6 @@
 (assert_return (invoke "get_count") (i32.const 2)) ;; predicate == true (hit 3x)
 ;; WHAMM --> i32 count; wasm:opcode:br:before / imm0 == 0 / { count++; }
 (assert_return (invoke "get_count") (i32.const 1)) ;; predicate == true (hit 1x)
-;; TODO -- grab the target of the `br` and emit the body there! (Issue#132)
-;;         that semantically makes sense for the after of a `br`...otherwise we're emitting unreachable code
-;;;; WHAMM --> i32 count; wasm:opcode:br:after / imm0 == 0 / { count++; }
-;;(assert_return (invoke "get_count") (i32.const 1)) ;; predicate == true (hit 1x)
 ;; WHAMM --> i32 count; wasm:opcode:br:alt / imm0 == 0 / { count++; }
 (assert_return (invoke "get_count") (i32.const 1))
 (assert_return (invoke "get_global_var0") (i32.const 0))
@@ -115,10 +111,16 @@
 ;; ==== IMMS, body, imm0 ====
 ;; WHAMM --> i32 count; wasm:opcode:br:before { count = imm0; }
 (assert_return (invoke "get_count") (i32.const 1))
-;; TODO -- grab the target of the `br` and emit the body there! (Issue#132)
-;;         that semantically makes sense for the after of a `br`...otherwise we're emitting unreachable code
-;;;; WHAMM --> i32 count; wasm:opcode:br:after { count = imm0; }
-;;(assert_return (invoke "get_count") (i32.const 1))
 ;; WHAMM --> i32 count; wasm:opcode:br:alt { count = imm0; }
 (assert_return (invoke "get_count") (i32.const 1))
 (assert_return (invoke "get_global_var0") (i32.const 0))
+
+;; after mode
+;; WHAMM --> i32 count; wasm:opcode:br:after { count++; }
+(assert_return (invoke "get_count") (i32.const 0)) ;; never reached (immediately following a br)
+
+;; at_target mode
+;; WHAMM --> i32 count; wasm:opcode:br:at_target { count = imm0; }
+(assert_return (invoke "get_count") (i32.const 1))
+;; WHAMM --> i32 count; wasm:opcode:br:at_target / imm0 == 0 / { count++; }
+(assert_return (invoke "get_count") (i32.const 1)) ;; predicate == true (hit 1x)
