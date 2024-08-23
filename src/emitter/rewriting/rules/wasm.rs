@@ -81,7 +81,7 @@ pub struct OpcodeEvent {
     probes: HashMap<WhammModeKind, Vec<SimpleProbe>>,
 }
 macro_rules! define_opcode_event {
-($($op:ident, $name:ident, $is_block_type:expr, $num_args:expr, $imms:expr, $globals:expr, $fns:expr, $supported_modes:expr, $docs:expr)*) => {
+($($op:ident, $name:ident, $num_args:expr, $imms:expr, $globals:expr, $fns:expr, $supported_modes:expr, $docs:expr)*) => {
 impl FromStr for OpcodeEvent {
     fn from_str(name: &str) -> Self {
         match name {
@@ -153,8 +153,9 @@ impl OpcodeEvent {
                     }
                 }
             }
-            Operator::If { .. } => (vec![OrcaType::I32], None),
-            Operator::BrIf { .. } => (vec![OrcaType::I32], None),
+            Operator::If { .. } | Operator::BrIf { .. } | Operator::BrTable { .. } => {
+                (vec![OrcaType::I32], None)
+            }
             _ => {
                 // TODO -- define type info
                 (vec![], None)
@@ -232,36 +233,36 @@ impl Event for OpcodeEvent {
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
-            // OpcodeEventKind::BrTable { .. } => {
-            //     if let Operator::BrTable { targets } = instr {
-            //         loc_info.static_data.insert(
-            //             "num_targets".to_string(),
-            //             Some(Value::U32 {
-            //                 ty: DataType::U32,
-            //                 val: targets.len() as u32
-            //             }),
-            //         );
-            //         loc_info.static_data.insert(
-            //             "default_target".to_string(),
-            //             Some(Value::U32 {
-            //                 ty: DataType::U32,
-            //                 val: targets.default()
-            //             }),
-            //         );
-            //         for (i, target) in targets.targets().enumerate() {
-            //             if let Ok(target) = target {
-            //                 loc_info.static_data.insert(
-            //                     format!("imm{i}"),
-            //                     Some(Value::U32 {
-            //                         ty: DataType::U32,
-            //                         val: target
-            //                     }),
-            //                 );
-            //             }
-            //         };
-            //         loc_info.add_probes(self.probe_spec(), &self.probes);
-            //     }
-            // }
+            OpcodeEventKind::BrTable { .. } => {
+                if let Operator::BrTable { targets } = instr {
+                    loc_info.static_data.insert(
+                        "num_targets".to_string(),
+                        Some(Value::U32 {
+                            ty: DataType::U32,
+                            val: targets.len(),
+                        }),
+                    );
+                    loc_info.static_data.insert(
+                        "default_target".to_string(),
+                        Some(Value::U32 {
+                            ty: DataType::U32,
+                            val: targets.default(),
+                        }),
+                    );
+                    for (i, target) in targets.targets().enumerate() {
+                        if let Ok(target) = target {
+                            loc_info.static_data.insert(
+                                format!("imm{i}"),
+                                Some(Value::U32 {
+                                    ty: DataType::U32,
+                                    val: target,
+                                }),
+                            );
+                        }
+                    }
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
+            }
             // OpcodeEventKind::Return { .. } => {
             //     if let Operator::Return { .. } = instr {
             //         loc_info.add_probes(self.probe_spec(), &self.probes);

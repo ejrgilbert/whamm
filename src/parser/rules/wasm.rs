@@ -1,7 +1,7 @@
 use crate::for_each_opcode;
 use crate::parser::rules::{
-    event_factory, get_call_fns, get_call_globals, Event, EventInfo, FromStrWithLoc, NameOptions,
-    Package, PackageInfo, Probe, WhammModeKind,
+    event_factory, get_br_table_globals, get_call_fns, get_call_globals, Event, EventInfo,
+    FromStrWithLoc, NameOptions, Package, PackageInfo, Probe, WhammModeKind,
 };
 use crate::parser::types::{
     Block, DataType, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal,
@@ -165,7 +165,7 @@ impl Package for WasmPackage {
 }
 
 macro_rules! define_opcode {
-    ($($op:ident, $name:ident, $is_block_type:expr, $num_args:expr, $imms:expr, $globals:expr, $fns:expr, $supported_modes:expr, $docs:expr)*) => {
+    ($($op:ident, $name:ident, $num_args:expr, $imms:expr, $globals:expr, $fns:expr, $supported_modes:expr, $docs:expr)*) => {
         /// Instructions as defined [here].
         ///
         /// [here]: https://webassembly.github.io/spec/core/binary/instructions.html
@@ -174,8 +174,9 @@ macro_rules! define_opcode {
             $(
                 $op {
                     num_args: u32,
-                    imms: Vec<DataType>,
-                    is_block_type: bool
+                    // XXX: Possible issue: ALL counts must be know-able, or NONE
+                    // vec![(type, count)], where count = -1, means unknown number
+                    imms: Vec<(DataType, i32)>
                 },
             )*
         }
@@ -199,7 +200,7 @@ macro_rules! define_opcode {
                 }
             }
 
-            fn get_imms(&self) -> &Vec<DataType> {
+            fn get_imms(&self) -> &Vec<(DataType, i32)> {
                 match self {
                     $(
                         Self::$op {imms, ..}
@@ -214,8 +215,7 @@ macro_rules! define_opcode {
             pub fn $name() -> Self {
                 Self::$op {
                     num_args: $num_args,
-                    imms: $imms,
-                    is_block_type: $is_block_type
+                    imms: $imms
                 }
             }
             )*
@@ -267,8 +267,11 @@ macro_rules! define_opcode {
                 }
             }
 
-            fn gen_immediates(globals: &mut HashMap<String, ProvidedGlobal>, imms: &[DataType]) {
-                for (idx, ty) in imms.iter().enumerate() {
+            fn gen_immediates(globals: &mut HashMap<String, ProvidedGlobal>, imms: &[(DataType, i32)]) {
+                for (idx, (ty, count)) in imms.iter().enumerate() {
+                    if *count < 0 {
+                        continue; // skip this immediate, count is unknown
+                    }
                     let name = format!("imm{}", idx);
                     globals.insert(
                         name.clone(),

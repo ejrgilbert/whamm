@@ -9,6 +9,7 @@ use crate::emitter::rewriting::{emit_stmt, print_report_all, Emitter};
 
 use crate::generator::types::ExprFolder;
 use crate::parser;
+use crate::parser::rules::UNKNOWN_IMMS;
 use crate::parser::types::{Block, DataType, Definition, Expr, SpecPart, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca::ir::id::FunctionID;
@@ -216,6 +217,35 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         let rec_id = match self.table.lookup(var_name) {
             Some(rec_id) => *rec_id,
             _ => {
+                // check if this is an unknown immN!
+                if var_name.starts_with("imm") {
+                    if let Some(id) = self.table.lookup(UNKNOWN_IMMS) {
+                        if let Some(rec) = self.table.get_record(id) {
+                            if let Record::Var { ty, .. } = rec {
+                                self.table.put(
+                                    var_name.to_string(),
+                                    Record::Var {
+                                        ty: ty.clone(),
+                                        name: var_name.to_string(),
+                                        value: var_val.clone(),
+                                        is_comp_provided: false,
+                                        is_report_var: false,
+                                        addr: None,
+                                        loc: None,
+                                    },
+                                );
+                                return Ok(true);
+                            } else {
+                                // unexpected record type
+                                return Err(Box::new(ErrorGen::get_unexpected_error(
+                                    true,
+                                    Some(UNEXPECTED_ERR_MSG.to_string()),
+                                    None,
+                                )));
+                            }
+                        }
+                    }
+                }
                 return Err(Box::new(ErrorGen::get_unexpected_error(
                     true,
                     Some(format!(

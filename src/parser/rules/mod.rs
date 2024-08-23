@@ -966,21 +966,22 @@ pub fn matches_globs(s: &str, globs: &[Pattern]) -> bool {
 /// isn't necessarily consistent based on just which opcode
 /// we're at.
 /// (Sometimes a specific opcode's arg0 is i32, sometimes it's not)
+/// Specify an Option for immediates, Some(vec![]) means we have none, None means we don't know how many there are.
 /// Expected inputs:
-/// IdentifierName, common_name, num_args: i32, imms: Vec<DataType>, globals: HashMap<String, ProvidedGlobal>, fns: Vec<ProvidedFunction>, supported_modes: Vec<WhammModeKind>, docs: &str
+/// IdentifierName, common_name, num_args: i32, imms: Option<Vec<DataType>>, globals: HashMap<String, ProvidedGlobal>, fns: Vec<ProvidedFunction>, supported_modes: Vec<WhammModeKind>, docs: &str
 #[macro_export]
 macro_rules! for_each_opcode {
 ($mac:ident) => { $mac! {
-    Unreachable, unreachable, false, 0, vec![], HashMap::new(), vec![], HashMap::from([(WhammModeKind::Before.name(), WhammModeKind::Before), (WhammModeKind::Alt.name(), WhammModeKind::Alt)]), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/unreachable"
-    Nop, nop, false, 0, vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), "https://www.w3.org/TR/wasm-core-2/#syntax-instr-control"
+    Unreachable, unreachable, 0, vec![], HashMap::new(), vec![], HashMap::from([(WhammModeKind::Before.name(), WhammModeKind::Before), (WhammModeKind::Alt.name(), WhammModeKind::Alt)]), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/unreachable"
+    Nop, nop, 0, vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), "https://www.w3.org/TR/wasm-core-2/#syntax-instr-control"
     // TODO -- support blockty as a struct to read/manipulate (provided global?)
     //         Block { blockty: $crate::BlockType } => visit_block
     //         Loop { blockty: $crate::BlockType } => visit_loop
     //         If { blockty: $crate::BlockType } => visit_if
-    Block, block, true, 0, vec![], HashMap::new(), vec![], OpcodeEvent::block_type_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/block"
-    Loop, _loop, true, 0, vec![], HashMap::new(), vec![], OpcodeEvent::block_type_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/loop"
-    If, _if, true, 1, vec![], HashMap::new(), vec![], OpcodeEvent::block_type_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"
-    Else, _else, true, 0, vec![], HashMap::new(), vec![], OpcodeEvent::block_type_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"
+    Block, block, 0, vec![], HashMap::new(), vec![], OpcodeEvent::block_type_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/block"
+    Loop, _loop, 0, vec![], HashMap::new(), vec![], OpcodeEvent::block_type_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/loop"
+    If, _if, 1, vec![], HashMap::new(), vec![], OpcodeEvent::block_type_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"
+    Else, _else, 0, vec![], HashMap::new(), vec![], OpcodeEvent::block_type_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"
     // TryTable { try_table: $crate::TryTable } => visit_try_table
     // Throw { tag_index: u32 } => visit_throw
     // ThrowRef => visit_throw_ref
@@ -990,19 +991,19 @@ macro_rules! for_each_opcode {
     // Rethrow { relative_depth: u32 } => visit_rethrow
     // Delegate { relative_depth: u32 } => visit_delegate
     // CatchAll => visit_catch_all
-    End, end, false, 0, vec![], HashMap::new(), vec![], WhammModeKind::default_modes_no_alt(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/end"
+    End, end, 0, vec![], HashMap::new(), vec![], WhammModeKind::default_modes_no_alt(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/end"
     // TODO
-    Br, br, false, 0, vec![DataType::U32], HashMap::new(), vec![], OpcodeEvent::branching_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
+    Br, br, 0, vec![(DataType::U32, 1)], HashMap::new(), vec![], OpcodeEvent::branching_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
     // // BrIf { relative_depth: u32 } => visit_br_if TODO
-    BrIf, br_if, false, 1, vec![DataType::U32], HashMap::new(), vec![], OpcodeEvent::branching_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
+    BrIf, br_if, 1, vec![(DataType::U32, 1)], HashMap::new(), vec![], OpcodeEvent::branching_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
     // // BrTable { targets: $crate::BrTable<'a> } => visit_br_table TODO
     // // can be any number of immediates! Just assume we have the immN used and check later while traversing the bytecode
     // // Can predicate on the number of immediates available using a global!
     // // TODO -- figure out how immN will work
-    // BrTable, br_table, 1, vec![DataType::AssumeGood], get_br_table_globals(), vec![], "https://musteresel.github.io/posts/2020/01/webassembly-text-br_table-example.html"
+    BrTable, br_table, 1, vec![(DataType::U32, -1)], get_br_table_globals(), vec![], OpcodeEvent::branching_modes(), "https://musteresel.github.io/posts/2020/01/webassembly-text-br_table-example.html"
     // // Return => visit_return TODO
     // Return, _return, 0, vec![], HashMap::new(), vec![], "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/return"
-    Call, call, false, 0, vec![DataType::U32], get_call_globals(), get_call_fns(), WhammModeKind::default_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call"
+    Call, call, 0, vec![(DataType::U32, 1)], get_call_globals(), get_call_fns(), WhammModeKind::default_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call"
     // CallIndirect { type_index: u32, table_index: u32 } => visit_call_indirect TODO
     // ReturnCall { function_index: u32 } => visit_return_call TODO
     // ReturnCallIndirect { type_index: u32, table_index: u32 } => visit_return_call_indirect TODO
@@ -1644,6 +1645,8 @@ macro_rules! for_each_opcode {
 // ============================================
 
 // (keeps the `for_each_opcode!` lines shorter)
+const UNKNOWN_ARGS: &str = "arg[0:9]+";
+pub const UNKNOWN_IMMS: &str = "imm[0:9]+";
 
 pub fn get_call_globals() -> HashMap<String, ProvidedGlobal> {
     let mut globals = HashMap::new();
@@ -1685,9 +1688,9 @@ pub fn get_call_globals() -> HashMap<String, ProvidedGlobal> {
         ),
     );
     globals.insert(
-        "arg[0:9]+".to_string(),
+        UNKNOWN_ARGS.to_string(),
         ProvidedGlobal::new(
-            "arg[0:9]+".to_string(),
+            UNKNOWN_ARGS.to_string(),
             "The argument to the call at the specific index, e.g. [0:9]+.\
                 Keep in mind, the number of arguments to a call changes based on the targeted function.".to_string(),
             DataType::AssumeGood,
@@ -1733,11 +1736,22 @@ pub fn get_br_table_globals() -> HashMap<String, ProvidedGlobal> {
 
     // add in the extra globals (that aren't args or immediates)
     globals.insert(
+        UNKNOWN_IMMS.to_string(),
+        ProvidedGlobal::new(
+            UNKNOWN_IMMS.to_string(),
+            "The immediate to the opcode at the specific index, e.g. [0:9]+, not including the default target.\
+            Keep in mind, the number of immediates on the br_table is specific to the instruction.".to_string(),
+            DataType::U32,
+            true
+        )
+    );
+    globals.insert(
         "num_targets".to_string(),
         ProvidedGlobal::new(
             "num_targets".to_string(),
-            "The number of target branches for this br_table instruction (correlates with the number of immediates, e.g. `immN`).\
-            NOTE: This can be used in a predicate to ensure that the current br_table has the immN you need to interact with for the probe."
+            "The number of NON-DEFAULT target branches for this br_table instruction (correlates with the number of immediates, e.g. `immN`).\
+             This means the total number of targets is really num_targets + 1, to include the default target. \
+             NOTE: This can be used in a predicate to ensure that the current br_table has the immN you need to interact with for the probe."
                 .to_string(),
             DataType::U32,
             true,

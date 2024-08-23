@@ -1,7 +1,7 @@
 use std::vec;
 
 use crate::common::error::ErrorGen;
-use crate::parser::rules::{Event, Package, Probe, Provider};
+use crate::parser::rules::{Event, Package, Probe, Provider, UNKNOWN_IMMS};
 use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Fn, Location, Script, Statement, UnOp, Value, Whamm,
     WhammVisitorMut,
@@ -633,14 +633,31 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 loc.clone().map(|l| l.line_col),
                             )
                         }
-                    } else {
-                        self.err.type_check_error(
-                            false,
-                            format! {"Can't look up {} in symbol table", name},
-                            &loc.clone().map(|l| l.line_col),
-                        );
+                    }
+                } else {
+                    // check if this is an unknown immN!
+                    if name.starts_with("imm") {
+                        if let Some(id) = self.table.lookup(UNKNOWN_IMMS) {
+                            if let Some(rec) = self.table.get_record(id) {
+                                if let Record::Var { ty, .. } = rec {
+                                    return Some(ty.clone());
+                                } else {
+                                    // unexpected record type
+                                    self.err.unexpected_error(
+                                        true,
+                                        Some(UNEXPECTED_ERR_MSG.to_string()),
+                                        loc.clone().map(|l| l.line_col),
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
+                self.err.type_check_error(
+                    false,
+                    format! {"Can't look up {} in symbol table", name},
+                    &loc.clone().map(|l| l.line_col),
+                );
 
                 Some(DataType::AssumeGood)
             }
