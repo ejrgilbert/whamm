@@ -44,7 +44,7 @@
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var") (i32.const 1))
 (assert_return (invoke "get_count") (i32.const 2))
-;; WHAMM --> i32 count; wasm:opcode:_if:after { count++; }
+;; WHAMM --> i32 count; wasm:opcode:_if:entry { count++; }
 (assert_return (invoke "get_count") (i32.const 1)) ;; the if is only true 1 of the 2 times
 
 ;; -------------------------------
@@ -56,11 +56,11 @@
 (assert_return (invoke "get_count") (i32.const 1)) ;; only true 1 of the 2 times
 ;; WHAMM --> i32 count; wasm:opcode:_if:before /arg0 > 0/ { count++; }
 (assert_return (invoke "get_count") (i32.const 1)) ;; only true 1 of the 2 times
-;; WHAMM --> i32 count; wasm:opcode:_if:after /arg0 == 0/ { count++; }
+;; WHAMM --> i32 count; wasm:opcode:_if:entry /arg0 == 0/ { count++; }
 (assert_return (invoke "get_count") (i32.const 0)) ;; should never be executed! (doesn't enter the if block!)
-;; WHAMM --> i32 count; wasm:opcode:_if:after /arg0 != 0/ { count++; }
+;; WHAMM --> i32 count; wasm:opcode:_if:entry /arg0 != 0/ { count++; }
 (assert_return (invoke "get_count") (i32.const 1)) ;; only true 1 of the 2 times
-;; WHAMM --> i32 count; wasm:opcode:_if:after /arg0 > 0/ { count++; }
+;; WHAMM --> i32 count; wasm:opcode:_if:entry /arg0 > 0/ { count++; }
 (assert_return (invoke "get_count") (i32.const 1)) ;; only true 1 of the 2 times
 
 ;; --------------------
@@ -68,7 +68,7 @@
 ;; --------------------
 ;; WHAMM --> wasm:opcode:_if:before { arg0 = 1; }
 (assert_return (invoke "get_global_var") (i32.const 2)) ;; should now always be true!
-;; WHAMM --> wasm:opcode:_if:after { arg0 = 1; }
+;; WHAMM --> wasm:opcode:_if:entry { arg0 = 1; }
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var") (i32.const 1)) ;; arg change doesn't matter at this point!
 ;; WHAMM --> i32 count; wasm:opcode:_if:before { count = count + arg0; }

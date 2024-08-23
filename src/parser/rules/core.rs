@@ -5,6 +5,7 @@ use crate::parser::rules::{
 };
 use crate::parser::types::{Block, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal};
 use std::collections::HashMap;
+use std::mem::discriminant;
 use termcolor::Buffer;
 
 pub enum CorePackageKind {
@@ -194,7 +195,7 @@ impl CoreEvent {
         Self {
             kind: CoreEventKind::Default,
             info: EventInfo {
-                supported_modes: vec![WhammModeKind::Begin, WhammModeKind::End],
+                supported_modes: HashMap::from([(WhammModeKind::Begin.name(), WhammModeKind::Begin), (WhammModeKind::End.name(), WhammModeKind::End)]),
                 docs: "".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
@@ -209,7 +210,7 @@ impl Event for CoreEvent {
         self.kind.name()
     }
 
-    fn supported_modes(&self) -> &Vec<WhammModeKind> {
+    fn supported_modes(&self) -> &HashMap<String, WhammModeKind> {
         &self.info.supported_modes
     }
 
@@ -238,8 +239,17 @@ impl Event for CoreEvent {
     ) {
         for (.., probes) in self.info.probe_map.iter() {
             if let Some(probe) = probes.iter().next() {
+                // check to see if we have an alias for this probe kind
+                let modes = self.supported_modes();
+                let mut alias = None;
+                for (kind_alias, kind) in modes {
+                    if discriminant(kind) == discriminant(&probe.mode()) {
+                        alias = Some(kind_alias);
+                    }
+                }
+
                 // only print out the docs for some probe type one time!
-                probe.print_mode_docs(print_globals, print_functions, tabs, buffer);
+                probe.print_mode_docs(alias, print_globals, print_functions, tabs, buffer);
             }
         }
     }
@@ -307,42 +317,24 @@ macro_rules! define_mode {
             }
         }
 
-        pub fn default_modes() -> Vec<Self> {
-            vec![Self::Before, Self::After, Self::Alt]
+        pub fn default_modes() -> HashMap<String, Self> {
+            HashMap::from([
+                (Self::Before.name(), Self::Before),
+                (Self::After.name(), Self::After),
+                (Self::Alt.name(), Self::Alt),
+            ])
         }
-        pub fn default_modes_no_alt() -> Vec<Self> {
+        pub fn default_modes_no_alt() -> HashMap<String, Self> {
             let mut defaults = Self::default_modes();
-            match defaults.iter().position(|val| {
-                matches!(val, Self::Alt)
-            }) {
-                Some(idx) => {
-                    defaults.remove(idx);
-                }
-                _ => {}
-            }
+            defaults.remove(&Self::Alt.name());
             defaults
         }
-        pub fn branching_modes() -> Vec<Self> {
-            let mut defaults = Self::default_modes();
-            defaults.push(Self::AtTarget);
-            defaults
-        }
-        pub fn block_type_modes() -> Vec<Self> {
-            vec![
-                Self::Before,
-                Self::Alt,
-                Self::After,
-                Self::Entry,
-                Self::Exit
-            ]
-        }
-
-        pub fn all_modes() -> Vec<Self> {
-            vec![
+        pub fn all_modes() -> HashMap<String, Self> {
+            HashMap::from([
                 $(
-                    Self::$mode,
+                    (stringify!($name).to_string(), Self::$mode),
                 )*
-            ]
+            ])
         }
     }
 
@@ -441,12 +433,13 @@ impl Probe for WhammProbe {
 
     fn print_mode_docs(
         &self,
+        alias: Option<&String>,
         print_globals: bool,
         print_functions: bool,
         tabs: &mut usize,
         buffer: &mut Buffer,
     ) {
-        print_mode_docs(&self.mode, print_globals, print_functions, tabs, buffer);
+        print_mode_docs(alias, &self.mode, print_globals, print_functions, tabs, buffer);
     }
 
     fn get_mode_provided_fns(&self) -> &Vec<ProvidedFunction> {

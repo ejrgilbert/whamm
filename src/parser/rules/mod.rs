@@ -400,6 +400,7 @@ pub trait Probe {
     fn body_mut(&mut self) -> &mut Option<Block>;
     fn print_mode_docs(
         &self,
+        alias: Option<&String>,
         print_globals: bool,
         print_functions: bool,
         tabs: &mut usize,
@@ -412,7 +413,7 @@ pub trait Probe {
 pub trait Event {
     fn name(&self) -> String;
     fn loc(&self) -> &Option<Location>;
-    fn supported_modes(&self) -> &Vec<WhammModeKind>;
+    fn supported_modes(&self) -> &HashMap<String, WhammModeKind>;
     fn docs(&self) -> &String;
     fn probes(&self) -> &HashMap<String, Vec<Box<dyn Probe>>>;
     fn probes_mut(&mut self) -> &mut HashMap<String, Vec<Box<dyn Probe>>>;
@@ -453,8 +454,9 @@ pub trait Event {
 
 /// The base information needed for `Event`s, pulled out into a single struct.
 pub struct EventInfo {
-    // Statically defined, always the same
-    pub supported_modes: Vec<WhammModeKind>,
+    // Statically defined, always the same (supports aliasing)
+    // alias -> kind
+    pub supported_modes: HashMap<String, WhammModeKind>,
     pub docs: String,
     pub fns: Vec<ProvidedFunction>,               // Comp-provided
     pub globals: HashMap<String, ProvidedGlobal>, // Comp-provided
@@ -570,7 +572,7 @@ pub trait Mode {
 
 /// 0: Box<Self> the matched provider instance
 fn mode_factory<M: Mode + NameOptions + FromStrWithLoc>(
-    supported_modes: &[WhammModeKind],
+    supported_modes: &HashMap<String, WhammModeKind>,
     probe_spec: &ProbeSpec,
     loc: Option<Location>,
 ) -> Vec<Box<M>> {
@@ -579,8 +581,8 @@ fn mode_factory<M: Mode + NameOptions + FromStrWithLoc>(
     }) = &probe_spec.mode
     {
         let mut name_options = vec![];
-        for mode in supported_modes {
-            name_options.push(mode.name());
+        for (alias, ..) in supported_modes {
+            name_options.push(alias.clone());
         }
 
         let matches = get_matches(name_options, mode_patt);
@@ -590,7 +592,8 @@ fn mode_factory<M: Mode + NameOptions + FromStrWithLoc>(
 
         let mut modes = vec![];
         for m in matches {
-            let mode = M::from_str(&m, loc.clone());
+            let mode_kind = supported_modes.get(&m).unwrap();
+            let mode = M::from_str(&mode_kind.name(), loc.clone());
             modes.push(Box::new(mode));
         }
 
@@ -600,13 +603,17 @@ fn mode_factory<M: Mode + NameOptions + FromStrWithLoc>(
     }
 }
 fn print_mode_docs<M: Mode>(
+    alias: Option<&String>,
     mode: &M,
     print_globals: bool,
     print_functions: bool,
     tabs: &mut usize,
     buffer: &mut Buffer,
 ) {
-    let name = mode.name();
+    let name = match alias {
+        Some(alias) => alias.clone(),
+        None => mode.name()
+    };
     let docs = mode.docs();
 
     if name.is_empty() {
@@ -903,7 +910,7 @@ macro_rules! for_each_mode {
                     probed event (if the predicate evaluates to `true`)."
 
     // special modes
-    AtTarget, at_target, "This mode will cause the probe body to be injected at the branch target of the instrumented location, meaning it will find the point in the bytecode that will be executed *semantically after* the point is reached (consider br* opcodes)."
+    SemanticAfter, semantic_after, "This mode will cause the instrumentation logic to run *semantically after* the instrumented location, meaning it will find the point in the bytecode that will be executed *after* the point is reached (consider blocks and br* opcodes)."
     Entry, entry, "This mode will cause the instrumentation logic to run *on entry* to the instrumentation point (e.g. functions bodies, blocks, etc.)."
     Exit, exit, "This mode will cause the instrumentation logic to run *on exiting* to the instrumentation point (e.g. function bodies, blocks, etc.)."
 
@@ -956,16 +963,16 @@ pub fn matches_globs(s: &str, globs: &[Pattern]) -> bool {
 #[macro_export]
 macro_rules! for_each_opcode {
 ($mac:ident) => { $mac! {
-    Unreachable, unreachable, 0, vec![], HashMap::new(), vec![], vec![WhammModeKind::Before, WhammModeKind::Alt], "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/unreachable"
-    Nop, nop, 0, vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), "https://www.w3.org/TR/wasm-core-2/#syntax-instr-control"
+    Unreachable, unreachable, false, 0, vec![], HashMap::new(), vec![], HashMap::from([(WhammModeKind::Before.name(), WhammModeKind::Before), (WhammModeKind::Alt.name(), WhammModeKind::Alt)]), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/unreachable"
+    Nop, nop, false, 0, vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), "https://www.w3.org/TR/wasm-core-2/#syntax-instr-control"
     // TODO -- support blockty as a struct to read/manipulate (provided global?)
     //         Block { blockty: $crate::BlockType } => visit_block
     //         Loop { blockty: $crate::BlockType } => visit_loop
     //         If { blockty: $crate::BlockType } => visit_if
-    Block, block, 0, vec![], HashMap::new(), vec![], WhammModeKind::block_type_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/block"
-    Loop, _loop, 0, vec![], HashMap::new(), vec![], WhammModeKind::block_type_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/loop"
-    If, _if, 1, vec![], HashMap::new(), vec![], WhammModeKind::block_type_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"
-    Else, _else, 0, vec![], HashMap::new(), vec![], WhammModeKind::block_type_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"
+    Block, block, true, 0, vec![], HashMap::new(), vec![], OpcodeEvent::block_type_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/block"
+    Loop, _loop, true, 0, vec![], HashMap::new(), vec![], OpcodeEvent::block_type_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/loop"
+    If, _if, true, 1, vec![], HashMap::new(), vec![], OpcodeEvent::block_type_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"
+    Else, _else, true, 0, vec![], HashMap::new(), vec![], OpcodeEvent::block_type_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"
     // TryTable { try_table: $crate::TryTable } => visit_try_table
     // Throw { tag_index: u32 } => visit_throw
     // ThrowRef => visit_throw_ref
@@ -975,9 +982,9 @@ macro_rules! for_each_opcode {
     // Rethrow { relative_depth: u32 } => visit_rethrow
     // Delegate { relative_depth: u32 } => visit_delegate
     // CatchAll => visit_catch_all
-    End, end, 0, vec![], HashMap::new(), vec![], WhammModeKind::default_modes_no_alt(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/end"
+    End, end, false, 0, vec![], HashMap::new(), vec![], WhammModeKind::default_modes_no_alt(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/end"
     // TODO
-    Br, br, 0, vec![DataType::U32], HashMap::new(), vec![], WhammModeKind::branching_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
+    Br, br, false, 0, vec![DataType::U32], HashMap::new(), vec![], OpcodeEvent::branching_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
     // // BrIf { relative_depth: u32 } => visit_br_if TODO
     // BrIf, br_if, 1, vec![DataType::U32], HashMap::new(), vec![], default_modes().push(WhammModeKind::AtTarget), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
     // // BrTable { targets: $crate::BrTable<'a> } => visit_br_table TODO
@@ -987,7 +994,7 @@ macro_rules! for_each_opcode {
     // BrTable, br_table, 1, vec![DataType::AssumeGood], get_br_table_globals(), vec![], "https://musteresel.github.io/posts/2020/01/webassembly-text-br_table-example.html"
     // // Return => visit_return TODO
     // Return, _return, 0, vec![], HashMap::new(), vec![], "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/return"
-    Call, call, 0, vec![DataType::U32], get_call_globals(), get_call_fns(), WhammModeKind::default_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call"
+    Call, call, false, 0, vec![DataType::U32], get_call_globals(), get_call_fns(), WhammModeKind::default_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call"
     // CallIndirect { type_index: u32, table_index: u32 } => visit_call_indirect TODO
     // ReturnCall { function_index: u32 } => visit_return_call TODO
     // ReturnCallIndirect { type_index: u32, table_index: u32 } => visit_return_call_indirect TODO

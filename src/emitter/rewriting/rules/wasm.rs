@@ -81,7 +81,7 @@ pub struct OpcodeEvent {
     probes: HashMap<WhammModeKind, Vec<SimpleProbe>>,
 }
 macro_rules! define_opcode_event {
-($($op:ident, $name:ident, $num_args:expr, $imms:expr, $globals:expr, $fns:expr, $supported_modes:expr, $docs:expr)*) => {
+($($op:ident, $name:ident, $is_block_type:expr, $num_args:expr, $imms:expr, $globals:expr, $fns:expr, $supported_modes:expr, $docs:expr)*) => {
 impl FromStr for OpcodeEvent {
     fn from_str(name: &str) -> Self {
         match name {

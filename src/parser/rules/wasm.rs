@@ -7,6 +7,7 @@ use crate::parser::types::{
     Block, DataType, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal,
 };
 use std::collections::HashMap;
+use std::mem::discriminant;
 use termcolor::Buffer;
 
 pub enum WasmPackageKind {
@@ -164,7 +165,7 @@ impl Package for WasmPackage {
 }
 
 macro_rules! define_opcode {
-    ($($op:ident, $name:ident, $num_args:expr, $imms:expr, $globals:expr, $fns:expr, $supported_modes:expr, $docs:expr)*) => {
+    ($($op:ident, $name:ident, $is_block_type:expr, $num_args:expr, $imms:expr, $globals:expr, $fns:expr, $supported_modes:expr, $docs:expr)*) => {
         /// Instructions as defined [here].
         ///
         /// [here]: https://webassembly.github.io/spec/core/binary/instructions.html
@@ -174,6 +175,7 @@ macro_rules! define_opcode {
                 $op {
                     num_args: u32,
                     imms: Vec<DataType>,
+                    is_block_type: bool
                 },
             )*
         }
@@ -213,8 +215,9 @@ macro_rules! define_opcode {
                 Self::$op {
                     num_args: $num_args,
                     imms: $imms,
+                    is_block_type: $is_block_type
                 }
-                            }
+            }
             )*
         }
         pub struct OpcodeEvent {
@@ -279,6 +282,21 @@ macro_rules! define_opcode {
                 }
             }
 
+            pub fn branching_modes() -> HashMap<String, WhammModeKind> {
+                let mut defaults = WhammModeKind::default_modes();
+                defaults.insert("at_target".to_string(), WhammModeKind::SemanticAfter);
+                defaults
+            }
+            pub fn block_type_modes() -> HashMap<String, WhammModeKind> {
+                HashMap::from([
+                    (WhammModeKind::Before.name(), WhammModeKind::Before),
+                    ("after".to_string(), WhammModeKind::SemanticAfter),
+                    (WhammModeKind::Alt.name(), WhammModeKind::Alt),
+                    (WhammModeKind::Entry.name(), WhammModeKind::Entry),
+                    (WhammModeKind::Exit.name(), WhammModeKind::Exit),
+                ])
+            }
+
             // ======================
             // ---- Constructors ----
             // ======================
@@ -312,7 +330,7 @@ impl Event for OpcodeEvent {
         self.kind.name()
     }
 
-    fn supported_modes(&self) -> &Vec<WhammModeKind> {
+    fn supported_modes(&self) -> &HashMap<String, WhammModeKind> {
         &self.info.supported_modes
     }
 
@@ -341,8 +359,17 @@ impl Event for OpcodeEvent {
     ) {
         for (.., probes) in self.info.probe_map.iter() {
             if let Some(probe) = probes.iter().next() {
+                // check to see if we have an alias for this probe kind
+                let modes = self.supported_modes();
+                let mut alias = None;
+                for (kind_alias, kind) in modes {
+                    if discriminant(kind) == discriminant(&probe.mode()) {
+                        alias = Some(kind_alias);
+                    }
+                }
+
                 // only print out the docs for some probe type one time!
-                probe.print_mode_docs(print_globals, print_functions, tabs, buffer);
+                probe.print_mode_docs(alias, print_globals, print_functions, tabs, buffer);
             }
         }
     }
