@@ -46,13 +46,24 @@ impl WasmPackage {
     // ======================
 
     fn opcode(loc: Option<Location>) -> Self {
+        let drop_args = ProvidedFunction::new(
+            "drop_args".to_string(),
+            "Drop the incoming arguments to the instrumented opcode.".to_string(),
+            vec![],
+            DataType::Tuple {
+                // returns nothing (empty tuple)
+                ty_info: vec![],
+            },
+            true,
+        );
+
         Self {
             kind: WasmPackageKind::Opcode,
             info: PackageInfo {
                 docs: "This package within the wasm provider contains enables the \
                     instrumentation of WebAssembly bytecode instructions."
                     .to_string(),
-                fns: vec![],
+                fns: vec![drop_args],
                 globals: HashMap::new(),
                 loc,
                 events: HashMap::new(),
@@ -384,27 +395,4 @@ impl Event for OpcodeEvent {
     fn get_provided_globals(&self) -> &HashMap<String, ProvidedGlobal> {
         &self.info.globals
     }
-
-    // fn assign_matching_modes(
-    //     &mut self,
-    //     probe_spec: &ProbeSpec,
-    //     loc: Option<Location>,
-    //     predicate: Option<Expr>,
-    //     body: Option<Block>,
-    // ) -> bool {
-    //     let mut matched_modes = false;
-    //     let modes: Vec<Box<WhammMode>> = mode_factory(&self.info.supported_modes, probe_spec, loc.clone());
-    //     let probes = self.probes_mut();
-    //     for mode in modes {
-    //         matched_modes = true;
-    //         let modes = probes.entry(mode.name()).or_default();
-    //         modes.push(Box::new(WhammProbe::new(
-    //             *mode,
-    //             loc.clone(),
-    //             predicate.clone(),
-    //             body.clone(),
-    //         )));
-    //     }
-    //     matched_modes
-    // }
 }

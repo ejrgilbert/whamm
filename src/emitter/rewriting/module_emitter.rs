@@ -12,6 +12,7 @@ use crate::emitter::rewriting::{
 use orca::ir::types::{BlockType as OrcaBlockType, DataType as OrcaType, Value as OrcaValue};
 use wasmparser::GlobalType;
 
+use crate::emitter::rewriting::rules::Arg;
 use orca::ir::function::FunctionBuilder;
 use orca::ir::id::FunctionID;
 use orca::ir::module::Module;
@@ -543,7 +544,11 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     }
 }
 impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
-    fn emit_body(&mut self, body: &mut Block) -> Result<bool, Box<WhammError>> {
+    fn emit_body(
+        &mut self,
+        _curr_instr_args: &[Arg],
+        body: &mut Block,
+    ) -> Result<bool, Box<WhammError>> {
         if let Some(emitting_func) = &mut self.emitting_func {
             emit_body(
                 body,
@@ -559,7 +564,11 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
         }
     }
 
-    fn emit_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>> {
+    fn emit_stmt(
+        &mut self,
+        _curr_instr_args: &[Arg],
+        stmt: &mut Statement,
+    ) -> Result<bool, Box<WhammError>> {
         if let Some(emitting_func) = &mut self.emitting_func {
             emit_stmt(
                 stmt,

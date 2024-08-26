@@ -274,7 +274,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
 
     fn emit_body(&mut self) -> bool {
         if let Some((Some(ref mut body), ..)) = self.curr_probe {
-            match self.emitter.emit_body(body) {
+            match self.emitter.emit_body(&self.curr_instr_args, body) {
                 Err(e) => {
                     self.err.add_error(*e);
                     false
@@ -288,7 +288,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
 
     fn emit_probe_as_if(&mut self) -> bool {
         if let Some((Some(ref mut body), Some(ref mut pred))) = self.curr_probe {
-            match self.emitter.emit_if(pred, body) {
+            match self.emitter.emit_if(&self.curr_instr_args, pred, body) {
                 Err(e) => {
                     self.err.add_error(*e);
                     false
@@ -302,7 +302,10 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
 
     fn emit_probe_as_if_else(&mut self) -> bool {
         if let Some((Some(ref mut body), Some(ref mut pred))) = self.curr_probe {
-            match self.emitter.emit_if_with_orig_as_else(pred, body) {
+            match self
+                .emitter
+                .emit_if_with_orig_as_else(&self.curr_instr_args, pred, body)
+            {
                 Err(e) => {
                     self.err.add_error(*e);
                     false

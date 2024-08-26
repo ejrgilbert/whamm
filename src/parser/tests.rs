@@ -596,7 +596,7 @@ wasm::call:alt /
     let package = provider.packages().next().unwrap();
     assert_eq!("opcode", package.name());
     assert_eq!(0, package.get_provided_globals().len());
-    assert_eq!(0, package.get_provided_fns().len());
+    assert_eq!(1, package.get_provided_fns().len());
 
     assert_eq!(1, package.len_events());
     let event = package.events().next().unwrap();

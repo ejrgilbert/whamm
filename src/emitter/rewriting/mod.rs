@@ -7,6 +7,7 @@ use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::map_lib_adapter::MapLibAdapter;
 use crate::emitter::report_var_metadata::{LocationData, ReportVarMetadata};
 use crate::emitter::rewriting::module_emitter::MemoryTracker;
+use crate::emitter::rewriting::rules::Arg;
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{BinOp, Block, DataType, Expr, Statement, UnOp, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
@@ -18,8 +19,16 @@ use orca::InitExpr;
 use wasmparser::{GlobalType, ValType};
 
 pub trait Emitter {
-    fn emit_body(&mut self, body: &mut Block) -> Result<bool, Box<WhammError>>;
-    fn emit_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>>;
+    fn emit_body(
+        &mut self,
+        curr_instr_args: &[Arg],
+        body: &mut Block,
+    ) -> Result<bool, Box<WhammError>>;
+    fn emit_stmt(
+        &mut self,
+        curr_instr_args: &[Arg],
+        stmt: &mut Statement,
+    ) -> Result<bool, Box<WhammError>>;
     fn emit_expr(&mut self, expr: &mut Expr) -> Result<bool, Box<WhammError>>;
 }
 
