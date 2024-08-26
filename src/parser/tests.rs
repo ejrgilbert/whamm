@@ -254,6 +254,8 @@ wasm:opcode:br:before {
             strcmp((arg0, arg1), "bookings");
         }
     "#,
+    // numerics
+    "wasm:opcode:call:alt { i32 num = 0; }",
     // trigger available modes per event
     "wasm:opcode:*:before {}",
     "wasm:opcode:br*:before {}",
@@ -298,6 +300,9 @@ const FATAL_SCRIPTS: &[&str] = &[
     r#"
 core::br:before / i == 1 / { i = 0; }  // SHOULD FAIL HERE
     "#,
+    // Numerics (not supported yet: https://github.com/ejrgilbert/whamm/issues/141)
+    "wasm:opcode:call:alt { u32 num = 0; }",
+    "wasm:opcode:call:alt { i64 num = 0; }",
     // trigger unavailable modes per event
     "wasm:opcode:unreachable:after {}",
     "wasm:opcode:unreachable:at_target {}",

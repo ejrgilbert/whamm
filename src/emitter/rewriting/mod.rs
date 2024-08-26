@@ -602,6 +602,9 @@ pub fn whamm_type_to_wasm_global(ty: &DataType) -> Global {
 pub fn whamm_type_to_wasm_type(ty: &DataType) -> OrcaType {
     match ty {
         DataType::I32 | DataType::U32 | DataType::Boolean => OrcaType::I32,
+        DataType::F32 => OrcaType::F32,
+        DataType::I64 | DataType::U64 => OrcaType::I64,
+        DataType::F64 => OrcaType::F64,
         // the ID used to track this var in the lib
         DataType::Map { .. } => OrcaType::I32,
         DataType::Null => unimplemented!(),
@@ -1138,6 +1141,22 @@ fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         }
         Value::I32 { val, .. } => {
             injector.i32_const(*val);
+            is_success &= true;
+        }
+        Value::F32 { val, .. } => {
+            injector.f32_const(*val);
+            is_success &= true;
+        }
+        Value::U64 { val, .. } => {
+            injector.u64_const(*val);
+            is_success &= true;
+        }
+        Value::I64 { val, .. } => {
+            injector.i64_const(*val);
+            is_success &= true;
+        }
+        Value::F64 { val, .. } => {
+            injector.f64_const(*val);
             is_success &= true;
         }
         Value::Str { val, .. } => {

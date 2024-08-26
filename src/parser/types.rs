@@ -114,8 +114,12 @@ impl PartialEq for DataType {
 
 #[derive(Clone, Debug, Eq)]
 pub enum DataType {
-    I32,
     U32,
+    I32,
+    F32,
+    U64,
+    I64,
+    F64,
     Boolean,
     Null,
     Str,
@@ -131,11 +135,23 @@ pub enum DataType {
 impl DataType {
     pub fn print(&self, buffer: &mut Buffer) {
         match self {
+            DataType::U32 => {
+                yellow(true, "u32".to_string(), buffer);
+            }
             DataType::I32 => {
                 yellow(true, "i32".to_string(), buffer);
             }
-            DataType::U32 => {
-                yellow(true, "u32".to_string(), buffer);
+            DataType::F32 => {
+                yellow(true, "f32".to_string(), buffer);
+            }
+            DataType::U64 => {
+                yellow(true, "u64".to_string(), buffer);
+            }
+            DataType::I64 => {
+                yellow(true, "i64".to_string(), buffer);
+            }
+            DataType::F64 => {
+                yellow(true, "f64".to_string(), buffer);
             }
             DataType::Boolean => {
                 yellow(true, "bool".to_string(), buffer);
@@ -175,10 +191,14 @@ impl DataType {
 }
 
 // Values
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Value {
     U32 { ty: DataType, val: u32 },
     I32 { ty: DataType, val: i32 },
+    F32 { ty: DataType, val: f32 },
+    U64 { ty: DataType, val: u64 },
+    I64 { ty: DataType, val: i64 },
+    F64 { ty: DataType, val: f64 },
     Str { ty: DataType, val: String },
     Tuple { ty: DataType, vals: Vec<Expr> },
     Boolean { ty: DataType, val: bool },
@@ -266,7 +286,7 @@ impl Statement {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Expr {
     UnOp {
         // Type is based on the outermost `op`
@@ -381,7 +401,7 @@ pub enum Definition {
     CompilerDynamic,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Global {
     pub def: Definition,
     pub report: bool,
@@ -929,7 +949,7 @@ pub struct ProvidedFunctionality {
     pub name: String,
     pub docs: String,
 }
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ProvidedGlobal {
     pub name: String,
     pub docs: String,

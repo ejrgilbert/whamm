@@ -1005,10 +1005,9 @@ macro_rules! for_each_opcode {
     // TypedSelect { ty: $crate::ValType } => visit_typed_select
     LocalGet, local_get, 0, vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_get"
     LocalSet, local_set, 0, vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_set"
-    // LocalSet { local_index: u32 } => visit_local_set TODO
-    // LocalTee { local_index: u32 } => visit_local_tee TODO
-    // GlobalGet { global_index: u32 } => visit_global_get TODO
-    // GlobalSet { global_index: u32 } => visit_global_set TODO
+    LocalTee, local_tee, 0, vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_tee"
+    GlobalGet, global_get, 0, vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Global_get"
+    GlobalSet, global_set, 0, vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Global_set"
     // I32Load { memarg: $crate::MemArg } => visit_i32_load
     // I64Load { memarg: $crate::MemArg } => visit_i64_load
     // F32Load { memarg: $crate::MemArg } => visit_f32_load
@@ -1035,6 +1034,8 @@ macro_rules! for_each_opcode {
     // MemorySize { mem: u32 } => visit_memory_size
     // MemoryGrow { mem: u32 } => visit_memory_grow
     // I32Const { value: i32 } => visit_i32_const TODO
+    I32Const, i32_const, 0, vec![(DataType::I32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Const"
+    I64Const, i64_const, 0, vec![(DataType::I64, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Const"
     // I64Const { value: i64 } => visit_i64_const TODO
     // F32Const { value: $crate::Ieee32 } => visit_f32_const
     // F64Const { value: $crate::Ieee64 } => visit_f64_const

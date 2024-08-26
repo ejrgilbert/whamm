@@ -330,7 +330,7 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::LocalGet { .. } => {
-                if let Operator::LocalGet {local_index} = instr {
+                if let Operator::LocalGet { local_index } = instr {
                     loc_info.static_data.insert(
                         "imm0".to_string(),
                         Some(Value::U32 {
@@ -341,15 +341,85 @@ impl Event for OpcodeEvent {
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_spec(), &self.probes);
-                } 
+                }
             }
             OpcodeEventKind::LocalSet { .. } => {
-                if let Operator::LocalSet {local_index} = instr {
+                if let Operator::LocalSet { local_index } = instr {
                     loc_info.static_data.insert(
                         "imm0".to_string(),
                         Some(Value::U32 {
                             ty: DataType::U32,
                             val: *local_index,
+                        }),
+                    );
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
+            }
+            OpcodeEventKind::LocalTee { .. } => {
+                if let Operator::LocalTee { local_index } = instr {
+                    loc_info.static_data.insert(
+                        "imm0".to_string(),
+                        Some(Value::U32 {
+                            ty: DataType::U32,
+                            val: *local_index,
+                        }),
+                    );
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
+            }
+            OpcodeEventKind::GlobalGet { .. } => {
+                if let Operator::GlobalGet { global_index } = instr {
+                    loc_info.static_data.insert(
+                        "imm0".to_string(),
+                        Some(Value::U32 {
+                            ty: DataType::U32,
+                            val: *global_index,
+                        }),
+                    );
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
+            }
+            OpcodeEventKind::GlobalSet { .. } => {
+                if let Operator::GlobalSet { global_index } = instr {
+                    loc_info.static_data.insert(
+                        "imm0".to_string(),
+                        Some(Value::U32 {
+                            ty: DataType::U32,
+                            val: *global_index,
+                        }),
+                    );
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I32Const { .. } => {
+                if let Operator::I32Const { value } = instr {
+                    loc_info.static_data.insert(
+                        "imm0".to_string(),
+                        Some(Value::I32 {
+                            ty: DataType::I32,
+                            val: *value,
+                        }),
+                    );
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64Const { .. } => {
+                if let Operator::I64Const { value } = instr {
+                    loc_info.static_data.insert(
+                        "imm0".to_string(),
+                        Some(Value::I64 {
+                            ty: DataType::I64,
+                            val: *value,
                         }),
                     );
 

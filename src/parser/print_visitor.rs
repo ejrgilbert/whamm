@@ -511,8 +511,12 @@ impl WhammVisitor<String> for AsStrVisitor {
 
     fn visit_datatype(&mut self, datatype: &DataType) -> String {
         match datatype {
-            DataType::I32 => "i32".to_string(),
             DataType::U32 => "u32".to_string(),
+            DataType::I32 => "i32".to_string(),
+            DataType::F32 => "f32".to_string(),
+            DataType::U64 => "u64".to_string(),
+            DataType::I64 => "i64".to_string(),
+            DataType::F64 => "f64".to_string(),
             DataType::Boolean => "bool".to_string(),
             DataType::Null => "null".to_string(),
             DataType::Str => "str".to_string(),
@@ -549,6 +553,26 @@ impl WhammVisitor<String> for AsStrVisitor {
                 s
             }
             Value::I32 { val, .. } => {
+                let mut s = "".to_string();
+                s += &format!("{}", val);
+                s
+            }
+            Value::F32 { val, .. } => {
+                let mut s = "".to_string();
+                s += &format!("{}", val);
+                s
+            }
+            Value::U64 { val, .. } => {
+                let mut s = "".to_string();
+                s += &format!("{}", val);
+                s
+            }
+            Value::I64 { val, .. } => {
+                let mut s = "".to_string();
+                s += &format!("{}", val);
+                s
+            }
+            Value::F64 { val, .. } => {
                 let mut s = "".to_string();
                 s += &format!("{}", val);
                 s

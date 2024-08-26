@@ -315,6 +315,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 let lhs_ty_op = self.visit_expr(var_id);
                 let rhs_ty_op = self.visit_expr(expr);
 
+                // TODO -- conversion between numbers here?
                 if let (Some(lhs_ty), Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {
                     if lhs_ty == rhs_ty {
                         None
@@ -922,6 +923,10 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
         match val {
             Value::U32 { .. } => Some(DataType::U32),
             Value::I32 { .. } => Some(DataType::I32),
+            Value::F32 { .. } => Some(DataType::F32),
+            Value::U64 { .. } => Some(DataType::U64),
+            Value::I64 { .. } => Some(DataType::I64),
+            Value::F64 { .. } => Some(DataType::F64),
             Value::Str { .. } => Some(DataType::Str),
             Value::Boolean { .. } => Some(DataType::Boolean),
             Value::Tuple { ty: _, vals } => {

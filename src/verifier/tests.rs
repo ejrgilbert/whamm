@@ -86,6 +86,16 @@ const VALID_SCRIPTS: &[&str] = &[
             report bool b;
         }
     "#,
+    // numerics
+    "wasm:opcode:call:alt { i32 num = 0; }",
+    // todo -- https://github.com/ejrgilbert/whamm/issues/141
+    // "wasm:opcode:call:alt { i64 num = 0; }",
+    // r#"
+    //     i32 count;
+    //     wasm::i64_const:before / imm0 == 9223372036854775807 / {
+    //         count++;
+    //     }
+    // "#,
 ];
 
 const TYPE_ERROR_SCRIPTS: &[&str] = &[

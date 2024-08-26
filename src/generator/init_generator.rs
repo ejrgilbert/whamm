@@ -546,7 +546,13 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
                 });
                 is_success
             }
-            Value::U32 { .. } | Value::I32 { .. } | Value::Boolean { .. } => {
+            Value::U32 { .. }
+            | Value::I32 { .. }
+            | Value::F32 { .. }
+            | Value::U64 { .. }
+            | Value::I64 { .. }
+            | Value::F64 { .. }
+            | Value::Boolean { .. } => {
                 // ignore, will not have a string to emit
                 true
             }

@@ -296,17 +296,22 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 self.mem_tracker.curr_mem_offset += val.len();
                 Ok(true)
             }
-            Value::U32 { .. } | Value::I32 { .. } | Value::Tuple { .. } | Value::Boolean { .. } => {
-                Err(Box::new(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} \
+            Value::U32 { .. }
+            | Value::I32 { .. }
+            | Value::F32 { .. }
+            | Value::U64 { .. }
+            | Value::I64 { .. }
+            | Value::F64 { .. }
+            | Value::Tuple { .. }
+            | Value::Boolean { .. } => Err(Box::new(ErrorGen::get_unexpected_error(
+                true,
+                Some(format!(
+                    "{UNEXPECTED_ERR_MSG} \
                 Called 'emit_string', but this is not a string type: {:?}",
-                        value
-                    )),
-                    None,
-                )))
-            }
+                    value
+                )),
+                None,
+            ))),
         }
     }
 
