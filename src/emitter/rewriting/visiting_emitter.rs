@@ -290,6 +290,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
 
     pub fn emit_if(
         &mut self,
+        curr_instr_args: &[Arg],
         condition: &mut Expr,
         conseq: &mut Block,
     ) -> Result<bool, Box<WhammError>> {
@@ -301,7 +302,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
 
         self.app_iter.if_stmt(block_type_to_wasm(conseq));
 
-        is_success &= self.emit_body(conseq)?;
+        is_success &= self.emit_body(curr_instr_args, conseq)?;
 
         // emit the end of the if block
         self.app_iter.end();
@@ -310,6 +311,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
 
     pub(crate) fn emit_if_with_orig_as_else(
         &mut self,
+        curr_instr_args: &[Arg],
         condition: &mut Expr,
         conseq: &mut Block,
     ) -> Result<bool, Box<WhammError>> {
@@ -341,7 +343,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             None => OrcaBlockType::Empty,
         };
         self.app_iter.if_stmt(block_ty);
-        is_success &= self.emit_body(conseq)?;
+        is_success &= self.emit_body(curr_instr_args, conseq)?;
 
         // emit the beginning of the else
         self.app_iter.else_stmt();
@@ -407,8 +409,17 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         Ok(is_success)
     }
 
+    fn handle_drop_args(&mut self, curr_instr_args: &[Arg]) -> Result<bool, Box<WhammError>> {
+        // Generate drops for all args to this opcode!
+        for _arg in curr_instr_args {
+            self.app_iter.drop();
+        }
+        Ok(true)
+    }
+
     fn handle_special_fn_call(
         &mut self,
+        curr_instr_args: &[Arg],
         target_fn_name: String,
         args: &mut Option<Vec<Expr>>,
     ) -> Result<bool, Box<WhammError>> {
@@ -418,6 +429,9 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             },
             "alt_call_by_id" => {
                 self.handle_alt_call_by_id(args)
+            },
+            "drop_args" => {
+                self.handle_drop_args(curr_instr_args)
             },
             _ => {
                 Err(Box::new(ErrorGen::get_unexpected_error(
@@ -432,7 +446,11 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     }
 }
 impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
-    fn emit_body(&mut self, body: &mut Block) -> Result<bool, Box<WhammError>> {
+    fn emit_body(
+        &mut self,
+        curr_instr_args: &[Arg],
+        body: &mut Block,
+    ) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
         for _ in 0..self.curr_num_reports {
             let default_global = whamm_type_to_wasm_global(&DataType::I32);
@@ -442,7 +460,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
                 .push(gid as usize);
         }
         for stmt in body.stmts.iter_mut() {
-            is_success &= self.emit_stmt(stmt)?;
+            is_success &= self.emit_stmt(curr_instr_args, stmt)?;
             //now emit the call to print the changes to the report vars if needed
             match print_report_all(
                 &mut self.app_iter,
@@ -459,7 +477,11 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
         Ok(is_success)
     }
 
-    fn emit_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>> {
+    fn emit_stmt(
+        &mut self,
+        curr_instr_args: &[Arg],
+        stmt: &mut Statement,
+    ) -> Result<bool, Box<WhammError>> {
         // Check if this is calling a provided, static function!
         if let Statement::Expr {
             expr: Expr::Call {
@@ -491,7 +513,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
                 }) = rec
                 {
                     // We want to handle this as unique logic rather than a simple function call to be emitted
-                    return self.handle_special_fn_call(fn_name, args);
+                    return self.handle_special_fn_call(curr_instr_args, fn_name, args);
                 }
             }
         }

@@ -1,5 +1,3 @@
-use std::vec;
-
 use crate::common::error::ErrorGen;
 use crate::parser::rules::{Event, Package, Probe, Provider, UNKNOWN_IMMS};
 use crate::parser::types::{
@@ -8,6 +6,7 @@ use crate::parser::types::{
 };
 use crate::verifier::builder_visitor::SymbolTableBuilder;
 use crate::verifier::types::{Record, SymbolTable};
+use std::vec;
 
 const UNEXPECTED_ERR_MSG: &str =
     "TypeChecker: Looks like you've found a bug...please report this behavior! Exiting now...";
@@ -153,7 +152,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
     }
 
     fn visit_provider(&mut self, provider: &mut Box<dyn Provider>) -> Option<DataType> {
-        let _ = self.table.enter_scope();
+        let _ = self.table.enter_named_scope(&provider.name());
 
         provider.packages_mut().for_each(|package| {
             self.visit_package(package);
@@ -164,7 +163,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
     }
 
     fn visit_package(&mut self, package: &mut dyn Package) -> Option<DataType> {
-        let _ = self.table.enter_scope();
+        let _ = self.table.enter_named_scope(&package.name());
 
         package.events_mut().for_each(|event| {
             self.visit_event(event);
@@ -176,7 +175,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
     }
 
     fn visit_event(&mut self, event: &mut dyn Event) -> Option<DataType> {
-        let _ = self.table.enter_scope();
+        let _ = self.table.enter_named_scope(&event.name());
 
         event.probes_mut().iter_mut().for_each(|(_, probe)| {
             probe.iter_mut().for_each(|probe| {
@@ -190,7 +189,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
     }
 
     fn visit_probe(&mut self, probe: &mut Box<dyn Probe>) -> Option<DataType> {
-        let _ = self.table.enter_scope();
+        let _ = self.table.enter_named_scope(&(*probe).mode().name());
 
         // type check predicate
         if let Some(predicate) = &mut probe.predicate_mut() {
