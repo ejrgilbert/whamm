@@ -992,17 +992,10 @@ macro_rules! for_each_opcode {
     // Delegate { relative_depth: u32 } => visit_delegate
     // CatchAll => visit_catch_all
     End, end, 0, vec![], HashMap::new(), vec![], WhammModeKind::default_modes_no_alt(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/end"
-    // TODO
     Br, br, 0, vec![(DataType::U32, 1)], HashMap::new(), vec![], OpcodeEvent::branching_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
-    // // BrIf { relative_depth: u32 } => visit_br_if TODO
     BrIf, br_if, 1, vec![(DataType::U32, 1)], HashMap::new(), vec![], OpcodeEvent::branching_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
-    // // BrTable { targets: $crate::BrTable<'a> } => visit_br_table TODO
-    // // can be any number of immediates! Just assume we have the immN used and check later while traversing the bytecode
-    // // Can predicate on the number of immediates available using a global!
-    // // TODO -- figure out how immN will work
     BrTable, br_table, 1, vec![(DataType::U32, -1)], get_br_table_globals(), vec![], OpcodeEvent::branching_modes(), "https://musteresel.github.io/posts/2020/01/webassembly-text-br_table-example.html"
-    // // Return => visit_return TODO
-    // Return, _return, 0, vec![], HashMap::new(), vec![], "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/return"
+    Return, _return, 0, vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/return"
     Call, call, 0, vec![(DataType::U32, 1)], get_call_globals(), get_call_fns(), WhammModeKind::default_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call"
     // CallIndirect { type_index: u32, table_index: u32 } => visit_call_indirect TODO
     // ReturnCall { function_index: u32 } => visit_return_call TODO
@@ -1010,7 +1003,8 @@ macro_rules! for_each_opcode {
     // Drop => visit_drop
     // Select => visit_select
     // TypedSelect { ty: $crate::ValType } => visit_typed_select
-    // LocalGet { local_index: u32 } => visit_local_get TODO
+    LocalGet, local_get, 0, vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_get"
+    LocalSet, local_set, 0, vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_set"
     // LocalSet { local_index: u32 } => visit_local_set TODO
     // LocalTee { local_index: u32 } => visit_local_tee TODO
     // GlobalGet { global_index: u32 } => visit_global_get TODO

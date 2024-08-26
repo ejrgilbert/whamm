@@ -263,11 +263,11 @@ impl Event for OpcodeEvent {
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }
-            // OpcodeEventKind::Return { .. } => {
-            //     if let Operator::Return { .. } = instr {
-            //         loc_info.add_probes(self.probe_spec(), &self.probes);
-            //     }
-            // }
+            OpcodeEventKind::Return { .. } => {
+                if let Operator::Return { .. } = instr {
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
+            }
             OpcodeEventKind::Call { .. } => {
                 if let Operator::Call {
                     function_index: fid,
@@ -322,6 +322,34 @@ impl Event for OpcodeEvent {
                         Some(Value::U32 {
                             ty: DataType::U32,
                             val: *fid,
+                        }),
+                    );
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                }
+            }
+            OpcodeEventKind::LocalGet { .. } => {
+                if let Operator::LocalGet {local_index} = instr {
+                    loc_info.static_data.insert(
+                        "imm0".to_string(),
+                        Some(Value::U32 {
+                            ty: DataType::U32,
+                            val: *local_index,
+                        }),
+                    );
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                } 
+            }
+            OpcodeEventKind::LocalSet { .. } => {
+                if let Operator::LocalSet {local_index} = instr {
+                    loc_info.static_data.insert(
+                        "imm0".to_string(),
+                        Some(Value::U32 {
+                            ty: DataType::U32,
+                            val: *local_index,
                         }),
                     );
 
