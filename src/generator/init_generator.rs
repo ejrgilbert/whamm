@@ -173,10 +173,9 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
                         let start_id = start_fn.finish_module(0, self.emitter.app_wasm);
                         self.injected_funcs.push(start_id);
                         self.emitter.app_wasm.start = Some(start_id);
-                        self.emitter.app_wasm.set_fn_name(
-                            start_id - self.emitter.app_wasm.num_import_func(),
-                            "start".to_string(),
-                        );
+                        self.emitter
+                            .app_wasm
+                            .set_fn_name(start_id, "start".to_string());
                     } //strcmp doesn't need to call add_export_fn so this probably doesn't either
                       //in app_wasm, not sure if we need to have it in the ST
                 }

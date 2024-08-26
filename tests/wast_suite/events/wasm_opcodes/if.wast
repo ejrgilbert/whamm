@@ -122,11 +122,7 @@
 (assert_return (invoke "get_global_var") (i32.const 1)) ;; sanity check
 
 ;; alt mode
-;; TODO -- how to drop incoming args if you don't need them? (even consuming arg0 doesn't work, e.g. {count = arg0; return 0;})
 ;; WHAMM --> wasm:opcode:_if:alt /fid == 1 && pc == 1/ { drop_args(); return 0; }
 (assert_return (invoke "get_global_var") (i32.const 0))
-;;;; WHAMM --> alt(i32 arg) -> i32 { return arg; } wasm:opcode:_if:alt /fid == 1 && pc == 1/ { alt(arg0); }
-;;;; @passes_uninstr
-;;(assert_return (invoke "get_global_var") (i32.const 1)) ;; sanity check
 
 ;; TODO -- `BlockType` struct? Issue #139
