@@ -689,7 +689,7 @@ impl ProbeSpec {
         white(
             true,
             format!(
-                "{}:{}:{}:",
+                "    {}:{}:{}:",
                 self.provider.as_ref().unwrap().name,
                 self.package.as_ref().unwrap().name,
                 self.event.as_ref().unwrap().name
@@ -701,7 +701,11 @@ impl ProbeSpec {
             format!("{}\n", self.mode.as_ref().unwrap().name),
             buffer,
         );
-        grey_italics(true, "matches the following modes:\n\n".to_string(), buffer);
+        grey_italics(
+            true,
+            "    matches the following modes for the parent event:\n\n".to_string(),
+            buffer,
+        );
     }
 }
 
@@ -762,7 +766,7 @@ impl Script {
         white(true, "\n\n".to_string(), &mut buffer);
 
         let mut providers: HashMap<String, Box<dyn Provider>> = HashMap::new();
-        let (matched_providers, matched_packages, matched_events, matched_modes) =
+        let (matched_providers, matched_packages, matched_events, _matched_modes) =
             provider_factory::<WhammProvider>(&mut providers, probe_spec, None, None, None, true)?;
 
         // Print the matched provider information
@@ -796,20 +800,26 @@ impl Script {
             probe_spec.print_bold_event(&mut buffer);
         }
         for (.., provider) in providers.iter() {
-            provider.print_event_docs(print_globals, print_functions, &mut tabs, &mut buffer);
+            provider.print_event_and_mode_docs(
+                probe_spec,
+                print_globals,
+                print_functions,
+                &mut tabs,
+                &mut buffer,
+            );
         }
         long_line(&mut buffer);
         white(true, "\n\n".to_string(), &mut buffer);
 
-        // Print the matched mode information
-        if matched_modes {
-            probe_spec.print_bold_mode(&mut buffer);
-        }
-        for (.., provider) in providers.iter() {
-            provider.print_mode_docs(print_globals, print_functions, &mut tabs, &mut buffer);
-        }
-        long_line(&mut buffer);
-        white(true, "\n\n".to_string(), &mut buffer);
+        // // Print the matched mode information
+        // if matched_modes {
+        //     probe_spec.print_bold_mode(&mut buffer);
+        // }
+        // for (.., provider) in providers.iter() {
+        //     provider.print_mode_docs(print_globals, print_functions, &mut tabs, &mut buffer);
+        // }
+        // long_line(&mut buffer);
+        // white(true, "\n\n".to_string(), &mut buffer);
 
         writer
             .print(&buffer)

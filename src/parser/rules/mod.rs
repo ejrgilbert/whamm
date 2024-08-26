@@ -41,15 +41,9 @@ pub trait Provider {
         tabs: &mut usize,
         buffer: &mut Buffer,
     );
-    fn print_event_docs(
+    fn print_event_and_mode_docs(
         &self,
-        print_globals: bool,
-        print_functions: bool,
-        tabs: &mut usize,
-        buffer: &mut Buffer,
-    );
-    fn print_mode_docs(
-        &self,
+        probe_spec: &ProbeSpec,
         print_globals: bool,
         print_functions: bool,
         tabs: &mut usize,
@@ -254,15 +248,9 @@ pub trait Package {
     fn len_events(&self) -> usize;
     fn events(&self) -> Box<dyn Iterator<Item = &dyn Event> + '_>;
     fn events_mut(&mut self) -> Box<dyn Iterator<Item = &mut dyn Event> + '_>;
-    fn print_event_docs(
+    fn print_event_and_mode_docs(
         &self,
-        print_globals: bool,
-        print_functions: bool,
-        tabs: &mut usize,
-        buffer: &mut Buffer,
-    );
-    fn print_mode_docs(
-        &self,
+        probe_spec: &ProbeSpec,
         print_globals: bool,
         print_functions: bool,
         tabs: &mut usize,
@@ -419,6 +407,7 @@ pub trait Event {
     fn probes_mut(&mut self) -> &mut HashMap<String, Vec<Box<dyn Probe>>>;
     fn print_mode_docs(
         &self,
+        probe_spec: &ProbeSpec,
         print_globals: bool,
         print_functions: bool,
         tabs: &mut usize,
@@ -619,11 +608,11 @@ fn print_mode_docs<M: Mode>(
     if name.is_empty() {
         return;
     }
-    magenta_italics(true, name.clone(), buffer);
+    magenta_italics(true, format!("    {}", name), buffer);
     white(true, " mode\n".to_string(), buffer);
 
     // Print the mode description
-    *tabs += 1;
+    *tabs += 2;
     white(
         false,
         format!("{}{}\n\n", " ".repeat(*tabs * 4), docs),
@@ -641,7 +630,7 @@ fn print_mode_docs<M: Mode>(
         let functions = mode.get_provided_fns();
         print_fns(tabs, functions, buffer);
     }
-    *tabs -= 1;
+    *tabs -= 2;
 }
 
 // ===================================
@@ -815,27 +804,22 @@ impl Provider for WhammProvider {
         }
     }
 
-    fn print_event_docs(
+    fn print_event_and_mode_docs(
         &self,
+        probe_spec: &ProbeSpec,
         print_globals: bool,
         print_functions: bool,
         tabs: &mut usize,
         buffer: &mut Buffer,
     ) {
         for (.., package) in self.info.packages.iter() {
-            package.print_event_docs(print_globals, print_functions, tabs, buffer);
-        }
-    }
-
-    fn print_mode_docs(
-        &self,
-        print_globals: bool,
-        print_functions: bool,
-        tabs: &mut usize,
-        buffer: &mut Buffer,
-    ) {
-        for (.., package) in self.info.packages.iter() {
-            package.print_mode_docs(print_globals, print_functions, tabs, buffer);
+            package.print_event_and_mode_docs(
+                probe_spec,
+                print_globals,
+                print_functions,
+                tabs,
+                buffer,
+            );
         }
     }
 
