@@ -98,8 +98,9 @@ impl Package for WasmPackage {
         )
     }
 
-    fn print_event_docs(
+    fn print_event_and_mode_docs(
         &self,
+        probe_spec: &ProbeSpec,
         print_globals: bool,
         print_functions: bool,
         tabs: &mut usize,
@@ -113,18 +114,7 @@ impl Package for WasmPackage {
                 tabs,
                 buffer,
             );
-        }
-    }
-
-    fn print_mode_docs(
-        &self,
-        print_globals: bool,
-        print_functions: bool,
-        tabs: &mut usize,
-        buffer: &mut Buffer,
-    ) {
-        for (.., event) in self.info.events.iter() {
-            event.print_mode_docs(print_globals, print_functions, tabs, buffer);
+            event.print_mode_docs(probe_spec, print_globals, print_functions, tabs, buffer);
         }
     }
 
@@ -355,11 +345,17 @@ impl Event for OpcodeEvent {
 
     fn print_mode_docs(
         &self,
+        probe_spec: &ProbeSpec,
         print_globals: bool,
         print_functions: bool,
         tabs: &mut usize,
         buffer: &mut Buffer,
     ) {
+        if !self.info.probe_map.is_empty() {
+            // we've matched some modes
+            probe_spec.print_bold_mode(buffer);
+        }
+
         for (.., probes) in self.info.probe_map.iter() {
             if let Some(probe) = probes.iter().next() {
                 // check to see if we have an alias for this probe kind

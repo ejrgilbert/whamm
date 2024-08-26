@@ -1,3 +1,4 @@
+use crate::common::terminal::{long_line, white};
 use crate::for_each_mode;
 use crate::parser::rules::{
     event_factory, print_mode_docs, Event, EventInfo, FromStr, FromStrWithLoc, Mode, ModeInfo,
@@ -90,8 +91,9 @@ impl Package for CorePackage {
         )
     }
 
-    fn print_event_docs(
+    fn print_event_and_mode_docs(
         &self,
+        probe_spec: &ProbeSpec,
         print_globals: bool,
         print_functions: bool,
         tabs: &mut usize,
@@ -105,18 +107,7 @@ impl Package for CorePackage {
                 tabs,
                 buffer,
             );
-        }
-    }
-
-    fn print_mode_docs(
-        &self,
-        print_globals: bool,
-        print_functions: bool,
-        tabs: &mut usize,
-        buffer: &mut Buffer,
-    ) {
-        for (.., event) in self.info.events.iter() {
-            event.print_mode_docs(print_globals, print_functions, tabs, buffer);
+            event.print_mode_docs(probe_spec, print_globals, print_functions, tabs, buffer);
         }
     }
 
@@ -235,11 +226,17 @@ impl Event for CoreEvent {
 
     fn print_mode_docs(
         &self,
+        probe_spec: &ProbeSpec,
         print_globals: bool,
         print_functions: bool,
         tabs: &mut usize,
         buffer: &mut Buffer,
     ) {
+        if !self.info.probe_map.is_empty() {
+            // we've matched some modes
+            probe_spec.print_bold_mode(buffer);
+        }
+
         for (.., probes) in self.info.probe_map.iter() {
             if let Some(probe) = probes.iter().next() {
                 // check to see if we have an alias for this probe kind
@@ -255,6 +252,8 @@ impl Event for CoreEvent {
                 probe.print_mode_docs(alias, print_globals, print_functions, tabs, buffer);
             }
         }
+        long_line(buffer);
+        white(true, "\n\n".to_string(), buffer);
     }
 
     fn get_provided_fns(&self) -> &Vec<ProvidedFunction> {
