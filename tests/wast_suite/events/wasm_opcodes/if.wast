@@ -17,6 +17,7 @@
         else
             i32.const 0
         end
+        nop
     )
 
     (func $other_check (param i32) (result i32)
@@ -124,5 +125,8 @@
 ;; alt mode
 ;; WHAMM --> wasm:opcode:_if:alt /fid == 1 && pc == 1/ { drop_args(); return 0; }
 (assert_return (invoke "get_global_var") (i32.const 0))
+
+;; WHAMM --> wasm:opcode:_if:alt /fid == 1 && pc == 1/ { drop_args(); } wasm:opcode:nop:before /fid == 1 && pc == 6/ { return 2; }
+(assert_return (invoke "get_global_var") (i32.const 2))
 
 ;; TODO -- `BlockType` struct? Issue #139
