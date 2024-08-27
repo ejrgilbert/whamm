@@ -202,6 +202,16 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         Ok(true)
     }
 
+    pub(crate) fn emit_empty_alternate(&mut self) -> Result<bool, Box<WhammError>> {
+        self.app_iter.empty_alternate();
+        Ok(true)
+    }
+
+    pub(crate) fn emit_empty_block_alt(&mut self) -> Result<bool, Box<WhammError>> {
+        self.app_iter.empty_block_alt();
+        Ok(true)
+    }
+
     fn override_var_val(&mut self, rec_id: &usize, val: Option<Value>) {
         let mut rec = self.table.get_record_mut(rec_id);
         if let Some(Record::Var { value, .. }) = &mut rec {

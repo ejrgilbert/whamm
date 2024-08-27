@@ -182,10 +182,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             .return_stmt();
 
         let strcmp_id = strcmp.finish_module(strcmp_params.len(), self.app_wasm);
-        self.app_wasm.set_fn_name(
-            strcmp_id - self.app_wasm.num_import_func(),
-            "strcmp".to_string(),
-        );
+        self.app_wasm.set_fn_name(strcmp_id, "strcmp".to_string());
 
         let rec_id = match self.table.lookup(&f.name.name) {
             Some(rec_id) => *rec_id,
@@ -340,8 +337,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         getter.global_get(*global_id);
 
         let getter_id = getter.finish_module(getter_params.len(), self.app_wasm);
-
         let fn_name = format!("get_{name}");
+        self.app_wasm.set_fn_name(getter_id, fn_name.clone());
         self.app_wasm.exports.add_export_func(fn_name, getter_id);
 
         Ok(getter_id)

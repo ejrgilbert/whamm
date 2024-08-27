@@ -273,13 +273,38 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
     }
 
     fn emit_body(&mut self) -> bool {
-        if let Some((Some(ref mut body), ..)) = self.curr_probe {
-            match self.emitter.emit_body(&self.curr_instr_args, body) {
-                Err(e) => {
-                    self.err.add_error(*e);
+        if let Some((body, ..)) = &mut self.curr_probe {
+            if let Some(ref mut body) = body {
+                match self.emitter.emit_body(&self.curr_instr_args, body) {
+                    Err(e) => {
+                        self.err.add_error(*e);
+                        false
+                    }
+                    Ok(res) => res,
+                }
+            } else if body.is_none() {
+                if self.curr_probe_mode == WhammModeKind::Alt {
+                    match self.emitter.emit_empty_alternate() {
+                        Err(e) => {
+                            self.err.add_error(*e);
+                            false
+                        }
+                        Ok(res) => res,
+                    }
+                } else if self.curr_probe_mode == WhammModeKind::BlockAlt {
+                    match self.emitter.emit_empty_block_alt() {
+                        Err(e) => {
+                            self.err.add_error(*e);
+                            false
+                        }
+                        Ok(res) => res,
+                    }
+                } else {
+                    // no body to emit!
                     false
                 }
-                Ok(res) => res,
+            } else {
+                false
             }
         } else {
             false
