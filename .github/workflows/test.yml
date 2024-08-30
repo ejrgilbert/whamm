@@ -67,7 +67,7 @@ jobs:
           
           echo "[INFO] Building 'wizeng'..."
           echo "[TODO] -- SWITCH TO MAIN WIZENG BRANCH WHEN PR IS MERGED."
-          git clone --branch task/spectest-cli https://github.com/ejrgilbert/wizard-engine.git
+          git clone https://github.com/ejrgilbert/wizard-engine.git
           pushd wizard-engine && make -j
           popd
           
