@@ -66,8 +66,9 @@ jobs:
           which v3c
           
           echo "[INFO] Building 'wizeng'..."
-          echo "[TODO] -- SWITCH TO MAIN WIZENG BRANCH WHEN PR IS MERGED."
+          echo "[TODO] -- SWITCH TO MAIN WIZENG BRANCH WHEN IT IS FIXED (CURRENTLY NOT BUILDING)."
           git clone https://github.com/ejrgilbert/wizard-engine.git
+          git checkout 8d0edb6cc964f924a5da6df8abb667aa208e3a1b
           pushd wizard-engine && make -j
           popd
           
