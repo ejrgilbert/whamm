@@ -68,8 +68,10 @@ jobs:
           echo "[INFO] Building 'wizeng'..."
           echo "[TODO] -- SWITCH TO MAIN WIZENG BRANCH WHEN IT IS FIXED (CURRENTLY NOT BUILDING)."
           git clone https://github.com/ejrgilbert/wizard-engine.git
+      
+          pushd wizard-engine
           git checkout 8d0edb6cc964f924a5da6df8abb667aa208e3a1b
-          pushd wizard-engine && make -j
+          make -j
           popd
           
           echo "[INFO] Configuring the 'wizeng' interpreter..."
