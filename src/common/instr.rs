@@ -11,6 +11,7 @@ use crate::parser::whamm_parser::parse_script;
 use crate::verifier::types::SymbolTable;
 use crate::verifier::verifier::{build_symbol_table, type_check};
 use log::{error, info};
+use orca::ir::id::GlobalID;
 use orca::Module;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -129,7 +130,7 @@ pub fn run(
     for gid in report_var_metadata.available_i32_gids.iter() {
         //should be 0, but good for cleanup
         err.add_compiler_warn(format!("Unused i32 GID: {}", gid));
-        app_wasm.globals.remove();
+        app_wasm.delete_global(*gid as GlobalID);
     }
 
     if let Some(output_wasm_path) = output_wasm_path {

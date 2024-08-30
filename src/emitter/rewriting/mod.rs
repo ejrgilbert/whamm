@@ -11,12 +11,11 @@ use crate::emitter::rewriting::rules::Arg;
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{BinOp, Block, DataType, Expr, Statement, UnOp, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
-use orca::ir::module::module_globals::Global;
+use orca::ir::id::GlobalID;
 use orca::ir::types::{BlockType, DataType as OrcaType, Value as OrcaValue};
 use orca::module_builder::AddLocal;
 use orca::opcode::{MacroOpcode, Opcode};
-use orca::InitExpr;
-use wasmparser::{GlobalType, ValType};
+use orca::{InitExpr, Module};
 
 pub trait Emitter {
     fn emit_body(
@@ -593,18 +592,19 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 // transform a whamm type to default wasm type, used for creating new global
 // TODO: Might be more generic to also include Local
 // TODO: Do we really want to depend on wasmparser::ValType, or create a wrapper?
-pub fn whamm_type_to_wasm_global(ty: &DataType) -> Global {
+pub fn whamm_type_to_wasm_global(app_wasm: &mut Module, ty: &DataType) -> (GlobalID, OrcaType) {
     let orca_ty = whamm_type_to_wasm_type(ty);
 
     match orca_ty {
-        OrcaType::I32 => Global {
-            ty: GlobalType {
-                content_type: ValType::I32,
-                mutable: true,
-                shared: false,
-            },
-            init_expr: InitExpr::Value(OrcaValue::I32(0)),
-        },
+        OrcaType::I32 => {
+            let global_id = app_wasm.add_global(
+                InitExpr::Value(OrcaValue::I32(0)),
+                OrcaType::I32,
+                true,
+                false,
+            );
+            (global_id, OrcaType::I32)
+        }
         _ => unimplemented!(),
     }
 }
