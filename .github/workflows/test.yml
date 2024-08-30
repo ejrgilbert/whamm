@@ -70,7 +70,6 @@ jobs:
           git clone https://github.com/titzer/wizard-engine.git
       
           pushd wizard-engine
-          git checkout 8d0edb6cc964f924a5da6df8abb667aa208e3a1b
           make -j
           popd
           
