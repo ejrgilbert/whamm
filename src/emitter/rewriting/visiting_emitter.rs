@@ -463,11 +463,10 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
     ) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
         for _ in 0..self.curr_num_reports {
-            let default_global = whamm_type_to_wasm_global(&DataType::I32);
-            let gid = self.app_iter.add_global(default_global);
+            let (global_id, ..) = whamm_type_to_wasm_global(self.app_iter.module, &DataType::I32);
             self.report_var_metadata
                 .available_i32_gids
-                .push(gid as usize);
+                .push(global_id as usize);
         }
         for stmt in body.stmts.iter_mut() {
             is_success &= self.emit_stmt(curr_instr_args, stmt)?;

@@ -14,9 +14,8 @@
         local.get 4
         i32.add
     )
-    ;; TODO -- uncomment after https://github.com/thesuhas/orca/issues/157
-;;    (global (export "global-i32") i32 (i32.const 55))
-;;    (global (export "global-f32") f32 (f32.const 44))
+    (global (export "global-i32") i32 (i32.const 55))
+    (global (export "global-f32") f32 (f32.const 44))
     (table (export "table-10-inf") 10 funcref)
     (memory (export "memory-2-inf") 2)
 )
@@ -31,9 +30,8 @@
     ;; Imports
     (import "test" "table-10-inf" (table 10 funcref)) ;; table
     (import "test" "dummy_five_params" (func $dummy_five_params (type 0))) ;; function
-    ;; TODO -- uncomment after https://github.com/thesuhas/orca/issues/157
-;;    (import "test" "global-i32" (global i32)) ;; global
-;;    (import "test" "global-f32" (global f32)) ;; global
+    (import "test" "global-i32" (global i32))
+    (import "test" "global-f32" (global f32))
 
     ;; Globals
     (global $var (mut i32) (i32.const 0))

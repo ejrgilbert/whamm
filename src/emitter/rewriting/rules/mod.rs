@@ -245,8 +245,11 @@ impl Provider for WhammProvider {
                         instr_idx,
                         ..
                     } => {
-                        let fname = app_wasm.functions.get_name(func_idx).unwrap_or_default();
-
+                        let mut fname = String::default();
+                        let name = app_wasm.functions.get_name(func_idx).as_ref();
+                        if let Some(name) = name {
+                            fname = name.clone();
+                        }
                         (func_idx, instr_idx, fname)
                     }
                 };
@@ -263,7 +266,7 @@ impl Provider for WhammProvider {
                     "fname".to_string(),
                     Some(Value::Str {
                         ty: DataType::Str,
-                        val: fname,
+                        val: fname.clone(),
                     }),
                 );
 

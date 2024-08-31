@@ -170,7 +170,7 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
                     }
                     None => {
                         let start_fn = FunctionBuilder::new(&[], &[]);
-                        let start_id = start_fn.finish_module(0, self.emitter.app_wasm);
+                        let start_id = start_fn.finish_module(self.emitter.app_wasm);
                         self.injected_funcs.push(start_id);
                         self.emitter.app_wasm.start = Some(start_id);
                         self.emitter

@@ -10,7 +10,6 @@ use crate::emitter::rewriting::{
     emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global, Emitter,
 };
 use orca::ir::types::{BlockType as OrcaBlockType, DataType as OrcaType, Value as OrcaValue};
-use wasmparser::GlobalType;
 
 use crate::emitter::rewriting::rules::Arg;
 use orca::ir::function::FunctionBuilder;
@@ -181,7 +180,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             .i32_const(0)
             .return_stmt();
 
-        let strcmp_id = strcmp.finish_module(strcmp_params.len(), self.app_wasm);
+        let strcmp_id = strcmp.finish_module(self.app_wasm);
         self.app_wasm.set_fn_name(strcmp_id, "strcmp".to_string());
 
         let rec_id = match self.table.lookup(&f.name.name) {
@@ -328,15 +327,15 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         &mut self,
         global_id: &u32,
         name: String,
-        ty: &GlobalType,
+        ty: OrcaType,
     ) -> Result<FunctionID, Box<WhammError>> {
         let getter_params = vec![];
-        let getter_res = vec![OrcaType::from(ty.content_type)];
+        let getter_res = vec![ty];
 
         let mut getter = FunctionBuilder::new(&getter_params, &getter_res);
         getter.global_get(*global_id);
 
-        let getter_id = getter.finish_module(getter_params.len(), self.app_wasm);
+        let getter_id = getter.finish_module(self.app_wasm);
         let fn_name = format!("get_{name}");
         self.app_wasm.set_fn_name(getter_id, fn_name.clone());
         self.app_wasm.exports.add_export_func(fn_name, getter_id);
@@ -459,19 +458,14 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                         Ok(None)
                     }
                     _ => {
-                        let default_global = whamm_type_to_wasm_global(ty);
-                        let global_id = self.app_wasm.globals.add(default_global.clone());
+                        let (global_id, global_ty) = whamm_type_to_wasm_global(self.app_wasm, ty);
                         *addr = Some(VarAddr::Global { addr: global_id });
                         //now save off the global variable metadata
                         if report_mode {
                             self.report_var_metadata
                                 .put_global_metadata(global_id as usize, name.clone())?;
                         }
-                        Ok(Some(self.emit_global_getter(
-                            &global_id,
-                            name,
-                            &default_global.ty,
-                        )?))
+                        Ok(Some(self.emit_global_getter(&global_id, name, global_ty)?))
                     }
                 }
             }
