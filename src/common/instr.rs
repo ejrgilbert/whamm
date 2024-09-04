@@ -130,7 +130,7 @@ pub fn run(
     for gid in report_var_metadata.available_i32_gids.iter() {
         //should be 0, but good for cleanup
         err.add_compiler_warn(format!("Unused i32 GID: {}", gid));
-        app_wasm.delete_global(*gid as GlobalID);
+        app_wasm.delete_global(GlobalID(*gid));
     }
 
     if let Some(output_wasm_path) = output_wasm_path {

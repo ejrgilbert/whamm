@@ -258,7 +258,7 @@ impl Provider for WhammProvider {
                     "fid".to_string(),
                     Some(Value::U32 {
                         ty: DataType::U32,
-                        val: fid,
+                        val: *fid,
                     }),
                 );
 

@@ -49,7 +49,7 @@ impl MapLibAdapter {
         map_id: Option<i32>,
         name: String,
         script_id: String,
-        bytecode_loc: (i32, i32),
+        bytecode_loc: (u32, u32),
         probe_id: String,
         report_var_metadata: &mut ReportVarMetadata,
     ) -> (bool, i32) {
@@ -98,7 +98,7 @@ impl MapLibAdapter {
         &mut self,
         name: String,
         script_id: String,
-        bytecode_loc: (i32, i32),
+        bytecode_loc: (u32, u32),
         probe_id: String,
         map: DataType,
         report_var_metadata: &mut ReportVarMetadata,

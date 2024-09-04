@@ -7,7 +7,7 @@ use crate::parser::rules::core::WhammModeKind;
 use crate::parser::rules::wasm::{OpcodeEventKind, WasmPackageKind};
 use crate::parser::types::{DataType, SpecPart, Value};
 use log::warn;
-use orca::ir::id::TypeID;
+use orca::ir::id::FunctionID;
 use orca::ir::module::module_functions::{FuncKind, ImportedFunction, LocalFunction};
 use orca::ir::module::Module;
 use orca::ir::types::DataType as OrcaType;
@@ -136,15 +136,15 @@ impl OpcodeEvent {
         // TODO: there are 500 of them in wasmparser::Operator
         // compared to 48 of them in walrus::ir::Instr
         // How do we compress the Operators we need to concern
-        let (ty_list, ty_id): (Vec<OrcaType>, Option<TypeID>) = match instr {
+        let (ty_list, ty_id): (Vec<OrcaType>, Option<u32>) = match instr {
             Operator::Call {
                 function_index: fid,
             } => {
-                match app_wasm.functions.get_kind(*fid) {
+                match app_wasm.functions.get_kind(FunctionID(*fid)) {
                     FuncKind::Import(ImportedFunction { ty_id, .. })
                     | FuncKind::Local(LocalFunction { ty_id, .. }) => {
                         if let Some(ty) = app_wasm.types.get(*ty_id) {
-                            (ty.params.to_vec(), Some(*ty_id))
+                            (ty.params.to_vec(), Some(**ty_id))
                         } else {
                             // no type info found!!
                             warn!("No type information found for import with FID {fid}");
@@ -273,7 +273,7 @@ impl Event for OpcodeEvent {
                     function_index: fid,
                 } = instr
                 {
-                    let func_info = match app_wasm.functions.get_kind(*fid) {
+                    let func_info = match app_wasm.functions.get_kind(FunctionID(*fid)) {
                         FuncKind::Import(ImportedFunction { import_id, .. }) => {
                             let import = app_wasm.imports.get(*import_id);
                             FuncInfo {
