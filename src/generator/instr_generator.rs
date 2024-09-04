@@ -180,7 +180,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 func_idx,
                 instr_idx,
                 ..
-            } => (func_idx as i32, instr_idx as i32),
+            } => (*func_idx, instr_idx as u32),
         };
         //set the current location in bytecode and load some new globals for potential report vars
         self.emitter.report_var_metadata.set_loc(

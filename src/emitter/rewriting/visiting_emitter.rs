@@ -12,7 +12,7 @@ use crate::parser;
 use crate::parser::rules::UNKNOWN_IMMS;
 use crate::parser::types::{Block, DataType, Definition, Expr, SpecPart, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
-use orca::ir::id::FunctionID;
+use orca::ir::id::{FunctionID, LocalID, TypeID};
 use orca::ir::module::Module;
 use orca::ir::types::BlockType as OrcaBlockType;
 use orca::iterator::iterator_trait::{IteratingInstrumenter, Iterator as OrcaIterator};
@@ -144,7 +144,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
              }| {
                 // create local for the param in the module
                 let arg_local_id = self.app_iter.add_local(*arg_ty);
-                arg_locals.push((arg_name.to_string(), arg_local_id));
+                arg_locals.push((arg_name.to_string(), *arg_local_id));
             },
         );
 
@@ -154,7 +154,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             .rev()
             .for_each(|(arg_name, arg_local_id)| {
                 // emit an opcode in the event to assign the ToS to this new local
-                self.app_iter.local_set(*arg_local_id);
+                self.app_iter.local_set(LocalID(*arg_local_id));
 
                 // place in symbol table with var addr for future reference
                 let id = self.table.put(
@@ -187,7 +187,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             {
                 // Inject at tracker.orig_instr_idx to make sure that this actually emits the args
                 // for the instrumented instruction right before that instruction is called!
-                self.app_iter.local_get(*addr);
+                self.app_iter.local_get(LocalID(*addr));
             } else {
                 return Err(Box::new(ErrorGen::get_unexpected_error(
                     true,
@@ -342,7 +342,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
 
         let block_ty = match orig_ty_id {
             Some(ty_id) => {
-                let ty = match self.app_iter.module.types.get(ty_id) {
+                let ty = match self.app_iter.module.types.get(TypeID(ty_id)) {
                     Some(ty) => ty.results.clone(),
                     None => Box::new([]),
                 };
@@ -415,7 +415,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         };
 
         let is_success = self.emit_args()?;
-        self.app_iter.call(func_id as u32);
+        self.app_iter.call(FunctionID(func_id as u32));
         Ok(is_success)
     }
 
@@ -464,9 +464,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
         let mut is_success = true;
         for _ in 0..self.curr_num_reports {
             let (global_id, ..) = whamm_type_to_wasm_global(self.app_iter.module, &DataType::I32);
-            self.report_var_metadata
-                .available_i32_gids
-                .push(global_id as usize);
+            self.report_var_metadata.available_i32_gids.push(*global_id);
         }
         for stmt in body.stmts.iter_mut() {
             is_success &= self.emit_stmt(curr_instr_args, stmt)?;

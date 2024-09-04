@@ -13,7 +13,7 @@ use orca::ir::types::{BlockType as OrcaBlockType, DataType as OrcaType, Value as
 
 use crate::emitter::rewriting::rules::Arg;
 use orca::ir::function::FunctionBuilder;
-use orca::ir::id::FunctionID;
+use orca::ir::id::{FunctionID, GlobalID, LocalID};
 use orca::ir::module::Module;
 use orca::module_builder::AddLocal;
 use orca::opcode::{Instrumenter, Opcode};
@@ -87,10 +87,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         let mut strcmp = FunctionBuilder::new(&strcmp_params, &strcmp_result);
 
         // specify params
-        let str0_offset = 0u32;
-        let str0_size = 1u32;
-        let str1_offset = 2u32;
-        let str1_size = 3u32;
+        let str0_offset = LocalID(0);
+        let str0_size = LocalID(1);
+        let str1_offset = LocalID(2);
+        let str1_size = LocalID(3);
 
         // create locals
         let i = strcmp.add_local(OrcaType::I32);
@@ -199,7 +199,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
 
         return if let Some(rec) = self.table.get_record_mut(&rec_id) {
             if let Record::Fn { addr, .. } = rec {
-                *addr = Some(strcmp_id);
+                *addr = Some(*strcmp_id);
                 Ok(strcmp_id)
             } else {
                 return Err(Box::new(ErrorGen::get_unexpected_error(
@@ -333,12 +333,12 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         let getter_res = vec![ty];
 
         let mut getter = FunctionBuilder::new(&getter_params, &getter_res);
-        getter.global_get(*global_id);
+        getter.global_get(GlobalID(*global_id));
 
         let getter_id = getter.finish_module(self.app_wasm);
         let fn_name = format!("get_{name}");
         self.app_wasm.set_fn_name(getter_id, fn_name.clone());
-        self.app_wasm.exports.add_export_func(fn_name, getter_id);
+        self.app_wasm.exports.add_export_func(fn_name, *getter_id);
 
         Ok(getter_id)
     }
@@ -454,16 +454,16 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                             }
                         };
                         start_fn.i32_const(map_id);
-                        start_fn.call(*fn_id);
+                        start_fn.call(FunctionID(*fn_id));
                         Ok(None)
                     }
                     _ => {
                         let (global_id, global_ty) = whamm_type_to_wasm_global(self.app_wasm, ty);
-                        *addr = Some(VarAddr::Global { addr: global_id });
+                        *addr = Some(VarAddr::Global { addr: *global_id });
                         //now save off the global variable metadata
                         if report_mode {
                             self.report_var_metadata
-                                .put_global_metadata(global_id as usize, name.clone())?;
+                                .put_global_metadata(*global_id, name.clone())?;
                         }
                         Ok(Some(self.emit_global_getter(&global_id, name, global_ty)?))
                     }

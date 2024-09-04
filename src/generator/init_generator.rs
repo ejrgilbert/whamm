@@ -124,8 +124,8 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
                 .functions
                 .get_local_fid_by_name(lib_fn);
             let id = match id_option {
-                Some(id_option) => id_option,
-                None => std::u32::MAX,
+                Some(id_option) => *id_option,
+                None => u32::MAX,
             };
             match self.emitter.table.get_curr_scope_mut() {
                 Some(_) => {

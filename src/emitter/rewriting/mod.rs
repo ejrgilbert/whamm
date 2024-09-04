@@ -11,7 +11,7 @@ use crate::emitter::rewriting::rules::Arg;
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{BinOp, Block, DataType, Expr, Statement, UnOp, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
-use orca::ir::id::GlobalID;
+use orca::ir::id::{FunctionID, GlobalID, LocalID};
 use orca::ir::types::{BlockType, DataType as OrcaType, Value as OrcaValue};
 use orca::module_builder::AddLocal;
 use orca::opcode::{MacroOpcode, Opcode};
@@ -222,7 +222,7 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 };
 
                 injector.i32_const(map_id);
-                injector.call(*fn_id);
+                injector.call(FunctionID(*fn_id));
                 return Ok(true);
             }
             match &mut addr {
@@ -236,7 +236,7 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     // address.
                     let wasm_ty = whamm_type_to_wasm_type(ty);
                     let id = injector.add_local(wasm_ty);
-                    *addr = Some(VarAddr::Local { addr: id });
+                    *addr = Some(VarAddr::Local { addr: *id });
                     Ok(true)
                 }
             }
@@ -357,7 +357,7 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                         }
                     };
                     injector.i32_const(map_id);
-                    injector.call(*fn_id);
+                    injector.call(FunctionID(*fn_id));
                     return Ok(true);
                 }
                 match &mut addr {
@@ -388,7 +388,7 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                             Ok(_) => {}
                             Err(e) => return Err(e),
                         }
-                        *addr = Some(VarAddr::Global { addr: id as u32 });
+                        *addr = Some(VarAddr::Global { addr: id });
                         return Ok(true);
                     }
                     Some(VarAddr::Local { .. }) | Some(VarAddr::MapId { .. }) => {
@@ -571,7 +571,7 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     report_var_metadata,
                     err_msg,
                 )?;
-                injector.call(fn_id);
+                injector.call(FunctionID(fn_id));
                 return Ok(true);
             }
             Err(e) => {
@@ -658,10 +658,10 @@ fn emit_set<'a, T: Opcode<'a>>(
                 // this will be different based on if this is a global or local var
                 match addr {
                     Some(VarAddr::Global { addr }) => {
-                        injector.global_set(*addr);
+                        injector.global_set(GlobalID(*addr));
                     }
                     Some(VarAddr::Local { addr }) => {
-                        injector.local_set(*addr);
+                        injector.local_set(LocalID(*addr));
                     },
                     Some(VarAddr::MapId { .. }) => {
                         return Err(Box::new(ErrorGen::get_type_check_error_from_loc(false,
@@ -939,7 +939,7 @@ fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     match fn_rec {
                         Some(Record::Fn { addr, .. }) => {
                             if let Some(f_id) = addr {
-                                injector.call(*f_id);
+                                injector.call(FunctionID(*f_id));
                             } else {
                                 return Err(Box::new(ErrorGen::get_unexpected_error(
                                     true,
@@ -990,10 +990,10 @@ fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     // this will be different based on if this is a global or local var
                     match addr {
                         Some(VarAddr::Global { addr }) => {
-                            injector.global_get(*addr);
+                            injector.global_get(GlobalID(*addr));
                         }
                         Some(VarAddr::Local { addr }) => {
-                            injector.local_get(*addr);
+                            injector.local_get(LocalID(*addr));
                         }
                         Some(VarAddr::MapId { .. }) => {
                             return Err(Box::new(ErrorGen::get_unexpected_error(
@@ -1259,7 +1259,7 @@ fn emit_map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                         report_var_metadata,
                         err_msg,
                     )?;
-                    injector.call(fn_id);
+                    injector.call(FunctionID(fn_id));
                     return Ok(true);
                 }
                 Err(e) => {
