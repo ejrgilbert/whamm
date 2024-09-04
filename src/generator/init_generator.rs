@@ -11,12 +11,12 @@ use crate::parser::types::{
 };
 use crate::verifier::types::Record;
 use log::{debug, info, trace, warn};
-use orca::ir::types::Value as OrcaValue;
-use orca::ir::types::DataType as OrcaType;
-use orca::InitExpr;
-use orca::ir::id::FunctionID;
-use std::collections::HashMap;
 use orca::ir::function::FunctionBuilder;
+use orca::ir::id::FunctionID;
+use orca::ir::types::DataType as OrcaType;
+use orca::ir::types::Value as OrcaValue;
+use orca::InitExpr;
+use std::collections::HashMap;
 
 /// Serves as the first phase of instrumenting a module by setting up
 /// the groundwork.
@@ -180,9 +180,8 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
                         self.emitter
                             .app_wasm
                             .set_fn_name(start_id, "start".to_string());
-                    }
-                    //strcmp doesn't need to call add_export_fn so this probably doesn't either
-                    //in app_wasm, not sure if we need to have it in the ST
+                    } //strcmp doesn't need to call add_export_fn so this probably doesn't either
+                      //in app_wasm, not sure if we need to have it in the ST
                 }
             }
         }
@@ -190,9 +189,18 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
 
     fn create_global_map_init(&mut self) {
         //make a global bool for whether to run the global_map_init fn
-        self.emitter.map_lib_adapter.init_bool_location =
-            *self.emitter.app_wasm.add_global(InitExpr::Value(OrcaValue::I32(1)), OrcaType::I32, true, false);
-        match self.emitter.app_wasm.functions.get_local_fid_by_name("global_map_init") {
+        self.emitter.map_lib_adapter.init_bool_location = *self.emitter.app_wasm.add_global(
+            InitExpr::Value(OrcaValue::I32(1)),
+            OrcaType::I32,
+            true,
+            false,
+        );
+        match self
+            .emitter
+            .app_wasm
+            .functions
+            .get_local_fid_by_name("global_map_init")
+        {
             Some(_) => {
                 println!("global_map_init function already exists");
                 self.err.add_error(ErrorGen::get_unexpected_error(
@@ -209,10 +217,9 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
                 println!("No global_map_init function found, creating one");
                 let global_map_init_fn = FunctionBuilder::new(&[], &[]);
                 let global_map_init_id = global_map_init_fn.finish_module(self.emitter.app_wasm);
-                self.emitter.app_wasm.set_fn_name(
-                    global_map_init_id,
-                    "global_map_init".to_string(),
-                );
+                self.emitter
+                    .app_wasm
+                    .set_fn_name(global_map_init_id, "global_map_init".to_string());
             }
         }
     }

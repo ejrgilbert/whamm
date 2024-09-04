@@ -252,7 +252,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                                     Some(UNEXPECTED_ERR_MSG.to_string()),
                                     None,
                                 )))
-                            }
+                            };
                         }
                     }
                 }

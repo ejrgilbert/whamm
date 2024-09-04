@@ -211,17 +211,8 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     addr: map_id as u32,
                 });
                 let fn_id = match table.lookup_rec(&fn_name) {
-                    Some(id) => match id {
-                        Record::LibFn { fn_id, .. } => fn_id,
-                        _ => {
-                            return Err(Box::new(ErrorGen::get_unexpected_error(
-                                true,
-                                Some(format!("{err_msg} Map function not in symbol table")),
-                                None,
-                            )))
-                        }
-                    },
-                    None => {
+                    Some(Record::LibFn { fn_id, .. }) => fn_id,
+                    _ => {
                         return Err(Box::new(ErrorGen::get_unexpected_error(
                             true,
                             Some(format!("{err_msg} Map function not in symbol table")),

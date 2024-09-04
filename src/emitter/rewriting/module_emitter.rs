@@ -6,16 +6,16 @@ use orca::{DataSegment, DataSegmentKind, InitExpr, Location};
 use std::collections::HashMap;
 
 use crate::emitter::map_lib_adapter::MapLibAdapter;
+use crate::emitter::rewriting::rules::Arg;
 use crate::emitter::rewriting::{
     emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global, Emitter,
 };
-use orca::ir::types::{BlockType as OrcaBlockType, DataType as OrcaType, Value as OrcaValue};
 use orca::ir::function::FunctionBuilder;
 use orca::ir::id::{FunctionID, GlobalID, LocalID};
 use orca::ir::module::Module;
+use orca::ir::types::{BlockType as OrcaBlockType, DataType as OrcaType, Value as OrcaValue};
 use orca::module_builder::AddLocal;
 use orca::opcode::{Instrumenter, Opcode};
-use crate::emitter::rewriting::rules::Arg;
 
 const UNEXPECTED_ERR_MSG: &str =
     "ModuleEmitter: Looks like you've found a bug...please report this behavior!";
@@ -385,14 +385,18 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         let rec = self.table.get_record_mut(&rec_id);
         match rec {
             Some(Record::Var {
-                     ref mut addr, ty, ..
-                 }) => {
+                ref mut addr, ty, ..
+            }) => {
                 // emit global variable and set addr in symbol table
                 // this is used for user-defined global vars in the script...
                 match ty {
                     DataType::Map { .. } => {
                         //time to instrument the start fn
-                        let init_id = match self.app_wasm.functions.get_local_fid_by_name("global_map_init") {
+                        let init_id = match self
+                            .app_wasm
+                            .functions
+                            .get_local_fid_by_name("global_map_init")
+                        {
                             Some(init_id) => init_id,
                             None => {
                                 return Err(Box::new(ErrorGen::get_unexpected_error(
@@ -444,21 +448,12 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                         });
 
                         let fn_id = match self.table.lookup_rec(&fn_name) {
-                            Some(id) => match id {
-                                Record::LibFn { fn_id, .. } => fn_id,
-                                _ => {
-                                    return Err(Box::new(ErrorGen::get_unexpected_error(
-                                        true,
-                                        Some("Map function not in symbol table".to_string()),
-                                        None
-                                    )))
-                                }
-                            },
-                            None => {
+                            Some(Record::LibFn { fn_id, .. }) => fn_id,
+                            _ => {
                                 return Err(Box::new(ErrorGen::get_unexpected_error(
                                     true,
                                     Some("Map function not in symbol table".to_string()),
-                                    None
+                                    None,
                                 )));
                             }
                         };
@@ -478,7 +473,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                     }
                 }
             }
-            Some(&mut ref ty) => return Err(Box::new(ErrorGen::get_unexpected_error(
+            Some(&mut ref ty) => Err(Box::new(ErrorGen::get_unexpected_error(
                 true,
                 Some(format!(
                     "{UNEXPECTED_ERR_MSG} \
@@ -487,7 +482,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 )),
                 None,
             ))),
-            None => return Err(Box::new(ErrorGen::get_unexpected_error(
+            None => Err(Box::new(ErrorGen::get_unexpected_error(
                 true,
                 Some(format!(
                     "{UNEXPECTED_ERR_MSG} \

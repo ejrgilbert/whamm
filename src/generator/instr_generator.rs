@@ -1,22 +1,21 @@
-use orca::ir::types::{BlockType as OrcaBlockType, Value as OrcaValue};
-use orca::iterator::iterator_trait::Iterator;
-use orca::{Location as OrcaLocation, Location};
-use orca::{DataSegment, DataSegmentKind, InitExpr, Opcode};
-use std::collections::HashMap;
-use std::iter::Iterator as StdIter;
-use orca::ir::id::{FunctionID, GlobalID};
-use orca::opcode::Instrumenter;
 use crate::common::error::ErrorGen;
-
 use crate::emitter::report_var_metadata::convert_meta_to_string;
 use crate::emitter::rewriting::module_emitter::StringAddr;
-use crate::emitter::rewriting::rules::{provider_factory, Arg, LocInfo, WhammProvider, ProbeSpec};
+use crate::emitter::rewriting::rules::{provider_factory, Arg, LocInfo, ProbeSpec, WhammProvider};
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::rewriting::Emitter;
 use crate::generator::simple_ast::{SimpleAST, SimpleProbe};
 use crate::generator::types::ExprFolder;
 use crate::parser::rules::core::WhammModeKind;
 use crate::parser::types::{Block, DataType, Expr};
+use orca::ir::id::{FunctionID, GlobalID};
+use orca::ir::types::{BlockType as OrcaBlockType, Value as OrcaValue};
+use orca::iterator::iterator_trait::Iterator;
+use orca::opcode::Instrumenter;
+use orca::{DataSegment, DataSegmentKind, InitExpr, Opcode};
+use orca::{Location as OrcaLocation, Location};
+use std::collections::HashMap;
+use std::iter::Iterator as StdIter;
 
 const UNEXPECTED_ERR_MSG: &str =
     "InstrGenerator: Looks like you've found a bug...please report this behavior!";
@@ -373,7 +372,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
             }
         };
         self.emitter.before();
-        let ref mut app_iter = self.emitter.app_iter;
+        let app_iter = &mut self.emitter.app_iter;
         app_iter.global_get(GlobalID(self.emitter.map_lib_adapter.init_bool_location));
         app_iter.if_stmt(OrcaBlockType::Empty);
         app_iter.i32_const(0);
@@ -381,6 +380,9 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
         app_iter.call(to_call);
         app_iter.end();
     }
+
+    // TODO -- figure out if this is needed
+    #[allow(dead_code)]
     fn after_run(&mut self) -> bool {
         if self
             .emitter
@@ -392,17 +394,16 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
             return true;
         }
         //after running, emit the metadata from the report_var_metadata into maps 0 and 1 in app_wasm - if meta exists
-        let ref report_var_metadata = self.emitter.report_var_metadata;
-        let ref mut module = self.emitter.app_iter.module;
-        let ref var_meta = report_var_metadata.variable_metadata;
-        let ref map_meta = report_var_metadata.map_metadata;
+        let report_var_metadata = &self.emitter.report_var_metadata;
+        let var_meta = &report_var_metadata.variable_metadata;
+        let map_meta = &report_var_metadata.map_metadata;
         let mut var_meta_str: HashMap<i32, String> = HashMap::new();
         let mut map_meta_str: HashMap<i32, String> = HashMap::new();
         //convert the metadata into strings, add those to the data section, then use those to populate the maps
         for (key, value) in var_meta.iter() {
             //first, emit the string to data section
             let val = convert_meta_to_string(value);
-            let data_id = module.data.len();
+            let data_id = self.emitter.app_iter.module.data.len();
             let val_bytes = val.as_bytes().to_owned();
             let data_segment = DataSegment {
                 data: val_bytes,
@@ -413,7 +414,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
                     )),
                 },
             };
-            module.data.push(data_segment);
+            self.emitter.app_iter.module.data.push(data_segment);
             // save the memory addresses/lens, so they can be used as appropriate
             self.emitter.mem_tracker.emitted_strings.insert(
                 val.clone(),
@@ -431,7 +432,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
         for (key, value) in map_meta.iter() {
             //first, emit the string to data section
             let val = convert_meta_to_string(value);
-            let data_id = module.data.len();
+            let data_id = self.emitter.app_iter.module.data.len();
             let val_bytes = val.as_bytes().to_owned();
             let data_segment = DataSegment {
                 data: val_bytes,
@@ -442,7 +443,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
                     )),
                 },
             };
-            module.data.push(data_segment);
+            self.emitter.app_iter.module.data.push(data_segment);
             // save the memory addresses/lens, so they can be used as appropriate
             self.emitter.mem_tracker.emitted_strings.insert(
                 val.clone(),
@@ -455,10 +456,16 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
             // update curr_mem_offset to account for new data
             self.emitter.mem_tracker.curr_mem_offset += val.len();
             //now set the new key value for the new maps
-            map_meta_str.insert(*key as i32, val);
+            map_meta_str.insert(*key, val);
         }
         //first, we need to create the maps in global_map_init - where all the other maps are initalized
-        let start_id = match module.functions.get_local_fid_by_name("global_map_init") {
+        let start_id = match self
+            .emitter
+            .app_iter
+            .module
+            .functions
+            .get_local_fid_by_name("global_map_init")
+        {
             Some(start_id) => start_id,
             None => {
                 self.err.add_error(ErrorGen::get_unexpected_error(
@@ -472,7 +479,13 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
                 return false;
             }
         };
-        let mut start_fn = match module.functions.get_fn_modifier(start_id) {
+        let mut start_fn = match self
+            .emitter
+            .app_iter
+            .module
+            .functions
+            .get_fn_modifier(start_id)
+        {
             Some(start_fn) => start_fn,
             None => {
                 self.err.add_error(ErrorGen::get_unexpected_error(
@@ -517,7 +530,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
         to_call = self
             .emitter
             .table
-            .lookup(&"insert_i32_string".to_string())
+            .lookup("insert_i32_string")
             .expect("Map function not in symbol table"); //clone to close the borrow
 
         //now, for each of the maps, emit the correct stuff
@@ -544,7 +557,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
             if let Some(val_addr) = self.emitter.mem_tracker.emitted_strings.get(val) {
                 //now, emit the map entry
                 start_fn.i32_const(0);
-                start_fn.i32_const(*key as i32);
+                start_fn.i32_const(*key);
                 start_fn.i32_const(val_addr.mem_offset as i32);
                 start_fn.i32_const(val_addr.len as i32);
                 start_fn.call(FunctionID(*to_call as u32));
@@ -559,6 +572,6 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
                 ));
             }
         }
-        return true;
+        true
     }
 }

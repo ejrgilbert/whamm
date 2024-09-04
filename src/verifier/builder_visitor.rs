@@ -514,33 +514,30 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
                     );
                 }
             };
-            match stmt {
-                Statement::Decl { ty, var_id, .. } => {
-                    if let Expr::VarId { name, .. } = &var_id {
-                        // Add global variable to script globals (triggers the init_generator to emit them!)
-                        script.globals.insert(
-                            name.clone(),
-                            Global {
-                                def: Definition::User,
-                                report: is_report_var,
-                                ty: ty.clone(),
-                                var_name: var_id.clone(),
-                                value: None,
-                            },
-                        );
-                    } else {
-                        self.err.unexpected_error(
-                            true,
-                            Some(format!(
-                                "{} \
+            if let Statement::Decl { ty, var_id, .. } = stmt {
+                if let Expr::VarId { name, .. } = &var_id {
+                    // Add global variable to script globals (triggers the init_generator to emit them!)
+                    script.globals.insert(
+                        name.clone(),
+                        Global {
+                            def: Definition::User,
+                            report: is_report_var,
+                            ty: ty.clone(),
+                            var_name: var_id.clone(),
+                            value: None,
+                        },
+                    );
+                } else {
+                    self.err.unexpected_error(
+                        true,
+                        Some(format!(
+                            "{} \
                     Variable declaration var_id is not the correct Expr variant!!",
-                                UNEXPECTED_ERR_MSG
-                            )),
-                            None,
-                        );
-                    }
+                            UNEXPECTED_ERR_MSG
+                        )),
+                        None,
+                    );
                 }
-                _ => {}
             }
             self.visit_stmt(stmt)
         });
