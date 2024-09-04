@@ -202,7 +202,7 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
             .get_local_fid_by_name("global_map_init")
         {
             Some(_) => {
-                println!("global_map_init function already exists");
+                debug!("global_map_init function already exists");
                 self.err.add_error(ErrorGen::get_unexpected_error(
                     true,
                     Some(
@@ -214,7 +214,7 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
             }
             None => {
                 //time to make a global_map_init fn
-                println!("No global_map_init function found, creating one");
+                debug!("No global_map_init function found, creating one");
                 let global_map_init_fn = FunctionBuilder::new(&[], &[]);
                 let global_map_init_id = global_map_init_fn.finish_module(self.emitter.app_wasm);
                 self.emitter

@@ -1,6 +1,7 @@
 //library functions for maps in Whamm
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
+#![feature(vec_into_raw_parts)]
 use std::any::Any;
 use std::collections::HashMap;
 use std::slice;
@@ -8,7 +9,7 @@ use std::slice;
 use once_cell::sync::Lazy; // 1.3.1
 use std::sync::Mutex;
 
-#[no_mangle]
+// #[no_mangle]
 static MY_MAPS: Lazy<Mutex<HashMap<i32, AnyMap>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
 //this should initialize a map of maps -> from string (name) to any type of map
@@ -355,6 +356,7 @@ impl MapOperations for AnyMap {
         None
     }
     fn dump_map(&self) -> String {
+        println!("DEBUG: dumping map...");
         match self {
             AnyMap::i32_i32_Map(ref map) => {
                 let mut result = String::new();
@@ -381,6 +383,7 @@ impl MapOperations for AnyMap {
                 result
             }
             AnyMap::i32_string_Map(ref map) => {
+                println!("DEBUG: dumping i32_string_Map...");
                 let mut result = String::new();
                 for (key, value) in map.iter() {
                     result.push_str(&format!("{}: {},", key, value));
@@ -442,6 +445,7 @@ impl TupleVariant {
 //functions for creating a map
 #[no_mangle]
 pub fn create_i32_i32(name: i32) {
+    println!("DEBUG: creating i32_i32 map with name '{name}'");
     MY_MAPS
         .lock()
         .unwrap()
@@ -819,6 +823,7 @@ pub fn insert_i32i32i32tuple_i32(name: i32, key0: i32, key1: i32, key2: i32, val
 }
 #[no_mangle]
 pub fn insert_i32_i32(name: i32, key: i32, value: i32) {
+    println!("DEBUG: inserting ({key}, {value}) into map '{name}'");
     if !insert_i32_i32_inner(name, key, value) {
         panic!("Failed to insert into i32_i32 map");
     }
@@ -830,11 +835,13 @@ pub fn get_i32_from_i32i32i32tuple(name: i32, key0: i32, key1: i32, key2: i32) -
 }
 #[no_mangle]
 pub fn get_i32_i32(name: i32, key: i32) -> i32 {
+    println!("getting key '{key}' from map '{name}'");
     get_i32(name, &key)
 }
 #[no_mangle]
 pub fn insert_i32_string(name: i32, key: i32, offset: i32, length: i32) {
     let value = string_from_data(offset, length);
+    println!("DEBUG: inserting ({key}, \"{value}\") into map '{name}'");
     if !insert_i32_string_inner(name, key, value) {
         panic!("Failed to insert into i32_string map");
     }
@@ -850,15 +857,23 @@ pub fn string_from_data(offset: i32, length: i32) -> String {
         unsafe { slice::from_raw_parts(callee_ptr, usize::try_from(length).unwrap()) };
     String::from_utf8(callee_slice.to_vec()).unwrap()
 }
+#[no_mangle]
+pub fn string_to_data(s: String) -> (i32, i32) {
+    let (pointer, length, ..) = s.into_raw_parts();
+
+    (pointer as i32, length as i32)
+}
 
 #[no_mangle]
 pub fn print_map(map_id: i32) -> String {
+    println!("DEBUG: printing map {map_id}");
     let binding = MY_MAPS.lock().unwrap();
     let map = binding.get(&map_id).unwrap();
-    format!("{}\n", map.dump_map())
+    format!("{}", map.dump_map())
 }
 #[no_mangle]
 pub fn print_meta() {
+    println!("DEBUG: printing metadata");
     let mut running_output: String = String::new();
     let binding = MY_MAPS.lock().unwrap();
     let var_meta = binding.get(&0).expect("No metadata for variables found");
@@ -891,24 +906,18 @@ pub fn print_meta() {
 }
 
 //MAIN STARTS HERE
-#[no_mangle]
-pub fn foo(a: i32) -> i32 {
-    return inner_fn(a);
-}
 
 #[no_mangle]
 pub fn bar(a: i32) -> i32 {
-    return inner_fn(a);
-}
-
-#[no_mangle]
-pub fn inner_fn(a: i32) -> i32 {
     return a * 15 - 3;
 }
 
+#[no_mangle]
 fn main() {
-    let b = foo(5);
-    bar(2);
-    print!("{}", b);
+    let b = bar(987654321);
+    println!("b = {b}");
     create_i32_string(1);
+    let (ptr, len) = string_to_data("hello world".to_string());
+    insert_i32_string(1, 0, ptr, len);
+    println!("{}", print_map(1));
 }

@@ -261,7 +261,7 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     if let Statement::ReportDecl { decl, .. } = stmt {
-        match &**decl {
+        return match &**decl {
             Statement::Decl { ty, var_id, .. } => {
                 // look up in symbol table
                 let var_name: String;
@@ -390,26 +390,24 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                             Err(e) => return Err(e),
                         }
                         *addr = Some(VarAddr::Global { addr: id });
-                        return Ok(true);
+                        Ok(true)
                     }
                     Some(VarAddr::Local { .. }) | Some(VarAddr::MapId { .. }) => {
                         //this shouldn't happen for report vars - need to err
-                        return Err(Box::new(ErrorGen::get_unexpected_error(
+                        Err(Box::new(ErrorGen::get_unexpected_error(
                             true,
                             Some(format!("{err_msg} Expected Global VarAddr.")),
                             None,
-                        )));
+                        )))
                     }
                 }
             }
-            _ => {
-                return Err(Box::new(ErrorGen::get_unexpected_error(
-                    false,
-                    Some(format!("{err_msg} Wrong statement type, should be `decl`")),
-                    None,
-                )))
-            }
-        }
+            _ => Err(Box::new(ErrorGen::get_unexpected_error(
+                false,
+                Some(format!("{err_msg} Wrong statement type, should be `decl`")),
+                None,
+            ))),
+        };
     }
     Err(Box::new(ErrorGen::get_unexpected_error(
         false,
