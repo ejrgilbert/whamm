@@ -1,7 +1,7 @@
 use crate::emitter::rewriting::rules::{
     event_factory, probe_factory, Event, FromStr, LocInfo, Package,
 };
-use crate::parser::rules::core::{CoreEventKind, CorePackageKind};
+use crate::parser::rules::core::{CoreEventKind, CorePackageKind, WhammModeKind};
 use std::collections::HashMap;
 
 use crate::generator::simple_ast::SimpleProbe;
@@ -50,7 +50,10 @@ impl Package for CorePackage {
             None
         }
     }
-    fn add_events(&mut self, ast_events: &HashMap<String, HashMap<String, Vec<SimpleProbe>>>) {
+    fn add_events(
+        &mut self,
+        ast_events: &HashMap<String, HashMap<WhammModeKind, Vec<SimpleProbe>>>,
+    ) {
         let events = match self.kind {
             CorePackageKind::Default => event_factory::<CoreEvent>(ast_events),
         };
@@ -60,7 +63,7 @@ impl Package for CorePackage {
 
 pub struct CoreEvent {
     kind: CoreEventKind,
-    probes: HashMap<String, Vec<SimpleProbe>>,
+    probes: HashMap<WhammModeKind, Vec<SimpleProbe>>,
 }
 impl FromStr for CoreEvent {
     fn from_str(name: &str) -> Self {
@@ -106,7 +109,7 @@ impl Event for CoreEvent {
             None
         }
     }
-    fn add_probes(&mut self, probes: &HashMap<String, Vec<SimpleProbe>>) {
+    fn add_probes(&mut self, probes: &HashMap<WhammModeKind, Vec<SimpleProbe>>) {
         self.probes = probe_factory(probes);
     }
 }

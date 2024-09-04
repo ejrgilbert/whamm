@@ -10,11 +10,13 @@ use crate::parser::types::{
     UnOp, Value, Whamm, WhammVisitorMut,
 };
 use crate::verifier::types::Record;
-use log::{info, trace, warn};
-use orca::ir::types::{Global as OrcaGlobal, Value as OrcaValue};
-use orca::{FunctionBuilder, InitExpr, Opcode};
+use log::{debug, info, trace, warn};
+use orca::ir::types::Value as OrcaValue;
+use orca::ir::types::DataType as OrcaType;
+use orca::InitExpr;
+use orca::ir::id::FunctionID;
 use std::collections::HashMap;
-use wasmparser::ValType;
+use orca::ir::function::FunctionBuilder;
 
 /// Serves as the first phase of instrumenting a module by setting up
 /// the groundwork.
@@ -23,15 +25,16 @@ use wasmparser::ValType;
 /// emit some compiler-provided functions and user-defined globals.
 /// This process should ideally be generic, made to perform a specific
 /// instrumentation technique by the Emitter field.
-pub struct InitGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
+pub struct InitGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> {
     pub emitter: ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f>,
     pub context_name: String,
     pub err: &'g mut ErrorGen,
+    pub injected_funcs: &'h mut Vec<FunctionID>,
 }
-impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
+impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
     pub fn run(&mut self, whamm: &mut Whamm) -> bool {
         // Reset the symbol table in the emitter just in case
-        self.emitter.reset_children();
+        self.emitter.reset_table();
         self.on_startup();
         // Generate globals and fns defined by `whamm` (this should modify the app_wasm)
         let is_success = self.visit_whamm(whamm);
@@ -55,7 +58,10 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
                         script_name.to_owned(),
                     ) {
                         Err(e) => self.err.add_error(*e),
-                        Ok(res) => is_success &= res,
+                        Ok(Some(fid)) => {
+                            self.injected_funcs.push(fid);
+                        }
+                        Ok(None) => is_success &= true,
                     }
                 } else {
                     match self
@@ -63,7 +69,10 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
                         .emit_global(name.clone(), global.ty.clone(), &global.value)
                     {
                         Err(e) => self.err.add_error(*e),
-                        Ok(res) => is_success &= res,
+                        Ok(Some(fid)) => {
+                            self.injected_funcs.push(fid);
+                        }
+                        Ok(None) => is_success &= true,
                     }
                 }
             }
@@ -112,10 +121,14 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
             "print_meta".to_string(),
         ];
         for lib_fn in lib_map_fns.iter() {
-            let id_option = self.emitter.app_wasm.get_fid_by_name(lib_fn);
+            let id_option = self
+                .emitter
+                .app_wasm
+                .functions
+                .get_local_fid_by_name(lib_fn);
             let id = match id_option {
-                Some(id_option) => id_option,
-                None => std::u32::MAX,
+                Some(id_option) => *id_option,
+                None => u32::MAX,
             };
             match self.emitter.table.get_curr_scope_mut() {
                 Some(_) => {
@@ -145,42 +158,41 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
     fn create_start(&mut self) {
         match self.emitter.app_wasm.start {
             Some(_) => {
-                info!("Start function already exists");
+                debug!("Start function already exists");
             }
             None => {
                 //time to make a start fn
                 info!("No start function found, creating one");
-                match self.emitter.app_wasm.get_fid_by_name("_start") {
+                match self
+                    .emitter
+                    .app_wasm
+                    .functions
+                    .get_local_fid_by_name("_start")
+                {
                     Some(_) => {
-                        info!("start function is _start");
+                        debug!("start function is _start");
                     }
                     None => {
                         let start_fn = FunctionBuilder::new(&[], &[]);
-                        let start_id = start_fn.finish(self.emitter.app_wasm);
+                        let start_id = start_fn.finish_module(self.emitter.app_wasm);
+                        self.injected_funcs.push(start_id);
                         self.emitter.app_wasm.start = Some(start_id);
-                        self.emitter.app_wasm.set_fn_name(
-                            start_id - self.emitter.app_wasm.num_import_func(),
-                            "start",
-                        );
-                    } //strcmp doesn't need to call add_export_fn so this probably doesnt either
-                      //in app_wasm, not sure if need to have it in the ST
+                        self.emitter
+                            .app_wasm
+                            .set_fn_name(start_id, "start".to_string());
+                    }
+                    //strcmp doesn't need to call add_export_fn so this probably doesn't either
+                    //in app_wasm, not sure if we need to have it in the ST
                 }
             }
         }
     }
+
     fn create_global_map_init(&mut self) {
         //make a global bool for whether to run the global_map_init fn
-        let starting_global = OrcaGlobal {
-            ty: wasmparser::GlobalType {
-                content_type: ValType::I32,
-                mutable: true,
-                shared: false,
-            },
-            init_expr: InitExpr::Value(OrcaValue::I32(1)),
-        };
         self.emitter.map_lib_adapter.init_bool_location =
-            self.emitter.app_wasm.add_global(starting_global);
-        match self.emitter.app_wasm.get_fid_by_name("global_map_init") {
+            *self.emitter.app_wasm.add_global(InitExpr::Value(OrcaValue::I32(1)), OrcaType::I32, true, false);
+        match self.emitter.app_wasm.functions.get_local_fid_by_name("global_map_init") {
             Some(_) => {
                 println!("global_map_init function already exists");
                 self.err.add_error(ErrorGen::get_unexpected_error(
@@ -196,16 +208,16 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
                 //time to make a global_map_init fn
                 println!("No global_map_init function found, creating one");
                 let global_map_init_fn = FunctionBuilder::new(&[], &[]);
-                let global_map_init_id = global_map_init_fn.finish(self.emitter.app_wasm);
+                let global_map_init_id = global_map_init_fn.finish_module(self.emitter.app_wasm);
                 self.emitter.app_wasm.set_fn_name(
-                    global_map_init_id - self.emitter.app_wasm.num_import_func(),
-                    "global_map_init",
+                    global_map_init_id,
+                    "global_map_init".to_string(),
                 );
             }
         }
     }
 }
-impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
+impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
     fn visit_whamm(&mut self, whamm: &mut Whamm) -> bool {
         trace!("Entering: CodeGenerator::visit_whamm");
         self.context_name = "whamm".to_string();
@@ -378,7 +390,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
             self.err.add_error(*e)
         }
         // let mut is_success = self.emitter.emit_probe(probe);
-        self.context_name += &format!(":{}", probe.mode_name());
+        self.context_name += &format!(":{}", probe.mode().name());
         let mut is_success = true;
 
         // visit fns
@@ -422,7 +434,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
             // Only emit the functions that will be used dynamically!
             match self.emitter.emit_fn(&self.context_name, f) {
                 Err(e) => self.err.add_error(*e),
-                Ok(res) => is_success = res,
+                Ok(res) => self.injected_funcs.push(res),
             }
         } else {
             // user provided function, visit the body to ensure
@@ -567,7 +579,13 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_> {
                 });
                 is_success
             }
-            Value::Integer { .. } | Value::Boolean { .. } => {
+            Value::U32 { .. }
+            | Value::I32 { .. }
+            | Value::F32 { .. }
+            | Value::U64 { .. }
+            | Value::I64 { .. }
+            | Value::F64 { .. }
+            | Value::Boolean { .. } => {
                 // ignore, will not have a string to emit
                 true
             }

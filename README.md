@@ -17,6 +17,16 @@ Take a look at the official [`whamm!` book](https://ejrgilbert.github.io/whamm/i
 
 ### Build ###
 
+Get [`orca`](https://github.com/thesuhas/orca), should be in parent directory at `../orca` (see Cargo.toml):
+```shell
+# Inside base directory of this project
+cd ..
+git clone git@github.com:thesuhas/orca.git
+cd orca
+git checkout DO_NOT_DELETE/whamm_dependency
+cd ../whamm
+```
+
 To run basic build:
 ```shell
 cargo build

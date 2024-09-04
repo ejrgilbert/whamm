@@ -5,11 +5,8 @@ use glob::{glob, glob_with};
 
 use crate::common::error::ErrorGen;
 use crate::parser::print_visitor::AsStrVisitor;
+use crate::parser::rules::core::WhammModeKind;
 use log::{debug, error, info, warn};
-
-// =================
-// = Setup Logging =
-// =================
 
 pub fn setup_logger() {
     let _ = env_logger::builder().is_test(true).try_init();
@@ -243,6 +240,59 @@ wasm:opcode:br:before {
     "wasm:opcode:call:alt { i32 arg; }",
     "wasm:opcode:call:alt { arg = 1; }",
     "wasm:opcode:call:alt { arg0 = 1; }",
+    //using tuples
+    r#"
+        (i32, i32) sample = (1, 2);
+        dummy_fn() {
+            a = strcmp(sample, "bookings");
+            strcmp((arg0, arg1), "bookings");
+        }
+        i32 i;
+        i = 5; 
+        i32 j = 5;
+        BEGIN{
+            strcmp((arg0, arg1), "bookings");
+        }
+    "#,
+    // numerics
+    "wasm:opcode:call:alt { i32 num = 0; }",
+    // trigger available modes per event
+    "wasm:opcode:*:before {}",
+    "wasm:opcode:br*:before {}",
+    "wasm:opcode:unreachable:before {}",
+    "wasm:opcode:unreachable:alt {}",
+    "wasm:opcode:nop:before {}",
+    "wasm:opcode:nop:after {}",
+    "wasm:opcode:nop:alt {}",
+    "wasm:opcode:block:before {}",
+    "wasm:opcode:block:after {}",
+    "wasm:opcode:block:alt {}",
+    "wasm:opcode:block:entry {}",
+    "wasm:opcode:block:exit {}",
+    "wasm:opcode:_loop:before {}",
+    "wasm:opcode:_loop:after {}",
+    "wasm:opcode:_loop:alt {}",
+    "wasm:opcode:_loop:entry {}",
+    "wasm:opcode:_loop:exit {}",
+    "wasm:opcode:_if:before {}",
+    "wasm:opcode:_if:after {}",
+    "wasm:opcode:_if:alt {}",
+    "wasm:opcode:_if:entry {}",
+    "wasm:opcode:_if:exit {}",
+    "wasm:opcode:_else:before {}",
+    "wasm:opcode:_else:after {}",
+    "wasm:opcode:_else:alt {}",
+    "wasm:opcode:_else:entry {}",
+    "wasm:opcode:_else:exit {}",
+    "wasm:opcode:end:before {}",
+    "wasm:opcode:end:after {}",
+    "wasm:opcode:br:before {}",
+    "wasm:opcode:br:after {}",
+    "wasm:opcode:br:alt {}",
+    "wasm:opcode:br:at_target {}",
+    "wasm:opcode:call:before {}",
+    "wasm:opcode:call:after {}",
+    "wasm:opcode:call:alt {}",
 ];
 
 const FATAL_SCRIPTS: &[&str] = &[
@@ -251,6 +301,31 @@ const FATAL_SCRIPTS: &[&str] = &[
 core::br:before / i == 1 / { i = 0; }  // SHOULD FAIL HERE
 
     "#,
+    // Numerics (not supported yet: https://github.com/ejrgilbert/whamm/issues/141)
+    "wasm:opcode:call:alt { u32 num = 0; }",
+    "wasm:opcode:call:alt { i64 num = 0; }",
+    // trigger unavailable modes per event
+    "wasm:opcode:unreachable:after {}",
+    "wasm:opcode:unreachable:at_target {}",
+    "wasm:opcode:unreachable:entry {}",
+    "wasm:opcode:unreachable:exit {}",
+    "wasm:opcode:nop:at_target {}",
+    "wasm:opcode:nop:semantic_after {}",
+    "wasm:opcode:nop:entry {}",
+    "wasm:opcode:nop:exit {}",
+    "wasm:opcode:end:alt {}",
+    "wasm:opcode:end:at_target {}",
+    "wasm:opcode:end:entry {}",
+    "wasm:opcode:end:exit {}",
+    "wasm:opcode:br:entry {}",
+    "wasm:opcode:br:exit {}",
+    "wasm:opcode:call:at_target {}",
+    "wasm:opcode:call:entry {}",
+    "wasm:opcode:call:exit {}",
+    "wasm:opcode:block:at_target {}",
+    "wasm:opcode:_loop:at_target {}",
+    "wasm:opcode:_if:at_target {}",
+    "wasm:opcode:_else:at_target {}",
 ];
 
 const INVALID_SCRIPTS: &[&str] = &[
@@ -351,7 +426,7 @@ map<i32, i32> arg0;
         }
     "#,
 ];
-const SPECIAL: &[&str] = &["BEGIN { }", "END { }", "wasm:::alt { }", "wasm:::alt { }"];
+const SPECIAL: &[&str] = &["BEGIN { }", "END { }", "wasm:::alt { }"];
 
 // ====================
 // = Helper Functions =
@@ -515,14 +590,14 @@ wasm::call:alt /
     assert_eq!(1, script.providers.len());
     let provider = script.providers.get("wasm").unwrap();
     assert_eq!("wasm", provider.name());
-    assert_eq!(0, provider.get_provided_globals().len());
+    assert_eq!(3, provider.get_provided_globals().len());
     assert_eq!(0, provider.get_provided_fns().len());
 
     assert_eq!(1, provider.len_packages());
     let package = provider.packages().next().unwrap();
     assert_eq!("opcode", package.name());
-    assert_eq!(1, package.get_provided_globals().len());
-    assert_eq!(0, package.get_provided_fns().len());
+    assert_eq!(0, package.get_provided_globals().len());
+    assert_eq!(1, package.get_provided_fns().len());
 
     assert_eq!(1, package.len_events());
     let event = package.events().next().unwrap();
@@ -536,7 +611,7 @@ wasm::call:alt /
     let probe = event.probes().get("alt").unwrap().first().unwrap();
     assert_eq!(0, probe.get_mode_provided_globals().len());
     assert_eq!(0, probe.get_mode_provided_fns().len());
-    assert_eq!("alt", probe.mode_name());
+    assert_eq!(WhammModeKind::Alt, probe.mode());
 
     // probe predicate
     assert!(probe.predicate().is_some());
@@ -603,7 +678,11 @@ pub fn testing_block() {
             strcmp((arg0, arg1), "bookings");
         }
         BEGIN{
-            strcmp((arg0, arg1), "bookings");
+            if (0 == 1) {
+                strcmp((arg0, arg1), "bookings");
+            } else {
+                dummy_fn();
+            };
         }
     
     "#;
@@ -624,9 +703,8 @@ pub fn testing_global_def() {
         i = 5; 
         i32 j = 5;
         BEGIN{
-            strcmp((arg0, arg1), "bookings");
+            strcmp((i, j), "bookings");
         }
-    
     "#;
 
     assert!(is_valid_script(script, &mut err));
@@ -655,6 +733,7 @@ pub fn test_report_decl() {
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
         i32 a;
+        report i32 c;
         wasm::br:before {
             a = 1;
             report bool b;

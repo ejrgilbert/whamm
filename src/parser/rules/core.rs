@@ -1,9 +1,12 @@
+use crate::common::terminal::{long_line, white};
+use crate::for_each_mode;
 use crate::parser::rules::{
-    event_factory, mode_factory, print_mode_docs, Event, EventInfo, FromStr, Mode, ModeInfo,
+    event_factory, print_mode_docs, Event, EventInfo, FromStr, FromStrWithLoc, Mode, ModeInfo,
     NameOptions, Package, PackageInfo, Probe,
 };
 use crate::parser::types::{Block, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal};
 use std::collections::HashMap;
+use std::mem::discriminant;
 use termcolor::Buffer;
 
 pub enum CorePackageKind {
@@ -28,9 +31,9 @@ impl NameOptions for CorePackage {
         vec!["default".to_string()]
     }
 }
-impl FromStr for CorePackage {
-    fn from_str(name: String, loc: Option<Location>) -> Self {
-        match name.as_str() {
+impl FromStrWithLoc for CorePackage {
+    fn from_str(name: &str, loc: Option<Location>) -> Self {
+        match name {
             "default" => Self::default(loc),
             _ => panic!("unsupported CorePackage: {name}"),
         }
@@ -88,8 +91,9 @@ impl Package for CorePackage {
         )
     }
 
-    fn print_event_docs(
+    fn print_event_and_mode_docs(
         &self,
+        probe_spec: &ProbeSpec,
         print_globals: bool,
         print_functions: bool,
         tabs: &mut usize,
@@ -103,18 +107,7 @@ impl Package for CorePackage {
                 tabs,
                 buffer,
             );
-        }
-    }
-
-    fn print_mode_docs(
-        &self,
-        print_globals: bool,
-        print_functions: bool,
-        tabs: &mut usize,
-        buffer: &mut Buffer,
-    ) {
-        for (.., event) in self.info.events.iter() {
-            event.print_mode_docs(print_globals, print_functions, tabs, buffer);
+            event.print_mode_docs(probe_spec, print_globals, print_functions, tabs, buffer);
         }
     }
 
@@ -176,9 +169,9 @@ impl NameOptions for CoreEvent {
         vec!["default".to_string()]
     }
 }
-impl FromStr for CoreEvent {
-    fn from_str(name: String, loc: Option<Location>) -> Self {
-        match name.as_str() {
+impl FromStrWithLoc for CoreEvent {
+    fn from_str(name: &str, loc: Option<Location>) -> Self {
+        match name {
             "default" => Self::default(loc),
             _ => panic!("unsupported CoreEvent: {name}"),
         }
@@ -193,6 +186,10 @@ impl CoreEvent {
         Self {
             kind: CoreEventKind::Default,
             info: EventInfo {
+                supported_modes: HashMap::from([
+                    (WhammModeKind::Begin.name(), WhammModeKind::Begin),
+                    (WhammModeKind::End.name(), WhammModeKind::End),
+                ]),
                 docs: "".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
@@ -205,6 +202,10 @@ impl CoreEvent {
 impl Event for CoreEvent {
     fn name(&self) -> String {
         self.kind.name()
+    }
+
+    fn supported_modes(&self) -> &HashMap<String, WhammModeKind> {
+        &self.info.supported_modes
     }
 
     fn loc(&self) -> &Option<Location> {
@@ -225,17 +226,34 @@ impl Event for CoreEvent {
 
     fn print_mode_docs(
         &self,
+        probe_spec: &ProbeSpec,
         print_globals: bool,
         print_functions: bool,
         tabs: &mut usize,
         buffer: &mut Buffer,
     ) {
+        if !self.info.probe_map.is_empty() {
+            // we've matched some modes
+            probe_spec.print_bold_mode(buffer);
+        }
+
         for (.., probes) in self.info.probe_map.iter() {
             if let Some(probe) = probes.iter().next() {
+                // check to see if we have an alias for this probe kind
+                let modes = self.supported_modes();
+                let mut alias = None;
+                for (kind_alias, kind) in modes {
+                    if discriminant(kind) == discriminant(&probe.mode()) {
+                        alias = Some(kind_alias);
+                    }
+                }
+
                 // only print out the docs for some probe type one time!
-                probe.print_mode_docs(print_globals, print_functions, tabs, buffer);
+                probe.print_mode_docs(alias, print_globals, print_functions, tabs, buffer);
             }
         }
+        long_line(buffer);
+        white(true, "\n\n".to_string(), buffer);
     }
 
     fn get_provided_fns(&self) -> &Vec<ProvidedFunction> {
@@ -250,92 +268,123 @@ impl Event for CoreEvent {
         &self.info.globals
     }
 
-    fn assign_matching_modes(
-        &mut self,
-        probe_spec: &ProbeSpec,
-        loc: Option<Location>,
-        predicate: Option<Expr>,
-        body: Option<Block>,
-    ) -> bool {
-        let mut matched_modes = false;
-        let probes = self.probes_mut();
-        let modes: Vec<Box<CoreMode>> = mode_factory(probe_spec, loc.clone());
-        for mode in modes {
-            matched_modes = true;
-            let modes = probes.entry(mode.name()).or_default();
-            modes.push(Box::new(CoreProbe::new(
-                *mode,
-                loc.clone(),
-                predicate.clone(),
-                body.clone(),
-            )));
-        }
-        matched_modes
-    }
+    // fn assign_matching_modes(
+    //     &mut self,
+    //     probe_spec: &ProbeSpec,
+    //     loc: Option<Location>,
+    //     predicate: Option<Expr>,
+    //     body: Option<Block>,
+    // ) -> bool {
+    //     let mut matched_modes = false;
+    //     let modes: Vec<Box<WhammMode>> = mode_factory(&self.info.supported_modes, probe_spec, loc.clone());
+    //     let probes = self.probes_mut();
+    //     for mode in modes {
+    //         matched_modes = true;
+    //         let modes = probes.entry(mode.name()).or_default();
+    //         modes.push(Box::new(WhammProbe::new(
+    //             *mode,
+    //             loc.clone(),
+    //             predicate.clone(),
+    //             body.clone(),
+    //         )));
+    //     }
+    //     matched_modes
+    // }
 }
 
-pub enum CoreModeKind {
-    Begin,
-    End,
-}
-impl CoreModeKind {
-    fn name(&self) -> String {
-        match self {
-            Self::Begin => "begin".to_string(),
-            Self::End => "end".to_string(),
+// The supported modes
+macro_rules! define_mode {
+($($mode:ident, $name:ident, $docs:expr)*) => {
+    /// The modes available to use as instrumentation rules.
+    #[derive(Clone, Debug, Eq, Hash, PartialEq)]
+    pub enum WhammModeKind {
+        $(
+            $mode,
+        )*
+    }
+    impl FromStr for WhammModeKind {
+        fn from_str(name: &str) -> Self {
+            match name {
+                $(stringify!($name) => Self::$mode,)*
+                 _ => panic!("unsupported WhammModeKind: {name}"),
+            }
         }
     }
-}
+    impl WhammModeKind {
+        pub fn name(&self) -> String {
+            match self {
+                $(
+                    Self::$mode {..} => stringify!($name).to_string(),
+                )*
+            }
+        }
 
-pub struct CoreMode {
-    kind: CoreModeKind,
-    info: ModeInfo,
-}
-impl NameOptions for CoreMode {
-    fn get_name_options() -> Vec<String> {
-        // Violates DRY principle, but works for now.
-        // Maybe make this better some other time.
-        vec!["begin".to_string(), "end".to_string()]
-    }
-}
-impl FromStr for CoreMode {
-    fn from_str(name: String, loc: Option<Location>) -> Self {
-        match name.as_str() {
-            "begin" => Self::begin(loc),
-            "end" => Self::end(loc),
-            _ => panic!("unsupported CoreMode: {name}"),
+        pub fn default_modes() -> HashMap<String, Self> {
+            HashMap::from([
+                (Self::Before.name(), Self::Before),
+                (Self::After.name(), Self::After),
+                (Self::Alt.name(), Self::Alt),
+            ])
+        }
+        pub fn default_modes_no_alt() -> HashMap<String, Self> {
+            let mut defaults = Self::default_modes();
+            defaults.remove(&Self::Alt.name());
+            defaults
+        }
+        pub fn all_modes() -> HashMap<String, Self> {
+            HashMap::from([
+                $(
+                    (stringify!($name).to_string(), Self::$mode),
+                )*
+            ])
         }
     }
-}
-impl CoreMode {
-    // ======================
-    // ---- Constructors ----
-    // ======================
 
-    fn begin(loc: Option<Location>) -> Self {
-        Self {
-            kind: CoreModeKind::Begin,
-            info: ModeInfo {
-                docs: "Run this logic on application startup.".to_string(),
-                fns: vec![],
-                globals: HashMap::new(),
-                loc,
-            },
+    /// The base modes provided by `whamm!` for an Event, these can be changed if desired.
+    /// To do so, the type of enum for a Probe's possible modes will need to be changed.
+    /// This means the Event's probes HashMap will need to point to a custom Probe type.
+    pub struct WhammMode {
+        kind: WhammModeKind,
+        info: ModeInfo,
+    }
+    impl NameOptions for WhammMode {
+        fn get_name_options() -> Vec<String> {
+            vec![
+                $(stringify!($name).to_string()),*
+            ]
         }
     }
-    fn end(loc: Option<Location>) -> Self {
-        Self {
-            kind: CoreModeKind::End,
-            info: ModeInfo {
-                docs: "Run this logic when the application exits.".to_string(),
-                fns: vec![],
-                globals: HashMap::new(),
-                loc,
-            },
+    impl FromStrWithLoc for WhammMode {
+        fn from_str(name: &str, loc: Option<Location>) -> Self {
+            match name {
+                $(stringify!($name) => Self::$name(loc),)*
+                 _ => panic!("unsupported WhammMode: {name}"),
+            }
         }
     }
-}
-impl Mode for CoreMode {
+    impl WhammMode {
+        // ======================
+        // ---- Constructors ----
+        // ======================
+
+        $(
+        fn $name(loc: Option<Location>) -> Self {
+            Self {
+                kind: WhammModeKind::$mode,
+                info: ModeInfo {
+                    docs: $docs.to_string(),
+                    fns: vec![],
+                    globals: HashMap::new(),
+                    loc
+                }
+            }
+        }
+        )*
+    }
+};}
+for_each_mode!(define_mode);
+
+impl Mode for WhammMode {
     fn name(&self) -> String {
         self.kind.name()
     }
@@ -356,16 +405,18 @@ impl Mode for CoreMode {
         &self.info.globals
     }
 }
-#[allow(dead_code)] //because locations in CoreProbes may be useful for errors later
-struct CoreProbe {
-    pub mode: CoreMode,
+
+/// The base definition of a probe for `whamm!`.
+/// This can be customized if desired.
+pub struct WhammProbe {
+    pub mode: WhammMode,
     pub loc: Option<Location>,
     pub predicate: Option<Expr>,
     pub body: Option<Block>,
 }
-impl Probe for CoreProbe {
-    fn mode_name(&self) -> String {
-        self.mode.name()
+impl Probe for WhammProbe {
+    fn mode(&self) -> WhammModeKind {
+        self.mode.kind.clone()
     }
     fn predicate(&self) -> &Option<Expr> {
         &self.predicate
@@ -384,12 +435,20 @@ impl Probe for CoreProbe {
 
     fn print_mode_docs(
         &self,
+        alias: Option<&String>,
         print_globals: bool,
         print_functions: bool,
         tabs: &mut usize,
         buffer: &mut Buffer,
     ) {
-        print_mode_docs(&self.mode, print_globals, print_functions, tabs, buffer);
+        print_mode_docs(
+            alias,
+            &self.mode,
+            print_globals,
+            print_functions,
+            tabs,
+            buffer,
+        );
     }
 
     fn get_mode_provided_fns(&self) -> &Vec<ProvidedFunction> {
@@ -404,9 +463,9 @@ impl Probe for CoreProbe {
         self.mode.get_provided_globals()
     }
 }
-impl CoreProbe {
-    fn new(
-        mode: CoreMode,
+impl WhammProbe {
+    pub(crate) fn new(
+        mode: WhammMode,
         loc: Option<Location>,
         predicate: Option<Expr>,
         body: Option<Block>,

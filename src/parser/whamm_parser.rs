@@ -566,7 +566,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
             let var_id_line_col = LineColLocation::from(var_id_rule.as_span());
             let var_id: Expr;
             let mut key_assigned: Expr = Expr::Primitive {
-                val: Value::Integer {
+                val: Value::I32 {
                     ty: DataType::I32,
                     val: 0,
                 },
@@ -671,7 +671,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                     path: None,
                 }),
             };
-            let val = Value::Integer {
+            let val = Value::I32 {
                 ty: DataType::I32,
                 val: 1,
             };
@@ -721,7 +721,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                     path: None,
                 }),
             };
-            let val = Value::Integer {
+            let val = Value::I32 {
                 ty: DataType::I32,
                 val: 1,
             };
@@ -959,7 +959,87 @@ fn type_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> DataType {
     trace!("Entering type_from_rule");
     // TYPE = _{ TY_I32 | TY_BOOL | TY_STRING | TY_TUPLE | TY_MAP }
     return match pair.as_rule() {
+        Rule::TY_U32 => {
+            err.parse_error(
+                true,
+                Some("u32 not supported yet, see Issue #29: https://github.com/ejrgilbert/whamm/issues/141".to_string()),
+                Some(LineColLocation::from(pair.as_span())),
+                vec![
+                    Rule::TY_I32,
+                    Rule::TY_BOOL,
+                    Rule::TY_STRING,
+                    Rule::TY_TUPLE,
+                    Rule::TY_MAP,
+                ],
+                vec![pair.as_rule()],
+            );
+            DataType::U32
+        }
         Rule::TY_I32 => DataType::I32,
+        Rule::TY_F32 => {
+            err.parse_error(
+                true,
+                Some("f32 not supported yet, see Issue #29: https://github.com/ejrgilbert/whamm/issues/141".to_string()),
+                Some(LineColLocation::from(pair.as_span())),
+                vec![
+                    Rule::TY_I32,
+                    Rule::TY_BOOL,
+                    Rule::TY_STRING,
+                    Rule::TY_TUPLE,
+                    Rule::TY_MAP,
+                ],
+                vec![pair.as_rule()],
+            );
+            DataType::F32
+        }
+        Rule::TY_U64 => {
+            err.parse_error(
+                true,
+                Some("u64 not supported yet, see Issue #29: https://github.com/ejrgilbert/whamm/issues/141".to_string()),
+                Some(LineColLocation::from(pair.as_span())),
+                vec![
+                    Rule::TY_I32,
+                    Rule::TY_BOOL,
+                    Rule::TY_STRING,
+                    Rule::TY_TUPLE,
+                    Rule::TY_MAP,
+                ],
+                vec![pair.as_rule()],
+            );
+            DataType::U64
+        }
+        Rule::TY_I64 => {
+            err.parse_error(
+                true,
+                Some("i64 not supported yet, see Issue #29: https://github.com/ejrgilbert/whamm/issues/141".to_string()),
+                Some(LineColLocation::from(pair.as_span())),
+                vec![
+                    Rule::TY_I32,
+                    Rule::TY_BOOL,
+                    Rule::TY_STRING,
+                    Rule::TY_TUPLE,
+                    Rule::TY_MAP,
+                ],
+                vec![pair.as_rule()],
+            );
+            DataType::I64
+        }
+        Rule::TY_F64 => {
+            err.parse_error(
+                true,
+                Some("f64 not supported yet, see Issue #29: https://github.com/ejrgilbert/whamm/issues/141".to_string()),
+                Some(LineColLocation::from(pair.as_span())),
+                vec![
+                    Rule::TY_I32,
+                    Rule::TY_BOOL,
+                    Rule::TY_STRING,
+                    Rule::TY_TUPLE,
+                    Rule::TY_MAP,
+                ],
+                vec![pair.as_rule()],
+            );
+            DataType::F64
+        }
         Rule::TY_BOOL => DataType::Boolean,
         Rule::TY_STRING => DataType::Str,
         Rule::TY_TUPLE => {
@@ -994,7 +1074,12 @@ fn type_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> DataType {
                 Some(UNEXPECTED_ERR_MSG.to_string()),
                 Some(LineColLocation::from(pair.as_span())),
                 vec![
+                    Rule::TY_U32,
                     Rule::TY_I32,
+                    Rule::TY_F32,
+                    Rule::TY_U64,
+                    Rule::TY_I64,
+                    Rule::TY_F64,
                     Rule::TY_BOOL,
                     Rule::TY_STRING,
                     Rule::TY_TUPLE,
@@ -1174,14 +1259,30 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                 }),
             })
         }
-        Rule::I32 => {
-            trace!("Entering I32");
+        Rule::INT => {
+            trace!("Entering NUM");
             let val = pair.as_str().parse::<i32>().unwrap();
 
-            trace!("Exiting I32");
+            trace!("Exiting NUM");
             return Ok(Expr::Primitive {
-                val: Value::Integer {
+                val: Value::I32 {
                     ty: DataType::I32,
+                    val,
+                },
+                loc: Some(Location {
+                    line_col: LineColLocation::from(pair.as_span()),
+                    path: None,
+                }),
+            });
+        }
+        Rule::DEC => {
+            trace!("Entering DEC");
+            let val = pair.as_str().parse::<f32>().unwrap();
+
+            trace!("Exiting DEC");
+            return Ok(Expr::Primitive {
+                val: Value::F32 {
+                    ty: DataType::F32,
                     val,
                 },
                 loc: Some(Location {

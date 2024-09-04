@@ -1,0 +1,10 @@
+Map<String, usize> counts;
+
+// `*` matches all pc's, which effectively instruments every opcode.
+wasm:pc:*:before {
+    // `opcode_name` is a provided global which equals the name of the opcode at the current pc
+    counts[opcode_name]++;
+}
+
+// if they wanted to do “every other loc”, they could use the predicate, e.g.:
+// wasm:pc:*:before / pc % 2 == 0 / { .. }

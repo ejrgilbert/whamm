@@ -1,13 +1,12 @@
-use std::vec;
-
 use crate::common::error::ErrorGen;
-use crate::parser::rules::{Event, Package, Probe, Provider};
+use crate::parser::rules::{Event, Package, Probe, Provider, UNKNOWN_IMMS};
 use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Fn, Location, Script, Statement, UnOp, Value, Whamm,
     WhammVisitorMut,
 };
 use crate::verifier::builder_visitor::SymbolTableBuilder;
 use crate::verifier::types::{Record, SymbolTable};
+use std::vec;
 
 const UNEXPECTED_ERR_MSG: &str =
     "TypeChecker: Looks like you've found a bug...please report this behavior! Exiting now...";
@@ -153,7 +152,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
     }
 
     fn visit_provider(&mut self, provider: &mut Box<dyn Provider>) -> Option<DataType> {
-        let _ = self.table.enter_scope();
+        let _ = self.table.enter_named_scope(&provider.name());
 
         provider.packages_mut().for_each(|package| {
             self.visit_package(package);
@@ -164,7 +163,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
     }
 
     fn visit_package(&mut self, package: &mut dyn Package) -> Option<DataType> {
-        let _ = self.table.enter_scope();
+        let _ = self.table.enter_named_scope(&package.name());
 
         package.events_mut().for_each(|event| {
             self.visit_event(event);
@@ -176,7 +175,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
     }
 
     fn visit_event(&mut self, event: &mut dyn Event) -> Option<DataType> {
-        let _ = self.table.enter_scope();
+        let _ = self.table.enter_named_scope(&event.name());
 
         event.probes_mut().iter_mut().for_each(|(_, probe)| {
             probe.iter_mut().for_each(|probe| {
@@ -190,7 +189,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
     }
 
     fn visit_probe(&mut self, probe: &mut Box<dyn Probe>) -> Option<DataType> {
-        let _ = self.table.enter_scope();
+        let _ = self.table.enter_named_scope(&(*probe).mode().name());
 
         // type check predicate
         if let Some(predicate) = &mut probe.predicate_mut() {
@@ -315,8 +314,17 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 let lhs_ty_op = self.visit_expr(var_id);
                 let rhs_ty_op = self.visit_expr(expr);
 
+                // TODO -- conversion between numbers here?
                 if let (Some(lhs_ty), Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {
                     if lhs_ty == rhs_ty {
+                        None
+                    } else if (lhs_ty == DataType::U32 || lhs_ty == DataType::I32)
+                        && (rhs_ty == DataType::I32 || rhs_ty == DataType::U32)
+                    {
+                        // TODO -- make this typechecking actually verify that the values won't overflow!
+                        let loc = Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
+                        self.err.add_typecheck_warn(format!("Comparisons between U32/I32 values, possible overflow issue! \
+                                Future versions of whamm will verify this compatibility.\n lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty), Some(loc.line_col));
                         None
                     } else {
                         // using a struct in parser to merge two locations
@@ -510,6 +518,15 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         | BinOp::Modulo => {
                             if lhs_ty == DataType::I32 && rhs_ty == DataType::I32 {
                                 Some(DataType::I32)
+                            } else if (lhs_ty == DataType::U32 || lhs_ty == DataType::I32)
+                                && (rhs_ty == DataType::I32 || rhs_ty == DataType::U32)
+                            {
+                                // TODO -- make this typechecking actually verify that the values won't overflow!
+                                let loc =
+                                    Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
+                                self.err.add_typecheck_warn(format!("Comparisons between U32/I32 values, possible overflow issue! \
+                                Future versions of whamm will verify this compatibility.\n lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty), Some(loc.line_col));
+                                Some(DataType::I32)
                             } else {
                                 let loc =
                                     Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
@@ -537,6 +554,15 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         BinOp::EQ | BinOp::NE => {
                             if lhs_ty == rhs_ty {
                                 Some(DataType::Boolean)
+                            } else if (lhs_ty == DataType::U32 || lhs_ty == DataType::I32)
+                                && (rhs_ty == DataType::I32 || rhs_ty == DataType::U32)
+                            {
+                                // TODO -- make this typechecking actually verify that the values won't overflow!
+                                let loc =
+                                    Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
+                                self.err.add_typecheck_warn(format!("Comparisons between U32/I32 values, possible overflow issue! \
+                                Future versions of whamm will verify this compatibility.\n lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty), Some(loc.line_col));
+                                Some(DataType::Boolean)
                             } else {
                                 // using a struct in parser to merge two locations
                                 let loc =
@@ -552,6 +578,15 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         }
                         BinOp::GT | BinOp::LT | BinOp::GE | BinOp::LE => {
                             if lhs_ty == DataType::I32 && rhs_ty == DataType::I32 {
+                                Some(DataType::Boolean)
+                            } else if (lhs_ty == DataType::U32 || lhs_ty == DataType::I32)
+                                && (rhs_ty == DataType::I32 || rhs_ty == DataType::U32)
+                            {
+                                // TODO -- make this typechecking actually verify that the values won't overflow!
+                                let loc =
+                                    Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
+                                self.err.add_typecheck_warn(format!("Comparisons between U32/I32 values, possible overflow issue! \
+                                Future versions of whamm will verify this compatibility.\n lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty), Some(loc.line_col));
                                 Some(DataType::Boolean)
                             } else {
                                 // using a struct in parser to merge two locations
@@ -598,14 +633,31 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 loc.clone().map(|l| l.line_col),
                             )
                         }
-                    } else {
-                        self.err.type_check_error(
-                            false,
-                            format! {"Can't look up {} in symbol table", name},
-                            &loc.clone().map(|l| l.line_col),
-                        );
+                    }
+                } else {
+                    // check if this is an unknown immN!
+                    if name.starts_with("imm") {
+                        if let Some(id) = self.table.lookup(UNKNOWN_IMMS) {
+                            if let Some(rec) = self.table.get_record(id) {
+                                if let Record::Var { ty, .. } = rec {
+                                    return Some(ty.clone());
+                                } else {
+                                    // unexpected record type
+                                    self.err.unexpected_error(
+                                        true,
+                                        Some(UNEXPECTED_ERR_MSG.to_string()),
+                                        loc.clone().map(|l| l.line_col),
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
+                self.err.type_check_error(
+                    false,
+                    format! {"Can't look up {} in symbol table", name},
+                    &loc.clone().map(|l| l.line_col),
+                );
 
                 Some(DataType::AssumeGood)
             }
@@ -868,7 +920,12 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
 
     fn visit_value(&mut self, val: &mut Value) -> Option<DataType> {
         match val {
-            Value::Integer { .. } => Some(DataType::I32),
+            Value::U32 { .. } => Some(DataType::U32),
+            Value::I32 { .. } => Some(DataType::I32),
+            Value::F32 { .. } => Some(DataType::F32),
+            Value::U64 { .. } => Some(DataType::U64),
+            Value::I64 { .. } => Some(DataType::I64),
+            Value::F64 { .. } => Some(DataType::F64),
             Value::Str { .. } => Some(DataType::Str),
             Value::Boolean { .. } => Some(DataType::Boolean),
             Value::Tuple { ty: _, vals } => {

@@ -49,7 +49,12 @@ PROBE_SPEC = ${
 // ---- Types ----
 // ===============
 
+TY_U32 = @{ "u32" }
 TY_I32 = @{ "i32" }
+TY_F32 = @{ "f32" }
+TY_U64 = @{ "u64" }
+TY_I64 = @{ "i64" }
+TY_F64 = @{ "f64" }
 TY_BOOL = @{ "bool" }
 TY_STRING = @{ "str" }
 
@@ -58,7 +63,7 @@ TY_TUPLE = { "(" ~ ")"| "(" ~ TYPE ~ ( "," ~ TYPE )* ~ ")" }
 // first TYPE is the type of the key, second TYPE is the type of the value
 TY_MAP = { "map<" ~ TYPE ~ "," ~ TYPE ~ ">" }
 
-TYPE = _{ TY_I32 | TY_BOOL | TY_STRING | TY_TUPLE | TY_MAP }
+TYPE = _{ TY_U32 | TY_I32 | TY_F32 | TY_U64 | TY_I64 | TY_F64 | TY_BOOL | TY_STRING | TY_TUPLE | TY_MAP }
 
 // ====================
 // ---- Statements ----
@@ -96,7 +101,7 @@ prefix = _{ UNOP }
 UNOP = _{ neg }
     neg = { "!" }
 
-val = _{ BOOL | get_map | ID | I32 | STRING | tuple}
+val = _{ BOOL | get_map | ID | INT | DEC | STRING | tuple}
 operand = _{ fn_call | "(" ~ expr ~ ")" | val }
 
 tuple = { "(" ~ ")" | "(" ~ (val) ~ ( "," ~ val )* ~ ")" }
@@ -133,13 +138,17 @@ BINOP = _{ LOGOP | RELOP | SUMOP | MULOP }
 // ===================
 
 // TODO -- make sure that the binary/octal/hexadecimal formats are parsed correctly
-I32 = @{
+INT = @{
     "0x" ~ ASCII_HEX_DIGIT+ // Hexadecimal digit
     | "0b" ~ ASCII_BIN_DIGIT+ // Binary digit
     | "0" ~ ASCII_OCT_DIGIT+ // Octal digit
     | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT+ // Multiple digit, base 10
     | ASCII_DIGIT // Single digit, base 10 (account for having just '0')
     | "-" ~ ASCII_NONZERO_DIGIT ~ ASCII_DIGIT* //negative anything but 0
+}
+
+DEC = @{
+    ASCII_NONZERO_DIGIT ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT*
 }
 
 BOOL = @{

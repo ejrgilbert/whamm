@@ -34,6 +34,12 @@ pub enum Cmd {
         functions: bool,
     },
 
+    /// To run a `wast` test.
+    Wast {
+        /// The path to the `wast` file to run.
+        wast_path: String,
+    },
+
     /// To instrument a Wasm application.
     Instr(InstrArgs),
 }

@@ -1,4 +1,6 @@
-use crate::common::{run_whamm, setup_logger, try_path};
+#![allow(dead_code)]
+
+use crate::common::instr::{run, try_path};
 use log::{debug, error};
 use orca::Module;
 use std::fs::{remove_dir_all, File};
@@ -6,24 +8,42 @@ use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
+const TEST_DEBUG_DIR: &str = "output/tests/debug_me/";
 const OUTPUT_DIR: &str = "output/tests/wast_suite";
 const OUTPUT_WHAMMED_WAST: &str = "output/tests/wast_suite/should_pass";
 const OUTPUT_UNINSTR_WAST: &str = "output/tests/wast_suite/should_fail";
 
-pub fn main() -> Result<(), std::io::Error> {
-    setup_logger();
+pub fn run_all() -> Result<(), std::io::Error> {
     clean();
 
     // Find all the wast files to run as tests
     let wast_tests = find_wast_tests();
+    setup_and_run_tests(&wast_tests)?;
 
+    Ok(())
+}
+
+/// Clear out the previous test directory
+fn clean() {
+    remove_dir_all(Path::new(OUTPUT_DIR)).ok();
+}
+
+pub fn setup_and_run_tests(wast_tests: &Vec<PathBuf>) -> Result<(), std::io::Error> {
+    let (all_wast_should_fail, all_wast_should_pass) = setup(wast_tests)?;
+
+    // Now that we've generated the wast files, let's run them on the configured interpreters!
+    run_wast_tests(all_wast_should_fail, all_wast_should_pass);
+    Ok(())
+}
+
+fn setup(wast_tests: &Vec<PathBuf>) -> Result<(Vec<String>, Vec<String>), std::io::Error> {
     let mut all_wast_should_pass = vec![];
     let mut all_wast_should_fail = vec![];
     for test in wast_tests {
         let f = File::open(test.clone())?;
         let mut reader = BufReader::new(f);
 
-        let test_setup = get_test_setup(&mut reader, &test)?;
+        let test_setup = get_test_setup(&mut reader, test)?;
 
         // Get the `whamm!` scripts and corresponding test cases for this module
         let test_cases = get_test_cases(reader);
@@ -32,8 +52,7 @@ pub fn main() -> Result<(), std::io::Error> {
             test_case.print();
         }
 
-        // TODO -- retain original dir structure
-        match generate_should_fail_bin_wast(&test_setup, &test_cases, &test) {
+        match generate_should_fail_bin_wast(&test_setup, &test_cases, test) {
             Err(e) => {
                 panic!(
                     "Unable to write UN-instrumented wast file due to error: {:?}",
@@ -45,8 +64,7 @@ pub fn main() -> Result<(), std::io::Error> {
             }
         };
 
-        // TODO -- retain original dir structure
-        match generate_instrumented_bin_wast(&test_setup, &test_cases, &test) {
+        match generate_instrumented_bin_wast(&test_setup, &test_cases, test) {
             Err(e) => {
                 panic!(
                     "Unable to write instrumented wast file due to error: {:?}",
@@ -56,15 +74,7 @@ pub fn main() -> Result<(), std::io::Error> {
             Ok(mut files) => all_wast_should_pass.append(&mut files),
         };
     }
-
-    // Now that we've generated the wast files, let's run them on the configured interpreters!
-    run_wast_tests(all_wast_should_fail, all_wast_should_pass);
-    Ok(())
-}
-
-/// Clear out the previous test directory
-fn clean() {
-    remove_dir_all(Path::new(OUTPUT_DIR)).ok();
+    Ok((all_wast_should_fail, all_wast_should_pass))
 }
 
 fn run_wast_tests(wast_should_fail: Vec<String>, wast_should_pass: Vec<String>) {
@@ -74,7 +84,7 @@ fn run_wast_tests(wast_should_fail: Vec<String>, wast_should_pass: Vec<String>) 
         1. the wizeng interpreter, named '{WIZENG_SPEC_INT}'. https://github.com/titzer/wizard-engine/tree/master\n\
         2. the Wasm reference interpreter, named '{WASM_REF_INT}'. https://github.com/WebAssembly/spec/tree/main/interpreter\n");
 
-    println!("\n>>> available interpreters:");
+    println!("\n>>> Running wast on the following available interpreters:");
     for (i, inter) in inters.iter().enumerate() {
         println!("{i}. {inter}");
     }
@@ -86,6 +96,7 @@ fn run_wast_tests(wast_should_fail: Vec<String>, wast_should_pass: Vec<String>) 
 
 /// Run all the wast files that should FAIL on each of the configured interpreters
 fn run_wast_tests_that_should_fail(inters: &[String], wast_files: Vec<String>) {
+    debug!("Running wast tests that should fail.");
     for inter in inters.iter() {
         for wast in wast_files.iter() {
             let res = run_wast_test(inter, wast);
@@ -99,6 +110,7 @@ fn run_wast_tests_that_should_fail(inters: &[String], wast_files: Vec<String>) {
 
 /// Run all the wast files that should PASS on each of the configured interpreters
 fn run_wast_tests_that_should_pass(inters: &[String], wast_files: Vec<String>) {
+    debug!("Running wast tests that should pass.");
     for inter in inters.iter() {
         for wast in wast_files.iter() {
             let res = run_wast_test(inter, wast);
@@ -198,11 +210,21 @@ fn generate_instrumented_bin_wast(
         let buff = wat::parse_bytes(cloned_module.as_slice())
             .expect("couldn't convert the input wat to Wasm");
         let mut module_to_instrument = Module::parse(&buff, false).unwrap();
-        let instrumented_module_wasm = run_whamm(
+        // make sure that this is a valid file by running wasm2wat through CLI
+        let debug_file_path = format!(
+            "{TEST_DEBUG_DIR}/{}.wasm",
+            wast_path.file_name().unwrap().to_str().unwrap()
+        );
+        try_path(&debug_file_path);
+        let instrumented_module_wasm = run(
             &mut module_to_instrument,
             &test_case.whamm_script,
             &format!("{:?}", wast_path),
+            Some(debug_file_path.clone()),
+            0,
+            false,
         );
+        wasm2wat_on_file(debug_file_path.as_str());
 
         // create the wast
         // call.wast -> call.idx.bin.wast
@@ -326,7 +348,7 @@ struct WastTestSetup {
 /// (module <the actual targeted module to instrument>)
 fn get_test_setup(
     reader: &mut BufReader<File>,
-    file_path: &PathBuf,
+    file_path: &Path,
 ) -> Result<WastTestSetup, std::io::Error> {
     let mut mod_to_instr = false;
 
@@ -342,7 +364,7 @@ fn get_test_setup(
                 if module.is_empty() {
                     panic!(
                         "Could not find the Wasm module-to-instrument in the wast file: {:?}",
-                        file_path.clone()
+                        file_path
                     );
                 }
 
@@ -449,6 +471,7 @@ fn get_test_cases(reader: BufReader<File>) -> Vec<WastTestCase> {
                 str: line,
                 passes_uninstrumented: passes_uninstr,
             });
+            passes_uninstr = false;
         } else if line.starts_with(PASSES_UNINSTR_PATTERN) {
             passes_uninstr = true;
         }
@@ -510,4 +533,14 @@ pub fn vec_as_hex(vec: &[u8]) -> String {
     // closing quote
     res += "\"";
     res
+}
+
+pub fn wasm2wat_on_file(instrumented_wasm_path: &str) {
+    debug!("Running wasm2wat on file: {instrumented_wasm_path}");
+    let res = Command::new("wasm2wat")
+        .arg(instrumented_wasm_path)
+        .output()
+        .expect("failed to execute process");
+
+    assert!(res.status.success());
 }

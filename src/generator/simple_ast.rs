@@ -4,6 +4,7 @@ use parser_types::{Expr, Fn, Script, Statement, Whamm, WhammVisitor};
 use std::collections::HashMap;
 
 use crate::common::error::ErrorGen;
+use crate::parser::rules::core::WhammModeKind;
 use crate::parser::types::{BinOp, Block, DataType, UnOp, Value};
 use log::trace;
 
@@ -58,7 +59,7 @@ use log::trace;
 ///
 /// Note: This AST representation will only be used for bytecode rewriting, not when targeting Wizard.
 pub type SimpleAstProbes =
-    HashMap<String, HashMap<String, HashMap<String, HashMap<String, Vec<SimpleProbe>>>>>;
+    HashMap<String, HashMap<String, HashMap<String, HashMap<WhammModeKind, Vec<SimpleProbe>>>>>;
 #[derive(Clone, Debug)]
 pub struct SimpleProbe {
     pub script_id: String,
@@ -168,7 +169,7 @@ impl SimpleASTBuilder<'_, '_> {
         if let Some(provider) = self.ast.probes.get_mut(&self.curr_provider_name) {
             if let Some(package) = provider.get_mut(&self.curr_package_name) {
                 if let Some(event) = package.get_mut(&self.curr_event_name) {
-                    if let Some(probes) = event.get_mut(&probe.mode_name()) {
+                    if let Some(probes) = event.get_mut(&probe.mode()) {
                         probes.push(SimpleProbe::new(
                             self.script_id.clone(),
                             probe,
@@ -178,7 +179,7 @@ impl SimpleASTBuilder<'_, '_> {
                         self.probe_count += 1;
                     } else {
                         event.insert(
-                            probe.mode_name().clone(),
+                            probe.mode(),
                             vec![SimpleProbe::new(
                                 self.script_id.clone(),
                                 probe,

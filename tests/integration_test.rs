@@ -1,16 +1,18 @@
 mod common;
 
-use crate::common::{run_basic_instrumentation, run_whamm, run_whamm_bin, wasm2wat_on_file};
+use crate::common::{run_basic_instrumentation, run_whamm_bin};
 use orca::Module;
 use std::fs;
 use std::process::Command;
 use whamm::common::error::ErrorGen;
+use whamm::wast::test_harness::wasm2wat_on_file;
 
 const APP_WASM_PATH: &str = "tests/apps/dfinity/users.wasm";
 
 #[test]
 fn run_wast_tests() {
-    common::wast_harness::main().expect("WAST Tests failed!");
+    common::setup_logger();
+    whamm::wast::test_harness::run_all().expect("WAST Tests failed!");
 }
 
 /// This test just confirms that a wasm module can be instrumented with the preconfigured
@@ -25,10 +27,13 @@ fn instrument_dfinity_with_fault_injection() {
     for (script_path, script_text) in processed_scripts {
         let wasm = fs::read(APP_WASM_PATH).unwrap();
         let mut module_to_instrument = Module::parse(&wasm, false).unwrap();
-        let _ = run_whamm(
+        let _ = whamm::common::instr::run(
             &mut module_to_instrument,
             &script_text,
             &format!("{:?}", script_path.clone().as_path()),
+            None,
+            0,
+            false,
         );
         err.fatal_report("Integration Test");
     }

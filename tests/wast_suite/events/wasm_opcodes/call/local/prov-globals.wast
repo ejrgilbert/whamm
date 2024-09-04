@@ -49,11 +49,10 @@
 
 ;; -----------------------------------------------
 ;; ==== GLOBALS, predicate, `target_fn_name` ====
-;; TODO -- uncomment when we've merged in this PR: https://github.com/ejrgilbert/whamm/pull/112
-;;;; WHAMM --> i32 count; wasm:opcode:call:before / target_fn_name == "wrong" / { count++; }
-;;(assert_return (invoke "get_count") (i32.const 0)) ;; predicate is 'false'
-;;;; WHAMM --> i32 count; wasm:opcode:call:before / target_fn_name == "dummy_five_params" / { count++; }
-;;(assert_return (invoke "get_count") (i32.const 1)) ;; predicate is 'true'
+;; WHAMM --> i32 count; wasm:opcode:call:before / target_fn_name == "wrong" / { count++; }
+(assert_return (invoke "get_count") (i32.const 0)) ;; predicate is 'false'
+;; WHAMM --> i32 count; wasm:opcode:call:before / target_fn_name == "dummy_five_params" / { count++; }
+(assert_return (invoke "get_count") (i32.const 1)) ;; predicate is 'true'
 
 ;; -----------------------------------------
 ;; ==== GLOBALS, body, `target_fn_type` ====
@@ -69,8 +68,7 @@
 
 ;; ------------------------------------------
 ;; ==== GLOBALS, body, `target_fn_name` ====
-;; TODO -- uncomment when we've merged in this PR: https://github.com/ejrgilbert/whamm/pull/112
-;;;; WHAMM --> i32 count; wasm:opcode:call:before { count = target_fn_name == "wrong" ? 1 : 0; }
-;;(assert_return (invoke "get_count") (i32.const 0)) ;; condition is 'false'
-;;;; WHAMM --> i32 count; wasm:opcode:call:before { count = target_fn_name == "dummy_five_params" ? 1 : 0; }
-;;(assert_return (invoke "get_count") (i32.const 1)) ;; condition is 'true'
+;; WHAMM --> i32 count; wasm:opcode:call:before { count = target_fn_name == "wrong" ? 1 : 0; }
+(assert_return (invoke "get_count") (i32.const 0)) ;; condition is 'false'
+;; WHAMM --> i32 count; wasm:opcode:call:before { count = target_fn_name == "dummy_five_params" ? 1 : 0; }
+(assert_return (invoke "get_count") (i32.const 1)) ;; condition is 'true'

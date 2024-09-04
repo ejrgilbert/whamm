@@ -1,19 +1,22 @@
 use orca::ir::types::{BlockType as OrcaBlockType, Value as OrcaValue};
 use orca::iterator::iterator_trait::Iterator;
-use orca::Location as OrcaLocation;
+use orca::{Location as OrcaLocation, Location};
 use orca::{DataSegment, DataSegmentKind, InitExpr, Opcode};
 use std::collections::HashMap;
-
-use crate::common::error::{ErrorGen, WhammError};
+use std::iter::Iterator as StdIter;
+use orca::ir::id::{FunctionID, GlobalID};
+use orca::opcode::Instrumenter;
+use crate::common::error::ErrorGen;
 
 use crate::emitter::report_var_metadata::convert_meta_to_string;
 use crate::emitter::rewriting::module_emitter::StringAddr;
-use crate::emitter::rewriting::rules::{provider_factory, Arg, LocInfo, WhammProvider};
+use crate::emitter::rewriting::rules::{provider_factory, Arg, LocInfo, WhammProvider, ProbeSpec};
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::rewriting::Emitter;
 use crate::generator::simple_ast::{SimpleAST, SimpleProbe};
 use crate::generator::types::ExprFolder;
-use crate::parser::types::{Block, DataType, Expr, ProbeSpec, Statement};
+use crate::parser::rules::core::WhammModeKind;
+use crate::parser::types::{Block, DataType, Expr};
 
 const UNEXPECTED_ERR_MSG: &str =
     "InstrGenerator: Looks like you've found a bug...please report this behavior!";
@@ -36,7 +39,7 @@ pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub ast: SimpleAST,
     pub err: &'g mut ErrorGen,
     curr_instr_args: Vec<Arg>,
-    curr_probe_mode: String,
+    curr_probe_mode: WhammModeKind,
     /// The current probe's body and predicate
     curr_probe: Option<(Option<Block>, Option<Expr>)>,
 }
@@ -51,17 +54,21 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             ast,
             err,
             curr_instr_args: vec![],
-            curr_probe_mode: "".to_string(),
+            curr_probe_mode: WhammModeKind::Begin,
             curr_probe: None,
         }
     }
 
     pub fn configure_probe_mode(&mut self) -> bool {
-        // TODO -- make the probe mode an enum!
-        match self.curr_probe_mode.as_str() {
-            "before" => self.emitter.before(),
-            "after" => self.emitter.after(),
-            "alt" => self.emitter.alternate(),
+        // function entry/exit should be handled before this point!
+        match self.curr_probe_mode {
+            WhammModeKind::Before => self.emitter.before(),
+            WhammModeKind::After => self.emitter.after(),
+            WhammModeKind::Alt => self.emitter.alternate(),
+            WhammModeKind::SemanticAfter => self.emitter.semantic_after(),
+            WhammModeKind::Entry => self.emitter.block_entry(),
+            WhammModeKind::Exit => self.emitter.block_exit(),
+            WhammModeKind::BlockAlt => self.emitter.block_alt(),
             _ => return false,
         }
         true
@@ -69,7 +76,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
 
     pub fn run(&mut self) -> bool {
         // Reset the symbol table in the emitter just in case
-        self.emitter.reset_children();
+        self.emitter.reset_table();
 
         // Here we do the following logic:
         // 1. initialize the emitter rules
@@ -132,7 +139,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                         }
 
                         self.curr_instr_args = loc_info.args.clone(); // must clone so that this lives long enough
-                        self.curr_probe_mode = probe_spec.mode.as_ref().unwrap().name.clone();
+                        self.curr_probe_mode = probe_spec.mode.as_ref().unwrap().clone();
                         self.curr_probe = Some((body_clone, pred_clone));
 
                         // emit the probe (since the predicate is not false)
@@ -146,7 +153,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             });
         }
         // is_success &= self.after_run();
-
         is_success
     }
     fn set_curr_loc(&mut self, probe_spec: &ProbeSpec, probe: &SimpleProbe) {
@@ -165,14 +171,14 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             None => "".to_string(),
         };
         let curr_mode = match &probe_spec.mode {
-            Some(mode) => mode.name.clone(),
+            Some(mode) => mode.name().clone(),
             None => "".to_string(),
         };
         let curr_probe_id = format!(
             "{}_{}:{}:{}:{}",
             probe.probe_number, curr_provider, curr_package, curr_event, curr_mode
         );
-        let loc = match self.emitter.app_iter.curr_loc() {
+        let loc = match self.emitter.app_iter.curr_loc().0 {
             OrcaLocation::Module {
                 func_idx,
                 instr_idx,
@@ -182,7 +188,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 func_idx,
                 instr_idx,
                 ..
-            } => (func_idx as i32, instr_idx as i32),
+            } => (*func_idx, instr_idx as u32),
         };
         //set the current location in bytecode and load some new globals for potential report vars
         self.emitter.report_var_metadata.set_loc(
@@ -204,18 +210,22 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
         if self.pred_is_true() {
             // The predicate has been reduced to a 'true', emit un-predicated body
             self.emit_body();
-            if self.curr_probe_mode != "alt" {
+            if !matches!(self.curr_probe_mode, WhammModeKind::Alt) {
                 self.replace_args();
             }
         } else {
             // The predicate still has some conditionals (remember we already checked for
             // it being false in run() above)
-            match self.curr_probe_mode.as_str() {
-                "before" | "after" => {
+            match self.curr_probe_mode {
+                WhammModeKind::Before
+                | WhammModeKind::After
+                | WhammModeKind::SemanticAfter
+                | WhammModeKind::Entry
+                | WhammModeKind::Exit => {
                     is_success &= self.emit_probe_as_if();
                     self.replace_args();
                 }
-                "alt" => {
+                WhammModeKind::Alt => {
                     is_success &= self.emit_probe_as_if_else();
                 }
                 _ => {
@@ -223,7 +233,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
                         true,
                         Some(format!(
                             "{UNEXPECTED_ERR_MSG} Unexpected probe mode '{}'",
-                            self.curr_probe_mode
+                            self.curr_probe_mode.name()
                         )),
                         None,
                     );
@@ -272,13 +282,38 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
     }
 
     fn emit_body(&mut self) -> bool {
-        if let Some((Some(ref mut body), ..)) = self.curr_probe {
-            match self.emitter.emit_body(body) {
-                Err(e) => {
-                    self.err.add_error(*e);
+        if let Some((body, ..)) = &mut self.curr_probe {
+            if let Some(ref mut body) = body {
+                match self.emitter.emit_body(&self.curr_instr_args, body) {
+                    Err(e) => {
+                        self.err.add_error(*e);
+                        false
+                    }
+                    Ok(res) => res,
+                }
+            } else if body.is_none() {
+                if self.curr_probe_mode == WhammModeKind::Alt {
+                    match self.emitter.emit_empty_alternate() {
+                        Err(e) => {
+                            self.err.add_error(*e);
+                            false
+                        }
+                        Ok(res) => res,
+                    }
+                } else if self.curr_probe_mode == WhammModeKind::BlockAlt {
+                    match self.emitter.emit_empty_block_alt() {
+                        Err(e) => {
+                            self.err.add_error(*e);
+                            false
+                        }
+                        Ok(res) => res,
+                    }
+                } else {
+                    // no body to emit!
                     false
                 }
-                Ok(res) => res,
+            } else {
+                false
             }
         } else {
             false
@@ -287,7 +322,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
 
     fn emit_probe_as_if(&mut self) -> bool {
         if let Some((Some(ref mut body), Some(ref mut pred))) = self.curr_probe {
-            match self.emitter.emit_if(pred, body) {
+            match self.emitter.emit_if(&self.curr_instr_args, pred, body) {
                 Err(e) => {
                     self.err.add_error(*e);
                     false
@@ -301,7 +336,10 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
 
     fn emit_probe_as_if_else(&mut self) -> bool {
         if let Some((Some(ref mut body), Some(ref mut pred))) = self.curr_probe {
-            match self.emitter.emit_if_with_orig_as_else(pred, body) {
+            match self
+                .emitter
+                .emit_if_with_orig_as_else(&self.curr_instr_args, pred, body)
+            {
                 Err(e) => {
                     self.err.add_error(*e);
                     false
@@ -318,7 +356,8 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
             .emitter
             .app_iter
             .module
-            .get_fid_by_name("global_map_init")
+            .functions
+            .get_local_fid_by_name("global_map_init")
         {
             Some(to_call) => to_call,
             None => {
@@ -335,10 +374,10 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
         };
         self.emitter.before();
         let ref mut app_iter = self.emitter.app_iter;
-        app_iter.global_get(self.emitter.map_lib_adapter.init_bool_location);
+        app_iter.global_get(GlobalID(self.emitter.map_lib_adapter.init_bool_location));
         app_iter.if_stmt(OrcaBlockType::Empty);
         app_iter.i32_const(0);
-        app_iter.global_set(self.emitter.map_lib_adapter.init_bool_location);
+        app_iter.global_set(GlobalID(self.emitter.map_lib_adapter.init_bool_location));
         app_iter.call(to_call);
         app_iter.end();
     }
@@ -419,7 +458,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
             map_meta_str.insert(*key as i32, val);
         }
         //first, we need to create the maps in global_map_init - where all the other maps are initalized
-        let start_id = match module.get_fid_by_name("global_map_init") {
+        let start_id = match module.functions.get_local_fid_by_name("global_map_init") {
             Some(start_id) => start_id,
             None => {
                 self.err.add_error(ErrorGen::get_unexpected_error(
@@ -433,7 +472,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
                 return false;
             }
         };
-        let mut start_fn = match module.get_fn(start_id - module.num_import_func()) {
+        let mut start_fn = match module.functions.get_fn_modifier(start_id) {
             Some(start_fn) => start_fn,
             None => {
                 self.err.add_error(ErrorGen::get_unexpected_error(
@@ -448,7 +487,10 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
             }
         };
         //now set up the actual module editing
-        start_fn.before_at(0);
+        start_fn.before_at(Location::Module {
+            func_idx: start_id, // not used
+            instr_idx: 0,
+        });
         let create_i32_string = match self
             .emitter
             .map_lib_adapter
@@ -464,30 +506,29 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
             .emitter
             .table
             .lookup(&create_i32_string)
-            .expect("Map function not in symbol table")
-            .clone(); //clone to close the borrow
-                      //now create the maps
+            .expect("Map function not in symbol table");
+
+        //now create the maps
         start_fn.i32_const(0);
-        start_fn.call(to_call as u32);
+        start_fn.call(FunctionID(*to_call as u32));
         start_fn.i32_const(1);
-        start_fn.call(to_call as u32);
+        start_fn.call(FunctionID(*to_call as u32));
         //set "to_call" to the insert function
         to_call = self
             .emitter
             .table
             .lookup(&"insert_i32_string".to_string())
-            .expect("Map function not in symbol table")
-            .clone(); //clone to close the borrow
+            .expect("Map function not in symbol table"); //clone to close the borrow
 
         //now, for each of the maps, emit the correct stuff
         for (key, val) in var_meta_str.iter() {
             if let Some(val_addr) = self.emitter.mem_tracker.emitted_strings.get(val) {
                 //now, emit the map entry
                 start_fn.i32_const(0);
-                start_fn.i32_const(*key as i32);
+                start_fn.i32_const(*key);
                 start_fn.i32_const(val_addr.mem_offset as i32);
                 start_fn.i32_const(val_addr.len as i32);
-                start_fn.call(to_call as u32);
+                start_fn.call(FunctionID(*to_call as u32));
             } else {
                 self.err.add_error(ErrorGen::get_unexpected_error(
                     true,
@@ -506,7 +547,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
                 start_fn.i32_const(*key as i32);
                 start_fn.i32_const(val_addr.mem_offset as i32);
                 start_fn.i32_const(val_addr.len as i32);
-                start_fn.call(to_call as u32);
+                start_fn.call(FunctionID(*to_call as u32));
             } else {
                 self.err.add_error(ErrorGen::get_unexpected_error(
                     true,

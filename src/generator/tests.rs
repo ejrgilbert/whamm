@@ -16,7 +16,7 @@ pub fn setup_logger() {
 }
 
 fn get_rec<'a>(table: &'a mut SymbolTable, name: &str) -> Option<&'a mut Record> {
-    let var_rec_id = match table.lookup(&name.to_string()) {
+    let var_rec_id = match table.lookup(name) {
         Some(id) => *id,
         None => {
             error!("Variable symbol does not exist for name {}!", name);

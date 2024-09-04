@@ -3,19 +3,22 @@ use crate::emitter::map_lib_adapter::MapLibAdapter;
 use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::emitter::rewriting::rules::wasm::OpcodeEvent;
-use crate::emitter::rewriting::rules::{Arg, LocInfo, Provider, WhammProvider};
+use crate::emitter::rewriting::rules::{Arg, LocInfo, ProbeSpec, Provider, WhammProvider};
 use crate::emitter::rewriting::{block_type_to_wasm, emit_expr, whamm_type_to_wasm_global};
 use crate::emitter::rewriting::{emit_stmt, print_report_all, Emitter};
 
 use crate::generator::types::ExprFolder;
-use crate::parser::types::{Block, DataType, Definition, Expr, ProbeSpec, Statement, Value};
+use crate::parser;
+use crate::parser::rules::UNKNOWN_IMMS;
+use crate::parser::types::{Block, DataType, Definition, Expr, SpecPart, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
+use orca::ir::id::{FunctionID, LocalID, TypeID};
 use orca::ir::module::Module;
-use orca::ir::types::{BlockType as OrcaBlockType, Location as OrcaLocation};
-use orca::iterator::iterator_trait::Iterator as OrcaIterator;
+use orca::ir::types::BlockType as OrcaBlockType;
+use orca::iterator::iterator_trait::{IteratingInstrumenter, Iterator as OrcaIterator};
 use orca::iterator::module_iterator::ModuleIterator;
-use orca::opcode::Opcode;
-use orca::ModuleBuilder;
+use orca::module_builder::AddLocal;
+use orca::opcode::{Instrumenter, Opcode};
 use std::iter::Iterator;
 
 const UNEXPECTED_ERR_MSG: &str =
@@ -35,13 +38,14 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     // note: only used in integration test
     pub fn new(
         app_wasm: &'a mut Module<'b>,
+        injected_funcs: &Vec<FunctionID>,
         table: &'c mut SymbolTable,
         mem_tracker: &'d mut MemoryTracker,
         map_lib_adapter: &'e mut MapLibAdapter,
         report_var_metadata: &'f mut ReportVarMetadata,
     ) -> Self {
         let a = Self {
-            app_iter: ModuleIterator::new(app_wasm, vec![]),
+            app_iter: ModuleIterator::new(app_wasm, injected_funcs),
             table,
             mem_tracker,
             map_lib_adapter,
@@ -70,12 +74,39 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         self.app_iter.alternate();
     }
 
-    pub(crate) fn enter_scope_via_spec(&mut self, script_id: &str, probe_spec: &ProbeSpec) -> bool {
-        self.table.enter_scope_via_spec(script_id, probe_spec)
+    pub fn semantic_after(&mut self) {
+        self.app_iter.semantic_after();
     }
 
-    pub(crate) fn reset_children(&mut self) {
-        self.table.reset_children();
+    pub fn block_entry(&mut self) {
+        self.app_iter.block_entry();
+    }
+
+    pub fn block_exit(&mut self) {
+        self.app_iter.block_exit();
+    }
+
+    pub fn block_alt(&mut self) {
+        self.app_iter.block_alt();
+    }
+
+    pub(crate) fn enter_scope_via_spec(&mut self, script_id: &str, probe_spec: &ProbeSpec) -> bool {
+        self.table.enter_scope_via_spec(
+            script_id,
+            &parser::types::ProbeSpec {
+                provider: probe_spec.provider.clone(),
+                package: probe_spec.package.clone(),
+                event: probe_spec.event.clone(),
+                mode: Some(SpecPart {
+                    name: probe_spec.mode.as_ref().unwrap().name(),
+                    loc: None,
+                }),
+            },
+        )
+    }
+
+    pub(crate) fn reset_table(&mut self) {
+        self.table.reset();
     }
 
     pub(crate) fn curr_instr_name(&self) -> String {
@@ -87,8 +118,13 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     }
 
     pub(crate) fn get_loc_info<'g>(&self, rule: &'g WhammProvider) -> Option<LocInfo<'g>> {
+        let (curr_loc, at_func_end) = self.app_iter.curr_loc();
+        if at_func_end {
+            // We're at the 'end' opcode of the function...don't instrument
+            return None;
+        }
         if let Some(curr_instr) = self.app_iter.curr_op() {
-            rule.get_loc_info(self.app_iter.module, curr_instr)
+            rule.get_loc_info(self.app_iter.module, curr_loc, curr_instr)
         } else {
             None
         }
@@ -108,7 +144,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
              }| {
                 // create local for the param in the module
                 let arg_local_id = self.app_iter.add_local(*arg_ty);
-                arg_locals.push((arg_name.to_string(), arg_local_id));
+                arg_locals.push((arg_name.to_string(), *arg_local_id));
             },
         );
 
@@ -118,7 +154,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             .rev()
             .for_each(|(arg_name, arg_local_id)| {
                 // emit an opcode in the event to assign the ToS to this new local
-                self.app_iter.local_set(*arg_local_id);
+                self.app_iter.local_set(LocalID(*arg_local_id));
 
                 // place in symbol table with var addr for future reference
                 let id = self.table.put(
@@ -151,7 +187,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             {
                 // Inject at tracker.orig_instr_idx to make sure that this actually emits the args
                 // for the instrumented instruction right before that instruction is called!
-                self.app_iter.local_get(*addr);
+                self.app_iter.local_get(LocalID(*addr));
             } else {
                 return Err(Box::new(ErrorGen::get_unexpected_error(
                     true,
@@ -163,6 +199,16 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 )));
             }
         }
+        Ok(true)
+    }
+
+    pub(crate) fn emit_empty_alternate(&mut self) -> Result<bool, Box<WhammError>> {
+        self.app_iter.empty_alternate();
+        Ok(true)
+    }
+
+    pub(crate) fn emit_empty_block_alt(&mut self) -> Result<bool, Box<WhammError>> {
+        self.app_iter.empty_block_alt();
         Ok(true)
     }
 
@@ -181,6 +227,35 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         let rec_id = match self.table.lookup(var_name) {
             Some(rec_id) => *rec_id,
             _ => {
+                // check if this is an unknown immN!
+                if var_name.starts_with("imm") {
+                    if let Some(id) = self.table.lookup(UNKNOWN_IMMS) {
+                        if let Some(rec) = self.table.get_record(id) {
+                            return if let Record::Var { ty, .. } = rec {
+                                self.table.put(
+                                    var_name.to_string(),
+                                    Record::Var {
+                                        ty: ty.clone(),
+                                        name: var_name.to_string(),
+                                        value: var_val.clone(),
+                                        is_comp_provided: false,
+                                        is_report_var: false,
+                                        addr: None,
+                                        loc: None,
+                                    },
+                                );
+                                Ok(true)
+                            } else {
+                                // unexpected record type
+                                Err(Box::new(ErrorGen::get_unexpected_error(
+                                    true,
+                                    Some(UNEXPECTED_ERR_MSG.to_string()),
+                                    None,
+                                )))
+                            }
+                        }
+                    }
+                }
                 return Err(Box::new(ErrorGen::get_unexpected_error(
                     true,
                     Some(format!(
@@ -218,13 +293,14 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     pub fn emit_orig(&mut self) -> bool {
         // ORCA TODO: can i get around this curr_op_owned() thing by curr_op?
         let orig = self.app_iter.curr_op_owned().unwrap().clone();
-        let loc = self.app_iter.curr_loc();
+        let loc = self.app_iter.curr_loc().0;
         self.app_iter.add_instr_at(loc, orig);
         true
     }
 
     pub fn emit_if(
         &mut self,
+        curr_instr_args: &[Arg],
         condition: &mut Expr,
         conseq: &mut Block,
     ) -> Result<bool, Box<WhammError>> {
@@ -236,7 +312,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
 
         self.app_iter.if_stmt(block_type_to_wasm(conseq));
 
-        is_success &= self.emit_body(conseq)?;
+        is_success &= self.emit_body(curr_instr_args, conseq)?;
 
         // emit the end of the if block
         self.app_iter.end();
@@ -245,6 +321,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
 
     pub(crate) fn emit_if_with_orig_as_else(
         &mut self,
+        curr_instr_args: &[Arg],
         condition: &mut Expr,
         conseq: &mut Block,
     ) -> Result<bool, Box<WhammError>> {
@@ -265,18 +342,18 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
 
         let block_ty = match orig_ty_id {
             Some(ty_id) => {
-                let ty = match self.app_iter.module.types.get(ty_id as usize) {
+                let ty = match self.app_iter.module.types.get(TypeID(ty_id)) {
                     Some(ty) => ty.results.clone(),
                     None => Box::new([]),
                 };
 
                 // we only care about the result of the original
-                OrcaBlockType::FuncType(self.app_iter.module.add_type(&[], &ty))
+                OrcaBlockType::FuncType(self.app_iter.module.types.add(&[], &ty))
             }
             None => OrcaBlockType::Empty,
         };
         self.app_iter.if_stmt(block_ty);
-        is_success &= self.emit_body(conseq)?;
+        is_success &= self.emit_body(curr_instr_args, conseq)?;
 
         // emit the beginning of the else
         self.app_iter.else_stmt();
@@ -303,7 +380,12 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             _ => return Ok(false),
         };
 
-        if let Some(func_id) = self.app_iter.module.get_fid_by_name(fn_name.as_str()) {
+        if let Some(func_id) = self
+            .app_iter
+            .module
+            .functions
+            .get_local_fid_by_name(fn_name.as_str())
+        {
             let is_success = self.emit_args()?;
             self.app_iter.call(func_id);
             Ok(is_success)
@@ -326,19 +408,28 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         // Assume the correct args since we've gone through typechecking at this point!
         let func_id = match args.as_ref().unwrap().iter().next().unwrap() {
             Expr::Primitive {
-                val: Value::Integer { val, .. },
+                val: Value::I32 { val, .. },
                 ..
             } => *val,
             _ => return Ok(false),
         };
 
         let is_success = self.emit_args()?;
-        self.app_iter.call(func_id as u32);
+        self.app_iter.call(FunctionID(func_id as u32));
         Ok(is_success)
+    }
+
+    fn handle_drop_args(&mut self, curr_instr_args: &[Arg]) -> Result<bool, Box<WhammError>> {
+        // Generate drops for all args to this opcode!
+        for _arg in curr_instr_args {
+            self.app_iter.drop();
+        }
+        Ok(true)
     }
 
     fn handle_special_fn_call(
         &mut self,
+        curr_instr_args: &[Arg],
         target_fn_name: String,
         args: &mut Option<Vec<Expr>>,
     ) -> Result<bool, Box<WhammError>> {
@@ -348,6 +439,9 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             },
             "alt_call_by_id" => {
                 self.handle_alt_call_by_id(args)
+            },
+            "drop_args" => {
+                self.handle_drop_args(curr_instr_args)
             },
             _ => {
                 Err(Box::new(ErrorGen::get_unexpected_error(
@@ -362,17 +456,18 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     }
 }
 impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
-    fn emit_body(&mut self, body: &mut Block) -> Result<bool, Box<WhammError>> {
+    fn emit_body(
+        &mut self,
+        curr_instr_args: &[Arg],
+        body: &mut Block,
+    ) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
         for _ in 0..self.curr_num_reports {
-            let default_global = whamm_type_to_wasm_global(&DataType::I32);
-            let gid = self.app_iter.module.add_global(default_global);
-            self.report_var_metadata
-                .available_i32_gids
-                .push(gid as usize);
+            let (global_id, ..) = whamm_type_to_wasm_global(self.app_iter.module, &DataType::I32);
+            self.report_var_metadata.available_i32_gids.push(*global_id);
         }
         for stmt in body.stmts.iter_mut() {
-            is_success &= self.emit_stmt(stmt)?;
+            is_success &= self.emit_stmt(curr_instr_args, stmt)?;
             //now emit the call to print the changes to the report vars if needed
             match print_report_all(
                 &mut self.app_iter,
@@ -389,7 +484,11 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
         Ok(is_success)
     }
 
-    fn emit_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>> {
+    fn emit_stmt(
+        &mut self,
+        curr_instr_args: &[Arg],
+        stmt: &mut Statement,
+    ) -> Result<bool, Box<WhammError>> {
         // Check if this is calling a provided, static function!
         if let Statement::Expr {
             expr: Expr::Call {
@@ -421,7 +520,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
                 }) = rec
                 {
                     // We want to handle this as unique logic rather than a simple function call to be emitted
-                    return self.handle_special_fn_call(fn_name, args);
+                    return self.handle_special_fn_call(curr_instr_args, fn_name, args);
                 }
             }
         }

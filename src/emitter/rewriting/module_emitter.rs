@@ -2,7 +2,7 @@ use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::parser::types::{Block, DataType, Definition, Expr, Fn, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
-use orca::{DataSegment, DataSegmentKind, InitExpr};
+use orca::{DataSegment, DataSegmentKind, InitExpr, Location};
 use std::collections::HashMap;
 
 use crate::emitter::map_lib_adapter::MapLibAdapter;
@@ -10,11 +10,12 @@ use crate::emitter::rewriting::{
     emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global, Emitter,
 };
 use orca::ir::types::{BlockType as OrcaBlockType, DataType as OrcaType, Value as OrcaValue};
-use wasmparser::GlobalType;
-
 use orca::ir::function::FunctionBuilder;
+use orca::ir::id::{FunctionID, GlobalID, LocalID};
 use orca::ir::module::Module;
-use orca::opcode::Opcode;
+use orca::module_builder::AddLocal;
+use orca::opcode::{Instrumenter, Opcode};
+use crate::emitter::rewriting::rules::Arg;
 
 const UNEXPECTED_ERR_MSG: &str =
     "ModuleEmitter: Looks like you've found a bug...please report this behavior!";
@@ -62,7 +63,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         }
     }
 
-    fn emit_provided_fn(&mut self, context: &str, f: &Fn) -> Result<bool, Box<WhammError>> {
+    fn emit_provided_fn(&mut self, context: &str, f: &Fn) -> Result<FunctionID, Box<WhammError>> {
         if context == "whamm" && f.name.name == "strcmp" {
             self.emit_whamm_strcmp_fn(f)
         } else {
@@ -78,17 +79,17 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         }
     }
 
-    fn emit_whamm_strcmp_fn(&mut self, f: &Fn) -> Result<bool, Box<WhammError>> {
+    fn emit_whamm_strcmp_fn(&mut self, f: &Fn) -> Result<FunctionID, Box<WhammError>> {
         let strcmp_params = vec![OrcaType::I32, OrcaType::I32, OrcaType::I32, OrcaType::I32];
         let strcmp_result = vec![OrcaType::I32];
 
         let mut strcmp = FunctionBuilder::new(&strcmp_params, &strcmp_result);
 
         // specify params
-        let str0_offset = 0u32;
-        let str0_size = 1u32;
-        let str1_offset = 2u32;
-        let str1_size = 3u32;
+        let str0_offset = LocalID(0);
+        let str0_size = LocalID(1);
+        let str1_offset = LocalID(2);
+        let str1_size = LocalID(3);
 
         // create locals
         let i = strcmp.add_local(OrcaType::I32);
@@ -178,9 +179,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             .i32_const(0)
             .return_stmt();
 
-        let strcmp_id = strcmp.finish(self.app_wasm);
-        self.app_wasm
-            .set_fn_name(strcmp_id - self.app_wasm.num_import_func(), "strcmp");
+        let strcmp_id = strcmp.finish_module(self.app_wasm);
+        self.app_wasm.set_fn_name(strcmp_id, "strcmp".to_string());
 
         let rec_id = match self.table.lookup(&f.name.name) {
             Some(rec_id) => *rec_id,
@@ -198,8 +198,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
 
         return if let Some(rec) = self.table.get_record_mut(&rec_id) {
             if let Record::Fn { addr, .. } = rec {
-                *addr = Some(strcmp_id);
-                Ok(true)
+                *addr = Some(*strcmp_id);
+                Ok(strcmp_id)
             } else {
                 return Err(Box::new(ErrorGen::get_unexpected_error(
                     true,
@@ -230,11 +230,11 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     pub(crate) fn exit_scope(&mut self) -> Result<(), Box<WhammError>> {
         self.table.exit_scope()
     }
-    pub(crate) fn reset_children(&mut self) {
-        self.table.reset_children();
+    pub(crate) fn reset_table(&mut self) {
+        self.table.reset();
     }
 
-    pub(crate) fn emit_fn(&mut self, context: &str, f: &Fn) -> Result<bool, Box<WhammError>> {
+    pub(crate) fn emit_fn(&mut self, context: &str, f: &Fn) -> Result<FunctionID, Box<WhammError>> {
         // figure out if this is a provided fn.
         if f.def == Definition::CompilerDynamic {
             return if self.fn_providing_contexts.contains(&context.to_string()) {
@@ -292,17 +292,22 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 self.mem_tracker.curr_mem_offset += val.len();
                 Ok(true)
             }
-            Value::Integer { .. } | Value::Tuple { .. } | Value::Boolean { .. } => {
-                Err(Box::new(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} \
+            Value::U32 { .. }
+            | Value::I32 { .. }
+            | Value::F32 { .. }
+            | Value::U64 { .. }
+            | Value::I64 { .. }
+            | Value::F64 { .. }
+            | Value::Tuple { .. }
+            | Value::Boolean { .. } => Err(Box::new(ErrorGen::get_unexpected_error(
+                true,
+                Some(format!(
+                    "{UNEXPECTED_ERR_MSG} \
                 Called 'emit_string', but this is not a string type: {:?}",
-                        value
-                    )),
-                    None,
-                )))
-            }
+                    value
+                )),
+                None,
+            ))),
         }
     }
 
@@ -321,38 +326,38 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         &mut self,
         global_id: &u32,
         name: String,
-        ty: &GlobalType,
-    ) -> Result<bool, Box<WhammError>> {
+        ty: OrcaType,
+    ) -> Result<FunctionID, Box<WhammError>> {
         let getter_params = vec![];
-        let getter_res = vec![OrcaType::from(ty.content_type)];
+        let getter_res = vec![ty];
 
         let mut getter = FunctionBuilder::new(&getter_params, &getter_res);
-        getter.global_get(*global_id);
+        getter.global_get(GlobalID(*global_id));
 
-        let getter_id = getter.finish(self.app_wasm);
-
+        let getter_id = getter.finish_module(self.app_wasm);
         let fn_name = format!("get_{name}");
-        self.app_wasm.add_export_func(fn_name.leak(), getter_id);
+        self.app_wasm.set_fn_name(getter_id, fn_name.clone());
+        self.app_wasm.exports.add_export_func(fn_name, *getter_id);
 
-        Ok(true)
+        Ok(getter_id)
     }
 
     pub(crate) fn emit_global(
         &mut self,
         name: String,
-        _ty: DataType,
-        _val: &Option<Value>,
-    ) -> Result<bool, Box<WhammError>> {
-        self.emit_global_inner(name, _ty, _val, "unused".to_string(), false)
+        ty: DataType,
+        val: &Option<Value>,
+    ) -> Result<Option<FunctionID>, Box<WhammError>> {
+        self.emit_global_inner(name, ty, val, "unused".to_string(), false)
     }
     pub fn emit_report_global(
         &mut self,
         name: String,
-        _ty: DataType,
-        _val: &Option<Value>,
+        ty: DataType,
+        val: &Option<Value>,
         script_name: String,
-    ) -> Result<bool, Box<WhammError>> {
-        self.emit_global_inner(name, _ty, _val, script_name, true)
+    ) -> Result<Option<FunctionID>, Box<WhammError>> {
+        self.emit_global_inner(name, ty, val, script_name, true)
     }
     pub fn emit_global_inner(
         &mut self,
@@ -361,7 +366,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         _val: &Option<Value>,
         script_name: String,
         report_mode: bool,
-    ) -> Result<bool, Box<WhammError>> {
+    ) -> Result<Option<FunctionID>, Box<WhammError>> {
+        // todo -- clean this up
         let rec_id = match self.table.lookup(&name) {
             Some(rec_id) => *rec_id,
             _ => {
@@ -379,16 +385,15 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         let rec = self.table.get_record_mut(&rec_id);
         match rec {
             Some(Record::Var {
-                ref mut addr, ty, ..
-            }) => {
+                     ref mut addr, ty, ..
+                 }) => {
                 // emit global variable and set addr in symbol table
                 // this is used for user-defined global vars in the script...
                 match ty {
                     DataType::Map { .. } => {
                         //time to instrument the start fn
-                        let init_id = match self.app_wasm.get_fid_by_name("global_map_init") {
+                        let init_id = match self.app_wasm.functions.get_local_fid_by_name("global_map_init") {
                             Some(init_id) => init_id,
-
                             None => {
                                 return Err(Box::new(ErrorGen::get_unexpected_error(
                                     true,
@@ -400,7 +405,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                                 )));
                             }
                         };
-                        let mut init_fn = match self.app_wasm.get_fn(init_id) {
+
+                        let mut init_fn = match self.app_wasm.functions.get_fn_modifier(init_id) {
                             Some(init_fn) => init_fn,
                             None => {
                                 return Err(Box::new(ErrorGen::get_unexpected_error(
@@ -413,23 +419,25 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                                 )));
                             }
                         };
-                        init_fn.before_at(0);
-                        let (fn_name, map_id) = match report_mode {
-                            true => {
-                                match self.map_lib_adapter.create_global_map(
-                                    name,
-                                    script_name,
-                                    ty.clone(),
-                                    self.report_var_metadata,
-                                ) {
-                                    Ok(to_call) => to_call,
-                                    Err(e) => return Err(e),
-                                }
-                            }
-                            false => match self.map_lib_adapter.create_no_meta_map(ty.clone()) {
+                        init_fn.before_at(Location::Module {
+                            func_idx: init_id, // not used
+                            instr_idx: 0,
+                        });
+                        let (fn_name, map_id) = if report_mode {
+                            match self.map_lib_adapter.create_global_map(
+                                name,
+                                script_name,
+                                ty.clone(),
+                                self.report_var_metadata,
+                            ) {
                                 Ok(to_call) => to_call,
                                 Err(e) => return Err(e),
-                            },
+                            }
+                        } else {
+                            match self.map_lib_adapter.create_no_meta_map(ty.clone()) {
+                                Ok(to_call) => to_call,
+                                Err(e) => return Err(e),
+                            }
                         };
                         *addr = Some(VarAddr::MapId {
                             addr: map_id as u32,
@@ -441,72 +449,52 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                                 _ => {
                                     return Err(Box::new(ErrorGen::get_unexpected_error(
                                         true,
-                                        Some(format!("Map function not in symbol table")),
-                                        None,
+                                        Some("Map function not in symbol table".to_string()),
+                                        None
                                     )))
                                 }
                             },
                             None => {
                                 return Err(Box::new(ErrorGen::get_unexpected_error(
                                     true,
-                                    Some(format!("Map function not in symbol table")),
-                                    None,
+                                    Some("Map function not in symbol table".to_string()),
+                                    None
                                 )));
                             }
                         };
                         init_fn.i32_const(map_id);
-                        init_fn.call(*fn_id);
-                        Ok(true)
+                        init_fn.call(FunctionID(*fn_id));
+                        Ok(None)
                     }
                     _ => {
-                        let default_global = whamm_type_to_wasm_global(ty);
-                        let global_id = self.app_wasm.add_global(default_global.clone());
-                        *addr = Some(VarAddr::Global { addr: global_id });
+                        let (global_id, global_ty) = whamm_type_to_wasm_global(self.app_wasm, ty);
+                        *addr = Some(VarAddr::Global { addr: *global_id });
                         //now save off the global variable metadata
-                        let mut is_success = Ok(true);
                         if report_mode {
-                            is_success = match self
-                                .report_var_metadata
-                                .put_global_metadata(global_id as usize, name.clone())
-                            {
-                                Ok(b) => Ok(b),
-                                Err(e) => Err(e),
-                            }
+                            self.report_var_metadata
+                                .put_global_metadata(*global_id, name.clone())?;
                         }
-                        match is_success {
-                            Ok(_) => {
-                                is_success =
-                                    self.emit_global_getter(&global_id, name, &default_global.ty)
-                            }
-                            Err(e) => {
-                                return Err(e);
-                            }
-                        }
-                        is_success
+                        Ok(Some(self.emit_global_getter(&global_id, name, global_ty)?))
                     }
                 }
             }
-            Some(&mut ref ty) => {
-                return Err(Box::new(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} \
+            Some(&mut ref ty) => return Err(Box::new(ErrorGen::get_unexpected_error(
+                true,
+                Some(format!(
+                    "{UNEXPECTED_ERR_MSG} \
                 Incorrect global variable record, expected Record::Var, found: {:?}",
-                        ty
-                    )),
-                    None,
-                )))
-            }
-            None => {
-                return Err(Box::new(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} \
-                Global variable symbol does not exist!"
-                    )),
-                    None,
-                )))
-            }
+                    ty
+                )),
+                None,
+            ))),
+            None => return Err(Box::new(ErrorGen::get_unexpected_error(
+                true,
+                Some(format!(
+                    "{UNEXPECTED_ERR_MSG} \
+                    Global variable symbol does not exist!"
+                )),
+                None,
+            ))),
         }
     }
     pub fn emit_global_stmts(&mut self, stmts: &mut [Statement]) -> Result<bool, Box<WhammError>> {
@@ -556,7 +544,11 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     }
 }
 impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
-    fn emit_body(&mut self, body: &mut Block) -> Result<bool, Box<WhammError>> {
+    fn emit_body(
+        &mut self,
+        _curr_instr_args: &[Arg],
+        body: &mut Block,
+    ) -> Result<bool, Box<WhammError>> {
         if let Some(emitting_func) = &mut self.emitting_func {
             emit_body(
                 body,
@@ -572,7 +564,11 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
         }
     }
 
-    fn emit_stmt(&mut self, stmt: &mut Statement) -> Result<bool, Box<WhammError>> {
+    fn emit_stmt(
+        &mut self,
+        _curr_instr_args: &[Arg],
+        stmt: &mut Statement,
+    ) -> Result<bool, Box<WhammError>> {
         if let Some(emitting_func) = &mut self.emitting_func {
             emit_stmt(
                 stmt,

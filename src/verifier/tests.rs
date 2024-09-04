@@ -19,6 +19,17 @@ pub fn setup_logger() {
 const VALID_SCRIPTS: &[&str] = &[
     "wasm:opcode:call:alt { new_target_fn_name = redirect_to_fault_injector; }",
     r#"
+wasm::call:alt /
+    target_fn_type == "import" &&
+    target_imp_module == "ic0" &&
+    target_fn_name == "call_new" &&
+    strcmp((arg0, arg1), "bookings") &&
+    strcmp((arg2, arg3), "record")
+/ {
+    alt_call_by_name("instr_redirect_to_fault_injector");
+}
+    "#,
+    r#"
         bool a;
         i32 b;
         nested_fn(i32 a) -> i32 {
@@ -86,6 +97,16 @@ const VALID_SCRIPTS: &[&str] = &[
             report bool b;
         }
     "#,
+    // numerics
+    "wasm:opcode:call:alt { i32 num = 0; }",
+    // todo -- https://github.com/ejrgilbert/whamm/issues/141
+    // "wasm:opcode:call:alt { i64 num = 0; }",
+    // r#"
+    //     i32 count;
+    //     wasm::i64_const:before / imm0 == 9223372036854775807 / {
+    //         count++;
+    //     }
+    // "#,
 ];
 
 const TYPE_ERROR_SCRIPTS: &[&str] = &[
@@ -400,10 +421,10 @@ wasm::call:alt /
     let table = verifier::build_symbol_table(&mut ast, &mut err);
     debug!("{:#?}", table);
 
-    // 7 scopes: whamm, strcmp, script0, wasm, alt_call_by_name, alt_call_by_id, opcode, call, alt
-    let num_scopes = 9;
-    // records: num_scopes PLUS (str_addr, func_id, func_name, value, wasm_opcode_loc, target_imp_name, target_fn_type, target_imp_module, imm0, arg[0:9]+)
-    let num_recs = num_scopes + 10;
+    // 7 scopes: whamm, strcmp, drop_args, script0, wasm, alt_call_by_name, alt_call_by_id, opcode, call, alt
+    let num_scopes = 10;
+    // records: num_scopes PLUS (str_addr, func_id, func_name, value, fid, fname, pc, target_imp_name, target_fn_type, target_imp_module, imm0, arg[0:9]+)
+    let num_recs = num_scopes + 12;
     // asserts on very high level table structure
     assert_eq!(num_scopes, table.scopes.len());
 

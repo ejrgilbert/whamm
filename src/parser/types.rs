@@ -83,7 +83,8 @@ impl Location {
 impl PartialEq for DataType {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (DataType::I32, DataType::I32)
+            (DataType::U32, DataType::U32)
+            | (DataType::I32, DataType::I32)
             | (DataType::Boolean, DataType::Boolean)
             | (DataType::Null, DataType::Null)
             | (DataType::Str, DataType::Str)
@@ -111,12 +112,14 @@ impl PartialEq for DataType {
     }
 }
 
-impl Eq for DataType {}
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq)]
 pub enum DataType {
-    I32,
     U32,
+    I32,
+    F32,
+    U64,
+    I64,
+    F64,
     Boolean,
     Null,
     Str,
@@ -132,11 +135,23 @@ pub enum DataType {
 impl DataType {
     pub fn print(&self, buffer: &mut Buffer) {
         match self {
+            DataType::U32 => {
+                yellow(true, "u32".to_string(), buffer);
+            }
             DataType::I32 => {
                 yellow(true, "i32".to_string(), buffer);
             }
-            DataType::U32 => {
-                yellow(true, "u32".to_string(), buffer);
+            DataType::F32 => {
+                yellow(true, "f32".to_string(), buffer);
+            }
+            DataType::U64 => {
+                yellow(true, "u64".to_string(), buffer);
+            }
+            DataType::I64 => {
+                yellow(true, "i64".to_string(), buffer);
+            }
+            DataType::F64 => {
+                yellow(true, "f64".to_string(), buffer);
             }
             DataType::Boolean => {
                 yellow(true, "bool".to_string(), buffer);
@@ -176,9 +191,14 @@ impl DataType {
 }
 
 // Values
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Value {
-    Integer { ty: DataType, val: i32 },
+    U32 { ty: DataType, val: u32 },
+    I32 { ty: DataType, val: i32 },
+    F32 { ty: DataType, val: f32 },
+    U64 { ty: DataType, val: u64 },
+    I64 { ty: DataType, val: i64 },
+    F64 { ty: DataType, val: f64 },
     Str { ty: DataType, val: String },
     Tuple { ty: DataType, vals: Vec<Expr> },
     Boolean { ty: DataType, val: bool },
@@ -255,7 +275,7 @@ impl Statement {
     pub fn dummy() -> Self {
         Self::Expr {
             expr: Expr::Primitive {
-                val: Value::Integer {
+                val: Value::I32 {
                     ty: DataType::I32,
                     val: 0,
                 },
@@ -266,7 +286,7 @@ impl Statement {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Expr {
     UnOp {
         // Type is based on the outermost `op`
@@ -381,7 +401,7 @@ pub enum Definition {
     CompilerDynamic,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Global {
     pub def: Definition,
     pub report: bool,
@@ -669,7 +689,7 @@ impl ProbeSpec {
         white(
             true,
             format!(
-                "{}:{}:{}:",
+                "    {}:{}:{}:",
                 self.provider.as_ref().unwrap().name,
                 self.package.as_ref().unwrap().name,
                 self.event.as_ref().unwrap().name
@@ -681,7 +701,11 @@ impl ProbeSpec {
             format!("{}\n", self.mode.as_ref().unwrap().name),
             buffer,
         );
-        grey_italics(true, "matches the following modes:\n\n".to_string(), buffer);
+        grey_italics(
+            true,
+            "    matches the following modes for the parent event:\n\n".to_string(),
+            buffer,
+        );
     }
 }
 
@@ -742,7 +766,7 @@ impl Script {
         white(true, "\n\n".to_string(), &mut buffer);
 
         let mut providers: HashMap<String, Box<dyn Provider>> = HashMap::new();
-        let (matched_providers, matched_packages, matched_events, matched_modes) =
+        let (matched_providers, matched_packages, matched_events, _matched_modes) =
             provider_factory::<WhammProvider>(&mut providers, probe_spec, None, None, None, true)?;
 
         // Print the matched provider information
@@ -776,20 +800,26 @@ impl Script {
             probe_spec.print_bold_event(&mut buffer);
         }
         for (.., provider) in providers.iter() {
-            provider.print_event_docs(print_globals, print_functions, &mut tabs, &mut buffer);
+            provider.print_event_and_mode_docs(
+                probe_spec,
+                print_globals,
+                print_functions,
+                &mut tabs,
+                &mut buffer,
+            );
         }
         long_line(&mut buffer);
         white(true, "\n\n".to_string(), &mut buffer);
 
-        // Print the matched mode information
-        if matched_modes {
-            probe_spec.print_bold_mode(&mut buffer);
-        }
-        for (.., provider) in providers.iter() {
-            provider.print_mode_docs(print_globals, print_functions, &mut tabs, &mut buffer);
-        }
-        long_line(&mut buffer);
-        white(true, "\n\n".to_string(), &mut buffer);
+        // // Print the matched mode information
+        // if matched_modes {
+        //     probe_spec.print_bold_mode(&mut buffer);
+        // }
+        // for (.., provider) in providers.iter() {
+        //     provider.print_mode_docs(print_globals, print_functions, &mut tabs, &mut buffer);
+        // }
+        // long_line(&mut buffer);
+        // white(true, "\n\n".to_string(), &mut buffer);
 
         writer
             .print(&buffer)
@@ -929,7 +959,7 @@ pub struct ProvidedFunctionality {
     pub name: String,
     pub docs: String,
 }
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ProvidedGlobal {
     pub name: String,
     pub docs: String,
