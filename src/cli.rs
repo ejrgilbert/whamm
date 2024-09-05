@@ -49,7 +49,6 @@ pub enum Cmd {
 //     // (not needed yet)
 // }
 
-
 #[derive(Debug, Args)]
 pub struct InstrArgs {
     /// The path to the application's Wasm module we want to instrument.
@@ -104,7 +103,6 @@ pub struct InstrArgs {
 //     /// Create a new memory in the `app.wasm` to be targeted by the instrumentation.
 //     Multi
 // }
-
 
 // pub fn print_completion<G: Generator>(gen: G, app: &mut App) {
 //     generate(gen, app, app.get_name().to_string(), &mut io::stdout());

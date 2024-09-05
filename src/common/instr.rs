@@ -28,7 +28,7 @@ pub(crate) fn try_path(path: &String) {
 pub enum LibStrategy {
     Imported,
     MergedWithMulti,
-    MergedWithOffset(u32)
+    MergedWithOffset(u32),
 }
 
 pub struct Config {
@@ -46,7 +46,7 @@ impl Config {
         Self {
             virgil: false,
             testing: false,
-            library_strategy: LibStrategy::Imported
+            library_strategy: LibStrategy::Imported,
         }
     }
 }

@@ -341,9 +341,7 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                         Ok(to_call) => to_call,
                         Err(e) => return Err(e),
                     };
-                    *addr = Some(VarAddr::MapId {
-                        addr: map_id,
-                    });
+                    *addr = Some(VarAddr::MapId { addr: map_id });
                     let fn_id = match table.lookup_rec(&fn_name) {
                         Some(Record::LibFn { fn_id, .. }) => fn_id,
                         _ => {

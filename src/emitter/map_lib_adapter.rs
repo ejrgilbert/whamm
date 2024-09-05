@@ -58,12 +58,18 @@ impl MapLibAdapter {
         report_var_metadata: &mut ReportVarMetadata,
     ) -> (bool, u32) {
         //call the put code for the metadata
-        if let LocationData::Local {script_id, bytecode_loc, probe_id, ..} = report_var_metadata.curr_location.clone() {
+        if let LocationData::Local {
+            script_id,
+            bytecode_loc,
+            probe_id,
+            ..
+        } = report_var_metadata.curr_location.clone()
+        {
             let metadata = Metadata::Local {
                 script_id,
                 bytecode_loc,
                 probe_id,
-                name
+                name,
             };
             let map_id = match map_id {
                 Some(id) => id,
@@ -109,11 +115,7 @@ impl MapLibAdapter {
         report_var_metadata: &mut ReportVarMetadata,
     ) -> Result<(String, u32), Box<WhammError>> {
         //create the metadata for the map
-        let (result, map_id) = self.create_local_map_meta(
-            None,
-            name.clone(),
-            report_var_metadata,
-        );
+        let (result, map_id) = self.create_local_map_meta(None, name.clone(), report_var_metadata);
         if !result {
             return Err(Box::new(ErrorGen::get_unexpected_error(
                 true,

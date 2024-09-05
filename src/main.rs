@@ -1,7 +1,7 @@
 extern crate core;
 
-use std::env;
 use cli::{Cmd, WhammCli};
+use std::env;
 
 use crate::common::error::ErrorGen;
 use crate::parser::whamm_parser::*;
@@ -14,12 +14,12 @@ pub mod parser;
 pub mod verifier;
 mod wast;
 
+use crate::cli::InstrArgs;
+use crate::common::instr::Config;
 use clap::Parser;
 use std::path::PathBuf;
 use std::process::exit;
 use whamm::common::instr::LibStrategy;
-use crate::cli::{InstrArgs};
-use crate::common::instr::Config;
 
 const MAX_ERRORS: i32 = 15;
 

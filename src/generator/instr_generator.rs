@@ -1,4 +1,5 @@
 use crate::common::error::ErrorGen;
+use crate::emitter::map_lib_adapter::{RESERVED_MAP_METADATA_MAP_ID, RESERVED_VAR_METADATA_MAP_ID};
 use crate::emitter::report_var_metadata::{convert_meta_to_string, LocationData};
 use crate::emitter::rewriting::module_emitter::StringAddr;
 use crate::emitter::rewriting::rules::{provider_factory, Arg, LocInfo, ProbeSpec, WhammProvider};
@@ -8,6 +9,7 @@ use crate::generator::simple_ast::{SimpleAST, SimpleProbe};
 use crate::generator::types::ExprFolder;
 use crate::parser::rules::core::WhammModeKind;
 use crate::parser::types::{Block, DataType, Expr};
+use crate::verifier::types::Record;
 use orca_wasm::ir::id::{FunctionID, GlobalID};
 use orca_wasm::ir::types::{BlockType as OrcaBlockType, Value as OrcaValue};
 use orca_wasm::iterator::iterator_trait::Iterator;
@@ -16,8 +18,6 @@ use orca_wasm::{DataSegment, DataSegmentKind, InitExpr, Opcode};
 use orca_wasm::{Location as OrcaLocation, Location};
 use std::collections::HashMap;
 use std::iter::Iterator as StdIter;
-use crate::emitter::map_lib_adapter::{RESERVED_MAP_METADATA_MAP_ID, RESERVED_VAR_METADATA_MAP_ID};
-use crate::verifier::types::Record;
 
 const UNEXPECTED_ERR_MSG: &str =
     "InstrGenerator: Looks like you've found a bug...please report this behavior!";
@@ -463,7 +463,11 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
         is_success
     }
 
-    fn setup_global_map_init(&mut self, var_meta_str: &HashMap<u32, String>, map_meta_str: &HashMap<u32, String>) -> bool {
+    fn setup_global_map_init(
+        &mut self,
+        var_meta_str: &HashMap<u32, String>,
+        map_meta_str: &HashMap<u32, String>,
+    ) -> bool {
         //first, we need to create the maps in global_map_init - where all the other maps are initialized
         let global_map_init_id = match self
             .emitter
@@ -530,7 +534,10 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
                 } else {
                     self.err.add_error(ErrorGen::get_unexpected_error(
                         true,
-                        Some(format!("Unexpected record type. Expected LibFn, found: {:?}", rec)),
+                        Some(format!(
+                            "Unexpected record type. Expected LibFn, found: {:?}",
+                            rec
+                        )),
                         None,
                     ));
                     return false;
@@ -579,7 +586,10 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
                 } else {
                     self.err.add_error(ErrorGen::get_unexpected_error(
                         true,
-                        Some(format!("Unexpected record type. Expected LibFn, found: {:?}", rec)),
+                        Some(format!(
+                            "Unexpected record type. Expected LibFn, found: {:?}",
+                            rec
+                        )),
                         None,
                     ));
                     return false;
@@ -706,7 +716,10 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
                 } else {
                     self.err.add_error(ErrorGen::get_unexpected_error(
                         true,
-                        Some(format!("Unexpected record type. Expected LibFn, found: {:?}", rec)),
+                        Some(format!(
+                            "Unexpected record type. Expected LibFn, found: {:?}",
+                            rec
+                        )),
                         None,
                     ));
                     return false;
@@ -722,7 +735,9 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
         } else {
             self.err.add_error(ErrorGen::get_unexpected_error(
                 true,
-                Some("Map function not in symbol table: 'print_global_i32_meta_helper'".to_string()),
+                Some(
+                    "Map function not in symbol table: 'print_global_i32_meta_helper'".to_string(),
+                ),
                 None,
             ));
             return false;

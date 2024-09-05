@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::common::instr::{Config, run, try_path};
+use crate::common::instr::{run, try_path, Config};
 use log::{debug, error};
 use orca_wasm::Module;
 use std::fs::{remove_dir_all, File};

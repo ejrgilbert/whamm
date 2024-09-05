@@ -3,6 +3,7 @@
 // =======================
 
 use crate::common::error::ErrorGen;
+use crate::emitter::report_var_metadata::LocationData;
 use crate::emitter::rewriting::module_emitter::ModuleEmitter;
 use crate::parser::rules::{Event, Package, Probe, Provider};
 use crate::parser::types::{
@@ -17,7 +18,6 @@ use orca_wasm::ir::types::DataType as OrcaType;
 use orca_wasm::ir::types::Value as OrcaValue;
 use orca_wasm::InitExpr;
 use std::collections::HashMap;
-use crate::emitter::report_var_metadata::LocationData;
 
 /// Serves as the first phase of instrumenting a module by setting up
 /// the groundwork.
@@ -120,7 +120,7 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
             "insert_i32_string".to_string(),
             "get_string_from_i32string".to_string(),
             "print_map_meta".to_string(),
-            "print_global_i32_meta_helper".to_string()
+            "print_global_i32_meta_helper".to_string(),
         ];
         for lib_fn in lib_map_fns.iter() {
             let id_option = self
@@ -130,7 +130,10 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
                 .get_local_fid_by_name(lib_fn);
             let id = match id_option {
                 Some(id_option) => *id_option,
-                None => panic!("Expected function not found for name: {lib_fn}"),
+                None => {
+                    warn!("Expected function not found for name: {lib_fn}");
+                    continue
+                },
             };
             self.emitter.table.put(
                 lib_fn.to_string(),
@@ -221,7 +224,9 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
             .emitter
             .app_wasm
             .functions
-            .get_local_fid_by_name("print_global_meta").is_some() {
+            .get_local_fid_by_name("print_global_meta")
+            .is_some()
+        {
             debug!("print_global_meta function already exists");
             self.err.add_error(ErrorGen::get_unexpected_error(
                 true,
@@ -241,11 +246,10 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
             .app_wasm
             .set_fn_name(print_global_meta_id, "print_global_meta".to_string());
 
-
         self.emitter.table.put(
             "print_global_meta".to_string(),
             Record::LibFn {
-                name:  "print_global_meta".to_string(),
+                name: "print_global_meta".to_string(),
                 fn_id: *print_global_meta_id,
             },
         );
@@ -280,7 +284,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
     fn visit_script(&mut self, script: &mut Script) -> bool {
         trace!("Entering: CodeGenerator::visit_script");
         self.emitter.report_var_metadata.curr_location = LocationData::Global {
-            script_id: script.name.clone()
+            script_id: script.name.clone(),
         };
         if let Err(e) = self.emitter.enter_scope() {
             self.err.add_error(*e)
