@@ -872,29 +872,36 @@ pub fn print_map(map_id: i32) -> String {
     format!("{}", map.dump_map())
 }
 #[no_mangle]
-pub fn print_meta() {
-    println!("DEBUG: printing metadata");
+pub fn print_global_i32_meta_helper(global_id: u32, global_meta_offset: i32, global_meta_length: i32, global_val: i32) {
+    let global_meta = string_from_data(global_meta_offset, global_meta_length);
+    println!("GID: {}\t{}\t{}\t", global_id, global_meta, global_val);
+}
+
+#[no_mangle]
+pub fn print_map_meta() {
+    println!("DEBUG: printing map metadata");
     let mut running_output: String = String::new();
     let binding = MY_MAPS.lock().unwrap();
-    let var_meta = binding.get(&0).expect("No metadata for variables found");
+    // let var_meta = binding.get(&0).expect("No metadata for variables found");
     let map_meta = binding.get(&1).expect("No metadata for maps found");
-    match var_meta {
-        AnyMap::i32_string_Map(map) => {
-            for (key, value) in map.iter() {
-                running_output.push_str(&format!("GID: {}\t{}\t", key, value));
-                let map = binding.get(&key).expect("Metadata but no map found");
-                running_output.push_str(&format!("{}\n", map.dump_map()));
-            }
-        }
-        _ => {
-            panic!("Invalid metadata for variables");
-        }
-    }
+    // TODO -- you won't find GIDs to print...they aren't maps!
+    // match var_meta {
+    //     AnyMap::i32_string_Map(map) => {
+    //         for (key, value) in map.iter() {
+    //             running_output.push_str(&format!("GID: {}\t{}\t", key, value));
+    //             let map = binding.get(&key).expect("Metadata but no map found for key: {key}");
+    //             running_output.push_str(&format!("{}\n", map.dump_map()));
+    //         }
+    //     }
+    //     _ => {
+    //         panic!("Invalid metadata for variables");
+    //     }
+    // }
     match map_meta {
         AnyMap::i32_string_Map(map) => {
             for (key, value) in map.iter() {
-                running_output.push_str(&format!("MapId: {}\t{}\t", key, value));
-                let map = binding.get(&key).expect("Metadata but no map found");
+                running_output.push_str(&format!("MID: {}\t{}\t", key, value));
+                let map = binding.get(&key).expect("Metadata but no map found for key: {key}");
                 running_output.push_str(&format!("{}\n", map.dump_map()));
             }
         }
@@ -908,16 +915,22 @@ pub fn print_meta() {
 //MAIN STARTS HERE
 
 #[no_mangle]
+pub fn foo(a: i32) -> i32 {
+    a * 15 - 3
+}
+
+#[no_mangle]
 pub fn bar(a: i32) -> i32 {
-    return a * 15 - 3;
+    let b = foo(a);
+    for i in 0..b {
+        println!("hello: {i}")
+    }
+
+    b
 }
 
 #[no_mangle]
 fn main() {
-    let b = bar(987654321);
+    let b = bar(15);
     println!("b = {b}");
-    create_i32_string(1);
-    let (ptr, len) = string_to_data("hello world".to_string());
-    insert_i32_string(1, 0, ptr, len);
-    println!("{}", print_map(1));
 }

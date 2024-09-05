@@ -43,6 +43,7 @@ fn main() -> Result<()> {
 
     // Instantiate our module with the imports we've created, and run it.
     let module = Module::from_file(&engine, "../output/output.wasm")?;
+    // let module = Module::from_file(&engine, "../multi-mem.wat")?;
     linker.module(&mut store, "", &module)?;
     linker
         .get_default(&mut store, "")?

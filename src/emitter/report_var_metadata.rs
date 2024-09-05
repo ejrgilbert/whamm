@@ -6,7 +6,7 @@ use crate::common::error::{ErrorGen, WhammError};
 
 pub struct ReportVarMetadata {
     //MapID -> Metadata
-    pub map_metadata: HashMap<i32, Metadata>,
+    pub map_metadata: HashMap<u32, Metadata>,
     //GID -> Metadata
     pub variable_metadata: HashMap<u32, Metadata>,
     pub all_metadata: HashSet<Metadata>,
@@ -34,20 +34,6 @@ impl ReportVarMetadata {
             used_i32_gids: vec![],
             flush_soon: false,
         }
-    }
-    pub fn set_loc(
-        &mut self,
-        script_id: String,
-        bytecode_loc: (u32, u32),
-        probe_id: String,
-        num_reports: i32,
-    ) {
-        self.curr_location = LocationData::Local {
-            script_id,
-            bytecode_loc,
-            probe_id,
-            num_reports,
-        };
     }
     pub fn put_global_metadata(&mut self, gid: u32, name: String) -> Result<bool, Box<WhammError>> {
         let script_id = match &self.curr_location {
@@ -123,14 +109,14 @@ impl ReportVarMetadata {
         if self.all_metadata.is_empty() {
             return;
         }
-        info!("Metadata:");
+        println!("Metadata:");
 
         // Collect and sort variable_metadata by key
         let mut sorted_variable_metadata: Vec<_> = self.variable_metadata.iter().collect();
         sorted_variable_metadata.sort_by_key(|&(key, _)| key);
 
         for (key, value) in sorted_variable_metadata {
-            info!("GID: {} -> {:?}", key, value);
+            println!("GID: {} -> {:?}", key, value);
         }
 
         // Collect and sort map_metadata by key
@@ -138,12 +124,18 @@ impl ReportVarMetadata {
         sorted_map_metadata.sort_by_key(|&(key, _)| key);
 
         for (key, value) in sorted_map_metadata {
-            info!("MapID: {} -> {:?}", key, value);
+            println!("MapID: {} -> {:?}", key, value);
         }
     }
-    pub fn mutating_map(&mut self, map_id: i32) {
+    pub fn mutating_map(&mut self, map_id: u32) {
         //check if the map you are changing is in map_metadata -> flush soon if it is
         if self.map_metadata.contains_key(&map_id) {
+            self.flush_soon = true;
+        }
+    }
+    pub fn mutating_var(&mut self, var_id: u32) {
+        //check if the var you are changing is in variable_metadata -> flush soon if it is
+        if self.variable_metadata.contains_key(&var_id) {
             self.flush_soon = true;
         }
     }

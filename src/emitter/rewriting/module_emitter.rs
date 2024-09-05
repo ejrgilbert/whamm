@@ -2,7 +2,7 @@ use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::parser::types::{Block, DataType, Definition, Expr, Fn, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
-use orca::{DataSegment, DataSegmentKind, InitExpr, Location};
+use orca_wasm::{DataSegment, DataSegmentKind, InitExpr, Location};
 use std::collections::HashMap;
 
 use crate::emitter::map_lib_adapter::MapLibAdapter;
@@ -10,12 +10,12 @@ use crate::emitter::rewriting::rules::Arg;
 use crate::emitter::rewriting::{
     emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global, Emitter,
 };
-use orca::ir::function::FunctionBuilder;
-use orca::ir::id::{FunctionID, GlobalID, LocalID};
-use orca::ir::module::Module;
-use orca::ir::types::{BlockType as OrcaBlockType, DataType as OrcaType, Value as OrcaValue};
-use orca::module_builder::AddLocal;
-use orca::opcode::{Instrumenter, Opcode};
+use orca_wasm::ir::function::FunctionBuilder;
+use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
+use orca_wasm::ir::module::Module;
+use orca_wasm::ir::types::{BlockType as OrcaBlockType, DataType as OrcaType, Value as OrcaValue};
+use orca_wasm::module_builder::AddLocal;
+use orca_wasm::opcode::{Instrumenter, MacroOpcode, Opcode};
 
 const UNEXPECTED_ERR_MSG: &str =
     "ModuleEmitter: Looks like you've found a bug...please report this behavior!";
@@ -39,7 +39,7 @@ pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     pub table: &'c mut SymbolTable,
     mem_tracker: &'d mut MemoryTracker,
     pub map_lib_adapter: &'e mut MapLibAdapter,
-    report_var_metadata: &'f mut ReportVarMetadata,
+    pub report_var_metadata: &'f mut ReportVarMetadata,
     fn_providing_contexts: Vec<String>,
 }
 
@@ -457,7 +457,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                                 )));
                             }
                         };
-                        init_fn.i32_const(map_id);
+                        init_fn.u32_const(map_id);
                         init_fn.call(FunctionID(*fn_id));
                         Ok(None)
                     }

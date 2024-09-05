@@ -1,7 +1,7 @@
 mod common;
 
 use crate::common::{run_basic_instrumentation, run_whamm_bin};
-use orca::Module;
+use orca_wasm::Module;
 use std::fs;
 use std::process::Command;
 use whamm::common::error::ErrorGen;
@@ -33,7 +33,7 @@ fn instrument_dfinity_with_fault_injection() {
             &format!("{:?}", script_path.clone().as_path()),
             None,
             0,
-            false,
+            // false,
         );
         err.fatal_report("Integration Test");
     }

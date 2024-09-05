@@ -11,11 +11,12 @@ use crate::parser::whamm_parser::parse_script;
 use crate::verifier::types::SymbolTable;
 use crate::verifier::verifier::{build_symbol_table, type_check};
 use log::{error, info};
-use orca::ir::id::GlobalID;
-use orca::Module;
+use orca_wasm::ir::id::GlobalID;
+use orca_wasm::Module;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::exit;
+// use crate::cli::{LibraryStrategy, MemoryStrategy};
 
 /// create output path if it doesn't exist
 pub(crate) fn try_path(path: &String) {
@@ -24,12 +25,38 @@ pub(crate) fn try_path(path: &String) {
     }
 }
 
+pub enum LibStrategy {
+    Imported,
+    MergedWithMulti,
+    MergedWithOffset(u32)
+}
+
+pub struct Config {
+    /// Whether to emit Virgil code as the instrumentation code
+    pub virgil: bool,
+
+    /// Whether to emit extra exported functions that are helpful during testing.
+    pub testing: bool,
+
+    /// The strategy to take when handling the injecting references to the `whamm!` library.
+    pub library_strategy: LibStrategy,
+}
+impl Config {
+    pub fn new() -> Config {
+        Self {
+            virgil: false,
+            testing: false,
+            library_strategy: LibStrategy::Imported
+        }
+    }
+}
+
 pub fn run_with_path(
     app_wasm_path: String,
     script_path: String,
     output_wasm_path: String,
     max_errors: i32,
-    _emit_virgil: bool,
+    // config: Config
 ) {
     // Read app Wasm into Orca module
     let buff = std::fs::read(app_wasm_path).unwrap();
@@ -50,7 +77,7 @@ pub fn run_with_path(
         &script_path,
         Some(output_wasm_path),
         max_errors,
-        _emit_virgil,
+        // config,
     );
 }
 
@@ -60,7 +87,7 @@ pub fn run(
     script_path: &str,
     output_wasm_path: Option<String>,
     max_errors: i32,
-    _emit_virgil: bool,
+    // config: Config
 ) -> Vec<u8> {
     // Set up error reporting mechanism
     let mut err = ErrorGen::new(script_path.to_string(), "".to_string(), max_errors);
