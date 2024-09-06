@@ -1,30 +1,7 @@
-// use wasmtime::*;
-// use wasmtime_wasi::WasiCtxBuilder;
-//
-// fn main() -> Result<(), Box<dyn std::error::Error>> {
-//     let engine = Engine::default();
-//     // let module = Module::from_file(&engine, "../wasm_playground/maps/target/wasm32-wasi/release/maps.wasm")?;
-//     let my_state = MyState::new();
-//     let mut linker = wasmtime::Linker::<MyState>::new(&engine);
-//
-//     // Set up WASI with custom configuration
-//     let wasi = WasiCtxBuilder::new()
-//         .inherit_stdio() // Inherit standard input/output
-//         .build();
-//     wasmtime_wasi::preview1::wasi_snapshot_preview1::add_to_linker(&mut linker, |my_state| &mut my_state.wasi)?;
-//
-//     let mut store = Store::new(&engine, wasi);
-//     let instance = linker.instantiate(&mut store, my_state)?;
-//
-//     // Call the exported functions
-//     let print_info = instance.get_typed_func::<(i32, i32), ()>(&mut store, "print_info")?;
-//     print_info.call(&mut store, (1, 42))?;
-//
-//     Ok(())
-// }
-
 use wasi_common::sync::WasiCtxBuilder;
 use wasmtime::*;
+
+const WASM_MODULE: &str = "../output/output.wasm";
 
 fn main() -> Result<()> {
     // Define the WASI functions globally on the `Config`.
@@ -42,7 +19,7 @@ fn main() -> Result<()> {
     let mut store = Store::new(&engine, wasi);
 
     // Instantiate our module with the imports we've created, and run it.
-    let module = Module::from_file(&engine, "../output/output.wasm")?;
+    let module = Module::from_file(&engine, WASM_MODULE)?;
     // let module = Module::from_file(&engine, "../multi-mem.wat")?;
     linker.module(&mut store, "", &module)?;
     linker
