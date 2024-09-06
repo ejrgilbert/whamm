@@ -1,23 +1,32 @@
+use wasi_common::sync::WasiCtxBuilder;
 use wasmtime::*;
-use wasmtime_wasi::sync::WasiCtxBuilder;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+const WASM_MODULE: &str = "../output/output.wasm";
+// const WASM_MODULE: &str = "../maps.wasm";
+
+fn main() -> Result<()> {
+    // Define the WASI functions globally on the `Config`.
     let engine = Engine::default();
-    let module = Module::from_file(&engine, "target/wasm32-wasi/release/your_module.wasm")?;
     let mut linker = Linker::new(&engine);
+    wasi_common::sync::add_to_linker(&mut linker, |s| s)?;
 
-    // Set up WASI with custom configuration
+    // Create a WASI context and put it in a Store; all instances in the store
+    // share this context. `WasiCtxBuilder` provides a number of ways to
+    // configure what the target program will have access to.
     let wasi = WasiCtxBuilder::new()
-        .inherit_stdio() // Inherit standard input/output
+        .inherit_stdio()
+        .inherit_args()?
         .build();
-    wasmtime_wasi::add_to_linker(&mut linker, |s| s)?;
-
     let mut store = Store::new(&engine, wasi);
-    let instance = linker.instantiate(&mut store, &module)?;
 
-    // Call the exported functions
-    let print_info = instance.get_typed_func::<(i32, i32), ()>(&mut store, "print_info")?;
-    print_info.call(&mut store, (1, 42))?;
+    // Instantiate our module with the imports we've created, and run it.
+    let module = Module::from_file(&engine, WASM_MODULE)?;
+    // let module = Module::from_file(&engine, "../multi-mem.wat")?;
+    linker.module(&mut store, "", &module)?;
+    linker
+        .get_default(&mut store, "")?
+        .typed::<(), ()>(&store)?
+        .call(&mut store, ())?;
 
     Ok(())
 }

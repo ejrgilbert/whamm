@@ -7,10 +7,10 @@ use crate::parser::rules::core::WhammModeKind;
 use crate::parser::rules::wasm::{OpcodeEventKind, WasmPackageKind};
 use crate::parser::types::{DataType, SpecPart, Value};
 use log::warn;
-use orca::ir::id::FunctionID;
-use orca::ir::module::module_functions::{FuncKind, ImportedFunction, LocalFunction};
-use orca::ir::module::Module;
-use orca::ir::types::DataType as OrcaType;
+use orca_wasm::ir::id::FunctionID;
+use orca_wasm::ir::module::module_functions::{FuncKind, ImportedFunction, LocalFunction};
+use orca_wasm::ir::module::Module;
+use orca_wasm::ir::types::DataType as OrcaType;
 use std::collections::HashMap;
 use wasmparser::Operator;
 
@@ -294,7 +294,6 @@ impl Event for OpcodeEvent {
                             },
                         },
                     };
-
                     // define static_data
                     loc_info.static_data.insert(
                         "target_fn_name".to_string(),

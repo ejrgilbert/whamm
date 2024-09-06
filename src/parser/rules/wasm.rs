@@ -211,7 +211,6 @@ macro_rules! define_opcode {
             // ======================
             // ---- Constructors ----
             // ======================
-
             $(
             pub fn $name() -> Self {
                 Self::$op {

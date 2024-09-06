@@ -11,11 +11,11 @@ use crate::emitter::rewriting::rules::Arg;
 use crate::generator::types::ExprFolder;
 use crate::parser::types::{BinOp, Block, DataType, Expr, Statement, UnOp, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
-use orca::ir::id::{FunctionID, GlobalID, LocalID};
-use orca::ir::types::{BlockType, DataType as OrcaType, Value as OrcaValue};
-use orca::module_builder::AddLocal;
-use orca::opcode::{MacroOpcode, Opcode};
-use orca::{InitExpr, Module};
+use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
+use orca_wasm::ir::types::{BlockType, DataType as OrcaType, Value as OrcaValue};
+use orca_wasm::module_builder::AddLocal;
+use orca_wasm::opcode::{MacroOpcode, Opcode};
+use orca_wasm::{InitExpr, Module};
 
 pub trait Emitter {
     fn emit_body(
@@ -207,9 +207,7 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     Ok(to_call) => to_call,
                     Err(e) => return Err(e),
                 };
-                *addr = Some(VarAddr::MapId {
-                    addr: map_id as u32,
-                });
+                *addr = Some(VarAddr::MapId { addr: map_id });
                 let fn_id = match table.lookup_rec(&fn_name) {
                     Some(Record::LibFn { fn_id, .. }) => fn_id,
                     _ => {
@@ -221,7 +219,7 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     }
                 };
 
-                injector.i32_const(map_id);
+                injector.u32_const(map_id);
                 injector.call(FunctionID(*fn_id));
                 return Ok(true);
             }
@@ -250,6 +248,7 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         ))),
     }
 }
+
 fn emit_report_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     stmt: &mut Statement,
     injector: &mut T,
@@ -260,7 +259,7 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     if let Statement::ReportDecl { decl, .. } = stmt {
-        match &**decl {
+        return match &**decl {
             Statement::Decl { ty, var_id, .. } => {
                 // look up in symbol table
                 let var_name: String;
@@ -309,43 +308,26 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     )));
                 };
                 if let DataType::Map { .. } = ty {
-                    let script_name;
-                    let bytecode_loc;
-                    let probe_id;
-                    match &report_var_metadata.curr_location {
-                        LocationData::Local {
-                            script_id,
-                            bytecode_loc: bytecode_loc_cur,
-                            probe_id: probe_id_cur,
-                            num_reports: _,
-                        } => {
-                            script_name = script_id;
-                            bytecode_loc = bytecode_loc_cur;
-                            probe_id = probe_id_cur;
-                        }
-                        LocationData::Global { .. } => {
-                            //ERR here because the location data should be local at this point via the visiting emitter
-                            return Err(Box::new(ErrorGen::get_unexpected_error(
-                                true,
-                                Some(format!("{err_msg} Expected Local LocationData - shouldn't be called outside visit-generic")),
-                                None,
-                            )));
-                        }
+                    if !matches!(
+                        report_var_metadata.curr_location,
+                        LocationData::Local { .. }
+                    ) {
+                        //ERR here because the location data should be local at this point via the visiting emitter
+                        return Err(Box::new(ErrorGen::get_unexpected_error(
+                            true,
+                            Some(format!("{err_msg} Expected Local LocationData - shouldn't be called outside visit-generic")),
+                            None,
+                        )));
                     }
                     let (fn_name, map_id) = match map_lib_adapter.create_local_map(
                         var_name.clone(),
-                        script_name.clone(),
-                        *bytecode_loc,
-                        probe_id.clone(),
                         ty.clone(),
                         report_var_metadata,
                     ) {
                         Ok(to_call) => to_call,
                         Err(e) => return Err(e),
                     };
-                    *addr = Some(VarAddr::MapId {
-                        addr: map_id as u32,
-                    });
+                    *addr = Some(VarAddr::MapId { addr: map_id });
                     let fn_id = match table.lookup_rec(&fn_name) {
                         Some(Record::LibFn { fn_id, .. }) => fn_id,
                         _ => {
@@ -356,7 +338,7 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                             )));
                         }
                     };
-                    injector.i32_const(map_id);
+                    injector.u32_const(map_id);
                     injector.call(FunctionID(*fn_id));
                     return Ok(true);
                 }
@@ -389,26 +371,24 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                             Err(e) => return Err(e),
                         }
                         *addr = Some(VarAddr::Global { addr: id });
-                        return Ok(true);
+                        Ok(true)
                     }
                     Some(VarAddr::Local { .. }) | Some(VarAddr::MapId { .. }) => {
                         //this shouldn't happen for report vars - need to err
-                        return Err(Box::new(ErrorGen::get_unexpected_error(
+                        Err(Box::new(ErrorGen::get_unexpected_error(
                             true,
                             Some(format!("{err_msg} Expected Global VarAddr.")),
                             None,
-                        )));
+                        )))
                     }
                 }
             }
-            _ => {
-                return Err(Box::new(ErrorGen::get_unexpected_error(
-                    false,
-                    Some(format!("{err_msg} Wrong statement type, should be `decl`")),
-                    None,
-                )))
-            }
-        }
+            _ => Err(Box::new(ErrorGen::get_unexpected_error(
+                false,
+                Some(format!("{err_msg} Wrong statement type, should be `decl`")),
+                None,
+            ))),
+        };
     }
     Err(Box::new(ErrorGen::get_unexpected_error(
         false,
@@ -501,7 +481,7 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 Err(e) => Err(e),
                 Ok(_) => {
                     // Emit the instruction that sets the variable's value to the emitted expression
-                    emit_set(var_id, injector, table, err_msg)
+                    emit_set(var_id, injector, table, report_var_metadata, err_msg)
                 }
             }
         }
@@ -517,6 +497,7 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         }
     };
 }
+
 fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     stmt: &mut Statement,
     injector: &mut T,
@@ -535,8 +516,7 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     {
         match get_map_info(table, name) {
             Ok((map_id, key_ty, val_ty)) => {
-                //no Record in ST, so always flush after a set_map
-                report_var_metadata.flush_soon = true;
+                report_var_metadata.mutating_map(map_id);
                 let to_call = match map_lib_adapter.insert_map_fname(key_ty, val_ty) {
                     Ok(to_call) => to_call,
                     Err(e) => return Err(e),
@@ -593,9 +573,9 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 // TODO: Might be more generic to also include Local
 // TODO: Do we really want to depend on wasmparser::ValType, or create a wrapper?
 pub fn whamm_type_to_wasm_global(app_wasm: &mut Module, ty: &DataType) -> (GlobalID, OrcaType) {
-    let orca_ty = whamm_type_to_wasm_type(ty);
+    let orca_wasm_ty = whamm_type_to_wasm_type(ty);
 
-    match orca_ty {
+    match orca_wasm_ty {
         OrcaType::I32 => {
             let global_id = app_wasm.add_global(
                 InitExpr::Value(OrcaValue::I32(0)),
@@ -637,6 +617,7 @@ fn emit_set<'a, T: Opcode<'a>>(
     var_id: &mut Expr,
     injector: &mut T,
     table: &mut SymbolTable,
+    report_var_metadata: &mut ReportVarMetadata,
     err_msg: &str,
 ) -> Result<bool, Box<WhammError>> {
     if let Expr::VarId { name, .. } = var_id {
@@ -658,9 +639,11 @@ fn emit_set<'a, T: Opcode<'a>>(
                 // this will be different based on if this is a global or local var
                 match addr {
                     Some(VarAddr::Global { addr }) => {
+                        report_var_metadata.mutating_var(*addr);
                         injector.global_set(GlobalID(*addr));
                     }
                     Some(VarAddr::Local { addr }) => {
+                        report_var_metadata.mutating_var(*addr);
                         injector.local_set(LocalID(*addr));
                     },
                     Some(VarAddr::MapId { .. }) => {
@@ -1221,6 +1204,7 @@ fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     }
     Ok(is_success)
 }
+
 fn emit_map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     expr: &mut Expr,
     injector: &mut T,
@@ -1351,29 +1335,58 @@ fn get_map_info(
     Ok((map_id, key_ty, val_ty))
 }
 fn print_report_all<'a, T: Opcode<'a> + AddLocal>(
-    _injector: &mut T,
-    _table: &mut SymbolTable,
+    injector: &mut T,
+    table: &mut SymbolTable,
     report_var_metadata: &mut ReportVarMetadata,
     _err_msg: &str,
 ) -> Result<(), Box<WhammError>> {
     if !report_var_metadata.flush_soon {
         return Ok(());
     }
-    //TODO - uncomment this when we have metadata maps correctly initialized
-    // let fn_id = match table.lookup("print_meta") {
-    //     Some(rec_id) => *rec_id,
-    //     _ => {
-    //         return Err(Box::new(ErrorGen::get_unexpected_error(
-    //             true,
-    //             Some(format!(
-    //                 "{err_msg} \
-    //                 print_meta function not in symbol table!"
-    //             )),
-    //             None,
-    //         )));
-    //     }
-    // };
-    // injector.call(fn_id as u32);
-    // report_var_metadata.flush_soon = false;
+
+    // todo -- call print GID metadata
+    // todo -- add print_global_meta to symbol table
+    let fn_id = match table.lookup_rec("print_global_meta") {
+        Some(id) => match id {
+            Record::LibFn { fn_id, .. } => *fn_id,
+            _ => {
+                return Err(Box::new(ErrorGen::get_unexpected_error(
+                    true,
+                    Some("Wrong record type for 'print_global_meta' in symbol table".to_string()),
+                    None,
+                )))
+            }
+        },
+        None => {
+            return Err(Box::new(ErrorGen::get_unexpected_error(
+                true,
+                Some("Record not found in symbol table for 'print_global_meta'".to_string()),
+                None,
+            )));
+        }
+    };
+    injector.call(FunctionID(fn_id));
+
+    let fn_id = match table.lookup_rec("print_map_meta") {
+        Some(id) => match id {
+            Record::LibFn { fn_id, .. } => *fn_id,
+            _ => {
+                return Err(Box::new(ErrorGen::get_unexpected_error(
+                    true,
+                    Some("print_map_meta not in symbol table".to_string()),
+                    None,
+                )))
+            }
+        },
+        None => {
+            return Err(Box::new(ErrorGen::get_unexpected_error(
+                true,
+                Some("Wrong record in symbol table".to_string()),
+                None,
+            )));
+        }
+    };
+    injector.call(FunctionID(fn_id));
+    report_var_metadata.flush_soon = false;
     Ok(())
 }

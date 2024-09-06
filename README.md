@@ -88,6 +88,20 @@ To visually debug the decision tree used during Wasm bytecode emission:
 cargo run -- vis-script --script <path_to_script>
 ```
 
+To run a script that uses special var types, at the moment this is `map` and `report` variables, do the following:
+```shell
+cd <project to instrument>
+# debug mode does not optimize the code when compiling (could be helpful when testing to avoid optimizing away event targets)
+cargo build --target wasm32-wasip1
+cargo run -- instr --app path/to/app.wasm --script path/to/whamm/script.mm -o path/to/output.wasm
+
+cd wasmtime-runner
+# change WASM_MODULE to: path/to/output.wasm
+vi src/main.rs
+# Should print the report data as the app is executing
+cargo run
+```
+
 ## Available Packages ##
 
 NOTE: There was discussion for moving the probe `mode` to the front of the specification (e.g. `mode:provider:package:event`);

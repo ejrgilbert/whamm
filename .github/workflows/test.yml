@@ -97,11 +97,6 @@ jobs:
 
           echo "[INFO] Testing the wasm ref interpreter configuration..."
           ./output/tests/interpreters/wasm --help
-      - name: Setup and Build Orca
-        run: |
-          cd .. && git clone --branch DO_NOT_DELETE/whamm_dependency https://github.com/thesuhas/orca.git
-          cd orca
-          cargo build
       - name: Build
         run: |
           rustup target add wasm32-unknown-unknown

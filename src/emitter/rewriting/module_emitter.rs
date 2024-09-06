@@ -2,21 +2,20 @@ use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::parser::types::{Block, DataType, Definition, Expr, Fn, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
-use orca::{DataSegment, DataSegmentKind, InitExpr, Location};
+use orca_wasm::{DataSegment, DataSegmentKind, InitExpr, Location};
 use std::collections::HashMap;
 
 use crate::emitter::map_lib_adapter::MapLibAdapter;
+use crate::emitter::rewriting::rules::Arg;
 use crate::emitter::rewriting::{
     emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global, Emitter,
 };
-use orca::ir::types::{BlockType as OrcaBlockType, DataType as OrcaType, Value as OrcaValue};
-
-use crate::emitter::rewriting::rules::Arg;
-use orca::ir::function::FunctionBuilder;
-use orca::ir::id::{FunctionID, GlobalID, LocalID};
-use orca::ir::module::Module;
-use orca::module_builder::AddLocal;
-use orca::opcode::{Instrumenter, Opcode};
+use orca_wasm::ir::function::FunctionBuilder;
+use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
+use orca_wasm::ir::module::Module;
+use orca_wasm::ir::types::{BlockType as OrcaBlockType, DataType as OrcaType, Value as OrcaValue};
+use orca_wasm::module_builder::AddLocal;
+use orca_wasm::opcode::{Instrumenter, MacroOpcode, Opcode};
 
 const UNEXPECTED_ERR_MSG: &str =
     "ModuleEmitter: Looks like you've found a bug...please report this behavior!";
@@ -39,8 +38,8 @@ pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     pub emitting_func: Option<FunctionBuilder<'b>>,
     pub table: &'c mut SymbolTable,
     mem_tracker: &'d mut MemoryTracker,
-    map_lib_adapter: &'e mut MapLibAdapter,
-    report_var_metadata: &'f mut ReportVarMetadata,
+    pub map_lib_adapter: &'e mut MapLibAdapter,
+    pub report_var_metadata: &'f mut ReportVarMetadata,
     fn_providing_contexts: Vec<String>,
 }
 
@@ -368,6 +367,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         script_name: String,
         report_mode: bool,
     ) -> Result<Option<FunctionID>, Box<WhammError>> {
+        // todo -- clean this up
         let rec_id = match self.table.lookup(&name) {
             Some(rec_id) => *rec_id,
             _ => {
@@ -391,58 +391,60 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 // this is used for user-defined global vars in the script...
                 match ty {
                     DataType::Map { .. } => {
-                        //TODO - target a function like global_init or something. _start will break because MY_MAPS isn't initialized yet
-                        let start_id = match self.app_wasm.functions.get_local_fid_by_name("_start")
+                        //time to instrument the start fn
+                        let init_id = match self
+                            .app_wasm
+                            .functions
+                            .get_local_fid_by_name("global_map_init")
                         {
-                            Some(start_id) => start_id,
+                            Some(init_id) => init_id,
                             None => {
                                 return Err(Box::new(ErrorGen::get_unexpected_error(
                                     true,
                                     Some(format!(
                                         "{UNEXPECTED_ERR_MSG} \
-                                    No start function found in the module!"
+                                    No global_map_init found in the module!"
                                     )),
                                     None,
                                 )));
                             }
                         };
-                        let mut start_fn = match self.app_wasm.functions.get_fn_modifier(start_id) {
-                            Some(start_fn) => start_fn,
+
+                        let mut init_fn = match self.app_wasm.functions.get_fn_modifier(init_id) {
+                            Some(init_fn) => init_fn,
                             None => {
                                 return Err(Box::new(ErrorGen::get_unexpected_error(
                                     true,
                                     Some(format!(
                                         "{UNEXPECTED_ERR_MSG} \
-                                    No start function found in the module!"
+                                    No global_map_init found in the module!"
                                     )),
                                     None,
                                 )));
                             }
                         };
-                        start_fn.before_at(Location::Module {
-                            func_idx: start_id,
+                        init_fn.before_at(Location::Module {
+                            func_idx: init_id, // not used
                             instr_idx: 0,
                         });
-                        let (fn_name, map_id) = match report_mode {
-                            true => {
-                                match self.map_lib_adapter.create_global_map(
-                                    name,
-                                    script_name,
-                                    ty.clone(),
-                                    self.report_var_metadata,
-                                ) {
-                                    Ok(to_call) => to_call,
-                                    Err(e) => return Err(e),
-                                }
-                            }
-                            false => match self.map_lib_adapter.create_no_meta_map(ty.clone()) {
+                        let (fn_name, map_id) = if report_mode {
+                            match self.map_lib_adapter.create_global_map(
+                                name,
+                                script_name,
+                                ty.clone(),
+                                self.report_var_metadata,
+                            ) {
                                 Ok(to_call) => to_call,
                                 Err(e) => return Err(e),
-                            },
+                            }
+                        } else {
+                            match self.map_lib_adapter.create_no_meta_map(ty.clone()) {
+                                Ok(to_call) => to_call,
+                                Err(e) => return Err(e),
+                            }
                         };
-                        *addr = Some(VarAddr::MapId {
-                            addr: map_id as u32,
-                        });
+                        *addr = Some(VarAddr::MapId { addr: map_id });
+
                         let fn_id = match self.table.lookup_rec(&fn_name) {
                             Some(Record::LibFn { fn_id, .. }) => fn_id,
                             _ => {
@@ -453,8 +455,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                                 )));
                             }
                         };
-                        start_fn.i32_const(map_id);
-                        start_fn.call(FunctionID(*fn_id));
+                        init_fn.u32_const(map_id);
+                        init_fn.call(FunctionID(*fn_id));
                         Ok(None)
                     }
                     _ => {
@@ -482,7 +484,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 true,
                 Some(format!(
                     "{UNEXPECTED_ERR_MSG} \
-                Global variable symbol does not exist!"
+                    Global variable symbol does not exist!"
                 )),
                 None,
             ))),

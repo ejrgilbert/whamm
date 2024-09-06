@@ -299,6 +299,7 @@ const FATAL_SCRIPTS: &[&str] = &[
     // invalid probe specification
     r#"
 core::br:before / i == 1 / { i = 0; }  // SHOULD FAIL HERE
+
     "#,
     // Numerics (not supported yet: https://github.com/ejrgilbert/whamm/issues/141)
     "wasm:opcode:call:alt { u32 num = 0; }",
@@ -693,6 +694,11 @@ pub fn testing_global_def() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
+        (i32, i32) sample = (1, 2);
+        dummy_fn() {
+            a = strcmp(sample, "bookings");
+            strcmp((arg0, arg1), "bookings");
+        }
         i32 i;
         i = 5; 
         i32 j = 5;
@@ -727,7 +733,7 @@ pub fn test_report_decl() {
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
         i32 a;
-        report i32 c; 
+        report i32 c;
         wasm::br:before {
             a = 1;
             report bool b;

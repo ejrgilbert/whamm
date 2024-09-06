@@ -12,13 +12,13 @@ use crate::parser;
 use crate::parser::rules::UNKNOWN_IMMS;
 use crate::parser::types::{Block, DataType, Definition, Expr, SpecPart, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
-use orca::ir::id::{FunctionID, LocalID, TypeID};
-use orca::ir::module::Module;
-use orca::ir::types::BlockType as OrcaBlockType;
-use orca::iterator::iterator_trait::{IteratingInstrumenter, Iterator as OrcaIterator};
-use orca::iterator::module_iterator::ModuleIterator;
-use orca::module_builder::AddLocal;
-use orca::opcode::{Instrumenter, Opcode};
+use orca_wasm::ir::id::{FunctionID, LocalID, TypeID};
+use orca_wasm::ir::module::Module;
+use orca_wasm::ir::types::BlockType as OrcaBlockType;
+use orca_wasm::iterator::iterator_trait::{IteratingInstrumenter, Iterator as OrcaIterator};
+use orca_wasm::iterator::module_iterator::ModuleIterator;
+use orca_wasm::module_builder::AddLocal;
+use orca_wasm::opcode::{Instrumenter, Opcode};
 use std::iter::Iterator;
 
 const UNEXPECTED_ERR_MSG: &str =
@@ -231,7 +231,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 if var_name.starts_with("imm") {
                     if let Some(id) = self.table.lookup(UNKNOWN_IMMS) {
                         if let Some(rec) = self.table.get_record(id) {
-                            if let Record::Var { ty, .. } = rec {
+                            return if let Record::Var { ty, .. } = rec {
                                 self.table.put(
                                     var_name.to_string(),
                                     Record::Var {
@@ -244,15 +244,15 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                                         loc: None,
                                     },
                                 );
-                                return Ok(true);
+                                Ok(true)
                             } else {
                                 // unexpected record type
-                                return Err(Box::new(ErrorGen::get_unexpected_error(
+                                Err(Box::new(ErrorGen::get_unexpected_error(
                                     true,
                                     Some(UNEXPECTED_ERR_MSG.to_string()),
                                     None,
-                                )));
-                            }
+                                )))
+                            };
                         }
                     }
                 }
@@ -468,19 +468,14 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
         }
         for stmt in body.stmts.iter_mut() {
             is_success &= self.emit_stmt(curr_instr_args, stmt)?;
-            //now emit the call to print the changes to the report vars if needed
-            match print_report_all(
-                &mut self.app_iter,
-                self.table,
-                self.report_var_metadata,
-                UNEXPECTED_ERR_MSG,
-            ) {
-                Ok(_) => {}
-                Err(e) => {
-                    return Err(e);
-                }
-            }
         }
+        //now emit the call to print the changes to the report vars if needed
+        print_report_all(
+            &mut self.app_iter,
+            self.table,
+            self.report_var_metadata,
+            UNEXPECTED_ERR_MSG,
+        )?;
         Ok(is_success)
     }
 

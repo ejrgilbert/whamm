@@ -3,6 +3,7 @@
 // =======================
 
 use crate::common::error::ErrorGen;
+use crate::emitter::report_var_metadata::LocationData;
 use crate::emitter::rewriting::module_emitter::ModuleEmitter;
 use crate::parser::rules::{Event, Package, Probe, Provider};
 use crate::parser::types::{
@@ -10,9 +11,12 @@ use crate::parser::types::{
     UnOp, Value, Whamm, WhammVisitorMut,
 };
 use crate::verifier::types::Record;
-use log::{debug, trace, warn};
-use orca::ir::function::FunctionBuilder;
-use orca::ir::id::FunctionID;
+use log::{debug, info, trace, warn};
+use orca_wasm::ir::function::FunctionBuilder;
+use orca_wasm::ir::id::FunctionID;
+use orca_wasm::ir::types::DataType as OrcaType;
+use orca_wasm::ir::types::Value as OrcaValue;
+use orca_wasm::InitExpr;
 use std::collections::HashMap;
 
 /// Serves as the first phase of instrumenting a module by setting up
@@ -115,7 +119,10 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
             "print_map".to_string(),
             "insert_i32_string".to_string(),
             "get_string_from_i32string".to_string(),
-            "print_meta".to_string(),
+            "print_map_meta".to_string(),
+            "print_global_i32_meta_helper".to_string(),
+            "set_metadata_header".to_string(),
+            "print_metadata_header".to_string(),
         ];
         for lib_fn in lib_map_fns.iter() {
             let id_option = self
@@ -125,31 +132,25 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
                 .get_local_fid_by_name(lib_fn);
             let id = match id_option {
                 Some(id_option) => *id_option,
-                None => u32::MAX,
+                None => {
+                    warn!("Expected function not found for name: {lib_fn}");
+                    continue;
+                }
             };
-            match self.emitter.table.get_curr_scope_mut() {
-                Some(_) => {
-                    self.emitter.table.put(
-                        lib_fn.to_string(),
-                        Record::LibFn {
-                            name: lib_fn.to_string(),
-                            fn_id: id,
-                        },
-                    );
-                }
-                _ => {
-                    self.err.add_error(ErrorGen::get_unexpected_error(
-                        true,
-                        Some("No scope found in Visit Whamm".to_string()),
-                        None,
-                    ));
-                }
-            }
+            self.emitter.table.put(
+                lib_fn.to_string(),
+                Record::LibFn {
+                    name: lib_fn.to_string(),
+                    fn_id: id,
+                },
+            );
         }
     }
     fn on_startup(&mut self) {
         self.lib_fn_set();
         self.create_start();
+        self.create_global_map_init();
+        self.create_print_global_meta();
     }
     fn create_start(&mut self) {
         match self.emitter.app_wasm.start {
@@ -158,7 +159,7 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
             }
             None => {
                 //time to make a start fn
-                debug!("No start function found, creating one");
+                info!("No start function found, creating one");
                 match self
                     .emitter
                     .app_wasm
@@ -181,6 +182,79 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
                 }
             }
         }
+    }
+
+    fn create_global_map_init(&mut self) {
+        //make a global bool for whether to run the global_map_init fn
+        self.emitter.map_lib_adapter.init_bool_location = *self.emitter.app_wasm.add_global(
+            InitExpr::Value(OrcaValue::I32(1)),
+            OrcaType::I32,
+            true,
+            false,
+        );
+        match self
+            .emitter
+            .app_wasm
+            .functions
+            .get_local_fid_by_name("global_map_init")
+        {
+            Some(_) => {
+                debug!("global_map_init function already exists");
+                self.err.add_error(ErrorGen::get_unexpected_error(
+                    true,
+                    Some(
+                        "global_map_init function already exists - needs to be created by Whamm"
+                            .to_string(),
+                    ),
+                    None,
+                ));
+            }
+            None => {
+                //time to make a global_map_init fn
+                debug!("No global_map_init function found, creating one");
+                let global_map_init_fn = FunctionBuilder::new(&[], &[]);
+                let global_map_init_id = global_map_init_fn.finish_module(self.emitter.app_wasm);
+                self.emitter
+                    .app_wasm
+                    .set_fn_name(global_map_init_id, "global_map_init".to_string());
+            }
+        }
+    }
+
+    fn create_print_global_meta(&mut self) {
+        if self
+            .emitter
+            .app_wasm
+            .functions
+            .get_local_fid_by_name("print_global_meta")
+            .is_some()
+        {
+            debug!("print_global_meta function already exists");
+            self.err.add_error(ErrorGen::get_unexpected_error(
+                true,
+                Some(
+                    "print_global_meta function already exists - needs to be created by Whamm"
+                        .to_string(),
+                ),
+                None,
+            ));
+            return;
+        }
+
+        debug!("Creating the print_global_meta function");
+        let print_global_meta_fn = FunctionBuilder::new(&[], &[]);
+        let print_global_meta_id = print_global_meta_fn.finish_module(self.emitter.app_wasm);
+        self.emitter
+            .app_wasm
+            .set_fn_name(print_global_meta_id, "print_global_meta".to_string());
+
+        self.emitter.table.put(
+            "print_global_meta".to_string(),
+            Record::LibFn {
+                name: "print_global_meta".to_string(),
+                fn_id: *print_global_meta_id,
+            },
+        );
     }
 }
 impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
@@ -211,6 +285,9 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
 
     fn visit_script(&mut self, script: &mut Script) -> bool {
         trace!("Entering: CodeGenerator::visit_script");
+        self.emitter.report_var_metadata.curr_location = LocationData::Global {
+            script_id: script.name.clone(),
+        };
         if let Err(e) = self.emitter.enter_scope() {
             self.err.add_error(*e)
         }

@@ -655,7 +655,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 }
                 self.err.type_check_error(
                     false,
-                    format! {"Can't look up {} in symbol table", name},
+                    format! {"Can't look up `{}` in symbol table", name},
                     &loc.clone().map(|l| l.line_col),
                 );
 
@@ -786,7 +786,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     } else {
                         self.err.type_check_error(
                             false,
-                            format! {"Can't look up {} in symbol table", fn_name},
+                            format! {"Can't look up `{}` in symbol table", fn_name},
                             &loc.clone().map(|l| l.line_col),
                         );
                     }

@@ -4,9 +4,9 @@ use crate::generator::simple_ast::{SimpleAstProbes, SimpleProbe};
 use crate::parser::rules::core::WhammModeKind;
 use crate::parser::rules::{FromStr, WhammProviderKind};
 use crate::parser::types::{DataType, SpecPart, Value};
-use orca::ir::module::Module;
-use orca::ir::types::DataType as OrcaType;
-use orca::Location;
+use orca_wasm::ir::module::Module;
+use orca_wasm::ir::types::DataType as OrcaType;
+use orca_wasm::Location;
 use std::collections::HashMap;
 use wasmparser::Operator;
 

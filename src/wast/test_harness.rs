@@ -2,7 +2,7 @@
 
 use crate::common::instr::{run, try_path};
 use log::{debug, error};
-use orca::Module;
+use orca_wasm::Module;
 use std::fs::{remove_dir_all, File};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
@@ -222,7 +222,12 @@ fn generate_instrumented_bin_wast(
             &format!("{:?}", wast_path),
             Some(debug_file_path.clone()),
             0,
-            false,
+            // Config {
+            //     virgil: false,
+            //     testing: true,
+            //     library_strategy: LibraryStrategy::Linked,
+            //     mem_offset: 0 // unused anyway!
+            // },
         );
         wasm2wat_on_file(debug_file_path.as_str());
 

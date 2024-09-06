@@ -8,7 +8,7 @@ use crate::common::error::WhammError;
 use crate::emitter::rewriting::rules::{Arg, LocInfo, WhammProvider};
 use crate::parser::types::{Block, DataType, Expr, Fn, ProbeSpec, Statement, Value};
 
-use orca::ir::types::DataType as OrcaType;
+use orca_wasm::ir::types::DataType as OrcaType;
 use wasmparser::Operator;
 
 // =================================================

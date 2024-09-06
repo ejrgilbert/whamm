@@ -905,7 +905,6 @@ macro_rules! for_each_mode {
                  instrumentation point (e.g. function bodies, blocks, etc.)."
     BlockAlt, block_alt, "This mode will cause the instrumentation logic to run *instead of* the\
                           probed block (if the predicate evaluates to `true`)."
-
     // core modes
     Begin, begin, "Run this logic on application startup."
     End, end, "Run this logic when the application exits."

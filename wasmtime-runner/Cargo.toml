@@ -1,0 +1,15 @@
+[package]
+name = "wasm_runner"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+doc = false
+name = "wasm_runner"
+path = "src/main.rs"
+#required-features = ["exe"]
+
+[dependencies]
+wasmtime = "24.0.0"
+wasmtime-wasi = "24.0.0"
+wasi-common = "24.0.0"

@@ -1,22 +1,24 @@
-report i32 whatever;
-wasm:opcode:call:before / 
-    target_fn_name == "inner_fn"
+report i32 blah;
+wasm:opcode:call:before /
+    target_fn_name == "bar"
 /
  {
     if(true) {
         report i32 c;
     };
     report i32 a;
-    a = 5;
+//     map<i32, i32> m;
     report map<i32, i32> m;
+    a = 5;
     m[1] = 2;
-    whatever = 3;
-    arg0 = 1;
+    m[2] = 3;
+    blah = 3;
+    arg0 = 5;
 }
-wasm:opcode:call:after / 
+wasm:opcode:call:after /
     target_fn_name == "foo"
 /
  {
     report i32 b;
-    a = 3;
+    b = 3;
 }
