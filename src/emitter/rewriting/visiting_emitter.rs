@@ -177,9 +177,9 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         true
     }
 
-    pub(crate) fn emit_args(&mut self) -> Result<bool, Box<WhammError>> {
+    pub(crate) fn emit_args(&mut self, err: &mut ErrorGen) -> bool {
         for (_param_name, param_rec_id) in self.instr_created_args.iter() {
-            let param_rec = self.table.get_record_mut(param_rec_id);
+            let param_rec = self.table.get_record_mut(*param_rec_id);
             if let Some(Record::Var {
                 addr: Some(VarAddr::Local { addr }),
                 ..
@@ -189,17 +189,18 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 // for the instrumented instruction right before that instruction is called!
                 self.app_iter.local_get(LocalID(*addr));
             } else {
-                return Err(Box::new(ErrorGen::get_unexpected_error(
+                err.unexpected_error(
                     true,
                     Some(format!(
                         "{UNEXPECTED_ERR_MSG} \
                 Could not emit parameters, something went wrong..."
                     )),
                     None,
-                )));
+                );
+                return false;
             }
         }
-        Ok(true)
+        true
     }
 
     pub(crate) fn emit_empty_alternate(&mut self) -> Result<bool, Box<WhammError>> {
@@ -213,7 +214,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     }
 
     fn override_var_val(&mut self, rec_id: &usize, val: Option<Value>) {
-        let mut rec = self.table.get_record_mut(rec_id);
+        let mut rec = self.table.get_record_mut(*rec_id);
         if let Some(Record::Var { value, .. }) = &mut rec {
             *value = val;
         }
@@ -223,52 +224,47 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         &mut self,
         var_name: &str,
         var_val: &Option<Value>,
-    ) -> Result<bool, Box<WhammError>> {
+        err: &mut ErrorGen,
+    ) -> bool {
         let rec_id = match self.table.lookup(var_name) {
-            Some(rec_id) => *rec_id,
+            Some(rec_id) => rec_id,
             _ => {
                 // check if this is an unknown immN!
                 if var_name.starts_with("imm") {
-                    if let Some(id) = self.table.lookup(UNKNOWN_IMMS) {
-                        if let Some(rec) = self.table.get_record(id) {
-                            return if let Record::Var { ty, .. } = rec {
-                                self.table.put(
-                                    var_name.to_string(),
-                                    Record::Var {
-                                        ty: ty.clone(),
-                                        name: var_name.to_string(),
-                                        value: var_val.clone(),
-                                        is_comp_provided: false,
-                                        is_report_var: false,
-                                        addr: None,
-                                        loc: None,
-                                    },
-                                );
-                                Ok(true)
-                            } else {
-                                // unexpected record type
-                                Err(Box::new(ErrorGen::get_unexpected_error(
-                                    true,
-                                    Some(UNEXPECTED_ERR_MSG.to_string()),
-                                    None,
-                                )))
-                            };
-                        }
-                    }
+                    let Some(Record::Var { ty, .. }) =
+                        self.table.lookup_var(UNKNOWN_IMMS, &None, err, true)
+                    else {
+                        err.unexpected_error(true, Some("unexpected type".to_string()), None);
+                        return false;
+                    };
+                    self.table.put(
+                        var_name.to_string(),
+                        Record::Var {
+                            ty: ty.clone(),
+                            name: var_name.to_string(),
+                            value: var_val.clone(),
+                            is_comp_provided: false,
+                            is_report_var: false,
+                            addr: None,
+                            loc: None,
+                        },
+                    );
+                    return true;
                 }
-                return Err(Box::new(ErrorGen::get_unexpected_error(
+                err.unexpected_error(
                     true,
                     Some(format!(
                         "{UNEXPECTED_ERR_MSG} \
                         `{var_name}` symbol does not exist in this scope!"
                     )),
                     None,
-                )));
+                );
+                return false;
             }
         };
         self.override_var_val(&rec_id, var_val.clone());
 
-        Ok(true)
+        true
     }
 
     pub(crate) fn reset_table_data(&mut self, loc_info: &LocInfo) {
@@ -285,8 +281,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         self.instr_created_args.clear();
     }
 
-    pub(crate) fn fold_expr(&mut self, expr: &mut Expr) -> bool {
-        *expr = ExprFolder::fold_expr(expr, self.table);
+    pub(crate) fn fold_expr(&mut self, expr: &mut Expr, err: &mut ErrorGen) -> bool {
+        *expr = ExprFolder::fold_expr(expr, self.table, err);
         true
     }
 
@@ -303,16 +299,17 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         curr_instr_args: &[Arg],
         condition: &mut Expr,
         conseq: &mut Block,
+        err: &mut ErrorGen,
     ) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
         // emit the condition of the `if` expression
-        is_success &= self.emit_expr(condition)?;
+        is_success &= self.emit_expr(condition, err);
 
         // emit the beginning of the if block
 
         self.app_iter.if_stmt(block_type_to_wasm(conseq));
 
-        is_success &= self.emit_body(curr_instr_args, conseq)?;
+        is_success &= self.emit_body(curr_instr_args, conseq, err);
 
         // emit the end of the if block
         self.app_iter.end();
@@ -324,6 +321,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         curr_instr_args: &[Arg],
         condition: &mut Expr,
         conseq: &mut Block,
+        err: &mut ErrorGen,
     ) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
 
@@ -337,7 +335,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         .1;
 
         // emit the condition of the `if` expression
-        is_success &= self.emit_expr(condition)?;
+        is_success &= self.emit_expr(condition, err);
         // emit the beginning of the if block
 
         let block_ty = match orig_ty_id {
@@ -353,12 +351,12 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             None => OrcaBlockType::Empty,
         };
         self.app_iter.if_stmt(block_ty);
-        is_success &= self.emit_body(curr_instr_args, conseq)?;
+        is_success &= self.emit_body(curr_instr_args, conseq, err);
 
         // emit the beginning of the else
         self.app_iter.else_stmt();
 
-        is_success &= self.emit_args()?;
+        is_success &= self.emit_args(err);
         is_success &= self.emit_orig();
 
         // emit the end of the if block
@@ -369,7 +367,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     fn handle_alt_call_by_name(
         &mut self,
         args: &mut Option<Vec<Expr>>,
-    ) -> Result<bool, Box<WhammError>> {
+        err: &mut ErrorGen,
+    ) -> bool {
         // args: vec![func_name: String]
         // Assume the correct args since we've gone through typechecking at this point!
         let fn_name = match args.as_ref().unwrap().iter().next().unwrap() {
@@ -377,7 +376,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 val: Value::Str { val, .. },
                 ..
             } => val.clone(),
-            _ => return Ok(false),
+            _ => return false,
         };
 
         if let Some(func_id) = self
@@ -386,24 +385,22 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             .functions
             .get_local_fid_by_name(fn_name.as_str())
         {
-            let is_success = self.emit_args()?;
+            let is_success = self.emit_args(err);
             self.app_iter.call(func_id);
-            Ok(is_success)
+            is_success
         } else {
-            Err(Box::new(ErrorGen::get_unexpected_error(
+            err.unexpected_error(
                 true,
                 Some(format!(
                     "{UNEXPECTED_ERR_MSG} Could not find alt function call by name: {fn_name}"
                 )),
                 None,
-            )))
+            );
+            false
         }
     }
 
-    fn handle_alt_call_by_id(
-        &mut self,
-        args: &mut Option<Vec<Expr>>,
-    ) -> Result<bool, Box<WhammError>> {
+    fn handle_alt_call_by_id(&mut self, args: &mut Option<Vec<Expr>>, err: &mut ErrorGen) -> bool {
         // args: vec![func_id: i32]
         // Assume the correct args since we've gone through typechecking at this point!
         let func_id = match args.as_ref().unwrap().iter().next().unwrap() {
@@ -411,20 +408,20 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 val: Value::I32 { val, .. },
                 ..
             } => *val,
-            _ => return Ok(false),
+            _ => return false,
         };
 
-        let is_success = self.emit_args()?;
+        let is_success = self.emit_args(err);
         self.app_iter.call(FunctionID(func_id as u32));
-        Ok(is_success)
+        is_success
     }
 
-    fn handle_drop_args(&mut self, curr_instr_args: &[Arg]) -> Result<bool, Box<WhammError>> {
+    fn handle_drop_args(&mut self, curr_instr_args: &[Arg]) -> bool {
         // Generate drops for all args to this opcode!
         for _arg in curr_instr_args {
             self.app_iter.drop();
         }
-        Ok(true)
+        true
     }
 
     fn handle_special_fn_call(
@@ -432,58 +429,51 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         curr_instr_args: &[Arg],
         target_fn_name: String,
         args: &mut Option<Vec<Expr>>,
-    ) -> Result<bool, Box<WhammError>> {
+        err: &mut ErrorGen,
+    ) -> bool {
         match target_fn_name.as_str() {
-            "alt_call_by_name" => {
-                self.handle_alt_call_by_name(args)
-            },
-            "alt_call_by_id" => {
-                self.handle_alt_call_by_id(args)
-            },
-            "drop_args" => {
-                self.handle_drop_args(curr_instr_args)
-            },
+            "alt_call_by_name" => self.handle_alt_call_by_name(args, err),
+            "alt_call_by_id" => self.handle_alt_call_by_id(args, err),
+            "drop_args" => self.handle_drop_args(curr_instr_args),
             _ => {
-                Err(Box::new(ErrorGen::get_unexpected_error(
+                err.unexpected_error(
                     true,
                     Some(format!(
                         "{UNEXPECTED_ERR_MSG} Could not find handler for static function with name: {target_fn_name}"
                     )),
                     None,
-                )))
+                );
+                false
             }
         }
     }
 }
 impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
-    fn emit_body(
-        &mut self,
-        curr_instr_args: &[Arg],
-        body: &mut Block,
-    ) -> Result<bool, Box<WhammError>> {
+    fn emit_body(&mut self, curr_instr_args: &[Arg], body: &mut Block, err: &mut ErrorGen) -> bool {
         let mut is_success = true;
         for _ in 0..self.curr_num_reports {
             let (global_id, ..) = whamm_type_to_wasm_global(self.app_iter.module, &DataType::I32);
             self.report_var_metadata.available_i32_gids.push(*global_id);
         }
         for stmt in body.stmts.iter_mut() {
-            is_success &= self.emit_stmt(curr_instr_args, stmt)?;
+            is_success &= self.emit_stmt(curr_instr_args, stmt, err);
         }
         //now emit the call to print the changes to the report vars if needed
         print_report_all(
             &mut self.app_iter,
             self.table,
             self.report_var_metadata,
-            UNEXPECTED_ERR_MSG,
-        )?;
-        Ok(is_success)
+            err,
+        );
+        is_success
     }
 
     fn emit_stmt(
         &mut self,
         curr_instr_args: &[Arg],
         stmt: &mut Statement,
-    ) -> Result<bool, Box<WhammError>> {
+        err: &mut ErrorGen,
+    ) -> bool {
         // Check if this is calling a provided, static function!
         if let Statement::Expr {
             expr: Expr::Call {
@@ -494,29 +484,15 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
         {
             let fn_name = match &**fn_target {
                 Expr::VarId { name, .. } => name.clone(),
-                _ => return Ok(false),
+                _ => return false,
             };
-            let rec_id = self.table.lookup(fn_name.as_str()).copied();
-
-            if rec_id.is_none() {
-                // this should never happen!
-                return Err(Box::new(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} Could not find function with name: {fn_name}"
-                    )),
-                    None,
-                )));
-            } else if let Some(r_id) = rec_id {
-                let rec = self.table.get_record_mut(&r_id);
-                if let Some(Record::Fn {
-                    def: Definition::CompilerStatic,
-                    ..
-                }) = rec
-                {
-                    // We want to handle this as unique logic rather than a simple function call to be emitted
-                    return self.handle_special_fn_call(curr_instr_args, fn_name, args);
-                }
+            let Some(Record::Fn { def, .. }) = self.table.lookup_fn(fn_name.as_str(), err) else {
+                err.unexpected_error(true, Some("unexpected type".to_string()), None);
+                return false;
+            };
+            if matches!(def, Definition::CompilerStatic) {
+                // We want to handle this as unique logic rather than a simple function call to be emitted
+                return self.handle_special_fn_call(curr_instr_args, fn_name, args, err);
             }
         }
 
@@ -530,10 +506,11 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
             self.map_lib_adapter,
             self.report_var_metadata,
             UNEXPECTED_ERR_MSG,
+            err,
         )
     }
 
-    fn emit_expr(&mut self, expr: &mut Expr) -> Result<bool, Box<WhammError>> {
+    fn emit_expr(&mut self, expr: &mut Expr, err: &mut ErrorGen) -> bool {
         emit_expr(
             expr,
             &mut self.app_iter,
@@ -542,6 +519,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
             self.map_lib_adapter,
             self.report_var_metadata,
             UNEXPECTED_ERR_MSG,
+            err,
         )
     }
 }

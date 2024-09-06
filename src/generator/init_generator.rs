@@ -45,36 +45,28 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
     }
 
     // Private helper functions
-    fn visit_globals(&mut self, globals: &HashMap<String, Global>, script_name: &str) -> bool {
-        let mut is_success = true;
+    fn visit_globals(&mut self, globals: &HashMap<String, Global>) -> bool {
+        let is_success = true;
         for (name, global) in globals.iter() {
             // do not inject globals into Wasm that are used/defined by the compiler
             if global.is_from_user() {
                 if global.report {
                     //emit global and add the metadata to the report_var_metadata
-                    match self.emitter.emit_report_global(
+                    if let Some(fid) = self.emitter.emit_report_global(
                         name.clone(),
                         global.ty.clone(),
                         &global.value,
-                        script_name.to_owned(),
+                        self.err,
                     ) {
-                        Err(e) => self.err.add_error(*e),
-                        Ok(Some(fid)) => {
-                            self.injected_funcs.push(fid);
-                        }
-                        Ok(None) => is_success &= true,
+                        self.injected_funcs.push(fid);
                     }
-                } else {
-                    match self
-                        .emitter
-                        .emit_global(name.clone(), global.ty.clone(), &global.value)
-                    {
-                        Err(e) => self.err.add_error(*e),
-                        Ok(Some(fid)) => {
-                            self.injected_funcs.push(fid);
-                        }
-                        Ok(None) => is_success &= true,
-                    }
+                } else if let Some(fid) = self.emitter.emit_global(
+                    name.clone(),
+                    global.ty.clone(),
+                    &global.value,
+                    self.err,
+                ) {
+                    self.injected_funcs.push(fid);
                 }
             }
         }
@@ -288,9 +280,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
         self.emitter.report_var_metadata.curr_location = LocationData::Global {
             script_id: script.name.clone(),
         };
-        if let Err(e) = self.emitter.enter_scope() {
-            self.err.add_error(*e)
-        }
+        self.emitter.enter_scope(self.err);
         self.context_name += &format!(":{}", script.name.clone());
         let mut is_success = true;
 
@@ -299,16 +289,14 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
             is_success &= self.visit_fn(f);
         });
         // inject globals
-        is_success &= self.visit_globals(&script.globals, &script.name);
+        is_success &= self.visit_globals(&script.globals);
         // visit providers
         script.providers.iter_mut().for_each(|(_name, provider)| {
             is_success &= self.visit_provider(provider);
         });
 
         trace!("Exiting: CodeGenerator::visit_script");
-        if let Err(e) = self.emitter.exit_scope() {
-            self.err.add_error(*e)
-        }
+        self.emitter.exit_scope(self.err);
         // Remove from `context_name`
         self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
         is_success
@@ -316,9 +304,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
 
     fn visit_provider(&mut self, provider: &mut Box<dyn Provider>) -> bool {
         trace!("Entering: CodeGenerator::visit_provider");
-        if let Err(e) = self.emitter.enter_scope() {
-            self.err.add_error(*e)
-        }
+        self.emitter.enter_scope(self.err);
         self.context_name += &format!(":{}", provider.name());
         let mut is_success = true;
 
@@ -337,9 +323,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
         });
 
         trace!("Exiting: CodeGenerator::visit_provider");
-        if let Err(e) = self.emitter.exit_scope() {
-            self.err.add_error(*e)
-        }
+        self.emitter.exit_scope(self.err);
         // Remove this package from `context_name`
         self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
         is_success
@@ -347,9 +331,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
 
     fn visit_package(&mut self, package: &mut dyn Package) -> bool {
         trace!("Entering: CodeGenerator::visit_package");
-        if let Err(e) = self.emitter.enter_scope() {
-            self.err.add_error(*e)
-        }
+        self.emitter.enter_scope(self.err);
         let mut is_success = true;
         self.context_name += &format!(":{}", package.name());
 
@@ -368,9 +350,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
         });
 
         trace!("Exiting: CodeGenerator::visit_package");
-        if let Err(e) = self.emitter.exit_scope() {
-            self.err.add_error(*e)
-        }
+        self.emitter.exit_scope(self.err);
         // Remove this package from `context_name`
         self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
         is_success
@@ -378,9 +358,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
 
     fn visit_event(&mut self, event: &mut dyn Event) -> bool {
         trace!("Entering: CodeGenerator::visit_event");
-        if let Err(e) = self.emitter.enter_scope() {
-            self.err.add_error(*e)
-        }
+        self.emitter.enter_scope(self.err);
         // let mut is_success = self.emitter.emit_event(event);
         self.context_name += &format!(":{}", event.name());
         let mut is_success = true;
@@ -419,9 +397,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
         }
 
         trace!("Exiting: CodeGenerator::visit_event");
-        if let Err(e) = self.emitter.exit_scope() {
-            self.err.add_error(*e)
-        }
+        self.emitter.exit_scope(self.err);
         // Remove this event from `context_name`
         self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
         is_success
@@ -429,9 +405,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
 
     fn visit_probe(&mut self, probe: &mut Box<dyn Probe>) -> bool {
         trace!("Entering: CodeGenerator::visit_probe");
-        if let Err(e) = self.emitter.enter_scope() {
-            self.err.add_error(*e)
-        }
+        self.emitter.enter_scope(self.err);
         // let mut is_success = self.emitter.emit_probe(probe);
         self.context_name += &format!(":{}", probe.mode().name());
         let mut is_success = true;
@@ -459,9 +433,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
         }
 
         trace!("Exiting: CodeGenerator::visit_probe");
-        if let Err(e) = self.emitter.exit_scope() {
-            self.err.add_error(*e)
-        }
+        self.emitter.exit_scope(self.err);
         // Remove this probe from `context_name`
         self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
         is_success
@@ -469,15 +441,12 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
 
     fn visit_fn(&mut self, f: &mut Fn) -> bool {
         trace!("Entering: CodeGenerator::visit_fn");
-        if let Err(e) = self.emitter.enter_scope() {
-            self.err.add_error(*e)
-        }
+        self.emitter.enter_scope(self.err);
         let mut is_success = true;
         if f.def == Definition::CompilerDynamic {
             // Only emit the functions that will be used dynamically!
-            match self.emitter.emit_fn(&self.context_name, f) {
-                Err(e) => self.err.add_error(*e),
-                Ok(res) => self.injected_funcs.push(res),
+            if let Some(res) = self.emitter.emit_fn(&self.context_name, f, self.err) {
+                self.injected_funcs.push(res);
             }
         } else {
             // user provided function, visit the body to ensure
@@ -494,9 +463,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
             is_success &= self.visit_block(&mut f.body);
         }
         trace!("Exiting: CodeGenerator::visit_fn");
-        if let Err(e) = self.emitter.exit_scope() {
-            self.err.add_error(*e)
-        }
+        self.emitter.exit_scope(self.err);
         is_success
     }
 
@@ -610,10 +577,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
         match val {
             Value::Str { .. } => {
                 // Emit the string into the Wasm module data section!
-                if let Err(e) = self.emitter.emit_string(val) {
-                    self.err.add_error(*e)
-                }
-                true
+                self.emitter.emit_string(val, self.err)
             }
             Value::Tuple { vals, .. } => {
                 let mut is_success = true;

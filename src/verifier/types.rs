@@ -1,5 +1,6 @@
-use crate::common::error::{ErrorGen, WhammError};
+use crate::common::error::ErrorGen;
 use crate::parser::types::{DataType, Definition, FnId, Location, ProbeSpec, Value};
+use pest::error::LineColLocation;
 use std::collections::HashMap;
 use std::fmt;
 
@@ -111,18 +112,15 @@ impl SymbolTable {
         is_success
     }
 
-    pub fn enter_scope(&mut self) -> Result<(), Box<WhammError>> {
+    pub fn enter_scope(&mut self, err: &mut ErrorGen) {
         let new_id = self.scopes.len();
 
         let curr_scope = self.get_curr_scope_mut().unwrap();
         if curr_scope.has_next() {
-            return match curr_scope.next_child() {
-                Err(e) => Err(e),
-                Ok(n) => {
-                    self.curr_scope = *n;
-                    Ok(())
-                }
-            };
+            if let Some(n) = curr_scope.next_child(err) {
+                self.curr_scope = *n;
+            }
+            return;
         }
         // Will need to create a new next scope
         // Store new scope in the current scope's children
@@ -137,24 +135,22 @@ impl SymbolTable {
         // Add new scope
         self.scopes.push(new_scope);
         self.curr_scope = new_id;
-        Ok(())
     }
 
-    pub fn exit_scope(&mut self) -> Result<(), Box<WhammError>> {
+    pub fn exit_scope(&mut self, err: &mut ErrorGen) {
         match self.get_curr_scope().unwrap().parent {
             Some(parent) => self.curr_scope = parent,
             None => {
-                return Err(Box::new(ErrorGen::get_unexpected_error(
+                err.unexpected_error(
                     true,
                     Some(format!(
                         "{} Attempted to exit current scope, but there was no parent to exit into.",
                         UNEXPECTED_ERR_MSG
                     )),
                     None,
-                )));
+                );
             }
         }
-        Ok(())
     }
 
     // Record operations
@@ -174,12 +170,12 @@ impl SymbolTable {
         }
     }
 
-    pub fn get_record(&self, rec_id: &usize) -> Option<&Record> {
-        self.records.get(*rec_id)
+    pub fn get_record(&self, rec_id: usize) -> Option<&Record> {
+        self.records.get(rec_id)
     }
 
-    pub fn get_record_mut(&mut self, rec_id: &usize) -> Option<&mut Record> {
-        self.records.get_mut(*rec_id)
+    pub fn get_record_mut(&mut self, rec_id: usize) -> Option<&mut Record> {
+        self.records.get_mut(rec_id)
     }
 
     pub fn get_curr_rec(&self) -> Option<&Record> {
@@ -188,6 +184,36 @@ impl SymbolTable {
 
     pub fn get_curr_rec_mut(&mut self) -> Option<&mut Record> {
         self.records.get_mut(self.curr_rec)
+    }
+
+    pub fn get_rec_var_mut(
+        &mut self,
+        rec_id: usize,
+        loc: &Option<Location>,
+        err: &mut ErrorGen,
+    ) -> Option<&mut Record> {
+        if let Some(rec) = self.records.get_mut(rec_id) {
+            if matches!(rec, Record::Var { .. }) {
+                Some(rec)
+            } else {
+                err.unexpected_error(
+                    true,
+                    Some(format!(
+                        "Unexpected record type. Expected Var, found: {:?}",
+                        rec
+                    )),
+                    line_col_from_loc(loc),
+                );
+                None
+            }
+        } else {
+            err.unexpected_error(
+                true,
+                Some(format!("Could not find record with id: {rec_id}")),
+                line_col_from_loc(loc),
+            );
+            None
+        }
     }
 
     pub fn put(&mut self, key: String, rec: Record) -> usize {
@@ -215,21 +241,161 @@ impl SymbolTable {
         new_rec_id
     }
     pub fn lookup_rec(&self, key: &str) -> Option<&Record> {
-        match self.lookup(key) {
-            Some(id) => match self.get_record(id) {
-                Some(rec) => Some(rec),
-                None => None,
-            },
-            None => None,
+        if let Some(id) = self.lookup(key) {
+            if let Some(rec) = self.get_record(id) {
+                return Some(rec);
+            }
+        }
+        None
+    }
+    pub fn lookup_rec_mut(&mut self, key: &str) -> Option<&mut Record> {
+        let id = self.lookup(key)?;
+        if let Some(rec) = self.get_record_mut(id) {
+            return Some(rec);
+        }
+        None
+    }
+
+    pub fn lookup_lib_fn(
+        &self,
+        key: &str,
+        loc: &Option<Location>,
+        err: &mut ErrorGen,
+    ) -> Option<&Record> {
+        if let Some(rec) = self.lookup_rec(key) {
+            if matches!(rec, Record::LibFn { .. }) {
+                Some(rec)
+            } else {
+                err.unexpected_error(
+                    true,
+                    Some(format!(
+                        "Unexpected record type. Expected LibFn, found: {:?}",
+                        rec
+                    )),
+                    line_col_from_loc(loc),
+                );
+                None
+            }
+        } else {
+            err.unexpected_error(
+                true,
+                Some(format!("Could not find map function for: {}", key)),
+                line_col_from_loc(loc),
+            );
+            None
         }
     }
 
-    pub fn lookup(&self, key: &str) -> Option<&usize> {
+    pub fn lookup_var_mut(
+        &mut self,
+        key: &str,
+        loc: &Option<Location>,
+        err: &mut ErrorGen,
+    ) -> Option<&mut Record> {
+        if let Some(rec) = self.lookup_rec_mut(key) {
+            if matches!(rec, Record::Var { .. }) {
+                Some(rec)
+            } else {
+                err.unexpected_error(
+                    true,
+                    Some(format!(
+                        "Unexpected record type. Expected Var, found: {:?}",
+                        rec
+                    )),
+                    line_col_from_loc(loc),
+                );
+                None
+            }
+        } else {
+            err.unexpected_error(
+                true,
+                Some(format!("Could not find var for: {}", key)),
+                line_col_from_loc(loc),
+            );
+            None
+        }
+    }
+    pub fn lookup_var(
+        &self,
+        key: &str,
+        loc: &Option<Location>,
+        err: &mut ErrorGen,
+        fail_on_miss: bool,
+    ) -> Option<&Record> {
+        if let Some(rec) = self.lookup_rec(key) {
+            if matches!(rec, Record::Var { .. }) {
+                Some(rec)
+            } else {
+                err.unexpected_error(
+                    true,
+                    Some(format!(
+                        "Unexpected record type. Expected Var, found: {:?}",
+                        rec
+                    )),
+                    line_col_from_loc(loc),
+                );
+
+                None
+            }
+        } else {
+            if fail_on_miss {
+                err.unexpected_error(
+                    true,
+                    Some(format!("Could not find var for: {}", key)),
+                    line_col_from_loc(loc),
+                );
+            }
+
+            None
+        }
+    }
+    pub fn lookup_fn(&self, key: &str, err: &mut ErrorGen) -> Option<&Record> {
+        if let Some(rec) = self.lookup_rec(key) {
+            if matches!(rec, Record::Fn { .. }) {
+                Some(rec)
+            } else {
+                err.unexpected_error(
+                    true,
+                    Some(format!(
+                        "Unexpected record type. Expected Fn, found: {:?}",
+                        rec
+                    )),
+                    None,
+                );
+                None
+            }
+        } else {
+            err.unexpected_error(true, Some(format!("Could not find fn for: {}", key)), None);
+            None
+        }
+    }
+    pub fn lookup_fn_mut(&mut self, key: &str, err: &mut ErrorGen) -> Option<&mut Record> {
+        if let Some(rec) = self.lookup_rec_mut(key) {
+            if matches!(rec, Record::Fn { .. }) {
+                Some(rec)
+            } else {
+                err.unexpected_error(
+                    true,
+                    Some(format!(
+                        "Unexpected record type. Expected Fn, found: {:?}",
+                        rec
+                    )),
+                    None,
+                );
+                None
+            }
+        } else {
+            err.unexpected_error(true, Some(format!("Could not find fn for: {}", key)), None);
+            None
+        }
+    }
+
+    pub fn lookup(&self, key: &str) -> Option<usize> {
         match self.get_curr_scope() {
             None => None,
             Some(curr) => {
                 match curr.lookup(key) {
-                    Some(rec_id) => Some(rec_id),
+                    Some(rec_id) => Some(*rec_id),
                     None => {
                         let mut rec_id = None;
 
@@ -250,15 +416,17 @@ impl SymbolTable {
                             };
                         }
 
-                        match rec_id {
-                            None => None,
-                            Some(id) => Some(id),
-                        }
+                        rec_id.copied()
                     }
                 }
             }
         }
     }
+}
+
+pub fn line_col_from_loc(loc: &Option<Location>) -> Option<LineColLocation> {
+    loc.as_ref()
+        .map(|Location { line_col, .. }| line_col.clone())
 }
 
 #[derive(Debug)]
@@ -305,16 +473,19 @@ impl Scope {
         self.next < self.children.len()
     }
 
-    pub fn next_child(&mut self) -> Result<&usize, Box<WhammError>> {
+    pub fn next_child(&mut self, err: &mut ErrorGen) -> Option<&usize> {
         if !self.has_next() {
-            return Err(Box::new(ErrorGen::get_unexpected_error(true,
-              Some(format!("{} Scope::next_child() should never be called without first checking that there is one.", UNEXPECTED_ERR_MSG)),
-              None)));
+            err.unexpected_error(
+                true,
+                Some(format!("{} Scope::next_child() should never be called without first checking that there is one.", UNEXPECTED_ERR_MSG)),
+                None
+            );
+            return None;
         }
 
         let next_child = self.children.get(self.next).unwrap();
         self.next += 1;
-        Ok(next_child)
+        Some(next_child)
     }
 
     pub fn reset(&mut self) {

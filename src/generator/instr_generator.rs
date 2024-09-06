@@ -115,10 +115,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                         // Initialize the symbol table with the metadata at this program point
                         loc_info.static_data.iter().for_each(
                             |(static_var_name, static_var_val)| {
-                                if let Err(e) = self.emitter.define(static_var_name, static_var_val)
-                                {
-                                    self.err.add_error(*e);
-                                }
+                                self.emitter
+                                    .define(static_var_name, static_var_val, self.err);
                             },
                         );
 
@@ -128,7 +126,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                             (probe.body.clone(), probe.predicate.clone());
                         if let Some(pred) = &mut pred_clone {
                             // Fold predicate
-                            is_success = self.emitter.fold_expr(pred);
+                            is_success = self.emitter.fold_expr(pred, self.err);
 
                             // If the predicate evaluates to false, short-circuit!
                             if let Some(pred_as_bool) = ExprFolder::get_single_bool(pred) {
@@ -200,7 +198,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         };
     }
 }
-impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
+impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_> {
     fn emit_probe(&mut self) -> bool {
         let mut is_success = true;
 
@@ -259,11 +257,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
     fn replace_args(&mut self) -> bool {
         // Place the original arguments back on the stack.
         self.emitter.before();
-        if let Err(e) = self.emitter.emit_args() {
-            self.err.add_error(*e);
-            return false;
-        }
-        true
+        self.emitter.emit_args(self.err)
     }
 
     fn pred_is_true(&mut self) -> bool {
@@ -285,13 +279,8 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
     fn emit_body(&mut self) -> bool {
         if let Some((body, ..)) = &mut self.curr_probe {
             if let Some(ref mut body) = body {
-                match self.emitter.emit_body(&self.curr_instr_args, body) {
-                    Err(e) => {
-                        self.err.add_error(*e);
-                        false
-                    }
-                    Ok(res) => res,
-                }
+                self.emitter
+                    .emit_body(&self.curr_instr_args, body, self.err)
             } else if body.is_none() {
                 if self.curr_probe_mode == WhammModeKind::Alt {
                     match self.emitter.emit_empty_alternate() {
@@ -323,7 +312,10 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
 
     fn emit_probe_as_if(&mut self) -> bool {
         if let Some((Some(ref mut body), Some(ref mut pred))) = self.curr_probe {
-            match self.emitter.emit_if(&self.curr_instr_args, pred, body) {
+            match self
+                .emitter
+                .emit_if(&self.curr_instr_args, pred, body, self.err)
+            {
                 Err(e) => {
                     self.err.add_error(*e);
                     false
@@ -337,10 +329,12 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
 
     fn emit_probe_as_if_else(&mut self) -> bool {
         if let Some((Some(ref mut body), Some(ref mut pred))) = self.curr_probe {
-            match self
-                .emitter
-                .emit_if_with_orig_as_else(&self.curr_instr_args, pred, body)
-            {
+            match self.emitter.emit_if_with_orig_as_else(
+                &self.curr_instr_args,
+                pred,
+                body,
+                self.err,
+            ) {
                 Err(e) => {
                     self.err.add_error(*e);
                     false
@@ -468,6 +462,31 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
         var_meta_str: &HashMap<u32, String>,
         map_meta_str: &HashMap<u32, String>,
     ) -> bool {
+        // get IDs of all funcs to be called
+        let Some(create_i32_string_fname) =
+            self.emitter
+                .map_lib_adapter
+                .create_map_fname(DataType::I32, DataType::Str, self.err)
+        else {
+            return false;
+        };
+        let Some(create_i32_string_id) = self.get_lib_fn_id(&create_i32_string_fname) else {
+            return false;
+        };
+        let Some(insert_i32_string_fname) =
+            self.emitter
+                .map_lib_adapter
+                .insert_map_fname(DataType::I32, DataType::Str, self.err)
+        else {
+            return false;
+        };
+        let Some(insert_i32_string_id) = self.get_lib_fn_id(&insert_i32_string_fname) else {
+            return false;
+        };
+        let Some(set_metadata_header_id) = self.get_lib_fn_id("set_metadata_header") else {
+            return false;
+        };
+
         //first, we need to create the maps in global_map_init - where all the other maps are initialized
         let global_map_init_id = match self
             .emitter
@@ -547,144 +566,21 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
             // update curr_mem_offset to account for new data
             self.emitter.mem_tracker.curr_mem_offset += header.len();
 
-            let to_call = if let Some(id) = self.emitter.table.lookup("set_metadata_header") {
-                if let Some(rec) = self.emitter.table.get_record(id) {
-                    if let Record::LibFn { fn_id, .. } = rec {
-                        fn_id
-                    } else {
-                        self.err.add_error(ErrorGen::get_unexpected_error(
-                            true,
-                            Some(format!(
-                                "Unexpected record type. Expected LibFn, found: {:?}",
-                                rec
-                            )),
-                            None,
-                        ));
-                        return false;
-                    }
-                } else {
-                    self.err.add_error(ErrorGen::get_unexpected_error(
-                        true,
-                        Some(format!("Count not find record for ID: {}", id)),
-                        None,
-                    ));
-                    return false;
-                }
-            } else {
-                self.err.add_error(ErrorGen::get_unexpected_error(
-                    true,
-                    Some("Map function not in symbol table: 'set_metadata_header'".to_string()),
-                    None,
-                ));
-                return false;
-            };
-
             global_map_init.i32_const(addr.mem_offset as i32);
             global_map_init.i32_const(addr.len as i32);
-            global_map_init.call(FunctionID(*to_call));
+            global_map_init.call(FunctionID(set_metadata_header_id));
         } else {
             // todo -- make this an error!
             panic!("Failed to write out string")
         }
 
         // set up the metadata map creation!
-        let create_i32_string = match self
-            .emitter
-            .map_lib_adapter
-            .create_map_fname(DataType::I32, DataType::Str)
-        {
-            Ok(string) => string,
-            Err(e) => {
-                self.err.add_error(*e);
-                return false;
-            }
-        };
-        let to_call = if let Some(id) = self.emitter.table.lookup(&create_i32_string) {
-            if let Some(rec) = self.emitter.table.get_record(id) {
-                if let Record::LibFn { fn_id, .. } = rec {
-                    fn_id
-                } else {
-                    self.err.add_error(ErrorGen::get_unexpected_error(
-                        true,
-                        Some(format!(
-                            "Unexpected record type. Expected LibFn, found: {:?}",
-                            rec
-                        )),
-                        None,
-                    ));
-                    return false;
-                }
-            } else {
-                self.err.add_error(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!("Count not find record for ID: {}", id)),
-                    None,
-                ));
-                return false;
-            }
-        } else {
-            self.err.add_error(ErrorGen::get_unexpected_error(
-                true,
-                Some(format!(
-                    "Map function not in symbol table: {}",
-                    create_i32_string
-                )),
-                None,
-            ));
-            return false;
-        };
 
         //now create the metadata maps
         global_map_init.u32_const(RESERVED_VAR_METADATA_MAP_ID);
-        global_map_init.call(FunctionID(*to_call));
+        global_map_init.call(FunctionID(create_i32_string_id));
         global_map_init.u32_const(RESERVED_MAP_METADATA_MAP_ID);
-        global_map_init.call(FunctionID(*to_call));
-        //set "to_call" to the insert function
-        let insert_i32_string = match self
-            .emitter
-            .map_lib_adapter
-            .insert_map_fname(DataType::I32, DataType::Str)
-        {
-            Ok(string) => string,
-            Err(e) => {
-                self.err.add_error(*e);
-                return false;
-            }
-        };
-        let to_call = if let Some(id) = self.emitter.table.lookup(&insert_i32_string) {
-            if let Some(rec) = self.emitter.table.get_record(id) {
-                if let Record::LibFn { fn_id, .. } = rec {
-                    fn_id
-                } else {
-                    self.err.add_error(ErrorGen::get_unexpected_error(
-                        true,
-                        Some(format!(
-                            "Unexpected record type. Expected LibFn, found: {:?}",
-                            rec
-                        )),
-                        None,
-                    ));
-                    return false;
-                }
-            } else {
-                self.err.add_error(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!("Count not find record for ID: {}", id)),
-                    None,
-                ));
-                return false;
-            }
-        } else {
-            self.err.add_error(ErrorGen::get_unexpected_error(
-                true,
-                Some(format!(
-                    "Map function not in symbol table: {}",
-                    create_i32_string
-                )),
-                None,
-            ));
-            return false;
-        };
+        global_map_init.call(FunctionID(create_i32_string_id));
 
         //now, for each of the maps, emit the correct stuff
         for (key, val) in var_meta_str.iter() {
@@ -694,7 +590,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
                 global_map_init.u32_const(*key);
                 global_map_init.u32_const(val_addr.mem_offset as u32);
                 global_map_init.u32_const(val_addr.len as u32);
-                global_map_init.call(FunctionID(*to_call));
+                global_map_init.call(FunctionID(insert_i32_string_id));
             } else {
                 self.err.add_error(ErrorGen::get_unexpected_error(
                     true,
@@ -714,7 +610,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
                 global_map_init.u32_const(*key);
                 global_map_init.i32_const(val_addr.mem_offset as i32);
                 global_map_init.i32_const(val_addr.len as i32);
-                global_map_init.call(FunctionID(*to_call));
+                global_map_init.call(FunctionID(insert_i32_string_id));
             } else {
                 self.err.add_error(ErrorGen::get_unexpected_error(
                     true,
@@ -730,30 +626,29 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
         true
     }
 
+    /// set up the print_global_meta function for insertions
     fn setup_print_global_meta(&mut self, var_meta_str: &HashMap<u32, String>) -> bool {
-        //first, we need to create the maps in global_map_init - where all the other maps are initialized
-        let print_global_meta_id = match self
-            .emitter
-            .app_iter
-            .module
-            .functions
-            .get_local_fid_by_name("print_global_meta") // todo make this a constant!
-        {
-            Some(id) => id,
-            None => {
-                self.err.add_error(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} \
-                    No 'print_global_meta' function found in the module!"
-                    )),
-                    None,
-                ));
-                return false;
-            }
+        // get the IDs of the funcs to call
+        // todo -- look up the func name instead!
+        let Some(print_metadata_header_id) = self.get_lib_fn_id("print_metadata_header") else {
+            return false;
         };
+        let print_metadata_header_id = FunctionID(print_metadata_header_id);
+        // todo -- look up the func name instead!
+        let Some(print_global_i32_meta_helper_id) =
+            self.get_lib_fn_id("print_global_i32_meta_helper")
+        else {
+            return false;
+        };
+        let print_global_i32_meta_helper_id = FunctionID(print_global_i32_meta_helper_id);
 
-        // set up the print_global_meta function for insertions
+        //first, we need to create the maps in global_map_init - where all the other maps are initialized
+        // todo -- look up the func name instead!
+        let Some(print_global_meta_id) = self.get_lib_fn_id("print_global_meta") else {
+            return false;
+        };
+        let print_global_meta_id = FunctionID(print_global_meta_id);
+
         let mut print_global_meta = match self
             .emitter
             .app_iter
@@ -779,75 +674,8 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
             func_idx: print_global_meta_id, // not used
             instr_idx: 0,
         });
-
         //print the header
-        let to_call = if let Some(id) = self.emitter.table.lookup("print_metadata_header") {
-            if let Some(rec) = self.emitter.table.get_record(id) {
-                if let Record::LibFn { fn_id, .. } = rec {
-                    fn_id
-                } else {
-                    self.err.add_error(ErrorGen::get_unexpected_error(
-                        true,
-                        Some(format!(
-                            "Unexpected record type. Expected LibFn, found: {:?}",
-                            rec
-                        )),
-                        None,
-                    ));
-                    return false;
-                }
-            } else {
-                self.err.add_error(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!("Count not find record for ID: {}", id)),
-                    None,
-                ));
-                return false;
-            }
-        } else {
-            self.err.add_error(ErrorGen::get_unexpected_error(
-                true,
-                Some("Map function not in symbol table: 'print_metadata_header'".to_string()),
-                None,
-            ));
-            return false;
-        };
-        print_global_meta.call(FunctionID(*to_call));
-
-        // todo -- look up the helper instead!
-        let to_call = if let Some(id) = self.emitter.table.lookup("print_global_i32_meta_helper") {
-            if let Some(rec) = self.emitter.table.get_record(id) {
-                if let Record::LibFn { fn_id, .. } = rec {
-                    fn_id
-                } else {
-                    self.err.add_error(ErrorGen::get_unexpected_error(
-                        true,
-                        Some(format!(
-                            "Unexpected record type. Expected LibFn, found: {:?}",
-                            rec
-                        )),
-                        None,
-                    ));
-                    return false;
-                }
-            } else {
-                self.err.add_error(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!("Count not find record for ID: {}", id)),
-                    None,
-                ));
-                return false;
-            }
-        } else {
-            self.err.add_error(ErrorGen::get_unexpected_error(
-                true,
-                Some(
-                    "Map function not in symbol table: 'print_global_i32_meta_helper'".to_string(),
-                ),
-                None,
-            ));
-            return false;
-        };
+        print_global_meta.call(print_metadata_header_id);
 
         // for each of the report globals, emit the printing logic
         for (key, val) in var_meta_str.iter() {
@@ -859,7 +687,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
                 print_global_meta.i32_const(val_addr.len as i32);
                 // get the value of this report global
                 print_global_meta.global_get(GlobalID(*key));
-                print_global_meta.call(FunctionID(*to_call));
+                print_global_meta.call(print_global_i32_meta_helper_id);
             } else {
                 self.err.add_error(ErrorGen::get_unexpected_error(
                     true,
@@ -873,5 +701,22 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
             }
         }
         true
+    }
+    fn get_lib_fn_id(&mut self, func_name: &str) -> Option<u32> {
+        match self.emitter.table.lookup_lib_fn(func_name, &None, self.err) {
+            Some(Record::LibFn { fn_id, .. }) => Some(*fn_id),
+            Some(rec) => {
+                self.err.add_error(ErrorGen::get_unexpected_error(
+                    true,
+                    Some(format!(
+                        "Unexpected record type. Expected LibFn, found: {:?}",
+                        rec
+                    )),
+                    None,
+                ));
+                None
+            }
+            None => None,
+        }
     }
 }

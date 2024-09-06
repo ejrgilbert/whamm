@@ -44,11 +44,7 @@ impl SymbolTableBuilder<'_> {
         let id = self.table.put(script.name.clone(), script_rec);
 
         // Add script to current whamm record
-        match self
-            .table
-            .get_record_mut(&self.curr_whamm.unwrap())
-            .unwrap()
-        {
+        match self.table.get_record_mut(self.curr_whamm.unwrap()).unwrap() {
             Record::Whamm { scripts, .. } => {
                 scripts.push(id);
             }
@@ -59,9 +55,7 @@ impl SymbolTableBuilder<'_> {
         }
 
         // enter script scope
-        if let Err(e) = self.table.enter_scope() {
-            self.err.add_error(*e)
-        }
+        self.table.enter_scope(self.err);
         self.curr_script = Some(id);
 
         // set scope name and type
@@ -91,7 +85,7 @@ impl SymbolTableBuilder<'_> {
         // Add provider to current script record
         match self
             .table
-            .get_record_mut(&self.curr_script.unwrap())
+            .get_record_mut(self.curr_script.unwrap())
             .unwrap()
         {
             Record::Script { providers, .. } => {
@@ -104,9 +98,7 @@ impl SymbolTableBuilder<'_> {
         }
 
         // enter provider scope
-        if let Err(e) = self.table.enter_scope() {
-            self.err.add_error(*e)
-        }
+        self.table.enter_scope(self.err);
         self.curr_provider = Some(id);
 
         // set scope name and type
@@ -134,7 +126,7 @@ impl SymbolTableBuilder<'_> {
         let id = self.table.put(package.name().clone(), package_rec);
 
         // Add package to current provider record
-        match self.table.get_record_mut(&self.curr_provider.unwrap()) {
+        match self.table.get_record_mut(self.curr_provider.unwrap()) {
             Some(Record::Provider { packages, .. }) => {
                 packages.push(id);
             }
@@ -145,9 +137,7 @@ impl SymbolTableBuilder<'_> {
         }
 
         // enter package scope
-        if let Err(e) = self.table.enter_scope() {
-            self.err.add_error(*e)
-        }
+        self.table.enter_scope(self.err);
         self.curr_package = Some(id);
 
         // set scope name and type
@@ -177,7 +167,7 @@ impl SymbolTableBuilder<'_> {
         // Add event to current package record
         match self
             .table
-            .get_record_mut(&self.curr_package.unwrap())
+            .get_record_mut(self.curr_package.unwrap())
             .unwrap()
         {
             Record::Package { events, .. } => {
@@ -190,9 +180,7 @@ impl SymbolTableBuilder<'_> {
         }
 
         // enter event scope
-        if let Err(e) = self.table.enter_scope() {
-            self.err.add_error(*e)
-        }
+        self.table.enter_scope(self.err);
         self.curr_event = Some(id);
 
         // set scope name and type
@@ -219,7 +207,7 @@ impl SymbolTableBuilder<'_> {
         let id = self.table.put(probe.mode().name(), probe_rec);
 
         // Add probe to current event record
-        match self.table.get_record_mut(&self.curr_event.unwrap()) {
+        match self.table.get_record_mut(self.curr_event.unwrap()) {
             Some(Record::Event { probes, .. }) => {
                 probes.push(id);
             }
@@ -230,9 +218,7 @@ impl SymbolTableBuilder<'_> {
         }
 
         // enter probe scope
-        if let Err(e) = self.table.enter_scope() {
-            self.err.add_error(*e)
-        }
+        self.table.enter_scope(self.err);
         self.curr_probe = Some(id);
 
         // set scope name and type
@@ -310,9 +296,7 @@ impl SymbolTableBuilder<'_> {
         self.add_fn_id_to_curr_rec(id);
 
         // enter fn scope
-        if let Err(e) = self.table.enter_scope() {
-            self.err.add_error(*e)
-        }
+        self.table.enter_scope(self.err);
         self.curr_fn = Some(id);
 
         // set scope name and type
@@ -385,7 +369,7 @@ impl SymbolTableBuilder<'_> {
         let id = self.table.put(name.clone(), param_rec);
 
         // add param to fn record
-        match self.table.get_record_mut(&self.curr_fn.unwrap()) {
+        match self.table.get_record_mut(self.curr_fn.unwrap()) {
             Some(Record::Fn { params, .. }) => {
                 params.push(id);
             }
@@ -547,9 +531,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
             .for_each(|(_name, provider)| self.visit_provider(provider));
 
         trace!("Exiting: visit_script");
-        if let Err(e) = self.table.exit_scope() {
-            self.err.add_error(*e)
-        }
+        self.table.exit_scope(self.err);
         self.curr_script = None;
     }
 
@@ -567,9 +549,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
             .for_each(|package| self.visit_package(package));
 
         trace!("Exiting: visit_provider");
-        if let Err(e) = self.table.exit_scope() {
-            self.err.add_error(*e)
-        }
+        self.table.exit_scope(self.err);
         self.curr_provider = None;
     }
 
@@ -587,9 +567,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
             .for_each(|event| self.visit_event(event));
 
         trace!("Exiting: visit_package");
-        if let Err(e) = self.table.exit_scope() {
-            self.err.add_error(*e)
-        }
+        self.table.exit_scope(self.err);
         self.curr_package = None;
     }
 
@@ -611,9 +589,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         });
 
         trace!("Exiting: visit_event");
-        if let Err(e) = self.table.exit_scope() {
-            self.err.add_error(*e)
-        }
+        self.table.exit_scope(self.err);
         self.curr_event = None;
     }
 
@@ -630,9 +606,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         // Will not visit predicate/body at this stage
 
         trace!("Exiting: visit_probe");
-        if let Err(e) = self.table.exit_scope() {
-            self.err.add_error(*e)
-        }
+        self.table.exit_scope(self.err);
         self.curr_probe = None;
     }
 
@@ -645,9 +619,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         // Will not visit predicate/body at this stage
 
         trace!("Exiting: visit_fn");
-        if let Err(e) = self.table.exit_scope() {
-            self.err.add_error(*e)
-        }
+        self.table.exit_scope(self.err);
         self.curr_fn = None;
     }
 

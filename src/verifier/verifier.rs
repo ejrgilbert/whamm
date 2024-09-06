@@ -5,7 +5,7 @@ use crate::parser::types::{
     WhammVisitorMut,
 };
 use crate::verifier::builder_visitor::SymbolTableBuilder;
-use crate::verifier::types::{Record, SymbolTable};
+use crate::verifier::types::{line_col_from_loc, Record, SymbolTable};
 use std::vec;
 
 const UNEXPECTED_ERR_MSG: &str =
@@ -33,8 +33,15 @@ pub fn check_duplicate_id(
     table: &SymbolTable,
     err: &mut ErrorGen,
 ) -> bool {
-    if table.lookup(name).is_some() {
-        let old_rec = table.get_record(table.lookup(name).unwrap()).unwrap();
+    if let Some(rec_id) = table.lookup(name) {
+        let Some(old_rec) = table.get_record(rec_id) else {
+            err.unexpected_error(
+                true,
+                Some(format!("Could not find record with id: {rec_id}")),
+                None,
+            );
+            return false;
+        };
         let old_loc = old_rec.loc();
         if old_loc.is_none() {
             //make sure old_rec is comp provided
@@ -147,7 +154,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
             self.visit_provider(provider);
         });
 
-        let _ = self.table.exit_scope();
+        self.table.exit_scope(self.err);
         None
     }
 
@@ -158,7 +165,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
             self.visit_package(package);
         });
 
-        let _ = self.table.exit_scope();
+        self.table.exit_scope(self.err);
         None
     }
 
@@ -169,8 +176,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
             self.visit_event(event);
         });
 
-        let _ = self.table.exit_scope();
-
+        self.table.exit_scope(self.err);
         None
     }
 
@@ -183,8 +189,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
             });
         });
 
-        let _ = self.table.exit_scope();
-
+        self.table.exit_scope(self.err);
         None
     }
 
@@ -210,8 +215,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
             self.visit_block(body);
         }
 
-        let _ = self.table.exit_scope();
-
+        self.table.exit_scope(self.err);
         None
     }
 
@@ -235,7 +239,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
         }
 
         //return the type of the fn
-        let _ = self.table.exit_scope();
+        self.table.exit_scope(self.err);
         Some(function.return_ty.clone())
     }
 
@@ -637,19 +641,14 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 } else {
                     // check if this is an unknown immN!
                     if name.starts_with("imm") {
-                        if let Some(id) = self.table.lookup(UNKNOWN_IMMS) {
-                            if let Some(rec) = self.table.get_record(id) {
-                                if let Record::Var { ty, .. } = rec {
-                                    return Some(ty.clone());
-                                } else {
-                                    // unexpected record type
-                                    self.err.unexpected_error(
-                                        true,
-                                        Some(UNEXPECTED_ERR_MSG.to_string()),
-                                        loc.clone().map(|l| l.line_col),
-                                    )
-                                }
-                            }
+                        match self.table.lookup_var(UNKNOWN_IMMS, loc, self.err, true) {
+                            Some(Record::Var { ty, .. }) => return Some(ty.clone()),
+                            Some(rec) => self.err.unexpected_error(
+                                true,
+                                Some(format!("Should be Var, but got rec: {:?}", rec)),
+                                line_col_from_loc(loc),
+                            ),
+                            None => return None,
                         }
                     }
                 }
@@ -751,7 +750,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         // look up param
                         let mut expected_param_tys = vec![];
                         for param in params {
-                            if let Some(Record::Var { ty, .. }) = self.table.get_record(param) {
+                            if let Some(Record::Var { ty, .. }) = self.table.get_record(*param) {
                                 // check if it matches actual param
                                 expected_param_tys.push(Some(ty.clone()));
                             }
