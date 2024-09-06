@@ -882,21 +882,7 @@ pub fn print_map_meta() {
     println!("DEBUG: printing map metadata");
     let mut running_output: String = String::new();
     let binding = MY_MAPS.lock().unwrap();
-    // let var_meta = binding.get(&0).expect("No metadata for variables found");
     let map_meta = binding.get(&1).expect("No metadata for maps found");
-    // TODO -- you won't find GIDs to print...they aren't maps!
-    // match var_meta {
-    //     AnyMap::i32_string_Map(map) => {
-    //         for (key, value) in map.iter() {
-    //             running_output.push_str(&format!("GID: {}\t{}\t", key, value));
-    //             let map = binding.get(&key).expect("Metadata but no map found for key: {key}");
-    //             running_output.push_str(&format!("{}\n", map.dump_map()));
-    //         }
-    //     }
-    //     _ => {
-    //         panic!("Invalid metadata for variables");
-    //     }
-    // }
     match map_meta {
         AnyMap::i32_string_Map(map) => {
             for (key, value) in map.iter() {

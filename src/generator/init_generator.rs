@@ -132,8 +132,8 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
                 Some(id_option) => *id_option,
                 None => {
                     warn!("Expected function not found for name: {lib_fn}");
-                    continue
-                },
+                    continue;
+                }
             };
             self.emitter.table.put(
                 lib_fn.to_string(),
