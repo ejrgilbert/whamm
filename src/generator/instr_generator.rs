@@ -1,6 +1,6 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::map_lib_adapter::{RESERVED_MAP_METADATA_MAP_ID, RESERVED_VAR_METADATA_MAP_ID};
-use crate::emitter::report_var_metadata::{convert_meta_to_string, LocationData};
+use crate::emitter::report_var_metadata::{BytecodeLoc, LocationData, Metadata};
 use crate::emitter::rewriting::module_emitter::StringAddr;
 use crate::emitter::rewriting::rules::{provider_factory, Arg, LocInfo, ProbeSpec, WhammProvider};
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
@@ -189,7 +189,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 func_idx,
                 instr_idx,
                 ..
-            } => (*func_idx, instr_idx as u32),
+            } => BytecodeLoc::new(*func_idx, instr_idx as u32),
         };
         //set the current location in bytecode and load some new globals for potential report vars
         self.emitter.report_var_metadata.curr_location = LocationData::Local {
@@ -402,7 +402,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
         //convert the metadata into strings, add those to the data section, then use those to populate the maps
         for (key, value) in var_meta.iter() {
             //first, emit the string to data section
-            let val = convert_meta_to_string(value);
+            let val = value.to_csv();
             let data_id = self.emitter.app_iter.module.data.len();
             let val_bytes = val.as_bytes().to_owned();
             let data_segment = DataSegment {
@@ -431,7 +431,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
         }
         for (key, value) in map_meta.iter() {
             //first, emit the string to data section
-            let val = convert_meta_to_string(value);
+            let val = value.to_csv();
             let data_id = self.emitter.app_iter.module.data.len();
             let val_bytes = val.as_bytes().to_owned();
             let data_segment = DataSegment {
@@ -516,6 +516,78 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
             func_idx: global_map_init_id, // not used
             instr_idx: 0,
         });
+
+        // set up the output header!
+        let header = Metadata::get_csv_header();
+        //first, emit the string to data section
+        // todo factor this logic out to a function call!
+        let data_id = self.emitter.app_iter.module.data.len();
+        let header_bytes = header.as_bytes().to_owned();
+        let data_segment = DataSegment {
+            data: header_bytes,
+            kind: DataSegmentKind::Active {
+                memory_index: self.emitter.mem_tracker.mem_id,
+                offset_expr: InitExpr::Value(OrcaValue::I32(
+                    self.emitter.mem_tracker.curr_mem_offset as i32,
+                )),
+            },
+        };
+        self.emitter.app_iter.module.data.push(data_segment);
+
+        // save the memory addresses/lens, so they can be used as appropriate
+        self.emitter.mem_tracker.emitted_strings.insert(
+            header.clone(),
+            StringAddr {
+                data_id: data_id as u32,
+                mem_offset: self.emitter.mem_tracker.curr_mem_offset,
+                len: header.len(),
+            },
+        );
+        if let Some(addr) = self.emitter.mem_tracker.emitted_strings.get(&header) {
+            // update curr_mem_offset to account for new data
+            self.emitter.mem_tracker.curr_mem_offset += header.len();
+
+            let to_call = if let Some(id) = self.emitter.table.lookup("set_metadata_header") {
+                if let Some(rec) = self.emitter.table.get_record(id) {
+                    if let Record::LibFn { fn_id, .. } = rec {
+                        fn_id
+                    } else {
+                        self.err.add_error(ErrorGen::get_unexpected_error(
+                            true,
+                            Some(format!(
+                                "Unexpected record type. Expected LibFn, found: {:?}",
+                                rec
+                            )),
+                            None,
+                        ));
+                        return false;
+                    }
+                } else {
+                    self.err.add_error(ErrorGen::get_unexpected_error(
+                        true,
+                        Some(format!("Count not find record for ID: {}", id)),
+                        None,
+                    ));
+                    return false;
+                }
+            } else {
+                self.err.add_error(ErrorGen::get_unexpected_error(
+                    true,
+                    Some("Map function not in symbol table: 'set_metadata_header'".to_string()),
+                    None,
+                ));
+                return false;
+            };
+
+            global_map_init.i32_const(addr.mem_offset as i32);
+            global_map_init.i32_const(addr.len as i32);
+            global_map_init.call(FunctionID(*to_call));
+        } else {
+            // todo -- make this an error!
+            panic!("Failed to write out string")
+        }
+
+        // set up the metadata map creation!
         let create_i32_string = match self
             .emitter
             .map_lib_adapter
@@ -562,10 +634,10 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
             return false;
         };
 
-        //now create the maps
-        global_map_init.i32_const(0);
+        //now create the metadata maps
+        global_map_init.u32_const(RESERVED_VAR_METADATA_MAP_ID);
         global_map_init.call(FunctionID(*to_call));
-        global_map_init.i32_const(1);
+        global_map_init.u32_const(RESERVED_MAP_METADATA_MAP_ID);
         global_map_init.call(FunctionID(*to_call));
         //set "to_call" to the insert function
         let insert_i32_string = match self
@@ -620,8 +692,8 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
                 //now, emit the map entry
                 global_map_init.u32_const(RESERVED_VAR_METADATA_MAP_ID);
                 global_map_init.u32_const(*key);
-                global_map_init.i32_const(val_addr.mem_offset as i32);
-                global_map_init.i32_const(val_addr.len as i32);
+                global_map_init.u32_const(val_addr.mem_offset as u32);
+                global_map_init.u32_const(val_addr.len as u32);
                 global_map_init.call(FunctionID(*to_call));
             } else {
                 self.err.add_error(ErrorGen::get_unexpected_error(
@@ -681,7 +753,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
             }
         };
 
-        // set up the global_map_init function for insertions
+        // set up the print_global_meta function for insertions
         let mut print_global_meta = match self
             .emitter
             .app_iter
@@ -707,6 +779,40 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_> {
             func_idx: print_global_meta_id, // not used
             instr_idx: 0,
         });
+
+        //print the header
+        let to_call = if let Some(id) = self.emitter.table.lookup("print_metadata_header") {
+            if let Some(rec) = self.emitter.table.get_record(id) {
+                if let Record::LibFn { fn_id, .. } = rec {
+                    fn_id
+                } else {
+                    self.err.add_error(ErrorGen::get_unexpected_error(
+                        true,
+                        Some(format!(
+                            "Unexpected record type. Expected LibFn, found: {:?}",
+                            rec
+                        )),
+                        None,
+                    ));
+                    return false;
+                }
+            } else {
+                self.err.add_error(ErrorGen::get_unexpected_error(
+                    true,
+                    Some(format!("Count not find record for ID: {}", id)),
+                    None,
+                ));
+                return false;
+            }
+        } else {
+            self.err.add_error(ErrorGen::get_unexpected_error(
+                true,
+                Some("Map function not in symbol table: 'print_metadata_header'".to_string()),
+                None,
+            ));
+            return false;
+        };
+        print_global_meta.call(FunctionID(*to_call));
 
         // todo -- look up the helper instead!
         let to_call = if let Some(id) = self.emitter.table.lookup("print_global_i32_meta_helper") {

@@ -13,7 +13,7 @@ wasm:opcode:call:before /
     m[1] = 2;
     m[2] = 3;
     blah = 3;
-    arg0 = 1;
+    arg0 = 5;
 }
 wasm:opcode:call:after /
     target_fn_name == "foo"

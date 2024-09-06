@@ -121,6 +121,8 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
             "get_string_from_i32string".to_string(),
             "print_map_meta".to_string(),
             "print_global_i32_meta_helper".to_string(),
+            "set_metadata_header".to_string(),
+            "print_metadata_header".to_string(),
         ];
         for lib_fn in lib_map_fns.iter() {
             let id_option = self

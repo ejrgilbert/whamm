@@ -1,7 +1,6 @@
 extern crate core;
 
 use cli::{Cmd, WhammCli};
-use std::env;
 
 use crate::common::error::ErrorGen;
 use crate::parser::whamm_parser::*;
@@ -14,12 +13,12 @@ pub mod parser;
 pub mod verifier;
 mod wast;
 
-use crate::cli::InstrArgs;
-use crate::common::instr::Config;
+// use crate::cli::InstrArgs;
+// use crate::common::instr::Config;
 use clap::Parser;
 use std::path::PathBuf;
 use std::process::exit;
-use whamm::common::instr::LibStrategy;
+// use whamm::common::instr::LibStrategy;
 
 const MAX_ERRORS: i32 = 15;
 
@@ -90,7 +89,7 @@ fn run_wast(wast_path: String) {
     println!("The wast test passed!");
 }
 
-const DEFAULT_MEM_OFFSET: u32 = 1_052_576;
+// const DEFAULT_MEM_OFFSET: u32 = 1_052_576;
 // fn check_args(args: &InstrArgs) -> Config {
 //     let mut config = Config::new();
 //     if matches!(&args.lib, Some(LibraryStrategy::Imported)) {

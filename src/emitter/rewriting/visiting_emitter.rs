@@ -468,14 +468,14 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
         }
         for stmt in body.stmts.iter_mut() {
             is_success &= self.emit_stmt(curr_instr_args, stmt)?;
-            //now emit the call to print the changes to the report vars if needed
-            print_report_all(
-                &mut self.app_iter,
-                self.table,
-                self.report_var_metadata,
-                UNEXPECTED_ERR_MSG,
-            )?;
         }
+        //now emit the call to print the changes to the report vars if needed
+        print_report_all(
+            &mut self.app_iter,
+            self.table,
+            self.report_var_metadata,
+            UNEXPECTED_ERR_MSG,
+        )?;
         Ok(is_success)
     }
 

@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet};
-
-use log::info;
+use std::fmt::Display;
 
 use crate::common::error::{ErrorGen, WhammError};
 
@@ -64,46 +63,27 @@ impl ReportVarMetadata {
         Ok(true)
     }
     pub fn put_local_metadata(&mut self, gid: u32, name: String) -> Result<bool, Box<WhammError>> {
-        let script_id;
-        let bytecode_loc;
-        let probe_id;
-        match &self.curr_location {
-            LocationData::Local {
-                script_id: s,
-                bytecode_loc: b,
-                probe_id: p,
-                ..
-            } => {
-                script_id = s.clone();
-                bytecode_loc = *b;
-                probe_id = p.clone();
-            }
-            _ => {
+        if let LocationData::Local { .. } = &self.curr_location {
+            let metadata = Metadata::new(name.clone(), &self.curr_location);
+            self.variable_metadata.insert(gid, metadata.clone());
+            if !self.all_metadata.insert(metadata) {
                 return Err(Box::new(ErrorGen::get_unexpected_error(
                     true,
-                    Some(format!(
-                        "Expected local location data, but got: {:?}",
-                        self.curr_location
-                    )),
+                    Some(format!("Duplicate metadata with name: {}", name)),
                     None,
-                )))
+                )));
             }
-        };
-        let metadata = Metadata::Local {
-            name: name.clone(),
-            script_id,
-            bytecode_loc,
-            probe_id,
-        };
-        self.variable_metadata.insert(gid, metadata.clone());
-        if !self.all_metadata.insert(metadata) {
-            return Err(Box::new(ErrorGen::get_unexpected_error(
+            Ok(true)
+        } else {
+            Err(Box::new(ErrorGen::get_unexpected_error(
                 true,
-                Some(format!("Duplicate metadata with name: {}", name)),
+                Some(format!(
+                    "Expected local location data, but got: {:?}",
+                    self.curr_location
+                )),
                 None,
-            )));
+            )))
         }
-        Ok(true)
     }
     pub fn print_metadata(&self) {
         if self.all_metadata.is_empty() {
@@ -149,9 +129,65 @@ pub enum Metadata {
     Local {
         name: String,
         script_id: String,
-        bytecode_loc: (u32, u32),
+        bytecode_loc: BytecodeLoc,
         probe_id: String,
     },
+}
+impl From<&LocationData> for Metadata {
+    fn from(loc: &LocationData) -> Self {
+        match loc {
+            LocationData::Local {
+                script_id,
+                bytecode_loc,
+                probe_id,
+                ..
+            } => Self::Local {
+                name: "".to_string(),
+                script_id: script_id.clone(),
+                bytecode_loc: bytecode_loc.clone(),
+                probe_id: probe_id.clone(),
+            },
+            LocationData::Global { script_id } => Self::Global {
+                name: "".to_string(),
+                script_id: script_id.clone(),
+            },
+        }
+    }
+}
+impl Metadata {
+    pub fn new(name: String, loc: &LocationData) -> Self {
+        let mut meta = Self::from(loc);
+        meta.set_name(name);
+        meta
+    }
+    pub fn set_name(&mut self, new_name: String) {
+        match self {
+            Self::Local { name, .. } | Self::Global { name, .. } => *name = new_name,
+        }
+    }
+    pub fn get_csv_header() -> String {
+        r#"
+==================== REPORT CSV FLUSH ====================
+type, id, name, script_id, (fid, pc), probe_id, value(s)"#
+            .to_string()
+    }
+    pub fn to_csv(&self) -> String {
+        let (name, script_id, bytecode_loc, probe_id) = match self {
+            Metadata::Global { name, script_id } => (name.as_str(), script_id.as_str(), "", ""),
+            Metadata::Local {
+                name,
+                script_id,
+                bytecode_loc,
+                probe_id,
+            } => (
+                name.as_str(),
+                script_id.as_str(),
+                &*bytecode_loc.to_string(),
+                probe_id.as_str(),
+            ),
+        };
+        format!("{},{},{},{}", name, script_id, bytecode_loc, probe_id)
+    }
 }
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum LocationData {
@@ -160,23 +196,23 @@ pub enum LocationData {
     },
     Local {
         script_id: String,
-        bytecode_loc: (u32, u32),
+        bytecode_loc: BytecodeLoc,
         probe_id: String,
         num_reports: i32,
     },
 }
-
-pub fn convert_meta_to_string(metadata: &Metadata) -> String {
-    match metadata {
-        Metadata::Global { name, script_id } => format!("{}\t {}\t \t ", name, script_id),
-        Metadata::Local {
-            name,
-            script_id,
-            bytecode_loc,
-            probe_id,
-        } => format!(
-            "{}\t {}\t ({}, {})\t {}",
-            name, script_id, bytecode_loc.0, bytecode_loc.1, probe_id
-        ),
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct BytecodeLoc {
+    fid: u32,
+    pc: u32,
+}
+impl Display for BytecodeLoc {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}, {})", self.fid, self.pc)
+    }
+}
+impl BytecodeLoc {
+    pub(crate) fn new(fid: u32, pc: u32) -> Self {
+        Self { fid, pc }
     }
 }

@@ -2,6 +2,7 @@ use wasi_common::sync::WasiCtxBuilder;
 use wasmtime::*;
 
 const WASM_MODULE: &str = "../output/output.wasm";
+// const WASM_MODULE: &str = "../maps.wasm";
 
 fn main() -> Result<()> {
     // Define the WASI functions globally on the `Config`.

@@ -443,9 +443,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                                 Err(e) => return Err(e),
                             }
                         };
-                        *addr = Some(VarAddr::MapId {
-                            addr: map_id as u32,
-                        });
+                        *addr = Some(VarAddr::MapId { addr: map_id });
 
                         let fn_id = match self.table.lookup_rec(&fn_name) {
                             Some(Record::LibFn { fn_id, .. }) => fn_id,

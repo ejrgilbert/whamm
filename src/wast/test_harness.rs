@@ -1,13 +1,12 @@
 #![allow(dead_code)]
 
-use crate::common::instr::{run, try_path, Config};
+use crate::common::instr::{run, try_path};
 use log::{debug, error};
 use orca_wasm::Module;
 use std::fs::{remove_dir_all, File};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
-// use crate::cli::LibraryStrategy;
 
 const TEST_DEBUG_DIR: &str = "output/tests/debug_me/";
 const OUTPUT_DIR: &str = "output/tests/wast_suite";

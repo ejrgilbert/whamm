@@ -207,9 +207,7 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     Ok(to_call) => to_call,
                     Err(e) => return Err(e),
                 };
-                *addr = Some(VarAddr::MapId {
-                    addr: map_id as u32,
-                });
+                *addr = Some(VarAddr::MapId { addr: map_id });
                 let fn_id = match table.lookup_rec(&fn_name) {
                     Some(Record::LibFn { fn_id, .. }) => fn_id,
                     _ => {
@@ -310,28 +308,16 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     )));
                 };
                 if let DataType::Map { .. } = ty {
-                    let script_name;
-                    let bytecode_loc;
-                    let probe_id;
-                    match &report_var_metadata.curr_location {
-                        LocationData::Local {
-                            script_id,
-                            bytecode_loc: bytecode_loc_cur,
-                            probe_id: probe_id_cur,
-                            num_reports: _,
-                        } => {
-                            script_name = script_id;
-                            bytecode_loc = bytecode_loc_cur;
-                            probe_id = probe_id_cur;
-                        }
-                        LocationData::Global { .. } => {
-                            //ERR here because the location data should be local at this point via the visiting emitter
-                            return Err(Box::new(ErrorGen::get_unexpected_error(
-                                true,
-                                Some(format!("{err_msg} Expected Local LocationData - shouldn't be called outside visit-generic")),
-                                None,
-                            )));
-                        }
+                    if !matches!(
+                        report_var_metadata.curr_location,
+                        LocationData::Local { .. }
+                    ) {
+                        //ERR here because the location data should be local at this point via the visiting emitter
+                        return Err(Box::new(ErrorGen::get_unexpected_error(
+                            true,
+                            Some(format!("{err_msg} Expected Local LocationData - shouldn't be called outside visit-generic")),
+                            None,
+                        )));
                     }
                     let (fn_name, map_id) = match map_lib_adapter.create_local_map(
                         var_name.clone(),

@@ -41,8 +41,8 @@ pub struct Config {
     /// The strategy to take when handling the injecting references to the `whamm!` library.
     pub library_strategy: LibStrategy,
 }
-impl Config {
-    pub fn new() -> Config {
+impl Default for Config {
+    fn default() -> Self {
         Self {
             virgil: false,
             testing: false,
