@@ -13,7 +13,7 @@ path = "src/main.rs"
 failure = "0.1.5"
 glob = "0.3.1"
 lazy_static = "1.4.0"
-orca-wasm = "0.1.1" # Should be on branch "DO_NOT_DELETE/whamm_dependency"
+orca-wasm = "0.1.1"
 wasmparser = "0.215.0"
 
 # Logging
