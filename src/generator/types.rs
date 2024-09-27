@@ -1,3 +1,4 @@
+use crate::common::error::ErrorGen;
 use crate::parser::types::{BinOp, DataType, Expr, UnOp, Value};
 use crate::verifier::types::Record::Var;
 use crate::verifier::types::SymbolTable;
@@ -8,22 +9,22 @@ use crate::verifier::types::SymbolTable;
 
 pub struct ExprFolder;
 impl ExprFolder {
-    pub fn fold_expr(expr: &Expr, table: &SymbolTable) -> Expr {
+    pub fn fold_expr(expr: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
         match *expr {
-            Expr::UnOp { .. } => ExprFolder::fold_unop(expr, table),
-            Expr::BinOp { .. } => ExprFolder::fold_binop(expr, table),
-            Expr::Ternary { .. } => ExprFolder::fold_ternary(expr, table),
+            Expr::UnOp { .. } => ExprFolder::fold_unop(expr, table, err),
+            Expr::BinOp { .. } => ExprFolder::fold_binop(expr, table, err),
+            Expr::Ternary { .. } => ExprFolder::fold_ternary(expr, table, err),
             Expr::Call { .. } => ExprFolder::fold_call(expr, table),
-            Expr::VarId { .. } => ExprFolder::fold_var_id(expr, table),
+            Expr::VarId { .. } => ExprFolder::fold_var_id(expr, table, err),
             Expr::Primitive { .. } => ExprFolder::fold_primitive(expr, table),
-            Expr::MapGet { .. } => ExprFolder::fold_map_get(expr, table),
+            Expr::MapGet { .. } => ExprFolder::fold_map_get(expr, table, err),
         }
     }
 
-    fn fold_binop(binop: &Expr, table: &SymbolTable) -> Expr {
+    fn fold_binop(binop: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
         if let Expr::BinOp { lhs, op, rhs, .. } = &binop {
-            let lhs = ExprFolder::fold_expr(lhs, table);
-            let rhs = ExprFolder::fold_expr(rhs, table);
+            let lhs = ExprFolder::fold_expr(lhs, table, err);
+            let rhs = ExprFolder::fold_expr(rhs, table, err);
             match op {
                 BinOp::And => {
                     let (lhs_val, rhs_val) = ExprFolder::get_bool(&lhs, &rhs);
@@ -189,10 +190,10 @@ impl ExprFolder {
         binop.clone()
     }
 
-    fn fold_map_get(expr: &Expr, table: &SymbolTable) -> Expr {
+    fn fold_map_get(expr: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
         if let Expr::MapGet { map, key, .. } = &expr {
-            let map = ExprFolder::fold_expr(map, table);
-            let key = ExprFolder::fold_expr(key, table);
+            let map = ExprFolder::fold_expr(map, table, err);
+            let key = ExprFolder::fold_expr(key, table, err);
             return Expr::MapGet {
                 map: Box::new(map),
                 key: Box::new(key),
@@ -203,9 +204,9 @@ impl ExprFolder {
     }
 
     // similar to the logic of fold_binop
-    fn fold_unop(unop: &Expr, table: &SymbolTable) -> Expr {
+    fn fold_unop(unop: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
         if let Expr::UnOp { op, expr, .. } = &unop {
-            let expr = ExprFolder::fold_expr(expr, table);
+            let expr = ExprFolder::fold_expr(expr, table, err);
             return match op {
                 UnOp::Not => {
                     let expr_val = ExprFolder::get_single_bool(&expr);
@@ -373,14 +374,14 @@ impl ExprFolder {
         None
     }
 
-    fn fold_ternary(ternary: &Expr, table: &SymbolTable) -> Expr {
+    fn fold_ternary(ternary: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
         match ternary {
             Expr::Ternary {
                 cond, conseq, alt, ..
             } => {
-                let cond = ExprFolder::fold_expr(cond, table);
-                let conseq = ExprFolder::fold_expr(conseq, table);
-                let alt = ExprFolder::fold_expr(alt, table);
+                let cond = ExprFolder::fold_expr(cond, table, err);
+                let conseq = ExprFolder::fold_expr(conseq, table, err);
+                let alt = ExprFolder::fold_expr(alt, table, err);
 
                 // check if the condition folds to true/false!
                 let cond_val = ExprFolder::get_single_bool(&cond);
@@ -413,32 +414,16 @@ impl ExprFolder {
     fn fold_call(call: &Expr, _table: &SymbolTable) -> Expr {
         call.clone()
     }
-    fn fold_var_id(var_id: &Expr, table: &SymbolTable) -> Expr {
-        match &var_id {
-            Expr::VarId { name, .. } => {
-                let rec_id = match table.lookup(name) {
-                    Some(rec_id) => *rec_id,
-                    _ => {
-                        return var_id.clone();
-                    }
+    fn fold_var_id(var_id: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
+        if let Expr::VarId { name, .. } = &var_id {
+            let Some(Var { value, .. }) = table.lookup_var(name, &None, err, false) else {
+                return var_id.clone(); // ignore
+            };
+            if value.is_some() {
+                return Expr::Primitive {
+                    val: value.as_ref().unwrap().clone(),
+                    loc: None,
                 };
-                let rec = table.get_record(&rec_id);
-                match &rec {
-                    Some(Var { value, .. }) => {
-                        if value.is_some() {
-                            return Expr::Primitive {
-                                val: value.as_ref().unwrap().clone(),
-                                loc: None,
-                            };
-                        }
-                    }
-                    _ => {
-                        // ignore
-                    }
-                }
-            }
-            _ => {
-                // ignore
             }
         }
         var_id.clone()

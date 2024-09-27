@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 
-use crate::common::error::{ErrorGen, WhammError};
+use crate::common::error::ErrorGen;
 
 pub struct ReportVarMetadata {
     //MapID -> Metadata
@@ -34,18 +34,53 @@ impl ReportVarMetadata {
             flush_soon: false,
         }
     }
-    pub fn put_global_metadata(&mut self, gid: u32, name: String) -> Result<bool, Box<WhammError>> {
+    pub fn use_available_global(
+        &mut self,
+        var_name: String,
+        ty: orca_wasm::ir::types::DataType,
+        err_msg: &str,
+        err: &mut ErrorGen,
+    ) -> Option<u32> {
+        if ty != orca_wasm::ir::types::DataType::I32 {
+            err.unexpected_error(
+                true,
+                Some(format!(
+                    "{err_msg} Expected I32 type for report var, found: {:?}. Further support is upcoming",
+                    ty
+                )),
+                None,
+            );
+            return None;
+        }
+        if self.available_i32_gids.is_empty() {
+            err.unexpected_error(
+                true,
+                Some(format!(
+                    "{err_msg} No available global I32s for report vars"
+                )),
+                None,
+            );
+            return None;
+        }
+        let id = self.available_i32_gids.remove(0);
+        self.used_i32_gids.push(id);
+        self.put_local_metadata(id, var_name.clone(), err);
+
+        Some(id)
+    }
+    pub fn put_global_metadata(&mut self, gid: u32, name: String, err: &mut ErrorGen) -> bool {
         let script_id = match &self.curr_location {
             LocationData::Global { script_id } => script_id.clone(),
             _ => {
-                return Err(Box::new(ErrorGen::get_unexpected_error(
+                err.unexpected_error(
                     true,
                     Some(format!(
                         "Expected global location data, but got: {:?}",
                         self.curr_location
                     )),
                     None,
-                )))
+                );
+                return false;
             }
         };
         let metadata = Metadata::Global {
@@ -54,35 +89,38 @@ impl ReportVarMetadata {
         };
         self.variable_metadata.insert(gid, metadata.clone());
         if !self.all_metadata.insert(metadata) {
-            return Err(Box::new(ErrorGen::get_unexpected_error(
+            err.unexpected_error(
                 true,
                 Some(format!("Duplicate metadata for map with name: {}", name)),
                 None,
-            )));
+            );
+            return false;
         }
-        Ok(true)
+        true
     }
-    pub fn put_local_metadata(&mut self, gid: u32, name: String) -> Result<bool, Box<WhammError>> {
+    pub fn put_local_metadata(&mut self, gid: u32, name: String, err: &mut ErrorGen) -> bool {
         if let LocationData::Local { .. } = &self.curr_location {
             let metadata = Metadata::new(name.clone(), &self.curr_location);
             self.variable_metadata.insert(gid, metadata.clone());
             if !self.all_metadata.insert(metadata) {
-                return Err(Box::new(ErrorGen::get_unexpected_error(
+                err.unexpected_error(
                     true,
                     Some(format!("Duplicate metadata with name: {}", name)),
                     None,
-                )));
+                );
+                return false;
             }
-            Ok(true)
+            true
         } else {
-            Err(Box::new(ErrorGen::get_unexpected_error(
+            err.unexpected_error(
                 true,
                 Some(format!(
                     "Expected local location data, but got: {:?}",
                     self.curr_location
                 )),
                 None,
-            )))
+            );
+            false
         }
     }
     pub fn print_metadata(&self) {
@@ -118,6 +156,9 @@ impl ReportVarMetadata {
         if self.variable_metadata.contains_key(&var_id) {
             self.flush_soon = true;
         }
+    }
+    pub fn performed_flush(&mut self) {
+        self.flush_soon = false;
     }
 }
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

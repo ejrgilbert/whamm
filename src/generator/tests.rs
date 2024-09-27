@@ -17,7 +17,7 @@ pub fn setup_logger() {
 
 fn get_rec<'a>(table: &'a mut SymbolTable, name: &str) -> Option<&'a mut Record> {
     let var_rec_id = match table.lookup(name) {
-        Some(id) => *id,
+        Some(id) => id,
         None => {
             error!("Variable symbol does not exist for name {}!", name);
             println!("{:#?}", table);
@@ -25,7 +25,7 @@ fn get_rec<'a>(table: &'a mut SymbolTable, name: &str) -> Option<&'a mut Record>
         }
     };
 
-    return match table.get_record_mut(&var_rec_id) {
+    return match table.get_record_mut(var_rec_id) {
         Some(rec) => Some(rec),
         _ => {
             error!("Variable symbol does not exist!");
@@ -64,52 +64,36 @@ fn move_through_scopes_til_match(
     err: &mut ErrorGen,
 ) {
     while table.get_curr_scope().unwrap().ty != desired_ty {
-        if let Err(e) = table.exit_scope() {
-            err.add_error(*e);
-            err.report();
-        }
-        if let Err(e) = table.enter_scope() {
-            err.add_error(*e);
-            err.report();
-        }
+        table.exit_scope(err);
+        err.report();
+        table.enter_scope(err);
+        err.report();
     }
 }
 
 fn hardcode_compiler_constants(table: &mut SymbolTable, err: &mut ErrorGen) {
-    if let Err(e) = table.enter_scope() {
-        err.add_error(*e);
-        err.report();
-    }
+    table.enter_scope(err);
+    err.report();
     move_through_scopes_til_match(ScopeType::Script, table, err);
     debug!("Scope name: {}", table.get_curr_scope().unwrap().name);
     // enter wasm scope
-    if let Err(e) = table.enter_scope() {
-        err.add_error(*e);
-        err.report();
-    }
+    table.enter_scope(err);
+    err.report();
     move_through_scopes_til_match(ScopeType::Provider, table, err);
     debug!("Scope name: {}", table.get_curr_scope().unwrap().name);
     // enter opcode scope
-    if let Err(e) = table.enter_scope() {
-        err.add_error(*e);
-        err.report();
-    }
+    table.enter_scope(err);
+    err.report();
     move_through_scopes_til_match(ScopeType::Package, table, err);
     debug!("Scope name: {}", table.get_curr_scope().unwrap().name);
     // enter call scope
-    if let Err(e) = table.enter_scope() {
-        err.add_error(*e);
-        err.report();
-    }
+    table.enter_scope(err);
+    err.report();
     while table.get_curr_scope().unwrap().ty != ScopeType::Event {
-        if let Err(e) = table.exit_scope() {
-            err.add_error(*e);
-            err.report();
-        }
-        if let Err(e) = table.enter_scope() {
-            err.add_error(*e);
-            err.report();
-        }
+        table.exit_scope(err);
+        err.report();
+        table.enter_scope(err);
+        err.report();
     }
 
     // define target_fn_type
@@ -169,7 +153,7 @@ fn basic_run(script: &str, err: &mut ErrorGen) {
     let pred = get_pred(&whamm);
     hardcode_compiler_constants(&mut table, err);
 
-    let folded_expr = ExprFolder::fold_expr(pred, &table);
+    let folded_expr = ExprFolder::fold_expr(pred, &table, err);
     assert_simplified_predicate(&folded_expr);
 }
 
@@ -261,7 +245,7 @@ wasm::call:alt /
     let pred = get_pred(&whamm);
     hardcode_compiler_constants(&mut table, &mut err);
 
-    let folded_expr = ExprFolder::fold_expr(pred, &table);
+    let folded_expr = ExprFolder::fold_expr(pred, &table, &mut err);
     debug!("{:#?}", folded_expr);
 
     // ExprFolder should not be able to simplify the Call expressions at all.
