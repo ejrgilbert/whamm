@@ -137,14 +137,13 @@ impl MapLibAdapter {
                 DataType::Tuple { .. } => Some("create_i32_tuple".to_string()),
                 DataType::Map { .. } => Some("create_i32_map".to_string()),
                 _ => {
-                    err.unexpected_error(
-                        // todo -- this isn't an unexpected error!
+                    err.type_check_error(
                         true,
-                        Some(format!(
+                        format!(
                             "Unsupported value type for map with I32 key: {:?}",
                             val
-                        )),
-                        None,
+                        ),
+                        &None,
                     );
                     None
                 }
@@ -156,14 +155,13 @@ impl MapLibAdapter {
                 DataType::Tuple { .. } => Some("create_string_tuple".to_string()),
                 DataType::Map { .. } => Some("create_string_map".to_string()),
                 _ => {
-                    err.unexpected_error(
-                        // todo -- this isn't an unexpected error!
+                    err.type_check_error(
                         true,
-                        Some(format!(
+                        format!(
                             "Unsupported value type for map with Str key: {:?}",
                             val
-                        )),
-                        None,
+                        ),
+                        &None,
                     );
                     None
                 }
@@ -175,14 +173,13 @@ impl MapLibAdapter {
                 DataType::Tuple { .. } => Some("create_bool_tuple".to_string()),
                 DataType::Map { .. } => Some("create_bool_map".to_string()),
                 _ => {
-                    err.unexpected_error(
-                        // todo -- this isn't an unexpected error!
+                    err.type_check_error(
                         true,
-                        Some(format!(
+                        format!(
                             "Unsupported value type for map with Boolean key: {:?}",
                             val
-                        )),
-                        None,
+                        ),
+                        &None,
                     );
                     None
                 }
@@ -194,24 +191,22 @@ impl MapLibAdapter {
                 DataType::Tuple { .. } => Some("create_tuple_tuple".to_string()),
                 DataType::Map { .. } => Some("create_tuple_map".to_string()),
                 _ => {
-                    err.unexpected_error(
-                        // todo -- this isn't an unexpected error!
+                    err.type_check_error(
                         true,
-                        Some(format!(
+                        format!(
                             "Unsupported value type for map with Tuple key: {:?}",
                             val
-                        )),
-                        None,
+                        ),
+                        &None,
                     );
                     None
                 }
             },
             _ => {
-                err.unexpected_error(
-                    // todo -- this isn't an unexpected error!
+                err.type_check_error(
                     true,
-                    Some(format!("Unsupported key type for map: {:?}", key)),
-                    None,
+                    format!("Unsupported key type for map: {:?}", key),
+                    &None,
                 );
                 None
             }

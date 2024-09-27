@@ -539,7 +539,7 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_> {
         // set up the output header!
         let header = Metadata::get_csv_header();
         //first, emit the string to data section
-        // todo factor this logic out to a function call!
+        // todo(maps) factor this logic out to a function call!
         let data_id = self.emitter.app_iter.module.data.len();
         let header_bytes = header.as_bytes().to_owned();
         let data_segment = DataSegment {
@@ -570,7 +570,7 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_> {
             global_map_init.i32_const(addr.len as i32);
             global_map_init.call(FunctionID(set_metadata_header_id));
         } else {
-            // todo -- make this an error!
+            // todo(maps) -- make this an error!
             panic!("Failed to write out string")
         }
 
@@ -629,12 +629,12 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_> {
     /// set up the print_global_meta function for insertions
     fn setup_print_global_meta(&mut self, var_meta_str: &HashMap<u32, String>) -> bool {
         // get the IDs of the funcs to call
-        // todo -- look up the func name instead!
+        // todo(maps) -- look up the func name instead!
         let Some(print_metadata_header_id) = self.get_lib_fn_id("print_metadata_header") else {
             return false;
         };
         let print_metadata_header_id = FunctionID(print_metadata_header_id);
-        // todo -- look up the func name instead!
+        // todo(maps) -- look up the func name instead!
         let Some(print_global_i32_meta_helper_id) =
             self.get_lib_fn_id("print_global_i32_meta_helper")
         else {
@@ -643,7 +643,7 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_> {
         let print_global_i32_meta_helper_id = FunctionID(print_global_i32_meta_helper_id);
 
         //first, we need to create the maps in global_map_init - where all the other maps are initialized
-        // todo -- look up the func name instead!
+        // todo(maps) -- look up the func name instead!
         let Some(print_global_meta_id) = self.get_lib_fn_id("print_global_meta") else {
             return false;
         };
