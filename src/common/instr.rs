@@ -16,7 +16,7 @@ use orca_wasm::Module;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::exit;
-// use crate::cli::{LibraryStrategy, MemoryStrategy};
+use crate::cli::LibraryLinkStrategyArg;
 
 /// create output path if it doesn't exist
 pub(crate) fn try_path(path: &String) {
@@ -25,10 +25,28 @@ pub(crate) fn try_path(path: &String) {
     }
 }
 
-pub enum LibStrategy {
-    Imported,
-    MergedWithMulti,
-    MergedWithOffset(u32),
+/// Copy to enable access for testing...
+/// Options for handling instrumentation library.
+#[derive(Clone, Debug)]
+pub enum LibraryLinkStrategy {
+    /// Merge the library with the `app.wasm` **target VM must support multi-memory**.
+    /// Will create a new memory in the `app.wasm` to be targeted by the instrumentation.
+    Merged,
+    /// Link the library through Wasm imports into `app.wasm` (target VM must support dynamic linking).
+    /// Naturally, the instrumentation memory will reside in its own module instantiation.
+    Imported
+}
+impl From<Option<LibraryLinkStrategyArg>> for LibraryLinkStrategy {
+    fn from(value: Option<LibraryLinkStrategyArg>) -> Self {
+        match value {
+            Some(LibraryLinkStrategyArg::Imported) => LibraryLinkStrategy::Imported,
+            Some(LibraryLinkStrategyArg::Merged) => LibraryLinkStrategy::Merged,
+            None => {
+                info!("Using default library linking strategy: 'imported'");
+                LibraryLinkStrategy::Imported
+            }
+        }
+    }
 }
 
 pub struct Config {
@@ -39,14 +57,32 @@ pub struct Config {
     pub testing: bool,
 
     /// The strategy to take when handling the injecting references to the `whamm!` library.
-    pub library_strategy: LibStrategy,
+    pub library_strategy: LibraryLinkStrategy,
 }
 impl Default for Config {
     fn default() -> Self {
         Self {
             virgil: false,
             testing: false,
-            library_strategy: LibStrategy::Imported,
+            library_strategy: LibraryLinkStrategy::Imported,
+        }
+    }
+}
+impl Config {
+    pub fn new(virgil: bool, testing: bool, link_strategy: Option<LibraryLinkStrategyArg>) -> Self {
+        if virgil {
+            error!("Targeting Virgil is not yet supported!");
+            exit(1);
+        }
+        if testing {
+            error!("Generating helper methods for testing mode is not yet supported!");
+            exit(1);
+        }
+        let library_strategy = LibraryLinkStrategy::from(link_strategy);
+        Self {
+            virgil,
+            testing,
+            library_strategy
         }
     }
 }
@@ -56,7 +92,7 @@ pub fn run_with_path(
     script_path: String,
     output_wasm_path: String,
     max_errors: i32,
-    // config: Config
+    config: Config
 ) {
     // Read app Wasm into Orca module
     let buff = std::fs::read(app_wasm_path).unwrap();
@@ -77,7 +113,7 @@ pub fn run_with_path(
         &script_path,
         Some(output_wasm_path),
         max_errors,
-        // config,
+        config,
     );
 }
 
@@ -87,8 +123,9 @@ pub fn run(
     script_path: &str,
     output_wasm_path: Option<String>,
     max_errors: i32,
-    // config: Config
+    config: Config
 ) -> Vec<u8> {
+    // TODO -- use config!
     // Set up error reporting mechanism
     let mut err = ErrorGen::new(script_path.to_string(), "".to_string(), max_errors);
 

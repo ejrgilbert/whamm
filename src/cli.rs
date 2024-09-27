@@ -64,45 +64,30 @@ pub struct InstrArgs {
     /// Whether to emit Virgil code as the instrumentation code
     #[arg(short, long, action, default_value = "false")]
     pub virgil: bool,
-    //
-    // /// Whether to emit extra exported functions that are helpful during testing.
-    // #[arg(short, long, action, default_value = "false")]
-    // pub testing: bool,
-    //
-    // /// The strategy to take when handling the injecting references to the `whamm!` core library.
-    // #[arg(short, long, value_parser)]
-    // pub lib: Option<LibraryStrategy>,
-    //
-    // /// The strategy to take when handling the memory for the merged `whamm!` core library.
-    // #[arg(short, long, value_parser)]
-    // pub mem: Option<MemoryStrategy>,
-    //
+
+    /// Whether to emit extra exported functions that are helpful during testing.
+    #[arg(short, long, action, default_value = "false")]
+    pub testing: bool,
+
+    /// The strategy to take when handling the injecting references to the `whamm!` core library.
+    #[arg(short, long, value_parser)]
+    pub link_strategy: Option<LibraryLinkStrategyArg>,
+
     // /// The memory offset to use when using the `offset` library strategy.
     // #[arg(short, long, value_parser)]
     // pub mem_offset: Option<u32>
 }
 
-// /// Options for handling instrumentation library.
-// #[derive(clap::ValueEnum, Clone, Debug)]
-// pub enum LibraryStrategy {
-//     /// Merge the library with the `app.wasm`.
-//     /// Place the instrumentation memory in the same memory as the application, but at the specified offset.
-//     /// NOTE: This can be dangerous, application memory can be overwritten if the offset is not correct.
-//     Merged,
-//     /// Link the library through Wasm imports into `app.wasm`.
-//     /// Naturally, the instrumentation memory will reside in its own module instantiation.
-//     Imported
-// }
-
-// /// Options for handling instrumentation library.
-// #[derive(clap::ValueEnum, Clone, Debug)]
-// pub enum MemoryStrategy {
-//     /// Place the instrumentation memory in the same memory as the application, but at the specified offset.
-//     /// NOTE: This can be dangerous, application memory can be overwritten if the offset is not correct.
-//     Offset,
-//     /// Create a new memory in the `app.wasm` to be targeted by the instrumentation.
-//     Multi
-// }
+/// Options for handling instrumentation library.
+#[derive(clap::ValueEnum, Clone, Debug)]
+pub enum LibraryLinkStrategyArg {
+    /// Merge the library with the `app.wasm` **target VM must support multi-memory**.
+    /// Will create a new memory in the `app.wasm` to be targeted by the instrumentation.
+    Merged,
+    /// Link the library through Wasm imports into `app.wasm` (target VM must support dynamic linking).
+    /// Naturally, the instrumentation memory will reside in its own module instantiation.
+    Imported
+}
 
 // pub fn print_completion<G: Generator>(gen: G, app: &mut App) {
 //     generate(gen, app, app.get_name().to_string(), &mut io::stdout());

@@ -5,6 +5,7 @@ use orca_wasm::Module;
 use std::fs;
 use std::process::Command;
 use whamm::common::error::ErrorGen;
+use whamm::common::instr::{Config, LibraryLinkStrategy};
 use whamm::wast::test_harness::wasm2wat_on_file;
 
 const APP_WASM_PATH: &str = "tests/apps/dfinity/users.wasm";
@@ -33,7 +34,11 @@ fn instrument_dfinity_with_fault_injection() {
             &format!("{:?}", script_path.clone().as_path()),
             None,
             0,
-            // false,
+            Config {
+                virgil: false,
+                testing: true,
+                library_strategy: LibraryLinkStrategy::Imported,
+            },
         );
         err.fatal_report("Integration Test");
     }

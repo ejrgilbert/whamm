@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::common::instr::{run, try_path};
+use crate::common::instr::{Config, LibraryLinkStrategy, run, try_path};
 use log::{debug, error};
 use orca_wasm::Module;
 use std::fs::{remove_dir_all, File};
@@ -222,12 +222,11 @@ fn generate_instrumented_bin_wast(
             &format!("{:?}", wast_path),
             Some(debug_file_path.clone()),
             0,
-            // Config {
-            //     virgil: false,
-            //     testing: true,
-            //     library_strategy: LibraryStrategy::Linked,
-            //     mem_offset: 0 // unused anyway!
-            // },
+            Config {
+                virgil: false,
+                testing: true,
+                library_strategy: LibraryLinkStrategy::Imported,
+            },
         );
         wasm2wat_on_file(debug_file_path.as_str());
 
