@@ -139,10 +139,7 @@ impl MapLibAdapter {
                 _ => {
                     err.type_check_error(
                         true,
-                        format!(
-                            "Unsupported value type for map with I32 key: {:?}",
-                            val
-                        ),
+                        format!("Unsupported value type for map with I32 key: {:?}", val),
                         &None,
                     );
                     None
@@ -157,10 +154,7 @@ impl MapLibAdapter {
                 _ => {
                     err.type_check_error(
                         true,
-                        format!(
-                            "Unsupported value type for map with Str key: {:?}",
-                            val
-                        ),
+                        format!("Unsupported value type for map with Str key: {:?}", val),
                         &None,
                     );
                     None
@@ -175,10 +169,7 @@ impl MapLibAdapter {
                 _ => {
                     err.type_check_error(
                         true,
-                        format!(
-                            "Unsupported value type for map with Boolean key: {:?}",
-                            val
-                        ),
+                        format!("Unsupported value type for map with Boolean key: {:?}", val),
                         &None,
                     );
                     None
@@ -193,10 +184,7 @@ impl MapLibAdapter {
                 _ => {
                     err.type_check_error(
                         true,
-                        format!(
-                            "Unsupported value type for map with Tuple key: {:?}",
-                            val
-                        ),
+                        format!("Unsupported value type for map with Tuple key: {:?}", val),
                         &None,
                     );
                     None
