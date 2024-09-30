@@ -477,7 +477,7 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             err_msg,
             err,
         );
-        let fname = map_lib_adapter.insert_map_fname(key_ty, val_ty, err);
+        let fname = map_lib_adapter.map_insert_fname(key_ty, val_ty, err);
         if fname.is_none() {
             return false;
         }
@@ -1108,7 +1108,7 @@ fn emit_map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         if let Expr::VarId { name, .. } = map {
             match get_map_info(table, name, err) {
                 Some((map_id, key_ty, val_ty)) => {
-                    let to_call = map_lib_adapter.get_map_fname(key_ty, val_ty, err);
+                    let to_call = map_lib_adapter.map_get_fname(key_ty, val_ty, err);
                     if to_call.is_none() {
                         return false;
                     }

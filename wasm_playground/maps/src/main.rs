@@ -832,7 +832,7 @@ pub fn insert_i32_i32(name: i32, key: i32, value: i32) {
 }
 
 #[no_mangle]
-pub fn get_i32_from_i32i32i32tuple(name: i32, key0: i32, key1: i32, key2: i32) -> i32 {
+pub fn get_i32i32i32tuple_i32(name: i32, key0: i32, key1: i32, key2: i32) -> i32 {
     get_i32(name, &Box::new(TupleVariant::i32_i32_i32(key0, key1, key2)))
 }
 #[no_mangle]

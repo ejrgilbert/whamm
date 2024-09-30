@@ -141,12 +141,13 @@ pub fn run(
     err.check_has_errors();
 
     // TODO Configure the generator based on target (wizard vs bytecode rewriting)
+
     // Merge in the core library IF NEEDED
     let mut core_packages = crate::linker::core::get_packages();
     // Read core library Wasm into Orca module
     let buff = std::fs::read(core_wasm_path).unwrap();
     let core_lib = Module::parse(&buff, false).unwrap();
-    crate::linker::actions::link_core_lib(config.library_strategy, &whamm, &mut symbol_table, app_wasm, &core_lib, &mut core_packages);
+    crate::linker::actions::link_core_lib(config.library_strategy, &whamm, &mut symbol_table, app_wasm, &core_lib, &mut core_packages, &mut err);
 
     // TODO -- add second memory to hold on to instrumentation data
     // Create the memory tracker + the map and metadata tracker

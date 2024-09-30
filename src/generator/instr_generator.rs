@@ -466,7 +466,7 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_> {
         let Some(create_i32_string_fname) =
             self.emitter
                 .map_lib_adapter
-                .create_map_fname(DataType::I32, DataType::Str, self.err)
+                .map_create_fname(DataType::I32, DataType::Str, self.err)
         else {
             return false;
         };
@@ -476,7 +476,7 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_> {
         let Some(insert_i32_string_fname) =
             self.emitter
                 .map_lib_adapter
-                .insert_map_fname(DataType::I32, DataType::Str, self.err)
+                .map_insert_fname(DataType::I32, DataType::Str, self.err)
         else {
             return false;
         };

@@ -1,5 +1,6 @@
 pub mod map_lib_adapter;
 
+use std::collections::HashSet;
 use log::{debug, trace};
 use crate::linker::core::{LibAdapter, LibPackage};
 use crate::linker::core::maps::map_lib_adapter::MapLibAdapter;
@@ -9,8 +10,7 @@ use crate::parser::types::{BinOp, Block, DataType, Expr, Script, Statement, UnOp
 #[derive(Default)]
 pub struct MapLibPackage {
     is_used: bool,
-    // adapter: MapLibAdapter,
-    num_funcs: u32
+    adapter: MapLibAdapter
 }
 impl WhammVisitor<()> for MapLibPackage {
     fn visit_whamm(&mut self, whamm: &Whamm) -> () {
@@ -157,4 +157,7 @@ impl LibPackage for MapLibPackage {
     // fn get_lib_adapter(&self) -> Box<&dyn LibAdapter> {
     //     Box::new(&self.adapter)
     // }
+    fn get_fn_names(&self) -> &HashSet<String> {
+        self.adapter.get_fn_names()
+    }
 }

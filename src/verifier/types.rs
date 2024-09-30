@@ -507,6 +507,7 @@ impl Scope {
 #[derive(Debug, Eq, PartialEq)]
 pub enum ScopeType {
     Whamm,
+    Library,
     Script,
     Provider,
     Package,
@@ -520,6 +521,9 @@ impl fmt::Display for ScopeType {
         match self {
             ScopeType::Whamm { .. } => {
                 write!(f, "Whamm")
+            }
+            ScopeType::Library { .. } => {
+                write!(f, "Library")
             }
             ScopeType::Script { .. } => {
                 write!(f, "Script")

@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use crate::common::error::ErrorGen;
 use crate::parser::types::DataType;
 // //this is the code that knows which functions to call in lib.rs based on what is in the AST -> will be in emitter folder eventually
@@ -8,6 +9,7 @@ pub const RESERVED_VAR_METADATA_MAP_ID: u32 = 0;
 pub const RESERVED_MAP_METADATA_MAP_ID: u32 = 1;
 
 pub struct MapLibAdapter {
+    func_names: HashSet<String>,
     map_count: u32,
     pub init_bool_location: u32,
 }
@@ -16,10 +18,46 @@ impl Default for MapLibAdapter {
         Self::new()
     }
 }
+impl LibAdapter for MapLibAdapter {
+    fn get_fn_names(&self) -> &HashSet<String> {
+        &self.func_names
+    }
+}
 impl MapLibAdapter {
     pub fn new() -> Self {
+        let func_names = HashSet::from_iter(vec![
+            // create map
+            "create_i32_i32".to_string(),
+            "create_i32_bool".to_string(),
+            "create_i32_string".to_string(),
+            "create_i32_tuple".to_string(),
+            "create_i32_map".to_string(),
+            "create_string_i32".to_string(),
+            "create_string_bool".to_string(),
+            "create_string_string".to_string(),
+            "create_string_tuple".to_string(),
+            "create_string_map".to_string(),
+            "create_bool_i32".to_string(),
+            "create_bool_bool".to_string(),
+            "create_bool_string".to_string(),
+            "create_bool_tuple".to_string(),
+            "create_bool_map".to_string(),
+            "create_tuple_i32".to_string(),
+            "create_tuple_bool".to_string(),
+            "create_tuple_string".to_string(),
+            "create_tuple_tuple".to_string(),
+            "create_tuple_map".to_string(),
+            // insert map
+            "insert_i32_i32".to_string(),
+            "insert_i32_string".to_string(),
+            "insert_i32i32i32tuple_i32".to_string(),
+            // get from map
+            "get_i32_i32".to_string(),
+            "get_i32_from_i32i32i32tuple".to_string()
+        ]);
         //Reserve map 0 for the var metadata map and map 1 for the map metadata map
         MapLibAdapter {
+            func_names,
             map_count: 2,
             init_bool_location: 0,
         }
@@ -107,6 +145,44 @@ impl MapLibAdapter {
     // Get "to_call" for map functions
     // -------------------------------------
 
+    fn ty_to_str(is_create: bool, ty: &DataType,
+                 err: &mut ErrorGen,) -> String {
+        let mut inner = "".to_string();
+        let str = match ty {
+            DataType::I32 => "i32",
+            DataType::Boolean => "bool",
+            DataType::Str => "string",
+            DataType::Tuple { ty_info: inner_types } => {
+                if is_create {
+                    "tuple"
+                } else {
+                    for inner_ty in inner_types.iter() {
+                        inner += Self::ty_to_str(is_create, inner_ty, err).as_str();
+                    }
+                    inner += "tuple";
+                    let str = inner.as_str();
+                    str
+                }
+            },
+            DataType::Map { .. } => "map",
+            DataType::U32 => "u32",
+            DataType::F32 => "f32",
+            DataType::U64 => "u64",
+            DataType::I64 => "i64",
+            DataType::F64 => "f64",
+            ty => {
+                err.type_check_error(
+                    true,
+                    format!("Unsupported value type for map library: {:?}", ty),
+                    &None,
+                );
+                ""
+            }
+        };
+
+        str.to_string()
+    }
+
     //The stuff that actually calls the emitter stuff
     fn create_map_fname_by_map_type(
         &mut self,
@@ -122,194 +198,69 @@ impl MapLibAdapter {
             return None;
         };
 
-        self.create_map_fname(*key, *val, err)
+        self.map_create_fname(*key, *val, err)
     }
-    pub fn create_map_fname(
+    pub fn map_create_fname(
         &mut self,
         key: DataType,
         val: DataType,
         err: &mut ErrorGen,
     ) -> Option<String> {
-        match key {
-            DataType::I32 => match val {
-                DataType::I32 => Some("create_i32_i32".to_string()),
-                DataType::Boolean => Some("create_i32_bool".to_string()),
-                DataType::Str => Some("create_i32_string".to_string()),
-                DataType::Tuple { .. } => Some("create_i32_tuple".to_string()),
-                DataType::Map { .. } => Some("create_i32_map".to_string()),
-                _ => {
-                    err.type_check_error(
-                        true,
-                        format!("Unsupported value type for map with I32 key: {:?}", val),
-                        &None,
-                    );
-                    None
-                }
-            },
-            DataType::Str => match val {
-                DataType::I32 => Some("create_string_i32".to_string()),
-                DataType::Boolean => Some("create_string_bool".to_string()),
-                DataType::Str => Some("create_string_string".to_string()),
-                DataType::Tuple { .. } => Some("create_string_tuple".to_string()),
-                DataType::Map { .. } => Some("create_string_map".to_string()),
-                _ => {
-                    err.type_check_error(
-                        true,
-                        format!("Unsupported value type for map with Str key: {:?}", val),
-                        &None,
-                    );
-                    None
-                }
-            },
-            DataType::Boolean {} => match val {
-                DataType::I32 => Some("create_bool_i32".to_string()),
-                DataType::Boolean => Some("create_bool_bool".to_string()),
-                DataType::Str => Some("create_bool_string".to_string()),
-                DataType::Tuple { .. } => Some("create_bool_tuple".to_string()),
-                DataType::Map { .. } => Some("create_bool_map".to_string()),
-                _ => {
-                    err.type_check_error(
-                        true,
-                        format!("Unsupported value type for map with Boolean key: {:?}", val),
-                        &None,
-                    );
-                    None
-                }
-            },
-            DataType::Tuple { .. } => match val {
-                DataType::I32 => Some("create_tuple_i32".to_string()),
-                DataType::Boolean => Some("create_tuple_bool".to_string()),
-                DataType::Str => Some("create_tuple_string".to_string()),
-                DataType::Tuple { .. } => Some("create_tuple_tuple".to_string()),
-                DataType::Map { .. } => Some("create_tuple_map".to_string()),
-                _ => {
-                    err.type_check_error(
-                        true,
-                        format!("Unsupported value type for map with Tuple key: {:?}", val),
-                        &None,
-                    );
-                    None
-                }
-            },
-            _ => {
-                err.type_check_error(
-                    true,
-                    format!("Unsupported key type for map: {:?}", key),
-                    &None,
-                );
-                None
-            }
+        let key_name = Self::ty_to_str(true, &key, err);
+        let val_name = Self::ty_to_str(true, &val, err);
+
+        let fname = format!("create_{key_name}_{val_name}");
+        if self.func_names.contains(&fname) {
+            Some(fname)
+        } else {
+            err.type_check_error(
+                true,
+                format!("MapLibAdapter.map_create_fname: Unsupported map type: {:?} -> {:?}", key, val),
+                &None,
+            );
+            None
         }
     }
-    pub fn insert_map_fname(
+    pub fn map_insert_fname(
         &mut self,
         key: DataType,
         val: DataType,
         err: &mut ErrorGen,
     ) -> Option<String> {
-        match &key {
-            DataType::I32 => match val {
-                DataType::I32 => Some("insert_i32_i32".to_string()),
-                DataType::Str => Some("insert_i32_string".to_string()),
-                _ => {
-                    err.unexpected_error(
-                        true,
-                        Some(format!(
-                            "not yet supported type for map: {:?} -> {:?}",
-                            key, val
-                        )),
-                        None,
-                    );
-                    None
-                }
-            },
-            DataType::Tuple { ty_info } => {
-                if *ty_info
-                    == vec![
-                        Box::new(DataType::I32),
-                        Box::new(DataType::I32),
-                        Box::new(DataType::I32),
-                    ]
-                {
-                    match val {
-                        DataType::I32 => Some("insert_i32i32i32tuple_i32".to_string()),
-                        _ => {
-                            err.unexpected_error(
-                                true,
-                                Some(format!(
-                                    "not yet supported type for map: {:?} -> {:?}",
-                                    key, val
-                                )),
-                                None,
-                            );
-                            None
-                        }
-                    }
-                } else {
-                    err.unexpected_error(
-                        true,
-                        Some(format!(
-                            "not yet supported type for map: {:?} -> {:?}",
-                            key, val
-                        )),
-                        None,
-                    );
-                    None
-                }
-            }
-            _ => {
-                err.unexpected_error(
-                    true,
-                    Some(format!(
-                        "not yet supported type for map: {:?} -> {:?}",
-                        key, val
-                    )),
-                    None,
-                );
-                None
-            }
+        let key_name = Self::ty_to_str(false, &key, err);
+        let val_name = Self::ty_to_str(false, &val, err);
+
+        let fname = format!("insert_{key_name}_{val_name}");
+        if self.func_names.contains(&fname) {
+            Some(fname)
+        } else {
+            err.type_check_error(
+                true,
+                format!("MapLibAdapter.map_insert_fname: Unsupported map type: {:?} -> {:?}", key, val),
+                &None,
+            );
+            None
         }
     }
-    pub fn get_map_fname(
+    pub fn map_get_fname(
         &mut self,
         key: DataType,
         val: DataType,
         err: &mut ErrorGen,
     ) -> Option<String> {
-        let unsupported_type = format!("Map type not supported yet: {:?} -> {:?}", key, val);
-        match key {
-            DataType::I32 => match val {
-                DataType::I32 => Some("get_i32_i32".to_string()),
-                _ => {
-                    err.unexpected_error(true, Some(unsupported_type.clone()), None);
-                    None
-                }
-            },
-            DataType::Tuple { ty_info } => {
-                if ty_info
-                    == vec![
-                        Box::new(DataType::I32),
-                        Box::new(DataType::I32),
-                        Box::new(DataType::I32),
-                    ]
-                {
-                    match val {
-                        DataType::I32 => Some("get_i32_from_i32i32i32tuple".to_string()),
-                        _ => {
-                            err.unexpected_error(true, Some(unsupported_type.clone()), None);
-                            None
-                        }
-                    }
-                } else {
-                    err.unexpected_error(true, Some(unsupported_type.clone()), None);
-                    None
-                }
-            }
-            _ => {
-                err.unexpected_error(true, Some(unsupported_type.clone()), None);
-                None
-            }
+        let key_name = Self::ty_to_str(false, &key, err);
+        let val_name = Self::ty_to_str(false, &val, err);
+
+        let fname = format!("get_{key_name}_{val_name}");
+        if self.func_names.contains(&fname) {
+            Some(fname)
+        } else {
+            err.type_check_error(
+                true,
+                format!("MapLibAdapter.map_get_fname: Unsupported map type: {:?} -> {:?}", key, val),
+                &None,
+            );
+            None
         }
     }
 }
-impl LibAdapter for MapLibAdapter {}
