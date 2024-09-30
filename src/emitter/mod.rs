@@ -1,4 +1,3 @@
-pub mod map_lib_adapter;
 pub mod report_var_metadata;
 pub mod rewriting;
 #[cfg(test)]

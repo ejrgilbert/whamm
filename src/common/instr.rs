@@ -1,5 +1,5 @@
 use crate::common::error::ErrorGen;
-use crate::emitter::map_lib_adapter::MapLibAdapter;
+use crate::linker::core::maps::map_lib_adapter::MapLibAdapter;
 use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::rewriting::module_emitter::{MemoryTracker, ModuleEmitter};
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
@@ -88,6 +88,7 @@ impl Config {
 }
 
 pub fn run_with_path(
+    core_wasm_path: &str,
     app_wasm_path: String,
     script_path: String,
     output_wasm_path: String,
@@ -108,6 +109,7 @@ pub fn run_with_path(
     };
 
     run(
+        core_wasm_path,
         &mut app_wasm,
         &whamm_script,
         &script_path,
@@ -118,6 +120,7 @@ pub fn run_with_path(
 }
 
 pub fn run(
+    core_wasm_path: &str,
     app_wasm: &mut Module,
     whamm_script: &String,
     script_path: &str,
@@ -125,7 +128,6 @@ pub fn run(
     max_errors: i32,
     config: Config
 ) -> Vec<u8> {
-    // TODO -- use config!
     // Set up error reporting mechanism
     let mut err = ErrorGen::new(script_path.to_string(), "".to_string(), max_errors);
 
@@ -139,7 +141,14 @@ pub fn run(
     err.check_has_errors();
 
     // TODO Configure the generator based on target (wizard vs bytecode rewriting)
+    // Merge in the core library IF NEEDED
+    let mut core_packages = crate::linker::core::get_packages();
+    // Read core library Wasm into Orca module
+    let buff = std::fs::read(core_wasm_path).unwrap();
+    let core_lib = Module::parse(&buff, false).unwrap();
+    crate::linker::actions::link_core_lib(config.library_strategy, &whamm, &mut symbol_table, app_wasm, &core_lib, &mut core_packages);
 
+    // TODO -- add second memory to hold on to instrumentation data
     // Create the memory tracker + the map and metadata tracker
     if app_wasm.memories.len() > 1 {
         // TODO -- make this work with multi-memory

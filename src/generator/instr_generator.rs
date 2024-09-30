@@ -1,5 +1,5 @@
 use crate::common::error::ErrorGen;
-use crate::emitter::map_lib_adapter::{RESERVED_MAP_METADATA_MAP_ID, RESERVED_VAR_METADATA_MAP_ID};
+use crate::linker::core::maps::map_lib_adapter::{RESERVED_MAP_METADATA_MAP_ID, RESERVED_VAR_METADATA_MAP_ID};
 use crate::emitter::report_var_metadata::{BytecodeLoc, LocationData, Metadata};
 use crate::emitter::rewriting::module_emitter::StringAddr;
 use crate::emitter::rewriting::rules::{provider_factory, Arg, LocInfo, ProbeSpec, WhammProvider};

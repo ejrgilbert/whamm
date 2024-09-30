@@ -5,7 +5,7 @@ use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca_wasm::{DataSegment, DataSegmentKind, InitExpr, Location};
 use std::collections::HashMap;
 
-use crate::emitter::map_lib_adapter::MapLibAdapter;
+use crate::linker::core::maps::map_lib_adapter::MapLibAdapter;
 use crate::emitter::rewriting::rules::Arg;
 use crate::emitter::rewriting::{
     emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global, Emitter,

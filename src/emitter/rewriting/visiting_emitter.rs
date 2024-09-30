@@ -1,5 +1,5 @@
 use crate::common::error::{ErrorGen, WhammError};
-use crate::emitter::map_lib_adapter::MapLibAdapter;
+use crate::linker::core::maps::map_lib_adapter::MapLibAdapter;
 use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::emitter::rewriting::rules::wasm::OpcodeEvent;

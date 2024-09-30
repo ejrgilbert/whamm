@@ -9,6 +9,7 @@ mod cli;
 pub mod common;
 pub mod emitter;
 pub mod generator;
+pub mod linker;
 pub mod parser;
 pub mod verifier;
 mod wast;
@@ -18,6 +19,7 @@ use clap::Parser;
 use std::path::PathBuf;
 use std::process::exit;
 
+const CORE_WASM_PATH: &str = "./wasm_playground/maps/target/wasm32-wasip1/debug/maps.wasm";
 const MAX_ERRORS: i32 = 15;
 
 fn setup_logger() {
@@ -53,8 +55,8 @@ fn try_main() -> Result<(), failure::Error> {
             run_wast(wast_path);
         }
         Cmd::Instr(args) => {
-            // check_args(&args);
             common::instr::run_with_path(
+                CORE_WASM_PATH,
                 args.app,
                 args.script,
                 args.output_path,
