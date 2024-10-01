@@ -469,9 +469,25 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_> {
                 .map_lib_adapter
                 .map_create_fname(DataType::I32, DataType::Str, self.err)
         else {
+            self.err.add_error(ErrorGen::get_unexpected_error(
+                true,
+                Some(format!(
+                    "{UNEXPECTED_ERR_MSG} \
+                    Could not find map_create_fname"
+                )),
+                None,
+            ));
             return false;
         };
         let Some(create_i32_string_id) = self.get_lib_fn_id(&create_i32_string_fname) else {
+            self.err.add_error(ErrorGen::get_unexpected_error(
+                true,
+                Some(format!(
+                    "{UNEXPECTED_ERR_MSG} \
+                    Could not find fid for '{create_i32_string_fname}'"
+                )),
+                None,
+            ));
             return false;
         };
         let Some(insert_i32_string_fname) =
@@ -479,12 +495,36 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_> {
                 .map_lib_adapter
                 .map_insert_fname(DataType::I32, DataType::Str, self.err)
         else {
+            self.err.add_error(ErrorGen::get_unexpected_error(
+                true,
+                Some(format!(
+                    "{UNEXPECTED_ERR_MSG} \
+                    Could not find map_insert_fname"
+                )),
+                None,
+            ));
             return false;
         };
         let Some(insert_i32_string_id) = self.get_lib_fn_id(&insert_i32_string_fname) else {
+            self.err.add_error(ErrorGen::get_unexpected_error(
+                true,
+                Some(format!(
+                    "{UNEXPECTED_ERR_MSG} \
+                    Could not find fid for '{insert_i32_string_fname}'"
+                )),
+                None,
+            ));
             return false;
         };
         let Some(set_metadata_header_id) = self.get_lib_fn_id("set_metadata_header") else {
+            self.err.add_error(ErrorGen::get_unexpected_error(
+                true,
+                Some(format!(
+                    "{UNEXPECTED_ERR_MSG} \
+                    Could not find fid for 'set_metadata_header'"
+                )),
+                None,
+            ));
             return false;
         };
 

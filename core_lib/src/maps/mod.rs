@@ -454,6 +454,7 @@ pub fn create_i32_i32(name: i32) {
 }
 #[no_mangle]
 pub fn create_i32_string(name: i32) {
+    println!("DEBUG: creating i32_string map with name '{name}'");
     MY_MAPS
         .lock()
         .unwrap()
