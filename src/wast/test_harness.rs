@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::common::instr::{Config, LibraryLinkStrategy, run, try_path};
+use crate::common::instr::{run, try_path, Config, LibraryLinkStrategy};
 use log::{debug, error};
 use orca_wasm::Module;
 use std::fs::{remove_dir_all, File};
@@ -8,7 +8,7 @@ use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
-const CORE_WASM_PATH: &str = "./wasm_playground/maps/target/wasm32-wasip1/debug/maps.wasm";
+const CORE_WASM_PATH: &str = "./core_lib/target/wasm32-wasip1/release/core_lib.wasm";
 const TEST_DEBUG_DIR: &str = "output/tests/debug_me/";
 const OUTPUT_DIR: &str = "output/tests/wast_suite";
 const OUTPUT_WHAMMED_WAST: &str = "output/tests/wast_suite/should_pass";
@@ -542,8 +542,9 @@ pub fn vec_as_hex(vec: &[u8]) -> String {
 }
 
 pub fn wasm2wat_on_file(instrumented_wasm_path: &str) {
-    debug!("Running wasm2wat on file: {instrumented_wasm_path}");
-    let res = Command::new("wasm2wat")
+    debug!("Running 'wasm-tools print' on file: {instrumented_wasm_path}");
+    let res = Command::new("wasm-tools")
+        .arg("print")
         .arg(instrumented_wasm_path)
         .output()
         .expect("failed to execute process");

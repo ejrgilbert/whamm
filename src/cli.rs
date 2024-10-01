@@ -72,7 +72,6 @@ pub struct InstrArgs {
     /// The strategy to take when handling the injecting references to the `whamm!` core library.
     #[arg(short, long, value_parser)]
     pub link_strategy: Option<LibraryLinkStrategyArg>,
-
     // /// The memory offset to use when using the `offset` library strategy.
     // #[arg(short, long, value_parser)]
     // pub mem_offset: Option<u32>
@@ -86,7 +85,7 @@ pub enum LibraryLinkStrategyArg {
     Merged,
     /// Link the library through Wasm imports into `app.wasm` (target VM must support dynamic linking).
     /// Naturally, the instrumentation memory will reside in its own module instantiation.
-    Imported
+    Imported,
 }
 
 // pub fn print_completion<G: Generator>(gen: G, app: &mut App) {

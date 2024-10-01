@@ -9,6 +9,7 @@ use whamm::common::instr::{Config, LibraryLinkStrategy};
 use whamm::wast::test_harness::wasm2wat_on_file;
 
 const APP_WASM_PATH: &str = "tests/apps/dfinity/users.wasm";
+const CORE_WASM_PATH: &str = "./core_lib/target/wasm32-wasip1/release/core_lib.wasm";
 
 #[test]
 fn run_wast_tests() {
@@ -29,6 +30,7 @@ fn instrument_dfinity_with_fault_injection() {
         let wasm = fs::read(APP_WASM_PATH).unwrap();
         let mut module_to_instrument = Module::parse(&wasm, false).unwrap();
         let _ = whamm::common::instr::run(
+            CORE_WASM_PATH,
             &mut module_to_instrument,
             &script_text,
             &format!("{:?}", script_path.clone().as_path()),

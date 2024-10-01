@@ -1,11 +1,12 @@
+use crate::cli::LibraryLinkStrategyArg;
 use crate::common::error::ErrorGen;
-use crate::linker::core::maps::map_lib_adapter::MapLibAdapter;
 use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::rewriting::module_emitter::{MemoryTracker, ModuleEmitter};
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::generator::init_generator::InitGenerator;
 use crate::generator::instr_generator::InstrGenerator;
 use crate::generator::simple_ast::build_simple_ast;
+use crate::linker::core::maps::map_lib_adapter::MapLibAdapter;
 use crate::parser::types::Whamm;
 use crate::parser::whamm_parser::parse_script;
 use crate::verifier::types::SymbolTable;
@@ -16,7 +17,6 @@ use orca_wasm::Module;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::exit;
-use crate::cli::LibraryLinkStrategyArg;
 
 /// create output path if it doesn't exist
 pub(crate) fn try_path(path: &String) {
@@ -34,7 +34,7 @@ pub enum LibraryLinkStrategy {
     Merged,
     /// Link the library through Wasm imports into `app.wasm` (target VM must support dynamic linking).
     /// Naturally, the instrumentation memory will reside in its own module instantiation.
-    Imported
+    Imported,
 }
 impl From<Option<LibraryLinkStrategyArg>> for LibraryLinkStrategy {
     fn from(value: Option<LibraryLinkStrategyArg>) -> Self {
@@ -82,7 +82,7 @@ impl Config {
         Self {
             virgil,
             testing,
-            library_strategy
+            library_strategy,
         }
     }
 }
@@ -93,7 +93,7 @@ pub fn run_with_path(
     script_path: String,
     output_wasm_path: String,
     max_errors: i32,
-    config: Config
+    config: Config,
 ) {
     // Read app Wasm into Orca module
     let buff = std::fs::read(app_wasm_path).unwrap();
@@ -126,7 +126,7 @@ pub fn run(
     script_path: &str,
     output_wasm_path: Option<String>,
     max_errors: i32,
-    config: Config
+    config: Config,
 ) -> Vec<u8> {
     // Set up error reporting mechanism
     let mut err = ErrorGen::new(script_path.to_string(), "".to_string(), max_errors);
@@ -144,10 +144,15 @@ pub fn run(
 
     // Merge in the core library IF NEEDED
     let mut core_packages = crate::linker::core::get_packages();
-    // Read core library Wasm into Orca module
-    let buff = std::fs::read(core_wasm_path).unwrap();
-    let core_lib = Module::parse(&buff, false).unwrap();
-    crate::linker::actions::link_core_lib(config.library_strategy, &whamm, &mut symbol_table, app_wasm, &core_lib, &mut core_packages, &mut err);
+    crate::linker::actions::link_core_lib(
+        config.library_strategy,
+        &whamm,
+        &mut symbol_table,
+        app_wasm,
+        core_wasm_path,
+        &mut core_packages,
+        &mut err,
+    );
 
     // TODO -- add second memory to hold on to instrumentation data
     // Create the memory tracker + the map and metadata tracker

@@ -1,6 +1,6 @@
-use std::collections::HashSet;
 use crate::common::error::ErrorGen;
 use crate::parser::types::DataType;
+use std::collections::HashSet;
 // //this is the code that knows which functions to call in lib.rs based on what is in the AST -> will be in emitter folder eventually
 use crate::emitter::report_var_metadata::{LocationData, Metadata, ReportVarMetadata};
 use crate::linker::core::LibAdapter;
@@ -53,7 +53,7 @@ impl MapLibAdapter {
             "insert_i32i32i32tuple_i32".to_string(),
             // get from map
             "get_i32_i32".to_string(),
-            "get_i32_from_i32i32i32tuple".to_string()
+            "get_i32_from_i32i32i32tuple".to_string(),
         ]);
         //Reserve map 0 for the var metadata map and map 1 for the map metadata map
         MapLibAdapter {
@@ -145,14 +145,15 @@ impl MapLibAdapter {
     // Get "to_call" for map functions
     // -------------------------------------
 
-    fn ty_to_str(is_create: bool, ty: &DataType,
-                 err: &mut ErrorGen,) -> String {
+    fn ty_to_str(is_create: bool, ty: &DataType, err: &mut ErrorGen) -> String {
         let mut inner = "".to_string();
         let str = match ty {
             DataType::I32 => "i32",
             DataType::Boolean => "bool",
             DataType::Str => "string",
-            DataType::Tuple { ty_info: inner_types } => {
+            DataType::Tuple {
+                ty_info: inner_types,
+            } => {
                 if is_create {
                     "tuple"
                 } else {
@@ -163,7 +164,7 @@ impl MapLibAdapter {
                     let str = inner.as_str();
                     str
                 }
-            },
+            }
             DataType::Map { .. } => "map",
             DataType::U32 => "u32",
             DataType::F32 => "f32",
@@ -215,7 +216,10 @@ impl MapLibAdapter {
         } else {
             err.type_check_error(
                 true,
-                format!("MapLibAdapter.map_create_fname: Unsupported map type: {:?} -> {:?}", key, val),
+                format!(
+                    "MapLibAdapter.map_create_fname: Unsupported map type: {:?} -> {:?}",
+                    key, val
+                ),
                 &None,
             );
             None
@@ -236,7 +240,10 @@ impl MapLibAdapter {
         } else {
             err.type_check_error(
                 true,
-                format!("MapLibAdapter.map_insert_fname: Unsupported map type: {:?} -> {:?}", key, val),
+                format!(
+                    "MapLibAdapter.map_insert_fname: Unsupported map type: {:?} -> {:?}",
+                    key, val
+                ),
                 &None,
             );
             None
@@ -257,7 +264,10 @@ impl MapLibAdapter {
         } else {
             err.type_check_error(
                 true,
-                format!("MapLibAdapter.map_get_fname: Unsupported map type: {:?} -> {:?}", key, val),
+                format!(
+                    "MapLibAdapter.map_get_fname: Unsupported map type: {:?} -> {:?}",
+                    key, val
+                ),
                 &None,
             );
             None

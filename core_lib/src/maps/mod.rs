@@ -1,7 +1,6 @@
 //library functions for maps in Whamm
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
-#![feature(vec_into_raw_parts)]
 use std::any::Any;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -910,27 +909,4 @@ pub fn print_map_meta() {
         }
     }
     println!("{}", running_output);
-}
-
-//MAIN STARTS HERE
-
-#[no_mangle]
-pub fn foo(a: i32) -> i32 {
-    a - 3
-}
-
-#[no_mangle]
-pub fn bar(a: i32) -> i32 {
-    let b = foo(a);
-    for i in 0..b {
-        println!("hello: {i}")
-    }
-
-    b
-}
-
-#[no_mangle]
-fn main() {
-    let b = bar(15);
-    println!("b = {b}");
 }

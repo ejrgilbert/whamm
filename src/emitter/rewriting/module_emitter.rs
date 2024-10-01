@@ -5,11 +5,11 @@ use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca_wasm::{DataSegment, DataSegmentKind, InitExpr, Location};
 use std::collections::HashMap;
 
-use crate::linker::core::maps::map_lib_adapter::MapLibAdapter;
 use crate::emitter::rewriting::rules::Arg;
 use crate::emitter::rewriting::{
     emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global, Emitter,
 };
+use crate::linker::core::maps::map_lib_adapter::MapLibAdapter;
 use orca_wasm::ir::function::FunctionBuilder;
 use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
 use orca_wasm::ir::module::Module;
@@ -309,7 +309,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         global_id: &u32,
         name: String,
         ty: OrcaType,
-    ) -> Option<FunctionID> {
+    ) -> FunctionID {
+        // todo -- make this conditional on 'testing' mode
         let getter_params = vec![];
         let getter_res = vec![ty];
 
@@ -321,7 +322,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         self.app_wasm.set_fn_name(getter_id, fn_name.clone());
         self.app_wasm.exports.add_export_func(fn_name, *getter_id);
 
-        Some(getter_id)
+        getter_id
     }
 
     pub(crate) fn emit_global(
@@ -405,14 +406,9 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 let fn_name = fn_name.as_ref()?;
 
                 *addr = Some(VarAddr::MapId { addr: map_id });
-                let Some(Record::LibFn { fn_id, .. }) =
-                    self.table.lookup_lib_fn(fn_name, &None, err)
-                else {
-                    err.unexpected_error(true, Some("unexpected type".to_string()), None);
-                    return None;
-                };
+                let fn_id = self.table.lookup_core_lib_func(fn_name, &None, err)?;
                 init_fn.u32_const(map_id);
-                init_fn.call(FunctionID(*fn_id));
+                init_fn.call(FunctionID(fn_id));
                 None
             }
             _ => {
@@ -423,7 +419,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                     self.report_var_metadata
                         .put_global_metadata(*global_id, name.clone(), err);
                 }
-                self.emit_global_getter(&global_id, name, global_ty)
+                Some(self.emit_global_getter(&global_id, name, global_ty))
             }
         }
     }

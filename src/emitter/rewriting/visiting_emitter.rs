@@ -1,11 +1,11 @@
 use crate::common::error::{ErrorGen, WhammError};
-use crate::linker::core::maps::map_lib_adapter::MapLibAdapter;
 use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::emitter::rewriting::rules::wasm::OpcodeEvent;
 use crate::emitter::rewriting::rules::{Arg, LocInfo, ProbeSpec, Provider, WhammProvider};
 use crate::emitter::rewriting::{block_type_to_wasm, emit_expr, whamm_type_to_wasm_global};
 use crate::emitter::rewriting::{emit_stmt, print_report_all, Emitter};
+use crate::linker::core::maps::map_lib_adapter::MapLibAdapter;
 
 use crate::generator::types::ExprFolder;
 use crate::parser;

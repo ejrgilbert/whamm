@@ -4,11 +4,11 @@ pub mod rules;
 pub mod visiting_emitter;
 
 use crate::common::error::ErrorGen;
-use crate::linker::core::maps::map_lib_adapter::MapLibAdapter;
 use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::emitter::rewriting::rules::Arg;
 use crate::generator::types::ExprFolder;
+use crate::linker::core::maps::map_lib_adapter::MapLibAdapter;
 use crate::parser::types::{BinOp, Block, DataType, Expr, Location, Statement, UnOp, Value};
 use crate::verifier::types::{line_col_from_loc, Record, SymbolTable, VarAddr};
 use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
@@ -217,14 +217,12 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     return false;
                 }
                 let fn_name = fn_name.unwrap();
-                let Some(Record::LibFn { fn_id, .. }) = table.lookup_lib_fn(&fn_name, &None, err)
-                else {
-                    err.unexpected_error(true, Some("unexpected type".to_string()), None);
+                let Some(fn_id) = table.lookup_core_lib_func(&fn_name, &None, err) else {
                     return false;
                 };
 
                 injector.u32_const(map_id);
-                injector.call(FunctionID(*fn_id));
+                injector.call(FunctionID(fn_id));
                 return true;
             }
             match &mut addr {
@@ -312,15 +310,15 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                         return false;
                     }
                     let fn_name = fn_name.unwrap();
-                    let Some(Record::LibFn { fn_id, .. }) =
-                        table.lookup_lib_fn(&fn_name, &None, err)
-                    else {
+
+                    return if let Some(fn_id) = table.lookup_core_lib_func(&fn_name, &None, err) {
+                        injector.u32_const(map_id);
+                        injector.call(FunctionID(fn_id));
+                        true
+                    } else {
                         err.unexpected_error(true, Some("unexpected type".to_string()), None);
-                        return false;
+                        false
                     };
-                    injector.u32_const(map_id);
-                    injector.call(FunctionID(*fn_id));
-                    return true;
                 }
                 match &mut addr {
                     Some(VarAddr::Global { .. }) | None => {
@@ -482,12 +480,13 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             return false;
         }
         let fname = fname.unwrap();
-        let Some(Record::LibFn { fn_id, .. }) = table.lookup_lib_fn(&fname, &None, err) else {
+        if let Some(fn_id) = table.lookup_core_lib_func(&fname, &None, err) {
+            injector.call(FunctionID(fn_id));
+            true
+        } else {
             err.unexpected_error(true, Some("unexpected type".to_string()), None);
-            return false;
-        };
-        injector.call(FunctionID(*fn_id));
-        true
+            false
+        }
     } else {
         err.unexpected_error(
             false,
@@ -1113,30 +1112,24 @@ fn emit_map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                         return false;
                     }
                     let to_call = to_call.unwrap();
-                    let fn_id = match table.lookup_rec(&to_call) {
-                        Some(Record::LibFn { fn_id, .. }) => *fn_id,
-                        _ => {
-                            err.unexpected_error(
-                                true,
-                                Some(format!("{err_msg} Map function not in symbol table")),
-                                None,
-                            );
-                            return false;
-                        }
+
+                    return if let Some(fn_id) = table.lookup_core_lib_func(&to_call, &None, err) {
+                        injector.u32_const(map_id);
+                        emit_expr(
+                            key,
+                            injector,
+                            table,
+                            mem_tracker,
+                            map_lib_adapter,
+                            report_var_metadata,
+                            err_msg,
+                            err,
+                        );
+                        injector.call(FunctionID(fn_id));
+                        true
+                    } else {
+                        false
                     };
-                    injector.u32_const(map_id);
-                    emit_expr(
-                        key,
-                        injector,
-                        table,
-                        mem_tracker,
-                        map_lib_adapter,
-                        report_var_metadata,
-                        err_msg,
-                        err,
-                    );
-                    injector.call(FunctionID(fn_id));
-                    return true;
                 }
                 None => {
                     return false;
@@ -1210,18 +1203,22 @@ fn print_report_all<'a, T: Opcode<'a> + AddLocal>(
     if !report_var_metadata.flush_soon {
         return;
     }
-    let Some(Record::LibFn { fn_id, .. }) = table.lookup_lib_fn("print_global_meta", &None, err)
+    let Some(Record::Fn {
+        addr: Some(fid), ..
+    }) = table.lookup_fn("print_global_meta", err)
     else {
         err.unexpected_error(true, Some("unexpected type".to_string()), None);
         return;
     };
-    injector.call(FunctionID(*fn_id));
+    injector.call(FunctionID(*fid));
 
-    let Some(Record::LibFn { fn_id, .. }) = table.lookup_lib_fn("print_map_meta", &None, err)
+    let Some(Record::Fn {
+        addr: Some(fid), ..
+    }) = table.lookup_fn("print_map_meta", err)
     else {
         err.unexpected_error(true, Some("unexpected type".to_string()), None);
         return;
     };
-    injector.call(FunctionID(*fn_id));
+    injector.call(FunctionID(*fid));
     report_var_metadata.performed_flush();
 }

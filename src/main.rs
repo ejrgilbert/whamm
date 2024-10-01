@@ -19,7 +19,7 @@ use clap::Parser;
 use std::path::PathBuf;
 use std::process::exit;
 
-const CORE_WASM_PATH: &str = "./wasm_playground/maps/target/wasm32-wasip1/debug/maps.wasm";
+const CORE_WASM_PATH: &str = "./core_lib/target/wasm32-wasip1/release/core_lib.wasm";
 const MAX_ERRORS: i32 = 15;
 
 fn setup_logger() {
@@ -61,11 +61,7 @@ fn try_main() -> Result<(), failure::Error> {
                 args.script,
                 args.output_path,
                 MAX_ERRORS,
-                Config::new(
-                    args.virgil,
-                    args.testing,
-                    args.link_strategy
-                )
+                Config::new(args.virgil, args.testing, args.link_strategy),
             );
         }
     }

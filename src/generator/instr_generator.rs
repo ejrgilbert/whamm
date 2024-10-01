@@ -1,5 +1,4 @@
 use crate::common::error::ErrorGen;
-use crate::linker::core::maps::map_lib_adapter::{RESERVED_MAP_METADATA_MAP_ID, RESERVED_VAR_METADATA_MAP_ID};
 use crate::emitter::report_var_metadata::{BytecodeLoc, LocationData, Metadata};
 use crate::emitter::rewriting::module_emitter::StringAddr;
 use crate::emitter::rewriting::rules::{provider_factory, Arg, LocInfo, ProbeSpec, WhammProvider};
@@ -7,9 +6,11 @@ use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::rewriting::Emitter;
 use crate::generator::simple_ast::{SimpleAST, SimpleProbe};
 use crate::generator::types::ExprFolder;
+use crate::linker::core::maps::map_lib_adapter::{
+    RESERVED_MAP_METADATA_MAP_ID, RESERVED_VAR_METADATA_MAP_ID,
+};
 use crate::parser::rules::core::WhammModeKind;
 use crate::parser::types::{Block, DataType, Expr};
-use crate::verifier::types::Record;
 use orca_wasm::ir::id::{FunctionID, GlobalID};
 use orca_wasm::ir::types::{BlockType as OrcaBlockType, Value as OrcaValue};
 use orca_wasm::iterator::iterator_trait::Iterator;
@@ -703,20 +704,8 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_> {
         true
     }
     fn get_lib_fn_id(&mut self, func_name: &str) -> Option<u32> {
-        match self.emitter.table.lookup_lib_fn(func_name, &None, self.err) {
-            Some(Record::LibFn { fn_id, .. }) => Some(*fn_id),
-            Some(rec) => {
-                self.err.add_error(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!(
-                        "Unexpected record type. Expected LibFn, found: {:?}",
-                        rec
-                    )),
-                    None,
-                ));
-                None
-            }
-            None => None,
-        }
+        self.emitter
+            .table
+            .lookup_core_lib_func(func_name, &None, self.err)
     }
 }

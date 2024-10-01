@@ -1,13 +1,11 @@
 pub mod maps;
 
-use std::collections::HashSet;
 use crate::linker::core::maps::MapLibPackage;
 use crate::parser::types::WhammVisitor;
+use std::collections::HashSet;
 
 pub fn get_packages() -> Vec<Box<dyn LibPackage>> {
-    vec![
-        Box::new(MapLibPackage::default())
-    ]
+    vec![Box::new(MapLibPackage::default())]
 }
 
 // A lib package needs to be able to visit the AST and determine if it's needed (should be linked)
