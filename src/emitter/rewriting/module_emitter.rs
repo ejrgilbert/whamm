@@ -139,7 +139,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                     align: 0,
                     max_align: 0,
                     offset: 0,
-                    memory: self.mem_tracker.mem_id
+                    memory: 0 // app memory!
                 }
             )
             .local_set(str0_char)
@@ -154,7 +154,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                     align: 0,
                     max_align: 0,
                     offset: 0,
-                    memory: self.mem_tracker.mem_id
+                    memory: self.mem_tracker.mem_id // instr memory!
                 }
             )
             .local_set(str1_char)

@@ -17,6 +17,7 @@ use orca_wasm::Module;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::exit;
+use wasmparser::MemoryType;
 
 /// create output path if it doesn't exist
 pub(crate) fn try_path(path: &String) {
@@ -156,14 +157,22 @@ pub fn run(
 
     // TODO -- add second memory to hold on to instrumentation data
     // Create the memory tracker + the map and metadata tracker
-    if app_wasm.memories.len() > 1 {
-        // TODO -- make this work with multi-memory
-        panic!("only single memory is supported")
-    };
+    let mem_id = app_wasm.memories.len() as u32;
+    app_wasm.memories.push(MemoryType {
+        memory64: false,
+        shared: false,
+        initial: 1,
+        maximum: None,
+        page_size_log2: None,
+    });
+    // if app_wasm.memories.len() > 1 {
+    //     // TODO -- make this work with multi-memory
+    //     panic!("only single memory is supported")
+    // };
     let mut mem_tracker = MemoryTracker {
-        mem_id: 0,                     // Assuming the ID of the first memory is 0!
-        curr_mem_offset: 1_052_576, // Set default memory base address to DEFAULT + 4KB = 1048576 bytes + 4000 bytes = 1052576 bytes
-        required_initial_mem_size: 27, // Size memory must be to account for the added data
+        mem_id,
+        curr_mem_offset: 0, // Set default memory base address to DEFAULT + 4KB = 1048576 bytes + 4000 bytes = 1052576 bytes
+        required_initial_mem_size: 0, // Size memory must be to account for the added data
         emitted_strings: HashMap::new(),
     };
     let mut map_lib_adapter = MapLibAdapter::new();

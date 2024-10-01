@@ -857,13 +857,10 @@ pub fn string_from_data(offset: u32, length: u32) -> String {
     let callee_ptr: *const u8 = offset as *const u8;
     let callee_slice: &[u8] =
         unsafe { slice::from_raw_parts(callee_ptr, usize::try_from(length).unwrap()) };
-    String::from_utf8(callee_slice.to_vec()).unwrap()
-}
-#[no_mangle]
-pub fn string_to_data(s: String) -> (u32, u32) {
-    let (pointer, length, ..) = s.into_raw_parts();
-
-    (pointer as u32, length as u32)
+    assert_eq!(length as usize, callee_slice.len());
+    let str = String::from_utf8(callee_slice.to_vec()).unwrap();
+    println!("Got the following string from memory: {str}");
+    str
 }
 
 #[no_mangle]
