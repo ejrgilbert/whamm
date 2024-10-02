@@ -1,12 +1,12 @@
 pub mod io_adapter;
 
+use crate::libraries::core::io::io_adapter::IOAdapter;
 use crate::libraries::core::{LibAdapter, LibPackage};
 use crate::parser::rules::{Event, Package, Probe, Provider};
 use crate::parser::types::{
     BinOp, Block, DataType, Expr, Script, Statement, UnOp, Value, Whamm, WhammVisitor,
 };
 use log::debug;
-use crate::libraries::core::io::io_adapter::IOAdapter;
 
 #[derive(Default)]
 pub struct IOPackage {
@@ -128,7 +128,7 @@ impl WhammVisitor<bool> for IOPackage {
     }
 
     fn visit_stmt(&mut self, stmt: &Statement) -> bool {
-        matches!(stmt, Statement::ReportDecl {..})
+        matches!(stmt, Statement::ReportDecl { .. })
     }
 
     fn visit_expr(&mut self, _expr: &Expr) -> bool {

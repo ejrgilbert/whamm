@@ -1,12 +1,12 @@
 use crate::common::error::ErrorGen;
-use crate::parser::types::DataType;
-use std::collections::HashMap;
-use orca_wasm::ir::id::FunctionID;
-use orca_wasm::module_builder::AddLocal;
-use orca_wasm::Opcode;
-use orca_wasm::opcode::MacroOpcode;
 use crate::emitter::report_var_metadata::{LocationData, Metadata, ReportVarMetadata};
 use crate::libraries::core::LibAdapter;
+use crate::parser::types::DataType;
+use orca_wasm::ir::id::FunctionID;
+use orca_wasm::module_builder::AddLocal;
+use orca_wasm::opcode::MacroOpcode;
+use orca_wasm::Opcode;
+use std::collections::HashMap;
 
 const PRINT_MAP: &str = "print_map";
 
@@ -81,7 +81,6 @@ impl MapLibAdapter {
         self.call(fname.as_str(), func, err);
     }
 
-
     pub fn map_insert<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         &mut self,
         key: DataType,
@@ -120,7 +119,12 @@ impl MapLibAdapter {
         map_id
     }
 
-    pub fn print_map<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(&mut self, map_id: u32, func: &mut T, err: &mut ErrorGen) {
+    pub fn print_map<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        map_id: u32,
+        func: &mut T,
+        err: &mut ErrorGen,
+    ) {
         func.u32_const(map_id);
         self.call_print_map(func, err)
     }
@@ -135,7 +139,11 @@ impl MapLibAdapter {
         (map_id, func_name)
     }
 
-    fn call_print_map<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(&mut self, func: &mut T, err: &mut ErrorGen) {
+    fn call_print_map<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        func: &mut T,
+        err: &mut ErrorGen,
+    ) {
         self.call(PRINT_MAP, func, err)
     }
 
@@ -232,11 +240,7 @@ impl MapLibAdapter {
     }
 
     //The stuff that actually calls the emitter stuff
-    fn create_map_fname_by_map_type(
-        &mut self,
-        map: DataType,
-        err: &mut ErrorGen,
-    ) -> String {
+    fn create_map_fname_by_map_type(&mut self, map: DataType, err: &mut ErrorGen) -> String {
         let DataType::Map {
             key_ty: key,
             val_ty: val,
@@ -248,12 +252,7 @@ impl MapLibAdapter {
 
         self.map_create_fname(*key, *val, err)
     }
-    fn map_create_fname(
-        &mut self,
-        key: DataType,
-        val: DataType,
-        err: &mut ErrorGen,
-    ) -> String {
+    fn map_create_fname(&mut self, key: DataType, val: DataType, err: &mut ErrorGen) -> String {
         let key_name = Self::ty_to_str(true, &key, err);
         let val_name = Self::ty_to_str(true, &val, err);
 
@@ -272,12 +271,7 @@ impl MapLibAdapter {
             "invalid".to_string()
         }
     }
-    fn map_insert_fname(
-        &mut self,
-        key: DataType,
-        val: DataType,
-        err: &mut ErrorGen,
-    ) -> String {
+    fn map_insert_fname(&mut self, key: DataType, val: DataType, err: &mut ErrorGen) -> String {
         let key_name = Self::ty_to_str(false, &key, err);
         let val_name = Self::ty_to_str(false, &val, err);
 
@@ -296,12 +290,7 @@ impl MapLibAdapter {
             "invalid".to_string()
         }
     }
-    fn map_get_fname(
-        &mut self,
-        key: DataType,
-        val: DataType,
-        err: &mut ErrorGen,
-    ) -> String {
+    fn map_get_fname(&mut self, key: DataType, val: DataType, err: &mut ErrorGen) -> String {
         let key_name = Self::ty_to_str(false, &key, err);
         let val_name = Self::ty_to_str(false, &val, err);
 
@@ -321,7 +310,12 @@ impl MapLibAdapter {
         }
     }
 
-    fn call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(&mut self, fname: &str, func: &mut T, err: &mut ErrorGen) {
+    fn call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        fname: &str,
+        func: &mut T,
+        err: &mut ErrorGen,
+    ) {
         let fid = self.get_fid(fname, err);
         func.call(FunctionID(fid));
     }

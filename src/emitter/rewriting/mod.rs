@@ -211,11 +211,7 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             };
 
             if let DataType::Map { .. } = ty {
-                let map_id = map_lib_adapter.map_create(
-                    ty.clone(),
-                    injector,
-                    err
-                );
+                let map_id = map_lib_adapter.map_create(ty.clone(), injector, err);
                 *addr = Some(VarAddr::MapId { addr: map_id });
 
                 return true;
@@ -299,7 +295,7 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                         injector,
                         report_var_metadata,
                         true,
-                        err
+                        err,
                     );
                     *addr = Some(VarAddr::MapId { addr: map_id });
                     return true;
@@ -1095,10 +1091,8 @@ fn emit_map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     map_lib_adapter.map_get(key_ty, val_ty, injector, err);
                     true
                 }
-                None => {
-                    false
-                }
-            }
+                None => false,
+            };
         }
     }
     err.unexpected_error(
@@ -1178,7 +1172,8 @@ fn print_report_all<'a, T: Opcode<'a> + AddLocal>(
 
     let Some(Record::Fn {
         addr: Some(fid), ..
-    }) = table.lookup_fn("print_map_meta", err) else {
+    }) = table.lookup_fn("print_map_meta", err)
+    else {
         err.unexpected_error(true, Some("unexpected type".to_string()), None);
         return;
     };

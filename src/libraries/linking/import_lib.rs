@@ -1,10 +1,10 @@
-use log::trace;
 use crate::common::error::ErrorGen;
-use crate::parser::types::Whamm;
-use orca_wasm::{DataType, Module};
-use orca_wasm::ir::id::FunctionID;
-use wasmparser::ExternalKind;
 use crate::libraries::core::{LibPackage, WHAMM_CORE_LIB_NAME};
+use crate::parser::types::Whamm;
+use log::trace;
+use orca_wasm::ir::id::FunctionID;
+use orca_wasm::{DataType, Module};
+use wasmparser::ExternalKind;
 
 /// Some documentation on why it's difficult to only import the *used* functions.
 ///
@@ -23,7 +23,7 @@ pub fn link_core_lib(
     ast: &Whamm,
     app_wasm: &mut Module,
     core_wasm_path: &str,
-    packages: &mut [Box<&mut dyn LibPackage>],
+    packages: &mut [&mut dyn LibPackage],
     err: &mut ErrorGen,
 ) {
     for package in packages.iter_mut() {
@@ -36,7 +36,7 @@ pub fn link_core_lib(
                 app_wasm,
                 WHAMM_CORE_LIB_NAME.to_string(),
                 &core_lib,
-                **package,
+                *package,
                 err,
             );
         }
@@ -70,7 +70,13 @@ fn import_lib(
             if package_fn_names.contains(&export.name) {
                 let func = lib_wasm.functions.get(FunctionID(export.index));
                 if let Some(ty) = lib_wasm.types.get(func.get_type_id()) {
-                    let fid = import_func(lib_name.as_str(), export.name.as_str(), &ty.params.clone(), &ty.results.clone(), app_wasm);
+                    let fid = import_func(
+                        lib_name.as_str(),
+                        export.name.as_str(),
+                        &ty.params.clone(),
+                        &ty.results.clone(),
+                        app_wasm,
+                    );
                     // save the FID
                     package.add_fid_to_adapter(export.name.as_str(), fid);
                 } else {
@@ -90,10 +96,15 @@ fn import_lib(
     trace!("Exit import_lib");
 }
 
-pub fn import_func(module_name: &str, fname: &str, params: &[DataType], results: &[DataType], app_wasm: &mut Module) -> u32 {
+pub fn import_func(
+    module_name: &str,
+    fname: &str,
+    params: &[DataType],
+    results: &[DataType],
+    app_wasm: &mut Module,
+) -> u32 {
     let ty_id = app_wasm.types.add(params, results);
-    let (fid, imp_id) =
-        app_wasm.add_import_func(module_name.to_string(), fname.to_string(), ty_id);
+    let (fid, imp_id) = app_wasm.add_import_func(module_name.to_string(), fname.to_string(), ty_id);
     app_wasm.imports.set_name(fname.to_string(), imp_id);
 
     *fid

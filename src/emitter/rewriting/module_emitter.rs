@@ -399,14 +399,11 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                         &mut init_fn,
                         self.report_var_metadata,
                         false,
-                        err
+                        err,
                     )
                 } else {
-                    self.map_lib_adapter.map_create(
-                        ty.clone(),
-                        &mut init_fn,
-                        err
-                    )
+                    self.map_lib_adapter
+                        .map_create(ty.clone(), &mut init_fn, err)
                 };
 
                 *addr = Some(VarAddr::MapId { addr: map_id });

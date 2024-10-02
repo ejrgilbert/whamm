@@ -8,6 +8,7 @@ use crate::emitter::rewriting::{emit_stmt, print_report_all, Emitter};
 use crate::libraries::core::maps::map_adapter::MapLibAdapter;
 
 use crate::generator::types::ExprFolder;
+use crate::libraries::core::io::io_adapter::IOAdapter;
 use crate::parser;
 use crate::parser::rules::UNKNOWN_IMMS;
 use crate::parser::types::{Block, DataType, Definition, Expr, SpecPart, Statement, Value};
@@ -20,7 +21,6 @@ use orca_wasm::iterator::module_iterator::ModuleIterator;
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::{Instrumenter, Opcode};
 use std::iter::Iterator;
-use crate::libraries::core::io::io_adapter::IOAdapter;
 
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";

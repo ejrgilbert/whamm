@@ -66,7 +66,7 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
                     &global.value,
                     self.err,
                 ) {
-                    println!("added global_getter: {:?}", fid);
+                    debug!("added global_getter: {:?}", fid);
                     self.injected_funcs.push(fid);
                 }
             }

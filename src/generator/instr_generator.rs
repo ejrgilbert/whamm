@@ -8,6 +8,7 @@ use crate::generator::simple_ast::{SimpleAST, SimpleProbe};
 use crate::generator::types::ExprFolder;
 use crate::parser::rules::core::WhammModeKind;
 use crate::parser::types::{Block, Expr};
+use crate::verifier::types::Record;
 use orca_wasm::ir::id::{FunctionID, GlobalID};
 use orca_wasm::ir::types::{BlockType as OrcaBlockType, Value as OrcaValue};
 use orca_wasm::iterator::iterator_trait::Iterator;
@@ -16,7 +17,6 @@ use orca_wasm::{DataSegment, DataSegmentKind, InitExpr, Opcode};
 use orca_wasm::{Location as OrcaLocation, Location};
 use std::collections::HashMap;
 use std::iter::Iterator as StdIter;
-use crate::verifier::types::Record;
 
 const UNEXPECTED_ERR_MSG: &str =
     "InstrGenerator: Looks like you've found a bug...please report this behavior!";
@@ -670,7 +670,9 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_> {
     fn setup_print_global_meta(&mut self, var_meta_str: &HashMap<u32, String>) -> bool {
         // get the function
         // todo(maps) -- look up the func name instead!
-        let print_global_meta_id = if let Some(Record::Fn {addr: Some(id), ..}) = self.emitter.table.lookup_fn("print_global_meta", self.err) {
+        let print_global_meta_id = if let Some(Record::Fn { addr: Some(id), .. }) =
+            self.emitter.table.lookup_fn("print_global_meta", self.err)
+        {
             *id
         } else {
             return false;
@@ -705,30 +707,26 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_> {
 
         // output the header data segment
         let header = Metadata::get_csv_header();
-        self.emitter.io_adapter.putsln(
-            header.clone(),
-            &mut print_global_meta,
-            self.err
-        );
+        self.emitter
+            .io_adapter
+            .putsln(header.clone(), &mut print_global_meta, self.err);
 
         // for each of the report globals, emit the printing logic
         for (key, val) in var_meta_str.iter() {
             self.emitter.io_adapter.puts(
                 format!("i32,{key},{val},"),
                 &mut print_global_meta,
-                self.err
+                self.err,
             );
 
             // get the value of this report global
             print_global_meta.global_get(GlobalID(*key));
-            self.emitter.io_adapter.call_puti(
-                &mut print_global_meta,
-                self.err
-            );
-            self.emitter.io_adapter.putln(
-                &mut print_global_meta,
-                self.err
-            );
+            self.emitter
+                .io_adapter
+                .call_puti(&mut print_global_meta, self.err);
+            self.emitter
+                .io_adapter
+                .putln(&mut print_global_meta, self.err);
         }
         true
     }
@@ -736,7 +734,9 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_> {
         // get the function
         //first, we need to create the maps in global_map_init - where all the other maps are initialized
         // todo(maps) -- look up the func name instead!
-        let print_map_meta_id = if let Some(Record::Fn {addr: Some(id), ..}) = self.emitter.table.lookup_fn("print_map_meta", self.err) {
+        let print_map_meta_id = if let Some(Record::Fn { addr: Some(id), .. }) =
+            self.emitter.table.lookup_fn("print_map_meta", self.err)
+        {
             *id
         } else {
             return false;
@@ -774,19 +774,14 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_> {
             self.emitter.io_adapter.puts(
                 format!("map,{key},{val},"),
                 &mut print_map_meta,
-                self.err
+                self.err,
             );
 
             // print the value(s) of this map
-            self.emitter.map_lib_adapter.print_map(
-                *key,
-                &mut print_map_meta,
-                self.err
-            );
-            self.emitter.io_adapter.putln(
-                &mut print_map_meta,
-                self.err
-            );
+            self.emitter
+                .map_lib_adapter
+                .print_map(*key, &mut print_map_meta, self.err);
+            self.emitter.io_adapter.putln(&mut print_map_meta, self.err);
         }
         true
     }

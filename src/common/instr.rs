@@ -6,6 +6,9 @@ use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::generator::init_generator::InitGenerator;
 use crate::generator::instr_generator::InstrGenerator;
 use crate::generator::simple_ast::build_simple_ast;
+use crate::libraries::core::io::IOPackage;
+use crate::libraries::core::maps::MapLibPackage;
+use crate::libraries::core::LibPackage;
 use crate::parser::types::Whamm;
 use crate::parser::whamm_parser::parse_script;
 use crate::verifier::types::SymbolTable;
@@ -17,9 +20,6 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::exit;
 use wasmparser::MemoryType;
-use crate::libraries::core::io::IOPackage;
-use crate::libraries::core::LibPackage;
-use crate::libraries::core::maps::MapLibPackage;
 
 /// create output path if it doesn't exist
 pub(crate) fn try_path(path: &String) {
@@ -148,7 +148,7 @@ pub fn run(
     // Merge in the core library IF NEEDED
     let mut map_package = MapLibPackage::default();
     let mut io_package = IOPackage::default();
-    let mut core_packages: Vec<Box<&mut dyn LibPackage>> = vec![Box::new(&mut map_package), Box::new(&mut io_package)];
+    let mut core_packages: Vec<&mut dyn LibPackage> = vec![&mut map_package, &mut io_package];
     crate::libraries::actions::link_core_lib(
         config.library_strategy,
         &whamm,

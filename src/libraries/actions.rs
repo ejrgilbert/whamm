@@ -1,15 +1,15 @@
 use crate::common::error::ErrorGen;
 use crate::common::instr::LibraryLinkStrategy;
+use crate::libraries::core::LibPackage;
 use crate::parser::types::Whamm;
 use orca_wasm::Module;
-use crate::libraries::core::LibPackage;
 
 pub fn link_core_lib(
     method: LibraryLinkStrategy,
     ast: &Whamm,
     app_wasm: &mut Module,
     core_wasm_path: &str,
-    packages: &mut [Box<&mut dyn LibPackage>],
+    packages: &mut [&mut dyn LibPackage],
     err: &mut ErrorGen,
 ) {
     match method {
