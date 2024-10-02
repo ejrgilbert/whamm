@@ -69,8 +69,9 @@ fn import_lib(
                 let func = lib_wasm.functions.get(FunctionID(export.index));
                 if let Some(ty) = lib_wasm.types.get(func.get_type_id()) {
                     let ty_id = app_wasm.types.add(&ty.params.clone(), &ty.results.clone());
-                    let (fid, ..) =
+                    let (fid, imp_id) =
                         app_wasm.add_import_func(lib_name.clone(), export.name.clone(), ty_id);
+                    app_wasm.imports.set_name(export.name.clone(), imp_id);
 
                     // add to symbol table!
                     lib_funcs.insert(export.name.clone(), *fid);
