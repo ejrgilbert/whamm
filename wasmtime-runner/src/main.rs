@@ -9,7 +9,7 @@ fn main() -> Result<()> {
     // Define the WASI functions globally on the `Config`.
     let engine = Engine::default();
     let config = engine.config();
-    println!("{:?}", config);
+    // println!("{:?}", config);
     // config.wasm_multi_memory(true);
     let mut linker = Linker::new(&engine);
     wasi_common::sync::add_to_linker(&mut linker, |s| s)?;

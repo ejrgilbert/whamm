@@ -27,6 +27,11 @@ impl MapLibAdapter {
     pub fn new() -> Self {
         let func_names = HashSet::from_iter(vec![
             // printing metadata
+            "putc".to_string(),
+            "puti".to_string(),
+            "putln".to_string(),
+            "put_i32".to_string(),
+            "put_comma".to_string(),
             "print_map_meta".to_string(),
             "print_global_i32_meta_helper".to_string(),
             "set_metadata_header".to_string(),

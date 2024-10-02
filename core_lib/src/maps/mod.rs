@@ -884,6 +884,11 @@ pub fn print_map(map_id: i32) -> String {
     format!("{}", map.dump_map())
 }
 #[no_mangle]
+pub fn report_global_i32_preamble(global_id: u32, global_meta_offset: u32, global_meta_length: u32, global_val: i32) {
+    let global_meta = string_from_data(global_meta_offset, global_meta_length);
+    println!("i32,{},{},{}", global_id, global_meta, global_val);
+}
+#[no_mangle]
 pub fn print_global_i32_meta_helper(global_id: u32, global_meta_offset: u32, global_meta_length: u32, global_val: i32) {
     let global_meta = string_from_data(global_meta_offset, global_meta_length);
     println!("i32,{},{},{}", global_id, global_meta, global_val);

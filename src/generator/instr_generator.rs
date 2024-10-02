@@ -19,6 +19,8 @@ use orca_wasm::{DataSegment, DataSegmentKind, InitExpr, Opcode};
 use orca_wasm::{Location as OrcaLocation, Location};
 use std::collections::HashMap;
 use std::iter::Iterator as StdIter;
+use wasmparser::MemArg;
+use crate::verifier::types::Record;
 
 const UNEXPECTED_ERR_MSG: &str =
     "InstrGenerator: Looks like you've found a bug...please report this behavior!";
@@ -669,25 +671,15 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_> {
 
     /// set up the print_global_meta function for insertions
     fn setup_print_global_meta(&mut self, var_meta_str: &HashMap<u32, String>) -> bool {
-        // get the IDs of the funcs to call
-        // todo(maps) -- look up the func name instead!
-        let Some(print_metadata_header_id) = self.get_lib_fn_id("print_metadata_header") else {
-            return false;
-        };
-        let print_metadata_header_id = FunctionID(print_metadata_header_id);
-        // todo(maps) -- look up the func name instead!
-        let Some(print_global_i32_meta_helper_id) =
-            self.get_lib_fn_id("print_global_i32_meta_helper")
-        else {
-            return false;
-        };
-        let print_global_i32_meta_helper_id = FunctionID(print_global_i32_meta_helper_id);
-
+        // get the function
         //first, we need to create the maps in global_map_init - where all the other maps are initialized
         // todo(maps) -- look up the func name instead!
-        let Some(print_global_meta_id) = self.get_lib_fn_id("print_global_meta") else {
+        let mut print_global_meta_id = 0;
+        if let Some(Record::Fn {addr: Some(id), ..}) = self.emitter.table.lookup_fn("print_global_meta", self.err) {
+            print_global_meta_id = *id;
+        } else {
             return false;
-        };
+        }
         let print_global_meta_id = FunctionID(print_global_meta_id);
 
         let mut print_global_meta = match self
@@ -715,20 +707,123 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_> {
             func_idx: print_global_meta_id, // not used
             instr_idx: 0,
         });
+
+        // get putc
+        let Some(putc) = self.emitter.table.lookup_core_lib_func("putc", &None, self.err) else {
+            return false;
+        };
+        // get puti
+        let Some(puti) = self.emitter.table.lookup_core_lib_func("puti", &None, self.err) else {
+            return false;
+        };
+        // get putln
+        let Some(putln) = self.emitter.table.lookup_core_lib_func("putln", &None, self.err) else {
+            return false;
+        };
+        // get put_comma
+        let Some(put_comma) = self.emitter.table.lookup_core_lib_func("put_comma", &None, self.err) else {
+            return false;
+        };
+        // get put_i32
+        let Some(put_i32) = self.emitter.table.lookup_core_lib_func("put_i32", &None, self.err) else {
+            return false;
+        };
+
+        // output the header data segment
+        // todo(maps) factor this logic out to a function call!
+        let header = Metadata::get_csv_header();
+        let data_id = self.emitter.app_iter.module.data.len();
+        let header_bytes = header.as_bytes().to_owned();
+        let data_segment = DataSegment {
+            data: header_bytes,
+            kind: DataSegmentKind::Active {
+                memory_index: self.emitter.mem_tracker.mem_id,
+                offset_expr: InitExpr::Value(OrcaValue::I32(
+                    self.emitter.mem_tracker.curr_mem_offset as i32,
+                )),
+            },
+        };
+        self.emitter.app_iter.module.data.push(data_segment);
+
+        // save the memory addresses/lens, so they can be used as appropriate
+        self.emitter.mem_tracker.emitted_strings.insert(
+            header.clone(),
+            StringAddr {
+                data_id: data_id as u32,
+                mem_offset: self.emitter.mem_tracker.curr_mem_offset,
+                len: header.len(),
+            },
+        );
+
+        // print the header
+        if let Some(addr) = self.emitter.mem_tracker.emitted_strings.get(&header) {
+            // update curr_mem_offset to account for new data
+            self.emitter.mem_tracker.curr_mem_offset += header.len();
+
+            for i in 0..addr.len {
+                print_global_meta.i32_const((addr.mem_offset + i) as i32);
+                print_global_meta.i32_load8_u(MemArg {
+                    align: 0,
+                    max_align: 0,
+                    offset: 0,
+                    memory: self.emitter.mem_tracker.mem_id // instr memory!
+                });
+                print_global_meta.call(FunctionID(putc));
+            }
+            print_global_meta.call(FunctionID(putln));
+        } else {
+            // todo(maps) -- make this an error!
+            panic!("Failed to write out string")
+        }
+
+
+        // get the IDs of the funcs to call
+        // todo(maps) -- look up the func name instead!
+        // let Some(print_metadata_header_id) = self.get_lib_fn_id("print_metadata_header") else {
+        //     return false;
+        // };
+        // let print_metadata_header_id = FunctionID(print_metadata_header_id);
+        // todo(maps) -- look up the func name instead!
+        // let Some(print_global_i32_meta_helper_id) =
+        //     self.get_lib_fn_id("print_global_i32_meta_helper")
+        // else {
+        //     return false;
+        // };
+        // let print_global_i32_meta_helper_id = FunctionID(print_global_i32_meta_helper_id);
+
         //print the header
-        print_global_meta.call(print_metadata_header_id);
+        // print_global_meta.call(print_metadata_header_id);
 
         // for each of the report globals, emit the printing logic
         for (key, val) in var_meta_str.iter() {
             if let Some(val_addr) = self.emitter.mem_tracker.emitted_strings.get(val) {
+                print_global_meta.call(FunctionID(put_i32));
+                print_global_meta.call(FunctionID(put_comma));
+
                 // emit the ID of this global
                 print_global_meta.u32_const(*key);
+                print_global_meta.call(FunctionID(puti));
+                print_global_meta.call(FunctionID(put_comma));
                 // The pointer/len to the metadata string
-                print_global_meta.i32_const(val_addr.mem_offset as i32);
-                print_global_meta.i32_const(val_addr.len as i32);
+                // print_global_meta.i32_const(val_addr.mem_offset as i32);
+                // print_global_meta.i32_const(val_addr.len as i32);
+                for i in 0..val_addr.len {
+                    print_global_meta.i32_const((val_addr.mem_offset + i) as i32);
+                    print_global_meta.i32_load8_u(MemArg {
+                        align: 0,
+                        max_align: 0,
+                        offset: 0,
+                        memory: self.emitter.mem_tracker.mem_id // instr memory!
+                    });
+                    print_global_meta.call(FunctionID(putc));
+                }
+                print_global_meta.call(FunctionID(put_comma));
+
                 // get the value of this report global
                 print_global_meta.global_get(GlobalID(*key));
-                print_global_meta.call(print_global_i32_meta_helper_id);
+                print_global_meta.call(FunctionID(puti));
+
+                print_global_meta.call(FunctionID(putln));
             } else {
                 self.err.add_error(ErrorGen::get_unexpected_error(
                     true,
