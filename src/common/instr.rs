@@ -6,7 +6,6 @@ use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::generator::init_generator::InitGenerator;
 use crate::generator::instr_generator::InstrGenerator;
 use crate::generator::simple_ast::build_simple_ast;
-use crate::linker::core::maps::map_lib_adapter::MapLibAdapter;
 use crate::parser::types::Whamm;
 use crate::parser::whamm_parser::parse_script;
 use crate::verifier::types::SymbolTable;
@@ -18,6 +17,8 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::exit;
 use wasmparser::MemoryType;
+use crate::libraries::core::io::io_adapter::IOAdapter;
+use crate::libraries::core::maps::map_adapter::MapLibAdapter;
 
 /// create output path if it doesn't exist
 pub(crate) fn try_path(path: &String) {
@@ -144,16 +145,16 @@ pub fn run(
     // TODO Configure the generator based on target (wizard vs bytecode rewriting)
 
     // Merge in the core library IF NEEDED
-    let mut core_packages = crate::linker::core::get_packages();
-    crate::linker::actions::link_core_lib(
-        config.library_strategy,
-        &whamm,
-        &mut symbol_table,
-        app_wasm,
-        core_wasm_path,
-        &mut core_packages,
-        &mut err,
-    );
+    // let mut core_packages = crate::libraries::core::get_packages();
+    // crate::libraries::actions::link_core_lib(
+    //     config.library_strategy,
+    //     &whamm,
+    //     &mut symbol_table,
+    //     app_wasm,
+    //     core_wasm_path,
+    //     &mut core_packages,
+    //     &mut err,
+    // );
 
     // TODO -- add second memory to hold on to instrumentation data
     // Create the memory tracker + the map and metadata tracker
@@ -176,6 +177,7 @@ pub fn run(
         emitted_strings: HashMap::new(),
     };
     let mut map_lib_adapter = MapLibAdapter::new();
+    let mut io_adapter = IOAdapter::new();
     let mut report_var_metadata = ReportVarMetadata::new();
 
     // Phase 0 of instrumentation (emit globals and provided fns)
@@ -206,6 +208,7 @@ pub fn run(
             &mut symbol_table,
             &mut mem_tracker,
             &mut map_lib_adapter,
+            &mut io_adapter,
             &mut report_var_metadata,
         ),
         simple_ast,

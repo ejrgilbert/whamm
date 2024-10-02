@@ -3,7 +3,7 @@ use crate::parser::types::DataType;
 use std::collections::HashSet;
 // //this is the code that knows which functions to call in lib.rs based on what is in the AST -> will be in emitter folder eventually
 use crate::emitter::report_var_metadata::{LocationData, Metadata, ReportVarMetadata};
-use crate::linker::core::LibAdapter;
+use crate::libraries::core::LibAdapter;
 
 pub const RESERVED_VAR_METADATA_MAP_ID: u32 = 0;
 pub const RESERVED_MAP_METADATA_MAP_ID: u32 = 1;

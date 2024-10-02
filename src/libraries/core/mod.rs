@@ -1,15 +1,18 @@
 pub mod maps;
+pub mod io;
 
-use crate::linker::core::maps::MapLibPackage;
+use crate::libraries::core::maps::MapLibPackage;
 use crate::parser::types::WhammVisitor;
 use std::collections::HashSet;
 
-pub fn get_packages() -> Vec<Box<dyn LibPackage>> {
-    vec![Box::new(MapLibPackage::default())]
-}
+pub const WHAMM_CORE_LIB_NAME: &str = "whamm_core";
+
+// pub fn get_packages() -> Vec<Box<dyn LibPackage>> {
+//     vec![Box::new(MapLibPackage::default())]
+// }
 
 // A lib package needs to be able to visit the AST and determine if it's needed (should be linked)
-pub trait LibPackage: WhammVisitor<()> {
+pub trait LibPackage: WhammVisitor<bool> {
     fn is_used(&self) -> bool;
     fn get_fn_names(&self) -> &HashSet<String>;
     // fn get_lib_adapter(&self) -> Box<&dyn LibAdapter>;

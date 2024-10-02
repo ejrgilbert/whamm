@@ -1,9 +1,9 @@
 use crate::common::error::ErrorGen;
-use crate::linker::WHAMM_CORE_LIB_NAME;
 use crate::parser::types::{DataType, Definition, FnId, Location, ProbeSpec, Value};
 use pest::error::LineColLocation;
 use std::collections::HashMap;
 use std::fmt;
+use crate::libraries::core::WHAMM_CORE_LIB_NAME;
 
 const UNEXPECTED_ERR_MSG: &str =
     "SymbolTable: Looks like you've found a bug...please report this behavior!";

@@ -6,7 +6,7 @@ use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::rewriting::Emitter;
 use crate::generator::simple_ast::{SimpleAST, SimpleProbe};
 use crate::generator::types::ExprFolder;
-use crate::linker::core::maps::map_lib_adapter::{
+use crate::libraries::core::maps::map_adapter::{
     RESERVED_MAP_METADATA_MAP_ID, RESERVED_VAR_METADATA_MAP_ID,
 };
 use crate::parser::rules::core::WhammModeKind;
@@ -38,20 +38,20 @@ fn get_loc_info<'a>(rule: &'a WhammProvider, emitter: &VisitingEmitter) -> Optio
 /// passed emitter to emit instrumentation code.
 /// This process should ideally be generic, made to perform a specific
 /// instrumentation technique by the passed Emitter type.
-pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
-    pub emitter: VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f>,
+pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> {
+    pub emitter: VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g>,
     pub ast: SimpleAST,
-    pub err: &'g mut ErrorGen,
+    pub err: &'h mut ErrorGen,
     curr_instr_args: Vec<Arg>,
     curr_probe_mode: WhammModeKind,
     /// The current probe's body and predicate
     curr_probe: Option<(Option<Block>, Option<Expr>)>,
 }
-impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
+impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> {
     pub fn new(
-        emitter: VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f>,
+        emitter: VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g>,
         ast: SimpleAST,
-        err: &'g mut ErrorGen,
+        err: &'h mut ErrorGen,
     ) -> Self {
         Self {
             emitter,
@@ -201,7 +201,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         };
     }
 }
-impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_> {
+impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_> {
     fn emit_probe(&mut self) -> bool {
         let mut is_success = true;
 
@@ -672,8 +672,16 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_> {
 
     /// set up the print_global_meta function for insertions
     fn setup_print_global_meta(&mut self, var_meta_str: &HashMap<u32, String>) -> bool {
+        // check the dependencies of this function (before instantiating the FunctionModifier)
+        let missing = self.emitter.io_adapter.check_deps(vec![
+            "putc".to_string(),
+            "puti".to_string()
+        ], self.err);
+        for fname in missing.iter() {
+            self.emitter.io_adapter.fix_import(fname, self.emitter.app_iter.module, self.err);
+        }
+
         // get the function
-        //first, we need to create the maps in global_map_init - where all the other maps are initialized
         // todo(maps) -- look up the func name instead!
         let mut print_global_meta_id = 0;
         if let Some(Record::Fn {addr: Some(id), ..}) = self.emitter.table.lookup_fn("print_global_meta", self.err) {
@@ -709,137 +717,45 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_> {
             instr_idx: 0,
         });
 
-        // get putc
-        let Some(putc) = self.emitter.table.lookup_core_lib_func("putc", &None, self.err) else {
-            return false;
-        };
-        // get puti
-        let Some(puti) = self.emitter.table.lookup_core_lib_func("puti", &None, self.err) else {
-            return false;
-        };
-        // get putln
-        let Some(putln) = self.emitter.table.lookup_core_lib_func("putln", &None, self.err) else {
-            return false;
-        };
-        // get put_comma
-        let Some(put_comma) = self.emitter.table.lookup_core_lib_func("put_comma", &None, self.err) else {
-            return false;
-        };
-        // get put_i32
-        let Some(put_i32) = self.emitter.table.lookup_core_lib_func("put_i32", &None, self.err) else {
-            return false;
-        };
-
         // output the header data segment
-        // todo(maps) factor this logic out to a function call!
         let header = Metadata::get_csv_header();
-        let data_id = self.emitter.app_iter.module.data.len();
-        let header_bytes = header.as_bytes().to_owned();
-        let data_segment = DataSegment {
-            data: header_bytes,
-            kind: DataSegmentKind::Active {
-                memory_index: self.emitter.mem_tracker.mem_id,
-                offset_expr: InitExpr::Value(OrcaValue::I32(
-                    self.emitter.mem_tracker.curr_mem_offset as i32,
-                )),
-            },
-        };
-        self.emitter.app_iter.module.data.push(data_segment);
-
-        // save the memory addresses/lens, so they can be used as appropriate
-        self.emitter.mem_tracker.emitted_strings.insert(
+        self.emitter.io_adapter.putsln(
             header.clone(),
-            StringAddr {
-                data_id: data_id as u32,
-                mem_offset: self.emitter.mem_tracker.curr_mem_offset,
-                len: header.len(),
-            },
+            &mut print_global_meta,
+            self.err
         );
-
-        // print the header
-        if let Some(addr) = self.emitter.mem_tracker.emitted_strings.get(&header) {
-            // update curr_mem_offset to account for new data
-            self.emitter.mem_tracker.curr_mem_offset += header.len();
-
-            for i in 0..addr.len {
-                print_global_meta.i32_const((addr.mem_offset + i) as i32);
-                print_global_meta.i32_load8_u(MemArg {
-                    align: 0,
-                    max_align: 0,
-                    offset: 0,
-                    memory: self.emitter.mem_tracker.mem_id // instr memory!
-                });
-                print_global_meta.call(FunctionID(putc));
-            }
-            print_global_meta.call(FunctionID(putln));
-        } else {
-            // todo(maps) -- make this an error!
-            panic!("Failed to write out string")
-        }
-
-
-        // get the IDs of the funcs to call
-        // todo(maps) -- look up the func name instead!
-        // let Some(print_metadata_header_id) = self.get_lib_fn_id("print_metadata_header") else {
-        //     return false;
-        // };
-        // let print_metadata_header_id = FunctionID(print_metadata_header_id);
-        // todo(maps) -- look up the func name instead!
-        // let Some(print_global_i32_meta_helper_id) =
-        //     self.get_lib_fn_id("print_global_i32_meta_helper")
-        // else {
-        //     return false;
-        // };
-        // let print_global_i32_meta_helper_id = FunctionID(print_global_i32_meta_helper_id);
-
-        //print the header
-        // print_global_meta.call(print_metadata_header_id);
 
         // for each of the report globals, emit the printing logic
         for (key, val) in var_meta_str.iter() {
-            if let Some(val_addr) = self.emitter.mem_tracker.emitted_strings.get(val) {
-                print_global_meta.call(FunctionID(put_i32));
-                print_global_meta.call(FunctionID(put_comma));
+            self.emitter.io_adapter.puts(
+                format!("i32,{key},{val},"),
+                &mut print_global_meta,
+                self.err
+            );
 
-                // emit the ID of this global
-                print_global_meta.u32_const(*key);
-                print_global_meta.call(FunctionID(puti));
-                print_global_meta.call(FunctionID(put_comma));
-                // The pointer/len to the metadata string
-                // print_global_meta.i32_const(val_addr.mem_offset as i32);
-                // print_global_meta.i32_const(val_addr.len as i32);
-                for i in 0..val_addr.len {
-                    print_global_meta.i32_const((val_addr.mem_offset + i) as i32);
-                    print_global_meta.i32_load8_u(MemArg {
-                        align: 0,
-                        max_align: 0,
-                        offset: 0,
-                        memory: self.emitter.mem_tracker.mem_id // instr memory!
-                    });
-                    print_global_meta.call(FunctionID(putc));
-                }
-                print_global_meta.call(FunctionID(put_comma));
-
-                // get the value of this report global
-                print_global_meta.global_get(GlobalID(*key));
-                print_global_meta.call(FunctionID(puti));
-
-                print_global_meta.call(FunctionID(putln));
-            } else {
-                self.err.add_error(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!(
-                        "Failed to find emitted string for metadata with key: {}",
-                        key
-                    )),
-                    None,
-                ));
-                return false;
-            }
+            // get the value of this report global
+            print_global_meta.global_get(GlobalID(*key));
+            self.emitter.io_adapter.call_puti(
+                &mut print_global_meta,
+                self.err
+            );
+            self.emitter.io_adapter.putln(
+                &mut print_global_meta,
+                self.err
+            );
         }
         true
     }
     fn setup_print_map_meta(&mut self, map_meta_str: &HashMap<u32, String>) -> bool {
+        // check the dependencies of this function (before instantiating the FunctionModifier)
+        let missing = self.emitter.io_adapter.check_deps(vec![
+            "putc".to_string(),
+            "puti".to_string()
+        ], self.err);
+        for fname in missing.iter() {
+            self.emitter.io_adapter.fix_import(fname, self.emitter.app_iter.module, self.err);
+        }
+
         // get the function
         //first, we need to create the maps in global_map_init - where all the other maps are initialized
         // todo(maps) -- look up the func name instead!
@@ -877,75 +793,26 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_> {
             instr_idx: 0,
         });
 
-        // get putc
-        let Some(putc) = self.emitter.table.lookup_core_lib_func("putc", &None, self.err) else {
-            return false;
-        };
-        // get puti
-        let Some(puti) = self.emitter.table.lookup_core_lib_func("puti", &None, self.err) else {
-            return false;
-        };
-        // get putln
-        let Some(putln) = self.emitter.table.lookup_core_lib_func("putln", &None, self.err) else {
-            return false;
-        };
-        // get put_comma
-        let Some(put_comma) = self.emitter.table.lookup_core_lib_func("put_comma", &None, self.err) else {
-            return false;
-        };
-        // get put_map
-        let Some(put_map) = self.emitter.table.lookup_core_lib_func("put_map", &None, self.err) else {
-            return false;
-        };
-        // get print_map
-        let Some(print_map) = self.emitter.table.lookup_core_lib_func("print_map", &None, self.err) else {
-            return false;
-        };
-
         // for each of the report maps, emit the printing logic
         for (key, val) in map_meta_str.iter() {
-            if let Some(val_addr) = self.emitter.mem_tracker.emitted_strings.get(val) {
-                print_map_meta.call(FunctionID(put_map));
-                print_map_meta.call(FunctionID(put_comma));
+            self.emitter.io_adapter.puts(
+                format!("map,{key},{val},"),
+                &mut print_map_meta,
+                self.err
+            );
 
-                // emit the ID of this map
-                print_map_meta.u32_const(*key);
-                print_map_meta.call(FunctionID(puti));
-                print_map_meta.call(FunctionID(put_comma));
-                // The pointer/len to the metadata string
-                // print_global_meta.i32_const(val_addr.mem_offset as i32);
-                // print_global_meta.i32_const(val_addr.len as i32);
-                for i in 0..val_addr.len {
-                    print_map_meta.i32_const((val_addr.mem_offset + i) as i32);
-                    print_map_meta.i32_load8_u(MemArg {
-                        align: 0,
-                        max_align: 0,
-                        offset: 0,
-                        memory: self.emitter.mem_tracker.mem_id // instr memory!
-                    });
-                    print_map_meta.call(FunctionID(putc));
-                }
-                print_map_meta.call(FunctionID(put_comma));
-
-                // get the value of this report global
-                print_map_meta.u32_const(*key);
-                print_map_meta.call(FunctionID(print_map));
-
-                print_map_meta.call(FunctionID(putln));
-            } else {
-                self.err.add_error(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!(
-                        "Failed to find emitted string for metadata with key: {}",
-                        key
-                    )),
-                    None,
-                ));
-                return false;
-            }
+            // print the value(s) of this map
+            print_map_meta.global_get(GlobalID(*key));
+            self.emitter.map_lib_adapter.print_map(
+                *key,
+                &mut print_map_meta,
+                self.err
+            );
+            self.emitter.io_adapter.putln(
+                &mut print_map_meta,
+                self.err
+            );
         }
-
-
         true
     }
     fn get_lib_fn_id(&mut self, func_name: &str) -> Option<u32> {

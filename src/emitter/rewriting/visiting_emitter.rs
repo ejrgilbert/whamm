@@ -5,7 +5,7 @@ use crate::emitter::rewriting::rules::wasm::OpcodeEvent;
 use crate::emitter::rewriting::rules::{Arg, LocInfo, ProbeSpec, Provider, WhammProvider};
 use crate::emitter::rewriting::{block_type_to_wasm, emit_expr, whamm_type_to_wasm_global};
 use crate::emitter::rewriting::{emit_stmt, print_report_all, Emitter};
-use crate::linker::core::maps::map_lib_adapter::MapLibAdapter;
+use crate::libraries::core::maps::map_adapter::MapLibAdapter;
 
 use crate::generator::types::ExprFolder;
 use crate::parser;
@@ -20,21 +20,23 @@ use orca_wasm::iterator::module_iterator::ModuleIterator;
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::{Instrumenter, Opcode};
 use std::iter::Iterator;
+use crate::libraries::core::io::io_adapter::IOAdapter;
 
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
 
-pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
+pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub app_iter: ModuleIterator<'a, 'b>,
     pub table: &'c mut SymbolTable,
     pub mem_tracker: &'d mut MemoryTracker,
     pub map_lib_adapter: &'e mut MapLibAdapter,
-    pub(crate) report_var_metadata: &'f mut ReportVarMetadata,
+    pub io_adapter: &'f mut IOAdapter,
+    pub(crate) report_var_metadata: &'g mut ReportVarMetadata,
     instr_created_args: Vec<(String, usize)>,
     pub curr_num_reports: i32,
 }
 
-impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
+impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     // note: only used in integration test
     pub fn new(
         app_wasm: &'a mut Module<'b>,
@@ -42,13 +44,15 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         table: &'c mut SymbolTable,
         mem_tracker: &'d mut MemoryTracker,
         map_lib_adapter: &'e mut MapLibAdapter,
-        report_var_metadata: &'f mut ReportVarMetadata,
+        io_adapter: &'f mut IOAdapter,
+        report_var_metadata: &'g mut ReportVarMetadata,
     ) -> Self {
         let a = Self {
             app_iter: ModuleIterator::new(app_wasm, injected_funcs),
             table,
             mem_tracker,
             map_lib_adapter,
+            io_adapter,
             report_var_metadata,
             instr_created_args: vec![],
             curr_num_reports: 0,
@@ -117,7 +121,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         }
     }
 
-    pub(crate) fn get_loc_info<'g>(&self, rule: &'g WhammProvider) -> Option<LocInfo<'g>> {
+    pub(crate) fn get_loc_info<'h>(&self, rule: &'h WhammProvider) -> Option<LocInfo<'h>> {
         let (curr_loc, at_func_end) = self.app_iter.curr_loc();
         if at_func_end {
             // We're at the 'end' opcode of the function...don't instrument
@@ -448,7 +452,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         }
     }
 }
-impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_> {
+impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
     fn emit_body(&mut self, curr_instr_args: &[Arg], body: &mut Block, err: &mut ErrorGen) -> bool {
         let mut is_success = true;
         for _ in 0..self.curr_num_reports {

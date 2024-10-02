@@ -8,7 +8,7 @@ use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::emitter::rewriting::rules::Arg;
 use crate::generator::types::ExprFolder;
-use crate::linker::core::maps::map_lib_adapter::MapLibAdapter;
+use crate::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::parser::types::{BinOp, Block, DataType, Expr, Location, Statement, UnOp, Value};
 use crate::verifier::types::{line_col_from_loc, Record, SymbolTable, VarAddr};
 use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};

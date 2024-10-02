@@ -9,7 +9,7 @@ use crate::emitter::rewriting::rules::Arg;
 use crate::emitter::rewriting::{
     emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global, Emitter,
 };
-use crate::linker::core::maps::map_lib_adapter::MapLibAdapter;
+use crate::libraries::core::maps::map_adapter::MapLibAdapter;
 use orca_wasm::ir::function::FunctionBuilder;
 use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
 use orca_wasm::ir::module::Module;
