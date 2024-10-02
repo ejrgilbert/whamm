@@ -23,3 +23,8 @@ pub fn put_comma() {
 pub fn put_i32() {
     print!("i32");
 }
+
+#[no_mangle]
+pub fn put_map() {
+    print!("map");
+}

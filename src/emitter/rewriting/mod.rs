@@ -1212,10 +1212,12 @@ fn print_report_all<'a, T: Opcode<'a> + AddLocal>(
     };
     injector.call(FunctionID(*fid));
 
-    let Some(fn_id) = table.lookup_core_lib_func("print_map_meta", &None, err) else {
+    let Some(Record::Fn {
+        addr: Some(fid), ..
+    }) = table.lookup_fn("print_map_meta", err) else {
         err.unexpected_error(true, Some("unexpected type".to_string()), None);
         return;
     };
-    injector.call(FunctionID(fn_id));
+    injector.call(FunctionID(*fid));
     report_var_metadata.performed_flush();
 }

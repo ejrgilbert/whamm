@@ -85,6 +85,7 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
     fn on_startup(&mut self) {
         self.create_start();
         self.create_global_map_init();
+        self.create_print_map_meta();
         self.create_print_global_meta();
     }
     fn create_start(&mut self) {
@@ -154,6 +155,49 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
                     .set_fn_name(global_map_init_id, "global_map_init".to_string());
             }
         }
+    }
+
+    fn create_print_map_meta(&mut self) {
+        if self
+            .emitter
+            .app_wasm
+            .functions
+            .get_local_fid_by_name("print_map_meta")
+            .is_some()
+        {
+            debug!("print_map_meta function already exists");
+            self.err.add_error(ErrorGen::get_unexpected_error(
+                true,
+                Some(
+                    "print_map_meta function already exists - needs to be created by Whamm"
+                        .to_string(),
+                ),
+                None,
+            ));
+            return;
+        }
+
+        debug!("Creating the print_map_meta function");
+        let print_map_meta_fn = FunctionBuilder::new(&[], &[]);
+        let print_map_meta_id = print_map_meta_fn.finish_module(self.emitter.app_wasm);
+        self.emitter
+            .app_wasm
+            .set_fn_name(print_map_meta_id, "print_map_meta".to_string());
+
+        self.emitter.table.put(
+            "print_map_meta".to_string(),
+            Record::Fn {
+                name: FnId {
+                    name: "print_map_meta".to_string(),
+                    loc: None,
+                },
+                params: vec![],
+                ret_ty: DataType::Tuple { ty_info: vec![] },
+                def: Definition::CompilerStatic,
+                addr: Some(*print_map_meta_id),
+                loc: None,
+            },
+        );
     }
 
     fn create_print_global_meta(&mut self) {

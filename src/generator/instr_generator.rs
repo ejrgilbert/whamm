@@ -455,80 +455,81 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_> {
             //now set the new key value for the new maps
             map_meta_str.insert(*key, val);
         }
-        let mut is_success = self.setup_global_map_init(&var_meta_str, &map_meta_str);
+        let mut is_success = self.setup_global_map_init();
         is_success &= self.setup_print_global_meta(&var_meta_str);
+        is_success &= self.setup_print_map_meta(&map_meta_str);
         is_success
     }
 
     fn setup_global_map_init(
         &mut self,
-        var_meta_str: &HashMap<u32, String>,
-        map_meta_str: &HashMap<u32, String>,
+        // var_meta_str: &HashMap<u32, String>,
+        // map_meta_str: &HashMap<u32, String>,
     ) -> bool {
         // get IDs of all funcs to be called
-        let Some(create_i32_string_fname) =
-            self.emitter
-                .map_lib_adapter
-                .map_create_fname(DataType::I32, DataType::Str, self.err)
-        else {
-            self.err.add_error(ErrorGen::get_unexpected_error(
-                true,
-                Some(format!(
-                    "{UNEXPECTED_ERR_MSG} \
-                    Could not find map_create_fname"
-                )),
-                None,
-            ));
-            return false;
-        };
-        let Some(create_i32_string_id) = self.get_lib_fn_id(&create_i32_string_fname) else {
-            self.err.add_error(ErrorGen::get_unexpected_error(
-                true,
-                Some(format!(
-                    "{UNEXPECTED_ERR_MSG} \
-                    Could not find fid for '{create_i32_string_fname}'"
-                )),
-                None,
-            ));
-            return false;
-        };
-        let Some(insert_i32_string_fname) =
-            self.emitter
-                .map_lib_adapter
-                .map_insert_fname(DataType::I32, DataType::Str, self.err)
-        else {
-            self.err.add_error(ErrorGen::get_unexpected_error(
-                true,
-                Some(format!(
-                    "{UNEXPECTED_ERR_MSG} \
-                    Could not find map_insert_fname"
-                )),
-                None,
-            ));
-            return false;
-        };
-        let Some(insert_i32_string_id) = self.get_lib_fn_id(&insert_i32_string_fname) else {
-            self.err.add_error(ErrorGen::get_unexpected_error(
-                true,
-                Some(format!(
-                    "{UNEXPECTED_ERR_MSG} \
-                    Could not find fid for '{insert_i32_string_fname}'"
-                )),
-                None,
-            ));
-            return false;
-        };
-        let Some(set_metadata_header_id) = self.get_lib_fn_id("set_metadata_header") else {
-            self.err.add_error(ErrorGen::get_unexpected_error(
-                true,
-                Some(format!(
-                    "{UNEXPECTED_ERR_MSG} \
-                    Could not find fid for 'set_metadata_header'"
-                )),
-                None,
-            ));
-            return false;
-        };
+        // let Some(create_i32_string_fname) =
+        //     self.emitter
+        //         .map_lib_adapter
+        //         .map_create_fname(DataType::I32, DataType::Str, self.err)
+        // else {
+        //     self.err.add_error(ErrorGen::get_unexpected_error(
+        //         true,
+        //         Some(format!(
+        //             "{UNEXPECTED_ERR_MSG} \
+        //             Could not find map_create_fname"
+        //         )),
+        //         None,
+        //     ));
+        //     return false;
+        // };
+        // let Some(create_i32_string_id) = self.get_lib_fn_id(&create_i32_string_fname) else {
+        //     self.err.add_error(ErrorGen::get_unexpected_error(
+        //         true,
+        //         Some(format!(
+        //             "{UNEXPECTED_ERR_MSG} \
+        //             Could not find fid for '{create_i32_string_fname}'"
+        //         )),
+        //         None,
+        //     ));
+        //     return false;
+        // };
+        // let Some(insert_i32_string_fname) =
+        //     self.emitter
+        //         .map_lib_adapter
+        //         .map_insert_fname(DataType::I32, DataType::Str, self.err)
+        // else {
+        //     self.err.add_error(ErrorGen::get_unexpected_error(
+        //         true,
+        //         Some(format!(
+        //             "{UNEXPECTED_ERR_MSG} \
+        //             Could not find map_insert_fname"
+        //         )),
+        //         None,
+        //     ));
+        //     return false;
+        // };
+        // let Some(insert_i32_string_id) = self.get_lib_fn_id(&insert_i32_string_fname) else {
+        //     self.err.add_error(ErrorGen::get_unexpected_error(
+        //         true,
+        //         Some(format!(
+        //             "{UNEXPECTED_ERR_MSG} \
+        //             Could not find fid for '{insert_i32_string_fname}'"
+        //         )),
+        //         None,
+        //     ));
+        //     return false;
+        // };
+        // let Some(set_metadata_header_id) = self.get_lib_fn_id("set_metadata_header") else {
+        //     self.err.add_error(ErrorGen::get_unexpected_error(
+        //         true,
+        //         Some(format!(
+        //             "{UNEXPECTED_ERR_MSG} \
+        //             Could not find fid for 'set_metadata_header'"
+        //         )),
+        //         None,
+        //     ));
+        //     return false;
+        // };
 
         //first, we need to create the maps in global_map_init - where all the other maps are initialized
         let global_map_init_id = match self
@@ -605,67 +606,67 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_> {
                 len: header.len(),
             },
         );
-        if let Some(addr) = self.emitter.mem_tracker.emitted_strings.get(&header) {
-            // update curr_mem_offset to account for new data
-            self.emitter.mem_tracker.curr_mem_offset += header.len();
-
-            global_map_init.i32_const(addr.mem_offset as i32);
-            global_map_init.i32_const(addr.len as i32);
-            global_map_init.call(FunctionID(set_metadata_header_id));
-        } else {
-            // todo(maps) -- make this an error!
-            panic!("Failed to write out string")
-        }
+        // if let Some(addr) = self.emitter.mem_tracker.emitted_strings.get(&header) {
+        //     // update curr_mem_offset to account for new data
+        //     self.emitter.mem_tracker.curr_mem_offset += header.len();
+        //
+        //     global_map_init.i32_const(addr.mem_offset as i32);
+        //     global_map_init.i32_const(addr.len as i32);
+        //     global_map_init.call(FunctionID(set_metadata_header_id));
+        // } else {
+        //     // todo(maps) -- make this an error!
+        //     panic!("Failed to write out string")
+        // }
 
         // set up the metadata map creation!
 
-        //now create the metadata maps
-        global_map_init.u32_const(RESERVED_VAR_METADATA_MAP_ID);
-        global_map_init.call(FunctionID(create_i32_string_id));
-        global_map_init.u32_const(RESERVED_MAP_METADATA_MAP_ID);
-        global_map_init.call(FunctionID(create_i32_string_id));
+        // //now create the metadata maps
+        // global_map_init.u32_const(RESERVED_VAR_METADATA_MAP_ID);
+        // global_map_init.call(FunctionID(create_i32_string_id));
+        // global_map_init.u32_const(RESERVED_MAP_METADATA_MAP_ID);
+        // global_map_init.call(FunctionID(create_i32_string_id));
 
-        //now, for each of the maps, emit the correct stuff
-        for (key, val) in var_meta_str.iter() {
-            if let Some(val_addr) = self.emitter.mem_tracker.emitted_strings.get(val) {
-                //now, emit the map entry
-                global_map_init.u32_const(RESERVED_VAR_METADATA_MAP_ID);
-                global_map_init.u32_const(*key);
-                global_map_init.u32_const(val_addr.mem_offset as u32);
-                global_map_init.u32_const(val_addr.len as u32);
-                global_map_init.call(FunctionID(insert_i32_string_id));
-            } else {
-                self.err.add_error(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!(
-                        "Failed to find emitted string for metadata with key: {}",
-                        key
-                    )),
-                    None,
-                ));
-                return false;
-            }
-        }
-        for (key, val) in map_meta_str.iter() {
-            if let Some(val_addr) = self.emitter.mem_tracker.emitted_strings.get(val) {
-                //now, emit the map entry
-                global_map_init.u32_const(RESERVED_MAP_METADATA_MAP_ID);
-                global_map_init.u32_const(*key);
-                global_map_init.i32_const(val_addr.mem_offset as i32);
-                global_map_init.i32_const(val_addr.len as i32);
-                global_map_init.call(FunctionID(insert_i32_string_id));
-            } else {
-                self.err.add_error(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!(
-                        "Failed to find emitted string for metadata with key: {}",
-                        key
-                    )),
-                    None,
-                ));
-                return false;
-            }
-        }
+        // //now, for each of the maps, emit the correct stuff
+        // for (key, val) in var_meta_str.iter() {
+        //     if let Some(val_addr) = self.emitter.mem_tracker.emitted_strings.get(val) {
+        //         //now, emit the map entry
+        //         global_map_init.u32_const(RESERVED_VAR_METADATA_MAP_ID);
+        //         global_map_init.u32_const(*key);
+        //         global_map_init.u32_const(val_addr.mem_offset as u32);
+        //         global_map_init.u32_const(val_addr.len as u32);
+        //         global_map_init.call(FunctionID(insert_i32_string_id));
+        //     } else {
+        //         self.err.add_error(ErrorGen::get_unexpected_error(
+        //             true,
+        //             Some(format!(
+        //                 "Failed to find emitted string for metadata with key: {}",
+        //                 key
+        //             )),
+        //             None,
+        //         ));
+        //         return false;
+        //     }
+        // }
+        // for (key, val) in map_meta_str.iter() {
+        //     if let Some(val_addr) = self.emitter.mem_tracker.emitted_strings.get(val) {
+        //         //now, emit the map entry
+        //         global_map_init.u32_const(RESERVED_MAP_METADATA_MAP_ID);
+        //         global_map_init.u32_const(*key);
+        //         global_map_init.i32_const(val_addr.mem_offset as i32);
+        //         global_map_init.i32_const(val_addr.len as i32);
+        //         global_map_init.call(FunctionID(insert_i32_string_id));
+        //     } else {
+        //         self.err.add_error(ErrorGen::get_unexpected_error(
+        //             true,
+        //             Some(format!(
+        //                 "Failed to find emitted string for metadata with key: {}",
+        //                 key
+        //             )),
+        //             None,
+        //         ));
+        //         return false;
+        //     }
+        // }
         true
     }
 
@@ -836,6 +837,115 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_> {
                 return false;
             }
         }
+        true
+    }
+    fn setup_print_map_meta(&mut self, map_meta_str: &HashMap<u32, String>) -> bool {
+        // get the function
+        //first, we need to create the maps in global_map_init - where all the other maps are initialized
+        // todo(maps) -- look up the func name instead!
+        let mut print_map_meta_id = 0;
+        if let Some(Record::Fn {addr: Some(id), ..}) = self.emitter.table.lookup_fn("print_map_meta", self.err) {
+            print_map_meta_id = *id;
+        } else {
+            return false;
+        }
+        let print_map_meta_id = FunctionID(print_map_meta_id);
+
+        let mut print_map_meta = match self
+            .emitter
+            .app_iter
+            .module
+            .functions
+            .get_fn_modifier(print_map_meta_id)
+        {
+            Some(func) => func,
+            None => {
+                self.err.add_error(ErrorGen::get_unexpected_error(
+                    true,
+                    Some(format!(
+                        "{UNEXPECTED_ERR_MSG} \
+                    No 'print_map_meta' function found in the module!"
+                    )),
+                    None,
+                ));
+                return false;
+            }
+        };
+        //now set up the actual module editing
+        print_map_meta.before_at(Location::Module {
+            func_idx: print_map_meta_id, // not used
+            instr_idx: 0,
+        });
+
+        // get putc
+        let Some(putc) = self.emitter.table.lookup_core_lib_func("putc", &None, self.err) else {
+            return false;
+        };
+        // get puti
+        let Some(puti) = self.emitter.table.lookup_core_lib_func("puti", &None, self.err) else {
+            return false;
+        };
+        // get putln
+        let Some(putln) = self.emitter.table.lookup_core_lib_func("putln", &None, self.err) else {
+            return false;
+        };
+        // get put_comma
+        let Some(put_comma) = self.emitter.table.lookup_core_lib_func("put_comma", &None, self.err) else {
+            return false;
+        };
+        // get put_map
+        let Some(put_map) = self.emitter.table.lookup_core_lib_func("put_map", &None, self.err) else {
+            return false;
+        };
+        // get print_map
+        let Some(print_map) = self.emitter.table.lookup_core_lib_func("print_map", &None, self.err) else {
+            return false;
+        };
+
+        // for each of the report maps, emit the printing logic
+        for (key, val) in map_meta_str.iter() {
+            if let Some(val_addr) = self.emitter.mem_tracker.emitted_strings.get(val) {
+                print_map_meta.call(FunctionID(put_map));
+                print_map_meta.call(FunctionID(put_comma));
+
+                // emit the ID of this map
+                print_map_meta.u32_const(*key);
+                print_map_meta.call(FunctionID(puti));
+                print_map_meta.call(FunctionID(put_comma));
+                // The pointer/len to the metadata string
+                // print_global_meta.i32_const(val_addr.mem_offset as i32);
+                // print_global_meta.i32_const(val_addr.len as i32);
+                for i in 0..val_addr.len {
+                    print_map_meta.i32_const((val_addr.mem_offset + i) as i32);
+                    print_map_meta.i32_load8_u(MemArg {
+                        align: 0,
+                        max_align: 0,
+                        offset: 0,
+                        memory: self.emitter.mem_tracker.mem_id // instr memory!
+                    });
+                    print_map_meta.call(FunctionID(putc));
+                }
+                print_map_meta.call(FunctionID(put_comma));
+
+                // get the value of this report global
+                print_map_meta.u32_const(*key);
+                print_map_meta.call(FunctionID(print_map));
+
+                print_map_meta.call(FunctionID(putln));
+            } else {
+                self.err.add_error(ErrorGen::get_unexpected_error(
+                    true,
+                    Some(format!(
+                        "Failed to find emitted string for metadata with key: {}",
+                        key
+                    )),
+                    None,
+                ));
+                return false;
+            }
+        }
+
+
         true
     }
     fn get_lib_fn_id(&mut self, func_name: &str) -> Option<u32> {
