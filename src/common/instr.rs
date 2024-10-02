@@ -172,14 +172,10 @@ pub fn run(
         maximum: None,
         page_size_log2: None,
     });
-    // if app_wasm.memories.len() > 1 {
-    //     // TODO -- make this work with multi-memory
-    //     panic!("only single memory is supported")
-    // };
     let mut mem_tracker = MemoryTracker {
         mem_id,
-        curr_mem_offset: 0, // Set default memory base address to DEFAULT + 4KB = 1048576 bytes + 4000 bytes = 1052576 bytes
-        required_initial_mem_size: 0, // Size memory must be to account for the added data
+        curr_mem_offset: 0,
+        required_initial_mem_size: 0,
         emitted_strings: HashMap::new(),
     };
     let mut report_var_metadata = ReportVarMetadata::new();

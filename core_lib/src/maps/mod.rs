@@ -863,19 +863,6 @@ pub fn string_from_data(offset: u32, length: u32) -> String {
     str
 }
 
-// #[no_mangle]
-// pub fn set_metadata_header(offset: u32, len: u32) {
-//     METADATA_HEADER.with(|header| *header.borrow_mut() = (offset, len));
-// }
-
-// #[no_mangle]
-// pub fn print_metadata_header() {
-//     METADATA_HEADER.with(|header| {
-//         let header = &*header.borrow();
-//         println!("{}", string_from_data(header.0, header.1));
-//     });
-// }
-
 #[no_mangle]
 pub fn print_map(map_id: i32) {
     let binding = MY_MAPS.lock().unwrap();
