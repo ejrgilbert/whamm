@@ -17,8 +17,9 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::exit;
 use wasmparser::MemoryType;
-use crate::libraries::core::io::io_adapter::IOAdapter;
-use crate::libraries::core::maps::map_adapter::MapLibAdapter;
+use crate::libraries::core::io::IOPackage;
+use crate::libraries::core::LibPackage;
+use crate::libraries::core::maps::MapLibPackage;
 
 /// create output path if it doesn't exist
 pub(crate) fn try_path(path: &String) {
@@ -145,16 +146,21 @@ pub fn run(
     // TODO Configure the generator based on target (wizard vs bytecode rewriting)
 
     // Merge in the core library IF NEEDED
-    // let mut core_packages = crate::libraries::core::get_packages();
-    // crate::libraries::actions::link_core_lib(
-    //     config.library_strategy,
-    //     &whamm,
-    //     &mut symbol_table,
-    //     app_wasm,
-    //     core_wasm_path,
-    //     &mut core_packages,
-    //     &mut err,
-    // );
+    let mut map_package = MapLibPackage::default();
+    let mut io_package = IOPackage::default();
+    let mut core_packages: Vec<Box<&mut dyn LibPackage>> = vec![Box::new(&mut map_package), Box::new(&mut io_package)];
+    crate::libraries::actions::link_core_lib(
+        config.library_strategy,
+        &whamm,
+        app_wasm,
+        core_wasm_path,
+        &mut core_packages,
+        &mut err,
+    );
+    let mut map_lib_adapter = map_package.adapter;
+    let mut io_adapter = io_package.adapter;
+    // If there were any errors encountered, report and exit!
+    err.check_has_errors();
 
     // TODO -- add second memory to hold on to instrumentation data
     // Create the memory tracker + the map and metadata tracker
@@ -176,8 +182,6 @@ pub fn run(
         required_initial_mem_size: 0, // Size memory must be to account for the added data
         emitted_strings: HashMap::new(),
     };
-    let mut map_lib_adapter = MapLibAdapter::new();
-    let mut io_adapter = IOAdapter::new();
     let mut report_var_metadata = ReportVarMetadata::new();
 
     // Phase 0 of instrumentation (emit globals and provided fns)

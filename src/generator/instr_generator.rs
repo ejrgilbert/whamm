@@ -6,20 +6,16 @@ use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::rewriting::Emitter;
 use crate::generator::simple_ast::{SimpleAST, SimpleProbe};
 use crate::generator::types::ExprFolder;
-use crate::libraries::core::maps::map_adapter::{
-    RESERVED_MAP_METADATA_MAP_ID, RESERVED_VAR_METADATA_MAP_ID,
-};
 use crate::parser::rules::core::WhammModeKind;
-use crate::parser::types::{Block, DataType, Expr};
+use crate::parser::types::{Block, Expr};
 use orca_wasm::ir::id::{FunctionID, GlobalID};
 use orca_wasm::ir::types::{BlockType as OrcaBlockType, Value as OrcaValue};
 use orca_wasm::iterator::iterator_trait::Iterator;
-use orca_wasm::opcode::{Instrumenter, MacroOpcode};
+use orca_wasm::opcode::Instrumenter;
 use orca_wasm::{DataSegment, DataSegmentKind, InitExpr, Opcode};
 use orca_wasm::{Location as OrcaLocation, Location};
 use std::collections::HashMap;
 use std::iter::Iterator as StdIter;
-use wasmparser::MemArg;
 use crate::verifier::types::Record;
 
 const UNEXPECTED_ERR_MSG: &str =
@@ -672,23 +668,13 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_> {
 
     /// set up the print_global_meta function for insertions
     fn setup_print_global_meta(&mut self, var_meta_str: &HashMap<u32, String>) -> bool {
-        // check the dependencies of this function (before instantiating the FunctionModifier)
-        let missing = self.emitter.io_adapter.check_deps(vec![
-            "putc".to_string(),
-            "puti".to_string()
-        ], self.err);
-        for fname in missing.iter() {
-            self.emitter.io_adapter.fix_import(fname, self.emitter.app_iter.module, self.err);
-        }
-
         // get the function
         // todo(maps) -- look up the func name instead!
-        let mut print_global_meta_id = 0;
-        if let Some(Record::Fn {addr: Some(id), ..}) = self.emitter.table.lookup_fn("print_global_meta", self.err) {
-            print_global_meta_id = *id;
+        let print_global_meta_id = if let Some(Record::Fn {addr: Some(id), ..}) = self.emitter.table.lookup_fn("print_global_meta", self.err) {
+            *id
         } else {
             return false;
-        }
+        };
         let print_global_meta_id = FunctionID(print_global_meta_id);
 
         let mut print_global_meta = match self
@@ -747,24 +733,14 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_> {
         true
     }
     fn setup_print_map_meta(&mut self, map_meta_str: &HashMap<u32, String>) -> bool {
-        // check the dependencies of this function (before instantiating the FunctionModifier)
-        let missing = self.emitter.io_adapter.check_deps(vec![
-            "putc".to_string(),
-            "puti".to_string()
-        ], self.err);
-        for fname in missing.iter() {
-            self.emitter.io_adapter.fix_import(fname, self.emitter.app_iter.module, self.err);
-        }
-
         // get the function
         //first, we need to create the maps in global_map_init - where all the other maps are initialized
         // todo(maps) -- look up the func name instead!
-        let mut print_map_meta_id = 0;
-        if let Some(Record::Fn {addr: Some(id), ..}) = self.emitter.table.lookup_fn("print_map_meta", self.err) {
-            print_map_meta_id = *id;
+        let print_map_meta_id = if let Some(Record::Fn {addr: Some(id), ..}) = self.emitter.table.lookup_fn("print_map_meta", self.err) {
+            *id
         } else {
             return false;
-        }
+        };
         let print_map_meta_id = FunctionID(print_map_meta_id);
 
         let mut print_map_meta = match self
@@ -802,7 +778,6 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_> {
             );
 
             // print the value(s) of this map
-            print_map_meta.global_get(GlobalID(*key));
             self.emitter.map_lib_adapter.print_map(
                 *key,
                 &mut print_map_meta,
@@ -814,10 +789,5 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_> {
             );
         }
         true
-    }
-    fn get_lib_fn_id(&mut self, func_name: &str) -> Option<u32> {
-        self.emitter
-            .table
-            .lookup_core_lib_func(func_name, &None, self.err)
     }
 }

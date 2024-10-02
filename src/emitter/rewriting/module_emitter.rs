@@ -15,7 +15,7 @@ use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
 use orca_wasm::ir::module::Module;
 use orca_wasm::ir::types::{BlockType as OrcaBlockType, DataType as OrcaType, Value as OrcaValue};
 use orca_wasm::module_builder::AddLocal;
-use orca_wasm::opcode::{Instrumenter, MacroOpcode, Opcode};
+use orca_wasm::opcode::{Instrumenter, Opcode};
 
 const UNEXPECTED_ERR_MSG: &str =
     "ModuleEmitter: Looks like you've found a bug...please report this behavior!";
@@ -392,23 +392,24 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                     func_idx: init_id, // not used
                     instr_idx: 0,
                 });
-                let (map_id, fn_name) = if report_mode {
-                    self.map_lib_adapter.create_report_map(
+                let map_id = if report_mode {
+                    self.map_lib_adapter.map_create_report(
                         name,
                         ty.clone(),
+                        &mut init_fn,
                         self.report_var_metadata,
                         false,
-                        err,
+                        err
                     )
                 } else {
-                    self.map_lib_adapter.create_map(ty.clone(), err)
+                    self.map_lib_adapter.map_create(
+                        ty.clone(),
+                        &mut init_fn,
+                        err
+                    )
                 };
-                let fn_name = fn_name.as_ref()?;
 
                 *addr = Some(VarAddr::MapId { addr: map_id });
-                let fn_id = self.table.lookup_core_lib_func(fn_name, &None, err)?;
-                init_fn.u32_const(map_id);
-                init_fn.call(FunctionID(fn_id));
                 None
             }
             _ => {

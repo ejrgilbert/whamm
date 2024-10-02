@@ -8,7 +8,7 @@ const CORE_LIB_MODULE: &str = "../core_lib/target/wasm32-wasip1/release/core_lib
 fn main() -> Result<()> {
     // Define the WASI functions globally on the `Config`.
     let engine = Engine::default();
-    let config = engine.config();
+    // let config = engine.config();
     // println!("{:?}", config);
     // config.wasm_multi_memory(true);
     let mut linker = Linker::new(&engine);

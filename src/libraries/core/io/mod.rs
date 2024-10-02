@@ -5,20 +5,32 @@ use crate::parser::rules::{Event, Package, Probe, Provider};
 use crate::parser::types::{
     BinOp, Block, DataType, Expr, Script, Statement, UnOp, Value, Whamm, WhammVisitor,
 };
-use log::{debug, trace};
-use std::collections::HashSet;
+use log::debug;
 use crate::libraries::core::io::io_adapter::IOAdapter;
 
 #[derive(Default)]
 pub struct IOPackage {
     is_used: bool,
-    adapter: IOAdapter,
+    pub adapter: IOAdapter,
+}
+impl LibPackage for IOPackage {
+    fn is_used(&self) -> bool {
+        self.is_used
+    }
+
+    fn get_fn_names(&self) -> Vec<String> {
+        self.adapter.get_fn_names()
+    }
+
+    fn add_fid_to_adapter(&mut self, fname: &str, fid: u32) {
+        self.adapter.add_fid(fname, fid);
+    }
 }
 impl WhammVisitor<bool> for IOPackage {
     fn visit_whamm(&mut self, whamm: &Whamm) -> bool {
         // visit scripts
         for script in whamm.scripts.iter() {
-            self.is_used &= self.visit_script(script);
+            self.is_used |= self.visit_script(script);
             if self.is_used {
                 return true;
             }
@@ -142,13 +154,5 @@ impl WhammVisitor<bool> for IOPackage {
     fn visit_value(&mut self, _val: &Value) -> bool {
         // can just check at variable declaration level.
         unreachable!()
-    }
-}
-impl LibPackage for IOPackage {
-    fn is_used(&self) -> bool {
-        self.is_used
-    }
-    fn get_fn_names(&self) -> &HashSet<String> {
-        todo!()
     }
 }

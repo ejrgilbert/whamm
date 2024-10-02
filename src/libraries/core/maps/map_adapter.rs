@@ -1,15 +1,18 @@
 use crate::common::error::ErrorGen;
 use crate::parser::types::DataType;
-use std::collections::HashSet;
-// //this is the code that knows which functions to call in lib.rs based on what is in the AST -> will be in emitter folder eventually
+use std::collections::HashMap;
+use orca_wasm::ir::id::FunctionID;
+use orca_wasm::module_builder::AddLocal;
+use orca_wasm::Opcode;
+use orca_wasm::opcode::MacroOpcode;
 use crate::emitter::report_var_metadata::{LocationData, Metadata, ReportVarMetadata};
 use crate::libraries::core::LibAdapter;
 
-pub const RESERVED_VAR_METADATA_MAP_ID: u32 = 0;
-pub const RESERVED_MAP_METADATA_MAP_ID: u32 = 1;
+const PRINT_MAP: &str = "print_map";
 
 pub struct MapLibAdapter {
-    func_names: HashSet<String>,
+    // func_name -> fid
+    funcs: HashMap<String, u32>,
     map_count: u32,
     pub init_bool_location: u32,
 }
@@ -19,65 +22,122 @@ impl Default for MapLibAdapter {
     }
 }
 impl LibAdapter for MapLibAdapter {
-    fn get_fn_names(&self) -> &HashSet<String> {
-        &self.func_names
+    fn get_funcs(&self) -> &HashMap<String, u32> {
+        &self.funcs
+    }
+    fn get_funcs_mut(&mut self) -> &mut HashMap<String, u32> {
+        &mut self.funcs
     }
 }
 impl MapLibAdapter {
     pub fn new() -> Self {
-        let func_names = HashSet::from_iter(vec![
-            // printing metadata
-            "putc".to_string(),
-            "puti".to_string(),
-            "putln".to_string(),
-            "put_i32".to_string(),
-            "put_map".to_string(),
-            "put_comma".to_string(),
-            "print_map".to_string(),
-            // "print_map_meta".to_string(),
-            // "print_global_i32_meta_helper".to_string(),
-            // "set_metadata_header".to_string(),
-            // "print_metadata_header".to_string(),
+        let funcs = HashMap::from([
+            // printing maps
+            ("print_map".to_string(), 0),
             // create map
-            "create_i32_i32".to_string(),
-            "create_i32_bool".to_string(),
-            "create_i32_string".to_string(),
-            "create_i32_tuple".to_string(),
-            "create_i32_map".to_string(),
-            "create_string_i32".to_string(),
-            "create_string_bool".to_string(),
-            "create_string_string".to_string(),
-            "create_string_tuple".to_string(),
-            "create_string_map".to_string(),
-            "create_bool_i32".to_string(),
-            "create_bool_bool".to_string(),
-            "create_bool_string".to_string(),
-            "create_bool_tuple".to_string(),
-            "create_bool_map".to_string(),
-            "create_tuple_i32".to_string(),
-            "create_tuple_bool".to_string(),
-            "create_tuple_string".to_string(),
-            "create_tuple_tuple".to_string(),
-            "create_tuple_map".to_string(),
+            ("create_i32_i32".to_string(), 0),
+            ("create_i32_bool".to_string(), 0),
+            ("create_i32_string".to_string(), 0),
+            ("create_i32_tuple".to_string(), 0),
+            ("create_i32_map".to_string(), 0),
+            ("create_string_i32".to_string(), 0),
+            ("create_string_bool".to_string(), 0),
+            ("create_string_string".to_string(), 0),
+            ("create_string_tuple".to_string(), 0),
+            ("create_string_map".to_string(), 0),
+            ("create_bool_i32".to_string(), 0),
+            ("create_bool_bool".to_string(), 0),
+            ("create_bool_string".to_string(), 0),
+            ("create_bool_tuple".to_string(), 0),
+            ("create_bool_map".to_string(), 0),
+            ("create_tuple_i32".to_string(), 0),
+            ("create_tuple_bool".to_string(), 0),
+            ("create_tuple_string".to_string(), 0),
+            ("create_tuple_tuple".to_string(), 0),
+            ("create_tuple_map".to_string(), 0),
             // insert map
-            "insert_i32_i32".to_string(),
-            "insert_i32_string".to_string(),
-            "insert_i32i32i32tuple_i32".to_string(),
+            ("insert_i32_i32".to_string(), 0),
+            ("insert_i32_string".to_string(), 0),
+            ("insert_i32i32i32tuple_i32".to_string(), 0),
             // get from map
-            "get_i32_i32".to_string(),
-            "get_i32_from_i32i32i32tuple".to_string(),
+            ("get_i32_i32".to_string(), 0),
+            ("get_i32_from_i32i32i32tuple".to_string(), 0),
         ]);
-        //Reserve map 0 for the var metadata map and map 1 for the map metadata map
         MapLibAdapter {
-            func_names,
-            map_count: 2,
+            funcs,
+            map_count: 0,
             init_bool_location: 0,
         }
     }
 
-    // --------------------------
-    // ==== Map creation fns ====
-    // --------------------------
+    pub fn map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        key: DataType,
+        val: DataType,
+        func: &mut T,
+        err: &mut ErrorGen,
+    ) {
+        let fname = self.map_get_fname(key, val, err);
+        self.call(fname.as_str(), func, err);
+    }
+
+
+    pub fn map_insert<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        key: DataType,
+        val: DataType,
+        func: &mut T,
+        err: &mut ErrorGen,
+    ) {
+        let fname = self.map_insert_fname(key, val, err);
+        self.call(fname.as_str(), func, err);
+    }
+
+    pub fn map_create_report<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        name: String,
+        ty: DataType,
+        func: &mut T,
+        report_var_metadata: &mut ReportVarMetadata,
+        is_local: bool,
+        err: &mut ErrorGen,
+    ) -> u32 {
+        let map_id = self.map_create(ty, func, err);
+        //create the metadata for the map
+        self.create_map_metadata(map_id, name.clone(), report_var_metadata, is_local, err);
+        map_id
+    }
+
+    pub fn map_create<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        ty: DataType,
+        func: &mut T,
+        err: &mut ErrorGen,
+    ) -> u32 {
+        let (map_id, func_name) = self.create_map_internal(ty, err);
+        func.u32_const(map_id);
+        self.call(func_name.as_str(), func, err);
+        map_id
+    }
+
+    pub fn print_map<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(&mut self, map_id: u32, func: &mut T, err: &mut ErrorGen) {
+        func.u32_const(map_id);
+        self.call_print_map(func, err)
+    }
+
+    // -------------------
+    // ==== Utilities ====
+    // -------------------
+
+    fn create_map_internal(&mut self, map: DataType, err: &mut ErrorGen) -> (u32, String) {
+        let map_id = self.next_map_id();
+        let func_name = self.create_map_fname_by_map_type(map, err);
+        (map_id, func_name)
+    }
+
+    fn call_print_map<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(&mut self, func: &mut T, err: &mut ErrorGen) {
+        self.call(PRINT_MAP, func, err)
+    }
 
     fn next_map_id(&mut self) -> u32 {
         let map_id = self.map_count;
@@ -128,31 +188,6 @@ impl MapLibAdapter {
         };
     }
 
-    pub fn create_report_map(
-        &mut self,
-        name: String,
-        map: DataType,
-        report_var_metadata: &mut ReportVarMetadata,
-        is_local: bool,
-        err: &mut ErrorGen,
-    ) -> (u32, Option<String>) {
-        let map_id = self.next_map_id();
-        //create the metadata for the map
-        self.create_map_metadata(map_id, name.clone(), report_var_metadata, is_local, err);
-
-        //create the map based on the types of the key and value in the map
-        //"map" is the type of the declaration statement
-        let func_name = self.create_map_fname_by_map_type(map, err);
-        (map_id, func_name)
-    }
-
-    /// Create a map that is not reported (has no metadata)
-    pub fn create_map(&mut self, map: DataType, err: &mut ErrorGen) -> (u32, Option<String>) {
-        let map_id = self.next_map_id();
-        let func_name = self.create_map_fname_by_map_type(map, err);
-        (map_id, func_name)
-    }
-
     // -------------------------------------
     // Get "to_call" for map functions
     // -------------------------------------
@@ -201,30 +236,30 @@ impl MapLibAdapter {
         &mut self,
         map: DataType,
         err: &mut ErrorGen,
-    ) -> Option<String> {
+    ) -> String {
         let DataType::Map {
             key_ty: key,
             val_ty: val,
         } = map
         else {
             err.unexpected_error(true, Some("Non-map at no_meta".to_string()), None);
-            return None;
+            return "invalid".to_string();
         };
 
         self.map_create_fname(*key, *val, err)
     }
-    pub fn map_create_fname(
+    fn map_create_fname(
         &mut self,
         key: DataType,
         val: DataType,
         err: &mut ErrorGen,
-    ) -> Option<String> {
+    ) -> String {
         let key_name = Self::ty_to_str(true, &key, err);
         let val_name = Self::ty_to_str(true, &val, err);
 
         let fname = format!("create_{key_name}_{val_name}");
-        if self.func_names.contains(&fname) {
-            Some(fname)
+        if self.funcs.contains_key(&fname) {
+            fname
         } else {
             err.type_check_error(
                 true,
@@ -234,21 +269,21 @@ impl MapLibAdapter {
                 ),
                 &None,
             );
-            None
+            "invalid".to_string()
         }
     }
-    pub fn map_insert_fname(
+    fn map_insert_fname(
         &mut self,
         key: DataType,
         val: DataType,
         err: &mut ErrorGen,
-    ) -> Option<String> {
+    ) -> String {
         let key_name = Self::ty_to_str(false, &key, err);
         let val_name = Self::ty_to_str(false, &val, err);
 
         let fname = format!("insert_{key_name}_{val_name}");
-        if self.func_names.contains(&fname) {
-            Some(fname)
+        if self.funcs.contains_key(&fname) {
+            fname
         } else {
             err.type_check_error(
                 true,
@@ -258,21 +293,21 @@ impl MapLibAdapter {
                 ),
                 &None,
             );
-            None
+            "invalid".to_string()
         }
     }
-    pub fn map_get_fname(
+    fn map_get_fname(
         &mut self,
         key: DataType,
         val: DataType,
         err: &mut ErrorGen,
-    ) -> Option<String> {
+    ) -> String {
         let key_name = Self::ty_to_str(false, &key, err);
         let val_name = Self::ty_to_str(false, &val, err);
 
         let fname = format!("get_{key_name}_{val_name}");
-        if self.func_names.contains(&fname) {
-            Some(fname)
+        if self.funcs.contains_key(&fname) {
+            fname
         } else {
             err.type_check_error(
                 true,
@@ -282,7 +317,12 @@ impl MapLibAdapter {
                 ),
                 &None,
             );
-            None
+            "invalid".to_string()
         }
+    }
+
+    fn call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(&mut self, fname: &str, func: &mut T, err: &mut ErrorGen) {
+        let fid = self.get_fid(fname, err);
+        func.call(FunctionID(fid));
     }
 }

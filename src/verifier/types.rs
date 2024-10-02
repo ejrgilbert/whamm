@@ -281,21 +281,6 @@ impl SymbolTable {
             None
         }
     }
-    pub fn lookup_core_lib(&self, loc: &Option<Location>, err: &mut ErrorGen) -> Option<&Record> {
-        self.lookup_lib(WHAMM_CORE_LIB_NAME, loc, err)
-    }
-    pub fn lookup_core_lib_func(
-        &self,
-        key: &str,
-        loc: &Option<Location>,
-        err: &mut ErrorGen,
-    ) -> Option<u32> {
-        let Record::Library { fns, .. } = self.lookup_core_lib(loc, err)? else {
-            err.unexpected_error(true, Some("unexpected type".to_string()), None);
-            return None;
-        };
-        fns.get(key).copied()
-    }
     pub fn lookup_lib_mut(
         &mut self,
         key: &str,

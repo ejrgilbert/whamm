@@ -211,18 +211,13 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             };
 
             if let DataType::Map { .. } = ty {
-                let (map_id, fn_name) = map_lib_adapter.create_map(ty.clone(), err);
+                let map_id = map_lib_adapter.map_create(
+                    ty.clone(),
+                    injector,
+                    err
+                );
                 *addr = Some(VarAddr::MapId { addr: map_id });
-                if fn_name.is_none() {
-                    return false;
-                }
-                let fn_name = fn_name.unwrap();
-                let Some(fn_id) = table.lookup_core_lib_func(&fn_name, &None, err) else {
-                    return false;
-                };
 
-                injector.u32_const(map_id);
-                injector.call(FunctionID(fn_id));
                 return true;
             }
             match &mut addr {
@@ -298,27 +293,16 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     return false;
                 };
                 if let DataType::Map { .. } = ty {
-                    let (map_id, fn_name) = map_lib_adapter.create_report_map(
+                    let map_id = map_lib_adapter.map_create_report(
                         var_name.clone(),
                         ty.clone(),
+                        injector,
                         report_var_metadata,
                         true,
-                        err,
+                        err
                     );
                     *addr = Some(VarAddr::MapId { addr: map_id });
-                    if fn_name.is_none() {
-                        return false;
-                    }
-                    let fn_name = fn_name.unwrap();
-
-                    return if let Some(fn_id) = table.lookup_core_lib_func(&fn_name, &None, err) {
-                        injector.u32_const(map_id);
-                        injector.call(FunctionID(fn_id));
-                        true
-                    } else {
-                        err.unexpected_error(true, Some("unexpected type".to_string()), None);
-                        false
-                    };
+                    return true;
                 }
                 match &mut addr {
                     Some(VarAddr::Global { .. }) | None => {
@@ -475,18 +459,8 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             err_msg,
             err,
         );
-        let fname = map_lib_adapter.map_insert_fname(key_ty, val_ty, err);
-        if fname.is_none() {
-            return false;
-        }
-        let fname = fname.unwrap();
-        if let Some(fn_id) = table.lookup_core_lib_func(&fname, &None, err) {
-            injector.call(FunctionID(fn_id));
-            true
-        } else {
-            err.unexpected_error(true, Some("unexpected type".to_string()), None);
-            false
-        }
+        map_lib_adapter.map_insert(key_ty, val_ty, injector, err);
+        true
     } else {
         err.unexpected_error(
             false,
@@ -1105,34 +1079,24 @@ fn emit_map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     if let Expr::MapGet { map, key, .. } = expr {
         let map = &mut (**map);
         if let Expr::VarId { name, .. } = map {
-            match get_map_info(table, name, err) {
+            return match get_map_info(table, name, err) {
                 Some((map_id, key_ty, val_ty)) => {
-                    let to_call = map_lib_adapter.map_get_fname(key_ty, val_ty, err);
-                    if to_call.is_none() {
-                        return false;
-                    }
-                    let to_call = to_call.unwrap();
-
-                    return if let Some(fn_id) = table.lookup_core_lib_func(&to_call, &None, err) {
-                        injector.u32_const(map_id);
-                        emit_expr(
-                            key,
-                            injector,
-                            table,
-                            mem_tracker,
-                            map_lib_adapter,
-                            report_var_metadata,
-                            err_msg,
-                            err,
-                        );
-                        injector.call(FunctionID(fn_id));
-                        true
-                    } else {
-                        false
-                    };
+                    injector.u32_const(map_id);
+                    emit_expr(
+                        key,
+                        injector,
+                        table,
+                        mem_tracker,
+                        map_lib_adapter,
+                        report_var_metadata,
+                        err_msg,
+                        err,
+                    );
+                    map_lib_adapter.map_get(key_ty, val_ty, injector, err);
+                    true
                 }
                 None => {
-                    return false;
+                    false
                 }
             }
         }
