@@ -25,12 +25,12 @@ wasm::br_if:before {
   count[(fid, pc, index)]++;
 }
 
-// wasm::br_table:before {
-//   // "num_targets" is the number of targets of a br_table
-//   // "arg0" is defined as the top-of-stack
-//
-//   // TODO -- static maps like this can be emitted as a select!
-//   int index = arg0 >= num_targets ? targets[arg0] : arg0;
-//   // count stores an array of counters
-//   count[(fid, pc, index)]++;
-// }
+wasm::br_table:before {
+  // "num_targets" is the number of targets of a br_table
+  // "arg0" is defined as the top-of-stack
+
+  // TODO -- static maps like this can be emitted as a select!
+  i32 index = arg0 >= num_targets ? targets[arg0] : arg0;
+  // count stores an array of counters
+  count[(fid, pc, index)]++;
+}
