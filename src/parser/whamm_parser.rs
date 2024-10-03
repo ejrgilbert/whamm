@@ -997,22 +997,7 @@ fn type_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> DataType {
     trace!("Entering type_from_rule");
     // TYPE = _{ TY_I32 | TY_BOOL | TY_STRING | TY_TUPLE | TY_MAP }
     return match pair.as_rule() {
-        Rule::TY_U32 => {
-            // err.parse_error(
-            //     true,
-            //     Some("u32 not supported yet, see Issue #29: https://github.com/ejrgilbert/whamm/issues/141".to_string()),
-            //     Some(LineColLocation::from(pair.as_span())),
-            //     vec![
-            //         Rule::TY_I32,
-            //         Rule::TY_BOOL,
-            //         Rule::TY_STRING,
-            //         Rule::TY_TUPLE,
-            //         Rule::TY_MAP,
-            //     ],
-            //     vec![pair.as_rule()],
-            // );
-            DataType::U32
-        }
+        Rule::TY_U32 => DataType::U32,
         Rule::TY_I32 => DataType::I32,
         Rule::TY_F32 => {
             err.parse_error(

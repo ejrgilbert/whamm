@@ -49,12 +49,22 @@ pub fn check_duplicate_id(
                 let new_loc = loc.as_ref().map(|l| l.line_col.clone());
                 if loc.is_none() {
                     // happens if new_loc is compiler-provided or is a user-def func without location -- both should throw unexpected error
-                    err.unexpected_error(false, Some(format!("{UNEXPECTED_ERR_MSG} No location found for record")), None);
+                    err.unexpected_error(
+                        false,
+                        Some(format!("{UNEXPECTED_ERR_MSG} No location found for record")),
+                        None,
+                    );
                 } else {
                     err.compiler_fn_overload_error(false, name.to_string(), new_loc);
                 }
             } else {
-                err.unexpected_error(false, Some(format!("{UNEXPECTED_ERR_MSG} Expected other record to be provided by compiler.")), None);
+                err.unexpected_error(
+                    false,
+                    Some(format!(
+                        "{UNEXPECTED_ERR_MSG} Expected other record to be provided by compiler."
+                    )),
+                    None,
+                );
             }
         } else if loc.is_none() {
             // happens if new ID is compiler-provided or is a user-def func without location
@@ -67,7 +77,13 @@ pub fn check_duplicate_id(
                 );
             } else {
                 //otherwise throw unexpected error as user-def fn has no loc
-                err.unexpected_error(true, Some(format!("{UNEXPECTED_ERR_MSG} Expected record to be compiler provided.")), None);
+                err.unexpected_error(
+                    true,
+                    Some(format!(
+                        "{UNEXPECTED_ERR_MSG} Expected record to be compiler provided."
+                    )),
+                    None,
+                );
             }
         } else {
             err.duplicate_identifier_error(
@@ -490,7 +506,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 return None;
                             }
                         } else if matches!(map_ty, DataType::AssumeGood) {
-                            return Some(DataType::AssumeGood)
+                            return Some(DataType::AssumeGood);
                         } else {
                             self.err.type_check_error(
                                 true,
@@ -833,7 +849,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             }
                             Some(*val_ty)
                         } else if matches!(map_ty, DataType::AssumeGood) {
-                            return Some(DataType::AssumeGood)
+                            return Some(DataType::AssumeGood);
                         } else {
                             self.err.type_check_error(
                                 true,
@@ -951,7 +967,10 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         Some(ty) => all_tys.push(Box::new(ty)),
                         _ => self.err.unexpected_error(
                             true,
-                            Some(format!("{} ALL types should be set for a tuple value.", UNEXPECTED_ERR_MSG)),
+                            Some(format!(
+                                "{} ALL types should be set for a tuple value.",
+                                UNEXPECTED_ERR_MSG
+                            )),
                             // This provides some imprecise info about the location of the error
                             Some(vals.iter().next().unwrap().loc().clone().unwrap().line_col),
                         ),
