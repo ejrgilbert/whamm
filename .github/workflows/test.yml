@@ -99,6 +99,12 @@ jobs:
 
           echo "[INFO] Testing the wasm ref interpreter configuration..."
           ./output/tests/interpreters/wasm --help
+      - name: Build Whamm Core Library
+        run: |
+          pushd core_lib
+          rustup target add wasm32-wasip1
+          cargo build --release --target wasm32-wasip1
+          popd
       - name: Build
         run: |
           rustup target add wasm32-unknown-unknown
