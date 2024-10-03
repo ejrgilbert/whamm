@@ -9,7 +9,9 @@ use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::emitter::rewriting::rules::Arg;
 use crate::generator::types::ExprFolder;
 use crate::libraries::core::maps::map_adapter::MapLibAdapter;
-use crate::parser::types::{BinOp, Block, DataType, Expr, Location, Statement, UnOp, Value};
+use crate::parser::types::{
+    BinOp, Block, DataType, Definition, Expr, Location, Statement, UnOp, Value,
+};
 use crate::verifier::types::{line_col_from_loc, Record, SymbolTable, VarAddr};
 use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
 use orca_wasm::ir::types::{BlockType, DataType as OrcaType, Value as OrcaValue};
@@ -175,7 +177,7 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                                 ty: ty.clone(),
                                 name: name.clone(),
                                 value: None,
-                                is_comp_provided: false,
+                                def: Definition::User,
                                 is_report_var: false,
                                 addr: None,
                                 loc: None,
@@ -270,7 +272,7 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                                 ty: ty.clone(),
                                 name: name.clone(),
                                 value: None,
-                                is_comp_provided: false,
+                                def: Definition::User,
                                 is_report_var: true,
                                 addr: None,
                                 loc: None,
@@ -355,15 +357,12 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 ) -> bool {
     match stmt {
         Statement::Assign { var_id, expr, .. } => {
-            let mut folded_expr = ExprFolder::fold_expr(expr, table, err);
-
             // Save off primitives to symbol table
             // TODO -- this is only necessary for `new_target_fn_name`, remove after deprecating!
-            if let (Expr::VarId { name, .. }, Expr::Primitive { val, .. }) = (&var_id, &folded_expr)
-            {
+            if let (Expr::VarId { name, .. }, Expr::Primitive { val, .. }) = (&var_id, &expr) {
                 let Some(Record::Var {
                     value,
-                    is_comp_provided,
+                    def,
                     is_report_var,
                     ..
                 }) = table.lookup_var_mut(name, &None, err)
@@ -373,7 +372,7 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 };
 
                 *value = Some(val.clone());
-                if *is_comp_provided {
+                if def.is_comp_provided() {
                     return true;
                 }
                 if *is_report_var {
@@ -383,7 +382,7 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             }
 
             if !emit_expr(
-                &mut folded_expr,
+                expr,
                 injector,
                 table,
                 mem_tracker,
@@ -723,7 +722,9 @@ fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     err_msg: &str,
     err: &mut ErrorGen,
 ) -> bool {
-    match expr {
+    // fold it first!
+    let mut folded_expr = ExprFolder::fold_expr(expr, table, err);
+    match &mut folded_expr {
         Expr::UnOp { op, expr, .. } => {
             let mut is_success = emit_expr(
                 expr,
@@ -763,9 +764,26 @@ fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             is_success
         }
         Expr::Ternary {
-            cond, conseq, alt, ..
+            cond,
+            conseq,
+            alt,
+            ty,
+            ..
         } => {
             // change conseq and alt types to stmt for easier API call
+            // TODO -- the block return_types should be populated!
+            if matches!(ty, DataType::Null) {
+                err.unexpected_error(
+                    true,
+                    Some(format!(
+                        "{err_msg} \
+                                The result type of the ternary should have been set in the type checker."
+                    )),
+                    None,
+                );
+                return false;
+            }
+
             emit_if_else(
                 cond,
                 &mut Block {
@@ -773,7 +791,7 @@ fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                         expr: (**conseq).clone(),
                         loc: None,
                     }],
-                    return_ty: None,
+                    return_ty: Some(ty.clone()),
                     loc: None,
                 },
                 &mut Block {
@@ -781,7 +799,7 @@ fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                         expr: (**alt).clone(),
                         loc: None,
                     }],
-                    return_ty: None,
+                    return_ty: Some(ty.clone()),
                     loc: None,
                 },
                 injector,
@@ -839,10 +857,22 @@ fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         }
         Expr::VarId { name, .. } => {
             // TODO -- support string vars (unimplemented)
-            let Some(Record::Var { addr, .. }) = table.lookup_var_mut(name, &None, err) else {
+            let Some(Record::Var { addr, def, .. }) = table.lookup_var_mut(name, &None, err) else {
                 err.unexpected_error(true, Some("unexpected type".to_string()), None);
                 return false;
             };
+            if matches!(def, Definition::CompilerStatic) {
+                err.unexpected_error(
+                    true,
+                    Some(format!(
+                        "{err_msg} \
+                    Variable is provided statically by the compiler, it should've been folded by this point: {}",
+                        name
+                    )),
+                    None,
+                );
+                return false;
+            }
             // this will be different based on if this is a global or local var
             return match addr {
                 Some(VarAddr::Global { addr }) => {

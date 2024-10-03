@@ -9,13 +9,19 @@
  * need to access top-of-stack, locals, program counter
  * need a handle to the function ("func")
 */
+report map<(u32, u32, i32), i32> count;
 
-// matches "if" and "br_if" bytecodes
-wasm:::br|br_if {
-  // "tos" is defined as the top-of-stack
-  int index = tos != 0 ? 1 : 0;
+wasm::br:before {
   // count stores an array of counters
-  count[probe_func, pc, index]++;
+  count[(fid, pc, 1)]++;
+}
+
+wasm::br_if:before {
+  i32 index;
+  // "arg0" is defined as the top-of-stack
+  index = arg0 != 0 ? 1 : 0;
+  // count stores an array of counters
+  count[(fid, pc, index)]++;
 }
 
 wasm:::br_table {
@@ -40,9 +46,4 @@ wasm:::br_on_non_null {
   int index = tos != null ? 1 : 0;
   // count stores an array of counters
   count[probe_func, pc, index]++;
-}
-
-// happens when program exits
-END {
-  dump(count);
 }

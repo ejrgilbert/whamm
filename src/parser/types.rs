@@ -298,6 +298,7 @@ pub enum Expr {
         cond: Box<Expr>,
         conseq: Box<Expr>,
         alt: Box<Expr>,
+        ty: DataType, // populated by the type-checker (for knowing the return_ty of the emitted blocks)
         loc: Option<Location>,
     },
     BinOp {
@@ -314,7 +315,7 @@ pub enum Expr {
         loc: Option<Location>,
     },
     VarId {
-        is_comp_provided: bool, // TODO -- this is only necessary for `new_target_fn_name`, remove after deprecating!
+        definition: Definition,
         name: String,
         loc: Option<Location>,
     },
@@ -399,6 +400,11 @@ pub enum Definition {
     User,
     CompilerStatic,
     CompilerDynamic,
+}
+impl Definition {
+    pub fn is_comp_provided(&self) -> bool {
+        matches!(self, Definition::CompilerStatic) || matches!(self, Definition::CompilerDynamic)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -522,7 +528,7 @@ impl Whamm {
         let strcmp_params = vec![
             (
                 Expr::VarId {
-                    is_comp_provided: true,
+                    definition: Definition::CompilerStatic,
                     name: "str_addr".to_string(),
                     loc: None,
                 },
@@ -532,7 +538,7 @@ impl Whamm {
             ),
             (
                 Expr::VarId {
-                    is_comp_provided: true,
+                    definition: Definition::CompilerStatic,
                     name: "value".to_string(),
                     loc: None,
                 },
@@ -979,7 +985,11 @@ impl ProvidedGlobal {
                 report: false,
                 ty,
                 var_name: Expr::VarId {
-                    is_comp_provided: true,
+                    definition: if is_static {
+                        Definition::CompilerStatic
+                    } else {
+                        Definition::CompilerDynamic
+                    },
                     name,
                     loc: None,
                 },

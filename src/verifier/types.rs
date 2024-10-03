@@ -627,7 +627,7 @@ pub enum Record {
         ty: DataType,
         name: String,
         value: Option<Value>,
-        is_comp_provided: bool, // TODO -- this is only necessary for `new_target_fn_name`, remove after deprecating!
+        def: Definition,
         //this is for if the variable is a report var
         is_report_var: bool,
         /// The address of this var post-injection
@@ -650,17 +650,7 @@ impl Record {
     }
     pub fn is_comp_provided(&self) -> bool {
         match self {
-            Record::Fn {
-                def: Definition::CompilerStatic,
-                ..
-            }
-            | Record::Fn {
-                def: Definition::CompilerDynamic,
-                ..
-            } => true,
-            Record::Var {
-                is_comp_provided, ..
-            } => *is_comp_provided,
+            Record::Fn { def, .. } | Record::Var { def, .. } => def.is_comp_provided(),
             _ => true,
         }
     }

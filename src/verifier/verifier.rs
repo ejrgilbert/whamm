@@ -29,7 +29,7 @@ pub fn build_symbol_table(ast: &mut Whamm, err: &mut ErrorGen) -> SymbolTable {
 pub fn check_duplicate_id(
     name: &str,
     loc: &Option<Location>,
-    is_comp_provided_new: bool,
+    definition: &Definition,
     table: &SymbolTable,
     err: &mut ErrorGen,
 ) -> bool {
@@ -59,7 +59,7 @@ pub fn check_duplicate_id(
         } else if loc.is_none() {
             // happens if new ID is compiler-provided or is a user-def func without location
             //if new ID is compiler-provided, throw compiler overload error for the old record
-            if is_comp_provided_new {
+            if definition.is_comp_provided() {
                 err.compiler_fn_overload_error(
                     false,
                     name.to_string(),
@@ -93,13 +93,13 @@ impl TypeChecker<'_> {
         &mut self,
         ty: DataType,
         name: String,
-        is_comp_provided: bool,
+        definition: Definition,
         loc: &Option<Location>,
     ) {
         /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
         In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
         just in case it is non-fatal to avoid having 2 strings w/same name in record */
-        if check_duplicate_id(&name, loc, is_comp_provided, self.table, self.err) {
+        if check_duplicate_id(&name, loc, &definition, self.table, self.err) {
             return;
         }
 
@@ -110,7 +110,7 @@ impl TypeChecker<'_> {
                 ty,
                 name,
                 value: None,
-                is_comp_provided,
+                def: definition,
                 is_report_var: false,
                 addr: None,
                 loc: loc.clone(),
@@ -385,7 +385,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         }
                     }
                     if !self.in_script_global {
-                        self.add_local(ty.to_owned(), name.to_owned(), false, loc);
+                        self.add_local(ty.to_owned(), name.to_owned(), Definition::User, loc);
                     }
                 } else {
                     self.err.unexpected_error(
@@ -843,7 +843,11 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 }
             }
             Expr::Ternary {
-                cond, conseq, alt, ..
+                cond,
+                conseq,
+                alt,
+                ty,
+                ..
             } => {
                 let cond_ty = self.visit_expr(cond);
                 //have to clone before the "if let" block
@@ -868,6 +872,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 match (alt_ty, conseq_ty.clone()) {
                     (Some(alt_t), Some(conseq_t)) => {
                         if alt_t == conseq_t {
+                            *ty = alt_t.clone();
                             conseq_ty
                         } else {
                             self.err.type_check_error(

@@ -167,7 +167,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                         ty: DataType::I32, // we only support integers right now.
                         name: arg_name.to_string(),
                         value: None,
-                        is_comp_provided: false,
+                        def: Definition::User,
                         is_report_var: false,
                         addr: Some(VarAddr::Local {
                             addr: *arg_local_id,
@@ -247,7 +247,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                             ty: ty.clone(),
                             name: var_name.to_string(),
                             value: var_val.clone(),
-                            is_comp_provided: false,
+                            def: Definition::User,
                             is_report_var: false,
                             addr: None,
                             loc: None,

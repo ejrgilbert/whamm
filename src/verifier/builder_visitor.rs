@@ -28,7 +28,13 @@ impl SymbolTableBuilder<'_> {
         /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
         In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
         just in case it is non-fatal to avoid having 2 strings w/same name in record */
-        if check_duplicate_id(&script.name, &None, true, &self.table, self.err) {
+        if check_duplicate_id(
+            &script.name,
+            &None,
+            &Definition::CompilerStatic,
+            &self.table,
+            self.err,
+        ) {
             return;
         }
 
@@ -67,7 +73,13 @@ impl SymbolTableBuilder<'_> {
         /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
         In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
         just in case it is non-fatal to avoid having 2 strings w/same name in record */
-        if check_duplicate_id(&provider.name(), &None, true, &self.table, self.err) {
+        if check_duplicate_id(
+            &provider.name(),
+            &None,
+            &Definition::CompilerStatic,
+            &self.table,
+            self.err,
+        ) {
             return;
         }
 
@@ -110,7 +122,13 @@ impl SymbolTableBuilder<'_> {
         /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
         In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
         just in case it is non-fatal to avoid having 2 strings w/same name in record */
-        if check_duplicate_id(&package.name(), &None, true, &self.table, self.err) {
+        if check_duplicate_id(
+            &package.name(),
+            &None,
+            &Definition::CompilerStatic,
+            &self.table,
+            self.err,
+        ) {
             return;
         }
 
@@ -149,7 +167,13 @@ impl SymbolTableBuilder<'_> {
         /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
         In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
         just in case it is non-fatal to avoid having 2 strings w/same name in record */
-        if check_duplicate_id(&event.name(), &None, true, &self.table, self.err) {
+        if check_duplicate_id(
+            &event.name(),
+            &None,
+            &Definition::CompilerStatic,
+            &self.table,
+            self.err,
+        ) {
             return;
         }
 
@@ -192,7 +216,13 @@ impl SymbolTableBuilder<'_> {
         /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
         In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
         just in case it is non-fatal to avoid having 2 strings w/same name in record */
-        if check_duplicate_id(&probe.mode().name(), &None, true, &self.table, self.err) {
+        if check_duplicate_id(
+            &probe.mode().name(),
+            &None,
+            &Definition::CompilerStatic,
+            &self.table,
+            self.err,
+        ) {
             return;
         }
 
@@ -359,7 +389,7 @@ impl SymbolTableBuilder<'_> {
             name: name.clone(),
             ty: ty.clone(),
             value: None,
-            is_comp_provided: false,
+            def: Definition::User,
             is_report_var: false,
             addr: None,
             loc: var_id.loc().clone(),
@@ -385,14 +415,14 @@ impl SymbolTableBuilder<'_> {
         &mut self,
         ty: DataType,
         name: String,
-        is_comp_provided: bool,
+        definition: Definition,
         is_report_var: bool,
         loc: Option<Location>,
     ) {
         /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
         In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
         just in case it is non-fatal to avoid having 2 strings w/same name in record */
-        if check_duplicate_id(&name, &loc, is_comp_provided, &self.table, self.err) {
+        if check_duplicate_id(&name, &loc, &definition, &self.table, self.err) {
             return;
         }
         // Add global to scope
@@ -402,7 +432,7 @@ impl SymbolTableBuilder<'_> {
                 ty,
                 name,
                 value: None,
-                is_comp_provided,
+                def: definition,
                 is_report_var,
                 addr: None,
                 loc,
@@ -415,7 +445,13 @@ impl SymbolTableBuilder<'_> {
 
     fn visit_provided_globals(&mut self, globals: &HashMap<String, ProvidedGlobal>) {
         for (name, ProvidedGlobal { global, .. }) in globals.iter() {
-            self.add_global(global.ty.clone(), name.clone(), true, false, None);
+            self.add_global(
+                global.ty.clone(),
+                name.clone(),
+                global.def.clone(),
+                false,
+                None,
+            );
         }
     }
 }
@@ -498,31 +534,31 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
                     );
                 }
             };
-            if let Statement::Decl { ty, var_id, .. } = stmt {
-                if let Expr::VarId { name, .. } = &var_id {
-                    // Add global variable to script globals (triggers the init_generator to emit them!)
-                    script.globals.insert(
-                        name.clone(),
-                        Global {
-                            def: Definition::User,
-                            report: is_report_var,
-                            ty: ty.clone(),
-                            var_name: var_id.clone(),
-                            value: None,
-                        },
-                    );
-                } else {
-                    self.err.unexpected_error(
-                        true,
-                        Some(format!(
-                            "{} \
-                    Variable declaration var_id is not the correct Expr variant!!",
-                            UNEXPECTED_ERR_MSG
-                        )),
-                        None,
-                    );
-                }
-            }
+            // if let Statement::Decl { ty, var_id, .. } = stmt {
+            //     if let Expr::VarId { name, .. } = &var_id {
+            //         // Add global variable to script globals (triggers the init_generator to emit them!)
+            //         script.globals.insert(
+            //             name.clone(),
+            //             Global {
+            //                 def: Definition::User,
+            //                 report: is_report_var,
+            //                 ty: ty.clone(),
+            //                 var_name: var_id.clone(),
+            //                 value: None,
+            //             },
+            //         );
+            //     } else {
+            //         self.err.unexpected_error(
+            //             true,
+            //             Some(format!(
+            //                 "{} \
+            //         Variable declaration var_id is not the correct Expr variant!!",
+            //                 UNEXPECTED_ERR_MSG
+            //             )),
+            //             None,
+            //         );
+            //     }
+            // }
             self.visit_stmt(stmt)
         });
         script
@@ -667,16 +703,14 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         } = stmt
         {
             if let Expr::VarId {
-                name,
-                is_comp_provided,
-                ..
+                name, definition, ..
             } = &var_id
             {
                 // Add symbol to table
                 self.add_global(
                     ty.clone(),
                     name.clone(),
-                    *is_comp_provided,
+                    definition.clone(),
                     is_report_var,
                     loc.clone(),
                 );
