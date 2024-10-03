@@ -457,10 +457,7 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_> {
         is_success
     }
 
-    fn setup_global_map_init(
-        &mut self,
-    ) -> bool {
-
+    fn setup_global_map_init(&mut self) -> bool {
         //first, we need to create the maps in global_map_init - where all the other maps are initialized
         let global_map_init_id = match self
             .emitter
