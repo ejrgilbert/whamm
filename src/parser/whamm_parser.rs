@@ -247,7 +247,7 @@ pub fn process_pair(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, er
                             }
                         }
                         let param_id_local = Expr::VarId {
-                            is_comp_provided: false,
+                            definition: Definition::User,
                             name: arg_name,
                             loc: Some(Location {
                                 line_col: LineColLocation::from(p_clone.as_span()),
@@ -368,7 +368,7 @@ fn fn_call_from_rule(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
 
     let fn_target_line_col = LineColLocation::from(fn_rule.as_span());
     let fn_target = Expr::VarId {
-        is_comp_provided: false,
+        definition: Definition::User,
         name: fn_rule.as_str().parse().unwrap(),
         loc: Some(Location {
             line_col: fn_target_line_col.clone(),
@@ -542,7 +542,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
             let var_id_rule = pair.next().unwrap();
             let var_id_line_col = LineColLocation::from(var_id_rule.as_span());
             let var_id = Expr::VarId {
-                is_comp_provided: false,
+                definition: Definition::User,
                 name: var_id_rule.as_str().parse().unwrap(),
                 loc: Some(Location {
                     line_col: var_id_line_col.clone(),
@@ -581,7 +581,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                     }
                     _ => {
                         var_id = Expr::VarId {
-                            is_comp_provided: false,
+                            definition: Definition::User,
                             name: var_id_rule.as_str().parse().unwrap(),
                             loc: Some(Location {
                                 line_col: var_id_line_col.clone(),
@@ -661,33 +661,28 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
             let mut output: Vec<Statement> = vec![];
             let full_loc = LineColLocation::from(pair.as_span());
             let mut pair = pair.into_inner();
+            let is_map;
             let var_id_rule = pair.next().unwrap();
             let var_id_line_col = LineColLocation::from(var_id_rule.as_span());
-            let var_id = Expr::VarId {
-                is_comp_provided: false,
-                name: var_id_rule.as_str().parse().unwrap(),
-                loc: Some(Location {
-                    line_col: var_id_line_col.clone(),
-                    path: None,
-                }),
-            };
-            let val = Value::I32 {
-                ty: DataType::I32,
-                val: 1,
+            let var_id = match expr_primary(var_id_rule.clone()) {
+                Ok(expr) => {
+                    is_map = matches!(expr, Expr::MapGet { .. });
+                    expr
+                }
+                Err(errors) => {
+                    err.add_errors(errors);
+                    return vec![];
+                }
             };
             let rhs = Expr::Primitive {
-                val,
+                val: Value::I32 {
+                    ty: DataType::I32,
+                    val: 1,
+                },
                 loc: Some(Location::from(&var_id_line_col, &var_id_line_col, None)),
             };
             let expr = Expr::BinOp {
-                lhs: Box::new(Expr::VarId {
-                    is_comp_provided: false,
-                    name: var_id_rule.as_str().parse().unwrap(),
-                    loc: Some(Location {
-                        line_col: var_id_line_col.clone(),
-                        path: None,
-                    }),
-                }),
+                lhs: Box::new(var_id.clone()),
                 op: BinOp::Add,
                 rhs: Box::new(rhs),
                 loc: Some(Location {
@@ -696,14 +691,37 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                 }),
             };
             trace!("Exiting incrementor");
-            output.push(Statement::Assign {
-                var_id,
-                expr,
-                loc: Some(Location {
-                    line_col: full_loc,
-                    path: None,
-                }),
-            });
+            if is_map {
+                match var_id {
+                    Expr::MapGet { map, key, .. } => {
+                        output.push(Statement::SetMap {
+                            map: *map,
+                            key: *key,
+                            val: expr,
+                            loc: Some(Location {
+                                line_col: full_loc,
+                                path: None,
+                            }),
+                        });
+                    }
+                    _ => {
+                        err.add_error(ErrorGen::get_unexpected_error(
+                            true,
+                            Some(format!("{}{}", UNEXPECTED_ERR_MSG, "Expected MapGet")),
+                            None,
+                        ));
+                    }
+                }
+            } else {
+                output.push(Statement::Assign {
+                    var_id,
+                    expr,
+                    loc: Some(Location {
+                        line_col: full_loc,
+                        path: None,
+                    }),
+                });
+            }
             output
         }
         Rule::decrementor => {
@@ -711,46 +729,66 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
             let full_loc = LineColLocation::from(pair.as_span());
             let mut output: Vec<Statement> = vec![];
             let mut pair = pair.into_inner();
+            let is_map;
             let var_id_rule = pair.next().unwrap();
             let var_id_line_col = LineColLocation::from(var_id_rule.as_span());
-            let var_id = Expr::VarId {
-                is_comp_provided: false,
-                name: var_id_rule.as_str().parse().unwrap(),
-                loc: Some(Location {
-                    line_col: var_id_line_col.clone(),
-                    path: None,
-                }),
-            };
-            let val = Value::I32 {
-                ty: DataType::I32,
-                val: 1,
+            let var_id = match expr_primary(var_id_rule.clone()) {
+                Ok(expr) => {
+                    is_map = matches!(expr, Expr::MapGet { .. });
+                    expr
+                }
+                Err(errors) => {
+                    err.add_errors(errors);
+                    return vec![];
+                }
             };
             let rhs = Expr::Primitive {
-                val,
+                val: Value::I32 {
+                    ty: DataType::I32,
+                    val: 1,
+                },
                 loc: Some(Location::from(&var_id_line_col, &var_id_line_col, None)),
             };
+
             let expr = Expr::BinOp {
-                lhs: Box::new(Expr::VarId {
-                    is_comp_provided: false,
-                    name: var_id_rule.as_str().parse().unwrap(),
-                    loc: Some(Location {
-                        line_col: full_loc.clone(),
-                        path: None,
-                    }),
-                }),
+                lhs: Box::new(var_id.clone()),
                 op: BinOp::Subtract,
                 rhs: Box::new(rhs),
                 loc: Some(Location::from(&var_id_line_col, &var_id_line_col, None)),
             };
             trace!("Exiting decrementor");
-            output.push(Statement::Assign {
-                var_id,
-                expr,
-                loc: Some(Location {
-                    line_col: full_loc,
-                    path: None,
-                }),
-            });
+            if is_map {
+                match var_id {
+                    Expr::MapGet { map, key, .. } => {
+                        output.push(Statement::SetMap {
+                            map: *map,
+                            key: *key,
+                            val: expr,
+                            loc: Some(Location {
+                                line_col: full_loc,
+                                path: None,
+                            }),
+                        });
+                    }
+                    _ => {
+                        err.add_error(ErrorGen::get_unexpected_error(
+                            true,
+                            Some(format!("{}{}", UNEXPECTED_ERR_MSG, "Expected MapGet")),
+                            None,
+                        ));
+                    }
+                }
+            } else {
+                output.push(Statement::Assign {
+                    var_id,
+                    expr,
+                    loc: Some(Location {
+                        line_col: full_loc,
+                        path: None,
+                    }),
+                });
+            }
+
             output
         }
         Rule::ret => {
@@ -828,7 +866,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
             let var_id_rule = pair.next().unwrap();
             let var_id_line_col = LineColLocation::from(var_id_rule.as_span());
             let var_id = Expr::VarId {
-                is_comp_provided: false,
+                definition: Definition::User,
                 name: var_id_rule.as_str().parse().unwrap(),
                 loc: Some(Location {
                     line_col: var_id_line_col.clone(),
@@ -959,22 +997,7 @@ fn type_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> DataType {
     trace!("Entering type_from_rule");
     // TYPE = _{ TY_I32 | TY_BOOL | TY_STRING | TY_TUPLE | TY_MAP }
     return match pair.as_rule() {
-        Rule::TY_U32 => {
-            err.parse_error(
-                true,
-                Some("u32 not supported yet, see Issue #29: https://github.com/ejrgilbert/whamm/issues/141".to_string()),
-                Some(LineColLocation::from(pair.as_span())),
-                vec![
-                    Rule::TY_I32,
-                    Rule::TY_BOOL,
-                    Rule::TY_STRING,
-                    Rule::TY_TUPLE,
-                    Rule::TY_MAP,
-                ],
-                vec![pair.as_rule()],
-            );
-            DataType::U32
-        }
+        Rule::TY_U32 => DataType::U32,
         Rule::TY_I32 => DataType::I32,
         Rule::TY_F32 => {
             err.parse_error(
@@ -1224,7 +1247,7 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
         Rule::fn_call => fn_call_from_rule(pair),
         Rule::ID => {
             return Ok(Expr::VarId {
-                is_comp_provided: false,
+                definition: Definition::User,
                 name: pair.as_str().parse().unwrap(),
                 loc: Some(Location {
                     line_col: LineColLocation::from(pair.as_span()),
@@ -1402,6 +1425,7 @@ fn expr_from_pair(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                 cond: Box::new(cond),
                 conseq: Box::new(conseq),
                 alt: Box::new(alt),
+                ty: DataType::Null,
                 loc: Some(Location {
                     line_col: pair_loc,
                     path: None,

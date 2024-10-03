@@ -16,7 +16,7 @@ impl ExprFolder {
             Expr::Ternary { .. } => ExprFolder::fold_ternary(expr, table, err),
             Expr::Call { .. } => ExprFolder::fold_call(expr, table),
             Expr::VarId { .. } => ExprFolder::fold_var_id(expr, table, err),
-            Expr::Primitive { .. } => ExprFolder::fold_primitive(expr, table),
+            Expr::Primitive { .. } => ExprFolder::fold_primitive(expr, table, err),
             Expr::MapGet { .. } => ExprFolder::fold_map_get(expr, table, err),
         }
     }
@@ -377,7 +377,11 @@ impl ExprFolder {
     fn fold_ternary(ternary: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
         match ternary {
             Expr::Ternary {
-                cond, conseq, alt, ..
+                cond,
+                conseq,
+                alt,
+                ty,
+                ..
             } => {
                 let cond = ExprFolder::fold_expr(cond, table, err);
                 let conseq = ExprFolder::fold_expr(conseq, table, err);
@@ -400,6 +404,7 @@ impl ExprFolder {
                         cond: Box::new(cond),
                         conseq: Box::new(conseq),
                         alt: Box::new(alt),
+                        ty: ty.clone(),
                         loc: None,
                     }
                 };
@@ -428,8 +433,28 @@ impl ExprFolder {
         }
         var_id.clone()
     }
-    fn fold_primitive(primitive: &Expr, _table: &SymbolTable) -> Expr {
-        primitive.clone()
+    fn fold_primitive(primitive: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
+        match primitive {
+            Expr::Primitive {
+                val: Value::Tuple { vals, ty },
+                loc,
+            } => {
+                let mut folded_vals = vec![];
+
+                for val in vals.iter() {
+                    folded_vals.push(ExprFolder::fold_expr(val, table, err))
+                }
+
+                Expr::Primitive {
+                    val: Value::Tuple {
+                        vals: folded_vals,
+                        ty: ty.clone(),
+                    },
+                    loc: loc.clone(),
+                }
+            }
+            _ => primitive.clone(),
+        }
     }
     pub fn get_single_bool(expr: &Expr) -> Option<bool> {
         match expr {

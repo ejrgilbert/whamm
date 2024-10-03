@@ -6,8 +6,8 @@ use crate::common::terminal::{magenta_italics, white};
 use crate::parser::rules::core::{CorePackage, WhammMode, WhammModeKind, WhammProbe};
 use crate::parser::rules::wasm::WasmPackage;
 use crate::parser::types::{
-    print_fns, print_global_vars, Block, DataType, Expr, Location, ProbeSpec, ProvidedFunction,
-    ProvidedGlobal, SpecPart,
+    print_fns, print_global_vars, Block, DataType, Definition, Expr, Location, ProbeSpec,
+    ProvidedFunction, ProvidedGlobal, SpecPart,
 };
 use glob::Pattern;
 use std::collections::HashMap;
@@ -1685,7 +1685,7 @@ pub fn get_call_fns() -> Vec<ProvidedFunction> {
         "Insert an alternate call (targeting the passed function ID) into the Wasm bytecode. Will also emit the original parameters onto the stack.".to_string(),
         vec![(
             Expr::VarId {
-                is_comp_provided: true,
+                definition: Definition::CompilerDynamic,
                 name: "func_id".to_string(),
                 loc: None,
             },
@@ -1698,7 +1698,7 @@ pub fn get_call_fns() -> Vec<ProvidedFunction> {
         "Insert an alternate call (targeting the passed function name) into the Wasm bytecode. Will also emit the original parameters onto the stack.".to_string(),
         vec![(
             Expr::VarId {
-                is_comp_provided: true,
+                definition: Definition::CompilerDynamic,
                 name: "func_name".to_string(),
                 loc: None,
             },

@@ -3,6 +3,7 @@ mod common;
 use crate::common::{run_basic_instrumentation, run_whamm_bin};
 use orca_wasm::Module;
 use std::fs;
+use std::path::PathBuf;
 use std::process::Command;
 use whamm::common::error::ErrorGen;
 use whamm::common::instr::{Config, LibraryLinkStrategy};
@@ -17,6 +18,25 @@ fn run_wast_tests() {
     whamm::wast::test_harness::run_all().expect("WAST Tests failed!");
 }
 
+fn run_script(script_text: &String, script_path: &PathBuf, err: &mut ErrorGen) {
+    let wasm = fs::read(APP_WASM_PATH).unwrap();
+    let mut module_to_instrument = Module::parse(&wasm, false).unwrap();
+    let _ = whamm::common::instr::run(
+        CORE_WASM_PATH,
+        &mut module_to_instrument,
+        &script_text,
+        &format!("{:?}", script_path.clone().as_path()),
+        None,
+        0,
+        Config {
+            virgil: false,
+            testing: true,
+            library_strategy: LibraryLinkStrategy::Imported,
+        },
+    );
+    err.fatal_report("Integration Test");
+}
+
 /// This test just confirms that a wasm module can be instrumented with the preconfigured
 /// scripts without errors occurring.
 #[test]
@@ -27,22 +47,7 @@ fn instrument_dfinity_with_fault_injection() {
     assert!(!processed_scripts.is_empty());
     err.fatal_report("Integration Test");
     for (script_path, script_text) in processed_scripts {
-        let wasm = fs::read(APP_WASM_PATH).unwrap();
-        let mut module_to_instrument = Module::parse(&wasm, false).unwrap();
-        let _ = whamm::common::instr::run(
-            CORE_WASM_PATH,
-            &mut module_to_instrument,
-            &script_text,
-            &format!("{:?}", script_path.clone().as_path()),
-            None,
-            0,
-            Config {
-                virgil: false,
-                testing: true,
-                library_strategy: LibraryLinkStrategy::Imported,
-            },
-        );
-        err.fatal_report("Integration Test");
+        run_script(&script_text, &script_path, &mut err);
     }
 }
 
@@ -111,9 +116,13 @@ fn instrument_spin_with_fault_injection() {
 #[test]
 fn instrument_with_wizard_monitors() {
     common::setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let processed_scripts = common::setup_wizard_monitors();
-    // TODO -- change this when you've supported this monitor type
-    assert_eq!(processed_scripts.len(), 0);
+    assert!(!processed_scripts.is_empty());
+    err.fatal_report("Integration Test");
+    for (script_path, script_text) in processed_scripts {
+        run_script(&script_text, &script_path, &mut err);
+    }
 }
 
 #[test]

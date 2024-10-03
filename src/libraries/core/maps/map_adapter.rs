@@ -32,8 +32,6 @@ impl LibAdapter for MapLibAdapter {
 impl MapLibAdapter {
     pub fn new() -> Self {
         let funcs = HashMap::from([
-            // printing maps
-            ("print_map".to_string(), 0),
             // create map
             ("create_i32_i32".to_string(), 0),
             ("create_i32_bool".to_string(), 0),
@@ -61,7 +59,10 @@ impl MapLibAdapter {
             ("insert_i32i32i32tuple_i32".to_string(), 0),
             // get from map
             ("get_i32_i32".to_string(), 0),
-            ("get_i32_from_i32i32i32tuple".to_string(), 0),
+            ("get_i32_string".to_string(), 0),
+            ("get_i32i32i32tuple_i32".to_string(), 0),
+            // printing maps
+            ("print_map".to_string(), 0),
         ]);
         MapLibAdapter {
             funcs,
@@ -221,9 +222,9 @@ impl MapLibAdapter {
                 }
             }
             DataType::Map { .. } => "map",
-            DataType::U32 => "u32",
+            DataType::U32 => "i32", // treated the same
             DataType::F32 => "f32",
-            DataType::U64 => "u64",
+            DataType::U64 => "i64", // treated the same
             DataType::I64 => "i64",
             DataType::F64 => "f64",
             ty => {

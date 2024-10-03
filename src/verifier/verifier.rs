@@ -29,7 +29,7 @@ pub fn build_symbol_table(ast: &mut Whamm, err: &mut ErrorGen) -> SymbolTable {
 pub fn check_duplicate_id(
     name: &str,
     loc: &Option<Location>,
-    is_comp_provided_new: bool,
+    definition: &Definition,
     table: &SymbolTable,
     err: &mut ErrorGen,
 ) -> bool {
@@ -49,17 +49,27 @@ pub fn check_duplicate_id(
                 let new_loc = loc.as_ref().map(|l| l.line_col.clone());
                 if loc.is_none() {
                     // happens if new_loc is compiler-provided or is a user-def func without location -- both should throw unexpected error
-                    err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+                    err.unexpected_error(
+                        false,
+                        Some(format!("{UNEXPECTED_ERR_MSG} No location found for record")),
+                        None,
+                    );
                 } else {
                     err.compiler_fn_overload_error(false, name.to_string(), new_loc);
                 }
             } else {
-                err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+                err.unexpected_error(
+                    false,
+                    Some(format!(
+                        "{UNEXPECTED_ERR_MSG} Expected other record to be provided by compiler."
+                    )),
+                    None,
+                );
             }
         } else if loc.is_none() {
             // happens if new ID is compiler-provided or is a user-def func without location
             //if new ID is compiler-provided, throw compiler overload error for the old record
-            if is_comp_provided_new {
+            if definition.is_comp_provided() {
                 err.compiler_fn_overload_error(
                     false,
                     name.to_string(),
@@ -67,7 +77,13 @@ pub fn check_duplicate_id(
                 );
             } else {
                 //otherwise throw unexpected error as user-def fn has no loc
-                err.unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+                err.unexpected_error(
+                    true,
+                    Some(format!(
+                        "{UNEXPECTED_ERR_MSG} Expected record to be compiler provided."
+                    )),
+                    None,
+                );
             }
         } else {
             err.duplicate_identifier_error(
@@ -93,13 +109,13 @@ impl TypeChecker<'_> {
         &mut self,
         ty: DataType,
         name: String,
-        is_comp_provided: bool,
+        definition: Definition,
         loc: &Option<Location>,
     ) {
         /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
         In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
         just in case it is non-fatal to avoid having 2 strings w/same name in record */
-        if check_duplicate_id(&name, loc, is_comp_provided, self.table, self.err) {
+        if check_duplicate_id(&name, loc, &definition, self.table, self.err) {
             return;
         }
 
@@ -110,7 +126,7 @@ impl TypeChecker<'_> {
                 ty,
                 name,
                 value: None,
-                is_comp_provided,
+                def: definition,
                 is_report_var: false,
                 addr: None,
                 loc: loc.clone(),
@@ -385,15 +401,14 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         }
                     }
                     if !self.in_script_global {
-                        self.add_local(ty.to_owned(), name.to_owned(), false, loc);
+                        self.add_local(ty.to_owned(), name.to_owned(), Definition::User, loc);
                     }
                 } else {
                     self.err.unexpected_error(
                         true,
                         Some(format!(
-                            "{} \
-                    Variable declaration var_id is not the correct Expr variant!!",
-                            UNEXPECTED_ERR_MSG
+                            "{UNEXPECTED_ERR_MSG} \
+                    Variable declaration var_id is not the correct Expr variant!!"
                         )),
                         var_id.loc().clone().map(|l| l.line_col),
                     );
@@ -490,11 +505,13 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 );
                                 return None;
                             }
+                        } else if matches!(map_ty, DataType::AssumeGood) {
+                            return Some(DataType::AssumeGood);
                         } else {
-                            self.err.unexpected_error(
+                            self.err.type_check_error(
                                 true,
-                                Some(UNEXPECTED_ERR_MSG.to_string()),
-                                loc.clone().map(|l| l.line_col),
+                                "Expected Map type".to_string(),
+                                &loc.clone().map(|l| l.line_col),
                             );
                             return None;
                         }
@@ -633,7 +650,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             // unexpected record type
                             self.err.unexpected_error(
                                 true,
-                                Some(UNEXPECTED_ERR_MSG.to_string()),
+                                Some(format!("{UNEXPECTED_ERR_MSG} Expected Var type")),
                                 loc.clone().map(|l| l.line_col),
                             )
                         }
@@ -654,7 +671,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 }
                 self.err.type_check_error(
                     false,
-                    format! {"Can't look up `{}` in symbol table", name},
+                    format! {"`{}` not found in symbol table", name},
                     &loc.clone().map(|l| l.line_col),
                 );
 
@@ -831,11 +848,13 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 return Some(DataType::AssumeGood);
                             }
                             Some(*val_ty)
+                        } else if matches!(map_ty, DataType::AssumeGood) {
+                            return Some(DataType::AssumeGood);
                         } else {
-                            self.err.unexpected_error(
+                            self.err.type_check_error(
                                 true,
-                                Some(UNEXPECTED_ERR_MSG.to_string()),
-                                loc.clone().map(|l| l.line_col),
+                                "Expected Map type".to_string(),
+                                &loc.clone().map(|l| l.line_col),
                             );
                             Some(DataType::AssumeGood)
                         }
@@ -843,7 +862,11 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 }
             }
             Expr::Ternary {
-                cond, conseq, alt, ..
+                cond,
+                conseq,
+                alt,
+                ty,
+                ..
             } => {
                 let cond_ty = self.visit_expr(cond);
                 //have to clone before the "if let" block
@@ -868,6 +891,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 match (alt_ty, conseq_ty.clone()) {
                     (Some(alt_t), Some(conseq_t)) => {
                         if alt_t == conseq_t {
+                            *ty = alt_t.clone();
                             conseq_ty
                         } else {
                             self.err.type_check_error(
@@ -943,7 +967,10 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         Some(ty) => all_tys.push(Box::new(ty)),
                         _ => self.err.unexpected_error(
                             true,
-                            Some(UNEXPECTED_ERR_MSG.to_string()),
+                            Some(format!(
+                                "{} ALL types should be set for a tuple value.",
+                                UNEXPECTED_ERR_MSG
+                            )),
                             // This provides some imprecise info about the location of the error
                             Some(vals.iter().next().unwrap().loc().clone().unwrap().line_col),
                         ),

@@ -255,6 +255,7 @@ wasm:opcode:br:before {
         }
     "#,
     // numerics
+    "wasm:opcode:call:alt { u32 num = 0; }",
     "wasm:opcode:call:alt { i32 num = 0; }",
     // trigger available modes per event
     "wasm:opcode:*:before {}",
@@ -302,7 +303,6 @@ core::br:before / i == 1 / { i = 0; }  // SHOULD FAIL HERE
 
     "#,
     // Numerics (not supported yet: https://github.com/ejrgilbert/whamm/issues/141)
-    "wasm:opcode:call:alt { u32 num = 0; }",
     "wasm:opcode:call:alt { i64 num = 0; }",
     // trigger unavailable modes per event
     "wasm:opcode:unreachable:after {}",
@@ -526,7 +526,7 @@ pub fn test_parse_valid_scripts() {
 pub fn test_parse_fatal_scripts() {
     setup_logger();
     for script in FATAL_SCRIPTS {
-        info!("Parsing: {}", script);
+        println!("Parsing: {}", script);
         let result = std::panic::catch_unwind(|| {
             let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
             is_valid_script(script, &mut err)
@@ -722,6 +722,20 @@ pub fn testing_map() {
         }
         wasm::call:alt {
             i32 a = my_fn();
+        }
+    "#;
+
+    assert!(is_valid_script(script, &mut err));
+}
+#[test]
+pub fn testing_tuple_map() {
+    setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let script = r#"
+        map<(i32, i32, i32), i32> count;
+        wasm::br|br_if:before {
+          // count stores an array of counters
+          count[(fid, pc, index)]++;
         }
     "#;
 

@@ -101,7 +101,7 @@ prefix = _{ UNOP }
 UNOP = _{ neg }
     neg = { "!" }
 
-val = _{ BOOL | get_map | ID | INT | DEC | STRING | tuple}
+val = _{ BOOL | get_map | ID | INT | DEC | STRING | tuple }
 operand = _{ fn_call | "(" ~ expr ~ ")" | val }
 
 tuple = { "(" ~ ")" | "(" ~ (val) ~ ( "," ~ val )* ~ ")" }
