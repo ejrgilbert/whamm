@@ -1,6 +1,7 @@
 pub mod common;
 pub mod emitter;
 pub mod generator;
+pub mod libraries;
 pub mod parser;
 pub mod verifier;
 pub mod wast;

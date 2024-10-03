@@ -34,11 +34,13 @@ jobs:
           binaryName: wasm2wat
           binaryUrl: https://github.com/WebAssembly/wabt/releases/download/1.0.34/wabt-1.0.34-ubuntu.tar.gz
           binaryPathInArchive: wabt-1.0.34/bin/wasm2wat
-      - uses: plinioh/setup-binary-action@v1.0.0
-        with:
-          binaryName: wasm
-          binaryUrl: https://github.com/WebAssembly/wabt/releases/download/1.0.34/wabt-1.0.34-ubuntu.tar.gz
-          binaryPathInArchive: wabt-1.0.34/bin/wasm2wat
+      - name: Setup wasm-tools
+        run: |
+          echo "[INFO] Installing the 'wasm-tools' package..."
+          cargo install --locked wasm-tools
+          
+          echo "[INFO] Testing the 'wasm-tools' configuration..."
+          wasm-tools --version
       - name: Set-up OCaml
         uses: ocaml/setup-ocaml@v3
         with:
@@ -66,9 +68,7 @@ jobs:
           which v3c
           
           echo "[INFO] Building 'wizeng'..."
-          echo "[TODO] -- SWITCH TO MAIN WIZENG BRANCH WHEN IT IS FIXED (CURRENTLY NOT BUILDING)."
           git clone https://github.com/titzer/wizard-engine.git
-      
           pushd wizard-engine
           make -j
           popd
@@ -80,7 +80,8 @@ jobs:
           echo "[INFO] Testing the 'wizeng' interpreter configuration..."
           ls -al output/tests/interpreters
           ./output/tests/interpreters/spectest.x86-linux --help || [ $? == 3 ]
-          
+      - name: Setup Wasm Spec Reference Interpreter
+        run: |
           echo "[INFO] Configuring OCaml..."
           opam init -y
           eval $(opam env)
@@ -88,12 +89,13 @@ jobs:
           opam install -y menhir
           
           echo "[INFO] Building the wasm ref interpreter..."
-          ./wizard-engine/test/wasm-spec/update.sh
-          pushd wizard-engine/test/wasm-spec/repos/spec/interpreter && make
+          git clone https://github.com/WebAssembly/multi-memory.git
+          pushd multi-memory/interpreter
+          make
           popd
 
           echo "[INFO] Configuring the wasm ref interpreter..."
-          mv wizard-engine/test/wasm-spec/repos/spec/interpreter/wasm output/tests/interpreters
+          mv multi-memory/interpreter/wasm output/tests/interpreters
 
           echo "[INFO] Testing the wasm ref interpreter configuration..."
           ./output/tests/interpreters/wasm --help

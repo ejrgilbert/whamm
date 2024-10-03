@@ -1,7 +1,6 @@
 //library functions for maps in Whamm
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
-#![feature(vec_into_raw_parts)]
 use std::any::Any;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -455,6 +454,7 @@ pub fn create_i32_i32(name: i32) {
 }
 #[no_mangle]
 pub fn create_i32_string(name: i32) {
+    println!("DEBUG: creating i32_string map with name '{name}'");
     MY_MAPS
         .lock()
         .unwrap()
@@ -832,7 +832,7 @@ pub fn insert_i32_i32(name: i32, key: i32, value: i32) {
 }
 
 #[no_mangle]
-pub fn get_i32_from_i32i32i32tuple(name: i32, key0: i32, key1: i32, key2: i32) -> i32 {
+pub fn get_i32i32i32tuple_i32(name: i32, key0: i32, key1: i32, key2: i32) -> i32 {
     get_i32(name, &Box::new(TupleVariant::i32_i32_i32(key0, key1, key2)))
 }
 #[no_mangle]
@@ -857,34 +857,22 @@ pub fn string_from_data(offset: u32, length: u32) -> String {
     let callee_ptr: *const u8 = offset as *const u8;
     let callee_slice: &[u8] =
         unsafe { slice::from_raw_parts(callee_ptr, usize::try_from(length).unwrap()) };
-    String::from_utf8(callee_slice.to_vec()).unwrap()
-}
-#[no_mangle]
-pub fn string_to_data(s: String) -> (u32, u32) {
-    let (pointer, length, ..) = s.into_raw_parts();
-
-    (pointer as u32, length as u32)
+    assert_eq!(length as usize, callee_slice.len());
+    let str = String::from_utf8(callee_slice.to_vec()).unwrap();
+    println!("Got the following string from memory: {str}");
+    str
 }
 
 #[no_mangle]
-pub fn set_metadata_header(offset: u32, len: u32) {
-    METADATA_HEADER.with(|header| *header.borrow_mut() = (offset, len));
-}
-
-#[no_mangle]
-pub fn print_metadata_header() {
-    METADATA_HEADER.with(|header| {
-        let header = &*header.borrow();
-        println!("{}", string_from_data(header.0, header.1));
-    });
-}
-
-#[no_mangle]
-pub fn print_map(map_id: i32) -> String {
-    println!("DEBUG: printing map {map_id}");
+pub fn print_map(map_id: i32) {
     let binding = MY_MAPS.lock().unwrap();
     let map = binding.get(&map_id).unwrap();
-    format!("{}", map.dump_map())
+    println!("{}", map.dump_map())
+}
+#[no_mangle]
+pub fn report_global_i32_preamble(global_id: u32, global_meta_offset: u32, global_meta_length: u32, global_val: i32) {
+    let global_meta = string_from_data(global_meta_offset, global_meta_length);
+    println!("i32,{},{},{}", global_id, global_meta, global_val);
 }
 #[no_mangle]
 pub fn print_global_i32_meta_helper(global_id: u32, global_meta_offset: u32, global_meta_length: u32, global_val: i32) {
@@ -910,27 +898,4 @@ pub fn print_map_meta() {
         }
     }
     println!("{}", running_output);
-}
-
-//MAIN STARTS HERE
-
-#[no_mangle]
-pub fn foo(a: i32) -> i32 {
-    a - 3
-}
-
-#[no_mangle]
-pub fn bar(a: i32) -> i32 {
-    let b = foo(a);
-    for i in 0..b {
-        println!("hello: {i}")
-    }
-
-    b
-}
-
-#[no_mangle]
-fn main() {
-    let b = bar(15);
-    println!("b = {b}");
 }

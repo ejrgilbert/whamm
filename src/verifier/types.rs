@@ -1,4 +1,5 @@
 use crate::common::error::ErrorGen;
+use crate::libraries::core::WHAMM_CORE_LIB_NAME;
 use crate::parser::types::{DataType, Definition, FnId, Location, ProbeSpec, Value};
 use pest::error::LineColLocation;
 use std::collections::HashMap;
@@ -256,20 +257,20 @@ impl SymbolTable {
         None
     }
 
-    pub fn lookup_lib_fn(
+    pub fn lookup_lib(
         &self,
         key: &str,
         loc: &Option<Location>,
         err: &mut ErrorGen,
     ) -> Option<&Record> {
         if let Some(rec) = self.lookup_rec(key) {
-            if matches!(rec, Record::LibFn { .. }) {
+            if matches!(rec, Record::Library { .. }) {
                 Some(rec)
             } else {
                 err.unexpected_error(
                     true,
                     Some(format!(
-                        "Unexpected record type. Expected LibFn, found: {:?}",
+                        "Unexpected record type. Expected Library, found: {:?}",
                         rec
                     )),
                     line_col_from_loc(loc),
@@ -277,13 +278,39 @@ impl SymbolTable {
                 None
             }
         } else {
-            err.unexpected_error(
-                true,
-                Some(format!("Could not find map function for: {}", key)),
-                line_col_from_loc(loc),
-            );
             None
         }
+    }
+    pub fn lookup_lib_mut(
+        &mut self,
+        key: &str,
+        loc: &Option<Location>,
+        err: &mut ErrorGen,
+    ) -> Option<&mut Record> {
+        if let Some(rec) = self.lookup_rec_mut(key) {
+            if matches!(rec, Record::Library { .. }) {
+                Some(rec)
+            } else {
+                err.unexpected_error(
+                    true,
+                    Some(format!(
+                        "Unexpected record type. Expected Library, found: {:?}",
+                        rec
+                    )),
+                    line_col_from_loc(loc),
+                );
+                None
+            }
+        } else {
+            None
+        }
+    }
+    pub fn lookup_core_lib_mut(
+        &mut self,
+        loc: &Option<Location>,
+        err: &mut ErrorGen,
+    ) -> Option<&mut Record> {
+        self.lookup_lib_mut(WHAMM_CORE_LIB_NAME, loc, err)
     }
 
     pub fn lookup_var_mut(
@@ -607,9 +634,10 @@ pub enum Record {
         addr: Option<VarAddr>,
         loc: Option<Location>,
     },
-    LibFn {
+    Library {
         name: String,
-        fn_id: u32,
+        is_comp_provided: bool,
+        fns: HashMap<String, u32>, // func_name -> FID
     },
 }
 impl Record {

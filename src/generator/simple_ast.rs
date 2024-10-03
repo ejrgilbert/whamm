@@ -257,15 +257,18 @@ impl WhammVisitor<()> for SimpleASTBuilder<'_, '_> {
     }
 
     fn visit_event(&mut self, event: &dyn Event) {
+        trace!("Entering: BehaviorTreeBuilder::visit_event");
         self.add_event_to_ast(event.name());
         event.probes().iter().for_each(|(_mode, probe_list)| {
             probe_list.iter().for_each(|probe| {
                 self.visit_probe(probe);
             });
         });
+        trace!("Exiting: BehaviorTreeBuilder::visit_event");
     }
 
     fn visit_probe(&mut self, probe: &Box<dyn Probe>) {
+        trace!("Entering: BehaviorTreeBuilder::visit_probe");
         //visit the statements in the probe and check for report_decls
         if probe.body().is_none() {
             self.add_probe_to_ast(probe.as_ref(), 0);
@@ -276,23 +279,27 @@ impl WhammVisitor<()> for SimpleASTBuilder<'_, '_> {
         }
         self.add_probe_to_ast(probe.as_ref(), self.curr_num_reports);
         self.curr_num_reports = 0;
+        trace!("Exiting: BehaviorTreeBuilder::visit_probe");
     }
 
     fn visit_fn(&mut self, _f: &Fn) {
-        unreachable!()
+        todo!()
     }
 
     fn visit_formal_param(&mut self, _param: &(Expr, DataType)) {
-        unreachable!()
+        todo!()
     }
 
     fn visit_block(&mut self, block: &Block) {
+        trace!("Entering: BehaviorTreeBuilder::visit_block");
         for stmt in &block.stmts {
             self.visit_stmt(stmt);
         }
+        trace!("Exiting: BehaviorTreeBuilder::visit_block");
     }
 
     fn visit_stmt(&mut self, stmt: &Statement) {
+        trace!("Entering: BehaviorTreeBuilder::visit_stmt");
         // for checking for report_decls
         match stmt {
             Statement::ReportDecl { .. } => self.curr_num_reports += 1,
@@ -302,6 +309,7 @@ impl WhammVisitor<()> for SimpleASTBuilder<'_, '_> {
             }
             _ => {}
         }
+        trace!("Exiting: BehaviorTreeBuilder::visit_stmt");
     }
 
     fn visit_expr(&mut self, _call: &Expr) {

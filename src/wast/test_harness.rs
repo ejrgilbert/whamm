@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::common::instr::{run, try_path};
+use crate::common::instr::{run, try_path, Config, LibraryLinkStrategy};
 use log::{debug, error};
 use orca_wasm::Module;
 use std::fs::{remove_dir_all, File};
@@ -8,6 +8,7 @@ use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
+const CORE_WASM_PATH: &str = "./core_lib/target/wasm32-wasip1/release/core_lib.wasm";
 const TEST_DEBUG_DIR: &str = "output/tests/debug_me/";
 const OUTPUT_DIR: &str = "output/tests/wast_suite";
 const OUTPUT_WHAMMED_WAST: &str = "output/tests/wast_suite/should_pass";
@@ -85,7 +86,7 @@ fn run_wast_tests(wast_should_fail: Vec<String>, wast_should_pass: Vec<String>) 
         2. the Wasm reference interpreter, named '{WASM_REF_INT}'. https://github.com/WebAssembly/spec/tree/main/interpreter\n");
 
     println!("\n>>> Running wast on the following available interpreters:");
-    for (i, inter) in inters.iter().enumerate() {
+    for (i, (inter, _args)) in inters.iter().enumerate() {
         println!("{i}. {inter}");
     }
     println!();
@@ -95,11 +96,11 @@ fn run_wast_tests(wast_should_fail: Vec<String>, wast_should_pass: Vec<String>) 
 }
 
 /// Run all the wast files that should FAIL on each of the configured interpreters
-fn run_wast_tests_that_should_fail(inters: &[String], wast_files: Vec<String>) {
+fn run_wast_tests_that_should_fail(inters: &[(String, Vec<String>)], wast_files: Vec<String>) {
     debug!("Running wast tests that should fail.");
-    for inter in inters.iter() {
+    for (inter, args) in inters.iter() {
         for wast in wast_files.iter() {
-            let res = run_wast_test(inter, wast);
+            let res = run_wast_test(inter, args, wast);
             if res.status.success() {
                 error!("The following command should have FAILED (ran un-instrumented): '{inter} {wast}'");
             }
@@ -109,11 +110,11 @@ fn run_wast_tests_that_should_fail(inters: &[String], wast_files: Vec<String>) {
 }
 
 /// Run all the wast files that should PASS on each of the configured interpreters
-fn run_wast_tests_that_should_pass(inters: &[String], wast_files: Vec<String>) {
+fn run_wast_tests_that_should_pass(inters: &[(String, Vec<String>)], wast_files: Vec<String>) {
     debug!("Running wast tests that should pass.");
-    for inter in inters.iter() {
+    for (inter, args) in inters.iter() {
         for wast in wast_files.iter() {
-            let res = run_wast_test(inter, wast);
+            let res = run_wast_test(inter, args, wast);
             if !res.status.success() {
                 error!(
                     "The following command should have PASSED: '{inter} {wast}'\n{}\n{}",
@@ -126,21 +127,40 @@ fn run_wast_tests_that_should_pass(inters: &[String], wast_files: Vec<String>) {
     }
 }
 
-fn run_wast_test(inter: &String, wast_file_name: &String) -> Output {
-    Command::new(inter)
+fn run_wast_test(inter: &String, args: &[String], wast_file_name: &String) -> Output {
+    let mut command = &mut Command::new(inter);
+    for arg in args.iter() {
+        command = command.arg(arg);
+    }
+    command
         .arg(wast_file_name)
         .output()
         .expect("failed to execute process")
+    // if inter == WIZENG_SPEC_INT {
+    //     Command::new(inter)
+    //         .arg("-ext:multi-memory")
+    //         .arg(wast_file_name)
+    //         .output()
+    //         .expect("failed to execute process")
+    // } else {
+    //     Command::new(inter)
+    //         .arg(wast_file_name)
+    //         .output()
+    //         .expect("failed to execute process")
+    // }
 }
 
 const INT_PATH: &str = "./output/tests/interpreters";
 const WIZENG_SPEC_INT: &str = "spectest.x86-linux";
 const WASM_REF_INT: &str = "wasm";
-fn get_available_interpreters() -> Vec<String> {
-    let supported_interpreters = [WASM_REF_INT, WIZENG_SPEC_INT];
+fn get_available_interpreters() -> Vec<(String, Vec<String>)> {
+    let supported_interpreters = [
+        (WASM_REF_INT, vec![]),
+        (WIZENG_SPEC_INT, vec!["-ext:multi-memory".to_string()]),
+    ];
     let mut available_interpreters = Vec::new();
 
-    for interpreter in supported_interpreters.iter() {
+    for (interpreter, args) in supported_interpreters.iter() {
         let int_path = format!("{INT_PATH}/{interpreter}");
         match Command::new(&int_path).arg("--help").output() {
             Err(..) => {
@@ -148,7 +168,7 @@ fn get_available_interpreters() -> Vec<String> {
             }
             Ok(res) => {
                 if res.status.success() {
-                    available_interpreters.push(int_path);
+                    available_interpreters.push((int_path, args.clone()));
                 }
             }
         }
@@ -217,17 +237,17 @@ fn generate_instrumented_bin_wast(
         );
         try_path(&debug_file_path);
         let instrumented_module_wasm = run(
+            CORE_WASM_PATH,
             &mut module_to_instrument,
             &test_case.whamm_script,
             &format!("{:?}", wast_path),
             Some(debug_file_path.clone()),
             0,
-            // Config {
-            //     virgil: false,
-            //     testing: true,
-            //     library_strategy: LibraryStrategy::Linked,
-            //     mem_offset: 0 // unused anyway!
-            // },
+            Config {
+                virgil: false,
+                testing: true,
+                library_strategy: LibraryLinkStrategy::Imported,
+            },
         );
         wasm2wat_on_file(debug_file_path.as_str());
 
@@ -541,11 +561,17 @@ pub fn vec_as_hex(vec: &[u8]) -> String {
 }
 
 pub fn wasm2wat_on_file(instrumented_wasm_path: &str) {
-    debug!("Running wasm2wat on file: {instrumented_wasm_path}");
-    let res = Command::new("wasm2wat")
+    debug!("Running 'wasm-tools validate' on file: {instrumented_wasm_path}");
+    let res = Command::new("wasm-tools")
+        .arg("validate")
         .arg(instrumented_wasm_path)
         .output()
         .expect("failed to execute process");
+
+    if !res.status.success() {
+        println!("STDOUT: {}", String::from_utf8(res.stdout).unwrap());
+        println!("STDERR: {}", String::from_utf8(res.stderr).unwrap());
+    }
 
     assert!(res.status.success());
 }

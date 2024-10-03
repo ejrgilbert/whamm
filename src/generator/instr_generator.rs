@@ -1,5 +1,4 @@
 use crate::common::error::ErrorGen;
-use crate::emitter::map_lib_adapter::{RESERVED_MAP_METADATA_MAP_ID, RESERVED_VAR_METADATA_MAP_ID};
 use crate::emitter::report_var_metadata::{BytecodeLoc, LocationData, Metadata};
 use crate::emitter::rewriting::module_emitter::StringAddr;
 use crate::emitter::rewriting::rules::{provider_factory, Arg, LocInfo, ProbeSpec, WhammProvider};
@@ -8,12 +7,12 @@ use crate::emitter::rewriting::Emitter;
 use crate::generator::simple_ast::{SimpleAST, SimpleProbe};
 use crate::generator::types::ExprFolder;
 use crate::parser::rules::core::WhammModeKind;
-use crate::parser::types::{Block, DataType, Expr};
+use crate::parser::types::{Block, Expr};
 use crate::verifier::types::Record;
 use orca_wasm::ir::id::{FunctionID, GlobalID};
 use orca_wasm::ir::types::{BlockType as OrcaBlockType, Value as OrcaValue};
 use orca_wasm::iterator::iterator_trait::Iterator;
-use orca_wasm::opcode::{Instrumenter, MacroOpcode};
+use orca_wasm::opcode::Instrumenter;
 use orca_wasm::{DataSegment, DataSegmentKind, InitExpr, Opcode};
 use orca_wasm::{Location as OrcaLocation, Location};
 use std::collections::HashMap;
@@ -35,20 +34,20 @@ fn get_loc_info<'a>(rule: &'a WhammProvider, emitter: &VisitingEmitter) -> Optio
 /// passed emitter to emit instrumentation code.
 /// This process should ideally be generic, made to perform a specific
 /// instrumentation technique by the passed Emitter type.
-pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
-    pub emitter: VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f>,
+pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> {
+    pub emitter: VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g>,
     pub ast: SimpleAST,
-    pub err: &'g mut ErrorGen,
+    pub err: &'h mut ErrorGen,
     curr_instr_args: Vec<Arg>,
     curr_probe_mode: WhammModeKind,
     /// The current probe's body and predicate
     curr_probe: Option<(Option<Block>, Option<Expr>)>,
 }
-impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
+impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> {
     pub fn new(
-        emitter: VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f>,
+        emitter: VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g>,
         ast: SimpleAST,
-        err: &'g mut ErrorGen,
+        err: &'h mut ErrorGen,
     ) -> Self {
         Self {
             emitter,
@@ -198,7 +197,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         };
     }
 }
-impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_> {
+impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_> {
     fn emit_probe(&mut self) -> bool {
         let mut is_success = true;
 
@@ -452,41 +451,13 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_> {
             //now set the new key value for the new maps
             map_meta_str.insert(*key, val);
         }
-        let mut is_success = self.setup_global_map_init(&var_meta_str, &map_meta_str);
+        let mut is_success = self.setup_global_map_init();
         is_success &= self.setup_print_global_meta(&var_meta_str);
+        is_success &= self.setup_print_map_meta(&map_meta_str);
         is_success
     }
 
-    fn setup_global_map_init(
-        &mut self,
-        var_meta_str: &HashMap<u32, String>,
-        map_meta_str: &HashMap<u32, String>,
-    ) -> bool {
-        // get IDs of all funcs to be called
-        let Some(create_i32_string_fname) =
-            self.emitter
-                .map_lib_adapter
-                .create_map_fname(DataType::I32, DataType::Str, self.err)
-        else {
-            return false;
-        };
-        let Some(create_i32_string_id) = self.get_lib_fn_id(&create_i32_string_fname) else {
-            return false;
-        };
-        let Some(insert_i32_string_fname) =
-            self.emitter
-                .map_lib_adapter
-                .insert_map_fname(DataType::I32, DataType::Str, self.err)
-        else {
-            return false;
-        };
-        let Some(insert_i32_string_id) = self.get_lib_fn_id(&insert_i32_string_fname) else {
-            return false;
-        };
-        let Some(set_metadata_header_id) = self.get_lib_fn_id("set_metadata_header") else {
-            return false;
-        };
-
+    fn setup_global_map_init(&mut self) -> bool {
         //first, we need to create the maps in global_map_init - where all the other maps are initialized
         let global_map_init_id = match self
             .emitter
@@ -562,89 +533,18 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_> {
                 len: header.len(),
             },
         );
-        if let Some(addr) = self.emitter.mem_tracker.emitted_strings.get(&header) {
-            // update curr_mem_offset to account for new data
-            self.emitter.mem_tracker.curr_mem_offset += header.len();
-
-            global_map_init.i32_const(addr.mem_offset as i32);
-            global_map_init.i32_const(addr.len as i32);
-            global_map_init.call(FunctionID(set_metadata_header_id));
-        } else {
-            // todo(maps) -- make this an error!
-            panic!("Failed to write out string")
-        }
-
-        // set up the metadata map creation!
-
-        //now create the metadata maps
-        global_map_init.u32_const(RESERVED_VAR_METADATA_MAP_ID);
-        global_map_init.call(FunctionID(create_i32_string_id));
-        global_map_init.u32_const(RESERVED_MAP_METADATA_MAP_ID);
-        global_map_init.call(FunctionID(create_i32_string_id));
-
-        //now, for each of the maps, emit the correct stuff
-        for (key, val) in var_meta_str.iter() {
-            if let Some(val_addr) = self.emitter.mem_tracker.emitted_strings.get(val) {
-                //now, emit the map entry
-                global_map_init.u32_const(RESERVED_VAR_METADATA_MAP_ID);
-                global_map_init.u32_const(*key);
-                global_map_init.u32_const(val_addr.mem_offset as u32);
-                global_map_init.u32_const(val_addr.len as u32);
-                global_map_init.call(FunctionID(insert_i32_string_id));
-            } else {
-                self.err.add_error(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!(
-                        "Failed to find emitted string for metadata with key: {}",
-                        key
-                    )),
-                    None,
-                ));
-                return false;
-            }
-        }
-        for (key, val) in map_meta_str.iter() {
-            if let Some(val_addr) = self.emitter.mem_tracker.emitted_strings.get(val) {
-                //now, emit the map entry
-                global_map_init.u32_const(RESERVED_MAP_METADATA_MAP_ID);
-                global_map_init.u32_const(*key);
-                global_map_init.i32_const(val_addr.mem_offset as i32);
-                global_map_init.i32_const(val_addr.len as i32);
-                global_map_init.call(FunctionID(insert_i32_string_id));
-            } else {
-                self.err.add_error(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!(
-                        "Failed to find emitted string for metadata with key: {}",
-                        key
-                    )),
-                    None,
-                ));
-                return false;
-            }
-        }
         true
     }
 
     /// set up the print_global_meta function for insertions
     fn setup_print_global_meta(&mut self, var_meta_str: &HashMap<u32, String>) -> bool {
-        // get the IDs of the funcs to call
+        // get the function
         // todo(maps) -- look up the func name instead!
-        let Some(print_metadata_header_id) = self.get_lib_fn_id("print_metadata_header") else {
-            return false;
-        };
-        let print_metadata_header_id = FunctionID(print_metadata_header_id);
-        // todo(maps) -- look up the func name instead!
-        let Some(print_global_i32_meta_helper_id) =
-            self.get_lib_fn_id("print_global_i32_meta_helper")
-        else {
-            return false;
-        };
-        let print_global_i32_meta_helper_id = FunctionID(print_global_i32_meta_helper_id);
-
-        //first, we need to create the maps in global_map_init - where all the other maps are initialized
-        // todo(maps) -- look up the func name instead!
-        let Some(print_global_meta_id) = self.get_lib_fn_id("print_global_meta") else {
+        let print_global_meta_id = if let Some(Record::Fn { addr: Some(id), .. }) =
+            self.emitter.table.lookup_fn("print_global_meta", self.err)
+        {
+            *id
+        } else {
             return false;
         };
         let print_global_meta_id = FunctionID(print_global_meta_id);
@@ -674,49 +574,85 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_> {
             func_idx: print_global_meta_id, // not used
             instr_idx: 0,
         });
-        //print the header
-        print_global_meta.call(print_metadata_header_id);
+
+        // output the header data segment
+        let header = Metadata::get_csv_header();
+        self.emitter
+            .io_adapter
+            .putsln(header.clone(), &mut print_global_meta, self.err);
 
         // for each of the report globals, emit the printing logic
         for (key, val) in var_meta_str.iter() {
-            if let Some(val_addr) = self.emitter.mem_tracker.emitted_strings.get(val) {
-                // emit the ID of this global
-                print_global_meta.u32_const(*key);
-                // The pointer/len to the metadata string
-                print_global_meta.i32_const(val_addr.mem_offset as i32);
-                print_global_meta.i32_const(val_addr.len as i32);
-                // get the value of this report global
-                print_global_meta.global_get(GlobalID(*key));
-                print_global_meta.call(print_global_i32_meta_helper_id);
-            } else {
+            self.emitter.io_adapter.puts(
+                format!("i32,{key},{val},"),
+                &mut print_global_meta,
+                self.err,
+            );
+
+            // get the value of this report global
+            print_global_meta.global_get(GlobalID(*key));
+            self.emitter
+                .io_adapter
+                .call_puti(&mut print_global_meta, self.err);
+            self.emitter
+                .io_adapter
+                .putln(&mut print_global_meta, self.err);
+        }
+        true
+    }
+    fn setup_print_map_meta(&mut self, map_meta_str: &HashMap<u32, String>) -> bool {
+        // get the function
+        //first, we need to create the maps in global_map_init - where all the other maps are initialized
+        // todo(maps) -- look up the func name instead!
+        let print_map_meta_id = if let Some(Record::Fn { addr: Some(id), .. }) =
+            self.emitter.table.lookup_fn("print_map_meta", self.err)
+        {
+            *id
+        } else {
+            return false;
+        };
+        let print_map_meta_id = FunctionID(print_map_meta_id);
+
+        let mut print_map_meta = match self
+            .emitter
+            .app_iter
+            .module
+            .functions
+            .get_fn_modifier(print_map_meta_id)
+        {
+            Some(func) => func,
+            None => {
                 self.err.add_error(ErrorGen::get_unexpected_error(
                     true,
                     Some(format!(
-                        "Failed to find emitted string for metadata with key: {}",
-                        key
+                        "{UNEXPECTED_ERR_MSG} \
+                    No 'print_map_meta' function found in the module!"
                     )),
                     None,
                 ));
                 return false;
             }
+        };
+        //now set uxp the actual module editing
+        print_map_meta.before_at(Location::Module {
+            func_idx: print_map_meta_id, // not used
+            instr_idx: 0,
+        });
+
+        // for each of the report maps, emit the printing logic
+        for (key, val) in map_meta_str.iter() {
+            self.emitter.io_adapter.puts(
+                format!("map,{key},{val},"),
+                &mut print_map_meta,
+                self.err,
+            );
+
+            // print the value(s) of this map
+            self.emitter
+                .map_lib_adapter
+                .print_map(*key, &mut print_map_meta, self.err);
+            self.emitter.io_adapter.putln(&mut print_map_meta, self.err);
         }
         true
-    }
-    fn get_lib_fn_id(&mut self, func_name: &str) -> Option<u32> {
-        match self.emitter.table.lookup_lib_fn(func_name, &None, self.err) {
-            Some(Record::LibFn { fn_id, .. }) => Some(*fn_id),
-            Some(rec) => {
-                self.err.add_error(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!(
-                        "Unexpected record type. Expected LibFn, found: {:?}",
-                        rec
-                    )),
-                    None,
-                ));
-                None
-            }
-            None => None,
-        }
     }
 }

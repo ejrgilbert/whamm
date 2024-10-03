@@ -1,11 +1,14 @@
+use crate::cli::LibraryLinkStrategyArg;
 use crate::common::error::ErrorGen;
-use crate::emitter::map_lib_adapter::MapLibAdapter;
 use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::rewriting::module_emitter::{MemoryTracker, ModuleEmitter};
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::generator::init_generator::InitGenerator;
 use crate::generator::instr_generator::InstrGenerator;
 use crate::generator::simple_ast::build_simple_ast;
+use crate::libraries::core::io::IOPackage;
+use crate::libraries::core::maps::MapLibPackage;
+use crate::libraries::core::LibPackage;
 use crate::parser::types::Whamm;
 use crate::parser::whamm_parser::parse_script;
 use crate::verifier::types::SymbolTable;
@@ -16,7 +19,7 @@ use orca_wasm::Module;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::exit;
-// use crate::cli::{LibraryStrategy, MemoryStrategy};
+use wasmparser::MemoryType;
 
 /// create output path if it doesn't exist
 pub(crate) fn try_path(path: &String) {
@@ -25,10 +28,28 @@ pub(crate) fn try_path(path: &String) {
     }
 }
 
-pub enum LibStrategy {
+/// Copy to enable access for testing...
+/// Options for handling instrumentation library.
+#[derive(Clone, Debug)]
+pub enum LibraryLinkStrategy {
+    /// Merge the library with the `app.wasm` **target VM must support multi-memory**.
+    /// Will create a new memory in the `app.wasm` to be targeted by the instrumentation.
+    Merged,
+    /// Link the library through Wasm imports into `app.wasm` (target VM must support dynamic linking).
+    /// Naturally, the instrumentation memory will reside in its own module instantiation.
     Imported,
-    MergedWithMulti,
-    MergedWithOffset(u32),
+}
+impl From<Option<LibraryLinkStrategyArg>> for LibraryLinkStrategy {
+    fn from(value: Option<LibraryLinkStrategyArg>) -> Self {
+        match value {
+            Some(LibraryLinkStrategyArg::Imported) => LibraryLinkStrategy::Imported,
+            Some(LibraryLinkStrategyArg::Merged) => LibraryLinkStrategy::Merged,
+            None => {
+                info!("Using default library linking strategy: 'imported'");
+                LibraryLinkStrategy::Imported
+            }
+        }
+    }
 }
 
 pub struct Config {
@@ -39,24 +60,43 @@ pub struct Config {
     pub testing: bool,
 
     /// The strategy to take when handling the injecting references to the `whamm!` library.
-    pub library_strategy: LibStrategy,
+    pub library_strategy: LibraryLinkStrategy,
 }
 impl Default for Config {
     fn default() -> Self {
         Self {
             virgil: false,
             testing: false,
-            library_strategy: LibStrategy::Imported,
+            library_strategy: LibraryLinkStrategy::Imported,
+        }
+    }
+}
+impl Config {
+    pub fn new(virgil: bool, testing: bool, link_strategy: Option<LibraryLinkStrategyArg>) -> Self {
+        if virgil {
+            error!("Targeting Virgil is not yet supported!");
+            exit(1);
+        }
+        if testing {
+            error!("Generating helper methods for testing mode is not yet supported!");
+            exit(1);
+        }
+        let library_strategy = LibraryLinkStrategy::from(link_strategy);
+        Self {
+            virgil,
+            testing,
+            library_strategy,
         }
     }
 }
 
 pub fn run_with_path(
+    core_wasm_path: &str,
     app_wasm_path: String,
     script_path: String,
     output_wasm_path: String,
     max_errors: i32,
-    // config: Config
+    config: Config,
 ) {
     // Read app Wasm into Orca module
     let buff = std::fs::read(app_wasm_path).unwrap();
@@ -72,22 +112,24 @@ pub fn run_with_path(
     };
 
     run(
+        core_wasm_path,
         &mut app_wasm,
         &whamm_script,
         &script_path,
         Some(output_wasm_path),
         max_errors,
-        // config,
+        config,
     );
 }
 
 pub fn run(
+    core_wasm_path: &str,
     app_wasm: &mut Module,
     whamm_script: &String,
     script_path: &str,
     output_wasm_path: Option<String>,
     max_errors: i32,
-    // config: Config
+    config: Config,
 ) -> Vec<u8> {
     // Set up error reporting mechanism
     let mut err = ErrorGen::new(script_path.to_string(), "".to_string(), max_errors);
@@ -103,18 +145,39 @@ pub fn run(
 
     // TODO Configure the generator based on target (wizard vs bytecode rewriting)
 
+    // Merge in the core library IF NEEDED
+    let mut map_package = MapLibPackage::default();
+    let mut io_package = IOPackage::default();
+    let mut core_packages: Vec<&mut dyn LibPackage> = vec![&mut map_package, &mut io_package];
+    crate::libraries::actions::link_core_lib(
+        config.library_strategy,
+        &whamm,
+        app_wasm,
+        core_wasm_path,
+        &mut core_packages,
+        &mut err,
+    );
+    let mut map_lib_adapter = map_package.adapter;
+    let mut io_adapter = io_package.adapter;
+    // If there were any errors encountered, report and exit!
+    err.check_has_errors();
+
+    // TODO -- add second memory to hold on to instrumentation data
     // Create the memory tracker + the map and metadata tracker
-    if app_wasm.memories.len() > 1 {
-        // TODO -- make this work with multi-memory
-        panic!("only single memory is supported")
-    };
+    let mem_id = app_wasm.memories.len() as u32;
+    app_wasm.memories.push(MemoryType {
+        memory64: false,
+        shared: false,
+        initial: 1,
+        maximum: None,
+        page_size_log2: None,
+    });
     let mut mem_tracker = MemoryTracker {
-        mem_id: 0,                     // Assuming the ID of the first memory is 0!
-        curr_mem_offset: 1_052_576, // Set default memory base address to DEFAULT + 4KB = 1048576 bytes + 4000 bytes = 1052576 bytes
-        required_initial_mem_size: 27, // Size memory must be to account for the added data
+        mem_id,
+        curr_mem_offset: 0,
+        required_initial_mem_size: 0,
         emitted_strings: HashMap::new(),
     };
-    let mut map_lib_adapter = MapLibAdapter::new();
     let mut report_var_metadata = ReportVarMetadata::new();
 
     // Phase 0 of instrumentation (emit globals and provided fns)
@@ -145,6 +208,7 @@ pub fn run(
             &mut symbol_table,
             &mut mem_tracker,
             &mut map_lib_adapter,
+            &mut io_adapter,
             &mut report_var_metadata,
         ),
         simple_ast,

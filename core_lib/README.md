@@ -1,11 +1,15 @@
-# The `maps` Library #
+# Whamm's Core Library #
+
+## Maps Package ##
 
 This provides the `maps` functionality for `whamm!` and depends on running on `wasi-preview1` to log `report` variables.
 We enable running on `wasi` through the `wasmtime-runner` Rust project at the base of the `whamm!` project directory.
 
+## To Run ##
+
 To run:
-- In the base of this project (`whamm/wasm_playground/maps`), execute: `cargo build --release --target wasm32-wasip1`
-- The built `wasm` binary will be located at `whamm/wasm_playground/maps/target/wasm32-wasip1/release/maps.wasm`
+- In the base of this project (`whamm/core_lib`), execute: `cargo build --release --target wasm32-wasip1`
+- The built `wasm` binary will be located at `whamm/core_lib/target/wasm32-wasip1/release/core_lib.wasm`
 - An example `whamm!` script lives at `./src/add_map.mm`
 
 ## Issues: ##

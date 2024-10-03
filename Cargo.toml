@@ -13,8 +13,9 @@ path = "src/main.rs"
 failure = "0.1.5"
 glob = "0.3.1"
 lazy_static = "1.4.0"
-orca-wasm = "0.1.1"
-wasmparser = "0.215.0"
+#orca-wasm = { path = "../orca" }
+orca-wasm = "0.1.4"
+wasmparser = "0.217.0"
 
 # Logging
 env_logger = "0.10.2"

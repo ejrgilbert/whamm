@@ -7,8 +7,8 @@ use crate::emitter::report_var_metadata::LocationData;
 use crate::emitter::rewriting::module_emitter::ModuleEmitter;
 use crate::parser::rules::{Event, Package, Probe, Provider};
 use crate::parser::types::{
-    BinOp, Block, DataType, Definition, Expr, Fn, Global, ProvidedFunction, Script, Statement,
-    UnOp, Value, Whamm, WhammVisitorMut,
+    BinOp, Block, DataType, Definition, Expr, Fn, FnId, Global, ProvidedFunction, Script,
+    Statement, UnOp, Value, Whamm, WhammVisitorMut,
 };
 use crate::verifier::types::Record;
 use log::{debug, info, trace, warn};
@@ -66,6 +66,7 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
                     &global.value,
                     self.err,
                 ) {
+                    debug!("added global_getter: {:?}", fid);
                     self.injected_funcs.push(fid);
                 }
             }
@@ -81,67 +82,10 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
         });
         is_success
     }
-    fn lib_fn_set(&mut self) {
-        //add library functions to the symbol table - skips if not in the wasm module
-        let lib_map_fns = [
-            "create_i32_i32".to_string(),
-            "create_i32_bool".to_string(),
-            "create_i32_string".to_string(),
-            "create_i32_tuple".to_string(),
-            "create_i32_map".to_string(),
-            "create_string_i32".to_string(),
-            "create_string_bool".to_string(),
-            "create_string_string".to_string(),
-            "create_string_tuple".to_string(),
-            "create_string_map".to_string(),
-            "create_bool_i32".to_string(),
-            "create_bool_bool".to_string(),
-            "create_bool_string".to_string(),
-            "create_bool_tuple".to_string(),
-            "create_bool_map".to_string(),
-            "create_tuple_i32".to_string(),
-            "create_tuple_bool".to_string(),
-            "create_tuple_string".to_string(),
-            "create_tuple_tuple".to_string(),
-            "create_tuple_map".to_string(),
-            "insert_i32_i32".to_string(),
-            "insert_i32i32i32tuple_i32".to_string(),
-            "get_i32_i32".to_string(),
-            "get_i32_from_i32i32i32tuple".to_string(),
-            "print_map".to_string(),
-            "insert_i32_string".to_string(),
-            "get_string_from_i32string".to_string(),
-            "print_map_meta".to_string(),
-            "print_global_i32_meta_helper".to_string(),
-            "set_metadata_header".to_string(),
-            "print_metadata_header".to_string(),
-        ];
-        for lib_fn in lib_map_fns.iter() {
-            let id_option = self
-                .emitter
-                .app_wasm
-                .functions
-                .get_local_fid_by_name(lib_fn);
-            let id = match id_option {
-                Some(id_option) => *id_option,
-                None => {
-                    warn!("Expected function not found for name: {lib_fn}");
-                    continue;
-                }
-            };
-            self.emitter.table.put(
-                lib_fn.to_string(),
-                Record::LibFn {
-                    name: lib_fn.to_string(),
-                    fn_id: id,
-                },
-            );
-        }
-    }
     fn on_startup(&mut self) {
-        self.lib_fn_set();
         self.create_start();
         self.create_global_map_init();
+        self.create_print_map_meta();
         self.create_print_global_meta();
     }
     fn create_start(&mut self) {
@@ -213,6 +157,49 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
         }
     }
 
+    fn create_print_map_meta(&mut self) {
+        if self
+            .emitter
+            .app_wasm
+            .functions
+            .get_local_fid_by_name("print_map_meta")
+            .is_some()
+        {
+            debug!("print_map_meta function already exists");
+            self.err.add_error(ErrorGen::get_unexpected_error(
+                true,
+                Some(
+                    "print_map_meta function already exists - needs to be created by Whamm"
+                        .to_string(),
+                ),
+                None,
+            ));
+            return;
+        }
+
+        debug!("Creating the print_map_meta function");
+        let print_map_meta_fn = FunctionBuilder::new(&[], &[]);
+        let print_map_meta_id = print_map_meta_fn.finish_module(self.emitter.app_wasm);
+        self.emitter
+            .app_wasm
+            .set_fn_name(print_map_meta_id, "print_map_meta".to_string());
+
+        self.emitter.table.put(
+            "print_map_meta".to_string(),
+            Record::Fn {
+                name: FnId {
+                    name: "print_map_meta".to_string(),
+                    loc: None,
+                },
+                params: vec![],
+                ret_ty: DataType::Tuple { ty_info: vec![] },
+                def: Definition::CompilerStatic,
+                addr: Some(*print_map_meta_id),
+                loc: None,
+            },
+        );
+    }
+
     fn create_print_global_meta(&mut self) {
         if self
             .emitter
@@ -242,9 +229,16 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
 
         self.emitter.table.put(
             "print_global_meta".to_string(),
-            Record::LibFn {
-                name: "print_global_meta".to_string(),
-                fn_id: *print_global_meta_id,
+            Record::Fn {
+                name: FnId {
+                    name: "print_global_meta".to_string(),
+                    loc: None,
+                },
+                params: vec![],
+                ret_ty: DataType::Tuple { ty_info: vec![] },
+                def: Definition::CompilerStatic,
+                addr: Some(*print_global_meta_id),
+                loc: None,
             },
         );
     }
