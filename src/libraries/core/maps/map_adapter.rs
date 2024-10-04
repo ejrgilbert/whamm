@@ -11,6 +11,7 @@ use std::collections::HashMap;
 const PRINT_MAP: &str = "print_map";
 
 pub struct MapLibAdapter {
+    pub is_used: bool,
     // func_name -> fid
     funcs: HashMap<String, u32>,
     map_count: u32,
@@ -65,6 +66,7 @@ impl MapLibAdapter {
             ("print_map".to_string(), 0),
         ]);
         MapLibAdapter {
+            is_used: false,
             funcs,
             map_count: 0,
             init_bool_location: 0,

@@ -11,6 +11,7 @@ pub const PUTI: &str = "puti";
 
 // //this is the code that knows which functions to call in lib.rs based on what is in the AST -> will be in emitter folder eventually
 pub struct IOAdapter {
+    pub is_used: bool,
     // func_name -> fid
     funcs: HashMap<String, u32>,
 }
@@ -31,7 +32,7 @@ impl IOAdapter {
     pub fn new() -> Self {
         let funcs = HashMap::from([(PUTC.to_string(), 0), (PUTI.to_string(), 0)]);
         //Reserve map 0 for the var metadata map and map 1 for the map metadata map
-        IOAdapter { funcs }
+        IOAdapter { is_used: false, funcs }
     }
 
     pub fn putsln<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
