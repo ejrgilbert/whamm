@@ -28,6 +28,7 @@ pub fn link_core_lib(
 ) {
     for package in packages.iter_mut() {
         package.visit_whamm(ast);
+        package.set_adapter_usage(package.is_used());
         if package.is_used() {
             // Read core library Wasm into Orca module
             let buff = std::fs::read(core_wasm_path).unwrap();

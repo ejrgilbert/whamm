@@ -14,6 +14,7 @@ pub trait LibPackage: WhammVisitor<bool> {
     fn is_used(&self) -> bool;
     fn get_fn_names(&self) -> Vec<String>;
     fn add_fid_to_adapter(&mut self, fname: &str, fid: u32);
+    fn set_adapter_usage(&mut self, is_used: bool);
 }
 pub trait LibAdapter {
     fn get_funcs(&self) -> &HashMap<String, u32>;

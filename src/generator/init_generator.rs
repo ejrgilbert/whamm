@@ -84,8 +84,10 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
     }
     fn on_startup(&mut self) {
         self.create_start();
-        self.create_global_map_init();
-        self.create_print_map_meta();
+        if self.emitter.map_lib_adapter.is_used {
+            self.create_global_map_init();
+            self.create_print_map_meta();
+        }
         self.create_print_global_meta();
     }
     fn create_start(&mut self) {

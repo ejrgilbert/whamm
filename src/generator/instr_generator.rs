@@ -216,8 +216,10 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_> {
 
         is_success &= self.save_args();
         //after saving args, we run the check if we need to initialize global maps
-        // TODO -- only inject this IF NEEDED (not all scripts need global init)
-        self.emit_global_map_init();
+        // only inject this IF NEEDED (not all scripts need global init)
+        if self.emitter.map_lib_adapter.is_used {
+            self.emit_global_map_init();
+        }
         self.configure_probe_mode();
 
         // Now we know we're going to insert the probe, let's define
@@ -469,89 +471,9 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_> {
             //now set the new key value for the new maps
             map_meta_str.insert(*key, val);
         }
-        let mut is_success = self.setup_global_map_init();
-        is_success &= self.setup_print_global_meta(&var_meta_str);
+        let mut is_success = self.setup_print_global_meta(&var_meta_str);
         is_success &= self.setup_print_map_meta(&map_meta_str);
         is_success
-    }
-
-    fn setup_global_map_init(&mut self) -> bool {
-        //first, we need to create the maps in global_map_init - where all the other maps are initialized
-        let global_map_init_id = match self
-            .emitter
-            .app_iter
-            .module
-            .functions
-            .get_local_fid_by_name("global_map_init")
-        {
-            Some(start_id) => start_id,
-            None => {
-                self.err.add_error(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} \
-                    No start function found in the module!"
-                    )),
-                    None,
-                ));
-                return false;
-            }
-        };
-
-        // set up the global_map_init function for insertions
-        let mut global_map_init = match self
-            .emitter
-            .app_iter
-            .module
-            .functions
-            .get_fn_modifier(global_map_init_id)
-        {
-            Some(func) => func,
-            None => {
-                self.err.add_error(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} \
-                    No 'global_map_init' function found in the module!"
-                    )),
-                    None,
-                ));
-                return false;
-            }
-        };
-        //now set up the actual module editing
-        global_map_init.before_at(Location::Module {
-            func_idx: global_map_init_id, // not used
-            instr_idx: 0,
-        });
-
-        // set up the output header!
-        let header = Metadata::get_csv_header();
-        //first, emit the string to data section
-        // todo(maps) factor this logic out to a function call!
-        let data_id = self.emitter.app_iter.module.data.len();
-        let header_bytes = header.as_bytes().to_owned();
-        let data_segment = DataSegment {
-            data: header_bytes,
-            kind: DataSegmentKind::Active {
-                memory_index: self.emitter.mem_tracker.mem_id,
-                offset_expr: InitExpr::Value(OrcaValue::I32(
-                    self.emitter.mem_tracker.curr_mem_offset as i32,
-                )),
-            },
-        };
-        self.emitter.app_iter.module.data.push(data_segment);
-
-        // save the memory addresses/lens, so they can be used as appropriate
-        self.emitter.mem_tracker.emitted_strings.insert(
-            header.clone(),
-            StringAddr {
-                data_id: data_id as u32,
-                mem_offset: self.emitter.mem_tracker.curr_mem_offset,
-                len: header.len(),
-            },
-        );
-        true
     }
 
     /// set up the print_global_meta function for insertions

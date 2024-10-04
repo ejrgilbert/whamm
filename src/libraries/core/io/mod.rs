@@ -25,6 +25,9 @@ impl LibPackage for IOPackage {
     fn add_fid_to_adapter(&mut self, fname: &str, fid: u32) {
         self.adapter.add_fid(fname, fid);
     }
+    fn set_adapter_usage(&mut self, is_used: bool) {
+        self.adapter.is_used = is_used;
+    }
 }
 impl WhammVisitor<bool> for IOPackage {
     fn visit_whamm(&mut self, whamm: &Whamm) -> bool {
