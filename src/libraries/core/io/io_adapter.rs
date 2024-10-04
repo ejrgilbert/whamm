@@ -32,7 +32,10 @@ impl IOAdapter {
     pub fn new() -> Self {
         let funcs = HashMap::from([(PUTC.to_string(), 0), (PUTI.to_string(), 0)]);
         //Reserve map 0 for the var metadata map and map 1 for the map metadata map
-        IOAdapter { is_used: false, funcs }
+        IOAdapter {
+            is_used: false,
+            funcs,
+        }
     }
 
     pub fn putsln<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
