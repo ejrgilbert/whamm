@@ -1088,6 +1088,14 @@ fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             }
             is_success &= true;
         }
+        Value::U32U32Map { .. } => err.unexpected_error(
+            false,
+            Some(format!(
+                "{err_msg} \
+            `emit_value` shouldn't be called with a U32U32Map type...should already be handled!"
+            )),
+            None,
+        ),
     }
     is_success
 }

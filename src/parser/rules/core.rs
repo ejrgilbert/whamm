@@ -65,6 +65,9 @@ impl Package for CorePackage {
     fn loc(&self) -> &Option<Location> {
         &self.info.loc
     }
+    fn requires_map_lib(&self) -> bool {
+        false
+    }
 
     fn docs(&self) -> &String {
         &self.info.docs
@@ -193,6 +196,7 @@ impl CoreEvent {
                 docs: "".to_string(),
                 fns: vec![],
                 globals: HashMap::new(),
+                requires_map_lib: false,
                 loc: None,
                 probe_map: HashMap::new(),
             },
@@ -204,12 +208,15 @@ impl Event for CoreEvent {
         self.kind.name()
     }
 
-    fn supported_modes(&self) -> &HashMap<String, WhammModeKind> {
-        &self.info.supported_modes
-    }
-
     fn loc(&self) -> &Option<Location> {
         &self.info.loc
+    }
+
+    fn requires_map_lib(&self) -> bool {
+        false
+    }
+    fn supported_modes(&self) -> &HashMap<String, WhammModeKind> {
+        &self.info.supported_modes
     }
 
     fn docs(&self) -> &String {

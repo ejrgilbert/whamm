@@ -97,6 +97,7 @@ impl SymbolTable {
     pub fn enter_scope_via_spec(&mut self, script_id: &str, probe_spec: &ProbeSpec) -> bool {
         let mut is_success = true;
 
+        self.reset();
         is_success &= self.enter_named_scope(script_id);
         if let Some(provider) = &probe_spec.provider {
             is_success &= self.enter_named_scope(&provider.name);

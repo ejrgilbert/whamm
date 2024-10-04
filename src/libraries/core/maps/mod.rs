@@ -71,6 +71,9 @@ impl WhammVisitor<bool> for MapLibPackage {
     }
 
     fn visit_provider(&mut self, provider: &Box<dyn Provider>) -> bool {
+        if provider.requires_map_lib() {
+            return true;
+        }
         for package in provider.packages() {
             if self.visit_package(package) {
                 return true;
@@ -80,6 +83,9 @@ impl WhammVisitor<bool> for MapLibPackage {
     }
 
     fn visit_package(&mut self, package: &dyn Package) -> bool {
+        if package.requires_map_lib() {
+            return true;
+        }
         for event in package.events() {
             if self.visit_event(event) {
                 return true;
@@ -89,6 +95,9 @@ impl WhammVisitor<bool> for MapLibPackage {
     }
 
     fn visit_event(&mut self, event: &dyn Event) -> bool {
+        if event.requires_map_lib() {
+            return true;
+        }
         for (_mode, probe_list) in event.probes().iter() {
             for probe in probe_list.iter() {
                 if self.visit_probe(probe) {

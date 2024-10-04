@@ -594,6 +594,19 @@ impl WhammVisitor<String> for AsStrVisitor {
                 s += ")";
                 s
             }
+            Value::U32U32Map { ty, val } => {
+                let mut s = "".to_string();
+
+                s += &format!("{} ", self.visit_datatype(ty));
+                s += "[";
+                s += &val
+                    .iter()
+                    .map(|(key, val)| format!("    {key} -> {val}"))
+                    .collect::<Vec<String>>()
+                    .join(",\n");
+                s += "]";
+                s
+            }
         }
     }
 }

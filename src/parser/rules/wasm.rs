@@ -83,6 +83,9 @@ impl Package for WasmPackage {
     fn loc(&self) -> &Option<Location> {
         &self.info.loc
     }
+    fn requires_map_lib(&self) -> bool {
+        false
+    }
 
     fn docs(&self) -> &String {
         &self.info.docs
@@ -166,7 +169,7 @@ impl Package for WasmPackage {
 }
 
 macro_rules! define_opcode {
-    ($($op:ident, $name:ident, $num_args:expr, $imms:expr, $globals:expr, $fns:expr, $supported_modes:expr, $docs:expr)*) => {
+    ($($op:ident, $name:ident, $num_args:expr, $imms:expr, $globals:expr, $fns:expr, $supported_modes:expr, $req_map:expr, $docs:expr)*) => {
         /// Instructions as defined [here].
         ///
         /// [here]: https://webassembly.github.io/spec/core/binary/instructions.html
@@ -317,6 +320,7 @@ macro_rules! define_opcode {
                         docs: $docs.to_string(),
                         fns: $fns,
                         globals,
+                        requires_map_lib: $req_map,
                         loc,
                         probe_map: HashMap::new()
                     }
@@ -335,6 +339,10 @@ impl Event for OpcodeEvent {
 
     fn supported_modes(&self) -> &HashMap<String, WhammModeKind> {
         &self.info.supported_modes
+    }
+
+    fn requires_map_lib(&self) -> bool {
+        self.info.requires_map_lib
     }
 
     fn loc(&self) -> &Option<Location> {

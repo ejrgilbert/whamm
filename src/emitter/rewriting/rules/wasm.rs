@@ -81,7 +81,7 @@ pub struct OpcodeEvent {
     probes: HashMap<WhammModeKind, Vec<SimpleProbe>>,
 }
 macro_rules! define_opcode_event {
-($($op:ident, $name:ident, $num_args:expr, $imms:expr, $globals:expr, $fns:expr, $supported_modes:expr, $docs:expr)*) => {
+($($op:ident, $name:ident, $num_args:expr, $imms:expr, $globals:expr, $fns:expr, $supported_modes:expr, $req_map:expr, $docs:expr)*) => {
 impl FromStr for OpcodeEvent {
     fn from_str(name: &str) -> Self {
         match name {
@@ -249,6 +249,9 @@ impl Event for OpcodeEvent {
                             val: targets.default(),
                         }),
                     );
+
+                    let mut target_map = HashMap::new();
+
                     for (i, target) in targets.targets().enumerate() {
                         if let Ok(target) = target {
                             loc_info.static_data.insert(
@@ -258,8 +261,19 @@ impl Event for OpcodeEvent {
                                     val: target,
                                 }),
                             );
+                            target_map.insert(i as u32, target);
                         }
                     }
+                    loc_info.dynamic_data.insert(
+                        "targets".to_string(),
+                        Some(Value::U32U32Map {
+                            ty: DataType::Map {
+                                key_ty: Box::new(DataType::U32),
+                                val_ty: Box::new(DataType::U32),
+                            },
+                            val: Box::new(target_map),
+                        }),
+                    );
                     loc_info.add_probes(self.probe_spec(), &self.probes);
                 }
             }

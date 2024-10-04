@@ -1,6 +1,8 @@
 #![allow(clippy::borrowed_box)]
+
 use pest::error::LineColLocation;
 use std::collections::HashMap;
+use std::fmt::Debug;
 use termcolor::{Buffer, ColorChoice, WriteColor};
 
 use crate::common::error::{ErrorGen, WhammError};
@@ -191,18 +193,50 @@ impl DataType {
 }
 
 // Values
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub enum Value {
-    U32 { ty: DataType, val: u32 },
-    I32 { ty: DataType, val: i32 },
-    F32 { ty: DataType, val: f32 },
-    U64 { ty: DataType, val: u64 },
-    I64 { ty: DataType, val: i64 },
-    F64 { ty: DataType, val: f64 },
-    Str { ty: DataType, val: String },
-    Tuple { ty: DataType, vals: Vec<Expr> },
-    Boolean { ty: DataType, val: bool },
+    U32 {
+        ty: DataType,
+        val: u32,
+    },
+    I32 {
+        ty: DataType,
+        val: i32,
+    },
+    F32 {
+        ty: DataType,
+        val: f32,
+    },
+    U64 {
+        ty: DataType,
+        val: u64,
+    },
+    I64 {
+        ty: DataType,
+        val: i64,
+    },
+    F64 {
+        ty: DataType,
+        val: f64,
+    },
+    Boolean {
+        ty: DataType,
+        val: bool,
+    },
+    Str {
+        ty: DataType,
+        val: String,
+    },
+    Tuple {
+        ty: DataType,
+        vals: Vec<Expr>,
+    },
+    U32U32Map {
+        ty: DataType,
+        val: Box<HashMap<u32, u32>>,
+    },
 }
+
 #[derive(Clone, Debug)]
 pub struct Block {
     pub stmts: Vec<Statement>,
@@ -286,7 +320,7 @@ impl Statement {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub enum Expr {
     UnOp {
         // Type is based on the outermost `op`
@@ -407,7 +441,7 @@ impl Definition {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct Global {
     pub def: Definition,
     pub report: bool,
@@ -965,7 +999,7 @@ pub struct ProvidedFunctionality {
     pub name: String,
     pub docs: String,
 }
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct ProvidedGlobal {
     pub name: String,
     pub docs: String,

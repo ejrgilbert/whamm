@@ -30,6 +30,7 @@ pub trait FromStr {
 pub trait Provider {
     fn name(&self) -> String;
     fn docs(&self) -> &String;
+    fn requires_map_lib(&self) -> bool;
     fn has_packages(&self) -> bool;
     fn len_packages(&self) -> usize;
     fn packages(&self) -> Box<dyn Iterator<Item = &dyn Package> + '_>;
@@ -243,6 +244,7 @@ pub fn print_provider_docs(
 pub trait Package {
     fn name(&self) -> String;
     fn loc(&self) -> &Option<Location>;
+    fn requires_map_lib(&self) -> bool;
     fn docs(&self) -> &String;
     fn has_events(&self) -> bool;
     fn len_events(&self) -> usize;
@@ -401,6 +403,7 @@ pub trait Probe {
 pub trait Event {
     fn name(&self) -> String;
     fn loc(&self) -> &Option<Location>;
+    fn requires_map_lib(&self) -> bool;
     fn supported_modes(&self) -> &HashMap<String, WhammModeKind>;
     fn docs(&self) -> &String;
     fn probes(&self) -> &HashMap<String, Vec<Box<dyn Probe>>>;
@@ -449,6 +452,7 @@ pub struct EventInfo {
     pub docs: String,
     pub fns: Vec<ProvidedFunction>,               // Comp-provided
     pub globals: HashMap<String, ProvidedGlobal>, // Comp-provided
+    pub requires_map_lib: bool,
 
     // Tied to the user script
     pub loc: Option<Location>,
@@ -765,6 +769,9 @@ impl Provider for WhammProvider {
     fn docs(&self) -> &String {
         &self.info.docs
     }
+    fn requires_map_lib(&self) -> bool {
+        false
+    }
 
     fn has_packages(&self) -> bool {
         !self.info.packages.is_empty()
@@ -955,16 +962,16 @@ pub fn matches_globs(s: &str, globs: &[Pattern]) -> bool {
 #[macro_export]
 macro_rules! for_each_opcode {
 ($mac:ident) => { $mac! {
-    Unreachable, unreachable, 0, vec![], HashMap::new(), vec![], HashMap::from([(WhammModeKind::Before.name(), WhammModeKind::Before), (WhammModeKind::Alt.name(), WhammModeKind::Alt)]), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/unreachable"
-    Nop, nop, 0, vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), "https://www.w3.org/TR/wasm-core-2/#syntax-instr-control"
+    Unreachable, unreachable, 0, vec![], HashMap::new(), vec![], HashMap::from([(WhammModeKind::Before.name(), WhammModeKind::Before), (WhammModeKind::Alt.name(), WhammModeKind::Alt)]), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/unreachable"
+    Nop, nop, 0, vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://www.w3.org/TR/wasm-core-2/#syntax-instr-control"
     // TODO -- support blockty as a struct to read/manipulate (provided global?)
     //         Block { blockty: $crate::BlockType } => visit_block
     //         Loop { blockty: $crate::BlockType } => visit_loop
     //         If { blockty: $crate::BlockType } => visit_if
-    Block, block, 0, vec![], HashMap::new(), vec![], OpcodeEvent::block_type_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/block"
-    Loop, _loop, 0, vec![], HashMap::new(), vec![], OpcodeEvent::block_type_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/loop"
-    If, _if, 1, vec![], HashMap::new(), vec![], OpcodeEvent::block_type_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"
-    Else, _else, 0, vec![], HashMap::new(), vec![], OpcodeEvent::block_type_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"
+    Block, block, 0, vec![], HashMap::new(), vec![], OpcodeEvent::block_type_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/block"
+    Loop, _loop, 0, vec![], HashMap::new(), vec![], OpcodeEvent::block_type_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/loop"
+    If, _if, 1, vec![], HashMap::new(), vec![], OpcodeEvent::block_type_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"
+    Else, _else, 0, vec![], HashMap::new(), vec![], OpcodeEvent::block_type_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"
     // TryTable { try_table: $crate::TryTable } => visit_try_table
     // Throw { tag_index: u32 } => visit_throw
     // ThrowRef => visit_throw_ref
@@ -974,23 +981,23 @@ macro_rules! for_each_opcode {
     // Rethrow { relative_depth: u32 } => visit_rethrow
     // Delegate { relative_depth: u32 } => visit_delegate
     // CatchAll => visit_catch_all
-    End, end, 0, vec![], HashMap::new(), vec![], WhammModeKind::default_modes_no_alt(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/end"
-    Br, br, 0, vec![(DataType::U32, 1)], HashMap::new(), vec![], OpcodeEvent::branching_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
-    BrIf, br_if, 1, vec![(DataType::U32, 1)], HashMap::new(), vec![], OpcodeEvent::branching_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
-    BrTable, br_table, 1, vec![(DataType::U32, -1)], get_br_table_globals(), vec![], OpcodeEvent::branching_modes(), "https://musteresel.github.io/posts/2020/01/webassembly-text-br_table-example.html"
-    Return, _return, 0, vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/return"
-    Call, call, 0, vec![(DataType::U32, 1)], get_call_globals(), get_call_fns(), WhammModeKind::default_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call"
+    End, end, 0, vec![], HashMap::new(), vec![], WhammModeKind::default_modes_no_alt(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/end"
+    Br, br, 0, vec![(DataType::U32, 1)], HashMap::new(), vec![], OpcodeEvent::branching_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
+    BrIf, br_if, 1, vec![(DataType::U32, 1)], HashMap::new(), vec![], OpcodeEvent::branching_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
+    BrTable, br_table, 1, vec![(DataType::U32, -1)], get_br_table_globals(), vec![], OpcodeEvent::branching_modes(), true, "https://musteresel.github.io/posts/2020/01/webassembly-text-br_table-example.html"
+    Return, _return, 0, vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/return"
+    Call, call, 0, vec![(DataType::U32, 1)], get_call_globals(), get_call_fns(), WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call"
     // CallIndirect { type_index: u32, table_index: u32 } => visit_call_indirect TODO
     // ReturnCall { function_index: u32 } => visit_return_call TODO
     // ReturnCallIndirect { type_index: u32, table_index: u32 } => visit_return_call_indirect TODO
     // Drop => visit_drop
     // Select => visit_select
     // TypedSelect { ty: $crate::ValType } => visit_typed_select
-    LocalGet, local_get, 0, vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_get"
-    LocalSet, local_set, 0, vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_set"
-    LocalTee, local_tee, 0, vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_tee"
-    GlobalGet, global_get, 0, vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Global_get"
-    GlobalSet, global_set, 0, vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Global_set"
+    LocalGet, local_get, 0, vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_get"
+    LocalSet, local_set, 0, vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_set"
+    LocalTee, local_tee, 0, vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_tee"
+    GlobalGet, global_get, 0, vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Global_get"
+    GlobalSet, global_set, 0, vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Global_set"
     // I32Load { memarg: $crate::MemArg } => visit_i32_load
     // I64Load { memarg: $crate::MemArg } => visit_i64_load
     // F32Load { memarg: $crate::MemArg } => visit_f32_load
@@ -1017,8 +1024,8 @@ macro_rules! for_each_opcode {
     // MemorySize { mem: u32 } => visit_memory_size
     // MemoryGrow { mem: u32 } => visit_memory_grow
     // I32Const { value: i32 } => visit_i32_const TODO
-    I32Const, i32_const, 0, vec![(DataType::I32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Const"
-    I64Const, i64_const, 0, vec![(DataType::I64, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Const"
+    I32Const, i32_const, 0, vec![(DataType::I32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Const"
+    I64Const, i64_const, 0, vec![(DataType::I64, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Const"
     // I64Const { value: i64 } => visit_i64_const TODO
     // F32Const { value: $crate::Ieee32 } => visit_f32_const
     // F64Const { value: $crate::Ieee64 } => visit_f64_const
@@ -1733,6 +1740,20 @@ pub fn get_br_table_globals() -> HashMap<String, ProvidedGlobal> {
                 .to_string(),
             DataType::U32,
             true,
+        ),
+    );
+    globals.insert(
+        "targets".to_string(),
+        ProvidedGlobal::new(
+            "targets".to_string(),
+            "The NON-DEFAULT target branches for this br_table instruction represented as a map. \
+             The map follows the pattern: [0->imm0, 1->imm1, .. N->immN]."
+                .to_string(),
+            DataType::Map {
+                key_ty: Box::new(DataType::U32),
+                val_ty: Box::new(DataType::U32),
+            },
+            false,
         ),
     );
     globals.insert(

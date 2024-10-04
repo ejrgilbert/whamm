@@ -978,6 +978,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 }
                 Some(DataType::Tuple { ty_info: all_tys })
             }
+            Value::U32U32Map { ty, .. } => Some(ty.clone()),
         }
     }
 }

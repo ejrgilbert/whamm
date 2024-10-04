@@ -13,24 +13,25 @@
 report map<(u32, u32, i32), i32> count;
 
 wasm::br:before {
+  // branch always taken for `br`
   // count stores an array of counters
   count[(fid, pc, 1)]++;
 }
 
 wasm::br_if:before {
+  // which branch was taken?
   i32 index;
-  // "arg0" is defined as the top-of-stack
   index = arg0 != 0 ? 1 : 0;
+
   // count stores an array of counters
   count[(fid, pc, index)]++;
 }
 
 wasm::br_table:before {
-  // "num_targets" is the number of targets of a br_table
-  // "arg0" is defined as the top-of-stack
+  // which branch was taken?
+  i32 index;
+  index = arg0 < (num_targets - 1) ? targets[arg0] : default_target;
 
-  // TODO -- static maps like this can be emitted as a select!
-  i32 index = arg0 >= num_targets ? targets[arg0] : arg0;
   // count stores an array of counters
   count[(fid, pc, index)]++;
 }

@@ -569,6 +569,7 @@ pub fn wasm2wat_on_file(instrumented_wasm_path: &str) {
         .expect("failed to execute process");
 
     if !res.status.success() {
+        println!("wasm-tools validate failed on: {}", instrumented_wasm_path);
         println!("STDOUT: {}", String::from_utf8(res.stdout).unwrap());
         println!("STDERR: {}", String::from_utf8(res.stderr).unwrap());
     }
