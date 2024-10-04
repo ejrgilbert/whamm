@@ -428,7 +428,6 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         ..
     } = stmt
     {
-        // TODO -- handle hardcoded u32 ID
         let Some((map_id, key_ty, val_ty)) = get_map_info(table, name, err) else {
             return false;
         };
