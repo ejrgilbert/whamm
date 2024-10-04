@@ -428,6 +428,7 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         ..
     } = stmt
     {
+        // TODO -- handle hardcoded u32 ID
         let Some((map_id, key_ty, val_ty)) = get_map_info(table, name, err) else {
             return false;
         };
@@ -1088,6 +1089,14 @@ fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             }
             is_success &= true;
         }
+        Value::U32U32Map { .. } => err.unexpected_error(
+            false,
+            Some(format!(
+                "{err_msg} \
+            `emit_value` shouldn't be called with a U32U32Map type...should already be handled!"
+            )),
+            None,
+        ),
     }
     is_success
 }

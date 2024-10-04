@@ -122,6 +122,8 @@ pub struct ProbeSpec {
 pub struct LocInfo<'a> {
     /// static information to be saved in symbol table
     pub static_data: HashMap<String, Option<Value>>,
+    /// dynamic information to be emitted at the probe location
+    pub dynamic_data: HashMap<String, Option<Value>>,
     /// dynamic information corresponding to the operands of this location
     pub(crate) args: Vec<Arg>,
     pub num_alt_probes: usize,
@@ -157,6 +159,9 @@ impl<'a> LocInfo<'a> {
     fn append(&mut self, other: &mut Self) {
         // handle static_data
         self.static_data.extend(other.static_data.to_owned());
+
+        // handle dynamic_data
+        self.dynamic_data.extend(other.dynamic_data.to_owned());
 
         // handle args
         if !self.args.is_empty() {

@@ -6,6 +6,7 @@ use crate::emitter::rewriting::rules::{Arg, LocInfo, ProbeSpec, Provider, WhammP
 use crate::emitter::rewriting::{block_type_to_wasm, emit_expr, whamm_type_to_wasm_global};
 use crate::emitter::rewriting::{emit_stmt, print_report_all, Emitter};
 use crate::libraries::core::maps::map_adapter::MapLibAdapter;
+use std::collections::HashMap;
 
 use crate::generator::types::ExprFolder;
 use crate::libraries::core::io::io_adapter::IOAdapter;
@@ -132,6 +133,259 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         } else {
             None
         }
+    }
+
+    pub(crate) fn emit_dynamic_compiler_data(
+        &mut self,
+        data: &HashMap<String, Option<Value>>,
+        err: &mut ErrorGen,
+    ) -> bool {
+        let mut is_success = true;
+        for (name, val) in data.iter() {
+            let var_id = Expr::VarId {
+                definition: Definition::CompilerDynamic,
+                name: name.clone(),
+                loc: None,
+            };
+            let mut block: Vec<Statement> = match val {
+                Some(Value::U32 { val, .. }) => {
+                    // create a declaration
+                    let decl = Statement::Decl {
+                        ty: DataType::U32,
+                        var_id: var_id.clone(),
+                        loc: None,
+                    };
+                    // create an assignment
+                    let assign = Statement::Assign {
+                        var_id: var_id.clone(),
+                        expr: Expr::Primitive {
+                            val: Value::U32 {
+                                ty: DataType::U32,
+                                val: *val,
+                            },
+                            loc: None,
+                        },
+                        loc: None,
+                    };
+                    vec![decl, assign]
+                }
+                Some(Value::I32 { val, .. }) => {
+                    // create a declaration
+                    let decl = Statement::Decl {
+                        ty: DataType::I32,
+                        var_id: var_id.clone(),
+                        loc: None,
+                    };
+                    // create an assignment
+                    let assign = Statement::Assign {
+                        var_id: var_id.clone(),
+                        expr: Expr::Primitive {
+                            val: Value::I32 {
+                                ty: DataType::I32,
+                                val: *val,
+                            },
+                            loc: None,
+                        },
+                        loc: None,
+                    };
+                    vec![decl, assign]
+                }
+                Some(Value::F32 { val, .. }) => {
+                    // create a declaration
+                    let decl = Statement::Decl {
+                        ty: DataType::F32,
+                        var_id: var_id.clone(),
+                        loc: None,
+                    };
+                    // create an assignment
+                    let assign = Statement::Assign {
+                        var_id: var_id.clone(),
+                        expr: Expr::Primitive {
+                            val: Value::F32 {
+                                ty: DataType::F32,
+                                val: *val,
+                            },
+                            loc: None,
+                        },
+                        loc: None,
+                    };
+                    vec![decl, assign]
+                }
+                Some(Value::U64 { val, .. }) => {
+                    // create a declaration
+                    let decl = Statement::Decl {
+                        ty: DataType::U64,
+                        var_id: var_id.clone(),
+                        loc: None,
+                    };
+                    // create an assignment
+                    let assign = Statement::Assign {
+                        var_id: var_id.clone(),
+                        expr: Expr::Primitive {
+                            val: Value::U64 {
+                                ty: DataType::U64,
+                                val: *val,
+                            },
+                            loc: None,
+                        },
+                        loc: None,
+                    };
+                    vec![decl, assign]
+                }
+                Some(Value::I64 { val, .. }) => {
+                    // create a declaration
+                    let decl = Statement::Decl {
+                        ty: DataType::I64,
+                        var_id: var_id.clone(),
+                        loc: None,
+                    };
+                    // create an assignment
+                    let assign = Statement::Assign {
+                        var_id: var_id.clone(),
+                        expr: Expr::Primitive {
+                            val: Value::I64 {
+                                ty: DataType::I64,
+                                val: *val,
+                            },
+                            loc: None,
+                        },
+                        loc: None,
+                    };
+                    vec![decl, assign]
+                }
+                Some(Value::F64 { val, .. }) => {
+                    // create a declaration
+                    let decl = Statement::Decl {
+                        ty: DataType::F64,
+                        var_id: var_id.clone(),
+                        loc: None,
+                    };
+                    // create an assignment
+                    let assign = Statement::Assign {
+                        var_id: var_id.clone(),
+                        expr: Expr::Primitive {
+                            val: Value::F64 {
+                                ty: DataType::F64,
+                                val: *val,
+                            },
+                            loc: None,
+                        },
+                        loc: None,
+                    };
+                    vec![decl, assign]
+                }
+                Some(Value::Boolean { val, .. }) => {
+                    // create a declaration
+                    let decl = Statement::Decl {
+                        ty: DataType::Boolean,
+                        var_id: var_id.clone(),
+                        loc: None,
+                    };
+                    // create an assignment
+                    let assign = Statement::Assign {
+                        var_id: var_id.clone(),
+                        expr: Expr::Primitive {
+                            val: Value::Boolean {
+                                ty: DataType::Boolean,
+                                val: *val,
+                            },
+                            loc: None,
+                        },
+                        loc: None,
+                    };
+                    vec![decl, assign]
+                }
+                Some(Value::Str { val, .. }) => {
+                    // create a declaration
+                    let decl = Statement::Decl {
+                        ty: DataType::Str,
+                        var_id: var_id.clone(),
+                        loc: None,
+                    };
+                    // create an assignment
+                    let assign = Statement::Assign {
+                        var_id: var_id.clone(),
+                        expr: Expr::Primitive {
+                            val: Value::Str {
+                                ty: DataType::Str,
+                                val: val.clone(),
+                            },
+                            loc: None,
+                        },
+                        loc: None,
+                    };
+                    vec![decl, assign]
+                }
+                Some(Value::Tuple { vals, ty }) => {
+                    // create a declaration
+                    let decl = Statement::Decl {
+                        ty: ty.clone(),
+                        var_id: var_id.clone(),
+                        loc: None,
+                    };
+                    // create assignments
+                    let assign = Statement::Assign {
+                        var_id: var_id.clone(),
+                        expr: Expr::Primitive {
+                            val: Value::Tuple {
+                                ty: ty.clone(),
+                                vals: vals.clone(),
+                            },
+                            loc: None,
+                        },
+                        loc: None,
+                    };
+                    vec![decl, assign]
+                }
+                Some(Value::U32U32Map { val, ty }) => {
+                    // create a declaration
+                    let decl = Statement::Decl {
+                        ty: ty.clone(),
+                        var_id: var_id.clone(),
+                        loc: None,
+                    };
+                    // create assignments
+                    let mut stmts = vec![decl];
+                    for (key, val) in val.iter() {
+                        stmts.push(Statement::SetMap {
+                            map: var_id.clone(),
+                            key: Expr::Primitive {
+                                val: Value::U32 {
+                                    ty: DataType::U32,
+                                    val: *key,
+                                },
+                                loc: None,
+                            },
+                            val: Expr::Primitive {
+                                val: Value::U32 {
+                                    ty: DataType::U32,
+                                    val: *val,
+                                },
+                                loc: None,
+                            },
+                            loc: None,
+                        });
+                    }
+                    stmts
+                }
+                None => {
+                    vec![]
+                } // skip
+            };
+            for stmt in block.iter_mut() {
+                is_success &= emit_stmt(
+                    stmt,
+                    &mut self.app_iter,
+                    self.table,
+                    self.mem_tracker,
+                    self.map_lib_adapter,
+                    self.report_var_metadata,
+                    UNEXPECTED_ERR_MSG,
+                    err,
+                );
+            }
+        }
+        is_success
     }
 
     pub(crate) fn save_args(&mut self, args: &[Arg]) -> bool {
@@ -278,6 +532,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         });
 
         // reset dynamic_data
+        loc_info.dynamic_data.iter().for_each(|(symbol_name, ..)| {
+            self.table.remove_record(symbol_name);
+        });
+
         for i in 0..loc_info.args.len() {
             let arg_name = format!("arg{}", i);
             self.table.remove_record(&arg_name);

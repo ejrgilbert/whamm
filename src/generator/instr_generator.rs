@@ -7,7 +7,7 @@ use crate::emitter::rewriting::Emitter;
 use crate::generator::simple_ast::{SimpleAST, SimpleProbe};
 use crate::generator::types::ExprFolder;
 use crate::parser::rules::core::WhammModeKind;
-use crate::parser::types::{Block, Expr};
+use crate::parser::types::{Block, Expr, Value};
 use crate::verifier::types::Record;
 use orca_wasm::ir::id::{FunctionID, GlobalID};
 use orca_wasm::ir::types::{BlockType as OrcaBlockType, Value as OrcaValue};
@@ -25,6 +25,24 @@ fn get_loc_info<'a>(rule: &'a WhammProvider, emitter: &VisitingEmitter) -> Optio
     // Pull the curr instr each time this is called to keep from having
     // long-lasting refs into self.emitter.
     emitter.get_loc_info(rule)
+}
+
+fn emit_dynamic_compiler_data(
+    data: &HashMap<String, Option<Value>>,
+    emitter: &mut VisitingEmitter,
+    err: &mut ErrorGen,
+) {
+    emitter.emit_dynamic_compiler_data(data, err);
+}
+
+fn add_to_table(
+    data: &HashMap<String, Option<Value>>,
+    emitter: &mut VisitingEmitter,
+    err: &mut ErrorGen,
+) {
+    data.iter().for_each(|(dyn_var_name, dyn_var_val)| {
+        emitter.define(dyn_var_name, dyn_var_val, err);
+    });
 }
 
 /// The second phase of instrumenting a Wasm module by actually emitting the
@@ -112,12 +130,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
                             .enter_scope_via_spec(&probe.script_id, probe_spec);
 
                         // Initialize the symbol table with the metadata at this program point
-                        loc_info.static_data.iter().for_each(
-                            |(static_var_name, static_var_val)| {
-                                self.emitter
-                                    .define(static_var_name, static_var_val, self.err);
-                            },
-                        );
+                        add_to_table(&loc_info.static_data, &mut self.emitter, self.err);
 
                         // Create a new clone of the probe, fold the predicate.
                         // NOTE: We make a clone so that the probe is reset for each instruction!
@@ -141,7 +154,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
                         self.curr_probe = Some((body_clone, pred_clone));
 
                         // emit the probe (since the predicate is not false)
-                        is_success &= self.emit_probe();
+                        is_success &= self.emit_probe(&loc_info.dynamic_data);
 
                         // Now that we've emitted this probe, reset the symbol table's static/dynamic
                         // data defined for this instr
@@ -198,13 +211,18 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
     }
 }
 impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_> {
-    fn emit_probe(&mut self) -> bool {
+    fn emit_probe(&mut self, dynamic_data: &HashMap<String, Option<Value>>) -> bool {
         let mut is_success = true;
 
         is_success &= self.save_args();
         //after saving args, we run the check if we need to initialize global maps
+        // TODO -- only inject this IF NEEDED (not all scripts need global init)
         self.emit_global_map_init();
         self.configure_probe_mode();
+
+        // Now we know we're going to insert the probe, let's define
+        // the dynamic information
+        emit_dynamic_compiler_data(dynamic_data, &mut self.emitter, self.err);
         if self.pred_is_true() {
             // The predicate has been reduced to a 'true', emit un-predicated body
             self.emit_body();

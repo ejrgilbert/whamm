@@ -271,14 +271,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 self.mem_tracker.curr_mem_offset += val.len();
                 true
             }
-            Value::U32 { .. }
-            | Value::I32 { .. }
-            | Value::F32 { .. }
-            | Value::U64 { .. }
-            | Value::I64 { .. }
-            | Value::F64 { .. }
-            | Value::Tuple { .. }
-            | Value::Boolean { .. } => {
+            _ => {
                 err.unexpected_error(
                     true,
                     Some(format!(
