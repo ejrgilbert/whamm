@@ -151,7 +151,7 @@ pub fn handle_script(whamm: &mut Whamm, pair: Pair<Rule>, err: &mut ErrorGen) {
 pub fn handle_global_statements(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, err: &mut ErrorGen) {
     // Add global statements to the script
     let script: &mut Script = whamm.scripts.get_mut(script_count).unwrap();
-    script.add_global_stmts(handle_stmts(pair, err));
+    script.add_global_stmts(handle_stmts(&mut pair.into_inner(), err));
 }
 
 pub fn handle_probe_def(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, err: &mut ErrorGen) {
@@ -176,7 +176,8 @@ pub fn handle_probe_def(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>
                     }
                 }
                 Rule::statement => {
-                    (None, Some(handle_body(n, err)))
+                    let loc = LineColLocation::from(n.as_span());
+                    (None, Some(handle_body(&mut n.into_inner(), loc, err)))
                 }
                 _ => (None, None),
             };
@@ -185,7 +186,8 @@ pub fn handle_probe_def(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>
             if this_body.is_none() {
                 this_body = match pair.next() {
                     Some(b) => {
-                        Some(handle_body(b, err))
+                        let loc = LineColLocation::from(b.as_span());
+                        Some(handle_body(&mut b.into_inner(), loc, err))
                     }
                     None => None,
                 };
@@ -229,7 +231,11 @@ pub fn handle_fn_def(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, e
 
     // Get the function body
     let body = if matches!(next.as_rule(), Rule::block) {
-        handle_body(next, err)
+        let loc = LineColLocation::from(next.as_span());
+        let mut pairs = next.into_inner();
+
+        pairs.next(); // skip over block start
+        handle_body(&mut pairs, loc, err)
     } else {
         // If didn't match, create empty body
         Block {
@@ -243,7 +249,15 @@ pub fn handle_fn_def(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, e
     };
 
     // Get the return type
-    let return_ty = type_from_rule(pairs.next().unwrap(), err);
+    let next = pairs.next();
+    let return_ty = match next {
+        Some(pair) => {
+            type_from_rule(pair, err)
+        },
+        None => {
+            DataType::Tuple { ty_info: vec![] }
+        }
+    };
 
     // Add the new function to the current script
     let script: &mut Script = whamm.scripts.get_mut(script_count).unwrap();
@@ -302,10 +316,9 @@ fn expr_from_pair(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
 
 // STATEMENTS
 
-fn handle_body(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
-    let line_col = LineColLocation::from(pair.as_span());
+fn handle_body(pairs: &mut Pairs<Rule>, line_col: LineColLocation, err: &mut ErrorGen) -> Block {
     Block {
-        stmts: handle_stmts(pair, err),
+        stmts: handle_stmts(pairs, err),
         return_ty: None,
         loc: Some(Location {
             line_col,
@@ -314,9 +327,9 @@ fn handle_body(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
     }
 }
 
-fn handle_stmts(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
+fn handle_stmts(pairs: &mut Pairs<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     let mut stmts = vec![];
-    pair.into_inner().for_each(|p| {
+    pairs.for_each(|p| {
         for stmt in stmt_from_rule(p, err) {
             stmts.push(stmt);
         }
@@ -409,7 +422,7 @@ fn handle_assignment(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     // get the value to assign
     let val_rule = pairs.next().unwrap();
     let val_line_col = LineColLocation::from(val_rule.as_span());
-    let val = match expr_primary(pairs.next().unwrap()) {
+    let val = match expr_primary(val_rule) {
         Ok(expr) => {
             expr
         }
@@ -625,7 +638,9 @@ fn handle_if(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     };
 
     // get the consequent block
-    let conseq = handle_body(pairs.next().unwrap(), err);
+    let conseq_pair = pairs.next().unwrap();
+    let line_col = LineColLocation::from(conseq_pair.as_span());
+    let conseq = handle_body(&mut conseq_pair.into_inner(), line_col, err);
 
     // get the alternate block
     match pairs.next() {
@@ -685,7 +700,11 @@ fn handle_alt(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
 }
 
 fn handle_else(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
-    handle_body(pair.into_inner().next().unwrap(), err)
+    let line_col = LineColLocation::from(pair.as_span());
+    let mut pairs = pair.into_inner();
+
+    pairs.next().unwrap(); // skip start of block
+    handle_body(&mut pairs, line_col, err)
 }
 
 fn handle_elif(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
@@ -702,7 +721,9 @@ fn handle_elif(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
     };
 
     // get the consequent
-    let inner_block = handle_body(pairs.next().unwrap(), err);
+    let inner_block_pair = pairs.next().unwrap();
+    let inner_block_loc = LineColLocation::from(inner_block_pair.as_span());
+    let inner_block = handle_body(&mut inner_block_pair.into_inner(), inner_block_loc, err);
 
     let next_pair = pairs.next();
     if next_pair.is_none() {
