@@ -237,7 +237,7 @@ pub enum Value {
     },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Block {
     pub stmts: Vec<Statement>,
     pub return_ty: Option<DataType>,
