@@ -220,44 +220,45 @@ pub fn handle_fn_def(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, e
     };
 
     // Get the parameters
-    let mut next = pairs.next().unwrap();
-    let params = if matches!(next.as_rule(), Rule::param) {
-        let params = handle_params(next, err);
-        next = pairs.next().unwrap();
-        params
+    let mut next = pairs.next();
+    let params = if let Some(n) = &next {
+        if matches!(n.as_rule(), Rule::param) {
+            let params = handle_params(n.clone(), err);
+            next = pairs.next();
+            params
+        } else {
+            vec![]
+        }
     } else {
         vec![]
     };
 
-    // Get the function body
-    let body = if matches!(next.as_rule(), Rule::block) {
-        let loc = LineColLocation::from(next.as_span());
-        let mut pairs = next.into_inner();
-
-        pairs.next(); // skip over block start
-        handle_body(&mut pairs, loc, err)
-    } else {
-        // If didn't match, create empty body
-        Block {
-            stmts: vec![],
-            return_ty: None,
-            loc: Some(Location {
-                line_col,
-                path: None
-            }),
-        }
-    };
-
     // Get the return type
-    let next = pairs.next();
-    let return_ty = match next {
+    let return_ty = match next.clone() {
         Some(pair) => {
+            next = pairs.next();
             type_from_rule(pair, err)
         },
         None => {
             DataType::Tuple { ty_info: vec![] }
         }
     };
+
+    // Get the function body
+    let body = if let Some(n) = next {
+        if matches!(n.as_rule(), Rule::block) {
+            let loc = LineColLocation::from(n.as_span());
+            let mut pairs = n.into_inner();
+            handle_body(&mut pairs, loc, err)
+        } else {
+            // If didn't match, create empty body
+            Block::default()
+        }
+    } else {
+        // If didn't match, create empty body
+        Block::default()
+    };
+
 
     // Add the new function to the current script
     let script: &mut Script = whamm.scripts.get_mut(script_count).unwrap();

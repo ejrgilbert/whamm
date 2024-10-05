@@ -563,7 +563,7 @@ pub fn test_parse_invalid_scripts() {
 pub fn test_whamm_with_asserts() {
     setup_logger();
     let script = r#"
-my_func() -> i32{
+my_func() -> i32 {
     return 5;
 }
 wasm::call:alt /
