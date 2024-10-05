@@ -1,10 +1,13 @@
+use crate::common::error::{ErrorGen, WhammError};
+use crate::parser::types;
+use crate::parser::types::{
+    BinOp, Block, DataType, Definition, Expr, FnId, Location, ProbeSpec, Rule, Script, SpecPart,
+    Statement, UnOp, Value, Whamm, WhammParser, PRATT_PARSER,
+};
 use log::trace;
 use pest::error::{Error, LineColLocation};
 use pest::iterators::{Pair, Pairs};
 use pest::Parser;
-use crate::common::error::{ErrorGen, WhammError};
-use crate::parser::types;
-use crate::parser::types::{BinOp, Block, DataType, Definition, Expr, FnId, Location, PRATT_PARSER, ProbeSpec, Rule, Script, SpecPart, Statement, UnOp, Value, Whamm, WhammParser};
 
 const UNEXPECTED_ERR_MSG: &str =
     "WhammParser: Looks like you've found a bug...please report this behavior! Exiting now...";
@@ -100,19 +103,24 @@ pub fn to_ast(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Whamm, Box<Error<R
 // = Pair Handling Logic =
 // =======================
 
-pub fn parser_entry_point(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, err: &mut ErrorGen) {
+pub fn parser_entry_point(
+    whamm: &mut Whamm,
+    script_count: usize,
+    pair: Pair<Rule>,
+    err: &mut ErrorGen,
+) {
     trace!("Enter process_pair");
     match pair.as_rule() {
         Rule::script => {
             trace!("Begin process script");
             handle_script(whamm, pair, err);
             trace!("End process script");
-        },
+        }
         Rule::statement => {
             trace!("Begin process statement");
             handle_global_statements(whamm, script_count, pair, err);
             trace!("End process statement");
-        },
+        }
         Rule::probe_def => {
             trace!("Begin process probe_def");
             handle_probe_def(whamm, script_count, pair, err);
@@ -129,7 +137,13 @@ pub fn parser_entry_point(whamm: &mut Whamm, script_count: usize, pair: Pair<Rul
                 true,
                 Some(UNEXPECTED_ERR_MSG.to_string()),
                 Some(LineColLocation::from(pair.as_span())),
-                vec![Rule::script, Rule::statement, Rule::probe_def, Rule::EOI, Rule::fn_def],
+                vec![
+                    Rule::script,
+                    Rule::statement,
+                    Rule::probe_def,
+                    Rule::EOI,
+                    Rule::fn_def,
+                ],
                 vec![rule],
             );
             // should have exited above (since it's a fatal error)
@@ -148,13 +162,23 @@ pub fn handle_script(whamm: &mut Whamm, pair: Pair<Rule>, err: &mut ErrorGen) {
     });
 }
 
-pub fn handle_global_statements(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, err: &mut ErrorGen) {
+pub fn handle_global_statements(
+    whamm: &mut Whamm,
+    script_count: usize,
+    pair: Pair<Rule>,
+    err: &mut ErrorGen,
+) {
     // Add global statements to the script
     let script: &mut Script = whamm.scripts.get_mut(script_count).unwrap();
     script.add_global_stmts(handle_stmts(&mut pair.into_inner(), err));
 }
 
-pub fn handle_probe_def(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, err: &mut ErrorGen) {
+pub fn handle_probe_def(
+    whamm: &mut Whamm,
+    script_count: usize,
+    pair: Pair<Rule>,
+    err: &mut ErrorGen,
+) {
     let mut pair = pair.into_inner();
     let spec_rule = pair.next().unwrap();
     // Get out the spec info
@@ -206,7 +230,6 @@ pub fn handle_probe_def(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>
 }
 
 pub fn handle_fn_def(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, err: &mut ErrorGen) {
-    let line_col = LineColLocation::from(pair.as_span());
     let mut pairs = pair.into_inner();
 
     // Get the function name
@@ -220,28 +243,30 @@ pub fn handle_fn_def(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, e
     };
 
     // Get the parameters
+    let mut params = vec![];
     let mut next = pairs.next();
-    let params = if let Some(n) = &next {
+    while let Some(n) = &next {
         if matches!(n.as_rule(), Rule::param) {
-            let params = handle_params(n.clone(), err);
+            if let Some(param) = handle_param(n.clone().into_inner(), err) {
+                params.push(param)
+            }
             next = pairs.next();
-            params
         } else {
-            vec![]
+            break;
         }
-    } else {
-        vec![]
-    };
+    }
 
     // Get the return type
     let return_ty = match next.clone() {
         Some(pair) => {
-            next = pairs.next();
-            type_from_rule(pair, err)
-        },
-        None => {
-            DataType::Tuple { ty_info: vec![] }
+            if !matches!(pair.as_rule(), Rule::block) {
+                next = pairs.next();
+                type_from_rule(pair, err)
+            } else {
+                DataType::Tuple { ty_info: vec![] }
+            }
         }
+        None => DataType::Tuple { ty_info: vec![] },
     };
 
     // Get the function body
@@ -259,7 +284,6 @@ pub fn handle_fn_def(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, e
         Block::default()
     };
 
-
     // Add the new function to the current script
     let script: &mut Script = whamm.scripts.get_mut(script_count).unwrap();
     script.fns.push(types::Fn {
@@ -273,9 +297,7 @@ pub fn handle_fn_def(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, e
 
 fn handle_probe_spec(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeSpec {
     match pair.as_rule() {
-        Rule::PROBE_SPEC => {
-            probe_spec_from_rule(pair, err)
-        }
+        Rule::PROBE_SPEC => probe_spec_from_rule(pair, err),
         rule => {
             err.parse_error(
                 true,
@@ -291,16 +313,10 @@ fn handle_probe_spec(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeSpec {
 }
 
 fn expr_from_pair(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
-    return match pair.as_rule() {
-        Rule::ternary => {
-            handle_ternary(pair)
-        }
-        Rule::arg => {
-            handle_arg(pair)
-        }
-        Rule::expr => {
-            handle_expr(pair)
-        }
+    match pair.as_rule() {
+        Rule::ternary => handle_ternary(pair),
+        Rule::arg => handle_arg(pair),
+        Rule::expr => handle_expr(pair),
         rule => Err(vec![ErrorGen::get_parse_error(
             true,
             Some(UNEXPECTED_ERR_MSG.to_string()),
@@ -323,7 +339,7 @@ fn handle_body(pairs: &mut Pairs<Rule>, line_col: LineColLocation, err: &mut Err
         return_ty: None,
         loc: Some(Location {
             line_col,
-            path: None
+            path: None,
         }),
     }
 }
@@ -344,33 +360,15 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
             let stmt = pair.into_inner().next().unwrap();
             stmt_from_rule(stmt, err)
         }
-        Rule::declaration => {
-            handle_decl(&mut pair.into_inner(), err)
-        }
-        Rule::assignment => {
-            handle_assignment(pair, err)
-        }
-        Rule::fn_call => {
-            handle_function_call_outer(pair, err)
-        }
-        Rule::incrementor => {
-            handle_incrementor(pair, err)
-        }
-        Rule::decrementor => {
-            handle_decrementor(pair, err)
-        }
-        Rule::ret => {
-            handle_ret(pair, err)
-        }
-        Rule::initialize => {
-            handle_initialize(pair, err)
-        }
-        Rule::if_stmt => {
-            handle_if(pair, err)
-        }
-        Rule::report_declaration => {
-            handle_report(pair, err)
-        }
+        Rule::declaration => handle_decl(&mut pair.into_inner(), err),
+        Rule::assignment => handle_assignment(pair, err),
+        Rule::fn_call => handle_function_call_outer(pair, err),
+        Rule::incrementor => handle_incrementor(pair, err),
+        Rule::decrementor => handle_decrementor(pair, err),
+        Rule::ret => handle_ret(pair, err),
+        Rule::initialize => handle_initialize(pair, err),
+        Rule::if_stmt => handle_if(pair, err),
+        Rule::report_declaration => handle_report(pair, err),
         rule => {
             err.parse_error(
                 true,
@@ -386,7 +384,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                     Rule::ret,
                     Rule::initialize,
                     Rule::if_stmt,
-                    Rule::report_declaration
+                    Rule::report_declaration,
                 ],
                 vec![rule],
             );
@@ -424,9 +422,7 @@ fn handle_assignment(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     let val_rule = pairs.next().unwrap();
     let val_line_col = LineColLocation::from(val_rule.as_span());
     let val = match expr_primary(val_rule) {
-        Ok(expr) => {
-            expr
-        }
+        Ok(expr) => expr,
         Err(errors) => {
             err.add_errors(errors);
             return vec![];
@@ -466,42 +462,58 @@ fn handle_function_call_outer(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<State
     }
 }
 fn handle_incrementor(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
-    vec![handle_custom_binop(BinOp::Add, Expr::Primitive {
-        val: Value::I32 {
-            ty: DataType::I32,
-            val: 1,
+    vec![handle_custom_binop(
+        BinOp::Add,
+        Expr::Primitive {
+            val: Value::I32 {
+                ty: DataType::I32,
+                val: 1,
+            },
+            loc: Some(Location {
+                line_col: LineColLocation::from(pair.as_span()),
+                path: None,
+            }),
         },
-        loc: None,
-    }, pair, err)]
+        pair,
+        err,
+    )]
 }
 
 fn handle_decrementor(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
-    vec![handle_custom_binop(BinOp::Subtract, Expr::Primitive {
-        val: Value::I32 {
-            ty: DataType::I32,
-            val: 1,
+    vec![handle_custom_binop(
+        BinOp::Subtract,
+        Expr::Primitive {
+            val: Value::I32 {
+                ty: DataType::I32,
+                val: 1,
+            },
+            loc: Some(Location {
+                line_col: LineColLocation::from(pair.as_span()),
+                path: None,
+            }),
         },
-        loc: None,
-    }, pair, err)]
+        pair,
+        err,
+    )]
 }
 
 fn handle_lhs(pair: Pair<Rule>, err: &mut ErrorGen) -> (Expr, Option<Expr>, bool) {
     match expr_primary(pair) {
         Ok(expr) => match expr {
-            Expr::MapGet { map, key, .. } => {
-                (*map, Some(*key), true)
-            }
-            var_id => {
-                (var_id, None, false)
-            }
+            Expr::MapGet { map, key, .. } => (*map, Some(*key), true),
+            var_id => (var_id, None, false),
         },
         Err(errors) => {
             err.add_errors(errors);
-            (Expr::VarId {
-                definition: Definition::User,
-                name: "placeholder".to_string(),
-                loc: None
-            }, None, false)
+            (
+                Expr::VarId {
+                    definition: Definition::User,
+                    name: "placeholder".to_string(),
+                    loc: None,
+                },
+                None,
+                false,
+            )
         }
     }
 }
@@ -513,9 +525,19 @@ fn handle_custom_binop(op: BinOp, rhs: Expr, pair: Pair<Rule>, err: &mut ErrorGe
     // get the increment target
     let (var_id, target_key, is_map) = handle_lhs(var_id_rule, err);
 
-    let add_op = Expr::BinOp {
-        lhs: Box::new(var_id.clone()),
-        op: op,
+    let binop_lhs = if is_map {
+        Expr::MapGet {
+            map: Box::new(var_id.clone()),
+            key: Box::new(target_key.clone().unwrap()),
+            loc: var_id.loc().clone(),
+        }
+    } else {
+        var_id.clone()
+    };
+
+    let val = Expr::BinOp {
+        lhs: Box::new(binop_lhs),
+        op,
         rhs: Box::new(rhs),
         loc: Some(Location {
             line_col: full_loc.clone(),
@@ -527,7 +549,7 @@ fn handle_custom_binop(op: BinOp, rhs: Expr, pair: Pair<Rule>, err: &mut ErrorGe
         Statement::SetMap {
             map: var_id,
             key: target_key.unwrap(),
-            val: add_op,
+            val,
             loc: Some(Location {
                 line_col: full_loc,
                 path: None,
@@ -536,7 +558,7 @@ fn handle_custom_binop(op: BinOp, rhs: Expr, pair: Pair<Rule>, err: &mut ErrorGe
     } else {
         Statement::Assign {
             var_id,
-            expr: add_op,
+            expr: val,
             loc: Some(Location {
                 line_col: full_loc,
                 path: None,
@@ -567,26 +589,24 @@ fn handle_ret(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                 }),
             }]
         }
-        Some(val) => {
-            match expr_from_pair(val) {
-                Err(errors) => {
-                    err.add_errors(errors);
-                    vec![]
-                }
-                Ok(expr) => {
-                    trace!("Exiting return_stmt");
-                    trace!("Exiting stmt_from_rule");
-
-                    vec![Statement::Return {
-                        expr,
-                        loc: Some(Location {
-                            line_col: ret_statement_line_col.clone(),
-                            path: None,
-                        }),
-                    }]
-                }
+        Some(val) => match expr_from_pair(val) {
+            Err(errors) => {
+                err.add_errors(errors);
+                vec![]
             }
-        }
+            Ok(expr) => {
+                trace!("Exiting return_stmt");
+                trace!("Exiting stmt_from_rule");
+
+                vec![Statement::Return {
+                    expr,
+                    loc: Some(Location {
+                        line_col: ret_statement_line_col.clone(),
+                        path: None,
+                    }),
+                }]
+            }
+        },
     }
 }
 
@@ -595,10 +615,10 @@ fn handle_initialize(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     // create the decl
     let decls = handle_decl(&mut pairs, err);
     let decl = decls.first().unwrap();
-    let var_id = if let Statement::Decl {var_id, ..} = decl {
+    let var_id = if let Statement::Decl { var_id, .. } = decl {
         var_id.clone()
     } else {
-        return vec![]
+        return vec![];
     };
 
     // get the assignment
@@ -606,15 +626,13 @@ fn handle_initialize(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     let expr_line_col = LineColLocation::from(expr_rule.as_span());
     let assign = match expr_from_pair(expr_rule) {
         Ok(expr) => {
-            let loc = if let Some(loc) = decl.line_col() {
-                Some(Location::from(&loc.clone(), &expr_line_col, None))
-            } else {
-                None
-            };
+            let loc = decl
+                .line_col()
+                .map(|loc| Location::from(&loc.clone(), &expr_line_col, None));
             Statement::Assign {
                 var_id: var_id.clone(),
                 expr,
-                loc
+                loc,
             }
         }
         Err(errors) => {
@@ -681,12 +699,8 @@ fn handle_if(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
 fn handle_alt(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
     let alt_loc = LineColLocation::from(pair.as_span());
     match pair.as_rule() {
-        Rule::else_stmt => {
-            handle_else(pair, err)
-        }
-        Rule::elif => {
-            handle_elif(pair, err)
-        }
+        Rule::else_stmt => handle_else(pair, err),
+        Rule::elif => handle_elif(pair, err),
         _ => {
             err.parse_error(
                 true,
@@ -704,8 +718,8 @@ fn handle_else(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
     let line_col = LineColLocation::from(pair.as_span());
     let mut pairs = pair.into_inner();
 
-    pairs.next().unwrap(); // skip start of block
-    handle_body(&mut pairs, line_col, err)
+    let block = pairs.next().unwrap();
+    handle_body(&mut block.into_inner(), line_col, err)
 }
 
 fn handle_elif(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
@@ -789,30 +803,29 @@ fn handle_report(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
 }
 // EXPRESSIONS
 
-fn handle_params(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<(Expr, DataType)> {
-    let mut pairs = pair.into_inner();
-
-    let mut params = vec![];
-    while let Some(param_rule) = pairs.next() {
+fn handle_param(mut pairs: Pairs<Rule>, err: &mut ErrorGen) -> Option<(Expr, DataType)> {
+    if let Some(param_rule) = pairs.next() {
         // process the type
         let ty = type_from_rule(param_rule, err);
         // process the name
-        let id = match expr_from_pair(pairs.next().unwrap()) {
-            Ok(expr) => {
-                expr
-            }
-            Err(errors) => {
-                err.add_errors(errors);
-                Expr::VarId {
-                    definition: Definition::CompilerStatic,
-                    name: "placeholder".to_string(),
-                    loc: None,
-                }
-            },
-        };
-        params.push((id, ty));
+        let id = handle_id(pairs.next().unwrap());
+        // let id = match expr_from_pair(pairs.next().unwrap()) {
+        //     Ok(expr) => {
+        //         expr
+        //     }
+        //     Err(errors) => {
+        //         err.add_errors(errors);
+        //         Expr::VarId {
+        //             definition: Definition::CompilerStatic,
+        //             name: "placeholder".to_string(),
+        //             loc: None,
+        //         }
+        //     },
+        // };
+        Some((id, ty))
+    } else {
+        None
     }
-    params
 }
 
 fn handle_fn_call(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
@@ -826,11 +839,11 @@ fn handle_fn_call(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     // handle args
     let mut args = vec![];
     let mut errors = vec![];
-    while let Some(next) = pairs.next() {
+    for next in pairs {
         match handle_arg(next) {
             Ok(expr) => {
                 args.push(expr);
-            },
+            }
             Err(err) => {
                 errors.extend(err);
             }
@@ -840,7 +853,7 @@ fn handle_fn_call(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     let args = if !args.is_empty() { Some(args) } else { None };
 
     if !errors.is_empty() {
-        return Err(errors)
+        return Err(errors);
     }
 
     let last_arg_loc = if let Some(args) = &args {
@@ -1068,25 +1081,13 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     match pair.as_rule() {
         Rule::fn_call => handle_fn_call(pair),
         Rule::ID => Ok(handle_id(pair)),
-        Rule::tuple => {
-            handle_tuple(pair)
-        }
-        Rule::INT => {
-            handle_int(pair)
-        }
-        Rule::DEC => {
-            handle_dec(pair)
-        }
-        Rule::BOOL => {
-            handle_bool(pair)
-        }
-        Rule::STRING => {
-            handle_string(pair)
-        }
-        Rule::get_map => {
-            handle_map_get(pair)
-        }
-        _ => handle_expr(pair),
+        Rule::tuple => handle_tuple(pair),
+        Rule::INT => handle_int(pair),
+        Rule::DEC => handle_dec(pair),
+        Rule::BOOL => handle_bool(pair),
+        Rule::STRING => handle_string(pair),
+        Rule::get_map => handle_map_get(pair),
+        _ => expr_from_pair(pair),
     }
 }
 
@@ -1338,7 +1339,7 @@ fn handle_id(pair: Pair<Rule>) -> Expr {
         loc: Some(Location {
             line_col: LineColLocation::from(pair.as_span()),
             path: None,
-        })
+        }),
     }
 }
 

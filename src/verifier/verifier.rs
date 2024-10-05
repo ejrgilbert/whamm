@@ -527,7 +527,10 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
             Expr::Primitive { val, .. } => self.visit_value(val),
             Expr::BinOp { lhs, rhs, op, .. } => {
                 let lhs_loc = lhs.loc().clone().unwrap();
-                let rhs_loc = rhs.loc().clone().unwrap();
+                let rhs_loc = match rhs.loc().clone() {
+                    Some(loc) => loc,
+                    None => lhs_loc.clone(),
+                };
                 let lhs_ty_op = self.visit_expr(lhs);
                 let rhs_ty_op = self.visit_expr(rhs);
                 if let (Some(lhs_ty), Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {

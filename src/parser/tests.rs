@@ -82,7 +82,11 @@ BEGIN { }
     r#"
     fn_name(i32 param) -> i32{}
     BEGIN { }
-        "#,
+    "#,
+    r#"
+    fn_name(i32 param0, i32 param1) -> i32{}
+    BEGIN { }
+    "#,
     r#"
     fn_name() -> i32{
         i = 0;
@@ -122,7 +126,7 @@ BEGIN { }
     "#,
     r#"
     do_nothing(i32 a, i32 b){
-        
+
     }
     BEGIN { }
     "#,
@@ -217,7 +221,7 @@ wasm:opcode:br:before {
                 i = 1;
             };
         }
-    
+
     "#,
     //maps
     r#"
@@ -248,7 +252,7 @@ wasm:opcode:br:before {
             strcmp((arg0, arg1), "bookings");
         }
         i32 i;
-        i = 5; 
+        i = 5;
         i32 j = 5;
         BEGIN{
             strcmp((arg0, arg1), "bookings");
