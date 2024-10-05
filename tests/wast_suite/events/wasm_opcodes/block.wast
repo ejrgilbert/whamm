@@ -20,7 +20,7 @@
 
     ;; Test case functions
     (func $basic_br (param i32) (result i32)
-        block
+        block ;; this gets replaced
             (i32.add (global.get $var2) (i32.const 1))
             global.set $var2
         end

@@ -1,8 +1,9 @@
 use crate::common::error::{ErrorGen, WhammError};
+use crate::parser::print_visitor::AsStrVisitor;
 use crate::parser::types;
 use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, FnId, Location, ProbeSpec, Rule, Script, SpecPart,
-    Statement, UnOp, Value, Whamm, WhammParser, PRATT_PARSER,
+    Statement, UnOp, Value, Whamm, WhammParser, WhammVisitor, PRATT_PARSER,
 };
 use log::trace;
 use pest::error::{Error, LineColLocation};
@@ -95,7 +96,9 @@ pub fn to_ast(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Whamm, Box<Error<R
             unreachable!()
         }
     }
-
+    let mut visitor = AsStrVisitor { indent: 0 };
+    let s = visitor.visit_whamm(&whamm);
+    println!("{}", s);
     Ok(whamm)
 }
 
@@ -203,35 +206,33 @@ pub fn handle_probe_def(
     // Get out the probe predicate/body contents
     let next = pair.next();
     let (this_predicate, this_body) = match next {
-        Some(n) => {
-            let (this_predicate, mut this_body) = match n.as_rule() {
-                Rule::predicate => {
-                    match handle_expr(n.into_inner().next().unwrap()) {
-                        Ok(res) => (Some(res), None),
-                        Err(errors) => {
-                            err.add_errors(errors);
-                            // ignore predicate due to errors
-                            (None, None)
-                        }
+        Some(mut n) => {
+            let this_predicate = if matches!(n.as_rule(), Rule::predicate) {
+                let res = match handle_expr(n.into_inner().next().unwrap()) {
+                    Ok(res) => Some(res),
+                    Err(errors) => {
+                        err.add_errors(errors);
+                        // ignore predicate due to errors
+                        None
                     }
-                }
-                Rule::block => {
-                    let loc = LineColLocation::from(n.as_span());
-                    (None, Some(handle_body(&mut n.into_inner(), loc, err)))
-                }
-                _ => (None, None),
+                };
+                n = pair.next().unwrap();
+                res
+            } else {
+                None
             };
 
-            // If it was a predicate, the body won't be processed yet, do it now
-            if this_body.is_none() {
-                this_body = match pair.next() {
-                    Some(b) => {
-                        let loc = LineColLocation::from(b.as_span());
-                        Some(handle_body(&mut b.into_inner(), loc, err))
-                    }
-                    None => None,
-                };
-            }
+            let this_body = if matches!(n.as_rule(), Rule::block) {
+                let loc = LineColLocation::from(n.as_span());
+                let block = handle_body(&mut n.into_inner(), loc, err);
+                if block.is_empty() {
+                    None
+                } else {
+                    Some(block)
+                }
+            } else {
+                None
+            };
 
             (this_predicate, this_body)
         }
@@ -370,11 +371,6 @@ fn handle_body(pairs: &mut Pairs<Rule>, line_col: LineColLocation, err: &mut Err
         }),
     }
 }
-
-// fn handle_block(pair: &mut Pair<Rule>) -> Block {
-//     let next =
-//     while matches!(pair)
-// }
 
 fn handle_stmts(pairs: &mut Pairs<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     let mut stmts = vec![];
