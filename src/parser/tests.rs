@@ -602,7 +602,7 @@ wasm::call:alt /
 
     let my_func = script.fns.first().unwrap();
     assert_eq!(6, my_func.body.stmts.len());
-                                     // provider
+    // provider
     assert_eq!(1, script.providers.len());
     let provider = script.providers.get("wasm").unwrap();
     assert_eq!("wasm", provider.name());
