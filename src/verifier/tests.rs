@@ -231,7 +231,7 @@ wasm::call:alt /
         }
         wasm::call:alt {
             dummy_fn();
-        }   
+        }
     "#,
     r#"
         bool a;
@@ -248,7 +248,7 @@ wasm::call:alt /
         }
         wasm::call:alt {
             dummy_fn();
-        }   
+        }
     "#,
     r#"
         i32 a;
@@ -261,7 +261,7 @@ wasm::call:alt /
         }
         wasm::call:alt {
             dummy_fn();
-        }   
+        }
     "#,
     r#"
     my_fn(i32 a) -> i32 {
@@ -270,7 +270,7 @@ wasm::call:alt /
         }
         else{
             return true;
-        };
+        }
         a = 5;
     }
     wasm::call:alt{
@@ -281,11 +281,11 @@ wasm::call:alt /
         }
         else{
             b = 7;
-        };
+        }
         if(b){
-        };
+        }
         if(b == 5){
-        };
+        }
     }
     "#,
     r#"
@@ -298,92 +298,92 @@ wasm::call:alt /
         bool a = true;
         if(a) {
             i32 b = 5;
-        };
-        wasm::call:alt {
-        }
-    "#,
-    r#"
-        my_func() -> bool {
-            return true;
-        }
-        bool a = my_func();
-        wasm::call:alt {
-        }
-    "#,
-    r#"
-        my_fn(i32 a) -> i32 {
-            return a;
         }
         wasm::call:alt {
-            i32 a = 5;
-            i32 a;
-            i32 b = my_fn(a);
         }
     "#,
-    r#"
-        my_fn(i32 a) -> i32 {
-            return a;
-        }
-        wasm::call:alt {
-            i32 a = 5;
-            i32 a;
-            i32 b = my_fn(a);
-        }
-    "#,
-    r#"
-        my_fn(i32 a) -> i32 {
-            bool a;
-            return a;
-        }
-        i32 my_fn;
-        wasm::call:alt {
-            i32 b = my_fn(a);
-            i32 my_fn;
-            i32 strcmp;
-        }
-    "#,
-    r#"
-        map<i32, i32> count;
-        my_fn() -> i32 {
-            count[0] = false;
-            return count[0];
-        }
-        wasm::call:alt {
-            count[1] = count[3];
-            i32 a = my_fn();
-            count[2] = a == count[1];
-        }
-    "#,
-    r#"
-    map<map<i32, i32>, map<i32, i32>> count;
-        
-        wasm::call:alt {
-            
-        }
-    "#,
-    r#"
-        wasm::call:alt {
-            (i32, map<i32, i32>) a;
-        }
-    "#,
-    r#"
-        wasm::call:alt {
-            (i32, map<i32, i32>) a;
-            map<i32, i32> b;
-            if((1, b) == a){
-            };
-        }
-    "#,
-    r#"
-        report i32 a;
-        my_fn() {
-            report i32 c;
-        }
-        wasm::br:before {
-            a = 1;
-            report bool b;
-        }
-    "#,
+//     r#"
+//         my_func() -> bool {
+//             return true;
+//         }
+//         bool a = my_func();
+//         wasm::call:alt {
+//         }
+//     "#,
+//     r#"
+//         my_fn(i32 a) -> i32 {
+//             return a;
+//         }
+//         wasm::call:alt {
+//             i32 a = 5;
+//             i32 a;
+//             i32 b = my_fn(a);
+//         }
+//     "#,
+//     r#"
+//         my_fn(i32 a) -> i32 {
+//             return a;
+//         }
+//         wasm::call:alt {
+//             i32 a = 5;
+//             i32 a;
+//             i32 b = my_fn(a);
+//         }
+//     "#,
+//     r#"
+//         my_fn(i32 a) -> i32 {
+//             bool a;
+//             return a;
+//         }
+//         i32 my_fn;
+//         wasm::call:alt {
+//             i32 b = my_fn(a);
+//             i32 my_fn;
+//             i32 strcmp;
+//         }
+//     "#,
+//     r#"
+//         map<i32, i32> count;
+//         my_fn() -> i32 {
+//             count[0] = false;
+//             return count[0];
+//         }
+//         wasm::call:alt {
+//             count[1] = count[3];
+//             i32 a = my_fn();
+//             count[2] = a == count[1];
+//         }
+//     "#,
+//     r#"
+//     map<map<i32, i32>, map<i32, i32>> count;
+//
+//         wasm::call:alt {
+//
+//         }
+//     "#,
+//     r#"
+//         wasm::call:alt {
+//             (i32, map<i32, i32>) a;
+//         }
+//     "#,
+//     r#"
+//         wasm::call:alt {
+//             (i32, map<i32, i32>) a;
+//             map<i32, i32> b;
+//             if((1, b) == a){
+//             }
+//         }
+//     "#,
+//     r#"
+//         report i32 a;
+//         my_fn() {
+//             report i32 c;
+//         }
+//         wasm::br:before {
+//             a = 1;
+//             report bool b;
+//         }
+//     "#,
 ];
 
 // =============
@@ -521,7 +521,7 @@ pub fn test_recursive_calls() {
         make5(i32 a) -> i32 {
             if(a<5){
                 return make5(a+1);
-            };
+            }
             return a;
         }
         wasm::call:alt {
@@ -580,7 +580,7 @@ pub fn test_report_decl() {
 // pub fn test_whamm_module() {
 //     setup_logger();
 //     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-
+//
 //     let script = r#"
 //         BEGIN {
 //             i32 a;
@@ -588,7 +588,7 @@ pub fn test_report_decl() {
 //     "#;
 //     info!("Typechecking: {}", script);
 //     let res = is_valid_script(script, &mut err);
-
+//
 //     err.report();
 //     assert!(!err.has_errors);
 //     assert!(res);

@@ -214,12 +214,12 @@ wasm:opcode:br:before {
                 i = 0;
             } else {
                 i = 1;
-            };
+            }
             if(a){
                 i = 0;
             } elif(b) {
                 i = 1;
-            };
+            }
         }
 
     "#,
@@ -384,7 +384,7 @@ map<i32, i32> count;
         wasm::call:alt{
             else {
                 i = 0;
-            };
+            }
         }
     "#,
     r#"
@@ -393,10 +393,10 @@ map<i32, i32> count;
                 i = 0;
             } else {
                 i = 1;
-            };
+            }
             else {
                 i = 0;
-            };
+            }
         }
     "#,
     r#"
@@ -569,6 +569,11 @@ pub fn test_whamm_with_asserts() {
     let script = r#"
 my_func() -> i32 {
     return 5;
+    return 5;
+    return 5;
+    return 5;
+    return 5;
+    return 5;
 }
 wasm::call:alt /
     target_fn_type == "import" &&
@@ -577,6 +582,10 @@ wasm::call:alt /
     strcmp((arg0, arg1), "bookings") &&
     strcmp((arg2, arg3), "record")
 / {
+    new_target_fn_name = "redirect_to_fault_injector";
+    new_target_fn_name = "redirect_to_fault_injector";
+    new_target_fn_name = "redirect_to_fault_injector";
+    new_target_fn_name = "redirect_to_fault_injector";
     new_target_fn_name = "redirect_to_fault_injector";
 }
     "#;
@@ -590,6 +599,9 @@ wasm::call:alt /
 
     let script = ast.scripts.first().unwrap();
     assert_eq!(1, script.fns.len()); // my_func
+
+    let my_func = script.fns.first().unwrap();
+    assert_eq!(6, my_func.body.stmts.len());
                                      // provider
     assert_eq!(1, script.providers.len());
     let provider = script.providers.get("wasm").unwrap();
@@ -622,7 +634,7 @@ wasm::call:alt /
 
     // probe body
     assert!(&probe.body().is_some());
-    assert_eq!(1, probe.body().as_ref().unwrap().stmts.len());
+    assert_eq!(5, probe.body().as_ref().unwrap().stmts.len());
 }
 
 #[test]
@@ -686,12 +698,13 @@ pub fn testing_block() {
                 strcmp((arg0, arg1), "bookings");
             } else {
                 dummy_fn();
-            };
+            }
         }
-    
     "#;
 
-    assert!(is_valid_script(script, &mut err));
+    let res = is_valid_script(script, &mut err);
+    err.report();
+    assert!(res);
 }
 #[test]
 pub fn testing_global_def() {

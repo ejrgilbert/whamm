@@ -3,10 +3,10 @@
 // ==============================
 
 // supports top-level global declarations/initial assignments and probe definitions
-script = { SOI ~ (statement | fn_def)* ~ probe_def ~ ( statement | fn_def | probe_def )* ~ EOI }
+script = { SOI ~ (if_stmt | statement | fn_def)* ~ probe_def ~ ( if_stmt | statement | fn_def | probe_def )* ~ EOI }
  
 // TODO -- support comma separated list of specs: https://docs.oracle.com/cd/E23824_01/html/E22973/glghi.html#scrolltoc
-probe_def = { PROBE_SPEC ~ PUSH(predicate?) ~ "{" ~ statement* ~ "}" }
+probe_def = { PROBE_SPEC ~ PUSH(predicate?) ~ block }
 
 predicate = { "/" ~ expr ~ "/" }
 
@@ -75,7 +75,7 @@ elif = { "elif" ~ "(" ~ expr ~ ")" ~ block ~ (else_stmt | elif) ? }
 else_stmt = { "else" ~  block }
 arg = { tuple | expr | val | ternary }
 fn_call = { ID ~ "(" ~ ( arg )? ~ ( "," ~ arg )* ~ ")" }
-block = { "{" ~ statement* ~ "}" }
+block = { "{" ~ (if_stmt | statement)* ~ "}" }
 
 
 // var ops
@@ -86,7 +86,7 @@ assignment = { (get_map | ID) ~ "=" ~ (ternary | expr) }
 declaration = { TYPE ~ !RESERVED_KEYWORDS ~ ID }
 
 initialize = { TYPE ~ ID ~ "=" ~ (ternary | expr) }
-statement = { ( ( initialize | if_stmt | fn_call | report_declaration | declaration | assignment | incrementor | decrementor | ret ) ~ ";" )+ }
+statement = { ( ( initialize | fn_call | report_declaration | declaration | assignment | incrementor | decrementor | ret ) ~ ";" )+ }
 incrementor = { (get_map | ID) ~ "++"}
 decrementor = { (get_map | ID) ~ "--"}
 // =====================
