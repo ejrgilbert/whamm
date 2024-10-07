@@ -121,7 +121,7 @@ fn instrument_control_flow() {
     assert!(res.status.success());
 
     let monitor_path = "tests/scripts/instr.mm";
-    let original_wasm_path = "wasm_playground/control_flow/target/wasm32-wasip1/release/cf.wasm";
+    let original_wasm_path = "wasm_playground/control_flow/target/wasm32-wasip1/debug/cf.wasm";
     let instrumented_wasm_path = "output/integration-control_flow.wasm";
 
     run_whamm_bin(original_wasm_path, monitor_path, instrumented_wasm_path);
