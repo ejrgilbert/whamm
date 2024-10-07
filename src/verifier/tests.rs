@@ -231,7 +231,7 @@ wasm::call:alt /
         }
         wasm::call:alt {
             dummy_fn();
-        }   
+        }
     "#,
     r#"
         bool a;
@@ -248,7 +248,7 @@ wasm::call:alt /
         }
         wasm::call:alt {
             dummy_fn();
-        }   
+        }
     "#,
     r#"
         i32 a;
@@ -261,7 +261,7 @@ wasm::call:alt /
         }
         wasm::call:alt {
             dummy_fn();
-        }   
+        }
     "#,
     r#"
     my_fn(i32 a) -> i32 {
@@ -270,7 +270,7 @@ wasm::call:alt /
         }
         else{
             return true;
-        };
+        }
         a = 5;
     }
     wasm::call:alt{
@@ -281,11 +281,11 @@ wasm::call:alt /
         }
         else{
             b = 7;
-        };
+        }
         if(b){
-        };
+        }
         if(b == 5){
-        };
+        }
     }
     "#,
     r#"
@@ -298,7 +298,7 @@ wasm::call:alt /
         bool a = true;
         if(a) {
             i32 b = 5;
-        };
+        }
         wasm::call:alt {
         }
     "#,
@@ -356,9 +356,9 @@ wasm::call:alt /
     "#,
     r#"
     map<map<i32, i32>, map<i32, i32>> count;
-        
+
         wasm::call:alt {
-            
+
         }
     "#,
     r#"
@@ -371,7 +371,7 @@ wasm::call:alt /
             (i32, map<i32, i32>) a;
             map<i32, i32> b;
             if((1, b) == a){
-            };
+            }
         }
     "#,
     r#"
@@ -521,7 +521,7 @@ pub fn test_recursive_calls() {
         make5(i32 a) -> i32 {
             if(a<5){
                 return make5(a+1);
-            };
+            }
             return a;
         }
         wasm::call:alt {
@@ -580,7 +580,7 @@ pub fn test_report_decl() {
 // pub fn test_whamm_module() {
 //     setup_logger();
 //     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-
+//
 //     let script = r#"
 //         BEGIN {
 //             i32 a;
@@ -588,7 +588,7 @@ pub fn test_report_decl() {
 //     "#;
 //     info!("Typechecking: {}", script);
 //     let res = is_valid_script(script, &mut err);
-
+//
 //     err.report();
 //     assert!(!err.has_errors);
 //     assert!(res);

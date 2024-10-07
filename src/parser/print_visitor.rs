@@ -456,13 +456,11 @@ impl WhammVisitor<String> for AsStrVisitor {
             } => {
                 let mut s = "".to_string();
                 s += &format!("{}(", self.visit_expr(fn_target));
-                if let Some(args) = args {
-                    s += &args
-                        .iter()
-                        .map(|arg| self.visit_expr(arg))
-                        .collect::<Vec<String>>()
-                        .join(", ");
-                }
+                s += &args
+                    .iter()
+                    .map(|arg| self.visit_expr(arg))
+                    .collect::<Vec<String>>()
+                    .join(", ");
                 s += ")";
                 s
             }

@@ -35,13 +35,12 @@
     (memory (;0;) 1)
 )
 
-;; TODO -- remove need for `;` on end of if
-;; WHAMM --> i32 count; wasm:opcode:call:before / target_fn_name == "dummy_five_params" / { if(true) { count = 3; }; }
+;; WHAMM --> i32 count; wasm:opcode:call:before / target_fn_name == "dummy_five_params" / { if(true) { count = 3; } }
 (assert_return (invoke "get_count") (i32.const 3))
-;; WHAMM --> i32 count; wasm:opcode:call:before / target_fn_name == "dummy_five_params" / { if(false) { count = 3; }; }
+;; WHAMM --> i32 count; wasm:opcode:call:before / target_fn_name == "dummy_five_params" / { if(false) { count = 3; } }
 (assert_return (invoke "get_count") (i32.const 0))
 
-;; WHAMM --> i32 count; wasm:opcode:call:before / target_fn_name == "dummy_five_params" / { i32 a; if(a == 0) { count = 3; }; }
+;; WHAMM --> i32 count; wasm:opcode:call:before / target_fn_name == "dummy_five_params" / { i32 a; if(a == 0) { count = 3; } }
 (assert_return (invoke "get_count") (i32.const 3))
-;; WHAMM --> i32 count; wasm:opcode:call:before / target_fn_name == "dummy_five_params" / { i32 a; if(a != 0) { count = 3; }; }
+;; WHAMM --> i32 count; wasm:opcode:call:before / target_fn_name == "dummy_five_params" / { i32 a; if(a != 0) { count = 3; } }
 (assert_return (invoke "get_count") (i32.const 0))

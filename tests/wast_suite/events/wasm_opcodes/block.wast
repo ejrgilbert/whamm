@@ -20,7 +20,7 @@
 
     ;; Test case functions
     (func $basic_br (param i32) (result i32)
-        block
+        block ;; this gets replaced
             (i32.add (global.get $var2) (i32.const 1))
             global.set $var2
         end
@@ -186,4 +186,4 @@
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
 (assert_return (invoke "get_global_var2") (i32.const 0)) ;; never entered!
 
-;;;; TODO -- `BlockType` struct? Issue #139
+;; TODO -- `BlockType` struct? Issue #139

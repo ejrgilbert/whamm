@@ -821,19 +821,17 @@ fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 
             // emit the arguments
             let mut is_success = true;
-            if let Some(args) = args {
-                for arg in args.iter_mut() {
-                    is_success = emit_expr(
-                        arg,
-                        injector,
-                        table,
-                        mem_tracker,
-                        map_lib_adapter,
-                        report_var_metadata,
-                        err_msg,
-                        err,
-                    );
-                }
+            for arg in args.iter_mut() {
+                is_success = emit_expr(
+                    arg,
+                    injector,
+                    table,
+                    mem_tracker,
+                    map_lib_adapter,
+                    report_var_metadata,
+                    err_msg,
+                    err,
+                );
             }
 
             let Some(Record::Fn { addr, .. }) = table.lookup_fn(&fn_name, err) else {

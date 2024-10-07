@@ -527,7 +527,10 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
             Expr::Primitive { val, .. } => self.visit_value(val),
             Expr::BinOp { lhs, rhs, op, .. } => {
                 let lhs_loc = lhs.loc().clone().unwrap();
-                let rhs_loc = rhs.loc().clone().unwrap();
+                let rhs_loc = match rhs.loc().clone() {
+                    Some(loc) => loc,
+                    None => lhs_loc.clone(),
+                };
                 let lhs_ty_op = self.visit_expr(lhs);
                 let rhs_ty_op = self.visit_expr(rhs);
                 if let (Some(lhs_ty), Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {
@@ -712,21 +715,19 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 // lookup type of function
                 let mut actual_param_tys = vec![];
 
-                if let Some(args) = args {
-                    for arg in args {
-                        match self.visit_expr(arg) {
-                            Some(ty) => actual_param_tys.push(Some(ty)),
-                            _ => {
-                                self.err.type_check_error(
-                                    false,
-                                    "Can't get type of argument".to_owned(),
-                                    &loc.clone().map(|l| l.line_col),
-                                );
-                                return Some(DataType::AssumeGood);
-                            }
+                for arg in args.iter_mut() {
+                    match self.visit_expr(arg) {
+                        Some(ty) => actual_param_tys.push(Some(ty)),
+                        _ => {
+                            self.err.type_check_error(
+                                false,
+                                "Can't get type of argument".to_owned(),
+                                &loc.clone().map(|l| l.line_col),
+                            );
+                            return Some(DataType::AssumeGood);
                         }
                     }
-                } // else function has no arguments
+                }
 
                 let fn_name = match fn_target.as_ref() {
                     Expr::VarId { name, .. } => name,
@@ -761,9 +762,9 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                     .to_owned(),
                                 &loc.clone().map(|l| l.line_col),
                             );
-                            //continue to check for other errors even after emmitting this one
+                            //continue to check for other errors even after emitting this one
                         }
-                        //check if the
+
                         // look up param
                         let mut expected_param_tys = vec![];
                         for param in params {
@@ -784,7 +785,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                         self.err.type_check_error(
                                             false,
                                             format! {"Expected type {:?} for the {} param, got {:?}", expected, i+1, actual},
-                                            &args.clone().map(|a| a[i].loc().clone().unwrap().line_col),
+                                            &Some(args.get(i).as_ref().unwrap().loc().clone().unwrap().line_col),
                                         );
                                     }
                                 }

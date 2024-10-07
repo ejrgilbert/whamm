@@ -237,13 +237,16 @@ pub enum Value {
     },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Block {
     pub stmts: Vec<Statement>,
     pub return_ty: Option<DataType>,
     pub loc: Option<Location>,
 }
 impl Block {
+    pub fn is_empty(&self) -> bool {
+        self.stmts.is_empty()
+    }
     pub fn loc(&self) -> &Option<Location> {
         &self.loc
     }
@@ -345,7 +348,7 @@ pub enum Expr {
     Call {
         // Type is fn_target.return_ty, should be VarId
         fn_target: Box<Expr>,
-        args: Option<Vec<Expr>>,
+        args: Vec<Expr>,
         loc: Option<Location>,
     },
     VarId {

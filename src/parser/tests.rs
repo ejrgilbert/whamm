@@ -82,7 +82,11 @@ BEGIN { }
     r#"
     fn_name(i32 param) -> i32{}
     BEGIN { }
-        "#,
+    "#,
+    r#"
+    fn_name(i32 param0, i32 param1) -> i32{}
+    BEGIN { }
+    "#,
     r#"
     fn_name() -> i32{
         i = 0;
@@ -122,7 +126,7 @@ BEGIN { }
     "#,
     r#"
     do_nothing(i32 a, i32 b){
-        
+
     }
     BEGIN { }
     "#,
@@ -210,14 +214,14 @@ wasm:opcode:br:before {
                 i = 0;
             } else {
                 i = 1;
-            };
+            }
             if(a){
                 i = 0;
             } elif(b) {
                 i = 1;
-            };
+            }
         }
-    
+
     "#,
     //maps
     r#"
@@ -248,7 +252,7 @@ wasm:opcode:br:before {
             strcmp((arg0, arg1), "bookings");
         }
         i32 i;
-        i = 5; 
+        i = 5;
         i32 j = 5;
         BEGIN{
             strcmp((arg0, arg1), "bookings");
@@ -380,7 +384,7 @@ map<i32, i32> count;
         wasm::call:alt{
             else {
                 i = 0;
-            };
+            }
         }
     "#,
     r#"
@@ -389,10 +393,10 @@ map<i32, i32> count;
                 i = 0;
             } else {
                 i = 1;
-            };
+            }
             else {
                 i = 0;
-            };
+            }
         }
     "#,
     r#"
@@ -471,7 +475,7 @@ pub fn get_ast(script: &str, err: &mut ErrorGen) -> Whamm {
     info!("Getting the AST");
     match parse_script(&script.to_string(), err) {
         Some(ast) => {
-            print_ast(&ast);
+            // print_ast(&ast);
             ast
         }
         None => {
@@ -563,7 +567,12 @@ pub fn test_parse_invalid_scripts() {
 pub fn test_whamm_with_asserts() {
     setup_logger();
     let script = r#"
-my_func() -> i32{
+my_func() -> i32 {
+    return 5;
+    return 5;
+    return 5;
+    return 5;
+    return 5;
     return 5;
 }
 wasm::call:alt /
@@ -573,6 +582,10 @@ wasm::call:alt /
     strcmp((arg0, arg1), "bookings") &&
     strcmp((arg2, arg3), "record")
 / {
+    new_target_fn_name = "redirect_to_fault_injector";
+    new_target_fn_name = "redirect_to_fault_injector";
+    new_target_fn_name = "redirect_to_fault_injector";
+    new_target_fn_name = "redirect_to_fault_injector";
     new_target_fn_name = "redirect_to_fault_injector";
 }
     "#;
@@ -586,7 +599,10 @@ wasm::call:alt /
 
     let script = ast.scripts.first().unwrap();
     assert_eq!(1, script.fns.len()); // my_func
-                                     // provider
+
+    let my_func = script.fns.first().unwrap();
+    assert_eq!(6, my_func.body.stmts.len());
+    // provider
     assert_eq!(1, script.providers.len());
     let provider = script.providers.get("wasm").unwrap();
     assert_eq!("wasm", provider.name());
@@ -618,7 +634,7 @@ wasm::call:alt /
 
     // probe body
     assert!(&probe.body().is_some());
-    assert_eq!(1, probe.body().as_ref().unwrap().stmts.len());
+    assert_eq!(5, probe.body().as_ref().unwrap().stmts.len());
 }
 
 #[test]
@@ -628,6 +644,7 @@ pub fn test_ast_special_cases() {
     run_test_on_valid_list(SPECIAL.iter().map(|s| s.to_string()).collect(), &mut err);
 }
 
+#[allow(unused)]
 pub(crate) fn print_ast(ast: &Whamm) {
     let mut visitor = AsStrVisitor { indent: 0 };
     debug!("{}", visitor.visit_whamm(ast));
@@ -682,12 +699,13 @@ pub fn testing_block() {
                 strcmp((arg0, arg1), "bookings");
             } else {
                 dummy_fn();
-            };
+            }
         }
-    
     "#;
 
-    assert!(is_valid_script(script, &mut err));
+    let res = is_valid_script(script, &mut err);
+    err.report();
+    assert!(res);
 }
 #[test]
 pub fn testing_global_def() {

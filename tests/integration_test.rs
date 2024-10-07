@@ -1,6 +1,7 @@
 mod common;
 
 use crate::common::{run_basic_instrumentation, run_whamm_bin};
+use log::error;
 use orca_wasm::Module;
 use std::fs;
 use std::path::PathBuf;
@@ -86,19 +87,41 @@ fn instrument_no_matches() {
 #[test]
 fn instrument_control_flow() {
     common::setup_logger();
-    // Build the control_flow Rust project
-    let a = Command::new("cargo")
-        .arg("build")
-        .arg("--target")
-        .arg("wasm32-unknown-unknown")
+    // Add the target
+    let res = Command::new("rustup")
+        .arg("target")
+        .arg("add")
+        .arg("wasm32-wasip1")
         .current_dir("wasm_playground/control_flow")
         .output()
         .expect("failed to execute process");
-    assert!(a.status.success());
+    if !res.status.success() {
+        error!(
+            "'instrument_control_flow' add target failed:\n{}\n{}",
+            String::from_utf8(res.stdout).unwrap(),
+            String::from_utf8(res.stderr).unwrap()
+        );
+    }
+
+    // Build the control_flow Rust project
+    let res = Command::new("cargo")
+        .arg("build")
+        .arg("--target")
+        .arg("wasm32-wasip1")
+        .current_dir("wasm_playground/control_flow")
+        .output()
+        .expect("failed to execute process");
+    if !res.status.success() {
+        error!(
+            "'instrument_control_flow' build project failed:\n{}\n{}",
+            String::from_utf8(res.stdout).unwrap(),
+            String::from_utf8(res.stderr).unwrap()
+        );
+    }
+    assert!(res.status.success());
 
     let monitor_path = "tests/scripts/instr.mm";
-    let original_wasm_path =
-        "wasm_playground/control_flow/target/wasm32-unknown-unknown/debug/cf.wasm";
+    let original_wasm_path = "wasm_playground/control_flow/target/wasm32-wasip1/debug/cf.wasm";
     let instrumented_wasm_path = "output/integration-control_flow.wasm";
 
     run_whamm_bin(original_wasm_path, monitor_path, instrumented_wasm_path);

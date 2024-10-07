@@ -207,7 +207,6 @@ fn asserts_on_call(call: &Expr) {
             panic!();
         }
 
-        let args = args.as_ref().unwrap();
         assert_eq!(2, args.len());
 
         let tuple = args.first().unwrap();

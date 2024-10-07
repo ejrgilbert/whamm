@@ -528,16 +528,11 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
                 is_success
             }
             Expr::Call { args, .. } => {
-                if let Some(args) = args {
-                    let mut is_success = true;
-                    args.iter_mut().for_each(|arg| {
-                        is_success &= self.visit_expr(arg);
-                    });
-                    is_success
-                } else {
-                    // ignore, no arguments
-                    true
-                }
+                let mut is_success = true;
+                args.iter_mut().for_each(|arg| {
+                    is_success &= self.visit_expr(arg);
+                });
+                is_success
             }
             Expr::Primitive { val, .. } => self.visit_value(val),
             Expr::VarId { .. } => {
