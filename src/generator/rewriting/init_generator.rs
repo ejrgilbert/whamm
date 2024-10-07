@@ -4,7 +4,7 @@
 
 use crate::common::error::ErrorGen;
 use crate::emitter::report_var_metadata::LocationData;
-use crate::emitter::rewriting::module_emitter::ModuleEmitter;
+use crate::emitter::module_emitter::ModuleEmitter;
 use crate::parser::rules::{Event, Package, Probe, Provider};
 use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Fn, FnId, Global, ProvidedFunction, Script,
@@ -18,6 +18,7 @@ use orca_wasm::ir::types::DataType as OrcaType;
 use orca_wasm::ir::types::Value as OrcaValue;
 use orca_wasm::InitExpr;
 use std::collections::HashMap;
+use crate::generator::GeneratingVisitor;
 
 /// Serves as the first phase of instrumenting a module by setting up
 /// the groundwork.
@@ -45,43 +46,6 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
     }
 
     // Private helper functions
-    fn visit_globals(&mut self, globals: &HashMap<String, Global>) -> bool {
-        let is_success = true;
-        for (name, global) in globals.iter() {
-            // do not inject globals into Wasm that are used/defined by the compiler
-            if global.is_from_user() {
-                if global.report {
-                    //emit global and add the metadata to the report_var_metadata
-                    if let Some(fid) = self.emitter.emit_report_global(
-                        name.clone(),
-                        global.ty.clone(),
-                        &global.value,
-                        self.err,
-                    ) {
-                        self.injected_funcs.push(fid);
-                    }
-                } else if let Some(fid) = self.emitter.emit_global(
-                    name.clone(),
-                    global.ty.clone(),
-                    &global.value,
-                    self.err,
-                ) {
-                    debug!("added global_getter: {:?}", fid);
-                    self.injected_funcs.push(fid);
-                }
-            }
-        }
-
-        is_success
-    }
-
-    fn visit_stmts(&mut self, stmts: &mut [Statement]) -> bool {
-        let mut is_success = true;
-        stmts.iter_mut().for_each(|stmt| {
-            is_success &= self.visit_stmt(stmt);
-        });
-        is_success
-    }
     fn on_startup(&mut self) {
         self.create_start();
         if self.emitter.map_lib_adapter.is_used {
@@ -245,349 +209,48 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
         );
     }
 }
-impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
-    fn visit_whamm(&mut self, whamm: &mut Whamm) -> bool {
-        trace!("Entering: CodeGenerator::visit_whamm");
-        self.context_name = "whamm".to_string();
-        let mut is_success = true;
-        // visit fns
-        whamm
-            .fns
-            .iter_mut()
-            .for_each(|ProvidedFunction { function, .. }| {
-                is_success &= self.visit_fn(function);
-            });
-        // do not inject globals into Wasm that are used/defined by the compiler
-        // because they are statically-defined and folded away
-
-        // visit scripts
-        whamm.scripts.iter_mut().for_each(|script| {
-            is_success &= self.visit_script(script);
-        });
-
-        trace!("Exiting: CodeGenerator::visit_whamm");
-        // Remove from `context_name`
-        self.context_name = "".to_string();
-        is_success
+impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
+    fn emit_string(&mut self, val: &mut Value) -> bool {
+        self.emitter.emit_string(val, &mut self.err)
     }
 
-    fn visit_script(&mut self, script: &mut Script) -> bool {
-        trace!("Entering: CodeGenerator::visit_script");
-        self.emitter.report_var_metadata.curr_location = LocationData::Global {
-            script_id: script.name.clone(),
-        };
-        self.emitter.enter_scope(self.err);
-        self.context_name += &format!(":{}", script.name.clone());
-        let mut is_success = true;
-
-        // visit fns
-        script.fns.iter_mut().for_each(|f| {
-            is_success &= self.visit_fn(f);
-        });
-        // inject globals
-        is_success &= self.visit_globals(&script.globals);
-        // visit providers
-        script.providers.iter_mut().for_each(|(_name, provider)| {
-            is_success &= self.visit_provider(provider);
-        });
-
-        trace!("Exiting: CodeGenerator::visit_script");
-        self.emitter.exit_scope(self.err);
-        // Remove from `context_name`
-        self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
-        is_success
+    fn emit_fn(&mut self, context: &str, f: &Fn) -> Option<FunctionID> {
+        self.emitter.emit_fn(context, f, &mut self.err)
     }
 
-    fn visit_provider(&mut self, provider: &mut Box<dyn Provider>) -> bool {
-        trace!("Entering: CodeGenerator::visit_provider");
-        self.emitter.enter_scope(self.err);
-        self.context_name += &format!(":{}", provider.name());
-        let mut is_success = true;
-
-        // visit fns
-        provider.get_provided_fns_mut().iter_mut().for_each(
-            |ProvidedFunction { function, .. }| {
-                is_success &= self.visit_fn(function);
-            },
-        );
-        // do not inject globals into Wasm that are used/defined by the compiler
-        // because they are statically-defined and folded away
-
-        // visit the packages
-        provider.packages_mut().for_each(|package| {
-            is_success &= self.visit_package(package);
-        });
-
-        trace!("Exiting: CodeGenerator::visit_provider");
-        self.emitter.exit_scope(self.err);
-        // Remove this package from `context_name`
-        self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
-        is_success
+    fn emit_global(&mut self, name: String, ty: DataType, value: &Option<Value>) -> Option<FunctionID> {
+        self.emitter.emit_global(name, ty, value, &mut self.err)
     }
 
-    fn visit_package(&mut self, package: &mut dyn Package) -> bool {
-        trace!("Entering: CodeGenerator::visit_package");
-        self.emitter.enter_scope(self.err);
-        let mut is_success = true;
-        self.context_name += &format!(":{}", package.name());
-
-        // visit fns
-        package.get_provided_fns_mut().iter_mut().for_each(
-            |ProvidedFunction { function, .. }| {
-                is_success &= self.visit_fn(function);
-            },
-        );
-        // do not inject globals into Wasm that are used/defined by the compiler
-        // because they are statically-defined and folded away
-
-        // visit the events
-        package.events_mut().for_each(|event| {
-            is_success &= self.visit_event(event);
-        });
-
-        trace!("Exiting: CodeGenerator::visit_package");
-        self.emitter.exit_scope(self.err);
-        // Remove this package from `context_name`
-        self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
-        is_success
+    fn emit_report_global(&mut self, name: String, ty: DataType, value: &Option<Value>) -> Option<FunctionID> {
+        self.emitter.emit_report_global(name, ty, value, &mut self.err)
     }
 
-    fn visit_event(&mut self, event: &mut dyn Event) -> bool {
-        trace!("Entering: CodeGenerator::visit_event");
-        self.emitter.enter_scope(self.err);
-        // let mut is_success = self.emitter.emit_event(event);
-        self.context_name += &format!(":{}", event.name());
-        let mut is_success = true;
-
-        // visit fns
-        event.get_provided_fns_mut().iter_mut().for_each(
-            |ProvidedFunction { function, .. }| {
-                is_success &= self.visit_fn(function);
-            },
-        );
-        // do not inject globals into Wasm that are used/defined by the compiler
-        // because they are statically-defined and folded away
-
-        // 1. visit the BEFORE probes
-        if let Some(probes) = event.probes_mut().get_mut(&"before".to_string()) {
-            probes.iter_mut().for_each(|probe| {
-                is_success &= self.visit_probe(probe);
-            });
-        }
-        // 2. visit the ALT probes
-        if let Some(probes) = event.probes_mut().get_mut(&"alt".to_string()) {
-            // only will emit one alt probe!
-            // The last alt probe in the list will be emitted.
-            if probes.len() > 1 {
-                warn!("Detected multiple `alt` probes, will only emit the last one and ignore the rest!")
-            }
-            if let Some(probe) = probes.last_mut() {
-                is_success &= self.visit_probe(probe);
-            }
-        }
-        // 3. visit the AFTER probes
-        if let Some(probes) = event.probes_mut().get_mut(&"after".to_string()) {
-            probes.iter_mut().for_each(|probe| {
-                is_success &= self.visit_probe(probe);
-            });
-        }
-
-        trace!("Exiting: CodeGenerator::visit_event");
-        self.emitter.exit_scope(self.err);
-        // Remove this event from `context_name`
-        self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
-        is_success
+    fn add_injected_func(&mut self, fid: FunctionID) {
+        self.injected_funcs.push(fid);
     }
 
-    fn visit_probe(&mut self, probe: &mut Box<dyn Probe>) -> bool {
-        trace!("Entering: CodeGenerator::visit_probe");
-        self.emitter.enter_scope(self.err);
-        // let mut is_success = self.emitter.emit_probe(probe);
-        self.context_name += &format!(":{}", probe.mode().name());
-        let mut is_success = true;
-
-        // visit fns
-        probe.get_mode_provided_fns_mut().iter_mut().for_each(
-            |ProvidedFunction { function, .. }| {
-                is_success &= self.visit_fn(function);
-            },
-        );
-        // do not inject globals into Wasm that are used/defined by the compiler
-        // because they are statically-defined and folded away
-
-        // visit probe predicate/body to get Strings into the Wasm module
-        // NOTE -- this means that we are greedy on the String emitting we need
-        // for instrumentation to work. This is because lots of Strings will not
-        // be needed dynamically (e.g. target_fn_name == "call_new" would be
-        // constant-propagated away). Maybe there's a way to avoid this?
-        // We could deal with this optimization in the future.
-        if let Some(pred) = probe.predicate_mut() {
-            is_success &= self.visit_expr(pred);
-        }
-        if let Some(body) = probe.body_mut() {
-            is_success &= self.visit_stmts(body.stmts.as_mut_slice());
-        }
-
-        trace!("Exiting: CodeGenerator::visit_probe");
-        self.emitter.exit_scope(self.err);
-        // Remove this probe from `context_name`
-        self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
-        is_success
+    fn set_context_name(&mut self, val: String) {
+        self.context_name = val;
     }
 
-    fn visit_fn(&mut self, f: &mut Fn) -> bool {
-        trace!("Entering: CodeGenerator::visit_fn");
-        self.emitter.enter_scope(self.err);
-        let mut is_success = true;
-        if f.def == Definition::CompilerDynamic {
-            // Only emit the functions that will be used dynamically!
-            if let Some(res) = self.emitter.emit_fn(&self.context_name, f, self.err) {
-                self.injected_funcs.push(res);
-            }
-        } else {
-            // user provided function, visit the body to ensure
-            // String values are added to the Wasm data section!
-
-            // READ ME WHEN IMPLEMENTING THE LOGIC TO EMIT USER-PROVIDED FUNCTIONS
-            // Currently we only visit the bodies of fns/probes to emit Strings into
-            // the data section. This means that both fn and probe bodies are handled the
-            // same way in this visitor.
-            // HOWEVER, when actually visiting user-defined function bodies, we WILL WANT
-            // to emit those functions into the Wasm. When visiting probe bodies, we will
-            // NOT want to emit any code into the Wasm...ONLY emit Strings into data sections.
-            // Make sure this is remembered when emitting functions!!
-            is_success &= self.visit_block(&mut f.body);
-        }
-        trace!("Exiting: CodeGenerator::visit_fn");
-        self.emitter.exit_scope(self.err);
-        is_success
+    fn get_context_name(&self) -> &String {
+        &self.context_name
     }
 
-    fn visit_formal_param(&mut self, _param: &mut (Expr, DataType)) -> bool {
-        // never called
-        unreachable!();
-        // trace!("Entering: CodeGenerator::visit_formal_param");
-        // let is_success = self.emitter.emit_formal_param(param);
-        // trace!("Exiting: CodeGenerator::visit_formal_param");
-        // is_success
+    fn append_context_name(&mut self, val: String) {
+        self.context_name += &val;
     }
 
-    fn visit_block(&mut self, block: &mut Block) -> bool {
-        self.visit_stmts(&mut block.stmts)
+    fn set_curr_loc(&mut self, loc: LocationData) {
+        self.emitter.report_var_metadata.curr_location = loc;
     }
 
-    fn visit_stmt(&mut self, stmt: &mut Statement) -> bool {
-        match stmt {
-            Statement::Decl { .. } => {
-                // ignore, this stmt type will not have a string in it!
-                true
-            }
-            Statement::Assign { expr, .. }
-            | Statement::Expr { expr, .. }
-            | Statement::Return { expr, .. } => self.visit_expr(expr),
-            Statement::If {
-                cond, conseq, alt, ..
-            } => {
-                let mut is_success = true;
-                is_success &= self.visit_expr(cond);
-                is_success &= self.visit_block(conseq);
-                is_success &= self.visit_block(alt);
-
-                is_success
-            }
-            Statement::ReportDecl { decl, .. } => self.visit_stmt(decl),
-            Statement::SetMap { map, key, val, .. } => {
-                let mut is_success = true;
-                is_success &= self.visit_expr(map);
-                is_success &= self.visit_expr(key);
-                is_success &= self.visit_expr(val);
-
-                is_success
-            }
-        }
+    fn enter_scope(&mut self) {
+        self.emitter.enter_scope(&mut self.err);
     }
 
-    fn visit_expr(&mut self, expr: &mut Expr) -> bool {
-        match expr {
-            Expr::UnOp { expr, .. } => self.visit_expr(expr),
-            Expr::Ternary {
-                cond, conseq, alt, ..
-            } => {
-                let mut is_success = true;
-                is_success &= self.visit_expr(cond);
-                is_success &= self.visit_expr(conseq);
-                is_success &= self.visit_expr(alt);
-
-                is_success
-            }
-            Expr::BinOp { lhs, rhs, .. } => {
-                let mut is_success = true;
-                is_success &= self.visit_expr(lhs);
-                is_success &= self.visit_expr(rhs);
-
-                is_success
-            }
-            Expr::Call { args, .. } => {
-                let mut is_success = true;
-                args.iter_mut().for_each(|arg| {
-                    is_success &= self.visit_expr(arg);
-                });
-                is_success
-            }
-            Expr::Primitive { val, .. } => self.visit_value(val),
-            Expr::VarId { .. } => {
-                // ignore, will not have a string to emit
-                true
-            }
-            Expr::MapGet { map, key, .. } => {
-                let mut is_success = true;
-                is_success &= self.visit_expr(map);
-                is_success &= self.visit_expr(key);
-
-                is_success
-            }
-        }
-    }
-
-    fn visit_unop(&mut self, _unop: &mut UnOp) -> bool {
-        // never called
-        unreachable!();
-    }
-
-    fn visit_binop(&mut self, _binop: &mut BinOp) -> bool {
-        // never called
-        unreachable!();
-    }
-
-    fn visit_datatype(&mut self, _datatype: &mut DataType) -> bool {
-        // never called
-        unreachable!();
-    }
-
-    fn visit_value(&mut self, val: &mut Value) -> bool {
-        match val {
-            Value::Str { .. } => {
-                // Emit the string into the Wasm module data section!
-                self.emitter.emit_string(val, self.err)
-            }
-            Value::Tuple { vals, .. } => {
-                let mut is_success = true;
-                vals.iter_mut().for_each(|arg| {
-                    is_success &= self.visit_expr(arg);
-                });
-                is_success
-            }
-            Value::U32 { .. }
-            | Value::I32 { .. }
-            | Value::F32 { .. }
-            | Value::U64 { .. }
-            | Value::I64 { .. }
-            | Value::F64 { .. }
-            | Value::Boolean { .. }
-            | Value::U32U32Map { .. } => {
-                // ignore, will not have a string to emit
-                true
-            }
-        }
+    fn exit_scope(&mut self) {
+        self.emitter.exit_scope(&mut self.err);
     }
 }

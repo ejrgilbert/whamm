@@ -1,9 +1,8 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::report_var_metadata::{BytecodeLoc, LocationData, Metadata};
-use crate::emitter::rewriting::module_emitter::StringAddr;
+use crate::emitter::module_emitter::StringAddr;
 use crate::emitter::rewriting::rules::{provider_factory, Arg, LocInfo, ProbeSpec, WhammProvider};
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
-use crate::emitter::rewriting::Emitter;
 use crate::generator::simple_ast::{SimpleAST, SimpleProbe};
 use crate::generator::types::ExprFolder;
 use crate::parser::rules::core::WhammModeKind;
@@ -17,6 +16,7 @@ use orca_wasm::{DataSegment, DataSegmentKind, InitExpr, Opcode};
 use orca_wasm::{Location as OrcaLocation, Location};
 use std::collections::HashMap;
 use std::iter::Iterator as StdIter;
+use crate::emitter::Emitter;
 
 const UNEXPECTED_ERR_MSG: &str =
     "InstrGenerator: Looks like you've found a bug...please report this behavior!";

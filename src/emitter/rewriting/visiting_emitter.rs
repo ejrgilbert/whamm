@@ -1,10 +1,8 @@
 use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::report_var_metadata::ReportVarMetadata;
-use crate::emitter::rewriting::module_emitter::MemoryTracker;
+use crate::emitter::module_emitter::MemoryTracker;
 use crate::emitter::rewriting::rules::wasm::OpcodeEvent;
 use crate::emitter::rewriting::rules::{Arg, LocInfo, ProbeSpec, Provider, WhammProvider};
-use crate::emitter::rewriting::{block_type_to_wasm, emit_expr, whamm_type_to_wasm_global};
-use crate::emitter::rewriting::{emit_stmt, print_report_all, Emitter};
 use crate::libraries::core::maps::map_adapter::MapLibAdapter;
 use std::collections::HashMap;
 
@@ -22,6 +20,8 @@ use orca_wasm::iterator::module_iterator::ModuleIterator;
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::{Instrumenter, Opcode};
 use std::iter::Iterator;
+use crate::emitter::Emitter;
+use crate::emitter::utils::{block_type_to_wasm, emit_expr, emit_stmt, print_report_all, whamm_type_to_wasm_global};
 
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";

@@ -6,9 +6,7 @@ use orca_wasm::{DataSegment, DataSegmentKind, InitExpr, Location};
 use std::collections::HashMap;
 
 use crate::emitter::rewriting::rules::Arg;
-use crate::emitter::rewriting::{
-    emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global, Emitter,
-};
+use crate::emitter::utils::{emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global};
 use crate::libraries::core::maps::map_adapter::MapLibAdapter;
 use orca_wasm::ir::function::FunctionBuilder;
 use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
@@ -16,6 +14,7 @@ use orca_wasm::ir::module::Module;
 use orca_wasm::ir::types::{BlockType as OrcaBlockType, DataType as OrcaType, Value as OrcaValue};
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::{Instrumenter, Opcode};
+use crate::emitter::Emitter;
 
 const UNEXPECTED_ERR_MSG: &str =
     "ModuleEmitter: Looks like you've found a bug...please report this behavior!";

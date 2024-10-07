@@ -1,7 +1,7 @@
 use crate::cli::LibraryLinkStrategyArg;
 use crate::common::error::ErrorGen;
 use crate::emitter::report_var_metadata::ReportVarMetadata;
-use crate::emitter::rewriting::module_emitter::{MemoryTracker, ModuleEmitter};
+use crate::emitter::module_emitter::{MemoryTracker, ModuleEmitter};
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::generator::rewriting::init_generator::InitGenerator;
 use crate::generator::rewriting::instr_generator::InstrGenerator;
@@ -145,7 +145,6 @@ pub fn run(
     // Process the script
     let mut whamm = get_script_ast(whamm_script, &mut err);
     let mut symbol_table = get_symbol_table(&mut whamm, &mut err);
-    let simple_ast = build_simple_ast(&whamm, &mut err);
     err.check_too_many();
 
     // If there were any errors encountered, report and exit!
@@ -175,7 +174,7 @@ pub fn run(
     if config.wizard {
         run_instr_wizard(
             &mut whamm,
-            simple_ast,
+            // simple_ast,
             target_wasm,
             &mut symbol_table,
             &mut io_adapter,
@@ -184,6 +183,7 @@ pub fn run(
             &mut err
         );
     } else {
+        let simple_ast = build_simple_ast(&whamm, &mut err);
         run_instr_rewrite(
             &mut whamm,
             simple_ast,
@@ -220,7 +220,7 @@ pub fn run(
 
 fn run_instr_wizard(
     whamm: &mut Whamm,
-    simple_ast: SimpleAST,
+    // simple_ast: SimpleAST,
     target_wasm: &mut Module,
     symbol_table: &mut SymbolTable,
     io_adapter: &mut IOAdapter,
@@ -233,13 +233,14 @@ fn run_instr_wizard(
     // Currently, most of the wizard emitter/generator is copied directly from
     // the rewriting ones
     let mut gen = crate::generator::wizard::WizardGenerator {
-        emitter: crate::emitter::wizard::WizardEmitter::new(
+        emitter: ModuleEmitter::new(
             target_wasm,
             symbol_table,
             &mut mem_tracker,
             map_lib_adapter,
             report_var_metadata
         ),
+        io_adapter,
         context_name: "".to_string(),
         err,
     };
