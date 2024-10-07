@@ -626,14 +626,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         Ok(is_success)
     }
 
-    fn handle_alt_call_by_name(
-        &mut self,
-        args: &mut Option<Vec<Expr>>,
-        err: &mut ErrorGen,
-    ) -> bool {
+    fn handle_alt_call_by_name(&mut self, args: &mut Vec<Expr>, err: &mut ErrorGen) -> bool {
         // args: vec![func_name: String]
         // Assume the correct args since we've gone through typechecking at this point!
-        let fn_name = match args.as_ref().unwrap().iter().next().unwrap() {
+        let fn_name = match args.iter().next().unwrap() {
             Expr::Primitive {
                 val: Value::Str { val, .. },
                 ..
@@ -662,10 +658,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         }
     }
 
-    fn handle_alt_call_by_id(&mut self, args: &mut Option<Vec<Expr>>, err: &mut ErrorGen) -> bool {
+    fn handle_alt_call_by_id(&mut self, args: &mut Vec<Expr>, err: &mut ErrorGen) -> bool {
         // args: vec![func_id: i32]
         // Assume the correct args since we've gone through typechecking at this point!
-        let func_id = match args.as_ref().unwrap().iter().next().unwrap() {
+        let func_id = match args.iter().next().unwrap() {
             Expr::Primitive {
                 val: Value::I32 { val, .. },
                 ..
@@ -690,7 +686,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         &mut self,
         curr_instr_args: &[Arg],
         target_fn_name: String,
-        args: &mut Option<Vec<Expr>>,
+        args: &mut Vec<Expr>,
         err: &mut ErrorGen,
     ) -> bool {
         match target_fn_name.as_str() {

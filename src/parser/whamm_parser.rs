@@ -864,22 +864,16 @@ fn handle_fn_call(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
             }
         };
     }
-    // todo -- just have empty vec for no args...why an option...
-    let args = if !args.is_empty() { Some(args) } else { None };
 
     if !errors.is_empty() {
         return Err(errors);
     }
 
-    let last_arg_loc = if let Some(args) = &args {
-        if let Some(last_arg) = args.last() {
-            last_arg
-                .loc()
-                .as_ref()
-                .map(|last_arg_loc| last_arg_loc.line_col.clone())
-        } else {
-            None
-        }
+    let last_arg_loc = if let Some(last_arg) = args.last() {
+        last_arg
+            .loc()
+            .as_ref()
+            .map(|last_arg_loc| last_arg_loc.line_col.clone())
     } else {
         None
     };
@@ -1072,7 +1066,7 @@ fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                         lhs: Box::new(lhs),
                         op,
                         rhs: Box::new(rhs),
-                        loc
+                        loc,
                     })
                 }
                 (lhs, rhs) => {

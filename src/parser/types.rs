@@ -348,7 +348,7 @@ pub enum Expr {
     Call {
         // Type is fn_target.return_ty, should be VarId
         fn_target: Box<Expr>,
-        args: Option<Vec<Expr>>,
+        args: Vec<Expr>,
         loc: Option<Location>,
     },
     VarId {
