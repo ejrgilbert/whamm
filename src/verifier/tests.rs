@@ -302,88 +302,88 @@ wasm::call:alt /
         wasm::call:alt {
         }
     "#,
-    //     r#"
-    //         my_func() -> bool {
-    //             return true;
-    //         }
-    //         bool a = my_func();
-    //         wasm::call:alt {
-    //         }
-    //     "#,
-    //     r#"
-    //         my_fn(i32 a) -> i32 {
-    //             return a;
-    //         }
-    //         wasm::call:alt {
-    //             i32 a = 5;
-    //             i32 a;
-    //             i32 b = my_fn(a);
-    //         }
-    //     "#,
-    //     r#"
-    //         my_fn(i32 a) -> i32 {
-    //             return a;
-    //         }
-    //         wasm::call:alt {
-    //             i32 a = 5;
-    //             i32 a;
-    //             i32 b = my_fn(a);
-    //         }
-    //     "#,
-    //     r#"
-    //         my_fn(i32 a) -> i32 {
-    //             bool a;
-    //             return a;
-    //         }
-    //         i32 my_fn;
-    //         wasm::call:alt {
-    //             i32 b = my_fn(a);
-    //             i32 my_fn;
-    //             i32 strcmp;
-    //         }
-    //     "#,
-    //     r#"
-    //         map<i32, i32> count;
-    //         my_fn() -> i32 {
-    //             count[0] = false;
-    //             return count[0];
-    //         }
-    //         wasm::call:alt {
-    //             count[1] = count[3];
-    //             i32 a = my_fn();
-    //             count[2] = a == count[1];
-    //         }
-    //     "#,
-    //     r#"
-    //     map<map<i32, i32>, map<i32, i32>> count;
-    //
-    //         wasm::call:alt {
-    //
-    //         }
-    //     "#,
-    //     r#"
-    //         wasm::call:alt {
-    //             (i32, map<i32, i32>) a;
-    //         }
-    //     "#,
-    //     r#"
-    //         wasm::call:alt {
-    //             (i32, map<i32, i32>) a;
-    //             map<i32, i32> b;
-    //             if((1, b) == a){
-    //             }
-    //         }
-    //     "#,
-    //     r#"
-    //         report i32 a;
-    //         my_fn() {
-    //             report i32 c;
-    //         }
-    //         wasm::br:before {
-    //             a = 1;
-    //             report bool b;
-    //         }
-    //     "#,
+    r#"
+        my_func() -> bool {
+            return true;
+        }
+        bool a = my_func();
+        wasm::call:alt {
+        }
+    "#,
+    r#"
+        my_fn(i32 a) -> i32 {
+            return a;
+        }
+        wasm::call:alt {
+            i32 a = 5;
+            i32 a;
+            i32 b = my_fn(a);
+        }
+    "#,
+    r#"
+        my_fn(i32 a) -> i32 {
+            return a;
+        }
+        wasm::call:alt {
+            i32 a = 5;
+            i32 a;
+            i32 b = my_fn(a);
+        }
+    "#,
+    r#"
+        my_fn(i32 a) -> i32 {
+            bool a;
+            return a;
+        }
+        i32 my_fn;
+        wasm::call:alt {
+            i32 b = my_fn(a);
+            i32 my_fn;
+            i32 strcmp;
+        }
+    "#,
+    r#"
+        map<i32, i32> count;
+        my_fn() -> i32 {
+            count[0] = false;
+            return count[0];
+        }
+        wasm::call:alt {
+            count[1] = count[3];
+            i32 a = my_fn();
+            count[2] = a == count[1];
+        }
+    "#,
+    r#"
+    map<map<i32, i32>, map<i32, i32>> count;
+
+        wasm::call:alt {
+
+        }
+    "#,
+    r#"
+        wasm::call:alt {
+            (i32, map<i32, i32>) a;
+        }
+    "#,
+    r#"
+        wasm::call:alt {
+            (i32, map<i32, i32>) a;
+            map<i32, i32> b;
+            if((1, b) == a){
+            }
+        }
+    "#,
+    r#"
+        report i32 a;
+        my_fn() {
+            report i32 c;
+        }
+        wasm::br:before {
+            a = 1;
+            report bool b;
+        }
+    "#,
 ];
 
 // =============
