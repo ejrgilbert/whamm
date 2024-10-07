@@ -951,9 +951,32 @@ fn handle_arg(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     }
 }
 
+/// TLDR; We cannot keep from passing up WhammErrors during parsing.
+///
+/// NOTE -- I've tried to refactor to push down using the ErrorGen into the PRATT_PARSER
+/// logic, but it's not possible due to the following compilation error:
+/// error[E0499]: cannot borrow `***err` as mutable more than once at a time
+///    --> src/parser/whamm_parser.rs:904:20
+///     |
+/// 874 |         .map_primary(|primary| -> Expr { expr_primary(primary, err) })
+///     |                      -----------------                         --- first borrow occurs due to use of `*err` in closure
+///     |                      |
+///     |                      first mutable borrow occurs here
+/// ...
+/// 904 |         .map_infix(|lhs, op, rhs| -> Expr {
+///     |          --------- ^^^^^^^^^^^^^^^^^^^^^^ second mutable borrow occurs here
+///     |          |
+///     |          first borrow later used by call
+/// ...
+/// 927 |                     err.parse_error(
+///     |                     --- second borrow occurs due to use of `***err` in closure
+///
+/// Since there are multiple live mutable references to the ErrorGen, it won't compile.
+/// I think this would be a problem even if we were to refactor the Parser into an object that
+/// would hold the mutable reference to the error gen as a member field. This is because you'd call
+/// self.<something> which would require 2 mutable references to self between the closures.
 fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     let pairs = pair.into_inner();
-    // TODO -- try boxing ErrorGen so you can put it in both closures?
     PRATT_PARSER
         .map_primary(|primary| -> Result<Expr, Vec<WhammError>> { expr_primary(primary) })
         .map_prefix(|op, rhs| -> Result<Expr, Vec<WhammError>> {
