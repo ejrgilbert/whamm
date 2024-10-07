@@ -1,9 +1,8 @@
 use crate::common::error::{ErrorGen, WhammError};
-use crate::parser::print_visitor::AsStrVisitor;
 use crate::parser::types;
 use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, FnId, Location, ProbeSpec, Rule, Script, SpecPart,
-    Statement, UnOp, Value, Whamm, WhammParser, WhammVisitor, PRATT_PARSER,
+    Statement, UnOp, Value, Whamm, WhammParser, PRATT_PARSER,
 };
 use log::trace;
 use pest::error::{Error, LineColLocation};
@@ -96,9 +95,9 @@ pub fn to_ast(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Whamm, Box<Error<R
             unreachable!()
         }
     }
-    let mut visitor = AsStrVisitor { indent: 0 };
-    let s = visitor.visit_whamm(&whamm);
-    println!("{}", s);
+    // let mut visitor = AsStrVisitor { indent: 0 };
+    // let s = visitor.visit_whamm(&whamm);
+    // println!("{}", s);
     Ok(whamm)
 }
 
