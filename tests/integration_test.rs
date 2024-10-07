@@ -87,15 +87,33 @@ fn instrument_no_matches() {
 #[test]
 fn instrument_control_flow() {
     common::setup_logger();
-    // Build the control_flow Rust project
-    let res = Command::new("cargo")
-        .arg("build")
+    // Add the target
+    let res = Command::new("rustup")
+        .arg("target")
+        .arg("add")
+        .arg("wasm32-wasip1")
         .current_dir("wasm_playground/control_flow")
         .output()
         .expect("failed to execute process");
     if !res.status.success() {
         error!(
-            "'instrument_control_flow' failed:\n{}\n{}",
+            "'instrument_control_flow' add target failed:\n{}\n{}",
+            String::from_utf8(res.stdout).unwrap(),
+            String::from_utf8(res.stderr).unwrap()
+        );
+    }
+
+    // Build the control_flow Rust project
+    let res = Command::new("cargo")
+        .arg("build")
+        .arg("--target")
+        .arg("wasm32-wasip1")
+        .current_dir("wasm_playground/control_flow")
+        .output()
+        .expect("failed to execute process");
+    if !res.status.success() {
+        error!(
+            "'instrument_control_flow' build project failed:\n{}\n{}",
             String::from_utf8(res.stdout).unwrap(),
             String::from_utf8(res.stderr).unwrap()
         );
@@ -103,7 +121,7 @@ fn instrument_control_flow() {
     assert!(res.status.success());
 
     let monitor_path = "tests/scripts/instr.mm";
-    let original_wasm_path = "wasm_playground/control_flow/target/wasm32-wasip1/debug/cf.wasm";
+    let original_wasm_path = "wasm_playground/control_flow/target/wasm32-wasip1/release/cf.wasm";
     let instrumented_wasm_path = "output/integration-control_flow.wasm";
 
     run_whamm_bin(original_wasm_path, monitor_path, instrumented_wasm_path);
