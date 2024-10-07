@@ -475,7 +475,7 @@ pub fn get_ast(script: &str, err: &mut ErrorGen) -> Whamm {
     info!("Getting the AST");
     match parse_script(&script.to_string(), err) {
         Some(ast) => {
-            print_ast(&ast);
+            // print_ast(&ast);
             ast
         }
         None => {
@@ -644,6 +644,7 @@ pub fn test_ast_special_cases() {
     run_test_on_valid_list(SPECIAL.iter().map(|s| s.to_string()).collect(), &mut err);
 }
 
+#[allow(unused)]
 pub(crate) fn print_ast(ast: &Whamm) {
     let mut visitor = AsStrVisitor { indent: 0 };
     debug!("{}", visitor.visit_whamm(ast));
