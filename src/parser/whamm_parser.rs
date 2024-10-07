@@ -972,23 +972,17 @@ fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                         }
                     };
 
-                    let rhs_line_col = if let Some(rhs_loc) = rhs.loc() {
-                        rhs_loc.line_col.clone()
+                    let loc = if let Some(rhs_loc) = rhs.loc() {
+                        let rhs_line_col = rhs_loc.line_col.clone();
+                        Some(Location::from(&rhs_line_col, &rhs_line_col, None))
                     } else {
-                        return Err(vec![ErrorGen::get_unexpected_error(
-                            true,
-                            Some(format!(
-                                "{}{}",
-                                UNEXPECTED_ERR_MSG, "could not get location"
-                            )),
-                            None,
-                        )]);
+                        None
                     };
 
                     Ok(Expr::UnOp {
                         op,
                         expr: Box::new(rhs),
-                        loc: Some(Location::from(&rhs_line_col, &rhs_line_col, None)),
+                        loc,
                     })
                 }
                 Err(errors) => Err(errors),
@@ -1043,37 +1037,19 @@ fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                         }
                     };
 
-                    let lhs_line_col = if let Some(lhs_loc) = lhs.loc() {
-                        lhs_loc.line_col.clone()
+                    let loc = if let (Some(lhs_loc), Some(rhs_loc)) = (lhs.loc(), rhs.loc()) {
+                        let lhs_line_col = lhs_loc.line_col.clone();
+                        let rhs_line_col = rhs_loc.line_col.clone();
+                        Some(Location::from(&lhs_line_col, &rhs_line_col, None))
                     } else {
-                        return Err(vec![ErrorGen::get_unexpected_error(
-                            true,
-                            Some(format!(
-                                "{}{}",
-                                UNEXPECTED_ERR_MSG, "could not get location"
-                            )),
-                            None,
-                        )]);
-                    };
-
-                    let rhs_line_col = if let Some(rhs_loc) = rhs.loc() {
-                        rhs_loc.line_col.clone()
-                    } else {
-                        return Err(vec![ErrorGen::get_unexpected_error(
-                            true,
-                            Some(format!(
-                                "{}{}",
-                                UNEXPECTED_ERR_MSG, "could not get location"
-                            )),
-                            None,
-                        )]);
+                        None
                     };
 
                     Ok(Expr::BinOp {
                         lhs: Box::new(lhs),
                         op,
                         rhs: Box::new(rhs),
-                        loc: Some(Location::from(&lhs_line_col, &rhs_line_col, None)),
+                        loc
                     })
                 }
                 (lhs, rhs) => {
