@@ -42,7 +42,7 @@ impl AsStrVisitor {
     fn visit_provided_globals(&mut self, globals: &HashMap<String, ProvidedGlobal>) -> String {
         let mut s = "".to_string();
         for (name, ProvidedGlobal { global, .. }) in globals.iter() {
-            s += &format!("{}{} := ", self.get_indent(), name);
+            s += &format!("{} {} := ", self.get_indent(), name);
             match &global.value {
                 Some(v) => s += &format!("{}{}", self.visit_value(v), NL),
                 None => s += &format!("None{}", NL),
@@ -131,7 +131,7 @@ impl WhammVisitor<String> for AsStrVisitor {
             s += &format!("{} `{}` {{{}", self.get_indent(), name, NL);
 
             self.increase_indent();
-            s += &self.visit_provider(provider).to_string();
+            s += &self.visit_provider(provider);
             self.decrease_indent();
 
             s += &format!("{} }}{}", self.get_indent(), NL);
@@ -232,7 +232,7 @@ impl WhammVisitor<String> for AsStrVisitor {
             s += &format!("{} event fns:{}", self.get_indent(), NL);
             self.increase_indent();
             for ProvidedFunction { function, .. } in functions.iter() {
-                s += &format!("{}{}{}", self.get_indent(), self.visit_fn(function), NL);
+                s += &format!("{}{}", self.visit_fn(function), NL);
             }
             self.decrease_indent();
         }

@@ -1,5 +1,6 @@
 pub mod report_var_metadata;
 pub mod rewriting;
+pub mod wizard;
 #[cfg(test)]
 pub mod tests;
 

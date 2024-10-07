@@ -244,7 +244,7 @@ fn generate_instrumented_bin_wast(
             Some(debug_file_path.clone()),
             0,
             Config {
-                virgil: false,
+                wizard: false,
                 testing: true,
                 library_strategy: LibraryLinkStrategy::Imported,
             },

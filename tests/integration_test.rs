@@ -30,7 +30,7 @@ fn run_script(script_text: &String, script_path: &PathBuf, err: &mut ErrorGen) {
         None,
         0,
         Config {
-            virgil: false,
+            wizard: false,
             testing: true,
             library_strategy: LibraryLinkStrategy::Imported,
         },
