@@ -19,6 +19,7 @@ use clap::Parser;
 use std::path::PathBuf;
 use std::process::exit;
 
+const ENABLE_WIZARD_ALT: bool = false;
 const CORE_WASM_PATH: &str = "./core_lib/target/wasm32-wasip1/release/core_lib.wasm";
 const MAX_ERRORS: i32 = 15;
 
@@ -55,13 +56,21 @@ fn try_main() -> Result<(), failure::Error> {
             run_wast(wast_path);
         }
         Cmd::Instr(args) => {
+            if !args.wizard && args.app.is_empty() {
+                panic!("When performing bytecode rewriting (not the wizard target), a path to the target application is required!\nSee `whamm instr --help`")
+            }
             common::instr::run_with_path(
                 CORE_WASM_PATH,
                 args.app,
                 args.script,
                 args.output_path,
                 MAX_ERRORS,
-                Config::new(args.virgil, args.testing, args.link_strategy),
+                Config::new(
+                    args.wizard,
+                    ENABLE_WIZARD_ALT,
+                    args.testing,
+                    args.link_strategy,
+                ),
             );
         }
     }

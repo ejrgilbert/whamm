@@ -6,9 +6,8 @@ use orca_wasm::{DataSegment, DataSegmentKind, InitExpr, Location};
 use std::collections::HashMap;
 
 use crate::emitter::rewriting::rules::Arg;
-use crate::emitter::rewriting::{
-    emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global, Emitter,
-};
+use crate::emitter::utils::{emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global};
+use crate::emitter::Emitter;
 use crate::libraries::core::maps::map_adapter::MapLibAdapter;
 use orca_wasm::ir::function::FunctionBuilder;
 use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
@@ -234,6 +233,32 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         // emit non-provided fn
         // TODO: only when we're supporting user-defined fns in script...
         unimplemented!();
+    }
+
+    pub fn emit_special_fn(
+        &mut self,
+        name: Option<String>,
+        params: &[OrcaType],
+        results: &[OrcaType],
+        block: &mut Block,
+        err: &mut ErrorGen,
+    ) -> Option<u32> {
+        let func = FunctionBuilder::new(params, results);
+        self.emitting_func = Some(func);
+
+        // emit the predicate function body
+        self.emit_body(&[], block, err);
+
+        // emit the function
+        if let Some(func) = self.emitting_func.take() {
+            let fid = func.finish_module(self.app_wasm);
+            if let Some(name) = name {
+                self.app_wasm.set_fn_name(fid, name);
+            }
+            Some(*fid)
+        } else {
+            None
+        }
     }
 
     pub fn emit_string(&mut self, value: &mut Value, err: &mut ErrorGen) -> bool {

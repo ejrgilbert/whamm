@@ -1,6 +1,6 @@
 use crate::emitter::rewriting::rules::core::CorePackage;
 use crate::emitter::rewriting::rules::wasm::{OpcodeEvent, WasmPackage};
-use crate::generator::simple_ast::{SimpleAstProbes, SimpleProbe};
+use crate::generator::rewriting::simple_ast::{SimpleAstProbes, SimpleProbe};
 use crate::parser::rules::core::WhammModeKind;
 use crate::parser::rules::{FromStr, WhammProviderKind};
 use crate::parser::types::{DataType, SpecPart, Value};

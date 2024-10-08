@@ -1,14 +1,16 @@
 use crate::common::error::{ErrorGen, WhammError};
+use crate::emitter::module_emitter::MemoryTracker;
 use crate::emitter::report_var_metadata::ReportVarMetadata;
-use crate::emitter::rewriting::module_emitter::MemoryTracker;
 use crate::emitter::rewriting::rules::wasm::OpcodeEvent;
 use crate::emitter::rewriting::rules::{Arg, LocInfo, ProbeSpec, Provider, WhammProvider};
-use crate::emitter::rewriting::{block_type_to_wasm, emit_expr, whamm_type_to_wasm_global};
-use crate::emitter::rewriting::{emit_stmt, print_report_all, Emitter};
 use crate::libraries::core::maps::map_adapter::MapLibAdapter;
 use std::collections::HashMap;
 
-use crate::generator::types::ExprFolder;
+use crate::emitter::utils::{
+    block_type_to_wasm, emit_expr, emit_stmt, print_report_all, whamm_type_to_wasm_global,
+};
+use crate::emitter::Emitter;
+use crate::generator::folding::ExprFolder;
 use crate::libraries::core::io::io_adapter::IOAdapter;
 use crate::parser;
 use crate::parser::rules::UNKNOWN_IMMS;

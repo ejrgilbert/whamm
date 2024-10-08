@@ -4,7 +4,7 @@ use crate::emitter::rewriting::rules::{
 use crate::parser::rules::core::{CoreEventKind, CorePackageKind, WhammModeKind};
 use std::collections::HashMap;
 
-use crate::generator::simple_ast::SimpleProbe;
+use crate::generator::rewriting::simple_ast::SimpleProbe;
 use orca_wasm::ir::module::Module;
 use wasmparser::Operator;
 

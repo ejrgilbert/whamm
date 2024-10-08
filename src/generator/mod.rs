@@ -1,80 +1,52 @@
-// =======================
-// ==== CodeGenerator ====
-// =======================
-
-use crate::common::error::ErrorGen;
 use crate::emitter::report_var_metadata::LocationData;
-use crate::emitter::rewriting::module_emitter::ModuleEmitter;
 use crate::parser::rules::{Event, Package, Probe, Provider};
 use crate::parser::types::{
-    BinOp, Block, DataType, Definition, Expr, Fn, FnId, Global, ProvidedFunction, Script,
-    Statement, UnOp, Value, Whamm, WhammVisitorMut,
+    BinOp, Block, DataType, Definition, Expr, Fn, Global, ProvidedFunction, Script, Statement,
+    UnOp, Value, Whamm, WhammVisitorMut,
 };
-use crate::verifier::types::Record;
-use log::{debug, info, trace, warn};
-use orca_wasm::ir::function::FunctionBuilder;
+use log::{debug, trace, warn};
 use orca_wasm::ir::id::FunctionID;
-use orca_wasm::ir::types::DataType as OrcaType;
-use orca_wasm::ir::types::Value as OrcaValue;
-use orca_wasm::InitExpr;
 use std::collections::HashMap;
 
-/// Serves as the first phase of instrumenting a module by setting up
-/// the groundwork.
-///
-/// The code generator traverses the AST and calls the passed emitter to
-/// emit some compiler-provided functions and user-defined globals.
-/// This process should ideally be generic, made to perform a specific
-/// instrumentation technique by the Emitter field.
-pub struct InitGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> {
-    pub emitter: ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f>,
-    pub context_name: String,
-    pub err: &'g mut ErrorGen,
-    pub injected_funcs: &'h mut Vec<FunctionID>,
-}
-impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
-    pub fn run(&mut self, whamm: &mut Whamm) -> bool {
-        // Reset the symbol table in the emitter just in case
-        self.emitter.reset_table();
-        self.on_startup();
-        // Generate globals and fns defined by `whamm` (this should modify the app_wasm)
-        let is_success = self.visit_whamm(whamm);
-        self.emitter.memory_grow(); // account for emitted strings in memory
+pub mod folding;
+pub mod rewriting;
+pub mod wizard;
 
-        is_success
+#[cfg(test)]
+pub mod tests;
+
+pub trait GeneratingVisitor: WhammVisitorMut<bool> {
+    fn emit_string(&mut self, val: &mut Value) -> bool;
+    fn emit_fn(&mut self, context: &str, f: &Fn) -> Option<FunctionID>;
+    fn emit_global(
+        &mut self,
+        name: String,
+        ty: DataType,
+        value: &Option<Value>,
+    ) -> Option<FunctionID>;
+    fn emit_report_global(
+        &mut self,
+        name: String,
+        ty: DataType,
+        value: &Option<Value>,
+    ) -> Option<FunctionID>;
+    fn add_injected_func(&mut self, fid: FunctionID);
+    fn get_context_name_mut(&mut self) -> &mut String;
+    fn get_context_name(&self) -> &String;
+    fn set_context_name(&mut self, val: String) {
+        *self.get_context_name_mut() = val;
     }
-
-    // Private helper functions
-    fn visit_globals(&mut self, globals: &HashMap<String, Global>) -> bool {
-        let is_success = true;
-        for (name, global) in globals.iter() {
-            // do not inject globals into Wasm that are used/defined by the compiler
-            if global.is_from_user() {
-                if global.report {
-                    //emit global and add the metadata to the report_var_metadata
-                    if let Some(fid) = self.emitter.emit_report_global(
-                        name.clone(),
-                        global.ty.clone(),
-                        &global.value,
-                        self.err,
-                    ) {
-                        self.injected_funcs.push(fid);
-                    }
-                } else if let Some(fid) = self.emitter.emit_global(
-                    name.clone(),
-                    global.ty.clone(),
-                    &global.value,
-                    self.err,
-                ) {
-                    debug!("added global_getter: {:?}", fid);
-                    self.injected_funcs.push(fid);
-                }
-            }
-        }
-
-        is_success
+    fn append_context_name(&mut self, val: String) {
+        *self.get_context_name_mut() += &val;
     }
-
+    fn remove_last_context(&mut self) {
+        let context_name = self.get_context_name();
+        self.set_context_name(context_name[..context_name.rfind(':').unwrap()].to_string());
+    }
+    fn set_curr_loc(&mut self, loc: LocationData);
+    fn enter_named_scope(&mut self, name: &str);
+    fn enter_scope(&mut self);
+    fn exit_scope(&mut self);
     fn visit_stmts(&mut self, stmts: &mut [Statement]) -> bool {
         let mut is_success = true;
         stmts.iter_mut().for_each(|stmt| {
@@ -82,173 +54,78 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
         });
         is_success
     }
-    fn on_startup(&mut self) {
-        self.create_start();
-        if self.emitter.map_lib_adapter.is_used {
-            self.create_global_map_init();
-            self.create_print_map_meta();
-        }
-        self.create_print_global_meta();
-    }
-    fn create_start(&mut self) {
-        match self.emitter.app_wasm.start {
-            Some(_) => {
-                debug!("Start function already exists");
-            }
-            None => {
-                //time to make a start fn
-                info!("No start function found, creating one");
-                match self
-                    .emitter
-                    .app_wasm
-                    .functions
-                    .get_local_fid_by_name("_start")
-                {
-                    Some(_) => {
-                        debug!("start function is _start");
+    fn visit_globals(&mut self, globals: &HashMap<String, Global>) -> bool {
+        let is_success = true;
+        for (name, global) in globals.iter() {
+            // do not inject globals into Wasm that are used/defined by the compiler
+            if global.is_from_user() {
+                if global.report {
+                    //emit global and add the metadata to the report_var_metadata
+                    if let Some(fid) =
+                        self.emit_report_global(name.clone(), global.ty.clone(), &global.value)
+                    {
+                        self.add_injected_func(fid);
                     }
-                    None => {
-                        let start_fn = FunctionBuilder::new(&[], &[]);
-                        let start_id = start_fn.finish_module(self.emitter.app_wasm);
-                        self.injected_funcs.push(start_id);
-                        self.emitter.app_wasm.start = Some(start_id);
-                        self.emitter
-                            .app_wasm
-                            .set_fn_name(start_id, "start".to_string());
-                    } //strcmp doesn't need to call add_export_fn so this probably doesn't either
-                      //in app_wasm, not sure if we need to have it in the ST
+                } else if let Some(fid) =
+                    self.emit_global(name.clone(), global.ty.clone(), &global.value)
+                {
+                    debug!("added global_getter: {:?}", fid);
+                    self.add_injected_func(fid);
                 }
             }
         }
+
+        is_success
     }
 
-    fn create_global_map_init(&mut self) {
-        //make a global bool for whether to run the global_map_init fn
-        self.emitter.map_lib_adapter.init_bool_location = *self.emitter.app_wasm.add_global(
-            InitExpr::Value(OrcaValue::I32(1)),
-            OrcaType::I32,
-            true,
-            false,
-        );
-        match self
-            .emitter
-            .app_wasm
-            .functions
-            .get_local_fid_by_name("global_map_init")
-        {
-            Some(_) => {
-                debug!("global_map_init function already exists");
-                self.err.add_error(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(
-                        "global_map_init function already exists - needs to be created by Whamm"
-                            .to_string(),
-                    ),
-                    None,
-                ));
+    fn visit_before_probes(&mut self, event: &mut dyn Event) -> bool {
+        trace!("Entering: CodeGenerator::visit_before_probes");
+        let mut is_success = true;
+        if let Some(probes) = event.probes_mut().get_mut(&"before".to_string()) {
+            probes.iter_mut().for_each(|probe| {
+                is_success &= self.visit_probe(probe);
+            });
+        }
+        trace!("Exiting: CodeGenerator::visit_before_probes");
+        is_success
+    }
+
+    fn visit_alt_probes(&mut self, event: &mut dyn Event) -> bool {
+        trace!("Entering: CodeGenerator::visit_alt_probes");
+        let mut is_success = true;
+        if let Some(probes) = event.probes_mut().get_mut(&"alt".to_string()) {
+            // only will emit one alt probe!
+            // The last alt probe in the list will be emitted.
+            if probes.len() > 1 {
+                warn!("Detected multiple `alt` probes, will only emit the last one and ignore the rest!")
             }
-            None => {
-                //time to make a global_map_init fn
-                debug!("No global_map_init function found, creating one");
-                let global_map_init_fn = FunctionBuilder::new(&[], &[]);
-                let global_map_init_id = global_map_init_fn.finish_module(self.emitter.app_wasm);
-                self.emitter
-                    .app_wasm
-                    .set_fn_name(global_map_init_id, "global_map_init".to_string());
+            if let Some(probe) = probes.last_mut() {
+                is_success &= self.visit_probe(probe);
             }
         }
+        trace!("Exiting: CodeGenerator::visit_alt_probes");
+        is_success
     }
 
-    fn create_print_map_meta(&mut self) {
-        if self
-            .emitter
-            .app_wasm
-            .functions
-            .get_local_fid_by_name("print_map_meta")
-            .is_some()
-        {
-            debug!("print_map_meta function already exists");
-            self.err.add_error(ErrorGen::get_unexpected_error(
-                true,
-                Some(
-                    "print_map_meta function already exists - needs to be created by Whamm"
-                        .to_string(),
-                ),
-                None,
-            ));
-            return;
+    fn visit_after_probes(&mut self, event: &mut dyn Event) -> bool {
+        trace!("Entering: CodeGenerator::visit_after_probes");
+        let mut is_success = true;
+        if let Some(probes) = event.probes_mut().get_mut(&"after".to_string()) {
+            probes.iter_mut().for_each(|probe| {
+                is_success &= self.visit_probe(probe);
+            });
         }
 
-        debug!("Creating the print_map_meta function");
-        let print_map_meta_fn = FunctionBuilder::new(&[], &[]);
-        let print_map_meta_id = print_map_meta_fn.finish_module(self.emitter.app_wasm);
-        self.emitter
-            .app_wasm
-            .set_fn_name(print_map_meta_id, "print_map_meta".to_string());
-
-        self.emitter.table.put(
-            "print_map_meta".to_string(),
-            Record::Fn {
-                name: FnId {
-                    name: "print_map_meta".to_string(),
-                    loc: None,
-                },
-                params: vec![],
-                ret_ty: DataType::Tuple { ty_info: vec![] },
-                def: Definition::CompilerStatic,
-                addr: Some(*print_map_meta_id),
-                loc: None,
-            },
-        );
-    }
-
-    fn create_print_global_meta(&mut self) {
-        if self
-            .emitter
-            .app_wasm
-            .functions
-            .get_local_fid_by_name("print_global_meta")
-            .is_some()
-        {
-            debug!("print_global_meta function already exists");
-            self.err.add_error(ErrorGen::get_unexpected_error(
-                true,
-                Some(
-                    "print_global_meta function already exists - needs to be created by Whamm"
-                        .to_string(),
-                ),
-                None,
-            ));
-            return;
-        }
-
-        debug!("Creating the print_global_meta function");
-        let print_global_meta_fn = FunctionBuilder::new(&[], &[]);
-        let print_global_meta_id = print_global_meta_fn.finish_module(self.emitter.app_wasm);
-        self.emitter
-            .app_wasm
-            .set_fn_name(print_global_meta_id, "print_global_meta".to_string());
-
-        self.emitter.table.put(
-            "print_global_meta".to_string(),
-            Record::Fn {
-                name: FnId {
-                    name: "print_global_meta".to_string(),
-                    loc: None,
-                },
-                params: vec![],
-                ret_ty: DataType::Tuple { ty_info: vec![] },
-                def: Definition::CompilerStatic,
-                addr: Some(*print_global_meta_id),
-                loc: None,
-            },
-        );
+        trace!("Exiting: CodeGenerator::visit_after_probes");
+        is_success
     }
 }
-impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
+
+/// A get-for-free implementation of the GeneratingVisitor
+impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
     fn visit_whamm(&mut self, whamm: &mut Whamm) -> bool {
         trace!("Entering: CodeGenerator::visit_whamm");
-        self.context_name = "whamm".to_string();
+        self.set_context_name("whamm".to_string());
         let mut is_success = true;
         // visit fns
         whamm
@@ -267,17 +144,17 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
 
         trace!("Exiting: CodeGenerator::visit_whamm");
         // Remove from `context_name`
-        self.context_name = "".to_string();
+        self.set_context_name("".to_string());
         is_success
     }
 
     fn visit_script(&mut self, script: &mut Script) -> bool {
         trace!("Entering: CodeGenerator::visit_script");
-        self.emitter.report_var_metadata.curr_location = LocationData::Global {
+        self.set_curr_loc(LocationData::Global {
             script_id: script.name.clone(),
-        };
-        self.emitter.enter_scope(self.err);
-        self.context_name += &format!(":{}", script.name.clone());
+        });
+        self.enter_scope();
+        self.append_context_name(format!(":{}", script.name.clone()));
         let mut is_success = true;
 
         // visit fns
@@ -292,16 +169,16 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
         });
 
         trace!("Exiting: CodeGenerator::visit_script");
-        self.emitter.exit_scope(self.err);
+        self.exit_scope();
         // Remove from `context_name`
-        self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
+        self.remove_last_context();
         is_success
     }
 
     fn visit_provider(&mut self, provider: &mut Box<dyn Provider>) -> bool {
         trace!("Entering: CodeGenerator::visit_provider");
-        self.emitter.enter_scope(self.err);
-        self.context_name += &format!(":{}", provider.name());
+        self.enter_scope();
+        self.append_context_name(format!(":{}", provider.name()));
         let mut is_success = true;
 
         // visit fns
@@ -319,17 +196,16 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
         });
 
         trace!("Exiting: CodeGenerator::visit_provider");
-        self.emitter.exit_scope(self.err);
-        // Remove this package from `context_name`
-        self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
+        self.exit_scope();
+        self.remove_last_context();
         is_success
     }
 
     fn visit_package(&mut self, package: &mut dyn Package) -> bool {
         trace!("Entering: CodeGenerator::visit_package");
-        self.emitter.enter_scope(self.err);
+        self.enter_scope();
+        self.append_context_name(format!(":{}", package.name()));
         let mut is_success = true;
-        self.context_name += &format!(":{}", package.name());
 
         // visit fns
         package.get_provided_fns_mut().iter_mut().for_each(
@@ -346,17 +222,15 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
         });
 
         trace!("Exiting: CodeGenerator::visit_package");
-        self.emitter.exit_scope(self.err);
-        // Remove this package from `context_name`
-        self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
+        self.exit_scope();
+        self.remove_last_context();
         is_success
     }
 
     fn visit_event(&mut self, event: &mut dyn Event) -> bool {
         trace!("Entering: CodeGenerator::visit_event");
-        self.emitter.enter_scope(self.err);
-        // let mut is_success = self.emitter.emit_event(event);
-        self.context_name += &format!(":{}", event.name());
+        self.enter_scope();
+        self.append_context_name(format!(":{}", event.name()));
         let mut is_success = true;
 
         // visit fns
@@ -368,42 +242,24 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
         // do not inject globals into Wasm that are used/defined by the compiler
         // because they are statically-defined and folded away
 
+        // TODO -- this is where wizard implementation starts diverting
         // 1. visit the BEFORE probes
-        if let Some(probes) = event.probes_mut().get_mut(&"before".to_string()) {
-            probes.iter_mut().for_each(|probe| {
-                is_success &= self.visit_probe(probe);
-            });
-        }
+        self.visit_before_probes(event);
         // 2. visit the ALT probes
-        if let Some(probes) = event.probes_mut().get_mut(&"alt".to_string()) {
-            // only will emit one alt probe!
-            // The last alt probe in the list will be emitted.
-            if probes.len() > 1 {
-                warn!("Detected multiple `alt` probes, will only emit the last one and ignore the rest!")
-            }
-            if let Some(probe) = probes.last_mut() {
-                is_success &= self.visit_probe(probe);
-            }
-        }
+        self.visit_alt_probes(event);
         // 3. visit the AFTER probes
-        if let Some(probes) = event.probes_mut().get_mut(&"after".to_string()) {
-            probes.iter_mut().for_each(|probe| {
-                is_success &= self.visit_probe(probe);
-            });
-        }
+        self.visit_after_probes(event);
 
         trace!("Exiting: CodeGenerator::visit_event");
-        self.emitter.exit_scope(self.err);
-        // Remove this event from `context_name`
-        self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
+        self.exit_scope();
+        self.remove_last_context();
         is_success
     }
 
     fn visit_probe(&mut self, probe: &mut Box<dyn Probe>) -> bool {
         trace!("Entering: CodeGenerator::visit_probe");
-        self.emitter.enter_scope(self.err);
-        // let mut is_success = self.emitter.emit_probe(probe);
-        self.context_name += &format!(":{}", probe.mode().name());
+        self.enter_scope();
+        self.append_context_name(format!(":{}", probe.mode().name()));
         let mut is_success = true;
 
         // visit fns
@@ -429,20 +285,20 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
         }
 
         trace!("Exiting: CodeGenerator::visit_probe");
-        self.emitter.exit_scope(self.err);
-        // Remove this probe from `context_name`
-        self.context_name = self.context_name[..self.context_name.rfind(':').unwrap()].to_string();
+        self.exit_scope();
+        self.remove_last_context();
         is_success
     }
 
     fn visit_fn(&mut self, f: &mut Fn) -> bool {
         trace!("Entering: CodeGenerator::visit_fn");
-        self.emitter.enter_scope(self.err);
+        self.enter_scope();
         let mut is_success = true;
         if f.def == Definition::CompilerDynamic {
             // Only emit the functions that will be used dynamically!
-            if let Some(res) = self.emitter.emit_fn(&self.context_name, f, self.err) {
-                self.injected_funcs.push(res);
+            let context_name = self.get_context_name();
+            if let Some(res) = self.emit_fn(&context_name.clone(), f) {
+                self.add_injected_func(res);
             }
         } else {
             // user provided function, visit the body to ensure
@@ -459,7 +315,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
             is_success &= self.visit_block(&mut f.body);
         }
         trace!("Exiting: CodeGenerator::visit_fn");
-        self.emitter.exit_scope(self.err);
+        self.exit_scope();
         is_success
     }
 
@@ -568,7 +424,7 @@ impl WhammVisitorMut<bool> for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
         match val {
             Value::Str { .. } => {
                 // Emit the string into the Wasm module data section!
-                self.emitter.emit_string(val, self.err)
+                self.emit_string(val)
             }
             Value::Tuple { vals, .. } => {
                 let mut is_success = true;
