@@ -7,6 +7,7 @@ use std::collections::HashMap;
 
 use crate::emitter::rewriting::rules::Arg;
 use crate::emitter::utils::{emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global};
+use crate::emitter::Emitter;
 use crate::libraries::core::maps::map_adapter::MapLibAdapter;
 use orca_wasm::ir::function::FunctionBuilder;
 use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
@@ -14,7 +15,6 @@ use orca_wasm::ir::module::Module;
 use orca_wasm::ir::types::{BlockType as OrcaBlockType, DataType as OrcaType, Value as OrcaValue};
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::{Instrumenter, Opcode};
-use crate::emitter::Emitter;
 
 const UNEXPECTED_ERR_MSG: &str =
     "ModuleEmitter: Looks like you've found a bug...please report this behavior!";
@@ -235,7 +235,14 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         unimplemented!();
     }
 
-    pub fn emit_pred_as_fn(&mut self, name: Option<String>, params: &Vec<OrcaType>, results: &Vec<OrcaType>, pred: &mut Expr, err: &mut ErrorGen) -> Option<u32> {
+    pub fn emit_pred_as_fn(
+        &mut self,
+        name: Option<String>,
+        params: &[OrcaType],
+        results: &[OrcaType],
+        pred: &mut Expr,
+        err: &mut ErrorGen,
+    ) -> Option<u32> {
         let pred_func = FunctionBuilder::new(params, results);
         self.emitting_func = Some(pred_func);
 
@@ -246,7 +253,14 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         self.finish_emitting_fn(name)
     }
 
-    pub fn emit_body_as_fn(&mut self, name: Option<String>, params: &Vec<OrcaType>, results: &Vec<OrcaType>, body: &mut Block, err: &mut ErrorGen) -> Option<u32> {
+    pub fn emit_body_as_fn(
+        &mut self,
+        name: Option<String>,
+        params: &[OrcaType],
+        results: &[OrcaType],
+        body: &mut Block,
+        err: &mut ErrorGen,
+    ) -> Option<u32> {
         let pred_func = FunctionBuilder::new(params, results);
         self.emitting_func = Some(pred_func);
 
@@ -258,7 +272,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     }
 
     pub fn finish_emitting_fn(&mut self, name: Option<String>) -> Option<u32> {
-        if let Some(func) = std::mem::replace(&mut self.emitting_func, None) {
+        if let Some(func) = self.emitting_func.take() {
             let fid = func.finish_module(self.app_wasm);
             if let Some(name) = name {
                 self.app_wasm.set_fn_name(fid, name);

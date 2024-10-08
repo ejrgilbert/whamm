@@ -330,12 +330,7 @@ impl ErrorGen {
         Self::get_wizard_error(fatal, message, &loc)
     }
 
-    pub fn wizard_error(
-        &mut self,
-        fatal: bool,
-        message: String,
-        loc: &Option<Location>
-    ) {
+    pub fn wizard_error(&mut self, fatal: bool, message: String, loc: &Option<Location>) {
         let err = Self::get_wizard_error_from_loc(fatal, message, loc);
         self.add_error(err);
     }
@@ -905,7 +900,7 @@ pub enum ErrorType {
     },
     /// Error when compiling to Wizard target
     WizardError {
-        message: String
+        message: String,
     },
     Error {
         message: Option<String>,
@@ -935,8 +930,9 @@ impl ErrorType {
                 negatives,
                 |r| format!("{:?}", r),
             )),
-            ErrorType::TypeCheckError { ref message } |
-            ErrorType::WizardError { ref message } => Cow::Borrowed(message),
+            ErrorType::TypeCheckError { ref message } | ErrorType::WizardError { ref message } => {
+                Cow::Borrowed(message)
+            }
             ErrorType::DuplicateIdentifierError { ref duplicated_id } => {
                 Cow::Owned(format!("duplicate definitions with name `{duplicated_id}`"))
             }

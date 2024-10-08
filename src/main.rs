@@ -65,7 +65,12 @@ fn try_main() -> Result<(), failure::Error> {
                 args.script,
                 args.output_path,
                 MAX_ERRORS,
-                Config::new(args.wizard, ENABLE_WIZARD_ALT, args.testing, args.link_strategy),
+                Config::new(
+                    args.wizard,
+                    ENABLE_WIZARD_ALT,
+                    args.testing,
+                    args.link_strategy,
+                ),
             );
         }
     }

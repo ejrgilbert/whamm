@@ -1,19 +1,19 @@
-pub mod metadata_collector;
 pub mod ast;
+pub mod metadata_collector;
 
-use log::trace;
-use orca_wasm::ir::types::DataType as OrcaType;
-use orca_wasm::ir::id::FunctionID;
 use crate::common::error::ErrorGen;
 use crate::common::instr::Config;
 use crate::emitter::module_emitter::ModuleEmitter;
 use crate::emitter::report_var_metadata::LocationData;
 use crate::emitter::utils::whamm_type_to_wasm_type;
-use crate::generator::GeneratingVisitor;
 use crate::generator::wizard::ast::{WizardProbe, WizardScript};
+use crate::generator::GeneratingVisitor;
 use crate::libraries::core::io::io_adapter::IOAdapter;
 use crate::parser::types::{DataType, Definition, Value, WhammVisitorMut};
 use crate::verifier::types::{Record, VarAddr};
+use log::trace;
+use orca_wasm::ir::id::FunctionID;
+use orca_wasm::ir::types::DataType as OrcaType;
 
 pub struct WizardGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> {
     pub emitter: ModuleEmitter<'b, 'c, 'd, 'e, 'f, 'g>,
@@ -21,7 +21,7 @@ pub struct WizardGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> {
     pub context_name: String,
     pub err: &'a mut ErrorGen,
     pub injected_funcs: &'h mut Vec<FunctionID>,
-    pub config: &'i Config
+    pub config: &'i Config,
 }
 
 impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
@@ -39,7 +39,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     fn visit_wiz_script(&mut self, script: &mut WizardScript) {
         trace!("Entering: CodeGenerator::visit_script");
         self.enter_named_scope(&script.name);
-        self.set_context_name(format!("{}", script.name.clone()));
+        self.set_context_name(script.name.clone());
 
         // visit fns
         script.fns.iter_mut().for_each(|f| {
@@ -74,22 +74,27 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
                 pred_param_str += param_name;
 
                 // add param definition to the symbol table
-                self.emitter.table.put(param_name.clone(), Record::Var {
-                    ty: param_ty.clone(),
-                    name: param_name.clone(),
-                    value: None,
-                    def: Definition::CompilerStatic,
-                    is_report_var: false,
-                    addr: Some(VarAddr::Local {
-                        addr: local_id as u32
-                    }),
-                    loc: None,
-                });
+                self.emitter.table.put(
+                    param_name.clone(),
+                    Record::Var {
+                        ty: param_ty.clone(),
+                        name: param_name.clone(),
+                        value: None,
+                        def: Definition::CompilerStatic,
+                        is_report_var: false,
+                        addr: Some(VarAddr::Local {
+                            addr: local_id as u32,
+                        }),
+                        loc: None,
+                    },
+                );
             }
 
             // boolean true/false
             let pred_results = vec![OrcaType::I32];
-            let fid = self.emitter.emit_pred_as_fn(None, &pred_params, &pred_results, pred, self.err);
+            let fid =
+                self.emitter
+                    .emit_pred_as_fn(None, &pred_params, &pred_results, pred, self.err);
 
             (fid, pred_param_str.to_string())
         } else {
@@ -112,22 +117,27 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
                 body_param_str += param_name;
 
                 // add param definition to the symbol table
-                self.emitter.table.put(param_name.clone(), Record::Var {
-                    ty: param_ty.clone(),
-                    name: param_name.clone(),
-                    value: None,
-                    def: Definition::CompilerStatic,
-                    is_report_var: false,
-                    addr: Some(VarAddr::Local {
-                        addr: local_id as u32
-                    }),
-                    loc: None,
-                });
+                self.emitter.table.put(
+                    param_name.clone(),
+                    Record::Var {
+                        ty: param_ty.clone(),
+                        name: param_name.clone(),
+                        value: None,
+                        def: Definition::CompilerStatic,
+                        is_report_var: false,
+                        addr: Some(VarAddr::Local {
+                            addr: local_id as u32,
+                        }),
+                        loc: None,
+                    },
+                );
             }
 
             // Body should not return anything
             let body_results = vec![];
-            let fid = self.emitter.emit_body_as_fn(None, &body_params, &body_results, body, self.err);
+            let fid =
+                self.emitter
+                    .emit_body_as_fn(None, &body_params, &body_results, body, self.err);
 
             (fid, body_param_str.to_string())
         } else {
@@ -135,15 +145,25 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
         };
 
         // emit the export with the appropriate name
-        let match_rule = self.create_wizard_match_rule(&probe.rule, pred_fid, &pred_param_str, &body_param_str);
+        let match_rule =
+            self.create_wizard_match_rule(&probe.rule, pred_fid, &pred_param_str, &body_param_str);
         if let Some(fid) = body_fid {
-            self.emitter.app_wasm.exports.add_export_func(match_rule, fid);
+            self.emitter
+                .app_wasm
+                .exports
+                .add_export_func(match_rule, fid);
         } else {
             // ignore
         }
     }
 
-    fn create_wizard_match_rule(&self, probe_name: &str, pred_fid: Option<u32>, pred_params: &str, body_params: &str) -> String {
+    fn create_wizard_match_rule(
+        &self,
+        probe_name: &str,
+        pred_fid: Option<u32>,
+        pred_params: &str,
+        body_params: &str,
+    ) -> String {
         let pred_part = if let Some(pred_fid) = pred_fid {
             format!("/ ${pred_fid}({pred_params}) /")
         } else {
@@ -157,19 +177,30 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
 impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     // TODO -- these are all duplicates, try to factor out
     fn emit_string(&mut self, val: &mut Value) -> bool {
-        self.emitter.emit_string(val, &mut self.err)
+        self.emitter.emit_string(val, self.err)
     }
 
     fn emit_fn(&mut self, context: &str, f: &crate::parser::types::Fn) -> Option<FunctionID> {
-        self.emitter.emit_fn(context, f, &mut self.err)
+        self.emitter.emit_fn(context, f, self.err)
     }
 
-    fn emit_global(&mut self, name: String, ty: DataType, value: &Option<Value>) -> Option<FunctionID> {
-        self.emitter.emit_global(name, ty, value, &mut self.err)
+    fn emit_global(
+        &mut self,
+        name: String,
+        ty: DataType,
+        value: &Option<Value>,
+    ) -> Option<FunctionID> {
+        self.emitter.emit_global(name, ty, value, self.err)
     }
 
-    fn emit_report_global(&mut self, name: String, ty: DataType, value: &Option<Value>) -> Option<FunctionID> {
-        self.emitter.emit_report_global(name, ty, value, &mut self.err)
+    fn emit_report_global(
+        &mut self,
+        name: String,
+        ty: DataType,
+        value: &Option<Value>,
+    ) -> Option<FunctionID> {
+        self.emitter
+            .emit_report_global(name, ty, value, self.err)
     }
 
     fn add_injected_func(&mut self, fid: FunctionID) {
@@ -192,15 +223,15 @@ impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
         self.emitter.report_var_metadata.curr_location = loc;
     }
 
-    fn enter_named_scope(&mut self, name: &String) {
+    fn enter_named_scope(&mut self, name: &str) {
         self.emitter.table.enter_named_scope(name);
     }
 
     fn enter_scope(&mut self) {
-        self.emitter.enter_scope(&mut self.err);
+        self.emitter.enter_scope(self.err);
     }
 
     fn exit_scope(&mut self) {
-        self.emitter.exit_scope(&mut self.err);
+        self.emitter.exit_scope(self.err);
     }
 }

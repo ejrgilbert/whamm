@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 use crate::common::error::ErrorGen;
-use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::module_emitter::MemoryTracker;
+use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::generator::folding::ExprFolder;
 use crate::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::parser::types::{
@@ -345,11 +345,11 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             // TODO -- this is only necessary for `new_target_fn_name`, remove after deprecating!
             if let (Expr::VarId { name, .. }, Expr::Primitive { val, .. }) = (&var_id, &expr) {
                 let Some(Record::Var {
-                             value,
-                             def,
-                             is_report_var,
-                             ..
-                         }) = table.lookup_var_mut(name, &None, err)
+                    value,
+                    def,
+                    is_report_var,
+                    ..
+                }) = table.lookup_var_mut(name, &None, err)
                 else {
                     err.unexpected_error(true, Some("unexpected type".to_string()), None);
                     return false;
@@ -1182,8 +1182,8 @@ pub fn print_report_all<'a, T: Opcode<'a> + AddLocal>(
         return;
     }
     let Some(Record::Fn {
-                 addr: Some(fid), ..
-             }) = table.lookup_fn("print_global_meta", err)
+        addr: Some(fid), ..
+    }) = table.lookup_fn("print_global_meta", err)
     else {
         err.unexpected_error(true, Some("unexpected type".to_string()), None);
         return;
@@ -1191,8 +1191,8 @@ pub fn print_report_all<'a, T: Opcode<'a> + AddLocal>(
     injector.call(FunctionID(*fid));
 
     let Some(Record::Fn {
-                 addr: Some(fid), ..
-             }) = table.lookup_fn("print_map_meta", err)
+        addr: Some(fid), ..
+    }) = table.lookup_fn("print_map_meta", err)
     else {
         err.unexpected_error(true, Some("unexpected type".to_string()), None);
         return;

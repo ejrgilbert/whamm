@@ -1,15 +1,17 @@
-use log::trace;
-use crate::generator::wizard::ast::{WizardProbe, WizardScript};
 use crate::common::error::ErrorGen;
 use crate::common::instr::Config;
+use crate::generator::wizard::ast::{WizardProbe, WizardScript};
 use crate::parser::rules::{Event, Package, Probe, Provider};
-use crate::parser::types::{BinOp, Block, DataType, Expr, Script, Statement, UnOp, Value, Whamm, WhammVisitor};
+use crate::parser::types::{
+    BinOp, Block, DataType, Expr, Script, Statement, UnOp, Value, Whamm, WhammVisitor,
+};
 use crate::verifier::types::{Record, SymbolTable};
+use log::trace;
 
 enum Visiting {
     Predicate,
     Body,
-    None
+    None,
 }
 
 // Performs a pass on the AST to generate probe "metadata" that will be used
@@ -26,14 +28,15 @@ pub struct WizardProbeMetadataCollector<'a, 'b, 'c> {
     curr_probe: WizardProbe,
 
     // vars_to_alloc: Vec<(String, DataType)>, // TODO (once we have 'local' variables)
-
     err: &'b mut ErrorGen,
-    pub config: &'c Config
+    pub config: &'c Config,
 }
 impl<'a, 'b, 'c> WizardProbeMetadataCollector<'a, 'b, 'c> {
-    pub(crate) fn new(table: &'a mut SymbolTable,
-                      err: &'b mut ErrorGen,
-                      config: &'c Config) -> Self {
+    pub(crate) fn new(
+        table: &'a mut SymbolTable,
+        err: &'b mut ErrorGen,
+        config: &'c Config,
+    ) -> Self {
         Self {
             table,
             wizard_ast: Vec::default(),
@@ -42,7 +45,7 @@ impl<'a, 'b, 'c> WizardProbeMetadataCollector<'a, 'b, 'c> {
             curr_script: WizardScript::default(),
             curr_probe: WizardProbe::default(),
             err,
-            config
+            config,
         }
     }
 
@@ -65,7 +68,7 @@ impl<'a, 'b, 'c> WizardProbeMetadataCollector<'a, 'b, 'c> {
     }
 }
 impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
-    fn visit_whamm(&mut self, whamm: &Whamm) -> () {
+    fn visit_whamm(&mut self, whamm: &Whamm) {
         trace!("Entering: CodeGenerator::visit_whamm");
 
         // visit scripts
@@ -84,7 +87,7 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
         trace!("Exiting: CodeGenerator::visit_whamm");
     }
 
-    fn visit_script(&mut self, script: &Script) -> () {
+    fn visit_script(&mut self, script: &Script) {
         trace!("Entering: CodeGenerator::visit_script");
         self.table.enter_named_scope(&script.name);
 
@@ -97,10 +100,10 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
         self.table.exit_scope(self.err);
     }
 
-    fn visit_provider(&mut self, provider: &Box<dyn Provider>) -> () {
+    fn visit_provider(&mut self, provider: &Box<dyn Provider>) {
         trace!("Entering: CodeGenerator::visit_provider");
         self.table.enter_named_scope(&provider.name());
-        self.set_curr_rule(format!("{}", provider.name()));
+        self.set_curr_rule(provider.name());
 
         // visit the packages
         provider.packages().for_each(|package| {
@@ -111,7 +114,7 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
         self.table.exit_scope(self.err);
     }
 
-    fn visit_package(&mut self, package: &dyn Package) -> () {
+    fn visit_package(&mut self, package: &dyn Package) {
         trace!("Entering: CodeGenerator::visit_package");
         self.table.enter_named_scope(&package.name());
         self.append_curr_rule(format!(":{}", package.name()));
@@ -128,7 +131,7 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
         self.set_curr_rule(curr_rule[..curr_rule.rfind(':').unwrap()].to_string());
     }
 
-    fn visit_event(&mut self, event: &dyn Event) -> () {
+    fn visit_event(&mut self, event: &dyn Event) {
         trace!("Entering: CodeGenerator::visit_event");
         self.table.enter_named_scope(&event.name());
         self.append_curr_rule(format!(":{}", event.name()));
@@ -152,7 +155,7 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
         self.set_curr_rule(curr_rule[..curr_rule.rfind(':').unwrap()].to_string());
     }
 
-    fn visit_probe(&mut self, probe: &Box<dyn Probe>) -> () {
+    fn visit_probe(&mut self, probe: &Box<dyn Probe>) {
         trace!("Entering: CodeGenerator::visit_probe");
         self.table.enter_named_scope(&probe.mode().name());
         self.append_curr_rule(format!(":{}", probe.mode().name()));
@@ -173,47 +176,45 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
         self.set_curr_rule(curr_rule[..curr_rule.rfind(':').unwrap()].to_string());
     }
 
-    fn visit_fn(&mut self, _f: &crate::parser::types::Fn) -> () {
+    fn visit_fn(&mut self, _f: &crate::parser::types::Fn) {
         unreachable!()
     }
 
-    fn visit_formal_param(&mut self, _param: &(Expr, DataType)) -> () {
+    fn visit_formal_param(&mut self, _param: &(Expr, DataType)) {
         unreachable!()
     }
 
-    fn visit_block(&mut self, block: &Block) -> () {
+    fn visit_block(&mut self, block: &Block) {
         self.visit_stmts(&block.stmts)
     }
 
-    fn visit_stmt(&mut self, stmt: &Statement) -> () {
+    fn visit_stmt(&mut self, stmt: &Statement) {
         match stmt {
-            Statement::Decl { .. } |
-            Statement::ReportDecl { .. } => {
+            Statement::Decl { .. } | Statement::ReportDecl { .. } => {
                 // ignore
-                return
             }
-            Statement::Assign {var_id, expr, ..} => {
-                if let Expr::VarId {name, ..} = var_id {
-                    let Some(Record::Var { def, loc, .. }) = self.table.lookup_var_mut(&name, &None, self.err) else {
-                        self.err.unexpected_error(true, Some("unexpected type".to_string()), None);
-                        return
+            Statement::Assign { var_id, expr, .. } => {
+                if let Expr::VarId { name, .. } = var_id {
+                    let Some(Record::Var { def, loc, .. }) =
+                        self.table.lookup_var_mut(name, &None, self.err)
+                    else {
+                        self.err
+                            .unexpected_error(true, Some("unexpected type".to_string()), None);
+                        return;
                     };
-                    if def.is_comp_provided() {
-                        if !self.config.enable_wizard_alt {
-                            self.err.wizard_error(
-                                true,
-                                "Assigning to compiler-provided variables is not supported on Wizard".to_string(),
-                                loc
-                            );
-                        }
+                    if def.is_comp_provided() && !self.config.enable_wizard_alt {
+                        self.err.wizard_error(
+                            true,
+                            "Assigning to compiler-provided variables is not supported on Wizard".to_string(),
+                            loc
+                        );
                     }
                 }
 
                 self.visit_expr(var_id);
                 self.visit_expr(expr);
             }
-            Statement::Expr { expr, .. }
-            | Statement::Return { expr, .. } => self.visit_expr(expr),
+            Statement::Expr { expr, .. } | Statement::Return { expr, .. } => self.visit_expr(expr),
             Statement::If {
                 cond, conseq, alt, ..
             } => {
@@ -229,7 +230,7 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
         }
     }
 
-    fn visit_expr(&mut self, expr: &Expr) -> () {
+    fn visit_expr(&mut self, expr: &Expr) {
         match expr {
             Expr::UnOp { expr, .. } => self.visit_expr(expr),
             Expr::Ternary {
@@ -248,21 +249,32 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
                     self.visit_expr(arg);
                 });
             }
-            Expr::Primitive { .. } => return,
+            Expr::Primitive { .. } => (),
             Expr::VarId { name, .. } => {
                 // handle argN special case
                 if name.starts_with("arg") && name[3..].parse::<u32>().is_ok() {
                     // TODO -- this assumes we'll always use I32
                     match self.visiting {
                         Visiting::Predicate => {
-                            self.curr_probe.metadata.push_pred_req(name.clone(), DataType::I32);
-                        },
+                            self.curr_probe
+                                .metadata
+                                .push_pred_req(name.clone(), DataType::I32);
+                        }
                         Visiting::Body => {
-                            self.curr_probe.metadata.push_body_req(name.clone(), DataType::I32);
+                            self.curr_probe
+                                .metadata
+                                .push_body_req(name.clone(), DataType::I32);
                         }
                         Visiting::None => {
                             // error
-                            self.err.unexpected_error(true, Some("Expected a set variant of 'Visiting', but found 'None'".to_string()), None);
+                            self.err.unexpected_error(
+                                true,
+                                Some(
+                                    "Expected a set variant of 'Visiting', but found 'None'"
+                                        .to_string(),
+                                ),
+                                None,
+                            );
                         }
                     }
                     return;
@@ -273,36 +285,61 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
                     // TODO -- this assumes we'll always use I32
                     match self.visiting {
                         Visiting::Predicate => {
-                            self.curr_probe.metadata.push_pred_req(name.clone(), DataType::I32);
-                        },
+                            self.curr_probe
+                                .metadata
+                                .push_pred_req(name.clone(), DataType::I32);
+                        }
                         Visiting::Body => {
-                            self.curr_probe.metadata.push_body_req(name.clone(), DataType::I32);
+                            self.curr_probe
+                                .metadata
+                                .push_body_req(name.clone(), DataType::I32);
                         }
                         Visiting::None => {
                             // error
-                            self.err.unexpected_error(true, Some("Expected a set variant of 'Visiting', but found 'None'".to_string()), None);
+                            self.err.unexpected_error(
+                                true,
+                                Some(
+                                    "Expected a set variant of 'Visiting', but found 'None'"
+                                        .to_string(),
+                                ),
+                                None,
+                            );
                         }
                     }
                     return;
                 }
 
                 // check if provided, remember in metadata!
-                let Some(Record::Var { def, ty, .. }) = self.table.lookup_var_mut(&name, &None, self.err) else {
-                    self.err.unexpected_error(true, Some("unexpected type".to_string()), None);
-                    return
+                let Some(Record::Var { def, ty, .. }) =
+                    self.table.lookup_var_mut(name, &None, self.err)
+                else {
+                    self.err
+                        .unexpected_error(true, Some("unexpected type".to_string()), None);
+                    return;
                 };
 
                 if def.is_comp_provided() {
                     match self.visiting {
                         Visiting::Predicate => {
-                            self.curr_probe.metadata.push_pred_req(name.clone(), ty.clone());
-                        },
+                            self.curr_probe
+                                .metadata
+                                .push_pred_req(name.clone(), ty.clone());
+                        }
                         Visiting::Body => {
-                            self.curr_probe.metadata.push_body_req(name.clone(), ty.clone());
+                            self.curr_probe
+                                .metadata
+                                .push_body_req(name.clone(), ty.clone());
                         }
                         Visiting::None => {
                             // error
-                            self.err.unexpected_error(true, Some("Expected a set variant of 'Visiting', but found 'None'".to_string()), None);
+                            self.err.unexpected_error(
+                                true,
+                                Some(
+                                    "Expected a set variant of 'Visiting', but found 'None'"
+                                        .to_string(),
+                                ),
+                                None,
+                            );
                         }
                     }
                 }
@@ -314,19 +351,19 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
         }
     }
 
-    fn visit_unop(&mut self, _unop: &UnOp) -> () {
+    fn visit_unop(&mut self, _unop: &UnOp) {
         unreachable!()
     }
 
-    fn visit_binop(&mut self, _binop: &BinOp) -> () {
+    fn visit_binop(&mut self, _binop: &BinOp) {
         unreachable!()
     }
 
-    fn visit_datatype(&mut self, _datatype: &DataType) -> () {
+    fn visit_datatype(&mut self, _datatype: &DataType) {
         unreachable!()
     }
 
-    fn visit_value(&mut self, _val: &Value) -> () {
+    fn visit_value(&mut self, _val: &Value) {
         unreachable!()
     }
 }

@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use crate::parser::types::{Block, DataType, Expr, Global, Statement};
+use std::collections::HashMap;
 
 #[derive(Clone, Default)]
 pub struct WizardScript {
@@ -16,7 +16,7 @@ pub struct WizardProbe {
     pub rule: String,
     pub predicate: Option<Expr>,
     pub body: Option<Block>,
-    pub metadata: Metadata
+    pub metadata: Metadata,
 }
 impl WizardProbe {
     pub(crate) fn new(rule: String) -> Self {
@@ -24,7 +24,7 @@ impl WizardProbe {
             rule,
             predicate: None,
             body: None,
-            metadata: Metadata::default()
+            metadata: Metadata::default(),
         }
     }
 }
@@ -32,8 +32,7 @@ impl WizardProbe {
 #[derive(Clone, Default)]
 pub struct Metadata {
     pub pred_args: Vec<(String, DataType)>,
-    pub body_args: Vec<(String, DataType)>
-    // TODO pub num_reports: i32, // needed for `$alloc`
+    pub body_args: Vec<(String, DataType)>, // TODO pub num_reports: i32, // needed for `$alloc`
 }
 impl Metadata {
     pub fn push_pred_req(&mut self, var_name: String, var_type: DataType) {

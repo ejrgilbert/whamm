@@ -1,32 +1,41 @@
-use std::collections::HashMap;
-use log::{debug, trace, warn};
-use orca_wasm::ir::id::FunctionID;
 use crate::emitter::report_var_metadata::LocationData;
 use crate::parser::rules::{Event, Package, Probe, Provider};
-use crate::parser::types::{BinOp, Block, DataType, Definition, Expr, Fn, Global, ProvidedFunction, Script, Statement, UnOp, Value, Whamm, WhammVisitorMut};
+use crate::parser::types::{
+    BinOp, Block, DataType, Definition, Expr, Fn, Global, ProvidedFunction, Script, Statement,
+    UnOp, Value, Whamm, WhammVisitorMut,
+};
+use log::{debug, trace, warn};
+use orca_wasm::ir::id::FunctionID;
+use std::collections::HashMap;
 
+pub mod folding;
 pub mod rewriting;
 pub mod wizard;
-pub mod folding;
 
 #[cfg(test)]
 pub mod tests;
 
 pub trait GeneratingVisitor: WhammVisitorMut<bool> {
     fn emit_string(&mut self, val: &mut Value) -> bool;
-    fn emit_fn(
+    fn emit_fn(&mut self, context: &str, f: &Fn) -> Option<FunctionID>;
+    fn emit_global(
         &mut self,
-        context: &str,
-        f: &Fn
+        name: String,
+        ty: DataType,
+        value: &Option<Value>,
     ) -> Option<FunctionID>;
-    fn emit_global(&mut self, name: String, ty: DataType, value: &Option<Value>) -> Option<FunctionID>;
-    fn emit_report_global(&mut self, name: String, ty: DataType, value: &Option<Value>) -> Option<FunctionID>;
+    fn emit_report_global(
+        &mut self,
+        name: String,
+        ty: DataType,
+        value: &Option<Value>,
+    ) -> Option<FunctionID>;
     fn add_injected_func(&mut self, fid: FunctionID);
     fn set_context_name(&mut self, val: String);
     fn get_context_name(&self) -> &String;
     fn append_context_name(&mut self, val: String);
     fn set_curr_loc(&mut self, loc: LocationData);
-    fn enter_named_scope(&mut self, name: &String);
+    fn enter_named_scope(&mut self, name: &str);
     fn enter_scope(&mut self);
     fn exit_scope(&mut self);
     fn visit_stmts(&mut self, stmts: &mut [Statement]) -> bool {
@@ -43,18 +52,14 @@ pub trait GeneratingVisitor: WhammVisitorMut<bool> {
             if global.is_from_user() {
                 if global.report {
                     //emit global and add the metadata to the report_var_metadata
-                    if let Some(fid) = self.emit_report_global(
-                        name.clone(),
-                        global.ty.clone(),
-                        &global.value
-                    ) {
+                    if let Some(fid) =
+                        self.emit_report_global(name.clone(), global.ty.clone(), &global.value)
+                    {
                         self.add_injected_func(fid);
                     }
-                } else if let Some(fid) = self.emit_global(
-                    name.clone(),
-                    global.ty.clone(),
-                    &global.value
-                ) {
+                } else if let Some(fid) =
+                    self.emit_global(name.clone(), global.ty.clone(), &global.value)
+                {
                     debug!("added global_getter: {:?}", fid);
                     self.add_injected_func(fid);
                 }
@@ -106,9 +111,13 @@ pub trait GeneratingVisitor: WhammVisitorMut<bool> {
         is_success
     }
 
-    fn on_enter_visit_probe(&mut self, _probe: &mut Box<dyn Probe>) -> bool { true }
+    fn on_enter_visit_probe(&mut self, _probe: &mut Box<dyn Probe>) -> bool {
+        true
+    }
 
-    fn on_exit_visit_probe(&mut self, _probe: &mut Box<dyn Probe>) -> bool { true }
+    fn on_exit_visit_probe(&mut self, _probe: &mut Box<dyn Probe>) -> bool {
+        true
+    }
 }
 
 impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {

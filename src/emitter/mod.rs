@@ -1,9 +1,9 @@
+pub mod module_emitter;
 pub mod report_var_metadata;
 pub mod rewriting;
-pub mod module_emitter;
-pub mod utils;
 #[cfg(test)]
 pub mod tests;
+pub mod utils;
 
 use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::rewriting::rules::{Arg, LocInfo, WhammProvider};

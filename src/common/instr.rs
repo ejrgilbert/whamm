@@ -1,12 +1,16 @@
+#![allow(clippy::too_many_arguments)]
 use crate::cli::LibraryLinkStrategyArg;
 use crate::common::error::ErrorGen;
-use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::module_emitter::{MemoryTracker, ModuleEmitter};
+use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::generator::rewriting::init_generator::InitGenerator;
 use crate::generator::rewriting::instr_generator::InstrGenerator;
 use crate::generator::rewriting::simple_ast::{build_simple_ast, SimpleAST};
+use crate::generator::wizard::metadata_collector::WizardProbeMetadataCollector;
+use crate::libraries::core::io::io_adapter::IOAdapter;
 use crate::libraries::core::io::IOPackage;
+use crate::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::libraries::core::maps::MapLibPackage;
 use crate::libraries::core::LibPackage;
 use crate::parser::types::{Whamm, WhammVisitor};
@@ -20,9 +24,6 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::exit;
 use wasmparser::MemoryType;
-use crate::generator::wizard::metadata_collector::WizardProbeMetadataCollector;
-use crate::libraries::core::io::io_adapter::IOAdapter;
-use crate::libraries::core::maps::map_adapter::MapLibAdapter;
 
 /// create output path if it doesn't exist
 pub(crate) fn try_path(path: &String) {
@@ -78,7 +79,12 @@ impl Default for Config {
     }
 }
 impl Config {
-    pub fn new(wizard: bool, enable_wizard_alt: bool, testing: bool, link_strategy: Option<LibraryLinkStrategyArg>) -> Self {
+    pub fn new(
+        wizard: bool,
+        enable_wizard_alt: bool,
+        testing: bool,
+        link_strategy: Option<LibraryLinkStrategyArg>,
+    ) -> Self {
         if testing {
             error!("Generating helper methods for testing mode is not yet supported!");
             exit(1);
@@ -142,7 +148,7 @@ pub fn run(
     script_path: &str,
     output_wasm_path: Option<String>,
     max_errors: i32,
-    config: Config
+    config: Config,
 ) -> Vec<u8> {
     // Set up error reporting mechanism
     let mut err = ErrorGen::new(script_path.to_string(), "".to_string(), max_errors);
@@ -186,7 +192,7 @@ pub fn run(
             &mut map_lib_adapter,
             &mut report_var_metadata,
             &mut err,
-            &config
+            &config,
         );
     } else {
         let simple_ast = build_simple_ast(&whamm, &mut err);
@@ -198,7 +204,7 @@ pub fn run(
             &mut io_adapter,
             &mut map_lib_adapter,
             &mut report_var_metadata,
-            &mut err
+            &mut err,
         );
     }
     // for debugging
@@ -233,17 +239,13 @@ fn run_instr_wizard(
     map_lib_adapter: &mut MapLibAdapter,
     report_var_metadata: &mut ReportVarMetadata,
     err: &mut ErrorGen,
-    config: &Config
+    config: &Config,
 ) {
     let mut mem_tracker = get_memory_tracker(target_wasm, false);
 
     // Collect the metadata for the AST and transform to different representation
     // specifically used for targeting Wizard during compilation.
-    let mut metadata_collector = WizardProbeMetadataCollector::new(
-        symbol_table,
-        err,
-        config
-    );
+    let mut metadata_collector = WizardProbeMetadataCollector::new(symbol_table, err, config);
     metadata_collector.visit_whamm(whamm);
     let wiz_ast = metadata_collector.wizard_ast;
 
@@ -257,13 +259,13 @@ fn run_instr_wizard(
             symbol_table,
             &mut mem_tracker,
             map_lib_adapter,
-            report_var_metadata
+            report_var_metadata,
         ),
         io_adapter,
         context_name: "".to_string(),
         err,
         injected_funcs: &mut injected_funcs,
-        config
+        config,
     };
     gen.run(wiz_ast);
 }
@@ -326,10 +328,7 @@ fn run_instr_rewrite(
     }
 }
 
-fn get_memory_tracker(
-    target_wasm: &mut Module,
-    create_new_mem: bool
-) -> MemoryTracker {
+fn get_memory_tracker(target_wasm: &mut Module, create_new_mem: bool) -> MemoryTracker {
     // Create the memory tracker + the map and metadata tracker
     let mem_id = if create_new_mem {
         let id = target_wasm.memories.len() as u32;

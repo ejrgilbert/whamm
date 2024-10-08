@@ -3,12 +3,10 @@
 // =======================
 
 use crate::common::error::ErrorGen;
-use crate::emitter::report_var_metadata::LocationData;
 use crate::emitter::module_emitter::ModuleEmitter;
-use crate::parser::types::{
-    DataType, Definition, Fn, FnId,
-    Value, Whamm, WhammVisitorMut,
-};
+use crate::emitter::report_var_metadata::LocationData;
+use crate::generator::GeneratingVisitor;
+use crate::parser::types::{DataType, Definition, Fn, FnId, Value, Whamm, WhammVisitorMut};
 use crate::verifier::types::Record;
 use log::{debug, info};
 use orca_wasm::ir::function::FunctionBuilder;
@@ -16,7 +14,6 @@ use orca_wasm::ir::id::FunctionID;
 use orca_wasm::ir::types::DataType as OrcaType;
 use orca_wasm::ir::types::Value as OrcaValue;
 use orca_wasm::InitExpr;
-use crate::generator::GeneratingVisitor;
 
 /// Serves as the first phase of instrumenting a module by setting up
 /// the groundwork.
@@ -209,19 +206,30 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
 }
 impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
     fn emit_string(&mut self, val: &mut Value) -> bool {
-        self.emitter.emit_string(val, &mut self.err)
+        self.emitter.emit_string(val, self.err)
     }
 
     fn emit_fn(&mut self, context: &str, f: &Fn) -> Option<FunctionID> {
-        self.emitter.emit_fn(context, f, &mut self.err)
+        self.emitter.emit_fn(context, f, self.err)
     }
 
-    fn emit_global(&mut self, name: String, ty: DataType, value: &Option<Value>) -> Option<FunctionID> {
-        self.emitter.emit_global(name, ty, value, &mut self.err)
+    fn emit_global(
+        &mut self,
+        name: String,
+        ty: DataType,
+        value: &Option<Value>,
+    ) -> Option<FunctionID> {
+        self.emitter.emit_global(name, ty, value, self.err)
     }
 
-    fn emit_report_global(&mut self, name: String, ty: DataType, value: &Option<Value>) -> Option<FunctionID> {
-        self.emitter.emit_report_global(name, ty, value, &mut self.err)
+    fn emit_report_global(
+        &mut self,
+        name: String,
+        ty: DataType,
+        value: &Option<Value>,
+    ) -> Option<FunctionID> {
+        self.emitter
+            .emit_report_global(name, ty, value, self.err)
     }
 
     fn add_injected_func(&mut self, fid: FunctionID) {
@@ -244,15 +252,15 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
         self.emitter.report_var_metadata.curr_location = loc;
     }
 
-    fn enter_named_scope(&mut self, name: &String) {
+    fn enter_named_scope(&mut self, name: &str) {
         self.emitter.table.enter_named_scope(name);
     }
 
     fn enter_scope(&mut self) {
-        self.emitter.enter_scope(&mut self.err);
+        self.emitter.enter_scope(self.err);
     }
 
     fn exit_scope(&mut self) {
-        self.emitter.exit_scope(&mut self.err);
+        self.emitter.exit_scope(self.err);
     }
 }
