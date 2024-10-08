@@ -63,6 +63,52 @@ pub trait GeneratingVisitor: WhammVisitorMut<bool> {
 
         is_success
     }
+
+    fn visit_before_probes(&mut self, event: &mut dyn Event) -> bool {
+        trace!("Entering: CodeGenerator::visit_before_probes");
+        let mut is_success = true;
+        if let Some(probes) = event.probes_mut().get_mut(&"before".to_string()) {
+            probes.iter_mut().for_each(|probe| {
+                is_success &= self.visit_probe(probe);
+            });
+        }
+        trace!("Exiting: CodeGenerator::visit_before_probes");
+        is_success
+    }
+
+    fn visit_alt_probes(&mut self, event: &mut dyn Event) -> bool {
+        trace!("Entering: CodeGenerator::visit_alt_probes");
+        let mut is_success = true;
+        if let Some(probes) = event.probes_mut().get_mut(&"alt".to_string()) {
+            // only will emit one alt probe!
+            // The last alt probe in the list will be emitted.
+            if probes.len() > 1 {
+                warn!("Detected multiple `alt` probes, will only emit the last one and ignore the rest!")
+            }
+            if let Some(probe) = probes.last_mut() {
+                is_success &= self.visit_probe(probe);
+            }
+        }
+        trace!("Exiting: CodeGenerator::visit_alt_probes");
+        is_success
+    }
+
+    fn visit_after_probes(&mut self, event: &mut dyn Event) -> bool {
+        trace!("Entering: CodeGenerator::visit_after_probes");
+        let mut is_success = true;
+        if let Some(probes) = event.probes_mut().get_mut(&"after".to_string()) {
+            probes.iter_mut().for_each(|probe| {
+                is_success &= self.visit_probe(probe);
+            });
+        }
+
+        trace!("Exiting: CodeGenerator::visit_after_probes");
+        is_success
+    }
+
+    fn on_enter_visit_probe(&mut self, _probe: &mut Box<dyn Probe>) -> bool { true }
+
+    fn on_exit_visit_probe(&mut self, _probe: &mut Box<dyn Probe>) -> bool { true }
 }
 
 impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
@@ -190,29 +236,13 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
         // do not inject globals into Wasm that are used/defined by the compiler
         // because they are statically-defined and folded away
 
+        // TODO -- this is where wizard implementation starts diverting
         // 1. visit the BEFORE probes
-        if let Some(probes) = event.probes_mut().get_mut(&"before".to_string()) {
-            probes.iter_mut().for_each(|probe| {
-                is_success &= self.visit_probe(probe);
-            });
-        }
+        self.visit_before_probes(event);
         // 2. visit the ALT probes
-        if let Some(probes) = event.probes_mut().get_mut(&"alt".to_string()) {
-            // only will emit one alt probe!
-            // The last alt probe in the list will be emitted.
-            if probes.len() > 1 {
-                warn!("Detected multiple `alt` probes, will only emit the last one and ignore the rest!")
-            }
-            if let Some(probe) = probes.last_mut() {
-                is_success &= self.visit_probe(probe);
-            }
-        }
+        self.visit_alt_probes(event);
         // 3. visit the AFTER probes
-        if let Some(probes) = event.probes_mut().get_mut(&"after".to_string()) {
-            probes.iter_mut().for_each(|probe| {
-                is_success &= self.visit_probe(probe);
-            });
-        }
+        self.visit_after_probes(event);
 
         trace!("Exiting: CodeGenerator::visit_event");
         self.exit_scope();
@@ -227,6 +257,8 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
         self.enter_scope();
         self.append_context_name(format!(":{}", probe.mode().name()));
         let mut is_success = true;
+
+        is_success &= self.on_enter_visit_probe(probe);
 
         // visit fns
         probe.get_mode_provided_fns_mut().iter_mut().for_each(
@@ -250,6 +282,8 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
             is_success &= self.visit_stmts(body.stmts.as_mut_slice());
         }
 
+        is_success &= self.on_exit_visit_probe(probe);
+
         trace!("Exiting: CodeGenerator::visit_probe");
         self.exit_scope();
         // Remove this probe from `context_name`
@@ -258,7 +292,7 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
         is_success
     }
 
-    fn visit_fn(&mut self, f: &mut crate::parser::types::Fn) -> bool {
+    fn visit_fn(&mut self, f: &mut Fn) -> bool {
         trace!("Entering: CodeGenerator::visit_fn");
         self.enter_scope();
         let mut is_success = true;

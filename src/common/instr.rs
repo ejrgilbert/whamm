@@ -232,6 +232,7 @@ fn run_instr_wizard(
     // TODO: how reusable is the InitGenerator?
     // Currently, most of the wizard emitter/generator is copied directly from
     // the rewriting ones
+    let mut injected_funcs = vec![];
     let mut gen = crate::generator::wizard::WizardGenerator {
         emitter: ModuleEmitter::new(
             target_wasm,
@@ -243,6 +244,7 @@ fn run_instr_wizard(
         io_adapter,
         context_name: "".to_string(),
         err,
+        injected_funcs: &mut injected_funcs,
     };
     gen.run(whamm);
 }
