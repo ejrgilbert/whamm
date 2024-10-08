@@ -205,8 +205,9 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
                     if def.is_comp_provided() && !self.config.enable_wizard_alt {
                         self.err.wizard_error(
                             true,
-                            "Assigning to compiler-provided variables is not supported on Wizard".to_string(),
-                            loc
+                            "Assigning to compiler-provided variables is not supported on Wizard"
+                                .to_string(),
+                            loc,
                         );
                     }
                 }

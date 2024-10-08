@@ -199,8 +199,7 @@ impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
         ty: DataType,
         value: &Option<Value>,
     ) -> Option<FunctionID> {
-        self.emitter
-            .emit_report_global(name, ty, value, self.err)
+        self.emitter.emit_report_global(name, ty, value, self.err)
     }
 
     fn add_injected_func(&mut self, fid: FunctionID) {
