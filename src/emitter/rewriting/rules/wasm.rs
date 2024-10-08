@@ -2,7 +2,7 @@ use crate::emitter::rewriting::rules::{
     event_factory, probe_factory, Arg, Event, FromStr, LocInfo, Package, ProbeSpec,
 };
 use crate::for_each_opcode;
-use crate::generator::simple_ast::SimpleProbe;
+use crate::generator::rewriting::simple_ast::SimpleProbe;
 use crate::parser::rules::core::WhammModeKind;
 use crate::parser::rules::wasm::{OpcodeEventKind, WasmPackageKind};
 use crate::parser::types::{DataType, SpecPart, Value};

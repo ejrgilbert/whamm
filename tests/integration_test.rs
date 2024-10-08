@@ -31,6 +31,7 @@ fn run_script(script_text: &String, script_path: &PathBuf, err: &mut ErrorGen) {
         0,
         Config {
             wizard: false,
+            enable_wizard_alt: false,
             testing: true,
             library_strategy: LibraryLinkStrategy::Imported,
         },

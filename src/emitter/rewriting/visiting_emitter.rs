@@ -6,7 +6,7 @@ use crate::emitter::rewriting::rules::{Arg, LocInfo, ProbeSpec, Provider, WhammP
 use crate::libraries::core::maps::map_adapter::MapLibAdapter;
 use std::collections::HashMap;
 
-use crate::generator::types::ExprFolder;
+use crate::generator::folding::ExprFolder;
 use crate::libraries::core::io::io_adapter::IOAdapter;
 use crate::parser;
 use crate::parser::rules::UNKNOWN_IMMS;

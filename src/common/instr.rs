@@ -5,11 +5,11 @@ use crate::emitter::module_emitter::{MemoryTracker, ModuleEmitter};
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::generator::rewriting::init_generator::InitGenerator;
 use crate::generator::rewriting::instr_generator::InstrGenerator;
-use crate::generator::simple_ast::{build_simple_ast, SimpleAST};
+use crate::generator::rewriting::simple_ast::{build_simple_ast, SimpleAST};
 use crate::libraries::core::io::IOPackage;
 use crate::libraries::core::maps::MapLibPackage;
 use crate::libraries::core::LibPackage;
-use crate::parser::types::Whamm;
+use crate::parser::types::{Whamm, WhammVisitor};
 use crate::parser::whamm_parser::parse_script;
 use crate::verifier::types::SymbolTable;
 use crate::verifier::verifier::{build_symbol_table, type_check};
@@ -20,6 +20,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::exit;
 use wasmparser::MemoryType;
+use crate::generator::wizard::metadata_collector::WizardProbeMetadataCollector;
 use crate::libraries::core::io::io_adapter::IOAdapter;
 use crate::libraries::core::maps::map_adapter::MapLibAdapter;
 
@@ -57,6 +58,8 @@ impl From<Option<LibraryLinkStrategyArg>> for LibraryLinkStrategy {
 pub struct Config {
     /// Whether to emit `mon.wasm` for instrumenting with Wizard Engine
     pub wizard: bool,
+    /// Whether we allow probes that cause 'alternate' behavior in wizard
+    pub enable_wizard_alt: bool,
 
     /// Whether to emit extra exported functions that are helpful during testing.
     pub testing: bool,
@@ -68,13 +71,14 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             wizard: false,
+            enable_wizard_alt: false,
             testing: false,
             library_strategy: LibraryLinkStrategy::Imported,
         }
     }
 }
 impl Config {
-    pub fn new(wizard: bool, testing: bool, link_strategy: Option<LibraryLinkStrategyArg>) -> Self {
+    pub fn new(wizard: bool, enable_wizard_alt: bool, testing: bool, link_strategy: Option<LibraryLinkStrategyArg>) -> Self {
         if testing {
             error!("Generating helper methods for testing mode is not yet supported!");
             exit(1);
@@ -82,6 +86,7 @@ impl Config {
         let library_strategy = LibraryLinkStrategy::from(link_strategy);
         Self {
             wizard,
+            enable_wizard_alt,
             testing,
             library_strategy,
         }
@@ -137,7 +142,7 @@ pub fn run(
     script_path: &str,
     output_wasm_path: Option<String>,
     max_errors: i32,
-    config: Config,
+    config: Config
 ) -> Vec<u8> {
     // Set up error reporting mechanism
     let mut err = ErrorGen::new(script_path.to_string(), "".to_string(), max_errors);
@@ -157,7 +162,7 @@ pub fn run(
     let mut io_package = IOPackage::default();
     let mut core_packages: Vec<&mut dyn LibPackage> = vec![&mut map_package, &mut io_package];
     crate::libraries::actions::link_core_lib(
-        config.library_strategy,
+        &config.library_strategy,
         &whamm,
         target_wasm,
         core_wasm_path,
@@ -180,7 +185,8 @@ pub fn run(
             &mut io_adapter,
             &mut map_lib_adapter,
             &mut report_var_metadata,
-            &mut err
+            &mut err,
+            &config
         );
     } else {
         let simple_ast = build_simple_ast(&whamm, &mut err);
@@ -226,8 +232,20 @@ fn run_instr_wizard(
     io_adapter: &mut IOAdapter,
     map_lib_adapter: &mut MapLibAdapter,
     report_var_metadata: &mut ReportVarMetadata,
-    err: &mut ErrorGen,) {
+    err: &mut ErrorGen,
+    config: &Config
+) {
     let mut mem_tracker = get_memory_tracker(target_wasm, false);
+
+    // Collect the metadata for the AST and transform to different representation
+    // specifically used for targeting Wizard during compilation.
+    let mut metadata_collector = WizardProbeMetadataCollector::new(
+        symbol_table,
+        err,
+        config
+    );
+    metadata_collector.visit_whamm(whamm);
+    let wiz_ast = metadata_collector.wizard_ast;
 
     // TODO: how reusable is the InitGenerator?
     // Currently, most of the wizard emitter/generator is copied directly from
@@ -245,6 +263,7 @@ fn run_instr_wizard(
         context_name: "".to_string(),
         err,
         injected_funcs: &mut injected_funcs,
+        config
     };
     gen.run(whamm);
 }

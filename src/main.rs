@@ -19,6 +19,7 @@ use clap::Parser;
 use std::path::PathBuf;
 use std::process::exit;
 
+const ENABLE_WIZARD_ALT: bool = false;
 const CORE_WASM_PATH: &str = "./core_lib/target/wasm32-wasip1/release/core_lib.wasm";
 const MAX_ERRORS: i32 = 15;
 
@@ -61,7 +62,7 @@ fn try_main() -> Result<(), failure::Error> {
                 args.script,
                 args.output_path,
                 MAX_ERRORS,
-                Config::new(args.wizard, args.testing, args.link_strategy),
+                Config::new(args.wizard, ENABLE_WIZARD_ALT, args.testing, args.link_strategy),
             );
         }
     }

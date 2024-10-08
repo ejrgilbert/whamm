@@ -245,6 +245,7 @@ fn generate_instrumented_bin_wast(
             0,
             Config {
                 wizard: false,
+                enable_wizard_alt: false,
                 testing: true,
                 library_strategy: LibraryLinkStrategy::Imported,
             },

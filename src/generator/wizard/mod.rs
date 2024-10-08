@@ -1,5 +1,9 @@
+pub mod metadata_collector;
+pub mod ast;
+
 use orca_wasm::ir::id::FunctionID;
 use crate::common::error::ErrorGen;
+use crate::common::instr::Config;
 use crate::emitter::module_emitter::ModuleEmitter;
 use crate::emitter::report_var_metadata::LocationData;
 use crate::generator::GeneratingVisitor;
@@ -7,22 +11,24 @@ use crate::libraries::core::io::io_adapter::IOAdapter;
 use crate::parser::rules::{Event, Probe};
 use crate::parser::types::{DataType, Value, Whamm};
 
-pub struct WizardGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> {
+pub struct WizardGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> {
     pub emitter: ModuleEmitter<'b, 'c, 'd, 'e, 'f, 'g>,
     pub io_adapter: &'h mut IOAdapter,
     pub context_name: String,
     pub err: &'a mut ErrorGen,
     pub injected_funcs: &'h mut Vec<FunctionID>,
+    pub config: &'i Config
 }
 
-impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
+impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     pub fn run(&mut self, whamm: &mut Whamm) -> bool {
         // see: https://github.com/ejrgilbert/whamm/blob/0e8336956eb7d6a0ab741147576ba0f5dcdac1ca/src/emitter/wizard/init_generator.rs
         todo!()
     }
 }
 
-impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
+impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
+    // TODO -- these are all duplicates, try to factor out
     fn emit_string(&mut self, val: &mut Value) -> bool {
         self.emitter.emit_string(val, &mut self.err)
     }
@@ -72,7 +78,12 @@ impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
     }
 
     fn visit_alt_probes(&mut self, event: &mut dyn Event) -> bool {
-        todo!()
+        if !self.config.enable_wizard_alt {
+            // error!
+            todo!()
+        } else {
+            todo!()
+        }
     }
 
     fn visit_after_probes(&mut self, event: &mut dyn Event) -> bool {

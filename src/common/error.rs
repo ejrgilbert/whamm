@@ -298,6 +298,47 @@ impl ErrorGen {
         let err = Self::get_type_check_error_from_loc(fatal, message, loc);
         self.add_error(err);
     }
+    pub fn get_wizard_error(
+        fatal: bool,
+        message: String,
+        loc: &Option<LineColLocation>,
+    ) -> WhammError {
+        let loc = loc.as_ref().map(|loc| CodeLocation {
+            is_err: false,
+            message: Some(message.clone()),
+            line_col: loc.clone(),
+            line_str: None,
+            line2_str: None,
+        });
+
+        WhammError {
+            fatal,
+            ty: ErrorType::WizardError {
+                message: message.clone(),
+            },
+            err_loc: loc,
+            info_loc: None,
+        }
+    }
+
+    pub fn get_wizard_error_from_loc(
+        fatal: bool,
+        message: String,
+        line_col: &Option<Location>,
+    ) -> WhammError {
+        let loc = line_col.as_ref().map(|loc| loc.line_col.clone());
+        Self::get_wizard_error(fatal, message, &loc)
+    }
+
+    pub fn wizard_error(
+        &mut self,
+        fatal: bool,
+        message: String,
+        loc: &Option<Location>
+    ) {
+        let err = Self::get_wizard_error_from_loc(fatal, message, loc);
+        self.add_error(err);
+    }
 
     pub fn get_unexpected_error(
         fatal: bool,
@@ -402,6 +443,10 @@ impl ErrorGen {
             self.too_many = true;
         }
     }
+
+    // ==================
+    // ==== WARNINGS ====
+    // ==================
 
     pub fn add_warn(&mut self, warn: WhammWarning) {
         self.warnings.push(warn);
@@ -858,6 +903,10 @@ pub enum ErrorType {
     TypeCheckError {
         message: String,
     },
+    /// Error when compiling to Wizard target
+    WizardError {
+        message: String
+    },
     Error {
         message: Option<String>,
     },
@@ -869,6 +918,7 @@ impl ErrorType {
             ErrorType::DuplicateIdentifierError { .. } => "DuplicateIdentifierError",
             ErrorType::ParsingError { .. } => "ParsingError",
             ErrorType::TypeCheckError { .. } => "TypeCheckError",
+            ErrorType::WizardError { .. } => "WizardError",
             ErrorType::Error { .. } => "GeneralError",
         }
     }
@@ -885,7 +935,8 @@ impl ErrorType {
                 negatives,
                 |r| format!("{:?}", r),
             )),
-            ErrorType::TypeCheckError { ref message } => Cow::Borrowed(message),
+            ErrorType::TypeCheckError { ref message } |
+            ErrorType::WizardError { ref message } => Cow::Borrowed(message),
             ErrorType::DuplicateIdentifierError { ref duplicated_id } => {
                 Cow::Owned(format!("duplicate definitions with name `{duplicated_id}`"))
             }

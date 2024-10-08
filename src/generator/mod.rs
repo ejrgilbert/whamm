@@ -7,8 +7,7 @@ use crate::parser::types::{BinOp, Block, DataType, Definition, Expr, Fn, Global,
 
 pub mod rewriting;
 pub mod wizard;
-pub mod simple_ast;
-pub mod types;
+pub mod folding;
 
 #[cfg(test)]
 pub mod tests;

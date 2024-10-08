@@ -5,7 +5,7 @@ use crate::parser::types::Whamm;
 use orca_wasm::Module;
 
 pub fn link_core_lib(
-    method: LibraryLinkStrategy,
+    method: &LibraryLinkStrategy,
     ast: &Whamm,
     app_wasm: &mut Module,
     core_wasm_path: &str,

@@ -2,7 +2,7 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::module_emitter::MemoryTracker;
-use crate::generator::types::ExprFolder;
+use crate::generator::folding::ExprFolder;
 use crate::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Location, Statement, UnOp, Value,
