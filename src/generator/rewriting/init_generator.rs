@@ -204,6 +204,7 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
         );
     }
 }
+
 impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
     fn emit_string(&mut self, val: &mut Value) -> bool {
         self.emitter.emit_string(val, self.err)
@@ -235,16 +236,12 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
         self.injected_funcs.push(fid);
     }
 
-    fn set_context_name(&mut self, val: String) {
-        self.context_name = val;
+    fn get_context_name_mut(&mut self) -> &mut String {
+        &mut self.context_name
     }
 
     fn get_context_name(&self) -> &String {
         &self.context_name
-    }
-
-    fn append_context_name(&mut self, val: String) {
-        self.context_name += &val;
     }
 
     fn set_curr_loc(&mut self, loc: LocationData) {

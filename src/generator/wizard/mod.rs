@@ -9,7 +9,7 @@ use crate::emitter::utils::whamm_type_to_wasm_type;
 use crate::generator::wizard::ast::{WizardProbe, WizardScript};
 use crate::generator::GeneratingVisitor;
 use crate::libraries::core::io::io_adapter::IOAdapter;
-use crate::parser::types::{DataType, Definition, Value, WhammVisitorMut};
+use crate::parser::types::{Block, DataType, Definition, Statement, Value, WhammVisitorMut};
 use crate::verifier::types::{Record, VarAddr};
 use log::trace;
 use orca_wasm::ir::id::FunctionID;
@@ -56,90 +56,63 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
         self.exit_scope();
     }
 
+    fn emit_special_func(&mut self, param_reqs: &Vec<(String, DataType)>, results: &Vec<OrcaType>, body: &mut Block) -> (Option<u32>, String) {
+        // create the predicate function
+        let mut params = vec![];
+        let mut param_str = "".to_string();
+
+        for (local_id, (param_name, param_ty)) in param_reqs.iter().enumerate() {
+            // handle param list
+            params.push(whamm_type_to_wasm_type(param_ty));
+
+            // handle the param string
+            if !param_str.is_empty() {
+                param_str += ", "
+            }
+            param_str += param_name;
+
+            // add param definition to the symbol table
+            self.emitter.table.put(
+                param_name.clone(),
+                Record::Var {
+                    ty: param_ty.clone(),
+                    name: param_name.clone(),
+                    value: None,
+                    def: Definition::CompilerStatic,
+                    is_report_var: false,
+                    addr: Some(VarAddr::Local {
+                        addr: local_id as u32,
+                    }),
+                    loc: None,
+                },
+            );
+        }
+
+        let fid =
+            self.emitter.emit_special_fn(None, &params, &results, body, self.err);
+
+        (fid, param_str.to_string())
+    }
+
     fn visit_wiz_probe(&mut self, probe: &mut WizardProbe) {
         // TODO -- handle provided functions (provider, package, event, probe)
-
         let (pred_fid, pred_param_str) = if let Some(pred) = &mut probe.predicate {
-            // create the predicate function
-            let mut pred_params = vec![];
-            let mut pred_param_str = "".to_string();
-            for (local_id, (param_name, param_ty)) in probe.metadata.pred_args.iter().enumerate() {
-                // handle param list
-                pred_params.push(whamm_type_to_wasm_type(param_ty));
-
-                // handle the param string
-                if !pred_param_str.is_empty() {
-                    pred_param_str += ", "
-                }
-                pred_param_str += param_name;
-
-                // add param definition to the symbol table
-                self.emitter.table.put(
-                    param_name.clone(),
-                    Record::Var {
-                        ty: param_ty.clone(),
-                        name: param_name.clone(),
-                        value: None,
-                        def: Definition::CompilerStatic,
-                        is_report_var: false,
-                        addr: Some(VarAddr::Local {
-                            addr: local_id as u32,
-                        }),
-                        loc: None,
-                    },
-                );
-            }
-
-            // boolean true/false
-            let pred_results = vec![OrcaType::I32];
-            let fid =
-                self.emitter
-                    .emit_pred_as_fn(None, &pred_params, &pred_results, pred, self.err);
-
-            (fid, pred_param_str.to_string())
+            let mut block = Block {
+                stmts: vec![Statement::Expr {
+                    expr: pred.clone(),
+                    loc: None,
+                }],
+                return_ty: None,
+                loc: None,
+            };
+            self.emit_special_func(&probe.metadata.pred_args, &vec![OrcaType::I32], &mut block)
         } else {
             (None, "".to_string())
         };
 
         // create the probe body function
         let (body_fid, body_param_str) = if let Some(body) = &mut probe.body {
-            // create the predicate function
-            let mut body_params = vec![];
-            let mut body_param_str = "".to_string();
-            for (local_id, (param_name, param_ty)) in probe.metadata.body_args.iter().enumerate() {
-                // handle param list
-                body_params.push(whamm_type_to_wasm_type(param_ty));
-
-                // handle the param string
-                if !body_param_str.is_empty() {
-                    body_param_str += ", "
-                }
-                body_param_str += param_name;
-
-                // add param definition to the symbol table
-                self.emitter.table.put(
-                    param_name.clone(),
-                    Record::Var {
-                        ty: param_ty.clone(),
-                        name: param_name.clone(),
-                        value: None,
-                        def: Definition::CompilerStatic,
-                        is_report_var: false,
-                        addr: Some(VarAddr::Local {
-                            addr: local_id as u32,
-                        }),
-                        loc: None,
-                    },
-                );
-            }
-
-            // Body should not return anything
-            let body_results = vec![];
-            let fid =
-                self.emitter
-                    .emit_body_as_fn(None, &body_params, &body_results, body, self.err);
-
-            (fid, body_param_str.to_string())
+            self.emit_special_func(&probe.metadata.body_args, &vec![], body)
         } else {
             (None, "".to_string())
         };
@@ -206,16 +179,12 @@ impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
         self.injected_funcs.push(fid);
     }
 
-    fn set_context_name(&mut self, val: String) {
-        self.context_name = val;
+    fn get_context_name_mut(&mut self) -> &mut String {
+        &mut self.context_name
     }
 
     fn get_context_name(&self) -> &String {
         &self.context_name
-    }
-
-    fn append_context_name(&mut self, val: String) {
-        self.context_name += &val;
     }
 
     fn set_curr_loc(&mut self, loc: LocationData) {

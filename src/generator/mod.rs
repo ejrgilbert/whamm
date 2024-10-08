@@ -31,9 +31,18 @@ pub trait GeneratingVisitor: WhammVisitorMut<bool> {
         value: &Option<Value>,
     ) -> Option<FunctionID>;
     fn add_injected_func(&mut self, fid: FunctionID);
-    fn set_context_name(&mut self, val: String);
+    fn get_context_name_mut(&mut self) -> &mut String;
     fn get_context_name(&self) -> &String;
-    fn append_context_name(&mut self, val: String);
+    fn set_context_name(&mut self, val: String) {
+        *self.get_context_name_mut() = val;
+    }
+    fn append_context_name(&mut self, val: String) {
+        *self.get_context_name_mut() += &val;
+    }
+    fn remove_last_context(&mut self) {
+        let context_name = self.get_context_name();
+        self.set_context_name(context_name[..context_name.rfind(':').unwrap()].to_string());
+    }
     fn set_curr_loc(&mut self, loc: LocationData);
     fn enter_named_scope(&mut self, name: &str);
     fn enter_scope(&mut self);
@@ -110,16 +119,9 @@ pub trait GeneratingVisitor: WhammVisitorMut<bool> {
         trace!("Exiting: CodeGenerator::visit_after_probes");
         is_success
     }
-
-    fn on_enter_visit_probe(&mut self, _probe: &mut Box<dyn Probe>) -> bool {
-        true
-    }
-
-    fn on_exit_visit_probe(&mut self, _probe: &mut Box<dyn Probe>) -> bool {
-        true
-    }
 }
 
+/// A get-for-free implementation of the GeneratingVisitor
 impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
     fn visit_whamm(&mut self, whamm: &mut Whamm) -> bool {
         trace!("Entering: CodeGenerator::visit_whamm");
@@ -169,8 +171,7 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
         trace!("Exiting: CodeGenerator::visit_script");
         self.exit_scope();
         // Remove from `context_name`
-        let context_name = self.get_context_name();
-        self.set_context_name(context_name[..context_name.rfind(':').unwrap()].to_string());
+        self.remove_last_context();
         is_success
     }
 
@@ -196,9 +197,7 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
 
         trace!("Exiting: CodeGenerator::visit_provider");
         self.exit_scope();
-        // Remove this package from `context_name`
-        let context_name = self.get_context_name();
-        self.set_context_name(context_name[..context_name.rfind(':').unwrap()].to_string());
+        self.remove_last_context();
         is_success
     }
 
@@ -224,9 +223,7 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
 
         trace!("Exiting: CodeGenerator::visit_package");
         self.exit_scope();
-        // Remove this package from `context_name`
-        let context_name = self.get_context_name();
-        self.set_context_name(context_name[..context_name.rfind(':').unwrap()].to_string());
+        self.remove_last_context();
         is_success
     }
 
@@ -255,9 +252,7 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
 
         trace!("Exiting: CodeGenerator::visit_event");
         self.exit_scope();
-        // Remove this event from `context_name`
-        let context_name = self.get_context_name();
-        self.set_context_name(context_name[..context_name.rfind(':').unwrap()].to_string());
+        self.remove_last_context();
         is_success
     }
 
@@ -266,8 +261,6 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
         self.enter_scope();
         self.append_context_name(format!(":{}", probe.mode().name()));
         let mut is_success = true;
-
-        is_success &= self.on_enter_visit_probe(probe);
 
         // visit fns
         probe.get_mode_provided_fns_mut().iter_mut().for_each(
@@ -291,13 +284,9 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
             is_success &= self.visit_stmts(body.stmts.as_mut_slice());
         }
 
-        is_success &= self.on_exit_visit_probe(probe);
-
         trace!("Exiting: CodeGenerator::visit_probe");
         self.exit_scope();
-        // Remove this probe from `context_name`
-        let context_name = self.get_context_name();
-        self.set_context_name(context_name[..context_name.rfind(':').unwrap()].to_string());
+        self.remove_last_context();
         is_success
     }
 
