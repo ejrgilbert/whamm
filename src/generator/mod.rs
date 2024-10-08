@@ -26,6 +26,7 @@ pub trait GeneratingVisitor: WhammVisitorMut<bool> {
     fn get_context_name(&self) -> &String;
     fn append_context_name(&mut self, val: String);
     fn set_curr_loc(&mut self, loc: LocationData);
+    fn enter_named_scope(&mut self, name: &String);
     fn enter_scope(&mut self);
     fn exit_scope(&mut self);
     fn visit_stmts(&mut self, stmts: &mut [Statement]) -> bool {

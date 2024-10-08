@@ -843,7 +843,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 err.unexpected_error(true, Some("unexpected type".to_string()), None);
                 return false;
             };
-            if matches!(def, Definition::CompilerStatic) {
+            if matches!(def, Definition::CompilerStatic) && addr.is_none() {
                 err.unexpected_error(
                     true,
                     Some(format!(

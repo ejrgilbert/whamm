@@ -265,7 +265,7 @@ fn run_instr_wizard(
         injected_funcs: &mut injected_funcs,
         config
     };
-    gen.run(whamm);
+    gen.run(wiz_ast);
 }
 
 fn run_instr_rewrite(

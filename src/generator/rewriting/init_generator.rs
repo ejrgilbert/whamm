@@ -5,19 +5,17 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::report_var_metadata::LocationData;
 use crate::emitter::module_emitter::ModuleEmitter;
-use crate::parser::rules::{Event, Package, Probe, Provider};
 use crate::parser::types::{
-    BinOp, Block, DataType, Definition, Expr, Fn, FnId, Global, ProvidedFunction, Script,
-    Statement, UnOp, Value, Whamm, WhammVisitorMut,
+    DataType, Definition, Fn, FnId,
+    Value, Whamm, WhammVisitorMut,
 };
 use crate::verifier::types::Record;
-use log::{debug, info, trace, warn};
+use log::{debug, info};
 use orca_wasm::ir::function::FunctionBuilder;
 use orca_wasm::ir::id::FunctionID;
 use orca_wasm::ir::types::DataType as OrcaType;
 use orca_wasm::ir::types::Value as OrcaValue;
 use orca_wasm::InitExpr;
-use std::collections::HashMap;
 use crate::generator::GeneratingVisitor;
 
 /// Serves as the first phase of instrumenting a module by setting up
@@ -244,6 +242,10 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
 
     fn set_curr_loc(&mut self, loc: LocationData) {
         self.emitter.report_var_metadata.curr_location = loc;
+    }
+
+    fn enter_named_scope(&mut self, name: &String) {
+        self.emitter.table.enter_named_scope(name);
     }
 
     fn enter_scope(&mut self) {

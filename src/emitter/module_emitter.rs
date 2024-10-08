@@ -235,6 +235,40 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         unimplemented!();
     }
 
+    pub fn emit_pred_as_fn(&mut self, name: Option<String>, params: &Vec<OrcaType>, results: &Vec<OrcaType>, pred: &mut Expr, err: &mut ErrorGen) -> Option<u32> {
+        let pred_func = FunctionBuilder::new(params, results);
+        self.emitting_func = Some(pred_func);
+
+        // emit the predicate function body
+        self.emit_expr(pred, err);
+
+        // emit the function
+        self.finish_emitting_fn(name)
+    }
+
+    pub fn emit_body_as_fn(&mut self, name: Option<String>, params: &Vec<OrcaType>, results: &Vec<OrcaType>, body: &mut Block, err: &mut ErrorGen) -> Option<u32> {
+        let pred_func = FunctionBuilder::new(params, results);
+        self.emitting_func = Some(pred_func);
+
+        // emit the predicate function body
+        self.emit_body(&[], body, err);
+
+        // emit the function
+        self.finish_emitting_fn(name)
+    }
+
+    pub fn finish_emitting_fn(&mut self, name: Option<String>) -> Option<u32> {
+        if let Some(func) = std::mem::replace(&mut self.emitting_func, None) {
+            let fid = func.finish_module(self.app_wasm);
+            if let Some(name) = name {
+                self.app_wasm.set_fn_name(fid, name);
+            }
+            Some(*fid)
+        } else {
+            None
+        }
+    }
+
     pub fn emit_string(&mut self, value: &mut Value, err: &mut ErrorGen) -> bool {
         match value {
             Value::Str { val, .. } => {

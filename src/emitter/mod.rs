@@ -1,7 +1,7 @@
 pub mod report_var_metadata;
 pub mod rewriting;
 pub mod module_emitter;
-mod utils;
+pub mod utils;
 #[cfg(test)]
 pub mod tests;
 

@@ -1,7 +1,4 @@
-// TODO -- create a new version of the AST the contains metadata for each probe
-
 use std::collections::HashMap;
-use crate::parser::rules::Provider;
 use crate::parser::types::{Block, DataType, Expr, Global, Statement};
 
 #[derive(Clone, Default)]
@@ -34,8 +31,8 @@ impl WizardProbe {
 
 #[derive(Clone, Default)]
 pub struct Metadata {
-    pred_args: Vec<(String, DataType)>,
-    body_args: Vec<(String, DataType)>
+    pub pred_args: Vec<(String, DataType)>,
+    pub body_args: Vec<(String, DataType)>
     // TODO pub num_reports: i32, // needed for `$alloc`
 }
 impl Metadata {

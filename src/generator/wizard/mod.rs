@@ -1,15 +1,19 @@
 pub mod metadata_collector;
 pub mod ast;
 
+use log::trace;
+use orca_wasm::ir::types::DataType as OrcaType;
 use orca_wasm::ir::id::FunctionID;
 use crate::common::error::ErrorGen;
 use crate::common::instr::Config;
 use crate::emitter::module_emitter::ModuleEmitter;
 use crate::emitter::report_var_metadata::LocationData;
+use crate::emitter::utils::whamm_type_to_wasm_type;
 use crate::generator::GeneratingVisitor;
+use crate::generator::wizard::ast::{WizardProbe, WizardScript};
 use crate::libraries::core::io::io_adapter::IOAdapter;
-use crate::parser::rules::{Event, Probe};
-use crate::parser::types::{DataType, Value, Whamm};
+use crate::parser::types::{DataType, Definition, Value, WhammVisitorMut};
+use crate::verifier::types::{Record, VarAddr};
 
 pub struct WizardGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> {
     pub emitter: ModuleEmitter<'b, 'c, 'd, 'e, 'f, 'g>,
@@ -21,9 +25,132 @@ pub struct WizardGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> {
 }
 
 impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
-    pub fn run(&mut self, whamm: &mut Whamm) -> bool {
-        // see: https://github.com/ejrgilbert/whamm/blob/0e8336956eb7d6a0ab741147576ba0f5dcdac1ca/src/emitter/wizard/init_generator.rs
-        todo!()
+    pub fn run(&mut self, ast: Vec<WizardScript>) {
+        self.emitter.reset_table();
+        self.visit_ast(ast);
+    }
+
+    fn visit_ast(&mut self, mut ast: Vec<WizardScript>) {
+        for script in ast.iter_mut() {
+            self.visit_wiz_script(script);
+        }
+    }
+
+    fn visit_wiz_script(&mut self, script: &mut WizardScript) {
+        trace!("Entering: CodeGenerator::visit_script");
+        self.enter_named_scope(&script.name);
+        self.set_context_name(format!("{}", script.name.clone()));
+
+        // visit fns
+        script.fns.iter_mut().for_each(|f| {
+            self.visit_fn(f);
+        });
+        // inject globals
+        self.visit_globals(&script.globals);
+        // visit probes
+        script.probes.iter_mut().for_each(|probe| {
+            self.visit_wiz_probe(probe);
+        });
+
+        trace!("Exiting: CodeGenerator::visit_script");
+        self.exit_scope();
+    }
+
+    fn visit_wiz_probe(&mut self, probe: &mut WizardProbe) {
+        // TODO -- handle provided functions (provider, package, event, probe)
+
+        let (pred_fid, pred_param_str) = if let Some(pred) = &mut probe.predicate {
+            // create the predicate function
+            let mut pred_params = vec![];
+            let mut pred_param_str = "".to_string();
+            for (local_id, (param_name, param_ty)) in probe.metadata.pred_args.iter().enumerate() {
+                // handle param list
+                pred_params.push(whamm_type_to_wasm_type(param_ty));
+
+                // handle the param string
+                if !pred_param_str.is_empty() {
+                    pred_param_str += ", "
+                }
+                pred_param_str += param_name;
+
+                // add param definition to the symbol table
+                self.emitter.table.put(param_name.clone(), Record::Var {
+                    ty: param_ty.clone(),
+                    name: param_name.clone(),
+                    value: None,
+                    def: Definition::CompilerStatic,
+                    is_report_var: false,
+                    addr: Some(VarAddr::Local {
+                        addr: local_id as u32
+                    }),
+                    loc: None,
+                });
+            }
+
+            // boolean true/false
+            let pred_results = vec![OrcaType::I32];
+            let fid = self.emitter.emit_pred_as_fn(None, &pred_params, &pred_results, pred, self.err);
+
+            (fid, pred_param_str.to_string())
+        } else {
+            (None, "".to_string())
+        };
+
+        // create the probe body function
+        let (body_fid, body_param_str) = if let Some(body) = &mut probe.body {
+            // create the predicate function
+            let mut body_params = vec![];
+            let mut body_param_str = "".to_string();
+            for (local_id, (param_name, param_ty)) in probe.metadata.body_args.iter().enumerate() {
+                // handle param list
+                body_params.push(whamm_type_to_wasm_type(param_ty));
+
+                // handle the param string
+                if !body_param_str.is_empty() {
+                    body_param_str += ", "
+                }
+                body_param_str += param_name;
+
+                // add param definition to the symbol table
+                self.emitter.table.put(param_name.clone(), Record::Var {
+                    ty: param_ty.clone(),
+                    name: param_name.clone(),
+                    value: None,
+                    def: Definition::CompilerStatic,
+                    is_report_var: false,
+                    addr: Some(VarAddr::Local {
+                        addr: local_id as u32
+                    }),
+                    loc: None,
+                });
+            }
+
+            // Body should not return anything
+            let body_results = vec![];
+            let fid = self.emitter.emit_body_as_fn(None, &body_params, &body_results, body, self.err);
+
+            (fid, body_param_str.to_string())
+        } else {
+            (None, "".to_string())
+        };
+
+        // emit the export with the appropriate name
+        let match_rule = self.create_wizard_match_rule(&probe.rule, pred_fid, &pred_param_str, &body_param_str);
+        if let Some(fid) = body_fid {
+            self.emitter.app_wasm.exports.add_export_func(match_rule, fid);
+        } else {
+            // ignore
+        }
+    }
+
+    fn create_wizard_match_rule(&self, probe_name: &str, pred_fid: Option<u32>, pred_params: &str, body_params: &str) -> String {
+        let pred_part = if let Some(pred_fid) = pred_fid {
+            format!("/ ${pred_fid}({pred_params}) /")
+        } else {
+            "".to_string()
+        };
+
+        format!("{probe_name} {pred_part} ({body_params})")
     }
 }
 
@@ -65,6 +192,10 @@ impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
         self.emitter.report_var_metadata.curr_location = loc;
     }
 
+    fn enter_named_scope(&mut self, name: &String) {
+        self.emitter.table.enter_named_scope(name);
+    }
+
     fn enter_scope(&mut self) {
         self.emitter.enter_scope(&mut self.err);
     }
@@ -72,54 +203,4 @@ impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     fn exit_scope(&mut self) {
         self.emitter.exit_scope(&mut self.err);
     }
-
-    fn visit_before_probes(&mut self, event: &mut dyn Event) -> bool {
-        todo!()
-    }
-
-    fn visit_alt_probes(&mut self, event: &mut dyn Event) -> bool {
-        if !self.config.enable_wizard_alt {
-            // error!
-            todo!()
-        } else {
-            todo!()
-        }
-    }
-
-    fn visit_after_probes(&mut self, event: &mut dyn Event) -> bool {
-        todo!()
-    }
-
-    fn on_enter_visit_probe(&mut self, probe: &mut Box<dyn Probe>) -> bool {
-        // At this point, each event will correspond to some actions function
-        // skip the whamm context and script index
-        // let mnemonic = self
-        //     .context_name
-        //     .clone()
-        //     .split(':')
-        //     .skip(2)
-        //     .collect::<Vec<&str>>()
-        //     .join(":");
-        // let mut action = FunctionBuilder::new(&[], &[]);
-        todo!()
-    }
-
-    fn on_exit_visit_probe(&mut self, probe: &mut Box<dyn Probe>) -> bool {
-        // export the event function
-        // let action_id = action.finish_module(self.emitter.app_wasm);
-        // self.emitter.export_mnemonic(mnemonic, action_id);
-        // // after visiting the statements, we finished building the function
-        // if let Some(func) = self.emitter.emitting_func.take() {
-        //     let fid = func.finish_module(self.emitter.app_wasm);
-        //     // TODO: can we set a good name for this function
-        //     (is_success, Some(fid))
-        // } else {
-        //     panic!("No emitting function was set!");
-        // }
-        todo!()
-    }
-
-    // TODO -- right now, this is using init_generator's impl to visit the AST...
-    //   but this is really to find when certain things happen rather than emitting them
-    //   how to override to emit the body of a probe? (Can side-step the deep AST visiting, more efficient!)
 }

@@ -52,7 +52,7 @@ pub enum Cmd {
 #[derive(Debug, Args)]
 pub struct InstrArgs {
     /// The path to the application's Wasm module we want to instrument.
-    #[arg(short, long, value_parser)]
+    #[arg(short, long, value_parser, default_value = "")]
     pub app: String,
     /// The path to the Script containing the instrumentation Probe definitions.
     #[arg(short, long, value_parser)]
