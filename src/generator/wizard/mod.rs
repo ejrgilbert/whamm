@@ -56,7 +56,12 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
         self.exit_scope();
     }
 
-    fn emit_special_func(&mut self, param_reqs: &Vec<(String, DataType)>, results: &Vec<OrcaType>, body: &mut Block) -> (Option<u32>, String) {
+    fn emit_special_func(
+        &mut self,
+        param_reqs: &[(String, DataType)],
+        results: &[OrcaType],
+        body: &mut Block,
+    ) -> (Option<u32>, String) {
         // create the predicate function
         let mut params = vec![];
         let mut param_str = "".to_string();
@@ -88,8 +93,9 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
             );
         }
 
-        let fid =
-            self.emitter.emit_special_fn(None, &params, &results, body, self.err);
+        let fid = self
+            .emitter
+            .emit_special_fn(None, &params, results, body, self.err);
 
         (fid, param_str.to_string())
     }
@@ -105,14 +111,14 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
                 return_ty: None,
                 loc: None,
             };
-            self.emit_special_func(&probe.metadata.pred_args, &vec![OrcaType::I32], &mut block)
+            self.emit_special_func(&probe.metadata.pred_args, &[OrcaType::I32], &mut block)
         } else {
             (None, "".to_string())
         };
 
         // create the probe body function
         let (body_fid, body_param_str) = if let Some(body) = &mut probe.body {
-            self.emit_special_func(&probe.metadata.body_args, &vec![], body)
+            self.emit_special_func(&probe.metadata.body_args, &[], body)
         } else {
             (None, "".to_string())
         };
