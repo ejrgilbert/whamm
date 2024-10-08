@@ -250,28 +250,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         self.emit_body(&[], block, err);
 
         // emit the function
-        self.finish_emitting_fn(name)
-    }
-
-    // pub fn emit_body_as_fn(
-    //     &mut self,
-    //     name: Option<String>,
-    //     params: &[OrcaType],
-    //     results: &[OrcaType],
-    //     body: &mut Block,
-    //     err: &mut ErrorGen,
-    // ) -> Option<u32> {
-    //     let pred_func = FunctionBuilder::new(params, results);
-    //     self.emitting_func = Some(pred_func);
-    //
-    //     // emit the predicate function body
-    //     self.emit_body(&[], body, err);
-    //
-    //     // emit the function
-    //     self.finish_emitting_fn(name)
-    // }
-
-    pub fn finish_emitting_fn(&mut self, name: Option<String>) -> Option<u32> {
         if let Some(func) = self.emitting_func.take() {
             let fid = func.finish_module(self.app_wasm);
             if let Some(name) = name {
