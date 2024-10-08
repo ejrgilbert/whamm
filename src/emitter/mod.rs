@@ -9,7 +9,6 @@ use crate::common::error::ErrorGen;
 use crate::emitter::rewriting::rules::Arg;
 use crate::parser::types::{Block, Expr, Statement};
 
-
 // =================================================
 // ==== Emitter Trait --> Used By All Emitters! ====
 // =================================================
