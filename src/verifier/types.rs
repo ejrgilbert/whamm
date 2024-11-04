@@ -4,6 +4,7 @@ use crate::parser::types::{DataType, Definition, FnId, Location, ProbeSpec, Valu
 use pest::error::LineColLocation;
 use std::collections::HashMap;
 use std::fmt;
+use crate::parser::types::Rule::ne;
 
 const UNEXPECTED_ERR_MSG: &str =
     "SymbolTable: Looks like you've found a bug...please report this behavior!";
@@ -242,6 +243,14 @@ impl SymbolTable {
 
         new_rec_id
     }
+    pub fn lookup_rec_with_context(&self, key: &str) -> (Option<&Record>, String) {
+        if let (Some(id), context) = self.lookup_with_context(key) {
+            if let Some(rec) = self.get_record(id) {
+                return (Some(rec), context);
+            }
+        }
+        (None, "".to_string())
+    }
     pub fn lookup_rec(&self, key: &str) -> Option<&Record> {
         if let Some(id) = self.lookup(key) {
             if let Some(rec) = self.get_record(id) {
@@ -377,6 +386,26 @@ impl SymbolTable {
             None
         }
     }
+    pub fn lookup_fn_with_context(&self, key: &str, err: &mut ErrorGen) -> (Option<&Record>, String) {
+        if let (Some(rec), context) = self.lookup_rec_with_context(key) {
+            if matches!(rec, Record::Fn { .. }) {
+                (Some(rec), context)
+            } else {
+                err.unexpected_error(
+                    true,
+                    Some(format!(
+                        "Unexpected record type. Expected Fn, found: {:?}",
+                        rec
+                    )),
+                    None,
+                );
+                (None, context)
+            }
+        } else {
+            err.unexpected_error(true, Some(format!("Could not find fn for: {}", key)), None);
+            (None, "".to_string())
+        }
+    }
     pub fn lookup_fn(&self, key: &str, err: &mut ErrorGen) -> Option<&Record> {
         if let Some(rec) = self.lookup_rec(key) {
             if matches!(rec, Record::Fn { .. }) {
@@ -418,6 +447,38 @@ impl SymbolTable {
         }
     }
 
+    pub fn lookup_with_context(&self, key: &str) -> (Option<usize>, String) {
+        match self.get_curr_scope() {
+            None => (None, "".to_string()),
+            Some(curr) => {
+                match curr.lookup(key) {
+                    Some(rec_id) => (Some(*rec_id), self.get_scope_context(curr.id)),
+                    None => {
+                        let mut rec_id: Option<&usize> = None;
+
+                        // Search the parent instead
+                        let mut lookup_scope = curr;
+                        let mut next_parent: Option<&Scope> = match lookup_scope.parent {
+                            None => None,
+                            Some(p_id) => self.scopes.get(p_id),
+                        };
+                        while rec_id.is_none() && next_parent.is_some() {
+                            // Perform lookup in next_parent (moving in the chain of parent scopes)
+                            rec_id = next_parent.unwrap().lookup(key);
+
+                            lookup_scope = next_parent.unwrap();
+                            next_parent = match lookup_scope.parent {
+                                None => None,
+                                Some(p_id) => self.scopes.get(p_id),
+                            };
+                        }
+
+                        (rec_id.copied(), self.get_scope_context(*rec_id.unwrap()))
+                    }
+                }
+            }
+        }
+    }
     pub fn lookup(&self, key: &str) -> Option<usize> {
         match self.get_curr_scope() {
             None => None,
@@ -449,6 +510,32 @@ impl SymbolTable {
                 }
             }
         }
+    }
+
+
+    fn get_scope_context(&self, scope_id: usize) -> String {
+        let mut context = "".to_string();
+        if let Some(scope) = self.scopes.get(scope_id) {
+            let mut rec_id: Option<&usize> = None;
+            let mut curr_scope = scope;
+            let mut next_parent: Option<&Scope> = match curr_scope.parent {
+                None => None,
+                Some(p_id) => self.scopes.get(p_id),
+            };
+            while rec_id.is_none() && next_parent.is_some() {
+                if !context.is_empty() {
+                    context += ":";
+                }
+                context += &format!("{}", next_parent.unwrap().name);
+
+                curr_scope = next_parent.unwrap();
+                next_parent = match curr_scope.parent {
+                    None => None,
+                    Some(p_id) => self.scopes.get(p_id),
+                };
+            }
+        }
+        context
     }
 }
 

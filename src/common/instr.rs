@@ -161,8 +161,6 @@ pub fn run(
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
 
-    // TODO Configure the generator based on target (wizard vs bytecode rewriting)
-
     // Merge in the core library IF NEEDED
     let mut map_package = MapLibPackage::default();
     let mut io_package = IOPackage::default();
@@ -248,10 +246,9 @@ fn run_instr_wizard(
     let mut metadata_collector = WizardProbeMetadataCollector::new(symbol_table, err, config);
     metadata_collector.visit_whamm(whamm);
     let wiz_ast = metadata_collector.wizard_ast;
+    let used_funcs = metadata_collector.used_provided_fns;
+    let used_strings = metadata_collector.strings_to_emit;
 
-    // TODO: how reusable is the InitGenerator?
-    // Currently, most of the wizard emitter/generator is copied directly from
-    // the rewriting ones
     let mut injected_funcs = vec![];
     let mut gen = crate::generator::wizard::WizardGenerator {
         emitter: ModuleEmitter::new(
@@ -259,15 +256,16 @@ fn run_instr_wizard(
             symbol_table,
             &mut mem_tracker,
             map_lib_adapter,
-            report_var_metadata,
+            report_var_metadata
         ),
         io_adapter,
         context_name: "".to_string(),
         err,
         injected_funcs: &mut injected_funcs,
         config,
+        curr_script_id: "".to_string()
     };
-    gen.run(wiz_ast);
+    gen.run(wiz_ast, used_funcs, used_strings);
 }
 
 fn run_instr_rewrite(

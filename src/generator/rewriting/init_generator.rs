@@ -42,43 +42,11 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
 
     // Private helper functions
     fn on_startup(&mut self) {
-        self.create_start();
         if self.emitter.map_lib_adapter.is_used {
             self.create_global_map_init();
             self.create_print_map_meta();
         }
         self.create_print_global_meta();
-    }
-    fn create_start(&mut self) {
-        match self.emitter.app_wasm.start {
-            Some(_) => {
-                debug!("Start function already exists");
-            }
-            None => {
-                //time to make a start fn
-                info!("No start function found, creating one");
-                match self
-                    .emitter
-                    .app_wasm
-                    .functions
-                    .get_local_fid_by_name("_start")
-                {
-                    Some(_) => {
-                        debug!("start function is _start");
-                    }
-                    None => {
-                        let start_fn = FunctionBuilder::new(&[], &[]);
-                        let start_id = start_fn.finish_module(self.emitter.app_wasm);
-                        self.injected_funcs.push(start_id);
-                        self.emitter.app_wasm.start = Some(start_id);
-                        self.emitter
-                            .app_wasm
-                            .set_fn_name(start_id, "start".to_string());
-                    } //strcmp doesn't need to call add_export_fn so this probably doesn't either
-                      //in app_wasm, not sure if we need to have it in the ST
-                }
-            }
-        }
     }
 
     fn create_global_map_init(&mut self) {

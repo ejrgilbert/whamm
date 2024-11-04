@@ -17,15 +17,22 @@ pub struct WizardProbe {
     pub predicate: Option<Expr>,
     pub body: Option<Block>,
     pub metadata: Metadata,
+    pub num_reports: i32,
+    pub probe_number: i32,
 }
 impl WizardProbe {
-    pub(crate) fn new(rule: String) -> Self {
+    pub(crate) fn new(rule: String, probe_number: i32) -> Self {
         Self {
             rule,
             predicate: None,
             body: None,
             metadata: Metadata::default(),
+            num_reports: 0,
+            probe_number
         }
+    }
+    pub(crate) fn incr_reports(&mut self) {
+        self.num_reports += 1;
     }
 }
 

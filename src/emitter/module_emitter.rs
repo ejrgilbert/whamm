@@ -36,7 +36,7 @@ pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     pub app_wasm: &'a mut Module<'b>,
     pub emitting_func: Option<FunctionBuilder<'b>>,
     pub table: &'c mut SymbolTable,
-    mem_tracker: &'d mut MemoryTracker,
+    pub(crate) mem_tracker: &'d mut MemoryTracker,
     pub map_lib_adapter: &'e mut MapLibAdapter,
     pub report_var_metadata: &'f mut ReportVarMetadata,
     fn_providing_contexts: Vec<String>,
@@ -62,7 +62,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         }
     }
 
-    fn emit_provided_fn(
+    pub(crate) fn emit_provided_fn(
         &mut self,
         context: &str,
         f: &Fn,
@@ -234,6 +234,35 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         // TODO: only when we're supporting user-defined fns in script...
         unimplemented!();
     }
+    fn emit_global_map_init(&mut self, err: &mut ErrorGen) {
+        //1 means it isn't initialized, 0 means it is
+        let to_call = match self
+            .app_wasm
+            .functions
+            .get_local_fid_by_name("global_map_init")
+        {
+            Some(to_call) => to_call,
+            None => {
+                err.add_error(ErrorGen::get_unexpected_error(
+                    true,
+                    Some(format!(
+                        "{UNEXPECTED_ERR_MSG} \
+                    No global_map_init function found in the module!"
+                    )),
+                    None,
+                ));
+                return;
+            }
+        };
+        if let Some(func) = &mut self.emitting_func {
+            func.global_get(GlobalID(self.map_lib_adapter.init_bool_location));
+            func.if_stmt(OrcaBlockType::Empty);
+            func.i32_const(0);
+            func.global_set(GlobalID(self.map_lib_adapter.init_bool_location));
+            func.call(to_call);
+            func.end();
+        }
+    }
 
     pub fn emit_special_fn(
         &mut self,
@@ -246,7 +275,13 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         let func = FunctionBuilder::new(params, results);
         self.emitting_func = Some(func);
 
-        // emit the predicate function body
+        //after saving args, we run the check if we need to initialize global maps
+        // only inject this IF NEEDED (not all scripts need global init)
+        if self.map_lib_adapter.is_used {
+            self.emit_global_map_init(err);
+        }
+
+        // emit the function body
         self.emit_body(&[], block, err);
 
         // emit the function
@@ -378,7 +413,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         // this is used for user-defined global vars in the script...
         match ty {
             DataType::Map { .. } => {
-                //time to instrument the start fn
+                //time to set up the map_init fn
                 let Some(init_id) = self
                     .app_wasm
                     .functions

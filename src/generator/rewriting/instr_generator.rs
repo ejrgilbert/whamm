@@ -406,7 +406,8 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_> {
         {
             return true;
         }
-        //after running, emit the metadata from the report_var_metadata into maps 0 and 1 in app_wasm - if meta exists
+
+        // configure the flushing routines!
         let report_var_metadata = &self.emitter.report_var_metadata;
         let var_meta = &report_var_metadata.variable_metadata;
         let map_meta = &report_var_metadata.map_metadata;
