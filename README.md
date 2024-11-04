@@ -44,7 +44,7 @@ The supported interpreters are:
 1. [Install OCaml](https://opam.ocaml.org/doc/Install.html)
 2. Download [`progress`](https://github.com/titzer/progress) and ensure the `progress` binary is on your `PATH`
 3. Download and build [`wizeng`](https://github.com/titzer/wizard-engine/blob/master/doc/Building.md)
-   - After running `make -j`, the binary `spectest.x86-linux` should be located at `wizard-engine/bin/spectest.x86-linux`
+   - After running `make -j`, the binaries `spectest.*` should be located at `wizard-engine/bin/spectest.*`
 4. Build the Wasm reference interpreter through the Wizard repo, after running the below commands, the binary `wasm` should be located at `wizard-engine/test/wasm-spec/repos/spec/interpreter/wasm`
    ```bash
    # Configure OCaml
@@ -61,7 +61,7 @@ The supported interpreters are:
    ```
 
 The interpreter binaries must be runnable using the following commands (this can be done by placing symbolic links to the respective binaries):
-1. For Wizard: `./output/tests/interpreters/spectest.x86-linux`
+1. For Wizard: `./output/tests/interpreters/wizard-spectest`
 2. For Wasm-Ref: `./output/tests/interpreters/wasm`
 
 To run tests:

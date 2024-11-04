@@ -151,7 +151,7 @@ fn run_wast_test(inter: &String, args: &[String], wast_file_name: &String) -> Ou
 }
 
 const INT_PATH: &str = "./output/tests/interpreters";
-const WIZENG_SPEC_INT: &str = "spectest.x86-linux";
+const WIZENG_SPEC_INT: &str = "wizard-spectest";
 const WASM_REF_INT: &str = "wasm";
 fn get_available_interpreters() -> Vec<(String, Vec<String>)> {
     let supported_interpreters = [
@@ -162,7 +162,7 @@ fn get_available_interpreters() -> Vec<(String, Vec<String>)> {
 
     for (interpreter, args) in supported_interpreters.iter() {
         let int_path = format!("{INT_PATH}/{interpreter}");
-        match Command::new(&int_path).arg("--help").output() {
+        match Command::new(&int_path).arg("-help").output() {
             Err(..) => {
                 // do nothing
             }
