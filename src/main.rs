@@ -46,14 +46,17 @@ fn try_main() -> Result<(), failure::Error> {
 
     match cli.command {
         Cmd::Info {
-            spec,
+            rule,
             globals,
             functions,
         } => {
-            run_info(spec, globals, functions);
+            run_info(rule, globals, functions);
         }
         Cmd::Wast { wast_path } => {
             run_wast(wast_path);
+        }
+        Cmd::GenTests {rule} => {
+            run_gen_tests(rule);
         }
         Cmd::Instr(args) => {
             if !args.wizard && args.app.is_empty() {
@@ -90,4 +93,14 @@ fn run_wast(wast_path: String) {
     wast::test_harness::setup_and_run_tests(&vec![PathBuf::from(wast_path)])
         .expect("WAST Test failed!");
     println!("The wast test passed!");
+}
+
+fn run_gen_tests(rule: String, print_globals: bool, print_functions: bool) {
+    // Parse the script and generate the information
+    let mut err = ErrorGen::new("".to_string(), rule.clone(), MAX_ERRORS);
+
+    let (mut whamm, probe_spec) = whamm_from_rule(rule, &mut err);
+    print_info(rule, print_globals, print_functions, &mut err);
+
+    err.fatal_report("GenTests");
 }

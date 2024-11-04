@@ -12,11 +12,24 @@ use pest::Parser;
 const UNEXPECTED_ERR_MSG: &str =
     "WhammParser: Looks like you've found a bug...please report this behavior! Exiting now...";
 
-pub fn print_info(spec: String, print_globals: bool, print_functions: bool, err: &mut ErrorGen) {
+pub fn print_info(rule: String, print_globals: bool, print_functions: bool, err: &mut ErrorGen) {
     trace!("Entered print_info");
-    err.set_script_text(spec.to_owned());
+    err.set_script_text(rule.to_owned());
 
-    let res = WhammParser::parse(Rule::PROBE_SPEC, &spec);
+    let (mut whamm, probe_spec) = whamm_from_rule(rule, err);
+
+    // Print the information for the passed probe specification
+    let script: &mut Script = whamm.scripts.get_mut(0).unwrap();
+    if let Err(e) = script.print_info(&probe_spec, print_globals, print_functions) {
+        err.add_error(*e);
+    }
+}
+
+pub fn whamm_from_rule(rule: String, err: &mut ErrorGen) -> (Whamm, ProbeSpec) {
+    trace!("Entered print_info");
+    err.set_script_text(rule.to_owned());
+
+    let res = WhammParser::parse(Rule::PROBE_SPEC, &rule);
     match res {
         Ok(mut pairs) => {
             // Create the probe specification from the input string
@@ -28,14 +41,13 @@ pub fn print_info(spec: String, print_globals: bool, print_functions: bool, err:
 
             // Print the information for the passed probe specification
             let mut whamm = Whamm::new();
-            let id = whamm.add_script(Script::new());
-            let script: &mut Script = whamm.scripts.get_mut(id).unwrap();
-            if let Err(e) = script.print_info(&probe_spec, print_globals, print_functions) {
-                err.add_error(*e);
-            }
+            whamm.add_script(Script::new());
+            (whamm, probe_spec)
         }
         Err(e) => {
             err.pest_err(e);
+            err.fatal_report("whamm_from_rule");
+            unreachable!()
         }
     }
 }

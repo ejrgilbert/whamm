@@ -1,5 +1,6 @@
 pub mod ast;
 pub mod metadata_collector;
+pub mod test_gen;
 
 use crate::common::error::ErrorGen;
 use crate::common::instr::Config;
@@ -101,7 +102,10 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 
     fn visit_wiz_probe(&mut self, probe: &mut WizardProbe) {
-        // TODO -- handle provided functions (provider, package, event, probe)
+        // TODO -- handle DYNAMIC provided functions (provider, package, event, probe)
+        //         what to do about the static ones?
+        //         - drop_args(): require opcode WITH alt (added in alt)
+        //         - alt_call_by_name/id(): require call WITH alt (added in alt)
         let (pred_fid, pred_param_str) = if let Some(pred) = &mut probe.predicate {
             let mut block = Block {
                 stmts: vec![Statement::Expr {

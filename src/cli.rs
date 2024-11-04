@@ -18,12 +18,12 @@ pub enum Cmd {
     //     #[arg(arg_enum)]
     //     shell: Shell,
     // },
-    /// To provide the globals and functions available for the given probe specification.
-    /// To use this option, simply follow the command with a full or partial specification
+    /// To provide the globals and functions available for the given probe match rule.
+    /// To use this option, simply follow the command with a full or partial rule
     /// (use pattern matching to see what would be triggered).
     Info {
         #[arg(short, long, value_parser)]
-        spec: String,
+        rule: String,
 
         /// Show the globals in-scope when using the probe specification.
         #[arg(long, short, action, default_value = "false")]
@@ -38,6 +38,12 @@ pub enum Cmd {
     Wast {
         /// The path to the `wast` file to run.
         wast_path: String,
+    },
+
+    /// To generate a suite of test Wasm modules for Wizard for all events matching the match rule pattern provided.
+    GenTests {
+        #[arg(short, long, value_parser)]
+        rule: String,
     },
 
     /// To instrument a Wasm application.
