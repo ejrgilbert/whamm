@@ -28,7 +28,7 @@ impl WizardProbe {
             body: None,
             metadata: Metadata::default(),
             num_reports: 0,
-            probe_number
+            probe_number,
         }
     }
     pub(crate) fn incr_reports(&mut self) {

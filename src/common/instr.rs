@@ -256,14 +256,14 @@ fn run_instr_wizard(
             symbol_table,
             &mut mem_tracker,
             map_lib_adapter,
-            report_var_metadata
+            report_var_metadata,
         ),
         io_adapter,
         context_name: "".to_string(),
         err,
         injected_funcs: &mut injected_funcs,
         config,
-        curr_script_id: "".to_string()
+        curr_script_id: "".to_string(),
     };
     gen.run(wiz_ast, used_funcs, used_strings);
 }

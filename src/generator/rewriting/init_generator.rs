@@ -8,7 +8,7 @@ use crate::emitter::report_var_metadata::LocationData;
 use crate::generator::GeneratingVisitor;
 use crate::parser::types::{DataType, Definition, Fn, FnId, Value, Whamm, WhammVisitorMut};
 use crate::verifier::types::Record;
-use log::{debug, info};
+use log::debug;
 use orca_wasm::ir::function::FunctionBuilder;
 use orca_wasm::ir::id::FunctionID;
 use orca_wasm::ir::types::DataType as OrcaType;

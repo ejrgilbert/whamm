@@ -2,7 +2,6 @@ pub mod ast;
 pub mod init_generator;
 pub mod metadata_collector;
 
-use std::collections::HashMap;
 use crate::common::error::ErrorGen;
 use crate::common::instr::Config;
 use crate::emitter::module_emitter::{ModuleEmitter, StringAddr};
@@ -13,13 +12,13 @@ use crate::generator::GeneratingVisitor;
 use crate::libraries::core::io::io_adapter::IOAdapter;
 use crate::parser::types::{Block, DataType, Definition, FnId, Statement, Value, WhammVisitorMut};
 use crate::verifier::types::{Record, VarAddr};
-use log::{debug, info, trace};
-use orca_wasm::{DataSegment, DataSegmentKind, InitExpr, Opcode};
+use log::{debug, trace};
 use orca_wasm::ir::function::FunctionBuilder;
 use orca_wasm::ir::id::{FunctionID, GlobalID};
 use orca_wasm::ir::types::DataType as OrcaType;
 use orca_wasm::ir::types::Value as OrcaValue;
-use orca_wasm::{Location as OrcaLocation, Location};
+use orca_wasm::{DataSegment, DataSegmentKind, InitExpr, Opcode};
+use std::collections::HashMap;
 
 const UNEXPECTED_ERR_MSG: &str =
     "WizardGenerator: Looks like you've found a bug...please report this behavior!";
@@ -33,11 +32,16 @@ pub struct WizardGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> {
     pub config: &'i Config,
 
     // tracking
-    pub curr_script_id: String
+    pub curr_script_id: String,
 }
 
 impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
-    pub fn run(&mut self, ast: Vec<WizardScript>, used_provided_funcs: Vec<(String, String)>, strings_to_emit: Vec<String>) {
+    pub fn run(
+        &mut self,
+        ast: Vec<WizardScript>,
+        used_provided_funcs: Vec<(String, String)>,
+        strings_to_emit: Vec<String>,
+    ) {
         // Reset the symbol table in the emitter just in case
         self.emitter.reset_table();
         self.setup_report_vars();
@@ -183,10 +187,13 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
 
     fn emit_strings(&mut self, strings_to_emit: Vec<String>) {
         for string in strings_to_emit.iter() {
-            self.emitter.emit_string(&mut Value::Str {
-                ty: DataType::Str,
-                val: string.clone(),
-            }, self.err);
+            self.emitter.emit_string(
+                &mut Value::Str {
+                    ty: DataType::Str,
+                    val: string.clone(),
+                },
+                self.err,
+            );
         }
     }
 
@@ -198,13 +205,13 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
                     def: Definition::CompilerDynamic,
                     name: FnId {
                         name: fname.clone(),
-                        loc: None
+                        loc: None,
                     },
                     params: vec![],
                     return_ty: DataType::Boolean,
                     body: Default::default(),
                 },
-                self.err
+                self.err,
             ) {
                 self.add_injected_func(fid);
             };
@@ -289,8 +296,8 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
             //now set the new key value for the new maps
             map_meta_str.insert(*key, val);
         }
-        let mut is_success = self.setup_print_global_meta(&var_meta_str);
-        is_success &= self.setup_print_map_meta(&map_meta_str);
+        self.setup_print_global_meta(&var_meta_str);
+        self.setup_print_map_meta(&map_meta_str);
     }
 
     /// set up the print_global_meta function for insertions
@@ -341,10 +348,8 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
 
             // get the value of this report global
             print_global_meta.global_get(GlobalID(*key));
-            self.io_adapter
-                .call_puti(&mut print_global_meta, self.err);
-            self.io_adapter
-                .putln(&mut print_global_meta, self.err);
+            self.io_adapter.call_puti(&mut print_global_meta, self.err);
+            self.io_adapter.putln(&mut print_global_meta, self.err);
         }
         true
     }
@@ -383,11 +388,8 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
 
         // for each of the report maps, emit the printing logic
         for (key, val) in map_meta_str.iter() {
-            self.io_adapter.puts(
-                format!("map,{key},{val},"),
-                &mut print_map_meta,
-                self.err,
-            );
+            self.io_adapter
+                .puts(format!("map,{key},{val},"), &mut print_map_meta, self.err);
 
             // print the value(s) of this map
             self.emitter
@@ -475,10 +477,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 
     fn create_curr_loc(&self, probe: &WizardProbe) -> LocationData {
-        let probe_id = format!(
-            "{}_{}",
-            probe.probe_number, probe.rule
-        );
+        let probe_id = format!("{}_{}", probe.probe_number, probe.rule);
 
         //set the current location in bytecode and load some new globals for potential report vars
         LocationData::Local {
@@ -510,7 +509,10 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
         // create the probe's report variable globals!
         for _ in 0..probe.num_reports {
             let (global_id, ..) = whamm_type_to_wasm_global(self.emitter.app_wasm, &DataType::I32);
-            self.emitter.report_var_metadata.available_i32_gids.push(*global_id);
+            self.emitter
+                .report_var_metadata
+                .available_i32_gids
+                .push(*global_id);
         }
 
         // create the probe body function

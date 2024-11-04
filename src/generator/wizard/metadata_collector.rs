@@ -33,7 +33,6 @@ pub struct WizardProbeMetadataCollector<'a, 'b, 'c> {
     curr_rule: String,
     curr_script: WizardScript,
     curr_probe: WizardProbe,
-    curr_num_reports: i32,
     probe_count: i32,
 
     // vars_to_alloc: Vec<(String, DataType)>, // TODO (once we have 'local' variables)
@@ -56,7 +55,6 @@ impl<'a, 'b, 'c> WizardProbeMetadataCollector<'a, 'b, 'c> {
             curr_rule: "".to_string(),
             curr_script: WizardScript::default(),
             curr_probe: WizardProbe::default(),
-            curr_num_reports: 0,
             probe_count: 0,
             err,
             config,
@@ -319,23 +317,26 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
                 self.visit_expr(lhs);
                 self.visit_expr(rhs);
             }
-            Expr::Call { args, fn_target, .. } => {
+            Expr::Call {
+                args, fn_target, ..
+            } => {
                 // is this a provided function?
                 let fn_name = match &**fn_target {
                     Expr::VarId { name, .. } => name.clone(),
                     _ => {
                         self.err.unexpected_error(
                             true,
-                            Some(format!(
-                                "{UNEXPECTED_ERR_MSG} Can only call functions."
-                            )),
+                            Some(format!("{UNEXPECTED_ERR_MSG} Can only call functions.")),
                             None,
                         );
                         "".to_string()
-                    },
+                    }
                 };
-                let (Some(Record::Fn { def, .. }), context) = self.table.lookup_fn_with_context(&fn_name, self.err) else {
-                    self.err.unexpected_error(true, Some("unexpected type".to_string()), None);
+                let (Some(Record::Fn { def, .. }), context) =
+                    self.table.lookup_fn_with_context(&fn_name, self.err)
+                else {
+                    self.err
+                        .unexpected_error(true, Some("unexpected type".to_string()), None);
                     return;
                 };
                 if matches!(def, Definition::CompilerDynamic) {
@@ -348,13 +349,10 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
                 });
             }
             Expr::Primitive { val, .. } => {
-                match val {
-                    Value::Str {val, ..} => {
-                        self.strings_to_emit.push(val.clone());
-                    }
-                    _ => {} // ignore others
+                if let Value::Str { val, .. } = val {
+                    self.strings_to_emit.push(val.clone());
                 }
-            },
+            }
             Expr::VarId { name, .. } => {
                 // handle argN special case
                 if self.handle_special(name, "arg") {

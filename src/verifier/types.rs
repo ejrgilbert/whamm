@@ -4,7 +4,6 @@ use crate::parser::types::{DataType, Definition, FnId, Location, ProbeSpec, Valu
 use pest::error::LineColLocation;
 use std::collections::HashMap;
 use std::fmt;
-use crate::parser::types::Rule::ne;
 
 const UNEXPECTED_ERR_MSG: &str =
     "SymbolTable: Looks like you've found a bug...please report this behavior!";
@@ -386,7 +385,11 @@ impl SymbolTable {
             None
         }
     }
-    pub fn lookup_fn_with_context(&self, key: &str, err: &mut ErrorGen) -> (Option<&Record>, String) {
+    pub fn lookup_fn_with_context(
+        &self,
+        key: &str,
+        err: &mut ErrorGen,
+    ) -> (Option<&Record>, String) {
         if let (Some(rec), context) = self.lookup_rec_with_context(key) {
             if matches!(rec, Record::Fn { .. }) {
                 (Some(rec), context)
@@ -512,11 +515,10 @@ impl SymbolTable {
         }
     }
 
-
     fn get_scope_context(&self, scope_id: usize) -> String {
         let mut context = "".to_string();
         if let Some(scope) = self.scopes.get(scope_id) {
-            let mut rec_id: Option<&usize> = None;
+            let rec_id: Option<&usize> = None;
             let mut curr_scope = scope;
             let mut next_parent: Option<&Scope> = match curr_scope.parent {
                 None => None,
@@ -526,7 +528,7 @@ impl SymbolTable {
                 if !context.is_empty() {
                     context += ":";
                 }
-                context += &format!("{}", next_parent.unwrap().name);
+                context += next_parent.unwrap().name.as_str();
 
                 curr_scope = next_parent.unwrap();
                 next_parent = match curr_scope.parent {
