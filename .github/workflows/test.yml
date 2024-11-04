@@ -75,11 +75,11 @@ jobs:
           
           echo "[INFO] Configuring the 'wizeng' interpreter..."
           mkdir -p output/tests/interpreters
-          mv wizard-engine/bin/spectest.x86-linux output/tests/interpreters
+          mv wizard-engine/bin/spectest.x86-linux output/tests/interpreters/wizard-spectest
           
           echo "[INFO] Testing the 'wizeng' interpreter configuration..."
           ls -al output/tests/interpreters
-          ./output/tests/interpreters/spectest.x86-linux --help || [ $? == 3 ]
+          ./output/tests/interpreters/wizard-spectest --help || [ $? == 3 ]
       - name: Setup Wasm Spec Reference Interpreter
         run: |
           echo "[INFO] Configuring OCaml..."
