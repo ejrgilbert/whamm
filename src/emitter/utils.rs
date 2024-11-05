@@ -247,6 +247,10 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     err_msg: &str,
     err: &mut ErrorGen,
 ) -> bool {
+    // TODO(alloc)
+    //   call lang_features.alloc_vars.rewriting IF doing rewriting...
+    //   ...will need to thread injection method through
+    //   (ignore this statement on wizard target since it's already handled)
     if let Statement::AllocDecl { decl, .. } = stmt {
         return match &**decl {
             Statement::Decl { ty, var_id, .. } => {

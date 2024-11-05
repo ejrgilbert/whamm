@@ -643,7 +643,10 @@ fn handle_decl_init(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     // create the decl
     let decl_pair = pairs.next().unwrap();
     let decls = match decl_pair.as_rule() {
-        Rule::special_decl => handle_special_decl(decl_pair, err),
+        Rule::special_decl => {
+            // handle_special_decl(decl_pair, err)
+            unimplemented!("Declaring a special variable and initializing is not currently supported (e.g. `report i32 i = 0;`).");
+        }
         Rule::decl => handle_decl(&mut decl_pair.into_inner(), err),
         rule => {
             err.parse_error(

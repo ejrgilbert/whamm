@@ -188,14 +188,15 @@ wasm:opcode:br:before {
             report bool b;
         }
     "#,
-    r#"
-        i32 a;
-        report i32 c;
-        wasm::br:before {
-            a = 1;
-            report bool b = true;
-        }
-    "#,
+    // TODO -- uncomment when we've supported special_decl_init
+    // r#"
+    //     i32 a;
+    //     report i32 c;
+    //     wasm::br:before {
+    //         a = 1;
+    //         report bool b = true;
+    //     }
+    // "#,
     // alloc variables
     r#"
         i32 a;
@@ -205,14 +206,15 @@ wasm:opcode:br:before {
             alloc bool b;
         }
     "#,
-    r#"
-        i32 a;
-        alloc i32 c;
-        wasm::br:before {
-            a = 1;
-            alloc bool b = true;
-        }
-    "#,
+    // TODO -- uncomment when we've supported special_decl_init
+    // r#"
+    //     i32 a;
+    //     alloc i32 c;
+    //     wasm::br:before {
+    //         a = 1;
+    //         alloc bool b = true;
+    //     }
+    // "#,
     // special variables
     r#"
         alloc report i32 c;
