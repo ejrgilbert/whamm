@@ -1,6 +1,6 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::report_var_metadata::{LocationData, Metadata, ReportVarMetadata};
-use crate::libraries::core::LibAdapter;
+use crate::lang_features::libraries::core::LibAdapter;
 use crate::parser::types::DataType;
 use orca_wasm::ir::id::{FunctionID, GlobalID};
 use orca_wasm::ir::types::BlockType as OrcaBlockType;

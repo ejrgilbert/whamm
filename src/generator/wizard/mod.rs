@@ -8,7 +8,7 @@ use crate::emitter::report_var_metadata::{BytecodeLoc, LocationData};
 use crate::emitter::utils::{whamm_type_to_wasm_global, whamm_type_to_wasm_type};
 use crate::generator::wizard::ast::{WizardProbe, WizardScript};
 use crate::generator::GeneratingVisitor;
-use crate::libraries::core::io::io_adapter::IOAdapter;
+use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::parser::types::{Block, DataType, Definition, FnId, Statement, Value, WhammVisitorMut};
 use crate::verifier::types::{Record, VarAddr};
 use log::trace;

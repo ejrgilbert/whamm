@@ -1,7 +1,7 @@
-pub mod map_adapter;
+pub mod io_adapter;
 
-use crate::libraries::core::maps::map_adapter::MapLibAdapter;
-use crate::libraries::core::{LibAdapter, LibPackage};
+use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
+use crate::lang_features::libraries::core::{LibAdapter, LibPackage};
 use crate::parser::rules::{Event, Package, Probe, Provider};
 use crate::parser::types::{
     BinOp, Block, DataType, Expr, Script, Statement, UnOp, Value, Whamm, WhammVisitor,
@@ -9,11 +9,11 @@ use crate::parser::types::{
 use log::debug;
 
 #[derive(Default)]
-pub struct MapLibPackage {
+pub struct IOPackage {
     is_used: bool,
-    pub adapter: MapLibAdapter,
+    pub adapter: IOAdapter,
 }
-impl LibPackage for MapLibPackage {
+impl LibPackage for IOPackage {
     fn is_used(&self) -> bool {
         self.is_used
     }
@@ -29,7 +29,7 @@ impl LibPackage for MapLibPackage {
         self.adapter.is_used = is_used;
     }
 }
-impl WhammVisitor<bool> for MapLibPackage {
+impl WhammVisitor<bool> for IOPackage {
     fn visit_whamm(&mut self, whamm: &Whamm) -> bool {
         // visit scripts
         for script in whamm.scripts.iter() {
@@ -51,8 +51,8 @@ impl WhammVisitor<bool> for MapLibPackage {
 
         // visit globals
         for (name, global) in script.globals.iter() {
-            if let DataType::Map { .. } = global.ty {
-                debug!("{name} is a map!");
+            if global.report {
+                debug!("{name} is a report variable!");
                 return true;
             }
         }
@@ -74,9 +74,6 @@ impl WhammVisitor<bool> for MapLibPackage {
     }
 
     fn visit_provider(&mut self, provider: &Box<dyn Provider>) -> bool {
-        if provider.requires_map_lib() {
-            return true;
-        }
         for package in provider.packages() {
             if self.visit_package(package) {
                 return true;
@@ -86,9 +83,6 @@ impl WhammVisitor<bool> for MapLibPackage {
     }
 
     fn visit_package(&mut self, package: &dyn Package) -> bool {
-        if package.requires_map_lib() {
-            return true;
-        }
         for event in package.events() {
             if self.visit_event(event) {
                 return true;
@@ -98,11 +92,8 @@ impl WhammVisitor<bool> for MapLibPackage {
     }
 
     fn visit_event(&mut self, event: &dyn Event) -> bool {
-        if event.requires_map_lib() {
-            return true;
-        }
         for (_mode, probe_list) in event.probes().iter() {
-            for probe in probe_list.iter() {
+            for probe in probe_list {
                 if self.visit_probe(probe) {
                     return true;
                 }
@@ -123,25 +114,11 @@ impl WhammVisitor<bool> for MapLibPackage {
     }
 
     fn visit_fn(&mut self, f: &crate::parser::types::Fn) -> bool {
-        for param in f.params.iter() {
-            if self.visit_formal_param(param) {
-                return true;
-            }
-        }
-        if self.visit_datatype(&f.return_ty) {
-            return true;
-        }
-        if self.visit_block(&f.body) {
-            return true;
-        }
-        false
+        self.visit_block(&f.body)
     }
 
-    fn visit_formal_param(&mut self, param: &(Expr, DataType)) -> bool {
-        if self.visit_datatype(&param.1) {
-            return true;
-        }
-        false
+    fn visit_formal_param(&mut self, _param: &(Expr, DataType)) -> bool {
+        unreachable!()
     }
 
     fn visit_block(&mut self, block: &Block) -> bool {
@@ -154,18 +131,7 @@ impl WhammVisitor<bool> for MapLibPackage {
     }
 
     fn visit_stmt(&mut self, stmt: &Statement) -> bool {
-        if let Statement::Decl {
-            ty: DataType::Map { .. },
-            var_id,
-            ..
-        } = stmt
-        {
-            if let Expr::VarId { name, .. } = var_id {
-                debug!("{name} is a map!");
-            }
-            return true;
-        }
-        false
+        matches!(stmt, Statement::ReportDecl { .. })
     }
 
     fn visit_expr(&mut self, _expr: &Expr) -> bool {
@@ -183,11 +149,9 @@ impl WhammVisitor<bool> for MapLibPackage {
         unreachable!()
     }
 
-    fn visit_datatype(&mut self, datatype: &DataType) -> bool {
-        if let DataType::Map { .. } = datatype {
-            return true;
-        }
-        false
+    fn visit_datatype(&mut self, _datatype: &DataType) -> bool {
+        // can just check at variable declaration level.
+        unreachable!()
     }
 
     fn visit_value(&mut self, _val: &Value) -> bool {

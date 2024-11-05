@@ -1,5 +1,5 @@
 use crate::common::error::ErrorGen;
-use crate::libraries::core::{LibPackage, WHAMM_CORE_LIB_NAME};
+use crate::lang_features::libraries::core::{LibPackage, WHAMM_CORE_LIB_NAME};
 use crate::parser::types::Whamm;
 use log::trace;
 use orca_wasm::ir::id::FunctionID;

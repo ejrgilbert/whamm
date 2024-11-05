@@ -3,7 +3,7 @@ use crate::emitter::module_emitter::MemoryTracker;
 use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::rewriting::rules::wasm::OpcodeEvent;
 use crate::emitter::rewriting::rules::{Arg, LocInfo, ProbeRule, Provider, WhammProvider};
-use crate::libraries::core::maps::map_adapter::MapLibAdapter;
+use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use std::collections::HashMap;
 
 use crate::emitter::utils::{
@@ -11,7 +11,7 @@ use crate::emitter::utils::{
 };
 use crate::emitter::Emitter;
 use crate::generator::folding::ExprFolder;
-use crate::libraries::core::io::io_adapter::IOAdapter;
+use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::parser;
 use crate::parser::rules::UNKNOWN_IMMS;
 use crate::parser::types::{Block, DataType, Definition, Expr, RulePart, Statement, Value};

@@ -1,6 +1,6 @@
 use crate::common::error::ErrorGen;
 use crate::common::instr::LibraryLinkStrategy;
-use crate::libraries::core::LibPackage;
+use crate::lang_features::libraries::core::LibPackage;
 use crate::parser::types::Whamm;
 use orca_wasm::Module;
 
@@ -14,7 +14,7 @@ pub fn link_core_lib(
 ) {
     match method {
         LibraryLinkStrategy::Imported => {
-            crate::libraries::linking::import_lib::link_core_lib(
+            crate::lang_features::libraries::linking::import_lib::link_core_lib(
                 ast,
                 app_wasm,
                 core_wasm_path,
@@ -37,7 +37,9 @@ pub fn link_user_lib(
 ) {
     match method {
         LibraryLinkStrategy::Imported => {
-            crate::libraries::linking::import_lib::link_user_lib(ast, app_wasm, lib_wasm, err);
+            crate::lang_features::libraries::linking::import_lib::link_user_lib(
+                ast, app_wasm, lib_wasm, err,
+            );
         }
         LibraryLinkStrategy::Merged => {
             unimplemented!("Have not implemented support for merging user library code.");
