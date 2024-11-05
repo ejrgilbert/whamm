@@ -65,16 +65,16 @@ pub struct SimpleProbe {
     pub script_id: String,
     pub predicate: Option<Expr>,
     pub body: Option<Block>,
-    pub num_reports: i32,
+    pub num_allocs: i32,
     pub probe_number: i32,
 }
 impl SimpleProbe {
-    fn new(script_id: String, probe: &dyn Probe, num_reports: i32, probe_number: i32) -> Self {
+    fn new(script_id: String, probe: &dyn Probe, num_allocs: i32, probe_number: i32) -> Self {
         Self {
             script_id,
             predicate: probe.predicate().to_owned(),
             body: probe.body().to_owned(),
-            num_reports,
+            num_allocs,
             probe_number,
         }
     }

@@ -1,16 +1,17 @@
 use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::module_emitter::MemoryTracker;
-use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::rewriting::rules::wasm::OpcodeEvent;
 use crate::emitter::rewriting::rules::{Arg, LocInfo, ProbeRule, Provider, WhammProvider};
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use std::collections::HashMap;
 
+use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::utils::{
     block_type_to_wasm, emit_expr, emit_stmt, print_report_all, whamm_type_to_wasm_global,
 };
 use crate::emitter::{Emitter, InjectStrategy};
 use crate::generator::folding::ExprFolder;
+use crate::lang_features::alloc_vars::rewriting::AllocVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::parser;
 use crate::parser::rules::UNKNOWN_IMMS;
@@ -36,8 +37,9 @@ pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub map_lib_adapter: &'e mut MapLibAdapter,
     pub io_adapter: &'f mut IOAdapter,
     pub(crate) report_var_metadata: &'g mut ReportVarMetadata,
+    pub(crate) alloc_var_handler: &'g mut AllocVarHandler,
     instr_created_args: Vec<(String, usize)>,
-    pub curr_num_reports: i32,
+    pub curr_num_allocs: i32,
 }
 
 impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
@@ -51,6 +53,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         map_lib_adapter: &'e mut MapLibAdapter,
         io_adapter: &'f mut IOAdapter,
         report_var_metadata: &'g mut ReportVarMetadata,
+        alloc_var_handler: &'g mut AllocVarHandler,
     ) -> Self {
         let a = Self {
             strategy,
@@ -60,8 +63,9 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             map_lib_adapter,
             io_adapter,
             report_var_metadata,
+            alloc_var_handler,
             instr_created_args: vec![],
-            curr_num_reports: 0,
+            curr_num_allocs: 0,
         };
 
         a
@@ -386,6 +390,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     self.mem_tracker,
                     self.map_lib_adapter,
                     self.report_var_metadata,
+                    self.alloc_var_handler,
                     UNEXPECTED_ERR_MSG,
                     err,
                 );
@@ -727,9 +732,9 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
 impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
     fn emit_body(&mut self, curr_instr_args: &[Arg], body: &mut Block, err: &mut ErrorGen) -> bool {
         let mut is_success = true;
-        for _ in 0..self.curr_num_reports {
+        for _ in 0..self.curr_num_allocs {
             let (global_id, ..) = whamm_type_to_wasm_global(self.app_iter.module, &DataType::I32);
-            self.report_var_metadata.available_i32_gids.push(*global_id);
+            self.alloc_var_handler.available_i32_gids.push(*global_id);
         }
         for stmt in body.stmts.iter_mut() {
             is_success &= self.emit_stmt(curr_instr_args, stmt, err);
@@ -739,6 +744,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
             &mut self.app_iter,
             self.table,
             self.report_var_metadata,
+            self.alloc_var_handler,
             err,
         );
         is_success
@@ -782,6 +788,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
             self.mem_tracker,
             self.map_lib_adapter,
             self.report_var_metadata,
+            self.alloc_var_handler,
             UNEXPECTED_ERR_MSG,
             err,
         )
@@ -796,6 +803,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
             self.mem_tracker,
             self.map_lib_adapter,
             self.report_var_metadata,
+            self.alloc_var_handler,
             UNEXPECTED_ERR_MSG,
             err,
         )

@@ -15,19 +15,19 @@ use log::trace;
 use orca_wasm::ir::id::FunctionID;
 use orca_wasm::ir::types::DataType as OrcaType;
 
-pub struct WizardGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> {
-    pub emitter: ModuleEmitter<'b, 'c, 'd, 'e, 'f, 'g>,
-    pub io_adapter: &'h mut IOAdapter,
+pub struct WizardGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j> {
+    pub emitter: ModuleEmitter<'b, 'c, 'd, 'e, 'f, 'g, 'h>,
+    pub io_adapter: &'i mut IOAdapter,
     pub context_name: String,
     pub err: &'a mut ErrorGen,
-    pub injected_funcs: &'h mut Vec<FunctionID>,
-    pub config: &'i Config,
+    pub injected_funcs: &'i mut Vec<FunctionID>,
+    pub config: &'j Config,
 
     // tracking
     pub curr_script_id: String,
 }
 
-impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     pub fn run(
         &mut self,
         ast: Vec<WizardScript>,
@@ -164,7 +164,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
             script_id: self.curr_script_id.clone(),
             bytecode_loc: BytecodeLoc::new(0, 0), // TODO -- request this from wizard
             probe_id,
-            num_reports: probe.num_reports, //this is still used in the emitter to determine how many new globals to emit
+            num_allocs: probe.num_allocs, //this is still used in the emitter to determine how many new globals to emit
         }
     }
 
@@ -185,11 +185,11 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
             (None, "".to_string())
         };
 
-        // create the probe's report variable globals!
-        for _ in 0..probe.num_reports {
+        // create the probe's alloc variable globals!
+        for _ in 0..probe.num_allocs {
             let (global_id, ..) = whamm_type_to_wasm_global(self.emitter.app_wasm, &DataType::I32);
             self.emitter
-                .report_var_metadata
+                .alloc_var_handler
                 .available_i32_gids
                 .push(*global_id);
         }
@@ -231,7 +231,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 }
 
-impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     // TODO -- these are all duplicates, try to factor out
     fn emit_string(&mut self, val: &mut Value) -> bool {
         self.emitter.emit_string(val, self.err)

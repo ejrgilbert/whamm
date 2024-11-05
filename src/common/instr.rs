@@ -9,6 +9,7 @@ use crate::generator::rewriting::init_generator::InitGenerator;
 use crate::generator::rewriting::instr_generator::InstrGenerator;
 use crate::generator::rewriting::simple_ast::{build_simple_ast, SimpleAST};
 use crate::generator::wizard::metadata_collector::WizardProbeMetadataCollector;
+use crate::lang_features::alloc_vars::rewriting::AllocVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::io::IOPackage;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
@@ -177,6 +178,7 @@ pub fn run(
     let mut map_lib_adapter = map_package.adapter;
     let mut io_adapter = io_package.adapter;
     let mut report_var_metadata = ReportVarMetadata::new();
+    let mut alloc_var_handler = AllocVarHandler::default();
 
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
@@ -190,6 +192,7 @@ pub fn run(
             &mut io_adapter,
             &mut map_lib_adapter,
             &mut report_var_metadata,
+            &mut alloc_var_handler,
             &mut err,
             &config,
         );
@@ -203,6 +206,7 @@ pub fn run(
             &mut io_adapter,
             &mut map_lib_adapter,
             &mut report_var_metadata,
+            &mut alloc_var_handler,
             &mut err,
         );
     }
@@ -237,6 +241,7 @@ fn run_instr_wizard(
     io_adapter: &mut IOAdapter,
     map_lib_adapter: &mut MapLibAdapter,
     report_var_metadata: &mut ReportVarMetadata,
+    alloc_var_handler: &mut AllocVarHandler,
     err: &mut ErrorGen,
     config: &Config,
 ) {
@@ -259,6 +264,7 @@ fn run_instr_wizard(
             &mut mem_tracker,
             map_lib_adapter,
             report_var_metadata,
+            alloc_var_handler,
         ),
         io_adapter,
         context_name: "".to_string(),
@@ -278,6 +284,7 @@ fn run_instr_rewrite(
     io_adapter: &mut IOAdapter,
     map_lib_adapter: &mut MapLibAdapter,
     report_var_metadata: &mut ReportVarMetadata,
+    alloc_var_handler: &mut AllocVarHandler,
     err: &mut ErrorGen,
 ) {
     let mut mem_tracker = get_memory_tracker(target_wasm, true);
@@ -292,6 +299,7 @@ fn run_instr_rewrite(
             &mut mem_tracker,
             map_lib_adapter,
             report_var_metadata,
+            alloc_var_handler,
         ),
         context_name: "".to_string(),
         err,
@@ -314,6 +322,7 @@ fn run_instr_rewrite(
             map_lib_adapter,
             io_adapter,
             report_var_metadata,
+            alloc_var_handler,
         ),
         simple_ast,
         err,
@@ -323,7 +332,7 @@ fn run_instr_rewrite(
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
 
-    for gid in report_var_metadata.available_i32_gids.iter() {
+    for gid in alloc_var_handler.available_i32_gids.iter() {
         //should be 0, but good for cleanup
         err.add_compiler_warn(format!("Unused i32 GID: {}", gid));
         target_wasm.delete_global(GlobalID(*gid));

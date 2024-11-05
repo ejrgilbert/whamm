@@ -10,8 +10,6 @@ pub struct ReportVarMetadata {
     pub variable_metadata: HashMap<u32, Metadata>,
     pub all_metadata: HashSet<Metadata>,
     pub curr_location: LocationData,
-    pub used_i32_gids: Vec<u32>,
-    pub available_i32_gids: Vec<u32>,
     pub flush_soon: bool,
 }
 impl Default for ReportVarMetadata {
@@ -27,46 +25,10 @@ impl ReportVarMetadata {
             variable_metadata: HashMap::new(),
             all_metadata: HashSet::new(),
             curr_location: LocationData::Global {
-                script_id: "0".to_string(),
+                script_id: "UNINITIALIZED".to_string(),
             },
-            available_i32_gids: vec![],
-            used_i32_gids: vec![],
             flush_soon: false,
         }
-    }
-    pub fn use_available_global(
-        &mut self,
-        var_name: String,
-        ty: orca_wasm::ir::types::DataType,
-        err_msg: &str,
-        err: &mut ErrorGen,
-    ) -> Option<u32> {
-        if ty != orca_wasm::ir::types::DataType::I32 {
-            err.unexpected_error(
-                true,
-                Some(format!(
-                    "{err_msg} Expected I32 type for report var, found: {:?}. Further support is upcoming",
-                    ty
-                )),
-                None,
-            );
-            return None;
-        }
-        if self.available_i32_gids.is_empty() {
-            err.unexpected_error(
-                true,
-                Some(format!(
-                    "{err_msg} No available global I32s for report vars"
-                )),
-                None,
-            );
-            return None;
-        }
-        let id = self.available_i32_gids.remove(0);
-        self.used_i32_gids.push(id);
-        self.put_local_metadata(id, var_name.clone(), err);
-
-        Some(id)
     }
     pub fn put_global_metadata(&mut self, gid: u32, name: String, err: &mut ErrorGen) -> bool {
         let script_id = match &self.curr_location {
@@ -98,7 +60,24 @@ impl ReportVarMetadata {
         }
         true
     }
-    pub fn put_local_metadata(&mut self, gid: u32, name: String, err: &mut ErrorGen) -> bool {
+    pub fn put_local_metadata(
+        &mut self,
+        gid: u32,
+        name: String,
+        ty: orca_wasm::ir::types::DataType,
+        err: &mut ErrorGen,
+    ) -> bool {
+        if ty != orca_wasm::ir::types::DataType::I32 {
+            err.unexpected_error(
+                true,
+                Some(format!(
+                    "Expected I32 type for alloc var, found: {:?}. Further support is upcoming",
+                    ty
+                )),
+                None,
+            );
+            return false;
+        }
         if let LocationData::Local { .. } = &self.curr_location {
             let metadata = Metadata::new(name.clone(), &self.curr_location);
             self.variable_metadata.insert(gid, metadata.clone());
@@ -239,7 +218,7 @@ pub enum LocationData {
         script_id: String,
         bytecode_loc: BytecodeLoc,
         probe_id: String,
-        num_reports: i32,
+        num_allocs: i32,
     },
 }
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

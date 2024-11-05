@@ -234,10 +234,11 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
             Statement::Decl { .. } => {
                 // ignore
             }
-            Statement::AllocDecl { is_report, .. } => {
-                if *is_report {
-                    self.curr_probe.incr_reports();
-                }
+            Statement::AllocDecl {
+                is_report: _is_report,
+                ..
+            } => {
+                self.curr_probe.incr_allocs();
                 // change this to save off data to allocate
                 todo!()
             }

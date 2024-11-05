@@ -3,6 +3,7 @@ use crate::emitter::report_var_metadata::{Metadata, ReportVarMetadata};
 use crate::emitter::rewriting::rules::Arg;
 use crate::emitter::utils::{emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global};
 use crate::emitter::{Emitter, InjectStrategy};
+use crate::lang_features::alloc_vars::rewriting::AllocVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::parser::types::{Block, DataType, Definition, Expr, Fn, FnId, Statement, Value};
@@ -33,7 +34,7 @@ pub struct StringAddr {
     pub len: usize,
 }
 
-pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
+pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub strategy: InjectStrategy,
     pub app_wasm: &'a mut Module<'b>,
     pub emitting_func: Option<FunctionBuilder<'b>>,
@@ -41,10 +42,11 @@ pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     mem_tracker: &'d mut MemoryTracker,
     pub map_lib_adapter: &'e mut MapLibAdapter,
     pub report_var_metadata: &'f mut ReportVarMetadata,
+    pub alloc_var_handler: &'g mut AllocVarHandler,
     fn_providing_contexts: Vec<String>,
 }
 
-impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
+impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     // note: only used in integration test
     pub fn new(
         strategy: InjectStrategy,
@@ -53,6 +55,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         mem_tracker: &'d mut MemoryTracker,
         map_lib_adapter: &'e mut MapLibAdapter,
         report_var_metadata: &'f mut ReportVarMetadata,
+        alloc_var_handler: &'g mut AllocVarHandler,
     ) -> Self {
         Self {
             strategy,
@@ -61,6 +64,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             mem_tracker,
             map_lib_adapter,
             report_var_metadata,
+            alloc_var_handler,
             table,
             fn_providing_contexts: vec!["whamm".to_string()],
         }
@@ -781,7 +785,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         true
     }
 }
-impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
+impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
     fn emit_body(
         &mut self,
         _curr_instr_args: &[Arg],
@@ -797,6 +801,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
                 self.mem_tracker,
                 self.map_lib_adapter,
                 self.report_var_metadata,
+                self.alloc_var_handler,
                 UNEXPECTED_ERR_MSG,
                 err,
             )
@@ -820,6 +825,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
                 self.mem_tracker,
                 self.map_lib_adapter,
                 self.report_var_metadata,
+                self.alloc_var_handler,
                 UNEXPECTED_ERR_MSG,
                 err,
             )
@@ -838,6 +844,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
                 self.mem_tracker,
                 self.map_lib_adapter,
                 self.report_var_metadata,
+                self.alloc_var_handler,
                 UNEXPECTED_ERR_MSG,
                 err,
             )

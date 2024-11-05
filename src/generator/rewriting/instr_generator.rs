@@ -168,7 +168,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
     }
     fn set_curr_loc(&mut self, probe_rule: &ProbeRule, probe: &SimpleProbe) {
         let curr_script_id = probe.script_id.clone();
-        self.emitter.curr_num_reports = probe.num_reports;
+        self.emitter.curr_num_allocs = probe.num_allocs;
         let curr_provider = match &probe_rule.provider {
             Some(provider) => provider.name.clone(),
             None => "".to_string(),
@@ -206,7 +206,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
             script_id: curr_script_id,
             bytecode_loc: loc,
             probe_id: curr_probe_id,
-            num_reports: self.emitter.curr_num_reports, //this is still used in the emitter to determine how many new globals to emit
+            num_allocs: self.emitter.curr_num_allocs, //this is still used in the emitter to determine how many new globals to emit
         };
     }
 }
