@@ -13,7 +13,7 @@ use orca_wasm::ir::types::{BlockType, DataType as OrcaType, Value as OrcaValue};
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::{MacroOpcode, Opcode};
 use orca_wasm::{InitExpr, Module};
-
+use crate::emitter::InjectStrategy;
 // ==================================================================
 // ================ Emitter Helper Functions ========================
 // TODO -- add this documentation
@@ -25,8 +25,12 @@ use orca_wasm::{InitExpr, Module};
 // ==================================================================
 // ==================================================================
 
+
+// TODO -- make this a struct that contains all the data to be passed around!
+
 pub fn emit_body<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     body: &mut Block,
+    strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
@@ -39,6 +43,7 @@ pub fn emit_body<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     for stmt in body.stmts.iter_mut() {
         is_success &= emit_stmt(
             stmt,
+            strategy,
             injector,
             table,
             mem_tracker,
@@ -53,6 +58,7 @@ pub fn emit_body<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 
 pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     stmt: &mut Statement,
+    strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
@@ -67,6 +73,7 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         }
         Statement::Assign { .. } => emit_assign_stmt(
             stmt,
+            strategy,
             injector,
             table,
             mem_tracker,
@@ -77,6 +84,7 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         ),
         Statement::Expr { expr, .. } | Statement::Return { expr, .. } => emit_expr(
             expr,
+            strategy,
             injector,
             table,
             mem_tracker,
@@ -93,6 +101,7 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 emit_if(
                     cond,
                     conseq,
+                    strategy,
                     injector,
                     table,
                     mem_tracker,
@@ -106,6 +115,7 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     cond,
                     conseq,
                     alt,
+                    strategy,
                     injector,
                     table,
                     mem_tracker,
@@ -120,6 +130,7 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             if *is_report {
                 emit_report_decl_stmt(
                     stmt,
+                    strategy,
                     injector,
                     table,
                     mem_tracker,
@@ -134,6 +145,7 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         }
         Statement::SetMap { .. } => emit_set_map_stmt(
             stmt,
+            strategy,
             injector,
             table,
             mem_tracker,
@@ -239,6 +251,7 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 
 fn emit_report_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     stmt: &mut Statement,
+    _strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
     _mem_tracker: &MemoryTracker,
@@ -341,6 +354,7 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 
 fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     stmt: &mut Statement,
+    strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
@@ -377,6 +391,7 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 
             if !emit_expr(
                 expr,
+                strategy,
                 injector,
                 table,
                 mem_tracker,
@@ -407,6 +422,7 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 
 fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     stmt: &mut Statement,
+    strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
@@ -430,6 +446,7 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         injector.u32_const(map_id);
         emit_expr(
             key,
+            strategy,
             injector,
             table,
             mem_tracker,
@@ -440,6 +457,7 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         );
         emit_expr(
             val,
+            strategy,
             injector,
             table,
             mem_tracker,
@@ -558,6 +576,7 @@ fn emit_set<'a, T: Opcode<'a>>(
 fn emit_if_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     condition: &mut Expr,
     conseq: &mut Block,
+    strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
@@ -571,6 +590,7 @@ fn emit_if_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     // emit the condition of the `if` expression
     is_success &= emit_expr(
         condition,
+        strategy,
         injector,
         table,
         mem_tracker,
@@ -584,6 +604,7 @@ fn emit_if_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     // emit the consequent body
     is_success &= emit_body(
         conseq,
+        strategy,
         injector,
         table,
         mem_tracker,
@@ -601,6 +622,7 @@ fn emit_if_else_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     condition: &mut Expr,
     conseq: &mut Block,
     alternate: &mut Block,
+    strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
@@ -614,6 +636,7 @@ fn emit_if_else_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     is_success &= emit_if_preamble(
         condition,
         conseq,
+        strategy,
         injector,
         table,
         mem_tracker,
@@ -629,6 +652,7 @@ fn emit_if_else_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     // emit the alternate body
     is_success &= emit_body(
         alternate,
+        strategy,
         injector,
         table,
         mem_tracker,
@@ -646,6 +670,7 @@ fn emit_if_else_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 fn emit_if<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     condition: &mut Expr,
     conseq: &mut Block,
+    strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
@@ -659,6 +684,7 @@ fn emit_if<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     is_success &= emit_if_preamble(
         condition,
         conseq,
+        strategy,
         injector,
         table,
         mem_tracker,
@@ -677,6 +703,7 @@ fn emit_if_else<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     condition: &mut Expr,
     conseq: &mut Block,
     alternate: &mut Block,
+    strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
@@ -691,6 +718,7 @@ fn emit_if_else<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         condition,
         conseq,
         alternate,
+        strategy,
         injector,
         table,
         mem_tracker,
@@ -708,6 +736,7 @@ fn emit_if_else<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 // TODO: emit_expr has two mutable references to the name object, the injector has module data in it
 pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     expr: &mut Expr,
+    strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
@@ -722,6 +751,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         Expr::UnOp { op, expr, .. } => {
             let mut is_success = emit_expr(
                 expr,
+                strategy,
                 injector,
                 table,
                 mem_tracker,
@@ -736,6 +766,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         Expr::BinOp { lhs, op, rhs, .. } => {
             let mut is_success = emit_expr(
                 lhs,
+                strategy,
                 injector,
                 table,
                 mem_tracker,
@@ -746,6 +777,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             );
             is_success &= emit_expr(
                 rhs,
+                strategy,
                 injector,
                 table,
                 mem_tracker,
@@ -796,6 +828,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     return_ty: Some(ty.clone()),
                     loc: None,
                 },
+                strategy,
                 injector,
                 table,
                 mem_tracker,
@@ -818,6 +851,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             for arg in args.iter_mut() {
                 is_success = emit_expr(
                     arg,
+                    strategy,
                     injector,
                     table,
                     mem_tracker,
@@ -903,6 +937,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         }
         Expr::Primitive { val, .. } => emit_value(
             val,
+            strategy,
             injector,
             table,
             mem_tracker,
@@ -913,6 +948,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         ),
         Expr::MapGet { .. } => emit_map_get(
             expr,
+            strategy,
             injector,
             table,
             mem_tracker,
@@ -994,6 +1030,7 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, injector: &mut T) -> bool {
 
 fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     val: &mut Value,
+    strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
@@ -1057,6 +1094,7 @@ fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             for val in vals.iter_mut() {
                 is_success &= emit_expr(
                     val,
+                    strategy,
                     injector,
                     table,
                     mem_tracker,
@@ -1094,6 +1132,7 @@ fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 
 fn emit_map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     expr: &mut Expr,
+    strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
@@ -1110,6 +1149,7 @@ fn emit_map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     injector.u32_const(map_id);
                     emit_expr(
                         key,
+                        strategy,
                         injector,
                         table,
                         mem_tracker,

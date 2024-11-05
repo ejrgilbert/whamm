@@ -2,7 +2,7 @@ use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::report_var_metadata::{Metadata, ReportVarMetadata};
 use crate::emitter::rewriting::rules::Arg;
 use crate::emitter::utils::{emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global};
-use crate::emitter::Emitter;
+use crate::emitter::{Emitter, InjectStrategy};
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::parser::types::{Block, DataType, Definition, Expr, Fn, FnId, Statement, Value};
@@ -34,6 +34,7 @@ pub struct StringAddr {
 }
 
 pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
+    pub strategy: InjectStrategy,
     pub app_wasm: &'a mut Module<'b>,
     pub emitting_func: Option<FunctionBuilder<'b>>,
     pub table: &'c mut SymbolTable,
@@ -46,6 +47,7 @@ pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
 impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     // note: only used in integration test
     pub fn new(
+        strategy: InjectStrategy,
         app_wasm: &'a mut Module<'b>,
         table: &'c mut SymbolTable,
         mem_tracker: &'d mut MemoryTracker,
@@ -53,6 +55,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         report_var_metadata: &'f mut ReportVarMetadata,
     ) -> Self {
         Self {
+            strategy,
             app_wasm,
             emitting_func: None,
             mem_tracker,
@@ -788,6 +791,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
         if let Some(emitting_func) = &mut self.emitting_func {
             emit_body(
                 body,
+                self.strategy,
                 emitting_func,
                 self.table,
                 self.mem_tracker,
@@ -810,6 +814,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
         if let Some(emitting_func) = &mut self.emitting_func {
             emit_stmt(
                 stmt,
+                self.strategy,
                 emitting_func,
                 self.table,
                 self.mem_tracker,
@@ -827,6 +832,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
         if let Some(emitting_func) = &mut self.emitting_func {
             emit_expr(
                 expr,
+                self.strategy,
                 emitting_func,
                 self.table,
                 self.mem_tracker,

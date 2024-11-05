@@ -9,6 +9,12 @@ use crate::common::error::ErrorGen;
 use crate::emitter::rewriting::rules::Arg;
 use crate::parser::types::{Block, Expr, Statement};
 
+#[derive(Copy, Clone)]
+pub enum InjectStrategy {
+    Wizard,
+    Rewriting
+}
+
 // =================================================
 // ==== Emitter Trait --> Used By All Emitters! ====
 // =================================================

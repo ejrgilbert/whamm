@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use crate::emitter::utils::{
     block_type_to_wasm, emit_expr, emit_stmt, print_report_all, whamm_type_to_wasm_global,
 };
-use crate::emitter::Emitter;
+use crate::emitter::{Emitter, InjectStrategy};
 use crate::generator::folding::ExprFolder;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::parser;
@@ -29,6 +29,7 @@ const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
 
 pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
+    pub strategy: InjectStrategy,
     pub app_iter: ModuleIterator<'a, 'b>,
     pub table: &'c mut SymbolTable,
     pub mem_tracker: &'d mut MemoryTracker,
@@ -42,6 +43,7 @@ pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
 impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     // note: only used in integration test
     pub fn new(
+        strategy: InjectStrategy,
         app_wasm: &'a mut Module<'b>,
         injected_funcs: &Vec<FunctionID>,
         table: &'c mut SymbolTable,
@@ -51,6 +53,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         report_var_metadata: &'g mut ReportVarMetadata,
     ) -> Self {
         let a = Self {
+            strategy,
             app_iter: ModuleIterator::new(app_wasm, injected_funcs),
             table,
             mem_tracker,
@@ -377,6 +380,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             for stmt in block.iter_mut() {
                 is_success &= emit_stmt(
                     stmt,
+                    self.strategy,
                     &mut self.app_iter,
                     self.table,
                     self.mem_tracker,
@@ -772,6 +776,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
 
         emit_stmt(
             stmt,
+            self.strategy,
             &mut self.app_iter,
             self.table,
             self.mem_tracker,
@@ -785,6 +790,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
     fn emit_expr(&mut self, expr: &mut Expr, err: &mut ErrorGen) -> bool {
         emit_expr(
             expr,
+            self.strategy,
             &mut self.app_iter,
             self.table,
             self.mem_tracker,

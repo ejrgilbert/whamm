@@ -24,6 +24,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::exit;
 use wasmparser::MemoryType;
+use crate::emitter::InjectStrategy;
 
 /// create output path if it doesn't exist
 pub(crate) fn try_path(path: &String) {
@@ -252,6 +253,7 @@ fn run_instr_wizard(
     let mut injected_funcs = vec![];
     let mut gen = crate::generator::wizard::WizardGenerator {
         emitter: ModuleEmitter::new(
+            InjectStrategy::Wizard,
             target_wasm,
             symbol_table,
             &mut mem_tracker,
@@ -284,6 +286,7 @@ fn run_instr_rewrite(
     let mut injected_funcs = vec![];
     let mut init = InitGenerator {
         emitter: ModuleEmitter::new(
+            InjectStrategy::Rewriting,
             target_wasm,
             symbol_table,
             &mut mem_tracker,
@@ -303,6 +306,7 @@ fn run_instr_rewrite(
     // and ready to use in every body/predicate.
     let mut instr = InstrGenerator::new(
         VisitingEmitter::new(
+            InjectStrategy::Rewriting,
             target_wasm,
             &injected_funcs,
             symbol_table,
