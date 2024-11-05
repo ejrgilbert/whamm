@@ -137,6 +137,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         let func = FunctionBuilder::new(params, results);
         self.emitting_func = Some(func);
 
+        // TODO(alloc) -- load alloc vars
         if self.map_lib_adapter.is_used {
             let fid = self.map_lib_adapter.get_map_init_fid(self.app_wasm, err);
             if let Some(func) = &mut self.emitting_func {
@@ -147,6 +148,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         // emit the function body
         self.emit_body(&[], block, err);
 
+        // TODO(alloc) -- save alloc vars
         // emit the function
         if let Some(func) = self.emitting_func.take() {
             let fid = func.finish_module(self.app_wasm);
