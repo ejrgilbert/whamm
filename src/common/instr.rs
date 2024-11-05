@@ -239,7 +239,7 @@ fn run_instr_wizard(
     err: &mut ErrorGen,
     config: &Config,
 ) {
-    let mut mem_tracker = get_memory_tracker(target_wasm, false);
+    let mut mem_tracker = get_memory_tracker(target_wasm, true);
 
     // Collect the metadata for the AST and transform to different representation
     // specifically used for targeting Wizard during compilation.

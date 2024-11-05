@@ -1,5 +1,4 @@
 pub mod ast;
-pub mod init_generator;
 pub mod metadata_collector;
 
 use crate::common::error::ErrorGen;

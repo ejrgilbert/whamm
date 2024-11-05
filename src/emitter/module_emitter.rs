@@ -450,7 +450,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         match ty {
             DataType::Map { .. } => {
                 // TODO -- move to MapAdapter
-                println!("HERE");
                 //time to set up the map_init fn
                 let Some(init_id) = self
                     .app_wasm

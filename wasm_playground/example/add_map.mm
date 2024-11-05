@@ -5,10 +5,9 @@ report map<i32, i32> m0;
 // /
 wasm:opcode:call:before
  {
-    strcmp((0, 1), "lsdjflaksjdf");
-//     if(true) {
-//         report i32 c;
-//     }
+    if(strcmp((0, 1), "lsdjflaksjdf")) {
+        report i32 c;
+    }
 //     report i32 a;
 //     report map<i32, i32> m;
 //     a = 5;
