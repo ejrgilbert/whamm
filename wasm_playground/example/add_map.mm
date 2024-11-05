@@ -5,17 +5,23 @@ report map<i32, i32> m0;
 // /
 wasm:opcode:call:before
  {
-    if(strcmp((0, 1), "lsdjflaksjdf")) {
-        report i32 c;
-    }
-//     report i32 a;
-//     report map<i32, i32> m;
-//     a = 5;
-    m0[1] = 2;
-//     m[1] = 2;
-//     m[2] = 3;
-    blah = 3;
+    alloc i32 count;
+    report i32 rep_count;
+
+    count++;
+//     if(strcmp((0, 1), "lsdjflaksjdf")) {
+//         report i32 c;
+//     }
+// //     report i32 a;
+// //     report map<i32, i32> m;
+// //     a = 5;
+//     m0[1] = 2;
+// //     m[1] = 2;
+// //     m[2] = 3;
+//     blah = 3;
 //     arg0 = 5;
+
+    rep_count = count;
 }
 // wasm:opcode:call:after /
 //     target_fn_name == "foo"

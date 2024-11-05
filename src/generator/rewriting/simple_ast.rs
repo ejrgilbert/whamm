@@ -108,7 +108,7 @@ pub fn build_simple_ast(ast: &Whamm, err: &mut ErrorGen) -> SimpleAST {
         curr_provider_name: "".to_string(),
         curr_package_name: "".to_string(),
         curr_event_name: "".to_string(),
-        curr_num_reports: 0,
+        curr_num_allocs: 0,
         probe_count: 0,
     };
     visitor.visit_whamm(ast);
@@ -124,7 +124,7 @@ pub struct SimpleASTBuilder<'a, 'b> {
     curr_provider_name: String,
     curr_package_name: String,
     curr_event_name: String,
-    curr_num_reports: i32,
+    curr_num_allocs: i32,
     probe_count: i32,
 }
 impl SimpleASTBuilder<'_, '_> {
@@ -165,7 +165,7 @@ impl SimpleASTBuilder<'_, '_> {
         self.curr_event_name = event_name;
     }
 
-    fn add_probe_to_ast(&mut self, probe: &dyn Probe, num_reports: i32) {
+    fn add_probe_to_ast(&mut self, probe: &dyn Probe, num_allocs: i32) {
         if let Some(provider) = self.ast.probes.get_mut(&self.curr_provider_name) {
             if let Some(package) = provider.get_mut(&self.curr_package_name) {
                 if let Some(event) = package.get_mut(&self.curr_event_name) {
@@ -173,7 +173,7 @@ impl SimpleASTBuilder<'_, '_> {
                         probes.push(SimpleProbe::new(
                             self.script_id.clone(),
                             probe,
-                            num_reports,
+                            num_allocs,
                             self.probe_count,
                         ));
                         self.probe_count += 1;
@@ -183,7 +183,7 @@ impl SimpleASTBuilder<'_, '_> {
                             vec![SimpleProbe::new(
                                 self.script_id.clone(),
                                 probe,
-                                num_reports,
+                                num_allocs,
                                 self.probe_count,
                             )],
                         );
@@ -277,8 +277,8 @@ impl WhammVisitor<()> for SimpleASTBuilder<'_, '_> {
         for stmt in &probe.body().as_ref().unwrap().stmts {
             self.visit_stmt(stmt);
         }
-        self.add_probe_to_ast(probe.as_ref(), self.curr_num_reports);
-        self.curr_num_reports = 0;
+        self.add_probe_to_ast(probe.as_ref(), self.curr_num_allocs);
+        self.curr_num_allocs = 0;
         trace!("Exiting: BehaviorTreeBuilder::visit_probe");
     }
 
@@ -302,10 +302,8 @@ impl WhammVisitor<()> for SimpleASTBuilder<'_, '_> {
         trace!("Entering: BehaviorTreeBuilder::visit_stmt");
         // for checking for report_decls
         match stmt {
-            Statement::AllocDecl { is_report, .. } => {
-                if *is_report {
-                    self.curr_num_reports += 1
-                }
+            Statement::AllocDecl { .. } => {
+                self.curr_num_allocs += 1
             }
             Statement::If { conseq, alt, .. } => {
                 self.visit_block(conseq);
