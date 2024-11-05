@@ -37,7 +37,9 @@ pub fn link_user_lib(
 ) {
     match method {
         LibraryLinkStrategy::Imported => {
-            crate::lang_features::libraries::linking::import_lib::link_user_lib(ast, app_wasm, lib_wasm, err);
+            crate::lang_features::libraries::linking::import_lib::link_user_lib(
+                ast, app_wasm, lib_wasm, err,
+            );
         }
         LibraryLinkStrategy::Merged => {
             unimplemented!("Have not implemented support for merging user library code.");
