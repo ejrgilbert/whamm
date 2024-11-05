@@ -299,10 +299,10 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
 
     fn visit_stmt(&mut self, stmt: &mut Statement) -> Option<DataType> {
         if self.in_function {
-            if let Statement::ReportDecl { .. } = stmt {
+            if let Statement::AllocDecl { .. } = stmt {
                 self.err.type_check_error(
                     false,
-                    "Report declarations are not allowed in the functions".to_owned(),
+                    "Special declarations are not allowed in the functions".to_owned(),
                     &stmt.loc().clone().map(|l| l.line_col),
                 );
                 return None;
@@ -312,9 +312,8 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
         if self.in_script_global {
             match stmt {
                 //allow declarations and assignment
-                Statement::Decl { .. }
-                | Statement::Assign { .. }
-                | Statement::ReportDecl { .. } => {}
+                Statement::Decl { .. } | Statement::Assign { .. } | Statement::AllocDecl { .. } => {
+                }
                 _ => {
                     self.err.type_check_error(
                         false,
@@ -367,7 +366,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     None
                 }
             }
-            Statement::ReportDecl { decl, .. } => self.visit_stmt(decl),
+            Statement::AllocDecl { decl, .. } => self.visit_stmt(decl),
             Statement::Expr { expr, .. } => {
                 self.visit_expr(expr);
                 None

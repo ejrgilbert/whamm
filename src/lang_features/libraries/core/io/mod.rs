@@ -131,7 +131,11 @@ impl WhammVisitor<bool> for IOPackage {
     }
 
     fn visit_stmt(&mut self, stmt: &Statement) -> bool {
-        matches!(stmt, Statement::ReportDecl { .. })
+        if let Statement::AllocDecl { is_report, .. } = stmt {
+            *is_report
+        } else {
+            false
+        }
     }
 
     fn visit_expr(&mut self, _expr: &Expr) -> bool {

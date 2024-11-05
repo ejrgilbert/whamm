@@ -121,6 +121,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
         let mut params = vec![];
         let mut param_str = "".to_string();
 
+        // TODO(alloc) -- handle $alloc param (if there are alloc vars)
         for (local_id, (param_name, param_ty)) in param_reqs.iter().enumerate() {
             // handle param list
             params.push(whamm_type_to_wasm_type(param_ty));
@@ -168,7 +169,6 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 
     fn visit_wiz_probe(&mut self, probe: &mut WizardProbe) {
-        // TODO -- handle provided functions (provider, package, event, probe)
         self.set_curr_loc(self.create_curr_loc(probe));
 
         let (pred_fid, pred_param_str) = if let Some(pred) = &mut probe.predicate {

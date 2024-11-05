@@ -179,6 +179,48 @@ wasm:opcode:br:before {
         i --;
     }
     "#,
+    // report variables
+    r#"
+        i32 a;
+        report i32 c;
+        wasm::br:before {
+            a = 1;
+            report bool b;
+        }
+    "#,
+    // TODO -- uncomment when we've supported special_decl_init
+    // r#"
+    //     i32 a;
+    //     report i32 c;
+    //     wasm::br:before {
+    //         a = 1;
+    //         report bool b = true;
+    //     }
+    // "#,
+    // alloc variables
+    r#"
+        i32 a;
+        alloc i32 c;
+        wasm::br:before {
+            a = 1;
+            alloc bool b;
+        }
+    "#,
+    // TODO -- uncomment when we've supported special_decl_init
+    // r#"
+    //     i32 a;
+    //     alloc i32 c;
+    //     wasm::br:before {
+    //         a = 1;
+    //         alloc bool b = true;
+    //     }
+    // "#,
+    // special variables
+    r#"
+        alloc report i32 c;
+        report alloc i32 c;
+        wasm::br:before {}
+    "#,
     // Comments
     r#"
 /* comment */
@@ -429,6 +471,40 @@ map<i32, i32> arg0;
             count[] = my_fn();
         }
     "#,
+    // use report multiple times
+    r#"
+        i32 a;
+        report alloc report i32 c;
+        wasm::br:before {
+            a = 1;
+            report bool b;
+        }
+    "#,
+    r#"
+        i32 a;
+        report i32 c;
+        wasm::br:before {
+            a = 1;
+            report alloc report bool b;
+        }
+    "#,
+    // use alloc multiple times
+    r#"
+        i32 a;
+        alloc report alloc i32 c;
+        wasm::br:before {
+            a = 1;
+            alloc bool b;
+        }
+    "#,
+    r#"
+        i32 a;
+        alloc i32 c;
+        wasm::br:before {
+            a = 1;
+            alloc report alloc bool b;
+        }
+    "#,
 ];
 const SPECIAL: &[&str] = &["BEGIN { }", "END { }", "wasm:::alt { }"];
 
@@ -490,7 +566,7 @@ pub fn get_ast(script: &str, err: &mut ErrorGen) -> Whamm {
 }
 
 fn is_valid_script(script: &str, err: &mut ErrorGen) -> bool {
-    parse_script(&script.to_string(), err).is_some()
+    parse_script(&script.to_string(), err).is_some() && !err.has_errors
 }
 
 pub fn run_test_on_valid_list(scripts: Vec<String>, err: &mut ErrorGen) {

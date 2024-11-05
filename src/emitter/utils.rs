@@ -116,16 +116,22 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 )
             }
         }
-        Statement::ReportDecl { .. } => emit_report_decl_stmt(
-            stmt,
-            injector,
-            table,
-            mem_tracker,
-            map_lib_adapter,
-            report_var_metadata,
-            err_msg,
-            err,
-        ),
+        Statement::AllocDecl { is_report, .. } => {
+            if *is_report {
+                emit_report_decl_stmt(
+                    stmt,
+                    injector,
+                    table,
+                    mem_tracker,
+                    map_lib_adapter,
+                    report_var_metadata,
+                    err_msg,
+                    err,
+                )
+            } else {
+                panic!()
+            }
+        }
         Statement::SetMap { .. } => emit_set_map_stmt(
             stmt,
             injector,
@@ -241,7 +247,11 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     err_msg: &str,
     err: &mut ErrorGen,
 ) -> bool {
-    if let Statement::ReportDecl { decl, .. } = stmt {
+    // TODO(alloc)
+    //   call lang_features.alloc_vars.rewriting IF doing rewriting...
+    //   ...will need to thread injection method through
+    //   (ignore this statement on wizard target since it's already handled)
+    if let Statement::AllocDecl { decl, .. } = stmt {
         return match &**decl {
             Statement::Decl { ty, var_id, .. } => {
                 // look up in symbol table

@@ -351,7 +351,7 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
 
                 is_success
             }
-            Statement::ReportDecl { decl, .. } => self.visit_stmt(decl),
+            Statement::AllocDecl { decl, .. } => self.visit_stmt(decl),
             Statement::SetMap { map, key, val, .. } => {
                 let mut is_success = true;
                 is_success &= self.visit_expr(map);
