@@ -8,11 +8,11 @@ use crate::generator::rewriting::init_generator::InitGenerator;
 use crate::generator::rewriting::instr_generator::InstrGenerator;
 use crate::generator::rewriting::simple_ast::{build_simple_ast, SimpleAST};
 use crate::generator::wizard::metadata_collector::WizardProbeMetadataCollector;
-use crate::libraries::core::io::io_adapter::IOAdapter;
-use crate::libraries::core::io::IOPackage;
-use crate::libraries::core::maps::map_adapter::MapLibAdapter;
-use crate::libraries::core::maps::MapLibPackage;
-use crate::libraries::core::LibPackage;
+use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
+use crate::lang_features::libraries::core::io::IOPackage;
+use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
+use crate::lang_features::libraries::core::maps::MapLibPackage;
+use crate::lang_features::libraries::core::LibPackage;
 use crate::parser::types::{Whamm, WhammVisitor};
 use crate::parser::whamm_parser::parse_script;
 use crate::verifier::types::SymbolTable;
@@ -165,7 +165,7 @@ pub fn run(
     let mut map_package = MapLibPackage::default();
     let mut io_package = IOPackage::default();
     let mut core_packages: Vec<&mut dyn LibPackage> = vec![&mut map_package, &mut io_package];
-    crate::libraries::actions::link_core_lib(
+    crate::lang_features::libraries::actions::link_core_lib(
         &config.library_strategy,
         &whamm,
         target_wasm,

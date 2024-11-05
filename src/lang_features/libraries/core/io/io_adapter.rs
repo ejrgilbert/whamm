@@ -1,5 +1,5 @@
 use crate::common::error::ErrorGen;
-use crate::libraries::core::LibAdapter;
+use crate::lang_features::libraries::core::LibAdapter;
 use orca_wasm::ir::id::FunctionID;
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::MacroOpcode;

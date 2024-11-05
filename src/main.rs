@@ -9,7 +9,7 @@ mod cli;
 pub mod common;
 pub mod emitter;
 pub mod generator;
-pub mod libraries;
+pub mod lang_features;
 pub mod parser;
 pub mod verifier;
 mod wast;

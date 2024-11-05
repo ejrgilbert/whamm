@@ -1,5 +1,5 @@
 use crate::common::error::ErrorGen;
-use crate::libraries::core::WHAMM_CORE_LIB_NAME;
+use crate::lang_features::libraries::core::WHAMM_CORE_LIB_NAME;
 use crate::parser::types::{DataType, Definition, FnId, Location, ProbeRule, Value};
 use pest::error::LineColLocation;
 use std::collections::HashMap;
