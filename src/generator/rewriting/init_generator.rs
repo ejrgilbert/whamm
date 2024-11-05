@@ -6,14 +6,8 @@ use crate::common::error::ErrorGen;
 use crate::emitter::module_emitter::ModuleEmitter;
 use crate::emitter::report_var_metadata::LocationData;
 use crate::generator::GeneratingVisitor;
-use crate::parser::types::{DataType, Definition, Fn, FnId, Value, Whamm, WhammVisitorMut};
-use crate::verifier::types::Record;
-use log::debug;
-use orca_wasm::ir::function::FunctionBuilder;
+use crate::parser::types::{DataType, Fn, Value, Whamm, WhammVisitorMut};
 use orca_wasm::ir::id::FunctionID;
-use orca_wasm::ir::types::DataType as OrcaType;
-use orca_wasm::ir::types::Value as OrcaValue;
-use orca_wasm::InitExpr;
 
 /// Serves as the first phase of instrumenting a module by setting up
 /// the groundwork.
@@ -32,144 +26,12 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_> {
     pub fn run(&mut self, whamm: &mut Whamm) -> bool {
         // Reset the symbol table in the emitter just in case
         self.emitter.reset_table();
-        self.on_startup();
+        self.emitter.setup_module(self.err);
         // Generate globals and fns defined by `whamm` (this should modify the app_wasm)
         let is_success = self.visit_whamm(whamm);
         self.emitter.memory_grow(); // account for emitted strings in memory
 
         is_success
-    }
-
-    // Private helper functions
-    fn on_startup(&mut self) {
-        if self.emitter.map_lib_adapter.is_used {
-            self.create_global_map_init();
-            self.create_print_map_meta();
-        }
-        self.create_print_global_meta();
-    }
-
-    fn create_global_map_init(&mut self) {
-        //make a global bool for whether to run the global_map_init fn
-        self.emitter.map_lib_adapter.init_bool_location = *self.emitter.app_wasm.add_global(
-            InitExpr::Value(OrcaValue::I32(1)),
-            OrcaType::I32,
-            true,
-            false,
-        );
-        match self
-            .emitter
-            .app_wasm
-            .functions
-            .get_local_fid_by_name("global_map_init")
-        {
-            Some(_) => {
-                debug!("global_map_init function already exists");
-                self.err.add_error(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(
-                        "global_map_init function already exists - needs to be created by Whamm"
-                            .to_string(),
-                    ),
-                    None,
-                ));
-            }
-            None => {
-                //time to make a global_map_init fn
-                debug!("No global_map_init function found, creating one");
-                let global_map_init_fn = FunctionBuilder::new(&[], &[]);
-                let global_map_init_id = global_map_init_fn.finish_module(self.emitter.app_wasm);
-                self.emitter
-                    .app_wasm
-                    .set_fn_name(global_map_init_id, "global_map_init".to_string());
-            }
-        }
-    }
-
-    fn create_print_map_meta(&mut self) {
-        if self
-            .emitter
-            .app_wasm
-            .functions
-            .get_local_fid_by_name("print_map_meta")
-            .is_some()
-        {
-            debug!("print_map_meta function already exists");
-            self.err.add_error(ErrorGen::get_unexpected_error(
-                true,
-                Some(
-                    "print_map_meta function already exists - needs to be created by Whamm"
-                        .to_string(),
-                ),
-                None,
-            ));
-            return;
-        }
-
-        debug!("Creating the print_map_meta function");
-        let print_map_meta_fn = FunctionBuilder::new(&[], &[]);
-        let print_map_meta_id = print_map_meta_fn.finish_module(self.emitter.app_wasm);
-        self.emitter
-            .app_wasm
-            .set_fn_name(print_map_meta_id, "print_map_meta".to_string());
-
-        self.emitter.table.put(
-            "print_map_meta".to_string(),
-            Record::Fn {
-                name: FnId {
-                    name: "print_map_meta".to_string(),
-                    loc: None,
-                },
-                params: vec![],
-                ret_ty: DataType::Tuple { ty_info: vec![] },
-                def: Definition::CompilerStatic,
-                addr: Some(*print_map_meta_id),
-                loc: None,
-            },
-        );
-    }
-
-    fn create_print_global_meta(&mut self) {
-        if self
-            .emitter
-            .app_wasm
-            .functions
-            .get_local_fid_by_name("print_global_meta")
-            .is_some()
-        {
-            debug!("print_global_meta function already exists");
-            self.err.add_error(ErrorGen::get_unexpected_error(
-                true,
-                Some(
-                    "print_global_meta function already exists - needs to be created by Whamm"
-                        .to_string(),
-                ),
-                None,
-            ));
-            return;
-        }
-
-        debug!("Creating the print_global_meta function");
-        let print_global_meta_fn = FunctionBuilder::new(&[], &[]);
-        let print_global_meta_id = print_global_meta_fn.finish_module(self.emitter.app_wasm);
-        self.emitter
-            .app_wasm
-            .set_fn_name(print_global_meta_id, "print_global_meta".to_string());
-
-        self.emitter.table.put(
-            "print_global_meta".to_string(),
-            Record::Fn {
-                name: FnId {
-                    name: "print_global_meta".to_string(),
-                    loc: None,
-                },
-                params: vec![],
-                ret_ty: DataType::Tuple { ty_info: vec![] },
-                def: Definition::CompilerStatic,
-                addr: Some(*print_global_meta_id),
-                loc: None,
-            },
-        );
     }
 }
 

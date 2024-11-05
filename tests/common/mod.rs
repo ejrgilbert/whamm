@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use glob::{glob, glob_with};
-use log::{debug, warn};
+use log::{debug, error, warn};
 use wabt::wat2wasm;
 use whamm::wast::test_harness::wasm2wat_on_file;
 
@@ -65,6 +65,13 @@ pub fn run_whamm_bin(original_wasm_path: &str, monitor_path: &str, instrumented_
         .arg(instrumented_wasm_path)
         .output()
         .expect("failed to execute process");
+    if !res.status.success() {
+        error!(
+            "'run_whamm_bin' add target failed:\n{}\n{}",
+            String::from_utf8(res.stdout).unwrap(),
+            String::from_utf8(res.stderr).unwrap()
+        );
+    }
     assert!(res.status.success());
 }
 

@@ -29,7 +29,6 @@ pub struct WizardProbeMetadataCollector<'a, 'b, 'c> {
     pub strings_to_emit: Vec<String>,
 
     visiting: Visiting,
-    context: String,
     curr_rule: String,
     curr_script: WizardScript,
     curr_probe: WizardProbe,
@@ -51,7 +50,6 @@ impl<'a, 'b, 'c> WizardProbeMetadataCollector<'a, 'b, 'c> {
             used_provided_fns: Vec::default(),
             strings_to_emit: Vec::default(),
             visiting: Visiting::None,
-            context: "".to_string(),
             curr_rule: "".to_string(),
             curr_script: WizardScript::default(),
             curr_probe: WizardProbe::default(),
@@ -65,24 +63,6 @@ impl<'a, 'b, 'c> WizardProbeMetadataCollector<'a, 'b, 'c> {
         stmts.iter().for_each(|stmt| {
             self.visit_stmt(stmt);
         })
-    }
-
-    fn get_context_name_mut(&mut self) -> &mut String {
-        &mut self.context
-    }
-
-    fn get_context_name(&self) -> &String {
-        &self.context
-    }
-    fn set_context_name(&mut self, val: String) {
-        *self.get_context_name_mut() = val;
-    }
-    fn append_context_name(&mut self, val: String) {
-        *self.get_context_name_mut() += &val;
-    }
-    fn remove_last_context(&mut self) {
-        let context_name = self.get_context_name();
-        self.set_context_name(context_name[..context_name.rfind(':').unwrap()].to_string());
     }
 
     fn set_curr_rule(&mut self, val: String) {
@@ -131,7 +111,6 @@ impl<'a, 'b, 'c> WizardProbeMetadataCollector<'a, 'b, 'c> {
 impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
     fn visit_whamm(&mut self, whamm: &Whamm) {
         trace!("Entering: CodeGenerator::visit_whamm");
-        self.set_context_name("whamm".to_string());
 
         // visit scripts
         whamm.scripts.iter().for_each(|script| {
@@ -152,7 +131,6 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
     fn visit_script(&mut self, script: &Script) {
         trace!("Entering: CodeGenerator::visit_script");
         self.table.enter_named_scope(&script.name);
-        self.append_context_name(format!(":{}", script.name.clone()));
 
         // visit providers
         script.providers.iter().for_each(|(_name, provider)| {
@@ -160,15 +138,12 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
         });
 
         trace!("Exiting: CodeGenerator::visit_script");
-        // Remove from `context_name`
-        self.remove_last_context();
         self.table.exit_scope(self.err);
     }
 
     fn visit_provider(&mut self, provider: &Box<dyn Provider>) {
         trace!("Entering: CodeGenerator::visit_provider");
         self.table.enter_named_scope(&provider.name());
-        self.append_context_name(format!(":{}", provider.name()));
         self.set_curr_rule(provider.name());
 
         // visit the packages
@@ -178,13 +153,11 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
 
         trace!("Exiting: CodeGenerator::visit_provider");
         self.table.exit_scope(self.err);
-        self.remove_last_context();
     }
 
     fn visit_package(&mut self, package: &dyn Package) {
         trace!("Entering: CodeGenerator::visit_package");
         self.table.enter_named_scope(&package.name());
-        self.append_context_name(format!(":{}", package.name()));
         self.append_curr_rule(format!(":{}", package.name()));
 
         // visit the events
@@ -194,7 +167,6 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
 
         trace!("Exiting: CodeGenerator::visit_package");
         self.table.exit_scope(self.err);
-        self.remove_last_context();
         // Remove this package from `curr_rule`
         let curr_rule = self.get_curr_rule();
         self.set_curr_rule(curr_rule[..curr_rule.rfind(':').unwrap()].to_string());
@@ -203,7 +175,6 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
     fn visit_event(&mut self, event: &dyn Event) {
         trace!("Entering: CodeGenerator::visit_event");
         self.table.enter_named_scope(&event.name());
-        self.append_context_name(format!(":{}", event.name()));
         self.append_curr_rule(format!(":{}", event.name()));
 
         event.probes().iter().for_each(|(_ty, probes)| {
@@ -222,8 +193,6 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
 
         trace!("Exiting: CodeGenerator::visit_event");
         self.table.exit_scope(self.err);
-        self.remove_last_context();
-        // Remove this event from `context_name`
         let curr_rule = self.get_curr_rule();
         self.set_curr_rule(curr_rule[..curr_rule.rfind(':').unwrap()].to_string());
     }
@@ -231,7 +200,6 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
     fn visit_probe(&mut self, probe: &Box<dyn Probe>) {
         trace!("Entering: CodeGenerator::visit_probe");
         self.table.enter_named_scope(&probe.mode().name());
-        self.append_context_name(format!(":{}", probe.mode().name()));
         self.append_curr_rule(format!(":{}", probe.mode().name()));
         if let Some(pred) = probe.predicate() {
             self.visiting = Visiting::Predicate;
@@ -245,8 +213,6 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
 
         trace!("Exiting: CodeGenerator::visit_probe");
         self.table.exit_scope(self.err);
-        self.remove_last_context();
-        // Remove this probe from `context_name`
         let curr_rule = self.get_curr_rule();
         self.set_curr_rule(curr_rule[..curr_rule.rfind(':').unwrap()].to_string());
     }

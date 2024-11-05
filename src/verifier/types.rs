@@ -266,6 +266,17 @@ impl SymbolTable {
         None
     }
 
+    fn no_match(err: &mut ErrorGen, rec: &Record, exp: &str, loc: &Option<Location>) {
+        err.unexpected_error(
+            true,
+            Some(format!(
+                "Unexpected record type. Expected {exp}, found: {:?}",
+                rec
+            )),
+            line_col_from_loc(loc),
+        );
+    }
+
     pub fn lookup_lib(
         &self,
         key: &str,
@@ -276,14 +287,7 @@ impl SymbolTable {
             if matches!(rec, Record::Library { .. }) {
                 Some(rec)
             } else {
-                err.unexpected_error(
-                    true,
-                    Some(format!(
-                        "Unexpected record type. Expected Library, found: {:?}",
-                        rec
-                    )),
-                    line_col_from_loc(loc),
-                );
+                Self::no_match(err, rec, "Library", loc);
                 None
             }
         } else {
@@ -300,14 +304,7 @@ impl SymbolTable {
             if matches!(rec, Record::Library { .. }) {
                 Some(rec)
             } else {
-                err.unexpected_error(
-                    true,
-                    Some(format!(
-                        "Unexpected record type. Expected Library, found: {:?}",
-                        rec
-                    )),
-                    line_col_from_loc(loc),
-                );
+                Self::no_match(err, rec, "Library", loc);
                 None
             }
         } else {
@@ -332,14 +329,7 @@ impl SymbolTable {
             if matches!(rec, Record::Var { .. }) {
                 Some(rec)
             } else {
-                err.unexpected_error(
-                    true,
-                    Some(format!(
-                        "Unexpected record type. Expected Var, found: {:?}",
-                        rec
-                    )),
-                    line_col_from_loc(loc),
-                );
+                Self::no_match(err, rec, "Var", loc);
                 None
             }
         } else {
@@ -362,15 +352,7 @@ impl SymbolTable {
             if matches!(rec, Record::Var { .. }) {
                 Some(rec)
             } else {
-                err.unexpected_error(
-                    true,
-                    Some(format!(
-                        "Unexpected record type. Expected Var, found: {:?}",
-                        rec
-                    )),
-                    line_col_from_loc(loc),
-                );
-
+                Self::no_match(err, rec, "Var", loc);
                 None
             }
         } else {
@@ -394,14 +376,7 @@ impl SymbolTable {
             if matches!(rec, Record::Fn { .. }) {
                 (Some(rec), context)
             } else {
-                err.unexpected_error(
-                    true,
-                    Some(format!(
-                        "Unexpected record type. Expected Fn, found: {:?}",
-                        rec
-                    )),
-                    None,
-                );
+                Self::no_match(err, rec, "Fn", &None);
                 (None, context)
             }
         } else {
@@ -414,14 +389,7 @@ impl SymbolTable {
             if matches!(rec, Record::Fn { .. }) {
                 Some(rec)
             } else {
-                err.unexpected_error(
-                    true,
-                    Some(format!(
-                        "Unexpected record type. Expected Fn, found: {:?}",
-                        rec
-                    )),
-                    None,
-                );
+                Self::no_match(err, rec, "Fn", &None);
                 None
             }
         } else {
@@ -434,14 +402,7 @@ impl SymbolTable {
             if matches!(rec, Record::Fn { .. }) {
                 Some(rec)
             } else {
-                err.unexpected_error(
-                    true,
-                    Some(format!(
-                        "Unexpected record type. Expected Fn, found: {:?}",
-                        rec
-                    )),
-                    None,
-                );
+                Self::no_match(err, rec, "Fn", &None);
                 None
             }
         } else {
@@ -475,44 +436,20 @@ impl SymbolTable {
                                 Some(p_id) => self.scopes.get(p_id),
                             };
                         }
+                        let context = if let Some(id) = rec_id {
+                            self.get_scope_context(*id)
+                        } else {
+                            "".to_string()
+                        };
 
-                        (rec_id.copied(), self.get_scope_context(*rec_id.unwrap()))
+                        (rec_id.copied(), context)
                     }
                 }
             }
         }
     }
     pub fn lookup(&self, key: &str) -> Option<usize> {
-        match self.get_curr_scope() {
-            None => None,
-            Some(curr) => {
-                match curr.lookup(key) {
-                    Some(rec_id) => Some(*rec_id),
-                    None => {
-                        let mut rec_id = None;
-
-                        // Search the parent instead
-                        let mut lookup_scope = curr;
-                        let mut next_parent: Option<&Scope> = match lookup_scope.parent {
-                            None => None,
-                            Some(p_id) => self.scopes.get(p_id),
-                        };
-                        while rec_id.is_none() && next_parent.is_some() {
-                            // Perform lookup in next_parent (moving in the chain of parent scopes)
-                            rec_id = next_parent.unwrap().lookup(key);
-
-                            lookup_scope = next_parent.unwrap();
-                            next_parent = match lookup_scope.parent {
-                                None => None,
-                                Some(p_id) => self.scopes.get(p_id),
-                            };
-                        }
-
-                        rec_id.copied()
-                    }
-                }
-            }
-        }
+        self.lookup_with_context(key).0
     }
 
     fn get_scope_context(&self, scope_id: usize) -> String {
