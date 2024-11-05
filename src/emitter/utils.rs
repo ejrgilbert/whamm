@@ -2,6 +2,7 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::module_emitter::MemoryTracker;
 use crate::emitter::report_var_metadata::ReportVarMetadata;
+use crate::emitter::InjectStrategy;
 use crate::generator::folding::ExprFolder;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::parser::types::{
@@ -13,7 +14,6 @@ use orca_wasm::ir::types::{BlockType, DataType as OrcaType, Value as OrcaValue};
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::{MacroOpcode, Opcode};
 use orca_wasm::{InitExpr, Module};
-use crate::emitter::InjectStrategy;
 // ==================================================================
 // ================ Emitter Helper Functions ========================
 // TODO -- add this documentation
@@ -24,7 +24,6 @@ use crate::emitter::InjectStrategy;
 // - with a construction of InstrumentationVisitor inside that loop.
 // ==================================================================
 // ==================================================================
-
 
 // TODO -- make this a struct that contains all the data to be passed around!
 

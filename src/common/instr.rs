@@ -4,6 +4,7 @@ use crate::common::error::ErrorGen;
 use crate::emitter::module_emitter::{MemoryTracker, ModuleEmitter};
 use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
+use crate::emitter::InjectStrategy;
 use crate::generator::rewriting::init_generator::InitGenerator;
 use crate::generator::rewriting::instr_generator::InstrGenerator;
 use crate::generator::rewriting::simple_ast::{build_simple_ast, SimpleAST};
@@ -24,7 +25,6 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::exit;
 use wasmparser::MemoryType;
-use crate::emitter::InjectStrategy;
 
 /// create output path if it doesn't exist
 pub(crate) fn try_path(path: &String) {

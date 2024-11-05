@@ -12,7 +12,7 @@ use crate::parser::types::{Block, Expr, Statement};
 #[derive(Copy, Clone)]
 pub enum InjectStrategy {
     Wizard,
-    Rewriting
+    Rewriting,
 }
 
 // =================================================
