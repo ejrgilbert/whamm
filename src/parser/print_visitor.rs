@@ -421,8 +421,11 @@ impl WhammVisitor<String> for AsStrVisitor {
                     self.visit_expr(val)
                 )
             }
-            Statement::ReportDecl { decl, .. } => {
-                format!("report {}", self.visit_stmt(decl))
+            Statement::AllocDecl {
+                decl, is_report, ..
+            } => {
+                let report = if *is_report { "report" } else { "" };
+                format!("{report} alloc {}", self.visit_stmt(decl))
             }
         }
     }

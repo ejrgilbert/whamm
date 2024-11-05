@@ -13,6 +13,7 @@ pub fn create_alloc_func(_to_alloc: Vec<DataType>) -> FunctionID {
     // Will also need to update some global value that keeps track of the already (use memory allocator?)
     // allocated memory space. Make sure to check that memory size is big enough!
 
+    // NOTE: `decl_init` statements should be run ONCE (can be in $alloc func)
     todo!()
 }
 

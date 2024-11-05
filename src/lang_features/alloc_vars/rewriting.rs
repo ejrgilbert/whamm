@@ -10,5 +10,6 @@ pub fn allocate_vars(_to_alloc: Vec<(String, DataType)>) -> HashMap<String, (Var
     //   Add these VarAddrs to the symbol table.
     //   Can now emit the rest of the probe body logic as normal.
 
+    // NOTE: `decl_init` statements should be run ONCE
     todo!()
 }

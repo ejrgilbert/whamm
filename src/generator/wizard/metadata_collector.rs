@@ -234,8 +234,10 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
             Statement::Decl { .. } => {
                 // ignore
             }
-            Statement::ReportDecl { .. } => {
-                self.curr_probe.incr_reports();
+            Statement::AllocDecl { is_report, .. } => {
+                if *is_report {
+                    self.curr_probe.incr_reports();
+                }
             }
             Statement::Assign { var_id, expr, .. } => {
                 if let Expr::VarId { name, .. } = var_id {

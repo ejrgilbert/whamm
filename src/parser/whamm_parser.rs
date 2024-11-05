@@ -387,15 +387,15 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
             let stmt = pair.into_inner().next().unwrap();
             stmt_from_rule(stmt, err)
         }
-        Rule::declaration => handle_decl(&mut pair.into_inner(), err),
+        Rule::decl => handle_decl(&mut pair.into_inner(), err),
         Rule::assignment => handle_assignment(pair, err),
         Rule::fn_call => handle_function_call_outer(pair, err),
         Rule::incrementor => handle_incrementor(pair, err),
         Rule::decrementor => handle_decrementor(pair, err),
         Rule::ret => handle_ret(pair, err),
-        Rule::initialize => handle_initialize(pair, err),
+        Rule::decl_init => handle_decl_init(pair, err),
         Rule::if_stmt => handle_if(pair, err),
-        Rule::report_declaration => handle_report(pair, err),
+        Rule::special_decl => handle_special_decl(pair, err),
         rule => {
             err.parse_error(
                 true,
@@ -403,15 +403,14 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                 Some(LineColLocation::from(pair.as_span())),
                 vec![
                     Rule::statement,
-                    Rule::declaration,
+                    Rule::decl,
                     Rule::assignment,
                     Rule::fn_call,
                     Rule::incrementor,
                     Rule::decrementor,
                     Rule::ret,
-                    Rule::initialize,
-                    Rule::if_stmt,
-                    Rule::report_declaration,
+                    Rule::decl_init,
+                    Rule::special_decl,
                 ],
                 vec![rule],
             );
@@ -637,11 +636,29 @@ fn handle_ret(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     }
 }
 
-fn handle_initialize(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
+fn handle_decl_init(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
+    let pair_loc = pair.as_span();
     let mut pairs = pair.into_inner();
+
     // create the decl
-    let decls = handle_decl(&mut pairs, err);
+    let decl_pair = pairs.next().unwrap();
+    let decls = match decl_pair.as_rule() {
+        Rule::special_decl => handle_special_decl(decl_pair, err),
+        Rule::decl => handle_decl(&mut decl_pair.into_inner(), err),
+        rule => {
+            err.parse_error(
+                true,
+                Some(UNEXPECTED_ERR_MSG.to_string()),
+                Some(LineColLocation::from(pair_loc)),
+                vec![Rule::special_decl, Rule::decl],
+                vec![rule],
+            );
+            // should have exited above (since it's a fatal error)
+            unreachable!();
+        }
+    };
     let decl = decls.first().unwrap();
+
     let var_id = if let Statement::Decl { var_id, .. } = decl {
         var_id.clone()
     } else {
@@ -815,12 +832,66 @@ fn handle_elif(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
     }
 }
 
-fn handle_report(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
+fn handle_special_decl(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     let line_col = LineColLocation::from(pair.as_span());
     let mut pairs = pair.into_inner();
 
+    // handle var_decorator(s)
+    let mut is_report = false;
+    let mut is_alloc = false;
+    let decorator_pairs = pairs.next().unwrap().into_inner();
+    for pair in decorator_pairs {
+        match pair.as_rule() {
+            Rule::REPORT => {
+                if is_report {
+                    // cannot mark as report 2x, error
+                    err.parse_error(
+                        false,
+                        Some(
+                            "Marked variable with 'report' multiple times, should only mark once."
+                                .to_string(),
+                        ),
+                        Some(LineColLocation::from(pair.as_span())),
+                        vec![],
+                        vec![],
+                    )
+                }
+                is_report = true
+            }
+            Rule::ALLOC => {
+                if is_alloc {
+                    // cannot mark as alloc 2x, error
+                    err.parse_error(
+                        false,
+                        Some(
+                            "Marked variable with 'alloc' multiple times, should only mark once."
+                                .to_string(),
+                        ),
+                        Some(LineColLocation::from(pair.as_span())),
+                        vec![],
+                        vec![],
+                    )
+                }
+                is_alloc = true
+            }
+            rule => {
+                err.parse_error(
+                    true,
+                    Some(UNEXPECTED_ERR_MSG.to_string()),
+                    Some(LineColLocation::from(pair.as_span())),
+                    vec![Rule::REPORT, Rule::ALLOC],
+                    vec![rule],
+                );
+                // should have exited above (since it's a fatal error)
+                unreachable!();
+            }
+        }
+    }
+
+    // next should be the declaration
     let decl = stmt_from_rule(pairs.next().unwrap(), err);
-    vec![Statement::ReportDecl {
+    vec![Statement::AllocDecl {
+        is_report,
         decl: Box::new(decl.first().unwrap().to_owned()),
         loc: Some(Location {
             line_col,

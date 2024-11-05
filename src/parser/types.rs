@@ -289,7 +289,10 @@ pub enum Statement {
         alt: Block,
         loc: Option<Location>,
     },
-    ReportDecl {
+    // all report variables must be allocated,
+    // but not all alloc variables must be reported
+    AllocDecl {
+        is_report: bool,
         decl: Box<Statement>,
         loc: Option<Location>,
     },
@@ -302,7 +305,7 @@ impl Statement {
             | Statement::Return { loc, .. }
             | Statement::Assign { loc, .. }
             | Statement::SetMap { loc, .. }
-            | Statement::ReportDecl { loc, .. }
+            | Statement::AllocDecl { loc, .. }
             | Statement::Expr { loc, .. } => loc,
         }
     }

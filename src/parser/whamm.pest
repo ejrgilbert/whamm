@@ -69,26 +69,32 @@ TYPE = _{ TY_U32 | TY_I32 | TY_F32 | TY_U64 | TY_I64 | TY_F64 | TY_BOOL | TY_STR
 // ---- Statements ----
 // ====================
 
-//has to be "_stmt" because of rust rules
+statement = { ( decl_init | fn_call | special_decl | decl | assignment | incrementor | decrementor | ret ) ~ ";" }
+
+// control flow
 if_stmt = { "if" ~ "(" ~ expr ~ ")" ~ block ~ (else_stmt | elif) ? }
 elif = { "elif" ~ "(" ~ expr ~ ")" ~ block ~ (else_stmt | elif) ? }
 else_stmt = { "else" ~  block }
-arg = { tuple | expr | val | ternary }
-fn_call = { ID ~ "(" ~ ( arg )? ~ ( "," ~ arg )* ~ ")" }
 block = { "{" ~ (if_stmt | statement)* ~ "}" }
-
-
-// var ops
 ret = { "return" ~ expr ? }
 
-report_declaration = { "report" ~ declaration }
-assignment = { (get_map | ID) ~ "=" ~ (ternary | expr) }
-declaration = { TYPE ~ !RESERVED_KEYWORDS ~ ID }
+// calls
+arg = { tuple | expr | val | ternary }
+fn_call = { ID ~ "(" ~ ( arg )? ~ ( "," ~ arg )* ~ ")" }
 
-initialize = { TYPE ~ ID ~ "=" ~ (ternary | expr) }
-statement = { ( ( initialize | fn_call | report_declaration | declaration | assignment | incrementor | decrementor | ret ) ~ ";" )+ }
+// unop
 incrementor = { (get_map | ID) ~ "++"}
 decrementor = { (get_map | ID) ~ "--"}
+
+// var ops
+REPORT = @{ "report" }
+ALLOC = @{ "alloc" }
+var_decorators = { ( REPORT | ALLOC )+ }
+special_decl = { var_decorators ~ decl }
+assignment = { (get_map | ID) ~ "=" ~ (ternary | expr) }
+decl = { TYPE ~ !RESERVED_KEYWORDS ~ ID }
+decl_init = { (special_decl | decl) ~ "=" ~ (ternary | expr) }
+
 // =====================
 // ---- Expressions ----
 // =====================
