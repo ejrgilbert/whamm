@@ -1,20 +1,21 @@
 use crate::common::error::{ErrorGen, WhammError};
-use crate::emitter::report_var_metadata::ReportVarMetadata;
-use crate::parser::types::{Block, DataType, Definition, Expr, Fn, Statement, Value};
-use crate::verifier::types::{Record, SymbolTable, VarAddr};
-use orca_wasm::{DataSegment, DataSegmentKind, InitExpr, Location};
-use std::collections::HashMap;
-
+use crate::emitter::report_var_metadata::{Metadata, ReportVarMetadata};
 use crate::emitter::rewriting::rules::Arg;
 use crate::emitter::utils::{emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global};
 use crate::emitter::Emitter;
+use crate::libraries::core::io::io_adapter::IOAdapter;
 use crate::libraries::core::maps::map_adapter::MapLibAdapter;
+use crate::parser::types::{Block, DataType, Definition, Expr, Fn, FnId, Statement, Value};
+use crate::verifier::types::{Record, SymbolTable, VarAddr};
+use log::debug;
 use orca_wasm::ir::function::FunctionBuilder;
 use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
 use orca_wasm::ir::module::Module;
 use orca_wasm::ir::types::{BlockType as OrcaBlockType, DataType as OrcaType, Value as OrcaValue};
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::{Instrumenter, Opcode};
+use orca_wasm::{DataSegment, DataSegmentKind, InitExpr, Location};
+use std::collections::HashMap;
 
 const UNEXPECTED_ERR_MSG: &str =
     "ModuleEmitter: Looks like you've found a bug...please report this behavior!";
@@ -62,7 +63,103 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         }
     }
 
-    fn emit_provided_fn(
+    // ============================
+    // ==== SYMBOL TABLE LOGIC ====
+    // ============================
+
+    pub(crate) fn enter_scope(&mut self, err: &mut ErrorGen) {
+        self.table.enter_scope(err)
+    }
+    pub(crate) fn exit_scope(&mut self, err: &mut ErrorGen) {
+        self.table.exit_scope(err)
+    }
+    pub(crate) fn reset_table(&mut self) {
+        self.table.reset();
+    }
+
+    // =================================
+    // ==== BASE MODULE SETUP LOGIC ====
+    // =================================
+
+    pub fn setup_module(&mut self, err: &mut ErrorGen) {
+        // setup maps
+        if self.map_lib_adapter.is_used {
+            self.create_global_map_init(err);
+            // setup report maps
+            self.create_print_map_meta(err);
+        }
+
+        // setup report globals
+        self.create_print_global_meta(err);
+    }
+
+    // ===========================
+    // ==== EMIT `func` LOGIC ====
+    // ===========================
+
+    pub(crate) fn emit_fn(
+        &mut self,
+        context: &str,
+        f: &Fn,
+        err: &mut ErrorGen,
+    ) -> Option<FunctionID> {
+        // figure out if this is a provided fn.
+        if f.def == Definition::CompilerDynamic {
+            return if self.fn_providing_contexts.contains(&context.to_string()) {
+                self.emit_provided_fn(context, f, err)
+            } else {
+                err.add_error(ErrorGen::get_unexpected_error(
+                    true,
+                    Some(format!(
+                        "{UNEXPECTED_ERR_MSG} \
+                Provided fn, but could not find a context to provide the definition, context: {}",
+                        context
+                    )),
+                    None,
+                ));
+                None
+            };
+        }
+
+        // emit non-provided fn
+        // TODO: only when we're supporting user-defined fns in script...
+        unimplemented!();
+    }
+
+    pub fn emit_special_fn(
+        &mut self,
+        name: Option<String>,
+        params: &[OrcaType],
+        results: &[OrcaType],
+        block: &mut Block,
+        err: &mut ErrorGen,
+    ) -> Option<u32> {
+        let func = FunctionBuilder::new(params, results);
+        self.emitting_func = Some(func);
+
+        if self.map_lib_adapter.is_used {
+            let fid = self.map_lib_adapter.get_map_init_fid(self.app_wasm, err);
+            if let Some(func) = &mut self.emitting_func {
+                self.map_lib_adapter.inject_map_init(func, fid);
+            };
+        }
+
+        // emit the function body
+        self.emit_body(&[], block, err);
+
+        // emit the function
+        if let Some(func) = self.emitting_func.take() {
+            let fid = func.finish_module(self.app_wasm);
+            if let Some(name) = name {
+                self.app_wasm.set_fn_name(fid, name);
+            }
+            Some(*fid)
+        } else {
+            None
+        }
+    }
+
+    pub(crate) fn emit_provided_fn(
         &mut self,
         context: &str,
         f: &Fn,
@@ -195,71 +292,49 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         Some(strcmp_id)
     }
 
-    pub(crate) fn enter_scope(&mut self, err: &mut ErrorGen) {
-        self.table.enter_scope(err)
-    }
+    // ==========================
+    // ==== EMIT `map` LOGIC ====
+    // ===========================
 
-    pub(crate) fn exit_scope(&mut self, err: &mut ErrorGen) {
-        self.table.exit_scope(err)
-    }
-    pub(crate) fn reset_table(&mut self) {
-        self.table.reset();
-    }
-
-    pub(crate) fn emit_fn(
-        &mut self,
-        context: &str,
-        f: &Fn,
-        err: &mut ErrorGen,
-    ) -> Option<FunctionID> {
-        // figure out if this is a provided fn.
-        if f.def == Definition::CompilerDynamic {
-            return if self.fn_providing_contexts.contains(&context.to_string()) {
-                self.emit_provided_fn(context, f, err)
-            } else {
-                err.add_error(ErrorGen::get_unexpected_error(
+    fn create_global_map_init(&mut self, err: &mut ErrorGen) {
+        // TODO -- move this into the MapAdapter
+        //make a global bool for whether to run the global_map_init fn
+        self.map_lib_adapter.init_bool_location = *self.app_wasm.add_global(
+            InitExpr::Value(OrcaValue::I32(1)),
+            OrcaType::I32,
+            true,
+            false,
+        );
+        match self
+            .app_wasm
+            .functions
+            .get_local_fid_by_name("global_map_init")
+        {
+            Some(_) => {
+                debug!("global_map_init function already exists");
+                err.unexpected_error(
                     true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} \
-                Provided fn, but could not find a context to provide the definition, context: {}",
-                        context
-                    )),
+                    Some(
+                        "global_map_init function already exists - needs to be created by Whamm"
+                            .to_string(),
+                    ),
                     None,
-                ));
-                None
-            };
-        }
-
-        // emit non-provided fn
-        // TODO: only when we're supporting user-defined fns in script...
-        unimplemented!();
-    }
-
-    pub fn emit_special_fn(
-        &mut self,
-        name: Option<String>,
-        params: &[OrcaType],
-        results: &[OrcaType],
-        block: &mut Block,
-        err: &mut ErrorGen,
-    ) -> Option<u32> {
-        let func = FunctionBuilder::new(params, results);
-        self.emitting_func = Some(func);
-
-        // emit the predicate function body
-        self.emit_body(&[], block, err);
-
-        // emit the function
-        if let Some(func) = self.emitting_func.take() {
-            let fid = func.finish_module(self.app_wasm);
-            if let Some(name) = name {
-                self.app_wasm.set_fn_name(fid, name);
+                );
             }
-            Some(*fid)
-        } else {
-            None
+            None => {
+                //time to make a global_map_init fn
+                debug!("No global_map_init function found, creating one");
+                let global_map_init_fn = FunctionBuilder::new(&[], &[]);
+                let global_map_init_id = global_map_init_fn.finish_module(self.app_wasm);
+                self.app_wasm
+                    .set_fn_name(global_map_init_id, "global_map_init".to_string());
+            }
         }
     }
+
+    // ================================
+    // ==== EMIT MEMORY DATA LOGIC ====
+    // ================================
 
     pub fn emit_string(&mut self, value: &mut Value, err: &mut ErrorGen) -> bool {
         match value {
@@ -322,6 +397,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         }
     }
 
+    // =============================
+    // ==== EMIT `global` LOGIC ====
+    // =============================
+
     pub(crate) fn emit_global_getter(
         &mut self,
         global_id: &u32,
@@ -352,16 +431,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     ) -> Option<FunctionID> {
         self.emit_global_inner(name, ty, val, false, err)
     }
-    pub fn emit_report_global(
-        &mut self,
-        name: String,
-        ty: DataType,
-        val: &Option<Value>,
-        err: &mut ErrorGen,
-    ) -> Option<FunctionID> {
-        self.emit_global_inner(name, ty, val, true, err)
-    }
-    pub fn emit_global_inner(
+
+    fn emit_global_inner(
         &mut self,
         name: String,
         _ty: DataType,
@@ -378,7 +449,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         // this is used for user-defined global vars in the script...
         match ty {
             DataType::Map { .. } => {
-                //time to instrument the start fn
+                // TODO -- move to MapAdapter
+                //time to set up the map_init fn
                 let Some(init_id) = self
                     .app_wasm
                     .functions
@@ -439,6 +511,11 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             }
         }
     }
+
+    // ========================================
+    // ==== EMIT `global` Statements LOGIC ====
+    // ========================================
+
     pub fn emit_global_stmts(&mut self, stmts: &mut [Statement]) -> Result<bool, Box<WhammError>> {
         // NOTE: This should be done in the Module entrypoint
         //       https://docs.rs/walrus/latest/walrus/struct.Module.html
@@ -473,6 +550,230 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         }
 
         Ok(true)
+    }
+
+    // =============================
+    // ==== EMIT `report` LOGIC ====
+    // =============================
+
+    fn create_print_map_meta(&mut self, err: &mut ErrorGen) {
+        // TODO -- move this into the IOAdapter (maybe a ReportVarAdapter?)
+        if self
+            .app_wasm
+            .functions
+            .get_local_fid_by_name("print_map_meta")
+            .is_some()
+        {
+            debug!("print_map_meta function already exists");
+            err.unexpected_error(
+                true,
+                Some(
+                    "print_map_meta function already exists - needs to be created by Whamm"
+                        .to_string(),
+                ),
+                None,
+            );
+            return;
+        }
+
+        debug!("Creating the print_map_meta function");
+        let print_map_meta_fn = FunctionBuilder::new(&[], &[]);
+        let print_map_meta_id = print_map_meta_fn.finish_module(self.app_wasm);
+        self.app_wasm
+            .set_fn_name(print_map_meta_id, "print_map_meta".to_string());
+
+        self.table.put(
+            "print_map_meta".to_string(),
+            Record::Fn {
+                name: FnId {
+                    name: "print_map_meta".to_string(),
+                    loc: None,
+                },
+                params: vec![],
+                ret_ty: DataType::Tuple { ty_info: vec![] },
+                def: Definition::CompilerStatic,
+                addr: Some(*print_map_meta_id),
+                loc: None,
+            },
+        );
+    }
+
+    fn create_print_global_meta(&mut self, err: &mut ErrorGen) {
+        // TODO -- move this into the IOAdapter (maybe a ReportVarAdapter?)
+        if self
+            .app_wasm
+            .functions
+            .get_local_fid_by_name("print_global_meta")
+            .is_some()
+        {
+            debug!("print_global_meta function already exists");
+            err.add_error(ErrorGen::get_unexpected_error(
+                true,
+                Some(
+                    "print_global_meta function already exists - needs to be created by Whamm"
+                        .to_string(),
+                ),
+                None,
+            ));
+            return;
+        }
+
+        debug!("Creating the print_global_meta function");
+        let print_global_meta_fn = FunctionBuilder::new(&[], &[]);
+        let print_global_meta_id = print_global_meta_fn.finish_module(self.app_wasm);
+        self.app_wasm
+            .set_fn_name(print_global_meta_id, "print_global_meta".to_string());
+
+        self.table.put(
+            "print_global_meta".to_string(),
+            Record::Fn {
+                name: FnId {
+                    name: "print_global_meta".to_string(),
+                    loc: None,
+                },
+                params: vec![],
+                ret_ty: DataType::Tuple { ty_info: vec![] },
+                def: Definition::CompilerStatic,
+                addr: Some(*print_global_meta_id),
+                loc: None,
+            },
+        );
+    }
+
+    pub fn emit_report_global(
+        &mut self,
+        name: String,
+        ty: DataType,
+        val: &Option<Value>,
+        err: &mut ErrorGen,
+    ) -> Option<FunctionID> {
+        self.emit_global_inner(name, ty, val, true, err)
+    }
+
+    /// This should run BEFORE emitting the full AST
+
+    /// This should run AFTER emitting the full AST
+    pub fn configure_flush_routines(&mut self, io_adapter: &mut IOAdapter, err: &mut ErrorGen) {
+        // configure the flushing routines!
+        let report_var_metadata = &self.report_var_metadata;
+        if report_var_metadata.variable_metadata.is_empty()
+            && report_var_metadata.map_metadata.is_empty()
+        {
+            return;
+        }
+
+        //convert the metadata into strings, add those to the data section, then use those to populate the maps
+        let var_meta: HashMap<u32, String> = report_var_metadata
+            .variable_metadata
+            .iter()
+            .map(|(key, value)| (*key, value.to_csv()))
+            .collect();
+        let map_meta: HashMap<u32, String> = report_var_metadata
+            .map_metadata
+            .iter()
+            .map(|(key, value)| (*key, value.to_csv()))
+            .collect();
+
+        self.setup_print_global_meta(&var_meta, io_adapter, err);
+        self.setup_print_map_meta(&map_meta, io_adapter, err);
+    }
+
+    /// set up the print_global_meta function for insertions
+    fn setup_print_global_meta(
+        &mut self,
+        var_meta_str: &HashMap<u32, String>,
+        io_adapter: &mut IOAdapter,
+        err: &mut ErrorGen,
+    ) -> bool {
+        // get the function
+        // todo(maps) -- look up the func name instead!
+        let print_global_meta_id = if let Some(Record::Fn { addr: Some(id), .. }) =
+            self.table.lookup_fn("print_global_meta", err)
+        {
+            *id
+        } else {
+            return false;
+        };
+        let print_global_meta_id = FunctionID(print_global_meta_id);
+
+        let mut print_global_meta = match self
+            .app_wasm
+            .functions
+            .get_fn_modifier(print_global_meta_id)
+        {
+            Some(func) => func,
+            None => {
+                err.unexpected_error(
+                    true,
+                    Some(format!(
+                        "{UNEXPECTED_ERR_MSG} \
+                    No 'print_global_meta' function found in the module!"
+                    )),
+                    None,
+                );
+                return false;
+            }
+        };
+
+        // output the header data segment
+        let header = Metadata::get_csv_header();
+        io_adapter.putsln(header.clone(), &mut print_global_meta, err);
+
+        // for each of the report globals, emit the printing logic
+        for (key, val) in var_meta_str.iter() {
+            io_adapter.puts(format!("i32,{key},{val},"), &mut print_global_meta, err);
+
+            // get the value of this report global
+            print_global_meta.global_get(GlobalID(*key));
+            io_adapter.call_puti(&mut print_global_meta, err);
+            io_adapter.putln(&mut print_global_meta, err);
+        }
+        true
+    }
+
+    fn setup_print_map_meta(
+        &mut self,
+        map_meta_str: &HashMap<u32, String>,
+        io_adapter: &mut IOAdapter,
+        err: &mut ErrorGen,
+    ) -> bool {
+        // get the function
+        //first, we need to create the maps in global_map_init - where all the other maps are initialized
+        // todo(maps) -- look up the func name instead!
+        let print_map_meta_id = if let Some(Record::Fn { addr: Some(id), .. }) =
+            self.table.lookup_fn("print_map_meta", err)
+        {
+            *id
+        } else {
+            return false;
+        };
+        let print_map_meta_id = FunctionID(print_map_meta_id);
+
+        let mut print_map_meta = match self.app_wasm.functions.get_fn_modifier(print_map_meta_id) {
+            Some(func) => func,
+            None => {
+                err.unexpected_error(
+                    true,
+                    Some(format!(
+                        "{UNEXPECTED_ERR_MSG} \
+                    No 'print_map_meta' function found in the module!"
+                    )),
+                    None,
+                );
+                return false;
+            }
+        };
+
+        // for each of the report maps, emit the printing logic
+        for (key, val) in map_meta_str.iter() {
+            io_adapter.puts(format!("map,{key},{val},"), &mut print_map_meta, err);
+
+            // print the value(s) of this map
+            self.map_lib_adapter
+                .print_map(*key, &mut print_map_meta, err);
+            io_adapter.putln(&mut print_map_meta, err);
+        }
+        true
     }
 }
 impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {

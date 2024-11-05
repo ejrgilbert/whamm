@@ -120,7 +120,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         if let Some(curr_op) = self.app_iter.curr_op() {
             format!("{:?}", curr_op)
         } else {
-            "`curr instr not defined`".to_string()
+            "curr instr not defined".to_string()
         }
     }
 
@@ -706,6 +706,18 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 false
             }
         }
+    }
+
+    pub fn inject_map_init(&mut self, err: &mut ErrorGen) {
+        if !self.map_lib_adapter.is_used {
+            return;
+        }
+        self.before();
+        let fid = self
+            .map_lib_adapter
+            .get_map_init_fid(self.app_iter.module, err);
+        self.map_lib_adapter
+            .inject_map_init(&mut self.app_iter, fid);
     }
 }
 impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {

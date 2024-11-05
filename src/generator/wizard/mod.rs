@@ -4,12 +4,12 @@ pub mod metadata_collector;
 use crate::common::error::ErrorGen;
 use crate::common::instr::Config;
 use crate::emitter::module_emitter::ModuleEmitter;
-use crate::emitter::report_var_metadata::LocationData;
-use crate::emitter::utils::whamm_type_to_wasm_type;
+use crate::emitter::report_var_metadata::{BytecodeLoc, LocationData};
+use crate::emitter::utils::{whamm_type_to_wasm_global, whamm_type_to_wasm_type};
 use crate::generator::wizard::ast::{WizardProbe, WizardScript};
 use crate::generator::GeneratingVisitor;
 use crate::libraries::core::io::io_adapter::IOAdapter;
-use crate::parser::types::{Block, DataType, Definition, Statement, Value, WhammVisitorMut};
+use crate::parser::types::{Block, DataType, Definition, FnId, Statement, Value, WhammVisitorMut};
 use crate::verifier::types::{Record, VarAddr};
 use log::trace;
 use orca_wasm::ir::id::FunctionID;
@@ -22,14 +22,64 @@ pub struct WizardGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> {
     pub err: &'a mut ErrorGen,
     pub injected_funcs: &'h mut Vec<FunctionID>,
     pub config: &'i Config,
+
+    // tracking
+    pub curr_script_id: String,
 }
 
 impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
-    pub fn run(&mut self, ast: Vec<WizardScript>) {
+    pub fn run(
+        &mut self,
+        ast: Vec<WizardScript>,
+        used_provided_funcs: Vec<(String, String)>,
+        strings_to_emit: Vec<String>,
+    ) {
+        // Reset the symbol table in the emitter just in case
         self.emitter.reset_table();
+        self.emitter.setup_module(self.err);
+        self.emit_needed_funcs(used_provided_funcs);
+        self.emit_strings(strings_to_emit);
         self.visit_ast(ast);
+        self.emitter.memory_grow(); // account for emitted strings in memory
+
+        self.emitter
+            .configure_flush_routines(self.io_adapter, self.err);
     }
 
+    fn emit_strings(&mut self, strings_to_emit: Vec<String>) {
+        for string in strings_to_emit.iter() {
+            self.emitter.emit_string(
+                &mut Value::Str {
+                    ty: DataType::Str,
+                    val: string.clone(),
+                },
+                self.err,
+            );
+        }
+    }
+
+    fn emit_needed_funcs(&mut self, funcs: Vec<(String, String)>) {
+        for (context, fname) in funcs.iter() {
+            if let Some(fid) = self.emitter.emit_provided_fn(
+                context,
+                &crate::parser::types::Fn {
+                    def: Definition::CompilerDynamic,
+                    name: FnId {
+                        name: fname.clone(),
+                        loc: None,
+                    },
+                    params: vec![],
+                    return_ty: DataType::Boolean,
+                    body: Default::default(),
+                },
+                self.err,
+            ) {
+                self.add_injected_func(fid);
+            };
+        }
+    }
+
+    // Visit the AST
     fn visit_ast(&mut self, mut ast: Vec<WizardScript>) {
         for script in ast.iter_mut() {
             self.visit_wiz_script(script);
@@ -40,6 +90,11 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
         trace!("Entering: CodeGenerator::visit_script");
         self.enter_named_scope(&script.name);
         self.set_context_name(script.name.clone());
+        self.curr_script_id = script.name.clone();
+
+        self.set_curr_loc(LocationData::Global {
+            script_id: script.name.clone(),
+        });
 
         // visit fns
         script.fns.iter_mut().for_each(|f| {
@@ -62,7 +117,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
         results: &[OrcaType],
         body: &mut Block,
     ) -> (Option<u32>, String) {
-        // create the predicate function
+        // create the function
         let mut params = vec![];
         let mut param_str = "".to_string();
 
@@ -100,8 +155,22 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
         (fid, param_str.to_string())
     }
 
+    fn create_curr_loc(&self, probe: &WizardProbe) -> LocationData {
+        let probe_id = format!("{}_{}", probe.probe_number, probe.rule);
+
+        //set the current location in bytecode and load some new globals for potential report vars
+        LocationData::Local {
+            script_id: self.curr_script_id.clone(),
+            bytecode_loc: BytecodeLoc::new(0, 0), // TODO -- request this from wizard
+            probe_id,
+            num_reports: probe.num_reports, //this is still used in the emitter to determine how many new globals to emit
+        }
+    }
+
     fn visit_wiz_probe(&mut self, probe: &mut WizardProbe) {
         // TODO -- handle provided functions (provider, package, event, probe)
+        self.set_curr_loc(self.create_curr_loc(probe));
+
         let (pred_fid, pred_param_str) = if let Some(pred) = &mut probe.predicate {
             let mut block = Block {
                 stmts: vec![Statement::Expr {
@@ -115,6 +184,15 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
         } else {
             (None, "".to_string())
         };
+
+        // create the probe's report variable globals!
+        for _ in 0..probe.num_reports {
+            let (global_id, ..) = whamm_type_to_wasm_global(self.emitter.app_wasm, &DataType::I32);
+            self.emitter
+                .report_var_metadata
+                .available_i32_gids
+                .push(*global_id);
+        }
 
         // create the probe body function
         let (body_fid, body_param_str) = if let Some(body) = &mut probe.body {

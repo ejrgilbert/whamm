@@ -2,11 +2,15 @@ use crate::common::error::ErrorGen;
 use crate::emitter::report_var_metadata::{LocationData, Metadata, ReportVarMetadata};
 use crate::libraries::core::LibAdapter;
 use crate::parser::types::DataType;
-use orca_wasm::ir::id::FunctionID;
+use orca_wasm::ir::id::{FunctionID, GlobalID};
+use orca_wasm::ir::types::BlockType as OrcaBlockType;
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::MacroOpcode;
-use orca_wasm::Opcode;
+use orca_wasm::{Module, Opcode};
 use std::collections::HashMap;
+
+const UNEXPECTED_ERR_MSG: &str =
+    "MapLibAdapter: Looks like you've found a bug...please report this behavior!";
 
 const PRINT_MAP: &str = "print_map";
 
@@ -321,5 +325,52 @@ impl MapLibAdapter {
     ) {
         let fid = self.get_fid(fname, err);
         func.call(FunctionID(fid));
+    }
+
+    // ========================
+    // ==== MAP INIT LOGIC ====
+    // ========================
+
+    const MAP_INIT_FNAME: &'static str = "global_map_init";
+
+    pub fn get_map_init_fid(&self, app_wasm: &mut Module, err: &mut ErrorGen) -> FunctionID {
+        match app_wasm
+            .functions
+            .get_local_fid_by_name(Self::MAP_INIT_FNAME)
+        {
+            Some(to_call) => to_call,
+            None => {
+                err.unexpected_error(
+                    true,
+                    Some(format!(
+                        "{UNEXPECTED_ERR_MSG} \
+                        No {} function found in the module!",
+                        Self::MAP_INIT_FNAME
+                    )),
+                    None,
+                );
+                unreachable!();
+            }
+        }
+    }
+
+    pub fn inject_map_init<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        func: &mut T,
+        map_init_fid: FunctionID,
+    ) {
+        if !self.is_used {
+            // no maps to init!
+            // only inject this IF NEEDED (not all scripts need global init)
+            return;
+        }
+
+        // 1 means the maps have not been initialized, 0 means they have
+        func.global_get(GlobalID(self.init_bool_location));
+        func.if_stmt(OrcaBlockType::Empty);
+        func.i32_const(0);
+        func.global_set(GlobalID(self.init_bool_location));
+        func.call(map_init_fid);
+        func.end();
     }
 }

@@ -9,6 +9,9 @@ use crate::parser::types::{
 use crate::verifier::types::{Record, SymbolTable};
 use log::trace;
 
+const UNEXPECTED_ERR_MSG: &str =
+    "WizardProbeMetadataCollector: Looks like you've found a bug...please report this behavior!";
+
 enum Visiting {
     Predicate,
     Body,
@@ -22,11 +25,14 @@ enum Visiting {
 pub struct WizardProbeMetadataCollector<'a, 'b, 'c> {
     table: &'a mut SymbolTable,
     pub wizard_ast: Vec<WizardScript>,
+    pub used_provided_fns: Vec<(String, String)>,
+    pub strings_to_emit: Vec<String>,
 
     visiting: Visiting,
     curr_rule: String,
     curr_script: WizardScript,
     curr_probe: WizardProbe,
+    probe_count: i32,
 
     // vars_to_alloc: Vec<(String, DataType)>, // TODO (once we have 'local' variables)
     err: &'b mut ErrorGen,
@@ -41,10 +47,13 @@ impl<'a, 'b, 'c> WizardProbeMetadataCollector<'a, 'b, 'c> {
         Self {
             table,
             wizard_ast: Vec::default(),
+            used_provided_fns: Vec::default(),
+            strings_to_emit: Vec::default(),
             visiting: Visiting::None,
             curr_rule: "".to_string(),
             curr_script: WizardScript::default(),
             curr_probe: WizardProbe::default(),
+            probe_count: 0,
             err,
             config,
         }
@@ -170,19 +179,20 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
 
         event.probes().iter().for_each(|(_ty, probes)| {
             probes.iter().for_each(|probe| {
-                self.curr_probe = WizardProbe::new(self.get_curr_rule().clone());
+                self.curr_probe = WizardProbe::new(self.get_curr_rule().clone(), self.probe_count);
                 self.visit_probe(probe);
 
                 // copy over data from original probe
                 self.curr_probe.predicate = probe.predicate().to_owned();
                 self.curr_probe.body = probe.body().to_owned();
                 self.curr_script.probes.push(self.curr_probe.clone());
+
+                self.probe_count += 1;
             });
         });
 
         trace!("Exiting: CodeGenerator::visit_event");
         self.table.exit_scope(self.err);
-        // Remove this event from `context_name`
         let curr_rule = self.get_curr_rule();
         self.set_curr_rule(curr_rule[..curr_rule.rfind(':').unwrap()].to_string());
     }
@@ -203,7 +213,6 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
 
         trace!("Exiting: CodeGenerator::visit_probe");
         self.table.exit_scope(self.err);
-        // Remove this probe from `context_name`
         let curr_rule = self.get_curr_rule();
         self.set_curr_rule(curr_rule[..curr_rule.rfind(':').unwrap()].to_string());
     }
@@ -222,8 +231,11 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
 
     fn visit_stmt(&mut self, stmt: &Statement) {
         match stmt {
-            Statement::Decl { .. } | Statement::ReportDecl { .. } => {
+            Statement::Decl { .. } => {
                 // ignore
+            }
+            Statement::ReportDecl { .. } => {
+                self.curr_probe.incr_reports();
             }
             Statement::Assign { var_id, expr, .. } => {
                 if let Expr::VarId { name, .. } = var_id {
@@ -271,12 +283,42 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
                 self.visit_expr(lhs);
                 self.visit_expr(rhs);
             }
-            Expr::Call { args, .. } => {
+            Expr::Call {
+                args, fn_target, ..
+            } => {
+                // is this a provided function?
+                let fn_name = match &**fn_target {
+                    Expr::VarId { name, .. } => name.clone(),
+                    _ => {
+                        self.err.unexpected_error(
+                            true,
+                            Some(format!("{UNEXPECTED_ERR_MSG} Can only call functions.")),
+                            None,
+                        );
+                        "".to_string()
+                    }
+                };
+                let (Some(Record::Fn { def, .. }), context) =
+                    self.table.lookup_fn_with_context(&fn_name, self.err)
+                else {
+                    self.err
+                        .unexpected_error(true, Some("unexpected type".to_string()), None);
+                    return;
+                };
+                if matches!(def, Definition::CompilerDynamic) {
+                    // will need to emit this function!
+                    self.used_provided_fns.push((context, fn_name));
+                }
+
                 args.iter().for_each(|arg| {
                     self.visit_expr(arg);
                 });
             }
-            Expr::Primitive { .. } => (),
+            Expr::Primitive { val, .. } => {
+                if let Value::Str { val, .. } = val {
+                    self.strings_to_emit.push(val.clone());
+                }
+            }
             Expr::VarId { name, .. } => {
                 // handle argN special case
                 if self.handle_special(name, "arg") {

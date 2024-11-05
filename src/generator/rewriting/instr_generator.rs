@@ -10,7 +10,7 @@ use crate::parser::rules::core::WhammModeKind;
 use crate::parser::types::{Block, Expr, Value};
 use crate::verifier::types::Record;
 use orca_wasm::ir::id::{FunctionID, GlobalID};
-use orca_wasm::ir::types::{BlockType as OrcaBlockType, Value as OrcaValue};
+use orca_wasm::ir::types::Value as OrcaValue;
 use orca_wasm::iterator::iterator_trait::Iterator;
 use orca_wasm::opcode::Instrumenter;
 use orca_wasm::{DataSegment, DataSegmentKind, InitExpr, Opcode};
@@ -216,10 +216,7 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_> {
 
         is_success &= self.save_args();
         //after saving args, we run the check if we need to initialize global maps
-        // only inject this IF NEEDED (not all scripts need global init)
-        if self.emitter.map_lib_adapter.is_used {
-            self.emit_global_map_init();
-        }
+        self.emitter.inject_map_init(self.err);
         self.configure_probe_mode();
 
         // Now we know we're going to insert the probe, let's define
@@ -364,37 +361,6 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_> {
             false
         }
     }
-    fn emit_global_map_init(&mut self) {
-        //1 means it isn't initialized, 0 means it is
-        let to_call = match self
-            .emitter
-            .app_iter
-            .module
-            .functions
-            .get_local_fid_by_name("global_map_init")
-        {
-            Some(to_call) => to_call,
-            None => {
-                self.err.add_error(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} \
-                    No global_map_init function found in the module!"
-                    )),
-                    None,
-                ));
-                return;
-            }
-        };
-        self.emitter.before();
-        let app_iter = &mut self.emitter.app_iter;
-        app_iter.global_get(GlobalID(self.emitter.map_lib_adapter.init_bool_location));
-        app_iter.if_stmt(OrcaBlockType::Empty);
-        app_iter.i32_const(0);
-        app_iter.global_set(GlobalID(self.emitter.map_lib_adapter.init_bool_location));
-        app_iter.call(to_call);
-        app_iter.end();
-    }
 
     fn after_run(&mut self) -> bool {
         if self
@@ -406,7 +372,8 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_> {
         {
             return true;
         }
-        //after running, emit the metadata from the report_var_metadata into maps 0 and 1 in app_wasm - if meta exists
+
+        // configure the flushing routines!
         let report_var_metadata = &self.emitter.report_var_metadata;
         let var_meta = &report_var_metadata.variable_metadata;
         let map_meta = &report_var_metadata.map_metadata;

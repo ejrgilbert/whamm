@@ -136,18 +136,6 @@ fn run_wast_test(inter: &String, args: &[String], wast_file_name: &String) -> Ou
         .arg(wast_file_name)
         .output()
         .expect("failed to execute process")
-    // if inter == WIZENG_SPEC_INT {
-    //     Command::new(inter)
-    //         .arg("-ext:multi-memory")
-    //         .arg(wast_file_name)
-    //         .output()
-    //         .expect("failed to execute process")
-    // } else {
-    //     Command::new(inter)
-    //         .arg(wast_file_name)
-    //         .output()
-    //         .expect("failed to execute process")
-    // }
 }
 
 const INT_PATH: &str = "./output/tests/interpreters";
