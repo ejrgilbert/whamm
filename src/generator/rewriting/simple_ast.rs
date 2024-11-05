@@ -302,9 +302,7 @@ impl WhammVisitor<()> for SimpleASTBuilder<'_, '_> {
         trace!("Entering: BehaviorTreeBuilder::visit_stmt");
         // for checking for report_decls
         match stmt {
-            Statement::AllocDecl { .. } => {
-                self.curr_num_allocs += 1
-            }
+            Statement::AllocDecl { .. } => self.curr_num_allocs += 1,
             Statement::If { conseq, alt, .. } => {
                 self.visit_block(conseq);
                 self.visit_block(alt);
