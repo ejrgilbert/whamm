@@ -19,7 +19,7 @@ wasm:opcode:br:before {
     index = i ? 1 : 0;
 }
     "#,
-    // Variations of PROBE_SPEC
+    // Variations of PROBE_RULE
     "BEGIN { }",
     "END { }",
     "wasm:opcode:call:alt { }",
@@ -301,7 +301,7 @@ wasm:opcode:br:before {
 ];
 
 const FATAL_SCRIPTS: &[&str] = &[
-    // invalid probe specification
+    // invalid probe rule
     r#"
 core::br:before / i == 1 / { i = 0; }  // SHOULD FAIL HERE
 
@@ -337,7 +337,7 @@ const INVALID_SCRIPTS: &[&str] = &[
     r#"
 map<i32, i32> count;
     "#,
-    // Variations of PROBE_SPEC
+    // Variations of PROBE_RULE
     "wasm:opcode:call:alt: { }",
     "wasm:opcode:call:alt",
     "wasm:opcode:call:dne",

@@ -1,11 +1,11 @@
 use crate::emitter::rewriting::rules::{
-    event_factory, probe_factory, Arg, Event, FromStr, LocInfo, Package, ProbeSpec,
+    event_factory, probe_factory, Arg, Event, FromStr, LocInfo, Package, ProbeRule,
 };
 use crate::for_each_opcode;
 use crate::generator::rewriting::simple_ast::SimpleProbe;
 use crate::parser::rules::core::WhammModeKind;
 use crate::parser::rules::wasm::{OpcodeEventKind, WasmPackageKind};
-use crate::parser::types::{DataType, SpecPart, Value};
+use crate::parser::types::{DataType, RulePart, Value};
 use log::warn;
 use orca_wasm::ir::id::FunctionID;
 use orca_wasm::ir::module::module_functions::{FuncKind, ImportedFunction, LocalFunction};
@@ -115,17 +115,17 @@ impl OpcodeEvent {
     // ---- Helpers ----
     // =================
 
-    fn probe_spec(&self) -> ProbeSpec {
-        ProbeSpec {
-            provider: Some(SpecPart {
+    fn probe_rule(&self) -> ProbeRule {
+        ProbeRule {
+            provider: Some(RulePart {
                 name: "wasm".to_string(),
                 loc: None,
             }),
-            package: Some(SpecPart {
+            package: Some(RulePart {
                 name: "opcode".to_string(),
                 loc: None,
             }),
-            event: Some(SpecPart {
+            event: Some(RulePart {
                 name: self.kind.name(),
                 loc: None,
             }),
@@ -176,37 +176,37 @@ impl Event for OpcodeEvent {
         match self.kind {
             OpcodeEventKind::Unreachable { .. } => {
                 if let Operator::Unreachable = instr {
-                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
             OpcodeEventKind::Nop { .. } => {
                 if let Operator::Nop = instr {
-                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
             OpcodeEventKind::Block { .. } => {
                 if let Operator::Block { .. } = instr {
-                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
             OpcodeEventKind::Loop { .. } => {
                 if let Operator::Loop { .. } = instr {
-                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
             OpcodeEventKind::If { .. } => {
                 if let Operator::If { .. } = instr {
-                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
             OpcodeEventKind::Else { .. } => {
                 if let Operator::Else { .. } = instr {
-                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
             OpcodeEventKind::End { .. } => {
                 if let Operator::End { .. } = instr {
-                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
             OpcodeEventKind::Br { .. } => {
@@ -218,7 +218,7 @@ impl Event for OpcodeEvent {
                             val: *relative_depth,
                         }),
                     );
-                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
             OpcodeEventKind::BrIf { .. } => {
@@ -230,7 +230,7 @@ impl Event for OpcodeEvent {
                             val: *relative_depth,
                         }),
                     );
-                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
             OpcodeEventKind::BrTable { .. } => {
@@ -274,12 +274,12 @@ impl Event for OpcodeEvent {
                             val: Box::new(target_map),
                         }),
                     );
-                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
             OpcodeEventKind::Return { .. } => {
                 if let Operator::Return { .. } = instr {
-                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
             OpcodeEventKind::Call { .. } => {
@@ -339,7 +339,7 @@ impl Event for OpcodeEvent {
                     );
 
                     // add the probes for this event
-                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
             OpcodeEventKind::LocalGet { .. } => {
@@ -353,7 +353,7 @@ impl Event for OpcodeEvent {
                     );
 
                     // add the probes for this event
-                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
             OpcodeEventKind::LocalSet { .. } => {
@@ -367,7 +367,7 @@ impl Event for OpcodeEvent {
                     );
 
                     // add the probes for this event
-                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
             OpcodeEventKind::LocalTee { .. } => {
@@ -381,7 +381,7 @@ impl Event for OpcodeEvent {
                     );
 
                     // add the probes for this event
-                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
             OpcodeEventKind::GlobalGet { .. } => {
@@ -395,7 +395,7 @@ impl Event for OpcodeEvent {
                     );
 
                     // add the probes for this event
-                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
             OpcodeEventKind::GlobalSet { .. } => {
@@ -409,7 +409,7 @@ impl Event for OpcodeEvent {
                     );
 
                     // add the probes for this event
-                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
             OpcodeEventKind::I32Const { .. } => {
@@ -423,7 +423,7 @@ impl Event for OpcodeEvent {
                     );
 
                     // add the probes for this event
-                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
             OpcodeEventKind::I64Const { .. } => {
@@ -437,7 +437,7 @@ impl Event for OpcodeEvent {
                     );
 
                     // add the probes for this event
-                    loc_info.add_probes(self.probe_spec(), &self.probes);
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
         }

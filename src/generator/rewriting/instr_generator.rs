@@ -1,7 +1,7 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::module_emitter::StringAddr;
 use crate::emitter::report_var_metadata::{BytecodeLoc, LocationData, Metadata};
-use crate::emitter::rewriting::rules::{provider_factory, Arg, LocInfo, ProbeSpec, WhammProvider};
+use crate::emitter::rewriting::rules::{provider_factory, Arg, LocInfo, ProbeRule, WhammProvider};
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::Emitter;
 use crate::generator::folding::ExprFolder;
@@ -101,7 +101,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
         // 2. for each instruction (iterate over app_wasm)
         //    1. rules.process_instr() -> Vec<MatchedRules>
         //    2. for each matched probe
-        //       1. enter the scope using (script_id, probe_spec)
+        //       1. enter the scope using (script_id, probe_rule)
         //       2. initialize the symbol table with the metadata at this program point
         //       3. create a new clone of the probe, fold the predicate
         //       4. traverse the behavior tree to emit code! (if predicate is not false)
@@ -122,12 +122,12 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
                             .multiple_alt_matches(self.emitter.curr_instr_name().as_str());
                     }
                     // This location has matched some rules, inject each matched probe!
-                    loc_info.probes.iter().for_each(|(probe_spec, probe)| {
+                    loc_info.probes.iter().for_each(|(probe_rule, probe)| {
                         // Enter the scope for this matched probe
-                        self.set_curr_loc(probe_spec, probe);
+                        self.set_curr_loc(probe_rule, probe);
                         is_success = self
                             .emitter
-                            .enter_scope_via_spec(&probe.script_id, probe_spec);
+                            .enter_scope_via_rule(&probe.script_id, probe_rule);
 
                         // Initialize the symbol table with the metadata at this program point
                         add_to_table(&loc_info.static_data, &mut self.emitter, self.err);
@@ -150,7 +150,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
                         }
 
                         self.curr_instr_args = loc_info.args.clone(); // must clone so that this lives long enough
-                        self.curr_probe_mode = probe_spec.mode.as_ref().unwrap().clone();
+                        self.curr_probe_mode = probe_rule.mode.as_ref().unwrap().clone();
                         self.curr_probe = Some((body_clone, pred_clone));
 
                         // emit the probe (since the predicate is not false)
@@ -166,22 +166,22 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
         is_success &= self.after_run();
         is_success
     }
-    fn set_curr_loc(&mut self, probe_spec: &ProbeSpec, probe: &SimpleProbe) {
+    fn set_curr_loc(&mut self, probe_rule: &ProbeRule, probe: &SimpleProbe) {
         let curr_script_id = probe.script_id.clone();
         self.emitter.curr_num_reports = probe.num_reports;
-        let curr_provider = match &probe_spec.provider {
+        let curr_provider = match &probe_rule.provider {
             Some(provider) => provider.name.clone(),
             None => "".to_string(),
         };
-        let curr_package = match &probe_spec.package {
+        let curr_package = match &probe_rule.package {
             Some(package) => package.name.clone(),
             None => "".to_string(),
         };
-        let curr_event = match &probe_spec.event {
+        let curr_event = match &probe_rule.event {
             Some(event) => event.name.clone(),
             None => "".to_string(),
         };
-        let curr_mode = match &probe_spec.mode {
+        let curr_mode = match &probe_rule.mode {
             Some(mode) => mode.name().clone(),
             None => "".to_string(),
         };

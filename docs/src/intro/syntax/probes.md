@@ -1,10 +1,10 @@
 # Probes #
-`<probe_specification> / <predicate> / { <actions> }`
+`<probe_rule> / <predicate> / { <actions> }`
 
-We use the term `probe` to refer to this triple of `probe_specification`, `predicate` and `actions`.
+We use the term `probe` to refer to this triple of `probe_rule`, `predicate` and `actions`.
 
 When performing bytecode rewriting, `whamm!`:
-1. traverses the application's Wasm module to find the locations-of-interest as specified by each probe's `probe_specification`.
+1. traverses the application's Wasm module to find the locations-of-interest as specified by each probe's `probe_rule`.
 2. checks if the `predicate` evaluates to `false` statically
     - if it does evaluate to `false` it continues on, not injecting the probe's actions
     - if it does not evaluate to `false`, it injects the probe's actions at that location along with the folded `predicate`.
@@ -15,13 +15,13 @@ When performing bytecode rewriting, `whamm!`:
 ## Helpful `info` in CLI ##
 `whamm info --help`
 
-The `info` command provided by the CLI is a great resource to view what can be used as the probe specification.
-This command provides documentation describing the specification parts as well as the globals and functions in scope, which can help users learn about how to build their instrumentation.
+The `info` command provided by the CLI is a great resource to view what can be used as the probe match rule.
+This command provides documentation describing the match rule parts as well as the globals and functions in scope, which can help users learn about how to build their instrumentation.
 
-## The Probe Specification ##
+## The Probe Match Rule ##
 `provider:package:event:mode`
 
-The `probe_specification` is a way to express some "location" you want to instrument for your program.
+The `probe_rule` is a way to express some "location" you want to instrument for your program.
 
 | _part_       | _description_                                                                                                                               |
 |--------------|---------------------------------------------------------------------------------------------------------------------------------------------|
@@ -30,9 +30,9 @@ The `probe_specification` is a way to express some "location" you want to instru
 | **event**    | The name of the `event` that would correlate with the location to insert this probe in the instrumented program.                            |
 | **mode**     | The name of the `mode` that should be used when emitting the probe actions at the `event`'s location, such as `before`, `after`, and `alt`. |
 
-Each part of the `probe_specification` gradually increases in specificity until reaching the `mode` of your probe.
-Consider the following example specification: `wasm:bytecode:br_if:before`.
-This spec can be read as "Insert this probe _before_ each of the _br_if_ _Wasm_ _bytecode_ instructions in my program."
+Each part of the `probe_rule` gradually increases in specificity until reaching the `mode` of your probe.
+Consider the following example match rule: `wasm:bytecode:br_if:before`.
+This rule can be read as "Insert this probe _before_ each of the _br_if_ _Wasm_ _bytecode_ instructions in my program."
 
 Read through our [instrumentable events](../events.md) documentation for what we currently support and our future goals.
 
@@ -46,4 +46,4 @@ If there is no `predicate` for some probe, the `actions` will always execute whe
 ## The Actions ##
 `{ <actions> }`
 
-The `actions` are statements that are executed at the `probe_specification`'s location if the `predicate` evaluates to `true`.
+The `actions` are statements that are executed at the `probe_rule`'s location if the `predicate` evaluates to `true`.

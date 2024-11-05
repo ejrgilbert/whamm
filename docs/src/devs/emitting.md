@@ -49,7 +49,7 @@ This `generator` calls into the `emitter` to gradually traverse the program in s
 Constant propagation and folding are a compiler optimizations that serve a special purpose in `whamm!`.
 There are lots of resources online explaining these concepts if that would be useful to the reader.
 
-The `whamm info` command helps users see various globals that are in scope when using various probe specifications.
+The `whamm info` command helps users see various globals that are in scope when using various probe match rules.
 All of these global variables are defined by `whamm!`'s compiler and _should only be emitted as constant literals_.
 If the variable were ever emitted into an instrumented program or `.v3` monitor, the program would fail to execute since the variable _would not be defined_.
 

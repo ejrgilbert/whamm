@@ -4,7 +4,7 @@ use crate::parser::rules::{
     FromStrWithLoc, NameOptions, Package, PackageInfo, Probe, WhammModeKind,
 };
 use crate::parser::types::{
-    Block, DataType, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal,
+    Block, DataType, Expr, Location, ProbeRule, ProvidedFunction, ProvidedGlobal,
 };
 use std::collections::HashMap;
 use std::mem::discriminant;
@@ -114,7 +114,7 @@ impl Package for WasmPackage {
 
     fn print_event_and_mode_docs(
         &self,
-        probe_spec: &ProbeSpec,
+        probe_rule: &ProbeRule,
         print_globals: bool,
         print_functions: bool,
         tabs: &mut usize,
@@ -128,7 +128,7 @@ impl Package for WasmPackage {
                 tabs,
                 buffer,
             );
-            event.print_mode_docs(probe_spec, print_globals, print_functions, tabs, buffer);
+            event.print_mode_docs(probe_rule, print_globals, print_functions, tabs, buffer);
         }
     }
 
@@ -146,7 +146,7 @@ impl Package for WasmPackage {
 
     fn assign_matching_events(
         &mut self,
-        probe_spec: &ProbeSpec,
+        probe_rule: &ProbeRule,
         loc: Option<Location>,
         predicate: Option<Expr>,
         body: Option<Block>,
@@ -158,7 +158,7 @@ impl Package for WasmPackage {
                 ..
             } => event_factory::<OpcodeEvent>(
                 &mut self.info.events,
-                probe_spec,
+                probe_rule,
                 loc,
                 predicate,
                 body,
@@ -363,7 +363,7 @@ impl Event for OpcodeEvent {
 
     fn print_mode_docs(
         &self,
-        probe_spec: &ProbeSpec,
+        probe_rule: &ProbeRule,
         print_globals: bool,
         print_functions: bool,
         tabs: &mut usize,
@@ -371,7 +371,7 @@ impl Event for OpcodeEvent {
     ) {
         if !self.info.probe_map.is_empty() {
             // we've matched some modes
-            probe_spec.print_bold_mode(buffer);
+            probe_rule.print_bold_mode(buffer);
         }
 
         for (.., probes) in self.info.probe_map.iter() {

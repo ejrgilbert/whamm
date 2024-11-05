@@ -2,7 +2,7 @@ use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::module_emitter::MemoryTracker;
 use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::rewriting::rules::wasm::OpcodeEvent;
-use crate::emitter::rewriting::rules::{Arg, LocInfo, ProbeSpec, Provider, WhammProvider};
+use crate::emitter::rewriting::rules::{Arg, LocInfo, ProbeRule, Provider, WhammProvider};
 use crate::libraries::core::maps::map_adapter::MapLibAdapter;
 use std::collections::HashMap;
 
@@ -14,7 +14,7 @@ use crate::generator::folding::ExprFolder;
 use crate::libraries::core::io::io_adapter::IOAdapter;
 use crate::parser;
 use crate::parser::rules::UNKNOWN_IMMS;
-use crate::parser::types::{Block, DataType, Definition, Expr, SpecPart, Statement, Value};
+use crate::parser::types::{Block, DataType, Definition, Expr, RulePart, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca_wasm::ir::id::{FunctionID, LocalID, TypeID};
 use orca_wasm::ir::module::Module;
@@ -97,15 +97,15 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         self.app_iter.block_alt();
     }
 
-    pub(crate) fn enter_scope_via_spec(&mut self, script_id: &str, probe_spec: &ProbeSpec) -> bool {
-        self.table.enter_scope_via_spec(
+    pub(crate) fn enter_scope_via_rule(&mut self, script_id: &str, probe_rule: &ProbeRule) -> bool {
+        self.table.enter_scope_via_rule(
             script_id,
-            &parser::types::ProbeSpec {
-                provider: probe_spec.provider.clone(),
-                package: probe_spec.package.clone(),
-                event: probe_spec.event.clone(),
-                mode: Some(SpecPart {
-                    name: probe_spec.mode.as_ref().unwrap().name(),
+            &parser::types::ProbeRule {
+                provider: probe_rule.provider.clone(),
+                package: probe_rule.package.clone(),
+                event: probe_rule.event.clone(),
+                mode: Some(RulePart {
+                    name: probe_rule.mode.as_ref().unwrap().name(),
                     loc: None,
                 }),
             },

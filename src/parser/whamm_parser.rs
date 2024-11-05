@@ -1,7 +1,7 @@
 use crate::common::error::{ErrorGen, WhammError};
 use crate::parser::types;
 use crate::parser::types::{
-    BinOp, Block, DataType, Definition, Expr, FnId, Location, ProbeSpec, Rule, Script, SpecPart,
+    BinOp, Block, DataType, Definition, Expr, FnId, Location, ProbeRule, Rule, RulePart, Script,
     Statement, UnOp, Value, Whamm, WhammParser, PRATT_PARSER,
 };
 use log::trace;
@@ -12,25 +12,25 @@ use pest::Parser;
 const UNEXPECTED_ERR_MSG: &str =
     "WhammParser: Looks like you've found a bug...please report this behavior! Exiting now...";
 
-pub fn print_info(spec: String, print_globals: bool, print_functions: bool, err: &mut ErrorGen) {
+pub fn print_info(rule: String, print_globals: bool, print_functions: bool, err: &mut ErrorGen) {
     trace!("Entered print_info");
-    err.set_script_text(spec.to_owned());
+    err.set_script_text(rule.to_owned());
 
-    let res = WhammParser::parse(Rule::PROBE_SPEC, &spec);
+    let res = WhammParser::parse(Rule::PROBE_RULE, &rule);
     match res {
         Ok(mut pairs) => {
-            // Create the probe specification from the input string
-            let probe_spec = handle_probe_spec(
+            // Create the probe rule from the input string
+            let probe_rule = handle_probe_rule(
                 // inner of script
                 pairs.next().unwrap(),
                 err,
             );
 
-            // Print the information for the passed probe specification
+            // Print the information for the passed probe rule
             let mut whamm = Whamm::new();
             let id = whamm.add_script(Script::new());
             let script: &mut Script = whamm.scripts.get_mut(id).unwrap();
-            if let Err(e) = script.print_info(&probe_spec, print_globals, print_functions) {
+            if let Err(e) = script.print_info(&probe_rule, print_globals, print_functions) {
                 err.add_error(*e);
             }
         }
@@ -198,9 +198,9 @@ pub fn handle_probe_def(
     err: &mut ErrorGen,
 ) {
     let mut pair = pair.into_inner();
-    let spec_rule = pair.next().unwrap();
-    // Get out the spec info
-    let probe_spec = handle_probe_spec(spec_rule, err);
+    let rule_rule = pair.next().unwrap();
+    // Get out the rule info
+    let probe_rule = handle_probe_rule(rule_rule, err);
 
     // Get out the probe predicate/body contents
     let next = pair.next();
@@ -240,7 +240,7 @@ pub fn handle_probe_def(
 
     // Add probe definition to the script
     let script: &mut Script = whamm.scripts.get_mut(script_count).unwrap();
-    if let Err(e) = script.add_probe(&probe_spec, this_predicate, this_body) {
+    if let Err(e) = script.add_probe(&probe_rule, this_predicate, this_body) {
         err.add_error(*e);
     }
 }
@@ -311,15 +311,15 @@ pub fn handle_fn_def(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, e
     });
 }
 
-fn handle_probe_spec(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeSpec {
+fn handle_probe_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeRule {
     match pair.as_rule() {
-        Rule::PROBE_SPEC => probe_spec_from_rule(pair, err),
+        Rule::PROBE_RULE => probe_rule_from_rule(pair, err),
         rule => {
             err.parse_error(
                 true,
                 Some(UNEXPECTED_ERR_MSG.to_string()),
                 Some(LineColLocation::from(pair.as_span())),
-                vec![Rule::PROBE_SPEC],
+                vec![Rule::PROBE_RULE],
                 vec![rule],
             );
             // should have exited above (since it's a fatal error)
@@ -1102,13 +1102,13 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
 // = LOWER-LEVEL HELPER FUNCTIONS =
 // ================================
 
-// PROBE SPECIFICATIONS (MATCH RULES)
+// PROBE MATCH RULES
 
-fn probe_spec_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeSpec {
-    let spec_as_str = pair.as_str();
+fn probe_rule_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeRule {
+    let rule_as_str = pair.as_str();
     let mut parts = pair.into_inner();
 
-    if spec_as_str.to_uppercase() == "BEGIN" || spec_as_str.to_uppercase() == "END" {
+    if rule_as_str.to_uppercase() == "BEGIN" || rule_as_str.to_uppercase() == "END" {
         // This is a BEGIN or END probe! Special case
         let loc = if let Some(rule) = parts.next() {
             let id_line_col = LineColLocation::from(rule.as_span());
@@ -1120,33 +1120,33 @@ fn probe_spec_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeSpec {
             None
         };
 
-        return ProbeSpec {
-            provider: Some(SpecPart {
+        return ProbeRule {
+            provider: Some(RulePart {
                 name: "core".to_string(),
                 loc: loc.clone(),
             }),
-            package: Some(SpecPart {
+            package: Some(RulePart {
                 name: "*".to_string(),
                 loc: loc.clone(),
             }),
-            event: Some(SpecPart {
+            event: Some(RulePart {
                 name: "*".to_string(),
                 loc: loc.clone(),
             }),
-            mode: Some(SpecPart {
-                name: spec_as_str.to_string(),
+            mode: Some(RulePart {
+                name: rule_as_str.to_string(),
                 loc,
             }),
         };
     }
 
-    let str_parts = spec_as_str.split(':');
+    let str_parts = rule_as_str.split(':');
 
-    let mut probe_spec = ProbeSpec::new();
+    let mut probe_rule = ProbeRule::new();
     let mut contents: Vec<String> = vec![];
     for s in str_parts {
         if s.is_empty() {
-            probe_spec.add_spec_def(SpecPart {
+            probe_rule.add_rule_def(RulePart {
                 name: "*".to_string(),
                 loc: None,
             });
@@ -1158,11 +1158,11 @@ fn probe_spec_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeSpec {
         match next {
             Some(part) => match part.as_rule() {
                 Rule::PROBE_ID => {
-                    let n = probe_spec_part_from_rule(part, err);
-                    probe_spec.add_spec_def(n);
+                    let n = probe_rule_part_from_rule(part, err);
+                    probe_rule.add_rule_def(n);
                 }
                 _ => {
-                    probe_spec.add_spec_def(SpecPart {
+                    probe_rule.add_rule_def(RulePart {
                         name: "*".to_string(),
                         loc: None,
                     });
@@ -1173,20 +1173,19 @@ fn probe_spec_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeSpec {
             }
         };
     }
-    trace!("Exiting PROBE_SPEC");
-    trace!("Exiting probe_spec_from_rule");
+    trace!("Exiting probe_rule_from_rule");
 
-    probe_spec
+    probe_rule
 }
 
-fn probe_spec_part_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> SpecPart {
+fn probe_rule_part_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> RulePart {
     match pair.as_rule() {
         Rule::PROBE_ID => {
             trace!("Entering PROBE_ID");
             let name: String = pair.as_str().parse().unwrap();
             let id_line_col = LineColLocation::from(pair.as_span());
 
-            let part = SpecPart {
+            let part = RulePart {
                 name,
                 loc: Some(Location {
                     line_col: id_line_col,
@@ -1195,7 +1194,7 @@ fn probe_spec_part_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> SpecPart {
             };
             trace!("Exiting PROBE_ID");
 
-            trace!("Exiting probe_spec_part_from_rule");
+            trace!("Exiting probe_rule_part_from_rule");
             part
         }
         rule => {

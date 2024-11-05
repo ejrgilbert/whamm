@@ -1,6 +1,6 @@
 use crate::common::error::ErrorGen;
 use crate::libraries::core::WHAMM_CORE_LIB_NAME;
-use crate::parser::types::{DataType, Definition, FnId, Location, ProbeSpec, Value};
+use crate::parser::types::{DataType, Definition, FnId, Location, ProbeRule, Value};
 use pest::error::LineColLocation;
 use std::collections::HashMap;
 use std::fmt;
@@ -94,18 +94,18 @@ impl SymbolTable {
         false
     }
 
-    pub fn enter_scope_via_spec(&mut self, script_id: &str, probe_spec: &ProbeSpec) -> bool {
+    pub fn enter_scope_via_rule(&mut self, script_id: &str, probe_rule: &ProbeRule) -> bool {
         let mut is_success = true;
 
         self.reset();
         is_success &= self.enter_named_scope(script_id);
-        if let Some(provider) = &probe_spec.provider {
+        if let Some(provider) = &probe_rule.provider {
             is_success &= self.enter_named_scope(&provider.name);
-            if let Some(package) = &probe_spec.package {
+            if let Some(package) = &probe_rule.package {
                 is_success &= self.enter_named_scope(&package.name);
-                if let Some(event) = &probe_spec.event {
+                if let Some(event) = &probe_rule.event {
                     is_success &= self.enter_named_scope(&event.name);
-                    if let Some(mode) = &probe_spec.mode {
+                    if let Some(mode) = &probe_rule.mode {
                         is_success &= self.enter_named_scope(&mode.name);
                     }
                 }

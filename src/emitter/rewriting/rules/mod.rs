@@ -3,7 +3,7 @@ use crate::emitter::rewriting::rules::wasm::{OpcodeEvent, WasmPackage};
 use crate::generator::rewriting::simple_ast::{SimpleAstProbes, SimpleProbe};
 use crate::parser::rules::core::WhammModeKind;
 use crate::parser::rules::{FromStr, WhammProviderKind};
-use crate::parser::types::{DataType, SpecPart, Value};
+use crate::parser::types::{DataType, RulePart, Value};
 use orca_wasm::ir::module::Module;
 use orca_wasm::ir::types::DataType as OrcaType;
 use orca_wasm::Location;
@@ -111,10 +111,10 @@ impl Arg {
 }
 
 #[derive(Clone, Debug)]
-pub struct ProbeSpec {
-    pub provider: Option<SpecPart>,
-    pub package: Option<SpecPart>,
-    pub event: Option<SpecPart>,
+pub struct ProbeRule {
+    pub provider: Option<RulePart>,
+    pub package: Option<RulePart>,
+    pub event: Option<RulePart>,
     pub mode: Option<WhammModeKind>,
 }
 
@@ -129,7 +129,7 @@ pub struct LocInfo<'a> {
     pub num_alt_probes: usize,
     /// the probes that were matched for this instruction
     /// note the Script ID is contained in SimpleProbe
-    pub probes: Vec<(ProbeSpec, &'a SimpleProbe)>,
+    pub probes: Vec<(ProbeRule, &'a SimpleProbe)>,
 }
 impl<'a> LocInfo<'a> {
     fn new() -> Self {
@@ -140,19 +140,19 @@ impl<'a> LocInfo<'a> {
     }
     fn add_probes(
         &mut self,
-        base_spec: ProbeSpec,
+        base_rule: ProbeRule,
         probes: &'a HashMap<WhammModeKind, Vec<SimpleProbe>>,
     ) {
         probes.iter().for_each(|(probe_mode, probes)| {
-            let mut spec = base_spec.clone();
-            spec.mode = Some(probe_mode.clone());
+            let mut rule = base_rule.clone();
+            rule.mode = Some(probe_mode.clone());
 
             if matches!(probe_mode, WhammModeKind::Alt) {
                 // this is an alt probe, mark it with the number!
                 self.num_alt_probes += probes.len();
             }
             probes.iter().for_each(|probe| {
-                self.probes.push((spec.clone(), probe));
+                self.probes.push((rule.clone(), probe));
             });
         })
     }

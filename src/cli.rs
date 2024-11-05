@@ -18,18 +18,18 @@ pub enum Cmd {
     //     #[arg(arg_enum)]
     //     shell: Shell,
     // },
-    /// To provide the globals and functions available for the given probe specification.
-    /// To use this option, simply follow the command with a full or partial specification
+    /// To provide the globals and functions available for the given probe match rule.
+    /// To use this option, simply follow the command with a full or partial match rule
     /// (use pattern matching to see what would be triggered).
     Info {
         #[arg(short, long, value_parser)]
-        spec: String,
+        rule: String,
 
-        /// Show the globals in-scope when using the probe specification.
+        /// Show the globals in-scope when using the probe match rule.
         #[arg(long, short, action, default_value = "false")]
         globals: bool,
 
-        /// Show the functions in-scope when using the probe specification.
+        /// Show the functions in-scope when using the probe match rule.
         #[arg(long, short, action, default_value = "false")]
         functions: bool,
     },

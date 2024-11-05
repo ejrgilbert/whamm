@@ -104,7 +104,7 @@ cargo run
 
 ## Available Packages ##
 
-NOTE: There was discussion for moving the probe `mode` to the front of the specification (e.g. `mode:provider:package:event`);
+NOTE: There was discussion for moving the probe `mode` to the front of the match rule (e.g. `mode:provider:package:event`);
 however, after thinking through this, I don't think it makes sense until I have a firmer grasp on the types of modes we will
 have in this language. If there are more than before/after/alt (that are event-specific), then it would be confusing from a
 language-intuition perspective. This is primarily because reading through the spec implies a movement from higher-to-lower

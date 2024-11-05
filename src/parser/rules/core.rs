@@ -4,7 +4,7 @@ use crate::parser::rules::{
     event_factory, print_mode_docs, Event, EventInfo, FromStr, FromStrWithLoc, Mode, ModeInfo,
     NameOptions, Package, PackageInfo, Probe,
 };
-use crate::parser::types::{Block, Expr, Location, ProbeSpec, ProvidedFunction, ProvidedGlobal};
+use crate::parser::types::{Block, Expr, Location, ProbeRule, ProvidedFunction, ProvidedGlobal};
 use std::collections::HashMap;
 use std::mem::discriminant;
 use termcolor::Buffer;
@@ -96,7 +96,7 @@ impl Package for CorePackage {
 
     fn print_event_and_mode_docs(
         &self,
-        probe_spec: &ProbeSpec,
+        probe_rule: &ProbeRule,
         print_globals: bool,
         print_functions: bool,
         tabs: &mut usize,
@@ -110,7 +110,7 @@ impl Package for CorePackage {
                 tabs,
                 buffer,
             );
-            event.print_mode_docs(probe_spec, print_globals, print_functions, tabs, buffer);
+            event.print_mode_docs(probe_rule, print_globals, print_functions, tabs, buffer);
         }
     }
 
@@ -128,7 +128,7 @@ impl Package for CorePackage {
 
     fn assign_matching_events(
         &mut self,
-        probe_spec: &ProbeSpec,
+        probe_rule: &ProbeRule,
         loc: Option<Location>,
         predicate: Option<Expr>,
         body: Option<Block>,
@@ -140,7 +140,7 @@ impl Package for CorePackage {
                 ..
             } => event_factory::<CoreEvent>(
                 &mut self.info.events,
-                probe_spec,
+                probe_rule,
                 loc,
                 predicate,
                 body,
@@ -233,7 +233,7 @@ impl Event for CoreEvent {
 
     fn print_mode_docs(
         &self,
-        probe_spec: &ProbeSpec,
+        probe_rule: &ProbeRule,
         print_globals: bool,
         print_functions: bool,
         tabs: &mut usize,
@@ -241,7 +241,7 @@ impl Event for CoreEvent {
     ) {
         if !self.info.probe_map.is_empty() {
             // we've matched some modes
-            probe_spec.print_bold_mode(buffer);
+            probe_rule.print_bold_mode(buffer);
         }
 
         for (.., probes) in self.info.probe_map.iter() {
@@ -277,13 +277,13 @@ impl Event for CoreEvent {
 
     // fn assign_matching_modes(
     //     &mut self,
-    //     probe_spec: &ProbeSpec,
+    //     probe_rule: &ProbeRule,
     //     loc: Option<Location>,
     //     predicate: Option<Expr>,
     //     body: Option<Block>,
     // ) -> bool {
     //     let mut matched_modes = false;
-    //     let modes: Vec<Box<WhammMode>> = mode_factory(&self.info.supported_modes, probe_spec, loc.clone());
+    //     let modes: Vec<Box<WhammMode>> = mode_factory(&self.info.supported_modes, probe_rule, loc.clone());
     //     let probes = self.probes_mut();
     //     for mode in modes {
     //         matched_modes = true;

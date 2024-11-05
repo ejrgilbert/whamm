@@ -6,8 +6,8 @@ use crate::common::terminal::{magenta_italics, white};
 use crate::parser::rules::core::{CorePackage, WhammMode, WhammModeKind, WhammProbe};
 use crate::parser::rules::wasm::WasmPackage;
 use crate::parser::types::{
-    print_fns, print_global_vars, Block, DataType, Definition, Expr, Location, ProbeSpec,
-    ProvidedFunction, ProvidedGlobal, SpecPart,
+    print_fns, print_global_vars, Block, DataType, Definition, Expr, Location, ProbeRule,
+    ProvidedFunction, ProvidedGlobal, RulePart,
 };
 use glob::Pattern;
 use std::collections::HashMap;
@@ -44,7 +44,7 @@ pub trait Provider {
     );
     fn print_event_and_mode_docs(
         &self,
-        probe_spec: &ProbeSpec,
+        probe_rule: &ProbeRule,
         print_globals: bool,
         print_functions: bool,
         tabs: &mut usize,
@@ -55,7 +55,7 @@ pub trait Provider {
     fn get_provided_globals(&self) -> &HashMap<String, ProvidedGlobal>;
     fn assign_matching_packages(
         &mut self,
-        probe_spec: &ProbeSpec,
+        probe_rule: &ProbeRule,
         loc: Option<Location>,
         predicate: Option<Expr>,
         body: Option<Block>,
@@ -69,16 +69,16 @@ pub trait Provider {
 /// 3: bool, whether there were matched modes
 pub fn provider_factory<P: Provider + NameOptions + FromStrWithLoc + 'static>(
     curr_providers: &mut HashMap<String, Box<dyn Provider>>,
-    probe_spec: &ProbeSpec,
+    probe_rule: &ProbeRule,
     loc: Option<Location>,
     predicate: Option<Expr>,
     body: Option<Block>,
     printing_info: bool,
 ) -> Result<(bool, bool, bool, bool), Box<WhammError>> {
-    if let Some(SpecPart {
+    if let Some(RulePart {
         name: provider_patt,
         loc: provider_loc,
-    }) = &probe_spec.provider
+    }) = &probe_rule.provider
     {
         let matches = get_matches(P::get_name_options(), provider_patt);
         if matches.is_empty() {
@@ -103,13 +103,13 @@ pub fn provider_factory<P: Provider + NameOptions + FromStrWithLoc + 'static>(
                 .entry(m.clone())
                 .or_insert(Box::new(P::from_str(&m, loc.clone())));
 
-            let (found_package, found_events, found_modes) = if let Some(SpecPart {
+            let (found_package, found_events, found_modes) = if let Some(RulePart {
                 loc: package_loc,
                 ..
-            }) = &probe_spec.package
+            }) = &probe_rule.package
             {
                 provider.assign_matching_packages(
-                    probe_spec,
+                    probe_rule,
                     package_loc.to_owned(),
                     predicate.clone(),
                     body.clone(),
@@ -122,14 +122,14 @@ pub fn provider_factory<P: Provider + NameOptions + FromStrWithLoc + 'static>(
                 // If this matched provider wasn't already present, we need to remove.
                 // Otherwise, we'd have providers with no probes in them!
                 // ONLY DO THIS IF NOT PRINTING INFO, this allows users to get information without
-                // complete probe specs.
+                // complete probe rules.
                 curr_providers.remove(&m.clone());
             }
             matched_packages |= found_package;
             matched_events |= found_events;
             matched_modes |= found_modes;
         }
-        if !matched_providers && probe_spec.provider.is_some() {
+        if !matched_providers && probe_rule.provider.is_some() {
             let loc = provider_loc.as_ref().map(|loc| loc.line_col.clone());
             return Err(Box::new(ErrorGen::get_parse_error(
                 true,
@@ -139,8 +139,8 @@ pub fn provider_factory<P: Provider + NameOptions + FromStrWithLoc + 'static>(
                 vec![],
             )));
         }
-        if !matched_packages && probe_spec.package.is_some() {
-            let loc = probe_spec
+        if !matched_packages && probe_rule.package.is_some() {
+            let loc = probe_rule
                 .package
                 .as_ref()
                 .unwrap()
@@ -155,8 +155,8 @@ pub fn provider_factory<P: Provider + NameOptions + FromStrWithLoc + 'static>(
                 vec![],
             )));
         }
-        if !matched_events && probe_spec.event.is_some() {
-            let loc = probe_spec
+        if !matched_events && probe_rule.event.is_some() {
+            let loc = probe_rule
                 .event
                 .as_ref()
                 .unwrap()
@@ -171,8 +171,8 @@ pub fn provider_factory<P: Provider + NameOptions + FromStrWithLoc + 'static>(
                 vec![],
             )));
         }
-        if !matched_modes && probe_spec.mode.is_some() {
-            let loc = probe_spec
+        if !matched_modes && probe_rule.mode.is_some() {
+            let loc = probe_rule
                 .mode
                 .as_ref()
                 .unwrap()
@@ -252,7 +252,7 @@ pub trait Package {
     fn events_mut(&mut self) -> Box<dyn Iterator<Item = &mut dyn Event> + '_>;
     fn print_event_and_mode_docs(
         &self,
-        probe_spec: &ProbeSpec,
+        probe_rule: &ProbeRule,
         print_globals: bool,
         print_functions: bool,
         tabs: &mut usize,
@@ -263,7 +263,7 @@ pub trait Package {
     fn get_provided_globals(&self) -> &HashMap<String, ProvidedGlobal>;
     fn assign_matching_events(
         &mut self,
-        probe_spec: &ProbeSpec,
+        probe_rule: &ProbeRule,
         loc: Option<Location>,
         predicate: Option<Expr>,
         body: Option<Block>,
@@ -289,15 +289,15 @@ pub struct PackageInfo {
 /// 3: bool, whether there were matched modes
 fn package_factory<P: Package + NameOptions + FromStrWithLoc + 'static>(
     curr_packages: &mut HashMap<String, Box<dyn Package>>,
-    probe_spec: &ProbeSpec,
+    probe_rule: &ProbeRule,
     loc: Option<Location>,
     predicate: Option<Expr>,
     body: Option<Block>,
     printing_info: bool,
 ) -> (bool, bool, bool) {
-    if let Some(SpecPart {
+    if let Some(RulePart {
         name: package_patt, ..
-    }) = &probe_spec.package
+    }) = &probe_rule.package
     {
         let matches = get_matches(P::get_name_options(), package_patt);
         if matches.is_empty() {
@@ -315,9 +315,9 @@ fn package_factory<P: Package + NameOptions + FromStrWithLoc + 'static>(
                 .or_insert(Box::new(P::from_str(&m, loc.clone())));
 
             let (found_match_for_event, found_match_for_mode) =
-                if let Some(SpecPart { loc: event_loc, .. }) = &probe_spec.event {
+                if let Some(RulePart { loc: event_loc, .. }) = &probe_rule.event {
                     package.assign_matching_events(
-                        probe_spec,
+                        probe_rule,
                         event_loc.to_owned(),
                         predicate.clone(),
                         body.clone(),
@@ -330,7 +330,7 @@ fn package_factory<P: Package + NameOptions + FromStrWithLoc + 'static>(
                 // If this matched package wasn't already present, we need to remove.
                 // Otherwise, we'd have packages with no probes in them!
                 // ONLY DO THIS IF NOT PRINTING INFO, this allows users to get information without
-                // complete probe specs.
+                // complete probe rules.
                 curr_packages.remove(&m.clone());
             }
             matched_events |= found_match_for_event;
@@ -410,7 +410,7 @@ pub trait Event {
     fn probes_mut(&mut self) -> &mut HashMap<String, Vec<Box<dyn Probe>>>;
     fn print_mode_docs(
         &self,
-        probe_spec: &ProbeSpec,
+        probe_rule: &ProbeRule,
         print_globals: bool,
         print_functions: bool,
         tabs: &mut usize,
@@ -421,14 +421,14 @@ pub trait Event {
     fn get_provided_globals(&self) -> &HashMap<String, ProvidedGlobal>;
     fn assign_matching_modes(
         &mut self,
-        probe_spec: &ProbeSpec,
+        probe_rule: &ProbeRule,
         loc: Option<Location>,
         predicate: Option<Expr>,
         body: Option<Block>,
     ) -> bool {
         let mut matched_modes = false;
         let modes: Vec<Box<WhammMode>> =
-            mode_factory(self.supported_modes(), probe_spec, loc.clone());
+            mode_factory(self.supported_modes(), probe_rule, loc.clone());
         let probes = self.probes_mut();
         for mode in modes {
             matched_modes = true;
@@ -463,15 +463,15 @@ pub struct EventInfo {
 /// 3: bool, whether there were matched modes
 fn event_factory<E: Event + NameOptions + FromStrWithLoc + 'static>(
     curr_events: &mut HashMap<String, Box<dyn Event>>,
-    probe_spec: &ProbeSpec,
+    probe_rule: &ProbeRule,
     loc: Option<Location>,
     predicate: Option<Expr>,
     body: Option<Block>,
     printing_info: bool,
 ) -> (bool, bool) {
-    if let Some(SpecPart {
+    if let Some(RulePart {
         name: event_patt, ..
-    }) = &probe_spec.event
+    }) = &probe_rule.event
     {
         let matches = get_matches(E::get_name_options(), event_patt);
         if matches.is_empty() {
@@ -488,9 +488,9 @@ fn event_factory<E: Event + NameOptions + FromStrWithLoc + 'static>(
                 .or_insert(Box::new(E::from_str(&m, loc.clone())));
 
             let found_match_for_mode =
-                if let Some(SpecPart { loc: mode_loc, .. }) = &probe_spec.mode {
+                if let Some(RulePart { loc: mode_loc, .. }) = &probe_rule.mode {
                     event.assign_matching_modes(
-                        probe_spec,
+                        probe_rule,
                         mode_loc.to_owned(),
                         predicate.clone(),
                         body.clone(),
@@ -502,7 +502,7 @@ fn event_factory<E: Event + NameOptions + FromStrWithLoc + 'static>(
                 // If this matched package wasn't already present, we need to remove.
                 // Otherwise, we'd have packages with no probes in them!
                 // ONLY DO THIS IF NOT PRINTING INFO, this allows users to get information without
-                // complete probe specs.
+                // complete probe rules.
                 curr_events.remove(&m.clone());
             }
             matched_modes |= found_match_for_mode;
@@ -566,12 +566,12 @@ pub trait Mode {
 /// 0: Box<Self> the matched provider instance
 fn mode_factory<M: Mode + NameOptions + FromStrWithLoc>(
     supported_modes: &HashMap<String, WhammModeKind>,
-    probe_spec: &ProbeSpec,
+    probe_rule: &ProbeRule,
     loc: Option<Location>,
 ) -> Vec<Box<M>> {
-    if let Some(SpecPart {
+    if let Some(RulePart {
         name: mode_patt, ..
-    }) = &probe_spec.mode
+    }) = &probe_rule.mode
     {
         let mut name_options = vec![];
         for (alias, ..) in supported_modes {
@@ -813,7 +813,7 @@ impl Provider for WhammProvider {
 
     fn print_event_and_mode_docs(
         &self,
-        probe_spec: &ProbeSpec,
+        probe_rule: &ProbeRule,
         print_globals: bool,
         print_functions: bool,
         tabs: &mut usize,
@@ -821,7 +821,7 @@ impl Provider for WhammProvider {
     ) {
         for (.., package) in self.info.packages.iter() {
             package.print_event_and_mode_docs(
-                probe_spec,
+                probe_rule,
                 print_globals,
                 print_functions,
                 tabs,
@@ -844,7 +844,7 @@ impl Provider for WhammProvider {
 
     fn assign_matching_packages(
         &mut self,
-        probe_spec: &ProbeSpec,
+        probe_spec: &ProbeRule,
         loc: Option<Location>,
         predicate: Option<Expr>,
         body: Option<Block>,
