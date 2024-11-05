@@ -46,11 +46,11 @@ fn try_main() -> Result<(), failure::Error> {
 
     match cli.command {
         Cmd::Info {
-            spec,
+            rule,
             globals,
             functions,
         } => {
-            run_info(spec, globals, functions);
+            run_info(rule, globals, functions);
         }
         Cmd::Wast { wast_path } => {
             run_wast(wast_path);
@@ -78,10 +78,10 @@ fn try_main() -> Result<(), failure::Error> {
     Ok(())
 }
 
-fn run_info(spec: String, print_globals: bool, print_functions: bool) {
+fn run_info(rule: String, print_globals: bool, print_functions: bool) {
     // Parse the script and generate the information
-    let mut err = ErrorGen::new("".to_string(), spec.clone(), MAX_ERRORS);
-    print_info(spec, print_globals, print_functions, &mut err);
+    let mut err = ErrorGen::new("".to_string(), rule.clone(), MAX_ERRORS);
+    print_info(rule, print_globals, print_functions, &mut err);
 
     err.fatal_report("PrintInfo");
 }

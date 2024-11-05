@@ -8,7 +8,7 @@ During verification, first the `SymbolTable` is build from the AST.
 There are great resources online that teach about symbol tables if that is helpful for any readers.
 
 At a high-level, the `SymbolTable` stores **metadata** about source code **symbols**.
-For `.mm` scripts, symbols can be parts of the probe specification (e.g. provider, package, event, and mode), function names, and variables (local or global).
+For `.mm` scripts, symbols can be parts of the probe match rule (e.g. provider, package, event, and mode), function names, and variables (local or global).
 The `enum` named `Record` in the [`verifier/types.rs`] file defines these symbols and the metadata-of-interest for each of them.
 
 The **metadata**-of-interest tends to be _type information_ and _addressing_ that corresponds to the ID assigned to the symbol after it's been emitted into the Wasm program.
@@ -24,11 +24,11 @@ The concept of scopes in this context is the same as in other programming langua
 A scope defines where variables and functions are accessible based on their location in a program.
 
 In the context of `whamm!` there are some scopes that exist but aren't accessible to the end-user.
-Consider the probe specification: `provider:package:event:mode`.
-Each part of this specification really has its own scope.
+Consider the probe match rule: `provider:package:event:mode`.
+Each part of this match rule really has its own scope.
 This enables each part to introduce its own helpful global variables and functions that the user can leverage to write more expressive instrumentation!
 These provided globals and functions are added to the AST in the [`whamm_parser.rs`] file.
-See the [probes syntax documentation] for a helpful CLI tool that enables the user to see what is in-scope for any given probe specification.
+See the [probes syntax documentation] for a helpful CLI tool that enables the user to see what is in-scope for any given probe match rule.
 
 
 [`verifier/types.rs`]: https://github.com/ejrgilbert/whamm/blob/master/src/verifier/types.rs

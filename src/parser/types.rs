@@ -607,26 +607,26 @@ impl Whamm {
     }
 }
 
-/// SpecPart are the probe ids in a probe spec
+/// RulePart are the probe ids in a probe rule
 #[derive(Clone, Debug)]
-pub struct SpecPart {
+pub struct RulePart {
     pub name: String,
     pub loc: Option<Location>,
 }
 
 #[derive(Clone, Debug)]
-pub struct ProbeSpec {
-    pub provider: Option<SpecPart>,
-    pub package: Option<SpecPart>,
-    pub event: Option<SpecPart>,
-    pub mode: Option<SpecPart>,
+pub struct ProbeRule {
+    pub provider: Option<RulePart>,
+    pub package: Option<RulePart>,
+    pub event: Option<RulePart>,
+    pub mode: Option<RulePart>,
 }
-impl Default for ProbeSpec {
+impl Default for ProbeRule {
     fn default() -> Self {
         Self::new()
     }
 }
-impl ProbeSpec {
+impl ProbeRule {
     pub fn new() -> Self {
         Self {
             provider: None,
@@ -644,7 +644,7 @@ impl ProbeSpec {
             &self.mode.as_ref().unwrap().name
         )
     }
-    pub fn add_spec_def(&mut self, part: SpecPart) {
+    pub fn add_rule_def(&mut self, part: RulePart) {
         if self.provider.is_none() {
             self.provider = Some(part);
             return;
@@ -778,7 +778,7 @@ impl Script {
 
     pub fn print_info(
         &mut self,
-        probe_spec: &ProbeSpec,
+        probe_rule: &ProbeRule,
         print_globals: bool,
         print_functions: bool,
     ) -> Result<(), Box<WhammError>> {
@@ -810,11 +810,11 @@ impl Script {
 
         let mut providers: HashMap<String, Box<dyn Provider>> = HashMap::new();
         let (matched_providers, matched_packages, matched_events, _matched_modes) =
-            provider_factory::<WhammProvider>(&mut providers, probe_spec, None, None, None, true)?;
+            provider_factory::<WhammProvider>(&mut providers, probe_rule, None, None, None, true)?;
 
         // Print the matched provider information
         if matched_providers {
-            probe_spec.print_bold_provider(&mut buffer);
+            probe_rule.print_bold_provider(&mut buffer);
         }
         for (.., provider) in providers.iter() {
             print_provider_docs(
@@ -830,7 +830,7 @@ impl Script {
 
         // Print the matched package information
         if matched_packages {
-            probe_spec.print_bold_package(&mut buffer);
+            probe_rule.print_bold_package(&mut buffer);
         }
         for (.., provider) in providers.iter() {
             provider.print_package_docs(print_globals, print_functions, &mut tabs, &mut buffer);
@@ -840,11 +840,11 @@ impl Script {
 
         // Print the matched event information
         if matched_events {
-            probe_spec.print_bold_event(&mut buffer);
+            probe_rule.print_bold_event(&mut buffer);
         }
         for (.., provider) in providers.iter() {
             provider.print_event_and_mode_docs(
-                probe_spec,
+                probe_rule,
                 print_globals,
                 print_functions,
                 &mut tabs,
@@ -856,7 +856,7 @@ impl Script {
 
         // // Print the matched mode information
         // if matched_modes {
-        //     probe_spec.print_bold_mode(&mut buffer);
+        //     probe_rule.print_bold_mode(&mut buffer);
         // }
         // for (.., provider) in providers.iter() {
         //     provider.print_mode_docs(print_globals, print_functions, &mut tabs, &mut buffer);
@@ -884,7 +884,7 @@ impl Script {
     /// to add a copy of the user-defined Probe for each of them.
     pub fn add_probe(
         &mut self,
-        probe_spec: &ProbeSpec,
+        probe_rule: &ProbeRule,
         predicate: Option<Expr>,
         body: Option<Block>,
     ) -> Result<(), Box<WhammError>> {
@@ -895,7 +895,7 @@ impl Script {
             bool,
         ) = provider_factory::<WhammProvider>(
             &mut self.providers,
-            probe_spec,
+            probe_rule,
             None,
             predicate,
             body,
@@ -903,7 +903,7 @@ impl Script {
         )?;
 
         if !matched_providers {
-            return if let Some(prov_patt) = &probe_spec.provider {
+            return if let Some(prov_patt) = &probe_rule.provider {
                 Err(Box::new(ErrorGen::get_parse_error(
                     true,
                     Some(format!(
@@ -926,7 +926,7 @@ impl Script {
         }
 
         if !matched_packages {
-            return if let Some(prov_patt) = &probe_spec.package {
+            return if let Some(prov_patt) = &probe_rule.package {
                 Err(Box::new(ErrorGen::get_parse_error(
                     true,
                     Some(format!(
@@ -949,7 +949,7 @@ impl Script {
         }
 
         if !matched_events {
-            return if let Some(prov_patt) = &probe_spec.event {
+            return if let Some(prov_patt) = &probe_rule.event {
                 Err(Box::new(ErrorGen::get_parse_error(
                     true,
                     Some(format!(
@@ -972,7 +972,7 @@ impl Script {
         }
 
         if !matched_modes {
-            return if let Some(prov_patt) = &probe_spec.mode {
+            return if let Some(prov_patt) = &probe_rule.mode {
                 Err(Box::new(ErrorGen::get_parse_error(
                     true,
                     Some(format!(
