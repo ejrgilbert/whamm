@@ -1,5 +1,5 @@
 wasm:opcode:call:before {
-    alloc i32 count;
+    unshared i32 count;
     report i32 rep_count;
 
     count++;

@@ -121,7 +121,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         let mut params = vec![];
         let mut param_str = "".to_string();
 
-        // TODO(alloc) -- handle $alloc param (if there are alloc vars)
+        // TODO(unshared) -- handle $alloc param (if there are unshared vars)
         for (local_id, (param_name, param_ty)) in param_reqs.iter().enumerate() {
             // handle param list
             params.push(whamm_type_to_wasm_type(param_ty));
@@ -164,7 +164,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
             script_id: self.curr_script_id.clone(),
             bytecode_loc: BytecodeLoc::new(0, 0), // TODO -- request this from wizard
             probe_id,
-            num_allocs: probe.num_allocs, //this is still used in the emitter to determine how many new globals to emit
+            num_unshared: probe.num_unshared, //this is still used in the emitter to determine how many new globals to emit
         }
     }
 
@@ -185,11 +185,11 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
             (None, "".to_string())
         };
 
-        // create the probe's alloc variable globals!
-        for _ in 0..probe.num_allocs {
+        // create the probe's unshared variable globals!
+        for _ in 0..probe.num_unshared {
             let (global_id, ..) = whamm_type_to_wasm_global(self.emitter.app_wasm, &DataType::I32);
             self.emitter
-                .alloc_var_handler
+                .unshared_var_handler
                 .available_i32_gids
                 .push(*global_id);
         }

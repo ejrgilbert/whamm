@@ -11,7 +11,7 @@ use crate::emitter::utils::{
 };
 use crate::emitter::{configure_flush_routines, Emitter, InjectStrategy};
 use crate::generator::folding::ExprFolder;
-use crate::lang_features::alloc_vars::rewriting::AllocVarHandler;
+use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::parser;
 use crate::parser::rules::UNKNOWN_IMMS;
@@ -37,9 +37,9 @@ pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub map_lib_adapter: &'e mut MapLibAdapter,
     pub io_adapter: &'f mut IOAdapter,
     pub(crate) report_var_metadata: &'g mut ReportVarMetadata,
-    pub(crate) alloc_var_handler: &'g mut AllocVarHandler,
+    pub(crate) unshared_var_handler: &'g mut UnsharedVarHandler,
     instr_created_args: Vec<(String, usize)>,
-    pub curr_num_allocs: i32,
+    pub curr_num_unshared: i32,
 }
 
 impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
@@ -53,7 +53,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         map_lib_adapter: &'e mut MapLibAdapter,
         io_adapter: &'f mut IOAdapter,
         report_var_metadata: &'g mut ReportVarMetadata,
-        alloc_var_handler: &'g mut AllocVarHandler,
+        unshared_var_handler: &'g mut UnsharedVarHandler,
     ) -> Self {
         let a = Self {
             strategy,
@@ -63,9 +63,9 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             map_lib_adapter,
             io_adapter,
             report_var_metadata,
-            alloc_var_handler,
+            unshared_var_handler,
             instr_created_args: vec![],
-            curr_num_allocs: 0,
+            curr_num_unshared: 0,
         };
 
         a
@@ -390,7 +390,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     self.mem_tracker,
                     self.map_lib_adapter,
                     self.report_var_metadata,
-                    self.alloc_var_handler,
+                    self.unshared_var_handler,
                     UNEXPECTED_ERR_MSG,
                     err,
                 );
@@ -744,9 +744,11 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
 impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
     fn emit_body(&mut self, curr_instr_args: &[Arg], body: &mut Block, err: &mut ErrorGen) -> bool {
         let mut is_success = true;
-        for _ in 0..self.curr_num_allocs {
+        for _ in 0..self.curr_num_unshared {
             let (global_id, ..) = whamm_type_to_wasm_global(self.app_iter.module, &DataType::I32);
-            self.alloc_var_handler.available_i32_gids.push(*global_id);
+            self.unshared_var_handler
+                .available_i32_gids
+                .push(*global_id);
         }
         for stmt in body.stmts.iter_mut() {
             is_success &= self.emit_stmt(curr_instr_args, stmt, err);
@@ -756,7 +758,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
             &mut self.app_iter,
             self.table,
             self.report_var_metadata,
-            self.alloc_var_handler,
+            self.unshared_var_handler,
             err,
         );
         is_success
@@ -801,7 +803,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
             self.mem_tracker,
             self.map_lib_adapter,
             self.report_var_metadata,
-            self.alloc_var_handler,
+            self.unshared_var_handler,
             UNEXPECTED_ERR_MSG,
             err,
         )
@@ -816,7 +818,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
             self.mem_tracker,
             self.map_lib_adapter,
             self.report_var_metadata,
-            self.alloc_var_handler,
+            self.unshared_var_handler,
             UNEXPECTED_ERR_MSG,
             err,
         )

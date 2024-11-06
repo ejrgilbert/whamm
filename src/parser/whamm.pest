@@ -88,8 +88,8 @@ decrementor = { (get_map | ID) ~ "--"}
 
 // var ops
 REPORT = @{ "report" }
-ALLOC = @{ "alloc" }
-var_decorators = { ( REPORT | ALLOC )+ }
+UNSHARED = @{ "unshared" }
+var_decorators = { ( REPORT | UNSHARED )+ }
 special_decl = { var_decorators ~ decl }
 assignment = { (get_map | ID) ~ "=" ~ (ternary | expr) }
 decl = { TYPE ~ !RESERVED_KEYWORDS ~ ID }

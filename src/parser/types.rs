@@ -289,9 +289,9 @@ pub enum Statement {
         alt: Block,
         loc: Option<Location>,
     },
-    // all report variables must be allocated,
-    // but not all alloc variables must be reported
-    AllocDecl {
+    // all report variables must be unshared,
+    // but not all unshared variables must be reported
+    UnsharedDecl {
         is_report: bool,
         decl: Box<Statement>,
         loc: Option<Location>,
@@ -305,7 +305,7 @@ impl Statement {
             | Statement::Return { loc, .. }
             | Statement::Assign { loc, .. }
             | Statement::SetMap { loc, .. }
-            | Statement::AllocDecl { loc, .. }
+            | Statement::UnsharedDecl { loc, .. }
             | Statement::Expr { loc, .. } => loc,
         }
     }

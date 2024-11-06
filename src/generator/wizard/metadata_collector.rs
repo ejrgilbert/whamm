@@ -34,7 +34,7 @@ pub struct WizardProbeMetadataCollector<'a, 'b, 'c> {
     curr_probe: WizardProbe,
     probe_count: i32,
 
-    // vars_to_alloc: Vec<(String, DataType)>, // TODO (once we have 'local' variables)
+    // vars_to_alloc: Vec<(String, DataType)>, // TODO(unshared) (once we have 'unshared' variables)
     err: &'b mut ErrorGen,
     pub config: &'c Config,
 }
@@ -234,11 +234,11 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
             Statement::Decl { .. } => {
                 // ignore
             }
-            Statement::AllocDecl {
+            Statement::UnsharedDecl {
                 is_report: _is_report,
                 ..
             } => {
-                self.curr_probe.incr_allocs();
+                self.curr_probe.incr_unshared();
                 // change this to save off data to allocate
                 todo!()
             }

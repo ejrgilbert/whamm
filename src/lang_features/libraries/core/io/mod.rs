@@ -131,7 +131,7 @@ impl WhammVisitor<bool> for IOPackage {
     }
 
     fn visit_stmt(&mut self, stmt: &Statement) -> bool {
-        if let Statement::AllocDecl { is_report, .. } = stmt {
+        if let Statement::UnsharedDecl { is_report, .. } = stmt {
             *is_report
         } else {
             false

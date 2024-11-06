@@ -4,7 +4,7 @@ use crate::emitter::module_emitter::MemoryTracker;
 use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::InjectStrategy;
 use crate::generator::folding::ExprFolder;
-use crate::lang_features::alloc_vars::rewriting::AllocVarHandler;
+use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Location, Statement, UnOp, Value,
@@ -36,7 +36,7 @@ pub fn emit_body<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     mem_tracker: &MemoryTracker,
     map_lib_adapter: &mut MapLibAdapter,
     report_var_metadata: &mut ReportVarMetadata,
-    alloc_var_handler: &mut AllocVarHandler,
+    unshared_var_handler: &mut UnsharedVarHandler,
     err_msg: &str,
     err: &mut ErrorGen,
 ) -> bool {
@@ -50,7 +50,7 @@ pub fn emit_body<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             mem_tracker,
             map_lib_adapter,
             report_var_metadata,
-            alloc_var_handler,
+            unshared_var_handler,
             err_msg,
             err,
         );
@@ -66,7 +66,7 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     mem_tracker: &MemoryTracker,
     map_lib_adapter: &mut MapLibAdapter,
     report_var_metadata: &mut ReportVarMetadata,
-    alloc_var_handler: &mut AllocVarHandler,
+    unshared_var_handler: &mut UnsharedVarHandler,
     err_msg: &str,
     err: &mut ErrorGen,
 ) -> bool {
@@ -82,7 +82,7 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             mem_tracker,
             map_lib_adapter,
             report_var_metadata,
-            alloc_var_handler,
+            unshared_var_handler,
             err_msg,
             err,
         ),
@@ -94,7 +94,7 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             mem_tracker,
             map_lib_adapter,
             report_var_metadata,
-            alloc_var_handler,
+            unshared_var_handler,
             err_msg,
             err,
         ),
@@ -112,7 +112,7 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     mem_tracker,
                     map_lib_adapter,
                     report_var_metadata,
-                    alloc_var_handler,
+                    unshared_var_handler,
                     err_msg,
                     err,
                 )
@@ -127,13 +127,13 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     mem_tracker,
                     map_lib_adapter,
                     report_var_metadata,
-                    alloc_var_handler,
+                    unshared_var_handler,
                     err_msg,
                     err,
                 )
             }
         }
-        Statement::AllocDecl { .. } => emit_alloc_decl_stmt(
+        Statement::UnsharedDecl { .. } => emit_unshared_decl_stmt(
             stmt,
             strategy,
             injector,
@@ -141,7 +141,7 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             mem_tracker,
             map_lib_adapter,
             report_var_metadata,
-            alloc_var_handler,
+            unshared_var_handler,
             err_msg,
             err,
         ),
@@ -153,7 +153,7 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             mem_tracker,
             map_lib_adapter,
             report_var_metadata,
-            alloc_var_handler,
+            unshared_var_handler,
             err_msg,
             err,
         ),
@@ -252,7 +252,7 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     }
 }
 
-fn emit_alloc_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+fn emit_unshared_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     stmt: &mut Statement,
     strategy: InjectStrategy,
     injector: &mut T,
@@ -260,15 +260,15 @@ fn emit_alloc_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     _mem_tracker: &MemoryTracker,
     map_lib_adapter: &mut MapLibAdapter,
     report_var_metadata: &mut ReportVarMetadata,
-    alloc_var_handler: &mut AllocVarHandler,
+    unshared_var_handler: &mut UnsharedVarHandler,
     err_msg: &str,
     err: &mut ErrorGen,
 ) -> bool {
-    // TODO(alloc)
-    //   call lang_features.alloc_vars.rewriting IF doing rewriting...
+    // TODO(unshared)
+    //   call lang_features.unshared_vars.rewriting IF doing rewriting...
     //   ...will need to thread injection method through
     //   (ignore this statement on wizard target since it's already handled)
-    if let Statement::AllocDecl {
+    if let Statement::UnsharedDecl {
         decl, is_report, ..
     } = stmt
     {
@@ -288,7 +288,7 @@ fn emit_alloc_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                             return false;
                         };
 
-                        alloc_var_handler.allocate_var(
+                        unshared_var_handler.allocate_var(
                             var_name,
                             ty,
                             *is_report,
@@ -333,7 +333,7 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     mem_tracker: &MemoryTracker,
     map_lib_adapter: &mut MapLibAdapter,
     report_var_metadata: &mut ReportVarMetadata,
-    alloc_var_handler: &mut AllocVarHandler,
+    unshared_var_handler: &mut UnsharedVarHandler,
     err_msg: &str,
     err: &mut ErrorGen,
 ) -> bool {
@@ -371,7 +371,7 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 mem_tracker,
                 map_lib_adapter,
                 report_var_metadata,
-                alloc_var_handler,
+                unshared_var_handler,
                 err_msg,
                 err,
             ) {
@@ -384,7 +384,7 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 injector,
                 table,
                 report_var_metadata,
-                alloc_var_handler,
+                unshared_var_handler,
                 err_msg,
                 err,
             )
@@ -411,7 +411,7 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     mem_tracker: &MemoryTracker,
     map_lib_adapter: &mut MapLibAdapter,
     report_var_metadata: &mut ReportVarMetadata,
-    alloc_var_handler: &mut AllocVarHandler,
+    unshared_var_handler: &mut UnsharedVarHandler,
     err_msg: &str,
     err: &mut ErrorGen,
 ) -> bool {
@@ -436,7 +436,7 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             mem_tracker,
             map_lib_adapter,
             report_var_metadata,
-            alloc_var_handler,
+            unshared_var_handler,
             err_msg,
             err,
         );
@@ -448,7 +448,7 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             mem_tracker,
             map_lib_adapter,
             report_var_metadata,
-            alloc_var_handler,
+            unshared_var_handler,
             err_msg,
             err,
         );
@@ -516,7 +516,7 @@ fn emit_set<'a, T: Opcode<'a>>(
     injector: &mut T,
     table: &mut SymbolTable,
     report_var_metadata: &mut ReportVarMetadata,
-    _alloc_var_handler: &mut AllocVarHandler,
+    _unshared_var_handler: &mut UnsharedVarHandler,
     err_msg: &str,
     err: &mut ErrorGen,
 ) -> bool {
@@ -569,7 +569,7 @@ fn emit_if_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     mem_tracker: &MemoryTracker,
     map_lib_adapter: &mut MapLibAdapter,
     report_var_metadata: &mut ReportVarMetadata,
-    alloc_var_handler: &mut AllocVarHandler,
+    unshared_var_handler: &mut UnsharedVarHandler,
     err_msg: &str,
     err: &mut ErrorGen,
 ) -> bool {
@@ -584,7 +584,7 @@ fn emit_if_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         mem_tracker,
         map_lib_adapter,
         report_var_metadata,
-        alloc_var_handler,
+        unshared_var_handler,
         err_msg,
         err,
     );
@@ -599,7 +599,7 @@ fn emit_if_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         mem_tracker,
         map_lib_adapter,
         report_var_metadata,
-        alloc_var_handler,
+        unshared_var_handler,
         err_msg,
         err,
     );
@@ -618,7 +618,7 @@ fn emit_if_else_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     mem_tracker: &MemoryTracker,
     map_lib_adapter: &mut MapLibAdapter,
     report_var_metadata: &mut ReportVarMetadata,
-    alloc_var_handler: &mut AllocVarHandler,
+    unshared_var_handler: &mut UnsharedVarHandler,
     err_msg: &str,
     err: &mut ErrorGen,
 ) -> bool {
@@ -633,7 +633,7 @@ fn emit_if_else_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         mem_tracker,
         map_lib_adapter,
         report_var_metadata,
-        alloc_var_handler,
+        unshared_var_handler,
         err_msg,
         err,
     );
@@ -650,7 +650,7 @@ fn emit_if_else_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         mem_tracker,
         map_lib_adapter,
         report_var_metadata,
-        alloc_var_handler,
+        unshared_var_handler,
         err_msg,
         err,
     );
@@ -669,7 +669,7 @@ fn emit_if<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     mem_tracker: &MemoryTracker,
     map_lib_adapter: &mut MapLibAdapter,
     report_var_metadata: &mut ReportVarMetadata,
-    alloc_var_handler: &mut AllocVarHandler,
+    unshared_var_handler: &mut UnsharedVarHandler,
     err_msg: &str,
     err: &mut ErrorGen,
 ) -> bool {
@@ -684,7 +684,7 @@ fn emit_if<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         mem_tracker,
         map_lib_adapter,
         report_var_metadata,
-        alloc_var_handler,
+        unshared_var_handler,
         err_msg,
         err,
     );
@@ -704,7 +704,7 @@ fn emit_if_else<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     mem_tracker: &MemoryTracker,
     map_lib_adapter: &mut MapLibAdapter,
     report_var_metadata: &mut ReportVarMetadata,
-    alloc_var_handler: &mut AllocVarHandler,
+    unshared_var_handler: &mut UnsharedVarHandler,
     err_msg: &str,
     err: &mut ErrorGen,
 ) -> bool {
@@ -720,7 +720,7 @@ fn emit_if_else<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         mem_tracker,
         map_lib_adapter,
         report_var_metadata,
-        alloc_var_handler,
+        unshared_var_handler,
         err_msg,
         err,
     );
@@ -739,7 +739,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     mem_tracker: &MemoryTracker,
     map_lib_adapter: &mut MapLibAdapter,
     report_var_metadata: &mut ReportVarMetadata,
-    alloc_var_handler: &mut AllocVarHandler,
+    unshared_var_handler: &mut UnsharedVarHandler,
     err_msg: &str,
     err: &mut ErrorGen,
 ) -> bool {
@@ -755,7 +755,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 mem_tracker,
                 map_lib_adapter,
                 report_var_metadata,
-                alloc_var_handler,
+                unshared_var_handler,
                 err_msg,
                 err,
             );
@@ -771,7 +771,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 mem_tracker,
                 map_lib_adapter,
                 report_var_metadata,
-                alloc_var_handler,
+                unshared_var_handler,
                 err_msg,
                 err,
             );
@@ -783,7 +783,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 mem_tracker,
                 map_lib_adapter,
                 report_var_metadata,
-                alloc_var_handler,
+                unshared_var_handler,
                 err_msg,
                 err,
             );
@@ -835,7 +835,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 mem_tracker,
                 map_lib_adapter,
                 report_var_metadata,
-                alloc_var_handler,
+                unshared_var_handler,
                 err_msg,
                 err,
             )
@@ -859,7 +859,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     mem_tracker,
                     map_lib_adapter,
                     report_var_metadata,
-                    alloc_var_handler,
+                    unshared_var_handler,
                     err_msg,
                     err,
                 );
@@ -946,7 +946,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             mem_tracker,
             map_lib_adapter,
             report_var_metadata,
-            alloc_var_handler,
+            unshared_var_handler,
             err_msg,
             err,
         ),
@@ -958,7 +958,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             mem_tracker,
             map_lib_adapter,
             report_var_metadata,
-            alloc_var_handler,
+            unshared_var_handler,
             err_msg,
             err,
         ),
@@ -1041,7 +1041,7 @@ fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     mem_tracker: &MemoryTracker,
     map_lib_adapter: &mut MapLibAdapter,
     report_var_metadata: &mut ReportVarMetadata,
-    alloc_var_handler: &mut AllocVarHandler,
+    unshared_var_handler: &mut UnsharedVarHandler,
     err_msg: &str,
     err: &mut ErrorGen,
 ) -> bool {
@@ -1106,7 +1106,7 @@ fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     mem_tracker,
                     map_lib_adapter,
                     report_var_metadata,
-                    alloc_var_handler,
+                    unshared_var_handler,
                     err_msg,
                     err,
                 );
@@ -1145,7 +1145,7 @@ fn emit_map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     mem_tracker: &MemoryTracker,
     map_lib_adapter: &mut MapLibAdapter,
     report_var_metadata: &mut ReportVarMetadata,
-    alloc_var_handler: &mut AllocVarHandler,
+    unshared_var_handler: &mut UnsharedVarHandler,
     err_msg: &str,
     err: &mut ErrorGen,
 ) -> bool {
@@ -1163,7 +1163,7 @@ fn emit_map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                         mem_tracker,
                         map_lib_adapter,
                         report_var_metadata,
-                        alloc_var_handler,
+                        unshared_var_handler,
                         err_msg,
                         err,
                     );
@@ -1235,7 +1235,7 @@ pub fn print_report_all<'a, T: Opcode<'a> + AddLocal>(
     injector: &mut T,
     table: &mut SymbolTable,
     report_var_metadata: &mut ReportVarMetadata,
-    _alloc_var_handler: &mut AllocVarHandler,
+    _unshared_var_handler: &mut UnsharedVarHandler,
     err: &mut ErrorGen,
 ) {
     if !report_var_metadata.flush_soon {

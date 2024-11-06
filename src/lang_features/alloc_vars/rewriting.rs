@@ -10,16 +10,18 @@ use orca_wasm::opcode::MacroOpcode;
 use orca_wasm::Opcode;
 
 #[derive(Default)]
-pub struct AllocVarHandler {
+pub struct UnsharedVarHandler {
     pub used_i32_gids: Vec<u32>,
     pub available_i32_gids: Vec<u32>,
 }
-impl AllocVarHandler {
+impl UnsharedVarHandler {
     pub fn use_available_gid(&mut self, err_msg: &str, err: &mut ErrorGen) -> Option<u32> {
         if self.available_i32_gids.is_empty() {
             err.unexpected_error(
                 true,
-                Some(format!("{err_msg} No available global I32s for alloc vars")),
+                Some(format!(
+                    "{err_msg} No available global I32s for unshared vars"
+                )),
                 None,
             );
             return None;
@@ -77,7 +79,7 @@ impl AllocVarHandler {
                 }
             }
             Some(VarAddr::Local { .. }) | Some(VarAddr::MapId { .. }) => {
-                //this shouldn't happen for alloc vars - need to err
+                //this shouldn't happen for unshared vars - need to err
                 err.unexpected_error(
                     true,
                     Some(format!("{err_msg} Expected Global VarAddr.")),

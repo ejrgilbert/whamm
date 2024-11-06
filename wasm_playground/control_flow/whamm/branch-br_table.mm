@@ -10,31 +10,28 @@
  * need a handle to the function ("func")
 */
 
-wasm::br:before {
-  report alloc i32 taken;
+report map<(u32, u32, i32), i32> count;
+
+wasm::br:before / fname == "calc" || fname == "print_x" / {
   // branch always taken for `br`
   // count stores an array of counters
-  taken++;
+  count[(fid, pc, 1)]++;
 }
 
-wasm::br_if:before {
-  report alloc i32 taken;
-  report alloc i32 not_taken;
-
+wasm::br_if:before / fname == "calc" || fname == "print_x" / {
   // which branch was taken?
-  if arg0 != 0 {
-    taken++;
-  } else {
-    not_taken++;
-  }
+  i32 index;
+  index = arg0 != 0 ? 1 : 0;
+
+  // count stores an array of counters
+  count[(fid, pc, index)]++;
 }
 
-wasm::br_table:before {
-  report alloc map<i32, i32> taken_branches;
+wasm::br_table:before / fname == "calc" || fname == "print_x" / {
   // which branch was taken?
   i32 index;
   index = arg0 < (num_targets - 1) ? targets[arg0] : default_target;
 
   // count stores an array of counters
-  taken_branches[index]++;
+  count[(fid, pc, index)]++;
 }

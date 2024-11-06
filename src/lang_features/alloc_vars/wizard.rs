@@ -4,11 +4,11 @@ use orca_wasm::ir::id::FunctionID;
 use std::collections::HashMap;
 
 pub fn create_alloc_func(_to_alloc: Vec<DataType>) -> FunctionID {
-    // Called once per probe definition with `alloc` OR `report` vars.
+    // Called once per probe definition with `unshared` OR `report` vars.
 
     // $alloc description:
     // Will generate a function that allocates the memory required.
-    // The order of the data will go in the order of the `to_alloc` param.
+    // The order of the data will go in the order of the `_to_alloc` param.
     // The function will return the memory offset to use by the probe logic.
     // Will also need to update some global value that keeps track of the already (use memory allocator?)
     // allocated memory space. Make sure to check that memory size is big enough!
@@ -17,9 +17,9 @@ pub fn create_alloc_func(_to_alloc: Vec<DataType>) -> FunctionID {
     todo!()
 }
 
-pub fn load_alloc_vars(
+pub fn load_unshared_vars(
     _alloc_mem_offset: VarAddr,
-    _alloc_vars: Vec<(String, DataType)>,
+    _allocated_vars: Vec<(String, DataType)>,
 ) -> HashMap<String, (VarAddr, DataType)> {
     // increment by bytes used by each var's DataType as we load them
     // will be used to load the next variable AND to save in the VarAddr!
@@ -32,18 +32,18 @@ pub fn load_alloc_vars(
     //     as a hashmap to enable caller to place in SymbolTable and handle report variables
     //     the new VarAddr will be a pointer into memory with an offset (real addr should be alloc_mem_offset + len_of_prev_vars)
 
-    // At start of probe logic, pull the current values of the 'alloc' variables from memory.
+    // At start of probe logic, pull the current values of the allocated variables from memory.
     //   Add these VarAddrs to the symbol table.
     //   Can now emit the rest of the probe body logic as normal.
 
     todo!()
 }
 
-pub fn save_alloc_vars(
+pub fn save_allocated_vars(
     _alloc_mem_offset: VarAddr,
     _allocated_vars: HashMap<String, (VarAddr, DataType)>,
 ) {
-    // At end of probe logic, save the values of 'alloc' variables back into memory.
+    // At end of probe logic, save the values of allocated variables back into memory.
 
     todo!()
 }
