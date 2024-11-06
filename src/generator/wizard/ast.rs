@@ -17,7 +17,7 @@ pub struct WizardProbe {
     pub predicate: Option<Expr>,
     pub body: Option<Block>,
     pub metadata: Metadata,
-    pub num_allocs: i32,
+    pub num_unshared: i32,
     pub probe_number: i32,
 }
 impl WizardProbe {
@@ -27,12 +27,12 @@ impl WizardProbe {
             predicate: None,
             body: None,
             metadata: Metadata::default(),
-            num_allocs: 0,
+            num_unshared: 0,
             probe_number,
         }
     }
-    pub(crate) fn incr_allocs(&mut self) {
-        self.num_allocs += 1;
+    pub(crate) fn incr_unshared(&mut self) {
+        self.num_unshared += 1;
     }
 }
 

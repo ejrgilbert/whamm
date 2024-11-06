@@ -12,13 +12,13 @@
 
 wasm::br:before / fname == "calc" || fname == "print_x" / {
   // branch always taken for `br`
-  report alloc i32 taken;
+  report unshared i32 taken;
   taken++;
 }
 
 wasm::br_if:before / fname == "calc" || fname == "print_x" / {
-  report alloc i32 taken;
-  report alloc i32 not_taken;
+  report unshared i32 taken;
+  report unshared i32 not_taken;
 
   // which branch was taken?
   if (arg0 != 0) {
@@ -29,7 +29,7 @@ wasm::br_if:before / fname == "calc" || fname == "print_x" / {
 }
 
 wasm::br_table:before / fname == "calc" || fname == "print_x" / {
-  report alloc map<i32, i32> taken_branches;
+  report unshared map<i32, i32> taken_branches;
 
   // which branch was taken?
   i32 index;

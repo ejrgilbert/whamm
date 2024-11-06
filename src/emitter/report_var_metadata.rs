@@ -71,7 +71,7 @@ impl ReportVarMetadata {
             err.unexpected_error(
                 true,
                 Some(format!(
-                    "Expected I32 type for alloc var, found: {:?}. Further support is upcoming",
+                    "Expected I32 type for unshared var, found: {:?}. Further support is upcoming",
                     ty
                 )),
                 None,
@@ -218,7 +218,7 @@ pub enum LocationData {
         script_id: String,
         bytecode_loc: BytecodeLoc,
         probe_id: String,
-        num_allocs: i32,
+        num_unshared: i32,
     },
 }
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

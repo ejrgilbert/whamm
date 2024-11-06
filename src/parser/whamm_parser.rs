@@ -841,7 +841,7 @@ fn handle_special_decl(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
 
     // handle var_decorator(s)
     let mut is_report = false;
-    let mut is_alloc = false;
+    let mut is_unshared = false;
     let decorator_pairs = pairs.next().unwrap().into_inner();
     for pair in decorator_pairs {
         match pair.as_rule() {
@@ -861,13 +861,13 @@ fn handle_special_decl(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                 }
                 is_report = true
             }
-            Rule::ALLOC => {
-                if is_alloc {
-                    // cannot mark as alloc 2x, error
+            Rule::UNSHARED => {
+                if is_unshared {
+                    // cannot mark as unshared 2x, error
                     err.parse_error(
                         false,
                         Some(
-                            "Marked variable with 'alloc' multiple times, should only mark once."
+                            "Marked variable with 'unshared' multiple times, should only mark once."
                                 .to_string(),
                         ),
                         Some(LineColLocation::from(pair.as_span())),
@@ -875,14 +875,14 @@ fn handle_special_decl(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                         vec![],
                     )
                 }
-                is_alloc = true
+                is_unshared = true
             }
             rule => {
                 err.parse_error(
                     true,
                     Some(UNEXPECTED_ERR_MSG.to_string()),
                     Some(LineColLocation::from(pair.as_span())),
-                    vec![Rule::REPORT, Rule::ALLOC],
+                    vec![Rule::REPORT, Rule::UNSHARED],
                     vec![rule],
                 );
                 // should have exited above (since it's a fatal error)
@@ -893,7 +893,7 @@ fn handle_special_decl(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
 
     // next should be the declaration
     let decl = stmt_from_rule(pairs.next().unwrap(), err);
-    vec![Statement::AllocDecl {
+    vec![Statement::UnsharedDecl {
         is_report,
         decl: Box::new(decl.first().unwrap().to_owned()),
         loc: Some(Location {

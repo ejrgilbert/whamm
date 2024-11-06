@@ -3,7 +3,7 @@ use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::rewriting::rules::Arg;
 use crate::emitter::utils::{emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global};
 use crate::emitter::{configure_flush_routines, Emitter, InjectStrategy};
-use crate::lang_features::alloc_vars::rewriting::AllocVarHandler;
+use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::parser::types::{Block, DataType, Definition, Expr, Fn, FnId, Statement, Value};
@@ -42,7 +42,7 @@ pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     mem_tracker: &'d mut MemoryTracker,
     pub map_lib_adapter: &'e mut MapLibAdapter,
     pub report_var_metadata: &'f mut ReportVarMetadata,
-    pub alloc_var_handler: &'g mut AllocVarHandler,
+    pub unshared_var_handler: &'g mut UnsharedVarHandler,
     fn_providing_contexts: Vec<String>,
 }
 
@@ -55,7 +55,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         mem_tracker: &'d mut MemoryTracker,
         map_lib_adapter: &'e mut MapLibAdapter,
         report_var_metadata: &'f mut ReportVarMetadata,
-        alloc_var_handler: &'g mut AllocVarHandler,
+        unshared_var_handler: &'g mut UnsharedVarHandler,
     ) -> Self {
         Self {
             strategy,
@@ -64,7 +64,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             mem_tracker,
             map_lib_adapter,
             report_var_metadata,
-            alloc_var_handler,
+            unshared_var_handler,
             table,
             fn_providing_contexts: vec!["whamm".to_string()],
         }
@@ -144,7 +144,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         let func = FunctionBuilder::new(params, results);
         self.emitting_func = Some(func);
 
-        // TODO(alloc) -- load alloc vars
+        // TODO(unshared) -- load unshared vars
         if self.map_lib_adapter.is_used {
             let fid = self.map_lib_adapter.get_map_init_fid(self.app_wasm, err);
             if let Some(func) = &mut self.emitting_func {
@@ -155,7 +155,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         // emit the function body
         self.emit_body(&[], block, err);
 
-        // TODO(alloc) -- save alloc vars
+        // TODO(unshared) -- save unshared vars
         // emit the function
         if let Some(func) = self.emitting_func.take() {
             let fid = func.finish_module(self.app_wasm);
@@ -687,7 +687,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
                 self.mem_tracker,
                 self.map_lib_adapter,
                 self.report_var_metadata,
-                self.alloc_var_handler,
+                self.unshared_var_handler,
                 UNEXPECTED_ERR_MSG,
                 err,
             )
@@ -711,7 +711,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
                 self.mem_tracker,
                 self.map_lib_adapter,
                 self.report_var_metadata,
-                self.alloc_var_handler,
+                self.unshared_var_handler,
                 UNEXPECTED_ERR_MSG,
                 err,
             )
@@ -730,7 +730,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
                 self.mem_tracker,
                 self.map_lib_adapter,
                 self.report_var_metadata,
-                self.alloc_var_handler,
+                self.unshared_var_handler,
                 UNEXPECTED_ERR_MSG,
                 err,
             )

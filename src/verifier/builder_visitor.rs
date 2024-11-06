@@ -503,7 +503,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         script.global_stmts.iter_mut().for_each(|stmt| {
             let mut is_report_var = false;
             let stmt = match stmt {
-                Statement::AllocDecl {
+                Statement::UnsharedDecl {
                     decl, is_report, ..
                 } => {
                     is_report_var = *is_report;
@@ -669,7 +669,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         }
         let mut is_report_var = false;
         let stmt = match &stmt {
-            Statement::AllocDecl {
+            Statement::UnsharedDecl {
                 decl, is_report, ..
             } => {
                 is_report_var = *is_report;

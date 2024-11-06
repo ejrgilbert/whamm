@@ -197,28 +197,28 @@ wasm:opcode:br:before {
     //         report bool b = true;
     //     }
     // "#,
-    // alloc variables
+    // unshared variables
     r#"
         i32 a;
-        alloc i32 c;
+        unshared i32 c;
         wasm::br:before {
             a = 1;
-            alloc bool b;
+            unshared bool b;
         }
     "#,
     // TODO -- uncomment when we've supported special_decl_init
     // r#"
     //     i32 a;
-    //     alloc i32 c;
+    //     unshared i32 c;
     //     wasm::br:before {
     //         a = 1;
-    //         alloc bool b = true;
+    //         unshared bool b = true;
     //     }
     // "#,
     // special variables
     r#"
-        alloc report i32 c;
-        report alloc i32 c;
+        unshared report i32 c;
+        report unshared i32 c;
         wasm::br:before {}
     "#,
     // Comments
@@ -474,7 +474,7 @@ map<i32, i32> arg0;
     // use report multiple times
     r#"
         i32 a;
-        report alloc report i32 c;
+        report unshared report i32 c;
         wasm::br:before {
             a = 1;
             report bool b;
@@ -485,24 +485,24 @@ map<i32, i32> arg0;
         report i32 c;
         wasm::br:before {
             a = 1;
-            report alloc report bool b;
+            report unshared report bool b;
         }
     "#,
-    // use alloc multiple times
+    // use unshared multiple times
     r#"
         i32 a;
-        alloc report alloc i32 c;
+        unshared report unshared i32 c;
         wasm::br:before {
             a = 1;
-            alloc bool b;
+            unshared bool b;
         }
     "#,
     r#"
         i32 a;
-        alloc i32 c;
+        unshared i32 c;
         wasm::br:before {
             a = 1;
-            alloc report alloc bool b;
+            unshared report unshared bool b;
         }
     "#,
 ];

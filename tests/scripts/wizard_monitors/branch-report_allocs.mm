@@ -11,15 +11,15 @@
 */
 
 wasm::br:before {
-  report alloc i32 taken;
+  report unshared i32 taken;
   // branch always taken for `br`
   // count stores an array of counters
   taken++;
 }
 
 wasm::br_if:before {
-  report alloc i32 taken;
-  report alloc i32 not_taken;
+  report unshared i32 taken;
+  report unshared i32 not_taken;
 
   // which branch was taken?
   if (arg0 != 0) {
@@ -30,7 +30,7 @@ wasm::br_if:before {
 }
 
 wasm::br_table:before {
-  report alloc map<i32, i32> taken_branches;
+  report unshared map<i32, i32> taken_branches;
   // which branch was taken?
   i32 index;
   index = arg0 < (num_targets - 1) ? targets[arg0] : default_target;
