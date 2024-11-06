@@ -206,7 +206,7 @@ type, id, name, script_id, (fid, pc), probe_id, value(s)"#
                 probe_id.as_str(),
             ),
         };
-        format!("{},{},{},{}", name, script_id, bytecode_loc, probe_id)
+        format!("{}, {}, {}, {}", name, script_id, bytecode_loc, probe_id)
     }
 }
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

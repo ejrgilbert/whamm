@@ -1,16 +1,35 @@
-#[no_mangle]
-pub fn add(a: i32, b: i32) -> i32 {
-    let res = a + b;
+use std::iter::zip;
 
-    return res;
+#[no_mangle]
+pub fn calc(a: i32, b: i32) -> i32 {
+    if a > 5 {
+        a + b
+    } else {
+        a * b
+    }
 }
 
-fn main() {
-    let a = 0;
-    let mut b = 3;
-    let c = add(a, b);
-
-    if c > 0 {
-        b = 5;
+#[no_mangle]
+pub fn print_x(s: &str, x: u32) {
+    for _ in 0..x {
+        println!("{s}")
     }
+}
+
+#[no_mangle]
+fn main() {
+    println!("==== CALC ====");
+    let times = 10;
+    let aspan = (0..times).rev();
+    let bspan = 0..times;
+    for (a, b) in zip(aspan, bspan) {
+        // a: times to 0
+        // b: 0 to times
+        println!("calc({a}, {b}) -> {}", calc(a, b));
+    }
+
+    println!("\n==== PRINT_X ====");
+    print_x("hello world!", times as u32)
+
+    // TODO -- add switch for br_table!
 }
