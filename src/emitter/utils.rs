@@ -865,7 +865,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 );
             }
 
-            let Some(Record::Fn { addr, .. }) = table.lookup_fn(&fn_name, err) else {
+            let Some(Record::Fn { addr, .. }) = table.lookup_fn(&fn_name, true, err) else {
                 err.unexpected_error(true, Some("unexpected type".to_string()), None);
                 return false;
             };
@@ -1243,7 +1243,7 @@ pub fn print_report_all<'a, T: Opcode<'a> + AddLocal>(
     }
     let Some(Record::Fn {
         addr: Some(fid), ..
-    }) = table.lookup_fn("print_global_meta", err)
+    }) = table.lookup_fn("print_global_meta", true, err)
     else {
         err.unexpected_error(true, Some("unexpected type".to_string()), None);
         return;
@@ -1252,9 +1252,9 @@ pub fn print_report_all<'a, T: Opcode<'a> + AddLocal>(
 
     let Some(Record::Fn {
         addr: Some(fid), ..
-    }) = table.lookup_fn("print_map_meta", err)
+    }) = table.lookup_fn("print_map_meta", false, err)
     else {
-        err.unexpected_error(true, Some("unexpected type".to_string()), None);
+        // maps must not be used in this script, ignore
         return;
     };
     injector.call(FunctionID(*fid));

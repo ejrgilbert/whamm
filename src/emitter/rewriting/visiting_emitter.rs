@@ -9,7 +9,7 @@ use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::utils::{
     block_type_to_wasm, emit_expr, emit_stmt, print_report_all, whamm_type_to_wasm_global,
 };
-use crate::emitter::{Emitter, InjectStrategy};
+use crate::emitter::{configure_flush_routines, Emitter, InjectStrategy};
 use crate::generator::folding::ExprFolder;
 use crate::lang_features::alloc_vars::rewriting::AllocVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
@@ -728,6 +728,18 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         self.map_lib_adapter
             .inject_map_init(&mut self.app_iter, fid);
     }
+
+    pub fn configure_flush_routines(&mut self, err: &mut ErrorGen) {
+        configure_flush_routines(
+            self.app_iter.module,
+            self.table,
+            self.report_var_metadata,
+            self.map_lib_adapter,
+            self.io_adapter,
+            UNEXPECTED_ERR_MSG,
+            err,
+        );
+    }
 }
 impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
     fn emit_body(&mut self, curr_instr_args: &[Arg], body: &mut Block, err: &mut ErrorGen) -> bool {
@@ -768,7 +780,8 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
                 Expr::VarId { name, .. } => name.clone(),
                 _ => return false,
             };
-            let Some(Record::Fn { def, .. }) = self.table.lookup_fn(fn_name.as_str(), err) else {
+            let Some(Record::Fn { def, .. }) = self.table.lookup_fn(fn_name.as_str(), true, err)
+            else {
                 err.unexpected_error(true, Some("unexpected type".to_string()), None);
                 return false;
             };
