@@ -384,7 +384,7 @@ impl SymbolTable {
             (None, "".to_string())
         }
     }
-    pub fn lookup_fn(&self, key: &str, err: &mut ErrorGen) -> Option<&Record> {
+    pub fn lookup_fn(&self, key: &str, fail_on_miss: bool, err: &mut ErrorGen) -> Option<&Record> {
         if let Some(rec) = self.lookup_rec(key) {
             if matches!(rec, Record::Fn { .. }) {
                 Some(rec)
@@ -393,7 +393,9 @@ impl SymbolTable {
                 None
             }
         } else {
-            err.unexpected_error(true, Some(format!("Could not find fn for: {}", key)), None);
+            if fail_on_miss {
+                err.unexpected_error(true, Some(format!("Could not find fn for: {}", key)), None);
+            }
             None
         }
     }

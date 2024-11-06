@@ -1,8 +1,9 @@
 use crate::common::error::{ErrorGen, WhammError};
-use crate::emitter::report_var_metadata::{Metadata, ReportVarMetadata};
+use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::rewriting::rules::Arg;
 use crate::emitter::utils::{emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global};
-use crate::emitter::Emitter;
+use crate::emitter::{configure_flush_routines, Emitter, InjectStrategy};
+use crate::lang_features::alloc_vars::rewriting::AllocVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::parser::types::{Block, DataType, Definition, Expr, Fn, FnId, Statement, Value};
@@ -33,31 +34,37 @@ pub struct StringAddr {
     pub len: usize,
 }
 
-pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
+pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
+    pub strategy: InjectStrategy,
     pub app_wasm: &'a mut Module<'b>,
     pub emitting_func: Option<FunctionBuilder<'b>>,
     pub table: &'c mut SymbolTable,
     mem_tracker: &'d mut MemoryTracker,
     pub map_lib_adapter: &'e mut MapLibAdapter,
     pub report_var_metadata: &'f mut ReportVarMetadata,
+    pub alloc_var_handler: &'g mut AllocVarHandler,
     fn_providing_contexts: Vec<String>,
 }
 
-impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
+impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     // note: only used in integration test
     pub fn new(
+        strategy: InjectStrategy,
         app_wasm: &'a mut Module<'b>,
         table: &'c mut SymbolTable,
         mem_tracker: &'d mut MemoryTracker,
         map_lib_adapter: &'e mut MapLibAdapter,
         report_var_metadata: &'f mut ReportVarMetadata,
+        alloc_var_handler: &'g mut AllocVarHandler,
     ) -> Self {
         Self {
+            strategy,
             app_wasm,
             emitting_func: None,
             mem_tracker,
             map_lib_adapter,
             report_var_metadata,
+            alloc_var_handler,
             table,
             fn_providing_contexts: vec!["whamm".to_string()],
         }
@@ -652,133 +659,19 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         self.emit_global_inner(name, ty, val, true, err)
     }
 
-    /// This should run BEFORE emitting the full AST
-
-    /// This should run AFTER emitting the full AST
     pub fn configure_flush_routines(&mut self, io_adapter: &mut IOAdapter, err: &mut ErrorGen) {
-        // configure the flushing routines!
-        let report_var_metadata = &self.report_var_metadata;
-        if report_var_metadata.variable_metadata.is_empty()
-            && report_var_metadata.map_metadata.is_empty()
-        {
-            return;
-        }
-
-        //convert the metadata into strings, add those to the data section, then use those to populate the maps
-        let var_meta: HashMap<u32, String> = report_var_metadata
-            .variable_metadata
-            .iter()
-            .map(|(key, value)| (*key, value.to_csv()))
-            .collect();
-        let map_meta: HashMap<u32, String> = report_var_metadata
-            .map_metadata
-            .iter()
-            .map(|(key, value)| (*key, value.to_csv()))
-            .collect();
-
-        self.setup_print_global_meta(&var_meta, io_adapter, err);
-        self.setup_print_map_meta(&map_meta, io_adapter, err);
-    }
-
-    /// set up the print_global_meta function for insertions
-    fn setup_print_global_meta(
-        &mut self,
-        var_meta_str: &HashMap<u32, String>,
-        io_adapter: &mut IOAdapter,
-        err: &mut ErrorGen,
-    ) -> bool {
-        // get the function
-        // todo(maps) -- look up the func name instead!
-        let print_global_meta_id = if let Some(Record::Fn { addr: Some(id), .. }) =
-            self.table.lookup_fn("print_global_meta", err)
-        {
-            *id
-        } else {
-            return false;
-        };
-        let print_global_meta_id = FunctionID(print_global_meta_id);
-
-        let mut print_global_meta = match self
-            .app_wasm
-            .functions
-            .get_fn_modifier(print_global_meta_id)
-        {
-            Some(func) => func,
-            None => {
-                err.unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} \
-                    No 'print_global_meta' function found in the module!"
-                    )),
-                    None,
-                );
-                return false;
-            }
-        };
-
-        // output the header data segment
-        let header = Metadata::get_csv_header();
-        io_adapter.putsln(header.clone(), &mut print_global_meta, err);
-
-        // for each of the report globals, emit the printing logic
-        for (key, val) in var_meta_str.iter() {
-            io_adapter.puts(format!("i32,{key},{val},"), &mut print_global_meta, err);
-
-            // get the value of this report global
-            print_global_meta.global_get(GlobalID(*key));
-            io_adapter.call_puti(&mut print_global_meta, err);
-            io_adapter.putln(&mut print_global_meta, err);
-        }
-        true
-    }
-
-    fn setup_print_map_meta(
-        &mut self,
-        map_meta_str: &HashMap<u32, String>,
-        io_adapter: &mut IOAdapter,
-        err: &mut ErrorGen,
-    ) -> bool {
-        // get the function
-        //first, we need to create the maps in global_map_init - where all the other maps are initialized
-        // todo(maps) -- look up the func name instead!
-        let print_map_meta_id = if let Some(Record::Fn { addr: Some(id), .. }) =
-            self.table.lookup_fn("print_map_meta", err)
-        {
-            *id
-        } else {
-            return false;
-        };
-        let print_map_meta_id = FunctionID(print_map_meta_id);
-
-        let mut print_map_meta = match self.app_wasm.functions.get_fn_modifier(print_map_meta_id) {
-            Some(func) => func,
-            None => {
-                err.unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} \
-                    No 'print_map_meta' function found in the module!"
-                    )),
-                    None,
-                );
-                return false;
-            }
-        };
-
-        // for each of the report maps, emit the printing logic
-        for (key, val) in map_meta_str.iter() {
-            io_adapter.puts(format!("map,{key},{val},"), &mut print_map_meta, err);
-
-            // print the value(s) of this map
-            self.map_lib_adapter
-                .print_map(*key, &mut print_map_meta, err);
-            io_adapter.putln(&mut print_map_meta, err);
-        }
-        true
+        configure_flush_routines(
+            self.app_wasm,
+            self.table,
+            self.report_var_metadata,
+            self.map_lib_adapter,
+            io_adapter,
+            UNEXPECTED_ERR_MSG,
+            err,
+        );
     }
 }
-impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
+impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
     fn emit_body(
         &mut self,
         _curr_instr_args: &[Arg],
@@ -788,11 +681,13 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
         if let Some(emitting_func) = &mut self.emitting_func {
             emit_body(
                 body,
+                self.strategy,
                 emitting_func,
                 self.table,
                 self.mem_tracker,
                 self.map_lib_adapter,
                 self.report_var_metadata,
+                self.alloc_var_handler,
                 UNEXPECTED_ERR_MSG,
                 err,
             )
@@ -810,11 +705,13 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
         if let Some(emitting_func) = &mut self.emitting_func {
             emit_stmt(
                 stmt,
+                self.strategy,
                 emitting_func,
                 self.table,
                 self.mem_tracker,
                 self.map_lib_adapter,
                 self.report_var_metadata,
+                self.alloc_var_handler,
                 UNEXPECTED_ERR_MSG,
                 err,
             )
@@ -827,11 +724,13 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
         if let Some(emitting_func) = &mut self.emitting_func {
             emit_expr(
                 expr,
+                self.strategy,
                 emitting_func,
                 self.table,
                 self.mem_tracker,
                 self.map_lib_adapter,
                 self.report_var_metadata,
+                self.alloc_var_handler,
                 UNEXPECTED_ERR_MSG,
                 err,
             )

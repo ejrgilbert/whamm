@@ -2,7 +2,9 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::module_emitter::MemoryTracker;
 use crate::emitter::report_var_metadata::ReportVarMetadata;
+use crate::emitter::InjectStrategy;
 use crate::generator::folding::ExprFolder;
+use crate::lang_features::alloc_vars::rewriting::AllocVarHandler;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Location, Statement, UnOp, Value,
@@ -13,7 +15,6 @@ use orca_wasm::ir::types::{BlockType, DataType as OrcaType, Value as OrcaValue};
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::{MacroOpcode, Opcode};
 use orca_wasm::{InitExpr, Module};
-
 // ==================================================================
 // ================ Emitter Helper Functions ========================
 // TODO -- add this documentation
@@ -25,13 +26,17 @@ use orca_wasm::{InitExpr, Module};
 // ==================================================================
 // ==================================================================
 
+// TODO -- make this a struct that contains all the data to be passed around!
+
 pub fn emit_body<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     body: &mut Block,
+    strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
     map_lib_adapter: &mut MapLibAdapter,
     report_var_metadata: &mut ReportVarMetadata,
+    alloc_var_handler: &mut AllocVarHandler,
     err_msg: &str,
     err: &mut ErrorGen,
 ) -> bool {
@@ -39,11 +44,13 @@ pub fn emit_body<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     for stmt in body.stmts.iter_mut() {
         is_success &= emit_stmt(
             stmt,
+            strategy,
             injector,
             table,
             mem_tracker,
             map_lib_adapter,
             report_var_metadata,
+            alloc_var_handler,
             err_msg,
             err,
         );
@@ -53,11 +60,13 @@ pub fn emit_body<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 
 pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     stmt: &mut Statement,
+    strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
     map_lib_adapter: &mut MapLibAdapter,
     report_var_metadata: &mut ReportVarMetadata,
+    alloc_var_handler: &mut AllocVarHandler,
     err_msg: &str,
     err: &mut ErrorGen,
 ) -> bool {
@@ -67,21 +76,25 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         }
         Statement::Assign { .. } => emit_assign_stmt(
             stmt,
+            strategy,
             injector,
             table,
             mem_tracker,
             map_lib_adapter,
             report_var_metadata,
+            alloc_var_handler,
             err_msg,
             err,
         ),
         Statement::Expr { expr, .. } | Statement::Return { expr, .. } => emit_expr(
             expr,
+            strategy,
             injector,
             table,
             mem_tracker,
             map_lib_adapter,
             report_var_metadata,
+            alloc_var_handler,
             err_msg,
             err,
         ),
@@ -93,11 +106,13 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 emit_if(
                     cond,
                     conseq,
+                    strategy,
                     injector,
                     table,
                     mem_tracker,
                     map_lib_adapter,
                     report_var_metadata,
+                    alloc_var_handler,
                     err_msg,
                     err,
                 )
@@ -106,39 +121,39 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     cond,
                     conseq,
                     alt,
+                    strategy,
                     injector,
                     table,
                     mem_tracker,
                     map_lib_adapter,
                     report_var_metadata,
+                    alloc_var_handler,
                     err_msg,
                     err,
                 )
             }
         }
-        Statement::AllocDecl { is_report, .. } => {
-            if *is_report {
-                emit_report_decl_stmt(
-                    stmt,
-                    injector,
-                    table,
-                    mem_tracker,
-                    map_lib_adapter,
-                    report_var_metadata,
-                    err_msg,
-                    err,
-                )
-            } else {
-                panic!()
-            }
-        }
-        Statement::SetMap { .. } => emit_set_map_stmt(
+        Statement::AllocDecl { .. } => emit_alloc_decl_stmt(
             stmt,
+            strategy,
             injector,
             table,
             mem_tracker,
             map_lib_adapter,
             report_var_metadata,
+            alloc_var_handler,
+            err_msg,
+            err,
+        ),
+        Statement::SetMap { .. } => emit_set_map_stmt(
+            stmt,
+            strategy,
+            injector,
+            table,
+            mem_tracker,
+            map_lib_adapter,
+            report_var_metadata,
+            alloc_var_handler,
             err_msg,
             err,
         ),
@@ -237,13 +252,15 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     }
 }
 
-fn emit_report_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+fn emit_alloc_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     stmt: &mut Statement,
+    strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
     _mem_tracker: &MemoryTracker,
     map_lib_adapter: &mut MapLibAdapter,
     report_var_metadata: &mut ReportVarMetadata,
+    alloc_var_handler: &mut AllocVarHandler,
     err_msg: &str,
     err: &mut ErrorGen,
 ) -> bool {
@@ -251,83 +268,52 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     //   call lang_features.alloc_vars.rewriting IF doing rewriting...
     //   ...will need to thread injection method through
     //   (ignore this statement on wizard target since it's already handled)
-    if let Statement::AllocDecl { decl, .. } = stmt {
-        return match &**decl {
-            Statement::Decl { ty, var_id, .. } => {
-                // look up in symbol table
-                let var_name: String;
-                let mut addr = if let Expr::VarId { name, loc, .. } = var_id {
-                    var_name = name.clone();
-                    let var_rec_id = match table.lookup(name) {
-                        Some(rec_id) => rec_id,
-                        None => table.put(
-                            name.clone(),
-                            Record::Var {
-                                ty: ty.clone(),
-                                name: name.clone(),
-                                value: None,
-                                def: Definition::User,
-                                is_report_var: true,
-                                addr: None,
-                                loc: None,
-                            },
-                        ),
-                    };
-                    let Some(Record::Var { addr, .. }) =
-                        table.get_rec_var_mut(var_rec_id, loc, err)
-                    else {
-                        err.unexpected_error(true, Some("unexpected type".to_string()), None);
-                        return false;
-                    };
-                    addr
-                } else {
-                    err.unexpected_error(true, Some(format!("{err_msg} Expected VarId.")), None);
-                    return false;
-                };
-                if let DataType::Map { .. } = ty {
-                    let map_id = map_lib_adapter.map_create_report(
-                        var_name.clone(),
-                        ty.clone(),
-                        injector,
-                        report_var_metadata,
-                        true,
-                        err,
-                    );
-                    *addr = Some(VarAddr::MapId { addr: map_id });
-                    return true;
-                }
-                match &mut addr {
-                    Some(VarAddr::Global { .. }) | None => {
-                        let wasm_ty = whamm_type_to_wasm_type(ty);
-                        let id = report_var_metadata
-                            .use_available_global(var_name, wasm_ty, err_msg, err);
-                        if id.is_none() {
+    if let Statement::AllocDecl {
+        decl, is_report, ..
+    } = stmt
+    {
+        match strategy {
+            InjectStrategy::Rewriting => {
+                return match &**decl {
+                    Statement::Decl {
+                        ty,
+                        var_id: Expr::VarId { name: var_name, .. },
+                        ..
+                    } => {
+                        // look up in symbol table
+                        let Some(Record::Var { addr, .. }) =
+                            table.lookup_var_mut(var_name, &None, err)
+                        else {
+                            err.unexpected_error(true, Some("unexpected type".to_string()), None);
                             return false;
-                        }
-                        let id = id.unwrap();
-                        *addr = Some(VarAddr::Global { addr: id });
-                        true
+                        };
+
+                        alloc_var_handler.allocate_var(
+                            var_name,
+                            ty,
+                            *is_report,
+                            addr,
+                            injector,
+                            map_lib_adapter,
+                            report_var_metadata,
+                            err_msg,
+                            err,
+                        )
                     }
-                    Some(VarAddr::Local { .. }) | Some(VarAddr::MapId { .. }) => {
-                        //this shouldn't happen for report vars - need to err
+                    _ => {
                         err.unexpected_error(
-                            true,
-                            Some(format!("{err_msg} Expected Global VarAddr.")),
+                            false,
+                            Some(format!("{err_msg} Wrong statement type, should be `decl`")),
                             None,
                         );
-                        return false;
+                        false
                     }
-                }
+                };
             }
-            _ => {
-                err.unexpected_error(
-                    false,
-                    Some(format!("{err_msg} Wrong statement type, should be `decl`")),
-                    None,
-                );
-                false
+            InjectStrategy::Wizard => {
+                // ignore, this statement has already been processed!
             }
-        };
+        }
     }
     err.unexpected_error(
         false,
@@ -341,11 +327,13 @@ fn emit_report_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 
 fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     stmt: &mut Statement,
+    strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
     map_lib_adapter: &mut MapLibAdapter,
     report_var_metadata: &mut ReportVarMetadata,
+    alloc_var_handler: &mut AllocVarHandler,
     err_msg: &str,
     err: &mut ErrorGen,
 ) -> bool {
@@ -377,11 +365,13 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 
             if !emit_expr(
                 expr,
+                strategy,
                 injector,
                 table,
                 mem_tracker,
                 map_lib_adapter,
                 report_var_metadata,
+                alloc_var_handler,
                 err_msg,
                 err,
             ) {
@@ -389,7 +379,15 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             }
 
             // Emit the instruction that sets the variable's value to the emitted expression
-            emit_set(var_id, injector, table, report_var_metadata, err_msg, err)
+            emit_set(
+                var_id,
+                injector,
+                table,
+                report_var_metadata,
+                alloc_var_handler,
+                err_msg,
+                err,
+            )
         }
         _ => {
             err.unexpected_error(
@@ -407,11 +405,13 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 
 fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     stmt: &mut Statement,
+    strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
     map_lib_adapter: &mut MapLibAdapter,
     report_var_metadata: &mut ReportVarMetadata,
+    alloc_var_handler: &mut AllocVarHandler,
     err_msg: &str,
     err: &mut ErrorGen,
 ) -> bool {
@@ -430,21 +430,25 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         injector.u32_const(map_id);
         emit_expr(
             key,
+            strategy,
             injector,
             table,
             mem_tracker,
             map_lib_adapter,
             report_var_metadata,
+            alloc_var_handler,
             err_msg,
             err,
         );
         emit_expr(
             val,
+            strategy,
             injector,
             table,
             mem_tracker,
             map_lib_adapter,
             report_var_metadata,
+            alloc_var_handler,
             err_msg,
             err,
         );
@@ -512,6 +516,7 @@ fn emit_set<'a, T: Opcode<'a>>(
     injector: &mut T,
     table: &mut SymbolTable,
     report_var_metadata: &mut ReportVarMetadata,
+    _alloc_var_handler: &mut AllocVarHandler,
     err_msg: &str,
     err: &mut ErrorGen,
 ) -> bool {
@@ -558,11 +563,13 @@ fn emit_set<'a, T: Opcode<'a>>(
 fn emit_if_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     condition: &mut Expr,
     conseq: &mut Block,
+    strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
     map_lib_adapter: &mut MapLibAdapter,
     report_var_metadata: &mut ReportVarMetadata,
+    alloc_var_handler: &mut AllocVarHandler,
     err_msg: &str,
     err: &mut ErrorGen,
 ) -> bool {
@@ -571,11 +578,13 @@ fn emit_if_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     // emit the condition of the `if` expression
     is_success &= emit_expr(
         condition,
+        strategy,
         injector,
         table,
         mem_tracker,
         map_lib_adapter,
         report_var_metadata,
+        alloc_var_handler,
         err_msg,
         err,
     );
@@ -584,11 +593,13 @@ fn emit_if_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     // emit the consequent body
     is_success &= emit_body(
         conseq,
+        strategy,
         injector,
         table,
         mem_tracker,
         map_lib_adapter,
         report_var_metadata,
+        alloc_var_handler,
         err_msg,
         err,
     );
@@ -601,11 +612,13 @@ fn emit_if_else_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     condition: &mut Expr,
     conseq: &mut Block,
     alternate: &mut Block,
+    strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
     map_lib_adapter: &mut MapLibAdapter,
     report_var_metadata: &mut ReportVarMetadata,
+    alloc_var_handler: &mut AllocVarHandler,
     err_msg: &str,
     err: &mut ErrorGen,
 ) -> bool {
@@ -614,11 +627,13 @@ fn emit_if_else_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     is_success &= emit_if_preamble(
         condition,
         conseq,
+        strategy,
         injector,
         table,
         mem_tracker,
         map_lib_adapter,
         report_var_metadata,
+        alloc_var_handler,
         err_msg,
         err,
     );
@@ -629,11 +644,13 @@ fn emit_if_else_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     // emit the alternate body
     is_success &= emit_body(
         alternate,
+        strategy,
         injector,
         table,
         mem_tracker,
         map_lib_adapter,
         report_var_metadata,
+        alloc_var_handler,
         err_msg,
         err,
     );
@@ -646,11 +663,13 @@ fn emit_if_else_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 fn emit_if<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     condition: &mut Expr,
     conseq: &mut Block,
+    strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
     map_lib_adapter: &mut MapLibAdapter,
     report_var_metadata: &mut ReportVarMetadata,
+    alloc_var_handler: &mut AllocVarHandler,
     err_msg: &str,
     err: &mut ErrorGen,
 ) -> bool {
@@ -659,11 +678,13 @@ fn emit_if<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     is_success &= emit_if_preamble(
         condition,
         conseq,
+        strategy,
         injector,
         table,
         mem_tracker,
         map_lib_adapter,
         report_var_metadata,
+        alloc_var_handler,
         err_msg,
         err,
     );
@@ -677,11 +698,13 @@ fn emit_if_else<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     condition: &mut Expr,
     conseq: &mut Block,
     alternate: &mut Block,
+    strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
     map_lib_adapter: &mut MapLibAdapter,
     report_var_metadata: &mut ReportVarMetadata,
+    alloc_var_handler: &mut AllocVarHandler,
     err_msg: &str,
     err: &mut ErrorGen,
 ) -> bool {
@@ -691,11 +714,13 @@ fn emit_if_else<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         condition,
         conseq,
         alternate,
+        strategy,
         injector,
         table,
         mem_tracker,
         map_lib_adapter,
         report_var_metadata,
+        alloc_var_handler,
         err_msg,
         err,
     );
@@ -708,11 +733,13 @@ fn emit_if_else<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 // TODO: emit_expr has two mutable references to the name object, the injector has module data in it
 pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     expr: &mut Expr,
+    strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
     map_lib_adapter: &mut MapLibAdapter,
     report_var_metadata: &mut ReportVarMetadata,
+    alloc_var_handler: &mut AllocVarHandler,
     err_msg: &str,
     err: &mut ErrorGen,
 ) -> bool {
@@ -722,11 +749,13 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         Expr::UnOp { op, expr, .. } => {
             let mut is_success = emit_expr(
                 expr,
+                strategy,
                 injector,
                 table,
                 mem_tracker,
                 map_lib_adapter,
                 report_var_metadata,
+                alloc_var_handler,
                 err_msg,
                 err,
             );
@@ -736,21 +765,25 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         Expr::BinOp { lhs, op, rhs, .. } => {
             let mut is_success = emit_expr(
                 lhs,
+                strategy,
                 injector,
                 table,
                 mem_tracker,
                 map_lib_adapter,
                 report_var_metadata,
+                alloc_var_handler,
                 err_msg,
                 err,
             );
             is_success &= emit_expr(
                 rhs,
+                strategy,
                 injector,
                 table,
                 mem_tracker,
                 map_lib_adapter,
                 report_var_metadata,
+                alloc_var_handler,
                 err_msg,
                 err,
             );
@@ -796,11 +829,13 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     return_ty: Some(ty.clone()),
                     loc: None,
                 },
+                strategy,
                 injector,
                 table,
                 mem_tracker,
                 map_lib_adapter,
                 report_var_metadata,
+                alloc_var_handler,
                 err_msg,
                 err,
             )
@@ -818,17 +853,19 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             for arg in args.iter_mut() {
                 is_success = emit_expr(
                     arg,
+                    strategy,
                     injector,
                     table,
                     mem_tracker,
                     map_lib_adapter,
                     report_var_metadata,
+                    alloc_var_handler,
                     err_msg,
                     err,
                 );
             }
 
-            let Some(Record::Fn { addr, .. }) = table.lookup_fn(&fn_name, err) else {
+            let Some(Record::Fn { addr, .. }) = table.lookup_fn(&fn_name, true, err) else {
                 err.unexpected_error(true, Some("unexpected type".to_string()), None);
                 return false;
             };
@@ -903,21 +940,25 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         }
         Expr::Primitive { val, .. } => emit_value(
             val,
+            strategy,
             injector,
             table,
             mem_tracker,
             map_lib_adapter,
             report_var_metadata,
+            alloc_var_handler,
             err_msg,
             err,
         ),
         Expr::MapGet { .. } => emit_map_get(
             expr,
+            strategy,
             injector,
             table,
             mem_tracker,
             map_lib_adapter,
             report_var_metadata,
+            alloc_var_handler,
             err_msg,
             err,
         ),
@@ -994,11 +1035,13 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, injector: &mut T) -> bool {
 
 fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     val: &mut Value,
+    strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
     map_lib_adapter: &mut MapLibAdapter,
     report_var_metadata: &mut ReportVarMetadata,
+    alloc_var_handler: &mut AllocVarHandler,
     err_msg: &str,
     err: &mut ErrorGen,
 ) -> bool {
@@ -1057,11 +1100,13 @@ fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             for val in vals.iter_mut() {
                 is_success &= emit_expr(
                     val,
+                    strategy,
                     injector,
                     table,
                     mem_tracker,
                     map_lib_adapter,
                     report_var_metadata,
+                    alloc_var_handler,
                     err_msg,
                     err,
                 );
@@ -1094,11 +1139,13 @@ fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 
 fn emit_map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     expr: &mut Expr,
+    strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
     mem_tracker: &MemoryTracker,
     map_lib_adapter: &mut MapLibAdapter,
     report_var_metadata: &mut ReportVarMetadata,
+    alloc_var_handler: &mut AllocVarHandler,
     err_msg: &str,
     err: &mut ErrorGen,
 ) -> bool {
@@ -1110,11 +1157,13 @@ fn emit_map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     injector.u32_const(map_id);
                     emit_expr(
                         key,
+                        strategy,
                         injector,
                         table,
                         mem_tracker,
                         map_lib_adapter,
                         report_var_metadata,
+                        alloc_var_handler,
                         err_msg,
                         err,
                     );
@@ -1186,6 +1235,7 @@ pub fn print_report_all<'a, T: Opcode<'a> + AddLocal>(
     injector: &mut T,
     table: &mut SymbolTable,
     report_var_metadata: &mut ReportVarMetadata,
+    _alloc_var_handler: &mut AllocVarHandler,
     err: &mut ErrorGen,
 ) {
     if !report_var_metadata.flush_soon {
@@ -1193,7 +1243,7 @@ pub fn print_report_all<'a, T: Opcode<'a> + AddLocal>(
     }
     let Some(Record::Fn {
         addr: Some(fid), ..
-    }) = table.lookup_fn("print_global_meta", err)
+    }) = table.lookup_fn("print_global_meta", true, err)
     else {
         err.unexpected_error(true, Some("unexpected type".to_string()), None);
         return;
@@ -1202,9 +1252,9 @@ pub fn print_report_all<'a, T: Opcode<'a> + AddLocal>(
 
     let Some(Record::Fn {
         addr: Some(fid), ..
-    }) = table.lookup_fn("print_map_meta", err)
+    }) = table.lookup_fn("print_map_meta", false, err)
     else {
-        err.unexpected_error(true, Some("unexpected type".to_string()), None);
+        // maps must not be used in this script, ignore
         return;
     };
     injector.call(FunctionID(*fid));

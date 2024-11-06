@@ -1,16 +1,17 @@
 use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::module_emitter::MemoryTracker;
-use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::rewriting::rules::wasm::OpcodeEvent;
 use crate::emitter::rewriting::rules::{Arg, LocInfo, ProbeRule, Provider, WhammProvider};
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use std::collections::HashMap;
 
+use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::utils::{
     block_type_to_wasm, emit_expr, emit_stmt, print_report_all, whamm_type_to_wasm_global,
 };
-use crate::emitter::Emitter;
+use crate::emitter::{configure_flush_routines, Emitter, InjectStrategy};
 use crate::generator::folding::ExprFolder;
+use crate::lang_features::alloc_vars::rewriting::AllocVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::parser;
 use crate::parser::rules::UNKNOWN_IMMS;
@@ -29,19 +30,22 @@ const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
 
 pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
+    pub strategy: InjectStrategy,
     pub app_iter: ModuleIterator<'a, 'b>,
     pub table: &'c mut SymbolTable,
     pub mem_tracker: &'d mut MemoryTracker,
     pub map_lib_adapter: &'e mut MapLibAdapter,
     pub io_adapter: &'f mut IOAdapter,
     pub(crate) report_var_metadata: &'g mut ReportVarMetadata,
+    pub(crate) alloc_var_handler: &'g mut AllocVarHandler,
     instr_created_args: Vec<(String, usize)>,
-    pub curr_num_reports: i32,
+    pub curr_num_allocs: i32,
 }
 
 impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     // note: only used in integration test
     pub fn new(
+        strategy: InjectStrategy,
         app_wasm: &'a mut Module<'b>,
         injected_funcs: &Vec<FunctionID>,
         table: &'c mut SymbolTable,
@@ -49,16 +53,19 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         map_lib_adapter: &'e mut MapLibAdapter,
         io_adapter: &'f mut IOAdapter,
         report_var_metadata: &'g mut ReportVarMetadata,
+        alloc_var_handler: &'g mut AllocVarHandler,
     ) -> Self {
         let a = Self {
+            strategy,
             app_iter: ModuleIterator::new(app_wasm, injected_funcs),
             table,
             mem_tracker,
             map_lib_adapter,
             io_adapter,
             report_var_metadata,
+            alloc_var_handler,
             instr_created_args: vec![],
-            curr_num_reports: 0,
+            curr_num_allocs: 0,
         };
 
         a
@@ -377,11 +384,13 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             for stmt in block.iter_mut() {
                 is_success &= emit_stmt(
                     stmt,
+                    self.strategy,
                     &mut self.app_iter,
                     self.table,
                     self.mem_tracker,
                     self.map_lib_adapter,
                     self.report_var_metadata,
+                    self.alloc_var_handler,
                     UNEXPECTED_ERR_MSG,
                     err,
                 );
@@ -719,13 +728,25 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         self.map_lib_adapter
             .inject_map_init(&mut self.app_iter, fid);
     }
+
+    pub fn configure_flush_routines(&mut self, err: &mut ErrorGen) {
+        configure_flush_routines(
+            self.app_iter.module,
+            self.table,
+            self.report_var_metadata,
+            self.map_lib_adapter,
+            self.io_adapter,
+            UNEXPECTED_ERR_MSG,
+            err,
+        );
+    }
 }
 impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
     fn emit_body(&mut self, curr_instr_args: &[Arg], body: &mut Block, err: &mut ErrorGen) -> bool {
         let mut is_success = true;
-        for _ in 0..self.curr_num_reports {
+        for _ in 0..self.curr_num_allocs {
             let (global_id, ..) = whamm_type_to_wasm_global(self.app_iter.module, &DataType::I32);
-            self.report_var_metadata.available_i32_gids.push(*global_id);
+            self.alloc_var_handler.available_i32_gids.push(*global_id);
         }
         for stmt in body.stmts.iter_mut() {
             is_success &= self.emit_stmt(curr_instr_args, stmt, err);
@@ -735,6 +756,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
             &mut self.app_iter,
             self.table,
             self.report_var_metadata,
+            self.alloc_var_handler,
             err,
         );
         is_success
@@ -758,7 +780,8 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
                 Expr::VarId { name, .. } => name.clone(),
                 _ => return false,
             };
-            let Some(Record::Fn { def, .. }) = self.table.lookup_fn(fn_name.as_str(), err) else {
+            let Some(Record::Fn { def, .. }) = self.table.lookup_fn(fn_name.as_str(), true, err)
+            else {
                 err.unexpected_error(true, Some("unexpected type".to_string()), None);
                 return false;
             };
@@ -772,11 +795,13 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
 
         emit_stmt(
             stmt,
+            self.strategy,
             &mut self.app_iter,
             self.table,
             self.mem_tracker,
             self.map_lib_adapter,
             self.report_var_metadata,
+            self.alloc_var_handler,
             UNEXPECTED_ERR_MSG,
             err,
         )
@@ -785,11 +810,13 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
     fn emit_expr(&mut self, expr: &mut Expr, err: &mut ErrorGen) -> bool {
         emit_expr(
             expr,
+            self.strategy,
             &mut self.app_iter,
             self.table,
             self.mem_tracker,
             self.map_lib_adapter,
             self.report_var_metadata,
+            self.alloc_var_handler,
             UNEXPECTED_ERR_MSG,
             err,
         )

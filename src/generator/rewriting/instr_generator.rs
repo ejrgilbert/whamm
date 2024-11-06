@@ -1,6 +1,5 @@
 use crate::common::error::ErrorGen;
-use crate::emitter::module_emitter::StringAddr;
-use crate::emitter::report_var_metadata::{BytecodeLoc, LocationData, Metadata};
+use crate::emitter::report_var_metadata::{BytecodeLoc, LocationData};
 use crate::emitter::rewriting::rules::{provider_factory, Arg, LocInfo, ProbeRule, WhammProvider};
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::Emitter;
@@ -8,13 +7,8 @@ use crate::generator::folding::ExprFolder;
 use crate::generator::rewriting::simple_ast::{SimpleAST, SimpleProbe};
 use crate::parser::rules::core::WhammModeKind;
 use crate::parser::types::{Block, Expr, Value};
-use crate::verifier::types::Record;
-use orca_wasm::ir::id::{FunctionID, GlobalID};
-use orca_wasm::ir::types::Value as OrcaValue;
 use orca_wasm::iterator::iterator_trait::Iterator;
-use orca_wasm::opcode::Instrumenter;
-use orca_wasm::{DataSegment, DataSegmentKind, InitExpr, Opcode};
-use orca_wasm::{Location as OrcaLocation, Location};
+use orca_wasm::Location as OrcaLocation;
 use std::collections::HashMap;
 use std::iter::Iterator as StdIter;
 
@@ -168,7 +162,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
     }
     fn set_curr_loc(&mut self, probe_rule: &ProbeRule, probe: &SimpleProbe) {
         let curr_script_id = probe.script_id.clone();
-        self.emitter.curr_num_reports = probe.num_reports;
+        self.emitter.curr_num_allocs = probe.num_allocs;
         let curr_provider = match &probe_rule.provider {
             Some(provider) => provider.name.clone(),
             None => "".to_string(),
@@ -206,7 +200,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
             script_id: curr_script_id,
             bytecode_loc: loc,
             probe_id: curr_probe_id,
-            num_reports: self.emitter.curr_num_reports, //this is still used in the emitter to determine how many new globals to emit
+            num_allocs: self.emitter.curr_num_allocs, //this is still used in the emitter to determine how many new globals to emit
         };
     }
 }
@@ -361,205 +355,8 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_> {
             false
         }
     }
-
     fn after_run(&mut self) -> bool {
-        if self
-            .emitter
-            .report_var_metadata
-            .variable_metadata
-            .is_empty()
-            && self.emitter.report_var_metadata.map_metadata.is_empty()
-        {
-            return true;
-        }
-
-        // configure the flushing routines!
-        let report_var_metadata = &self.emitter.report_var_metadata;
-        let var_meta = &report_var_metadata.variable_metadata;
-        let map_meta = &report_var_metadata.map_metadata;
-        let mut var_meta_str: HashMap<u32, String> = HashMap::new();
-        let mut map_meta_str: HashMap<u32, String> = HashMap::new();
-        //convert the metadata into strings, add those to the data section, then use those to populate the maps
-        for (key, value) in var_meta.iter() {
-            //first, emit the string to data section
-            let val = value.to_csv();
-            let data_id = self.emitter.app_iter.module.data.len();
-            let val_bytes = val.as_bytes().to_owned();
-            let data_segment = DataSegment {
-                data: val_bytes,
-                kind: DataSegmentKind::Active {
-                    memory_index: self.emitter.mem_tracker.mem_id,
-                    offset_expr: InitExpr::Value(OrcaValue::I32(
-                        self.emitter.mem_tracker.curr_mem_offset as i32,
-                    )),
-                },
-            };
-            self.emitter.app_iter.module.data.push(data_segment);
-            // save the memory addresses/lens, so they can be used as appropriate
-            self.emitter.mem_tracker.emitted_strings.insert(
-                val.clone(),
-                StringAddr {
-                    data_id: data_id as u32,
-                    mem_offset: self.emitter.mem_tracker.curr_mem_offset,
-                    len: val.len(),
-                },
-            );
-            // update curr_mem_offset to account for new data
-            self.emitter.mem_tracker.curr_mem_offset += val.len();
-            //now set the new key value for the new maps
-            var_meta_str.insert(*key, val);
-        }
-        for (key, value) in map_meta.iter() {
-            //first, emit the string to data section
-            let val = value.to_csv();
-            let data_id = self.emitter.app_iter.module.data.len();
-            let val_bytes = val.as_bytes().to_owned();
-            let data_segment = DataSegment {
-                data: val_bytes,
-                kind: DataSegmentKind::Active {
-                    memory_index: self.emitter.mem_tracker.mem_id,
-                    offset_expr: InitExpr::Value(OrcaValue::I32(
-                        self.emitter.mem_tracker.curr_mem_offset as i32,
-                    )),
-                },
-            };
-            self.emitter.app_iter.module.data.push(data_segment);
-            // save the memory addresses/lens, so they can be used as appropriate
-            self.emitter.mem_tracker.emitted_strings.insert(
-                val.clone(),
-                StringAddr {
-                    data_id: data_id as u32,
-                    mem_offset: self.emitter.mem_tracker.curr_mem_offset,
-                    len: val.len(),
-                },
-            );
-            // update curr_mem_offset to account for new data
-            self.emitter.mem_tracker.curr_mem_offset += val.len();
-            //now set the new key value for the new maps
-            map_meta_str.insert(*key, val);
-        }
-        let mut is_success = self.setup_print_global_meta(&var_meta_str);
-        is_success &= self.setup_print_map_meta(&map_meta_str);
-        is_success
-    }
-
-    /// set up the print_global_meta function for insertions
-    fn setup_print_global_meta(&mut self, var_meta_str: &HashMap<u32, String>) -> bool {
-        // get the function
-        // todo(maps) -- look up the func name instead!
-        let print_global_meta_id = if let Some(Record::Fn { addr: Some(id), .. }) =
-            self.emitter.table.lookup_fn("print_global_meta", self.err)
-        {
-            *id
-        } else {
-            return false;
-        };
-        let print_global_meta_id = FunctionID(print_global_meta_id);
-
-        let mut print_global_meta = match self
-            .emitter
-            .app_iter
-            .module
-            .functions
-            .get_fn_modifier(print_global_meta_id)
-        {
-            Some(func) => func,
-            None => {
-                self.err.add_error(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} \
-                    No 'print_global_meta' function found in the module!"
-                    )),
-                    None,
-                ));
-                return false;
-            }
-        };
-        //now set up the actual module editing
-        print_global_meta.before_at(Location::Module {
-            func_idx: print_global_meta_id, // not used
-            instr_idx: 0,
-        });
-
-        // output the header data segment
-        let header = Metadata::get_csv_header();
-        self.emitter
-            .io_adapter
-            .putsln(header.clone(), &mut print_global_meta, self.err);
-
-        // for each of the report globals, emit the printing logic
-        for (key, val) in var_meta_str.iter() {
-            self.emitter.io_adapter.puts(
-                format!("i32,{key},{val},"),
-                &mut print_global_meta,
-                self.err,
-            );
-
-            // get the value of this report global
-            print_global_meta.global_get(GlobalID(*key));
-            self.emitter
-                .io_adapter
-                .call_puti(&mut print_global_meta, self.err);
-            self.emitter
-                .io_adapter
-                .putln(&mut print_global_meta, self.err);
-        }
-        true
-    }
-    fn setup_print_map_meta(&mut self, map_meta_str: &HashMap<u32, String>) -> bool {
-        // get the function
-        //first, we need to create the maps in global_map_init - where all the other maps are initialized
-        // todo(maps) -- look up the func name instead!
-        let print_map_meta_id = if let Some(Record::Fn { addr: Some(id), .. }) =
-            self.emitter.table.lookup_fn("print_map_meta", self.err)
-        {
-            *id
-        } else {
-            return false;
-        };
-        let print_map_meta_id = FunctionID(print_map_meta_id);
-
-        let mut print_map_meta = match self
-            .emitter
-            .app_iter
-            .module
-            .functions
-            .get_fn_modifier(print_map_meta_id)
-        {
-            Some(func) => func,
-            None => {
-                self.err.add_error(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} \
-                    No 'print_map_meta' function found in the module!"
-                    )),
-                    None,
-                ));
-                return false;
-            }
-        };
-        //now set uxp the actual module editing
-        print_map_meta.before_at(Location::Module {
-            func_idx: print_map_meta_id, // not used
-            instr_idx: 0,
-        });
-
-        // for each of the report maps, emit the printing logic
-        for (key, val) in map_meta_str.iter() {
-            self.emitter.io_adapter.puts(
-                format!("map,{key},{val},"),
-                &mut print_map_meta,
-                self.err,
-            );
-
-            // print the value(s) of this map
-            self.emitter
-                .map_lib_adapter
-                .print_map(*key, &mut print_map_meta, self.err);
-            self.emitter.io_adapter.putln(&mut print_map_meta, self.err);
-        }
+        self.emitter.configure_flush_routines(self.err);
         true
     }
 }
