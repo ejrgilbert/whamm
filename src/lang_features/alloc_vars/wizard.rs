@@ -21,7 +21,7 @@ pub fn load_unshared_vars(
     _alloc_mem_offset: VarAddr,
     _allocated_vars: Vec<(String, DataType)>,
 ) -> HashMap<String, (VarAddr, DataType)> {
-    // increment by bytes used by each var's DataType as we load them
+    // increment by bytes used by each variable's DataType as we load them
     // will be used to load the next variable AND to save in the VarAddr!
     let _used_bytes = 0;
 
