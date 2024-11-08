@@ -17,17 +17,6 @@ Take a look at the official [`whamm!` book](https://ejrgilbert.github.io/whamm/i
 
 ### Build ###
 
-Get [`orca`](https://github.com/thesuhas/orca), should be in parent directory at `../orca` (see Cargo.toml):
-```shell
-# Inside base directory of this project
-cd ..
-git clone git@github.com:thesuhas/orca.git
-cd orca
-git checkout DO_NOT_DELETE/whamm_dependency
-cd ../whamm
-```
-
-To run basic build:
 ```shell
 cargo build
 ```
@@ -37,7 +26,6 @@ cargo build
 In order to run the tests, a WebAssembly interpreter must be configured.
 The supported interpreters are:
 1. the Wizard engine interpreter. https://github.com/titzer/wizard-engine/tree/master
-   - Note that the Wizard interpreter does not run on Macs (yet...), so the Wasm reference interpreter will need to be configured in this context.
 2. the Wasm reference interpreter. https://github.com/WebAssembly/spec/tree/main/interpreter
 
 **How to build the [Wizard GH project]() to acquire these binaries:**
@@ -83,9 +71,9 @@ To specify log level:
 RUST_LOG={ error | warn | info | debug | trace | off } cargo run -- --app <path_to_app_wasm> --script <path_to_script> <path_for_compiled_output>
 ```
 
-To visually debug the decision tree used during Wasm bytecode emission:
+To use the utility that provides information about match rule globals/functions that can be leveraged by a probe's logic/predicate:
 ```shell
-cargo run -- vis-script --script <path_to_script>
+cargo run -- info --rule "<match_rule_glob>" # e.g. "wasm:opcode:br*"
 ```
 
 To run a script that uses special var types, at the moment this is `map` and `report` variables, do the following:
