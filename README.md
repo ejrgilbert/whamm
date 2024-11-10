@@ -114,9 +114,9 @@ To be added:
 - `exception` throw/rethrow/catch events
 
 Example:
-`wasi:http:send_req:alt`
-`wasm:bytecode:call:alt`
-`wasm:fn:enter:before`
+- `wasi:http:send_req:alt`
+- `wasm:opcode:call:alt`
+- `wasm:fn:enter:before`
 
 # The book #
 

@@ -12,7 +12,7 @@ Read on for an overview of the syntax and semantics of the language.
 - [Ternary Expressions](syntax/ternary.md) can be used for succinct conditional variable assignments.
 - [Primitive types](syntax/primitives.md) are numbers, booleans, and strings.
 - Various [arithmetic](syntax/arith.md) operations can be used with numbers.
-- [Strings](syntax/strings.md) are key for dealing with files, text, etc.
+- [Strings](syntax/strings.md) are key for dealing with text, etc.
 - [Tuples](syntax/tuples.md) allow using multiple values where one value is expected.
 - [Maps](syntax/maps.md) are key for storing large amounts of data, but they're implemented quite differently in `whamm!`.
 - [Function](syntax/functions.md) definitions can be used to reuse code snippets.

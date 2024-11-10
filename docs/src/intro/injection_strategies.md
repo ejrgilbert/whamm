@@ -18,9 +18,9 @@ _Use engine instrumentation_ capabilities _as available_.
 _Use bytecode rewriting_ to support _everything else_.
 
 ## Bytecode Rewriting ##
-[walrus](https://github.com/rustwasm/walrus)
+[orca](https://github.com/thesuhas/orca)
 
-To perform the bytecode rewriting injection strategy, `whamm!` leverages the `walrus` Rust library.
+To perform the bytecode rewriting injection strategy, `whamm!` leverages the `orca` Rust library.
 This library loads a Wasm module into an AST representation that can then be traversed and manipulated to inject the instrumentation logic.
 Read more about the low-level details in the [developers documentation](../devs/intro.md).
 

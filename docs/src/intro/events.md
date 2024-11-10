@@ -1,7 +1,7 @@
 # Instrumentable Events #
 
 Currently available `packages`:
-- `wasm:bytecode`, e.g. `wasm:bytecode:call:alt`
+- `wasm:opcode`, e.g. `wasm:opcode:call:alt`
 
 `Packages` to be added:
 - `thread` operation events
