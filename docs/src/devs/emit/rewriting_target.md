@@ -1,48 +1,34 @@
-# Phase 4: Emit #
+# Bytecode Rewriting #
 
-Here is documentation describing how we _emit_ `.mm` scripts.
-
-## Some Helpful Concepts ##
-
-**What is a `generator`?**
-A `generator` is used to traverse some representation of logic in an abstract way.
-It then calls the `emitter` when appropriate to actually emit the code in the target representation.
-
-**What is an `emitter`?**
-The `emitter` exposes an API that can be called to emit code in the target representation.
-There will be as many emitters as there are target representations supported by the language.
-
-In the context of `whamm!`, there are two `generator`s.
+For bytecode rewriting, there are two `generator`s.
 Each of these generators are used for a specific reason while emitting instrumentation.
 The `InitGenerator` is run first to emit the parts of the `.mm` script that need to exist _before_ any probe actions are emitted, such as functions and global state.
-The `InstrGenerator` is run second to emit the probes. 
+The `InstrGenerator` is run second to emit the probes while visiting the `app.wasm` bytecode (represented as an in-memory IR).
 
-Both of these generators use the `emitter` that emits instrumentation as configured by the end-user (either via _bytecode rewriting_ or emitting a `.v3` file that interfaces with an engine with direct support for instrumentation).
+Both of these generators use the `emitter` that emits Wasm code.
+The `emitter` uses utilities that centralize the Wasm emitting logic found at [`utils.rs`]
 
-## 4.1 `InitGenerator` ##
+[`utils.rs`]: https://github.com/ejrgilbert/whamm/blob/master/src/emitter/utils.rs
+
+## 1. `InitGenerator` ##
 
 The [`init_generator.rs`] traverses the AST to emit functions and globals that need to exist before emitting probes.
 The `run` function is the entrypoint for this generator.
 This follows the visitor software design pattern.
 There are great resources online that teach about the visitor pattern if that is helpful for any readers.
 
-Consider _bytecode rewriting_.
 This generator emits new Wasm functions and globals into the program with associated Wasm IDs.
 These IDs are stored in the `SymbolTable` for use while running the `InstrGenerator`.
 When emitting an instruction that either calls an emitted function or does some operation with an emitted global, the name of that symbol is looked up in the `SymbolTable` to then use the saved ID in the emitted instruction.
 
-[`init_generator.rs`]: https://github.com/ejrgilbert/whamm/blob/master/src/generator/init_generator.rs
+[`init_generator.rs`]: https://github.com/ejrgilbert/whamm/blob/master/src/generator/rewriting/init_generator.rs
 
-## 4.2 `InstrGenerator` ##
+## 2. `InstrGenerator` ##
 
-The [`instr_generator.rs`] traverses the `BehaviorTree` which encodes the logic of the instrumentation to emit.
-The `run` function is the entrypoint for this generator.
-This follows the visitor software design pattern.
-There are great resources online that teach about the visitor pattern if that is helpful for any readers.
+The [`instr_generator.rs`] calls into the `emitter` to gradually traverse the application in search for the locations that correspond to probe events in the `.mm`'s AST.
+When a probed location is found, the `generator` emits Wasm code into the application at that point through `emitter` utilities.
 
-This `generator` calls into the `emitter` to gradually traverse the program in search for the locations corresponding to each probe.
-
-[`instr_generator.rs`]: https://github.com/ejrgilbert/whamm/blob/master/src/generator/instr_generator.rs
+[`instr_generator.rs`]: https://github.com/ejrgilbert/whamm/blob/master/src/generator/rewriting/instr_generator.rs
 
 ### Constant Propagation and Folding!! ###
 
@@ -51,14 +37,14 @@ There are lots of resources online explaining these concepts if that would be us
 
 The `whamm info` command helps users see various globals that are in scope when using various probe match rules.
 All of these global variables are defined by `whamm!`'s compiler and _should only be emitted as constant literals_.
-If the variable were ever emitted into an instrumented program or `.v3` monitor, the program would fail to execute since the variable _would not be defined_.
+If the variable were ever directly emitted into an instrumented program, with no compiler-provided definition, the program would fail to execute since the variable _would not be defined_.
 
 `whamm!` uses constant propagation and folding to remedy this situation!
 
-The `define_*` functions in [`emitters.rs`] are examples of **how compiler constants are defined**.
+The `define` function in [`visiting_emitter.rs`] is **how compiler constants are defined** while traversing the application bytecode.
 These specific globals are defined in the emitter since their definitions are tied to locations in the Wasm program being instrumented.
 
-The `ExprFolder` in [`types.rs`] performs constant propagation and folding on expressions.
+The `ExprFolder` in [`folding.rs`] performs constant propagation and folding on expressions.
 
 When considering a _predicated probe_, this behavior can be quite interesting.
 Take the following probe definition for example:
@@ -96,5 +82,5 @@ However, this time the actions emitted _will retain a conditional_, but it will 
 
 Pretty cool, right??
 
-[`emitters.rs`]: https://github.com/ejrgilbert/whamm/blob/master/src/generator/emitters.rs
-[`types.rs`]: https://github.com/ejrgilbert/whamm/blob/master/src/generator/types.rs
+[`visiting_emitter.rs`]: https://github.com/ejrgilbert/whamm/blob/master/src/emitter/rewriting/*.rs
+[`folding.rs`]: https://github.com/ejrgilbert/whamm/blob/master/src/generator/types.rs

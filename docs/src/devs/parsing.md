@@ -25,8 +25,7 @@ This AST is leveraged in different ways for each of the subsequent compiler phas
 
 During [**verification**](verifying.md), the AST is used to build the `SymbolTable` and perform type checking.
 
-While [**building the behavior tree**](behavior_tree.md), the AST is used to inform what the behavior should be as instrumentation is being injected into the target program (for bytecode rewriting).
-Since the AST encodes the events utilized by the instrumentation and the predicates that must be partially evaluated during injection, the built behavior tree encodes a flow of actions customized to the instrumentation to be emitted.
-While building the behavior tree, a _simpler variation of the AST_ is created to optimize the lookup of information that is relevant during the emit phase.
+While [**translating the AST**](translate.md) into the injection strategy's representation, the AST is visited and restructured in a way that is simpler to compile for each strategy.
+Each node contains new data unique to each strategy that is helpful while emitting.
 
-While [**emitting**](emitting.md), the _simpler AST variation_ mentioned above is used to lookup global statements and iterate over probe definitions to inject them into locations-of-interest in the Wasm program.
+While [**emitting**](emit/emitting.md), the _simpler AST variation_ mentioned above is used to lookup global statements and iterate over probe definitions to inject them into locations-of-interest in the Wasm program.
