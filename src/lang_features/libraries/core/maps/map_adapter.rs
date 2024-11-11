@@ -1,5 +1,5 @@
 use crate::common::error::ErrorGen;
-use crate::emitter::report_var_metadata::{LocationData, Metadata, ReportVarMetadata};
+use crate::lang_features::report_vars::{LocationData, Metadata, ReportVars};
 use crate::lang_features::libraries::core::LibAdapter;
 use crate::parser::types::DataType;
 use orca_wasm::ir::id::{FunctionID, GlobalID};
@@ -104,13 +104,13 @@ impl MapLibAdapter {
         name: String,
         ty: DataType,
         func: &mut T,
-        report_var_metadata: &mut ReportVarMetadata,
+        report_vars: &mut ReportVars,
         is_local: bool,
         err: &mut ErrorGen,
     ) -> u32 {
         let map_id = self.map_create(ty, func, err);
         //create the metadata for the map
-        self.create_map_metadata(map_id, name.clone(), report_var_metadata, is_local, err);
+        self.create_map_metadata(map_id, name.clone(), report_vars, is_local, err);
         map_id
     }
 
@@ -164,13 +164,13 @@ impl MapLibAdapter {
         &mut self,
         map_id: u32,
         name: String,
-        report_var_metadata: &mut ReportVarMetadata,
+        report_vars: &mut ReportVars,
         is_local: bool,
         err: &mut ErrorGen,
     ) {
         if is_local {
             if !matches!(
-                report_var_metadata.curr_location,
+                report_vars.curr_location,
                 LocationData::Local { .. }
             ) {
                 err.unexpected_error(
@@ -180,7 +180,7 @@ impl MapLibAdapter {
                 );
             }
         } else if !matches!(
-            report_var_metadata.curr_location,
+            report_vars.curr_location,
             LocationData::Global { .. }
         ) {
             err.unexpected_error(
@@ -190,11 +190,11 @@ impl MapLibAdapter {
             );
         };
 
-        let metadata = Metadata::new(name.clone(), &report_var_metadata.curr_location);
-        report_var_metadata
+        let metadata = Metadata::new(name.clone(), &report_vars.curr_location);
+        report_vars
             .map_metadata
             .insert(map_id, metadata.clone());
-        if !report_var_metadata.all_metadata.insert(metadata) {
+        if !report_vars.all_metadata.insert(metadata) {
             err.unexpected_error(
                 true,
                 Some(format!("Duplicate metadata for map with name: {}", name)),

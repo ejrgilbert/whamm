@@ -4,7 +4,7 @@
 
 use crate::common::error::ErrorGen;
 use crate::emitter::module_emitter::ModuleEmitter;
-use crate::emitter::report_var_metadata::LocationData;
+use crate::lang_features::report_vars::LocationData;
 use crate::generator::GeneratingVisitor;
 use crate::parser::types::{DataType, Fn, Value, Whamm, WhammVisitorMut};
 use orca_wasm::ir::id::FunctionID;
@@ -75,7 +75,7 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 
     fn set_curr_loc(&mut self, loc: LocationData) {
-        self.emitter.report_var_metadata.curr_location = loc;
+        self.emitter.report_vars.curr_location = loc;
     }
 
     fn enter_named_scope(&mut self, name: &str) {

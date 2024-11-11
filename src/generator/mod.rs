@@ -1,4 +1,4 @@
-use crate::emitter::report_var_metadata::LocationData;
+use crate::lang_features::report_vars::LocationData;
 use crate::parser::rules::{Event, Package, Probe, Provider};
 use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Fn, Global, ProvidedFunction, Script, Statement,
@@ -60,7 +60,7 @@ pub trait GeneratingVisitor: WhammVisitorMut<bool> {
             // do not inject globals into Wasm that are used/defined by the compiler
             if global.is_from_user() {
                 if global.report {
-                    //emit global and add the metadata to the report_var_metadata
+                    //emit global and add the metadata to the report_vars
                     if let Some(fid) =
                         self.emit_report_global(name.clone(), global.ty.clone(), &global.value)
                     {

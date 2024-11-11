@@ -2,7 +2,7 @@
 use crate::cli::LibraryLinkStrategyArg;
 use crate::common::error::ErrorGen;
 use crate::emitter::module_emitter::{MemoryTracker, ModuleEmitter};
-use crate::emitter::report_var_metadata::ReportVarMetadata;
+use crate::lang_features::report_vars::ReportVars;
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::InjectStrategy;
 use crate::generator::rewriting::init_generator::InitGenerator;
@@ -177,7 +177,7 @@ pub fn run(
     );
     let mut map_lib_adapter = map_package.adapter;
     let mut io_adapter = io_package.adapter;
-    let mut report_var_metadata = ReportVarMetadata::new();
+    let mut report_vars = ReportVars::new();
     let mut unshared_var_handler = UnsharedVarHandler::default();
 
     // If there were any errors encountered, report and exit!
@@ -191,7 +191,7 @@ pub fn run(
             &mut symbol_table,
             &mut io_adapter,
             &mut map_lib_adapter,
-            &mut report_var_metadata,
+            &mut report_vars,
             &mut unshared_var_handler,
             &mut err,
             &config,
@@ -205,13 +205,13 @@ pub fn run(
             &mut symbol_table,
             &mut io_adapter,
             &mut map_lib_adapter,
-            &mut report_var_metadata,
+            &mut report_vars,
             &mut unshared_var_handler,
             &mut err,
         );
     }
     // for debugging
-    report_var_metadata.print_metadata();
+    report_vars.print_metadata();
 
     if let Some(output_wasm_path) = output_wasm_path {
         try_path(&output_wasm_path);
@@ -240,7 +240,7 @@ fn run_instr_wizard(
     symbol_table: &mut SymbolTable,
     io_adapter: &mut IOAdapter,
     map_lib_adapter: &mut MapLibAdapter,
-    report_var_metadata: &mut ReportVarMetadata,
+    report_vars: &mut ReportVars,
     unshared_var_handler: &mut UnsharedVarHandler,
     err: &mut ErrorGen,
     config: &Config,
@@ -263,7 +263,7 @@ fn run_instr_wizard(
             symbol_table,
             &mut mem_tracker,
             map_lib_adapter,
-            report_var_metadata,
+            report_vars,
             unshared_var_handler,
         ),
         io_adapter,
@@ -283,7 +283,7 @@ fn run_instr_rewrite(
     symbol_table: &mut SymbolTable,
     io_adapter: &mut IOAdapter,
     map_lib_adapter: &mut MapLibAdapter,
-    report_var_metadata: &mut ReportVarMetadata,
+    report_vars: &mut ReportVars,
     unshared_var_handler: &mut UnsharedVarHandler,
     err: &mut ErrorGen,
 ) {
@@ -298,7 +298,7 @@ fn run_instr_rewrite(
             symbol_table,
             &mut mem_tracker,
             map_lib_adapter,
-            report_var_metadata,
+            report_vars,
             unshared_var_handler,
         ),
         context_name: "".to_string(),
@@ -321,7 +321,7 @@ fn run_instr_rewrite(
             &mut mem_tracker,
             map_lib_adapter,
             io_adapter,
-            report_var_metadata,
+            report_vars,
             unshared_var_handler,
         ),
         simple_ast,
