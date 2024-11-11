@@ -14,7 +14,7 @@ x = false;
 
 ## Integers ##
 
-Right now, `whamm!` supports `i32` integers (_signed_ 32-bit values), but will be supporting all numeric types provided by Wasm in the future.
+Right now, `whamm!` supports `i32` (_signed_ 32-bit values) and `u32` (_unsigned_ 32-bit values) integers, but will be supporting all numeric types provided by Wasm in the future.
 
 ```
 // with declared types
@@ -25,3 +25,5 @@ d = -42;
 ```
 
 The minimum decimal value for type `i32` is `-2147483648` (equal to `-2^31`) and the maximum value is `2147483647` (equal to `2^31 - 1`).
+
+The minimum decimal value for type `u32` is `0` and the maximum value is `4294967295` (equal to `2^32 - 1`).

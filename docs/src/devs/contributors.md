@@ -5,3 +5,5 @@ These are the people to thank when you're using `whamm!`...either genuinely or s
 [**Elizabeth Gilbert**](https://se-phd.s3d.cmu.edu/People/students/student-bios/gilbert-elizabeth.html), PhD student at **Carnegie Mellon University (CMU)**.
 
 [**Alex Bai**](https://www.eecs.tufts.edu/~abai02/), undergrad student at **Tufts University**.
+
+[**Wavid Bowman**](), undergrad student at **University of Florida**.
