@@ -5,7 +5,6 @@ use crate::emitter::rewriting::rules::{Arg, LocInfo, ProbeRule, Provider, WhammP
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use std::collections::HashMap;
 
-use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::utils::{
     block_type_to_wasm, emit_expr, emit_stmt, print_report_all, whamm_type_to_wasm_global,
 };
@@ -13,6 +12,7 @@ use crate::emitter::{configure_flush_routines, Emitter, InjectStrategy};
 use crate::generator::folding::ExprFolder;
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
+use crate::lang_features::report_vars::ReportVars;
 use crate::parser;
 use crate::parser::rules::UNKNOWN_IMMS;
 use crate::parser::types::{Block, DataType, Definition, Expr, RulePart, Statement, Value};
@@ -36,7 +36,7 @@ pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub mem_tracker: &'d mut MemoryTracker,
     pub map_lib_adapter: &'e mut MapLibAdapter,
     pub io_adapter: &'f mut IOAdapter,
-    pub(crate) report_var_metadata: &'g mut ReportVarMetadata,
+    pub(crate) report_vars: &'g mut ReportVars,
     pub(crate) unshared_var_handler: &'g mut UnsharedVarHandler,
     instr_created_args: Vec<(String, usize)>,
     pub curr_num_unshared: i32,
@@ -52,7 +52,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         mem_tracker: &'d mut MemoryTracker,
         map_lib_adapter: &'e mut MapLibAdapter,
         io_adapter: &'f mut IOAdapter,
-        report_var_metadata: &'g mut ReportVarMetadata,
+        report_vars: &'g mut ReportVars,
         unshared_var_handler: &'g mut UnsharedVarHandler,
     ) -> Self {
         let a = Self {
@@ -62,7 +62,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             mem_tracker,
             map_lib_adapter,
             io_adapter,
-            report_var_metadata,
+            report_vars,
             unshared_var_handler,
             instr_created_args: vec![],
             curr_num_unshared: 0,
@@ -389,7 +389,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     self.table,
                     self.mem_tracker,
                     self.map_lib_adapter,
-                    self.report_var_metadata,
+                    self.report_vars,
                     self.unshared_var_handler,
                     UNEXPECTED_ERR_MSG,
                     err,
@@ -733,7 +733,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         configure_flush_routines(
             self.app_iter.module,
             self.table,
-            self.report_var_metadata,
+            self.report_vars,
             self.map_lib_adapter,
             self.io_adapter,
             UNEXPECTED_ERR_MSG,
@@ -757,7 +757,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
         print_report_all(
             &mut self.app_iter,
             self.table,
-            self.report_var_metadata,
+            self.report_vars,
             self.unshared_var_handler,
             err,
         );
@@ -802,7 +802,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
             self.table,
             self.mem_tracker,
             self.map_lib_adapter,
-            self.report_var_metadata,
+            self.report_vars,
             self.unshared_var_handler,
             UNEXPECTED_ERR_MSG,
             err,
@@ -817,7 +817,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
             self.table,
             self.mem_tracker,
             self.map_lib_adapter,
-            self.report_var_metadata,
+            self.report_vars,
             self.unshared_var_handler,
             UNEXPECTED_ERR_MSG,
             err,

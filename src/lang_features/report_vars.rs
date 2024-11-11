@@ -3,7 +3,7 @@ use std::fmt::Display;
 
 use crate::common::error::ErrorGen;
 
-pub struct ReportVarMetadata {
+pub struct ReportVars {
     //MapID -> Metadata
     pub map_metadata: HashMap<u32, Metadata>,
     //GID -> Metadata
@@ -12,15 +12,15 @@ pub struct ReportVarMetadata {
     pub curr_location: LocationData,
     pub flush_soon: bool,
 }
-impl Default for ReportVarMetadata {
+impl Default for ReportVars {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl ReportVarMetadata {
+impl ReportVars {
     pub fn new() -> Self {
-        ReportVarMetadata {
+        ReportVars {
             map_metadata: HashMap::new(),
             variable_metadata: HashMap::new(),
             all_metadata: HashSet::new(),

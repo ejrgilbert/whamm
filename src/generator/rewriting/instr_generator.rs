@@ -1,10 +1,10 @@
 use crate::common::error::ErrorGen;
-use crate::emitter::report_var_metadata::{BytecodeLoc, LocationData};
 use crate::emitter::rewriting::rules::{provider_factory, Arg, LocInfo, ProbeRule, WhammProvider};
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::Emitter;
 use crate::generator::folding::ExprFolder;
 use crate::generator::rewriting::simple_ast::{SimpleAST, SimpleProbe};
+use crate::lang_features::report_vars::{BytecodeLoc, LocationData};
 use crate::parser::rules::core::WhammModeKind;
 use crate::parser::types::{Block, Expr, Value};
 use orca_wasm::iterator::iterator_trait::Iterator;
@@ -196,7 +196,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
             } => BytecodeLoc::new(*func_idx, instr_idx as u32),
         };
         //set the current location in bytecode and load some new globals for potential report vars
-        self.emitter.report_var_metadata.curr_location = LocationData::Local {
+        self.emitter.report_vars.curr_location = LocationData::Local {
             script_id: curr_script_id,
             bytecode_loc: loc,
             probe_id: curr_probe_id,

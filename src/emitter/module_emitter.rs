@@ -1,11 +1,11 @@
 use crate::common::error::{ErrorGen, WhammError};
-use crate::emitter::report_var_metadata::ReportVarMetadata;
 use crate::emitter::rewriting::rules::Arg;
 use crate::emitter::utils::{emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global};
 use crate::emitter::{configure_flush_routines, Emitter, InjectStrategy};
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
+use crate::lang_features::report_vars::ReportVars;
 use crate::parser::types::{Block, DataType, Definition, Expr, Fn, FnId, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use log::debug;
@@ -41,7 +41,7 @@ pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub table: &'c mut SymbolTable,
     mem_tracker: &'d mut MemoryTracker,
     pub map_lib_adapter: &'e mut MapLibAdapter,
-    pub report_var_metadata: &'f mut ReportVarMetadata,
+    pub report_vars: &'f mut ReportVars,
     pub unshared_var_handler: &'g mut UnsharedVarHandler,
     fn_providing_contexts: Vec<String>,
 }
@@ -54,7 +54,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         table: &'c mut SymbolTable,
         mem_tracker: &'d mut MemoryTracker,
         map_lib_adapter: &'e mut MapLibAdapter,
-        report_var_metadata: &'f mut ReportVarMetadata,
+        report_vars: &'f mut ReportVars,
         unshared_var_handler: &'g mut UnsharedVarHandler,
     ) -> Self {
         Self {
@@ -63,7 +63,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             emitting_func: None,
             mem_tracker,
             map_lib_adapter,
-            report_var_metadata,
+            report_vars,
             unshared_var_handler,
             table,
             fn_providing_contexts: vec!["whamm".to_string()],
@@ -496,7 +496,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                         name,
                         ty.clone(),
                         &mut init_fn,
-                        self.report_var_metadata,
+                        self.report_vars,
                         false,
                         err,
                     )
@@ -513,7 +513,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 *addr = Some(VarAddr::Global { addr: *global_id });
                 //now save off the global variable metadata
                 if report_mode {
-                    self.report_var_metadata
+                    self.report_vars
                         .put_global_metadata(*global_id, name.clone(), err);
                 }
                 Some(self.emit_global_getter(&global_id, name, global_ty))
@@ -663,7 +663,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         configure_flush_routines(
             self.app_wasm,
             self.table,
-            self.report_var_metadata,
+            self.report_vars,
             self.map_lib_adapter,
             io_adapter,
             UNEXPECTED_ERR_MSG,
@@ -686,7 +686,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
                 self.table,
                 self.mem_tracker,
                 self.map_lib_adapter,
-                self.report_var_metadata,
+                self.report_vars,
                 self.unshared_var_handler,
                 UNEXPECTED_ERR_MSG,
                 err,
@@ -710,7 +710,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
                 self.table,
                 self.mem_tracker,
                 self.map_lib_adapter,
-                self.report_var_metadata,
+                self.report_vars,
                 self.unshared_var_handler,
                 UNEXPECTED_ERR_MSG,
                 err,
@@ -729,7 +729,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
                 self.table,
                 self.mem_tracker,
                 self.map_lib_adapter,
-                self.report_var_metadata,
+                self.report_vars,
                 self.unshared_var_handler,
                 UNEXPECTED_ERR_MSG,
                 err,

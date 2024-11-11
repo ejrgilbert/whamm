@@ -1,15 +1,14 @@
 pub mod module_emitter;
-pub mod report_var_metadata;
 pub mod rewriting;
 #[cfg(test)]
 pub mod tests;
 pub mod utils;
 
 use crate::common::error::ErrorGen;
-use crate::emitter::report_var_metadata::{Metadata, ReportVarMetadata};
 use crate::emitter::rewriting::rules::Arg;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
+use crate::lang_features::report_vars::{Metadata, ReportVars};
 use crate::parser::types::{Block, Expr, Statement};
 use crate::verifier::types::{Record, SymbolTable};
 use orca_wasm::ir::id::{FunctionID, GlobalID};
@@ -41,25 +40,23 @@ pub trait Emitter {
 pub fn configure_flush_routines(
     wasm: &mut Module,
     table: &mut SymbolTable,
-    report_var_metadata: &mut ReportVarMetadata,
+    report_vars: &mut ReportVars,
     map_lib_adapter: &mut MapLibAdapter,
     io_adapter: &mut IOAdapter,
     err_msg: &str,
     err: &mut ErrorGen,
 ) {
-    if report_var_metadata.variable_metadata.is_empty()
-        && report_var_metadata.map_metadata.is_empty()
-    {
+    if report_vars.variable_metadata.is_empty() && report_vars.map_metadata.is_empty() {
         return;
     }
 
     //convert the metadata into strings, add those to the data section, then use those to populate the maps
-    let var_meta: HashMap<u32, String> = report_var_metadata
+    let var_meta: HashMap<u32, String> = report_vars
         .variable_metadata
         .iter()
         .map(|(key, value)| (*key, value.to_csv()))
         .collect();
-    let map_meta: HashMap<u32, String> = report_var_metadata
+    let map_meta: HashMap<u32, String> = report_vars
         .map_metadata
         .iter()
         .map(|(key, value)| (*key, value.to_csv()))

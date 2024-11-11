@@ -4,11 +4,11 @@ pub mod metadata_collector;
 use crate::common::error::ErrorGen;
 use crate::common::instr::Config;
 use crate::emitter::module_emitter::ModuleEmitter;
-use crate::emitter::report_var_metadata::{BytecodeLoc, LocationData};
 use crate::emitter::utils::{whamm_type_to_wasm_global, whamm_type_to_wasm_type};
 use crate::generator::wizard::ast::{WizardProbe, WizardScript};
 use crate::generator::GeneratingVisitor;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
+use crate::lang_features::report_vars::{BytecodeLoc, LocationData};
 use crate::parser::types::{Block, DataType, Definition, FnId, Statement, Value, WhammVisitorMut};
 use crate::verifier::types::{Record, VarAddr};
 use log::trace;
@@ -272,7 +272,7 @@ impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '
     }
 
     fn set_curr_loc(&mut self, loc: LocationData) {
-        self.emitter.report_var_metadata.curr_location = loc;
+        self.emitter.report_vars.curr_location = loc;
     }
 
     fn enter_named_scope(&mut self, name: &str) {
