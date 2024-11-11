@@ -9,11 +9,13 @@ Parsing:
 - The [Pest book](https://pest.rs/book/)
 
 ## `whamm!` Implementation Concepts ##
+
 The [_four phases_ of compilation](compiler_phases.md):
 1. [Parse](parsing.md)
-2. [Verify](verifying.md)
-3. [Encode as a `BehaviorTree`](behavior_tree.md)
-4. [Emit](emitting.md)
+2. Configure the `Whamm!` [Core Library](./core_lib.md) (if needed)
+3. [Verify](verifying.md)
+4. [Translate](translate.md) AST into the injection strategy's representation
+5. [Emit](emit/emitting.md)
 
 Other helpful concepts:
 - The `whamm!` [CLI](cli.md)

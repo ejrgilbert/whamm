@@ -1,4 +1,4 @@
-# Phase 2: Verify #
+# Phase 3: Verify #
 
 Here is documentation describing how we _verify_ `.mm` scripts.
 
@@ -32,7 +32,7 @@ See the [probes syntax documentation] for a helpful CLI tool that enables the us
 
 
 [`verifier/types.rs`]: https://github.com/ejrgilbert/whamm/blob/master/src/verifier/types.rs
-[`InitGenerator` documentation]: emitting.md#parta-initgenerator
+[`InitGenerator` documentation]: emit/emitting.md#parta-initgenerator
 [probes syntax documentation]: ../intro/syntax/probes.md#helpful-info-in-cli
 [`whamm_parser.rs`]: https://github.com/ejrgilbert/whamm/blob/master/src/parser/whamm_parser.rs
 
@@ -56,4 +56,5 @@ There are great resources online that teach about the visitor pattern if that is
 
 ## The `TypeChecker` ##
 
-NOTE: This functionality hasn't been fully implemented! More docs to come post-implementation!
+The type checker then visits the AST and uses the `SymbolTable` to verify that variable usage is appropriate.
+It can find out-of-scope usages, invalid method invocations, misused types, etc.

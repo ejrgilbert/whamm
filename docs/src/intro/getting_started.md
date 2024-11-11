@@ -28,8 +28,30 @@ This is an example of manipulating an application's dynamic behavior through cha
 
 Continue reading through this book's "getting started" content for how to write such _monitors_ and _manipulators_.
 
-# Architecture #
-TODO
+# Anatomy of Instrumentation in `Whamm!` #
+
+![](../images/anatomy.png)
+
+The core anatomy of instrumentation written in `Whamm!` consists of the `Whamm!` script (`instr.mm`) and the instrumentation library (`instr.wasm`).
+
+Together, these files tell the `Whamm!` compiler _where_ to insert instrumentation and _what_ logic to inject at those points.
+
+## `instr.mm`  ##
+_**Where** to insert instrumentation._
+
+This `Whamm!` script describes a unit of instrumentation by specifying the points to probe in an application using the [probe syntax](./syntax/probes.md).
+These probes contain the logic to inject at these match point in their bodies.
+This logic _can_ call out to the user's instrumentation library, provided as `lib.wasm`.
+
+## `lib.wasm` ##
+_**What** logic to insert at the targeted application points._
+
+It is _optional_ to provide this library to `Whamm!`.
+It is only necessary if the user would prefer to write their instrumentation in a higher-level language or if the DSL does not have some syntax/tool necessary for the instrumentation logic.
+This language _must compile to Wasm_ as the library must be provided to the `Whamm!` compiler as a Wasm file.
+
+The user will need to keep in mind that the function signatures in their library that will be called in their probe bodies will need to have types compatible with the [types currently provided](./language.md) by `Whamm!`.
+Otherwise, `Whamm!` will not be able to compile their instrumentation code.
 
 # Helpful Tools #
 
