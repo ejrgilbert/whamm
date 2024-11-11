@@ -5,10 +5,10 @@ pub mod tests;
 pub mod utils;
 
 use crate::common::error::ErrorGen;
-use crate::lang_features::report_vars::{Metadata, ReportVars};
 use crate::emitter::rewriting::rules::Arg;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
+use crate::lang_features::report_vars::{Metadata, ReportVars};
 use crate::parser::types::{Block, Expr, Statement};
 use crate::verifier::types::{Record, SymbolTable};
 use orca_wasm::ir::id::{FunctionID, GlobalID};
@@ -46,9 +46,7 @@ pub fn configure_flush_routines(
     err_msg: &str,
     err: &mut ErrorGen,
 ) {
-    if report_vars.variable_metadata.is_empty()
-        && report_vars.map_metadata.is_empty()
-    {
+    if report_vars.variable_metadata.is_empty() && report_vars.map_metadata.is_empty() {
         return;
     }
 

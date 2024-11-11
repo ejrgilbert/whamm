@@ -5,7 +5,6 @@ use crate::emitter::rewriting::rules::{Arg, LocInfo, ProbeRule, Provider, WhammP
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use std::collections::HashMap;
 
-use crate::lang_features::report_vars::ReportVars;
 use crate::emitter::utils::{
     block_type_to_wasm, emit_expr, emit_stmt, print_report_all, whamm_type_to_wasm_global,
 };
@@ -13,6 +12,7 @@ use crate::emitter::{configure_flush_routines, Emitter, InjectStrategy};
 use crate::generator::folding::ExprFolder;
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
+use crate::lang_features::report_vars::ReportVars;
 use crate::parser;
 use crate::parser::rules::UNKNOWN_IMMS;
 use crate::parser::types::{Block, DataType, Definition, Expr, RulePart, Statement, Value};

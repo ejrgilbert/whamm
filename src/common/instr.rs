@@ -2,7 +2,6 @@
 use crate::cli::LibraryLinkStrategyArg;
 use crate::common::error::ErrorGen;
 use crate::emitter::module_emitter::{MemoryTracker, ModuleEmitter};
-use crate::lang_features::report_vars::ReportVars;
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::InjectStrategy;
 use crate::generator::rewriting::init_generator::InitGenerator;
@@ -15,6 +14,7 @@ use crate::lang_features::libraries::core::io::IOPackage;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::lang_features::libraries::core::maps::MapLibPackage;
 use crate::lang_features::libraries::core::LibPackage;
+use crate::lang_features::report_vars::ReportVars;
 use crate::parser::types::{Whamm, WhammVisitor};
 use crate::parser::whamm_parser::parse_script;
 use crate::verifier::types::SymbolTable;

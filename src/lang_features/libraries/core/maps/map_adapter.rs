@@ -1,6 +1,6 @@
 use crate::common::error::ErrorGen;
-use crate::lang_features::report_vars::{LocationData, Metadata, ReportVars};
 use crate::lang_features::libraries::core::LibAdapter;
+use crate::lang_features::report_vars::{LocationData, Metadata, ReportVars};
 use crate::parser::types::DataType;
 use orca_wasm::ir::id::{FunctionID, GlobalID};
 use orca_wasm::ir::types::BlockType as OrcaBlockType;
@@ -169,20 +169,14 @@ impl MapLibAdapter {
         err: &mut ErrorGen,
     ) {
         if is_local {
-            if !matches!(
-                report_vars.curr_location,
-                LocationData::Local { .. }
-            ) {
+            if !matches!(report_vars.curr_location, LocationData::Local { .. }) {
                 err.unexpected_error(
                     true,
                     Some(format!("Can only emit local maps when in a local function scope in the target application...but we're in the global scope! See map: {}", name)),
                     None,
                 );
             }
-        } else if !matches!(
-            report_vars.curr_location,
-            LocationData::Global { .. }
-        ) {
+        } else if !matches!(report_vars.curr_location, LocationData::Global { .. }) {
             err.unexpected_error(
                 true,
                 Some(format!("Can only emit global maps when in the global scope of the target application...but we're in a local function scope! See map: {}", name)),
@@ -191,9 +185,7 @@ impl MapLibAdapter {
         };
 
         let metadata = Metadata::new(name.clone(), &report_vars.curr_location);
-        report_vars
-            .map_metadata
-            .insert(map_id, metadata.clone());
+        report_vars.map_metadata.insert(map_id, metadata.clone());
         if !report_vars.all_metadata.insert(metadata) {
             err.unexpected_error(
                 true,

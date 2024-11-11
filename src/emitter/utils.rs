@@ -1,11 +1,11 @@
 #![allow(clippy::too_many_arguments)]
 use crate::common::error::ErrorGen;
 use crate::emitter::module_emitter::MemoryTracker;
-use crate::lang_features::report_vars::ReportVars;
 use crate::emitter::InjectStrategy;
 use crate::generator::folding::ExprFolder;
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
+use crate::lang_features::report_vars::ReportVars;
 use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Location, Statement, UnOp, Value,
 };

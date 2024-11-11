@@ -1,11 +1,11 @@
 use crate::common::error::{ErrorGen, WhammError};
-use crate::lang_features::report_vars::ReportVars;
 use crate::emitter::rewriting::rules::Arg;
 use crate::emitter::utils::{emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global};
 use crate::emitter::{configure_flush_routines, Emitter, InjectStrategy};
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
+use crate::lang_features::report_vars::ReportVars;
 use crate::parser::types::{Block, DataType, Definition, Expr, Fn, FnId, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use log::debug;

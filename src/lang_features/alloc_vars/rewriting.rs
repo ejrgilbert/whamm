@@ -1,8 +1,8 @@
 #![allow(clippy::too_many_arguments)]
 use crate::common::error::ErrorGen;
-use crate::lang_features::report_vars::ReportVars;
 use crate::emitter::utils::whamm_type_to_wasm_type;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
+use crate::lang_features::report_vars::ReportVars;
 use crate::parser::types::DataType;
 use crate::verifier::types::VarAddr;
 use orca_wasm::module_builder::AddLocal;
@@ -64,12 +64,7 @@ impl UnsharedVarHandler {
                 let wasm_ty = whamm_type_to_wasm_type(ty);
                 if let Some(id) = self.use_available_gid(err_msg, err) {
                     if is_report {
-                        report_vars.put_local_metadata(
-                            id,
-                            var_name.to_string(),
-                            wasm_ty,
-                            err,
-                        );
+                        report_vars.put_local_metadata(id, var_name.to_string(), wasm_ty, err);
                     }
 
                     *addr = Some(VarAddr::Global { addr: id });

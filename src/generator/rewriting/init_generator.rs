@@ -4,8 +4,8 @@
 
 use crate::common::error::ErrorGen;
 use crate::emitter::module_emitter::ModuleEmitter;
-use crate::lang_features::report_vars::LocationData;
 use crate::generator::GeneratingVisitor;
+use crate::lang_features::report_vars::LocationData;
 use crate::parser::types::{DataType, Fn, Value, Whamm, WhammVisitorMut};
 use orca_wasm::ir::id::FunctionID;
 
