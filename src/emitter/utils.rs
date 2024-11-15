@@ -1,6 +1,5 @@
 #![allow(clippy::too_many_arguments)]
 use crate::common::error::ErrorGen;
-use crate::emitter::module_emitter::MemoryTracker;
 use crate::emitter::InjectStrategy;
 use crate::generator::folding::ExprFolder;
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;

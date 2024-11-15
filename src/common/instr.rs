@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 use crate::cli::LibraryLinkStrategyArg;
 use crate::common::error::ErrorGen;
-use crate::emitter::module_emitter::{MemoryTracker, ModuleEmitter};
+use crate::emitter::module_emitter::ModuleEmitter;
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::InjectStrategy;
 use crate::generator::rewriting::init_generator::InitGenerator;
