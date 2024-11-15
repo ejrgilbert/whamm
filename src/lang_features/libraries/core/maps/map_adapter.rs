@@ -323,7 +323,7 @@ impl MapLibAdapter {
     // ==== MAP INIT LOGIC ====
     // ========================
 
-    const MAP_INIT_FNAME: &'static str = "global_map_init";
+    const MAP_INIT_FNAME: &'static str = "instr_init";
 
     pub fn get_map_init_fid(&self, app_wasm: &mut Module, err: &mut ErrorGen) -> FunctionID {
         match app_wasm

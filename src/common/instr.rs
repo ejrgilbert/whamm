@@ -26,6 +26,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::exit;
 use wasmparser::MemoryType;
+use crate::emitter::memory_allocator::MemoryAllocator;
 
 /// create output path if it doesn't exist
 pub(crate) fn try_path(path: &String) {
@@ -245,7 +246,7 @@ fn run_instr_wizard(
     err: &mut ErrorGen,
     config: &Config,
 ) {
-    let mut mem_tracker = get_memory_tracker(target_wasm, true);
+    let mut mem_allocator = get_memory_allocator(target_wasm, true);
 
     // Collect the metadata for the AST and transform to different representation
     // specifically used for targeting Wizard during compilation.
@@ -261,7 +262,7 @@ fn run_instr_wizard(
             InjectStrategy::Wizard,
             target_wasm,
             symbol_table,
-            &mut mem_tracker,
+            &mut mem_allocator,
             map_lib_adapter,
             report_vars,
             unshared_var_handler,
@@ -272,6 +273,7 @@ fn run_instr_wizard(
         injected_funcs: &mut injected_funcs,
         config,
         curr_script_id: "".to_string(),
+        mem_tracker_global: 0,
     };
     gen.run(wiz_ast, used_funcs, used_strings);
 }
@@ -287,7 +289,7 @@ fn run_instr_rewrite(
     unshared_var_handler: &mut UnsharedVarHandler,
     err: &mut ErrorGen,
 ) {
-    let mut mem_tracker = get_memory_tracker(target_wasm, true);
+    let mut mem_allocator = get_memory_allocator(target_wasm, true);
 
     // Phase 0 of instrumentation (emit globals and provided fns)
     let mut injected_funcs = vec![];
@@ -296,7 +298,7 @@ fn run_instr_rewrite(
             InjectStrategy::Rewriting,
             target_wasm,
             symbol_table,
-            &mut mem_tracker,
+            &mut mem_allocator,
             map_lib_adapter,
             report_vars,
             unshared_var_handler,
@@ -318,7 +320,7 @@ fn run_instr_rewrite(
             target_wasm,
             &injected_funcs,
             symbol_table,
-            &mut mem_tracker,
+            &mut mem_allocator,
             map_lib_adapter,
             io_adapter,
             report_vars,
@@ -339,7 +341,7 @@ fn run_instr_rewrite(
     }
 }
 
-fn get_memory_tracker(target_wasm: &mut Module, create_new_mem: bool) -> MemoryTracker {
+fn get_memory_allocator(target_wasm: &mut Module, create_new_mem: bool) -> MemoryAllocator {
     // Create the memory tracker + the map and metadata tracker
     let mem_id = if create_new_mem {
         let id = target_wasm.memories.len() as u32;
@@ -356,7 +358,7 @@ fn get_memory_tracker(target_wasm: &mut Module, create_new_mem: bool) -> MemoryT
         0
     };
 
-    MemoryTracker {
+    MemoryAllocator {
         mem_id,
         curr_mem_offset: 0,
         required_initial_mem_size: 0,

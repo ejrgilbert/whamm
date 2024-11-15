@@ -5,13 +5,14 @@ use crate::common::error::ErrorGen;
 use crate::common::instr::Config;
 use crate::emitter::module_emitter::ModuleEmitter;
 use crate::emitter::utils::{whamm_type_to_wasm_global, whamm_type_to_wasm_type};
-use crate::generator::wizard::ast::{WizardProbe, WizardScript};
+use crate::generator::wizard::ast::{UnsharedVar, WizardProbe, WizardScript};
 use crate::generator::GeneratingVisitor;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::report_vars::{BytecodeLoc, LocationData};
 use crate::parser::types::{Block, DataType, Definition, FnId, Statement, Value, WhammVisitorMut};
 use crate::verifier::types::{Record, VarAddr};
 use log::trace;
+use orca_wasm::ir::function::FunctionBuilder;
 use orca_wasm::ir::id::FunctionID;
 use orca_wasm::ir::types::DataType as OrcaType;
 
@@ -25,6 +26,9 @@ pub struct WizardGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j> {
 
     // tracking
     pub curr_script_id: String,
+    // The Wasm Global ID for the global that tracks the current point
+    // in memory that we can allocate to
+    pub mem_tracker_global: u32
 }
 
 impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
@@ -36,12 +40,14 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     ) {
         // Reset the symbol table in the emitter just in case
         self.emitter.reset_table();
-        self.emitter.setup_module(self.err);
+        self.mem_tracker_global = self.emitter.setup_module(true, self.err).unwrap();
         self.emit_needed_funcs(used_provided_funcs);
         self.emit_strings(strings_to_emit);
         self.visit_ast(ast);
         self.emitter.memory_grow(); // account for emitted strings in memory
 
+        // set the value of curr_mem_offset Wasm global to mem_allocator.curr_mem_offset
+        self.emitter.configure_mem_tracker_global(self.mem_tracker_global, self.err);
         self.emitter
             .configure_flush_routines(self.io_adapter, self.err);
     }
@@ -121,7 +127,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         let mut params = vec![];
         let mut param_str = "".to_string();
 
-        // TODO(unshared) -- handle $alloc param (if there are unshared vars)
+        // TODO(unshared) -- handle $alloc param (if there are unshared vars) (check me)
         for (local_id, (param_name, param_ty)) in param_reqs.iter().enumerate() {
             // handle param list
             params.push(whamm_type_to_wasm_type(param_ty));
@@ -156,6 +162,35 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         (fid, param_str.to_string())
     }
 
+    fn emit_alloc_func(&mut self, probe: &mut WizardProbe) -> Option<u32> {
+        if probe.unshared_to_alloc.is_empty() {
+            None
+        } else {
+            let alloc_params = vec![];
+            let alloc_results = vec![OrcaType::I32]; // returns memory offset!
+
+            let mut alloc = FunctionBuilder::new(&alloc_params, &alloc_results);
+
+            for UnsharedVar { ty, name, is_report } in probe.unshared_to_alloc.iter() {
+                // TODO -- algorithm here!
+
+                // TODO handle report variable!
+            }
+            // TODO -- change this logic to an $alloc method!
+            // create the probe's unshared variable globals!
+            for _ in 0..probe.unshared_to_alloc.len() {
+                let (global_id, ..) = whamm_type_to_wasm_global(self.emitter.app_wasm, &DataType::I32);
+                self.emitter
+                    .unshared_var_handler
+                    .available_i32_gids
+                    .push(*global_id);
+            }
+
+            // todo overwrite fid
+            Some(987987134)
+        }
+    }
+
     fn create_curr_loc(&self, probe: &WizardProbe) -> LocationData {
         let probe_id = format!("{}_{}", probe.probe_number, probe.rule);
 
@@ -164,7 +199,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
             script_id: self.curr_script_id.clone(),
             bytecode_loc: BytecodeLoc::new(0, 0), // TODO -- request this from wizard
             probe_id,
-            num_unshared: probe.num_unshared, //this is still used in the emitter to determine how many new globals to emit
+            num_unshared: probe.unshared_to_alloc.len() as i32, //this is still used in the emitter to determine how many new globals to emit
         }
     }
 
@@ -185,14 +220,8 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
             (None, "".to_string())
         };
 
-        // create the probe's unshared variable globals!
-        for _ in 0..probe.num_unshared {
-            let (global_id, ..) = whamm_type_to_wasm_global(self.emitter.app_wasm, &DataType::I32);
-            self.emitter
-                .unshared_var_handler
-                .available_i32_gids
-                .push(*global_id);
-        }
+        // create the probe's $alloc method
+        let alloc_fid = self.emit_alloc_func(probe);
 
         // create the probe body function
         let (body_fid, body_param_str) = if let Some(body) = &mut probe.body {
@@ -203,7 +232,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
 
         // emit the export with the appropriate name
         let match_rule =
-            self.create_wizard_match_rule(&probe.rule, pred_fid, &pred_param_str, &body_param_str);
+            self.create_wizard_match_rule(&probe.rule, pred_fid, &pred_param_str, alloc_fid, &body_param_str);
         if let Some(fid) = body_fid {
             self.emitter
                 .app_wasm
@@ -219,6 +248,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         probe_name: &str,
         pred_fid: Option<u32>,
         pred_params: &str,
+        alloc_fid: Option<u32>,
         body_params: &str,
     ) -> String {
         let pred_part = if let Some(pred_fid) = pred_fid {
@@ -227,7 +257,13 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
             "".to_string()
         };
 
-        format!("{probe_name} {pred_part} ({body_params})")
+        let body_part = if let Some(alloc_fid) = alloc_fid {
+            &format!("${alloc_fid}, {body_params}")
+        } else {
+            body_params
+        };
+
+        format!("{probe_name} {pred_part} ({body_part})")
     }
 }
 

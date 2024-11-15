@@ -137,7 +137,7 @@ fn setup_print_map_meta(
     err: &mut ErrorGen,
 ) -> bool {
     // get the function
-    //first, we need to create the maps in global_map_init - where all the other maps are initialized
+    //first, we need to create the maps in instr_init - where all the other maps are initialized
     // todo(maps) -- look up the func name instead!
     let print_map_meta_id = if let Some(Record::Fn { addr: Some(id), .. }) =
         table.lookup_fn("print_map_meta", true, err)

@@ -34,7 +34,6 @@ pub struct WizardProbeMetadataCollector<'a, 'b, 'c> {
     curr_probe: WizardProbe,
     probe_count: i32,
 
-    // vars_to_alloc: Vec<(String, DataType)>, // TODO(unshared) (once we have 'unshared' variables)
     err: &'b mut ErrorGen,
     pub config: &'c Config,
 }
@@ -235,12 +234,20 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
                 // ignore
             }
             Statement::UnsharedDecl {
-                is_report: _is_report,
-                ..
+                is_report,
+                decl,
+                loc
             } => {
-                self.curr_probe.incr_unshared();
-                // change this to save off data to allocate
-                todo!()
+                if let Statement::Decl {ty, var_id: Expr::VarId {name, ..}, ..} = decl.as_ref() {
+                    // change this to save off data to allocate
+                    self.curr_probe.add_unshared(name.clone(), ty.clone(), *is_report);
+                } else {
+                    self.err.unexpected_error(
+                        true,
+                        Some(format!("{UNEXPECTED_ERR_MSG} Incorrect type for a UnsharedDecl's contents!")),
+                        loc.clone().map(|l| l.line_col)
+                    )
+                }
             }
             Statement::Assign { var_id, expr, .. } => {
                 if let Expr::VarId { name, .. } = var_id {

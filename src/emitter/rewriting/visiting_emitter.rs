@@ -1,5 +1,4 @@
 use crate::common::error::{ErrorGen, WhammError};
-use crate::emitter::module_emitter::MemoryTracker;
 use crate::emitter::rewriting::rules::wasm::OpcodeEvent;
 use crate::emitter::rewriting::rules::{Arg, LocInfo, ProbeRule, Provider, WhammProvider};
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
@@ -25,6 +24,7 @@ use orca_wasm::iterator::module_iterator::ModuleIterator;
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::{Instrumenter, Opcode};
 use std::iter::Iterator;
+use crate::emitter::memory_allocator::MemoryAllocator;
 
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
@@ -33,7 +33,7 @@ pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub strategy: InjectStrategy,
     pub app_iter: ModuleIterator<'a, 'b>,
     pub table: &'c mut SymbolTable,
-    pub mem_tracker: &'d mut MemoryTracker,
+    pub mem_allocator: &'d mut MemoryAllocator,
     pub map_lib_adapter: &'e mut MapLibAdapter,
     pub io_adapter: &'f mut IOAdapter,
     pub(crate) report_vars: &'g mut ReportVars,
@@ -49,7 +49,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         app_wasm: &'a mut Module<'b>,
         injected_funcs: &Vec<FunctionID>,
         table: &'c mut SymbolTable,
-        mem_tracker: &'d mut MemoryTracker,
+        mem_allocator: &'d mut MemoryAllocator,
         map_lib_adapter: &'e mut MapLibAdapter,
         io_adapter: &'f mut IOAdapter,
         report_vars: &'g mut ReportVars,
@@ -59,7 +59,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             strategy,
             app_iter: ModuleIterator::new(app_wasm, injected_funcs),
             table,
-            mem_tracker,
+            mem_allocator,
             map_lib_adapter,
             io_adapter,
             report_vars,
@@ -387,7 +387,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     self.strategy,
                     &mut self.app_iter,
                     self.table,
-                    self.mem_tracker,
+                    self.mem_allocator,
                     self.map_lib_adapter,
                     self.report_vars,
                     self.unshared_var_handler,
@@ -800,7 +800,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
             self.strategy,
             &mut self.app_iter,
             self.table,
-            self.mem_tracker,
+            self.mem_allocator,
             self.map_lib_adapter,
             self.report_vars,
             self.unshared_var_handler,
@@ -815,7 +815,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
             self.strategy,
             &mut self.app_iter,
             self.table,
-            self.mem_tracker,
+            self.mem_allocator,
             self.map_lib_adapter,
             self.report_vars,
             self.unshared_var_handler,

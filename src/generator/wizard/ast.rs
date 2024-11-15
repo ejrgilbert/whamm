@@ -11,13 +11,20 @@ pub struct WizardScript {
     pub probes: Vec<WizardProbe>,
 }
 
+#[derive(Clone)]
+pub struct UnsharedVar {
+    pub name: String,
+    pub ty: DataType,
+    pub is_report: bool
+}
+
 #[derive(Clone, Default)]
 pub struct WizardProbe {
     pub rule: String,
     pub predicate: Option<Expr>,
     pub body: Option<Block>,
     pub metadata: Metadata,
-    pub num_unshared: i32,
+    pub unshared_to_alloc: Vec<UnsharedVar>,
     pub probe_number: i32,
 }
 impl WizardProbe {
@@ -27,12 +34,12 @@ impl WizardProbe {
             predicate: None,
             body: None,
             metadata: Metadata::default(),
-            num_unshared: 0,
+            unshared_to_alloc: Vec::default(),
             probe_number,
         }
     }
-    pub(crate) fn incr_unshared(&mut self) {
-        self.num_unshared += 1;
+    pub(crate) fn add_unshared(&mut self, name: String, ty: DataType, is_report: bool) {
+        self.unshared_to_alloc.push(UnsharedVar { name, ty, is_report });
     }
 }
 

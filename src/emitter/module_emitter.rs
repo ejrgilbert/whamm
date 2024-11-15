@@ -14,32 +14,21 @@ use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
 use orca_wasm::ir::module::Module;
 use orca_wasm::ir::types::{BlockType as OrcaBlockType, DataType as OrcaType, Value as OrcaValue};
 use orca_wasm::module_builder::AddLocal;
-use orca_wasm::opcode::{Instrumenter, Opcode};
+use orca_wasm::opcode::{Instrumenter, MacroOpcode, Opcode};
 use orca_wasm::{DataSegment, DataSegmentKind, InitExpr, Location};
 use std::collections::HashMap;
+use crate::emitter::memory_allocator::{MemoryAllocator, StringAddr};
 
 const UNEXPECTED_ERR_MSG: &str =
     "ModuleEmitter: Looks like you've found a bug...please report this behavior!";
 
-pub struct MemoryTracker {
-    pub mem_id: u32,
-    pub curr_mem_offset: usize,
-    pub required_initial_mem_size: u64,
-    pub emitted_strings: HashMap<String, StringAddr>,
-}
-
-pub struct StringAddr {
-    pub data_id: u32,
-    pub mem_offset: usize,
-    pub len: usize,
-}
 
 pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub strategy: InjectStrategy,
     pub app_wasm: &'a mut Module<'b>,
     pub emitting_func: Option<FunctionBuilder<'b>>,
     pub table: &'c mut SymbolTable,
-    mem_tracker: &'d mut MemoryTracker,
+    mem_allocator: &'d mut MemoryAllocator,
     pub map_lib_adapter: &'e mut MapLibAdapter,
     pub report_vars: &'f mut ReportVars,
     pub unshared_var_handler: &'g mut UnsharedVarHandler,
@@ -52,7 +41,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         strategy: InjectStrategy,
         app_wasm: &'a mut Module<'b>,
         table: &'c mut SymbolTable,
-        mem_tracker: &'d mut MemoryTracker,
+        mem_allocator: &'d mut MemoryAllocator,
         map_lib_adapter: &'e mut MapLibAdapter,
         report_vars: &'f mut ReportVars,
         unshared_var_handler: &'g mut UnsharedVarHandler,
@@ -61,7 +50,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             strategy,
             app_wasm,
             emitting_func: None,
-            mem_tracker,
+            mem_allocator,
             map_lib_adapter,
             report_vars,
             unshared_var_handler,
@@ -88,16 +77,29 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     // ==== BASE MODULE SETUP LOGIC ====
     // =================================
 
-    pub fn setup_module(&mut self, err: &mut ErrorGen) {
+    pub fn setup_module(&mut self, create_tracker_global: bool, err: &mut ErrorGen) -> Option<u32> {
         // setup maps
         if self.map_lib_adapter.is_used {
-            self.create_global_map_init(err);
+            self.create_instr_init(err);
             // setup report maps
             self.create_print_map_meta(err);
         }
 
         // setup report globals
         self.create_print_global_meta(err);
+
+        // setup mem tracker global
+        if create_tracker_global {
+            let gid = self.app_wasm.add_global(
+                InitExpr::Value(OrcaValue::I32(0)),
+                OrcaType::I32,
+                true,
+                false,
+            );
+            Some(*gid)
+        } else {
+            None
+        }
     }
 
     // ===========================
@@ -144,7 +146,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         let func = FunctionBuilder::new(params, results);
         self.emitting_func = Some(func);
 
-        // TODO(unshared) -- load unshared vars
+        // TODO(unshared) -- load unshared vars (check me)
         if self.map_lib_adapter.is_used {
             let fid = self.map_lib_adapter.get_map_init_fid(self.app_wasm, err);
             if let Some(func) = &mut self.emitting_func {
@@ -155,7 +157,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         // emit the function body
         self.emit_body(&[], block, err);
 
-        // TODO(unshared) -- save unshared vars
+        // TODO(unshared) -- save unshared vars (check me)
         // emit the function
         if let Some(func) = self.emitting_func.take() {
             let fid = func.finish_module(self.app_wasm);
@@ -259,7 +261,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     align: 0,
                     max_align: 0,
                     offset: 0,
-                    memory: self.mem_tracker.mem_id // instr memory!
+                    memory: self.mem_allocator.mem_id // instr memory!
                 }
             )
             .local_set(str1_char)
@@ -305,9 +307,9 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     // ==== EMIT `map` LOGIC ====
     // ===========================
 
-    fn create_global_map_init(&mut self, err: &mut ErrorGen) {
+    fn create_instr_init(&mut self, err: &mut ErrorGen) {
         // TODO -- move this into the MapAdapter
-        //make a global bool for whether to run the global_map_init fn
+        //make a global bool for whether to run the instr_init fn
         self.map_lib_adapter.init_bool_location = *self.app_wasm.add_global(
             InitExpr::Value(OrcaValue::I32(1)),
             OrcaType::I32,
@@ -317,26 +319,26 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         match self
             .app_wasm
             .functions
-            .get_local_fid_by_name("global_map_init")
+            .get_local_fid_by_name("instr_init")
         {
             Some(_) => {
-                debug!("global_map_init function already exists");
+                debug!("instr_init function already exists");
                 err.unexpected_error(
                     true,
                     Some(
-                        "global_map_init function already exists - needs to be created by Whamm"
+                        "instr_init function already exists - needs to be created by Whamm"
                             .to_string(),
                     ),
                     None,
                 );
             }
             None => {
-                //time to make a global_map_init fn
-                debug!("No global_map_init function found, creating one");
-                let global_map_init_fn = FunctionBuilder::new(&[], &[]);
-                let global_map_init_id = global_map_init_fn.finish_module(self.app_wasm);
+                //time to make a instr_init fn
+                debug!("No instr_init function found, creating one");
+                let instr_init_fn = FunctionBuilder::new(&[], &[]);
+                let instr_init_id = instr_init_fn.finish_module(self.app_wasm);
                 self.app_wasm
-                    .set_fn_name(global_map_init_id, "global_map_init".to_string());
+                    .set_fn_name(instr_init_id, "instr_init".to_string());
             }
         }
     }
@@ -348,36 +350,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub fn emit_string(&mut self, value: &mut Value, err: &mut ErrorGen) -> bool {
         match value {
             Value::Str { val, .. } => {
-                if self.mem_tracker.emitted_strings.contains_key(val) {
-                    // the string has already been emitted into the module, don't emit again
-                    return true;
-                }
-                // assuming that the data ID is the index of the object in the Vec
-                let data_id = self.app_wasm.data.len();
-                let val_bytes = val.as_bytes().to_owned();
-                let data_segment = DataSegment {
-                    data: val_bytes,
-                    kind: DataSegmentKind::Active {
-                        memory_index: self.mem_tracker.mem_id,
-                        offset_expr: InitExpr::Value(OrcaValue::I32(
-                            self.mem_tracker.curr_mem_offset as i32,
-                        )),
-                    },
-                };
-                self.app_wasm.data.push(data_segment);
-
-                // save the memory addresses/lens, so they can be used as appropriate
-                self.mem_tracker.emitted_strings.insert(
-                    val.clone(),
-                    StringAddr {
-                        data_id: data_id as u32,
-                        mem_offset: self.mem_tracker.curr_mem_offset,
-                        len: val.len(),
-                    },
-                );
-
-                // update curr_mem_offset to account for new data
-                self.mem_tracker.curr_mem_offset += val.len();
+                self.mem_allocator.emit_string(self.app_wasm, val);
                 true
             }
             _ => {
@@ -396,14 +369,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     }
 
     pub(crate) fn memory_grow(&mut self) {
-        // If we've emitted any strings, bump the app's memory up to account for that
-        if !self.mem_tracker.emitted_strings.is_empty() {
-            if let Some(mem) = self.app_wasm.memories.get_mut(0) {
-                if mem.initial < self.mem_tracker.required_initial_mem_size {
-                    mem.initial = self.mem_tracker.required_initial_mem_size;
-                }
-            }
-        }
+        self.mem_allocator.memory_grow(self.app_wasm);
     }
 
     // =============================
@@ -463,13 +429,13 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 let Some(init_id) = self
                     .app_wasm
                     .functions
-                    .get_local_fid_by_name("global_map_init")
+                    .get_local_fid_by_name("instr_init")
                 else {
                     err.unexpected_error(
                         true,
                         Some(format!(
                             "{UNEXPECTED_ERR_MSG} \
-                                No global_map_init found in the module!"
+                                No instr_init found in the module!"
                         )),
                         None,
                     );
@@ -481,7 +447,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                         true,
                         Some(format!(
                             "{UNEXPECTED_ERR_MSG} \
-                                No global_map_init found in the module!"
+                                No instr_init found in the module!"
                         )),
                         None,
                     );
@@ -659,6 +625,44 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         self.emit_global_inner(name, ty, val, true, err)
     }
 
+    pub fn configure_mem_tracker_global(&mut self, gid: u32, err: &mut ErrorGen) {
+        // TODO -- factor out all this dupe logic
+        let Some(init_id) = self
+            .app_wasm
+            .functions
+            .get_local_fid_by_name("instr_init")
+        else {
+            err.unexpected_error(
+                true,
+                Some(format!(
+                    "{UNEXPECTED_ERR_MSG} \
+                                No instr_init found in the module!"
+                )),
+                None,
+            );
+            return
+        };
+
+        let Some(mut init_fn) = self.app_wasm.functions.get_fn_modifier(init_id) else {
+            err.unexpected_error(
+                true,
+                Some(format!(
+                    "{UNEXPECTED_ERR_MSG} \
+                                No instr_init found in the module!"
+                )),
+                None,
+            );
+            return
+        };
+        init_fn.before_at(Location::Module {
+            func_idx: init_id, // not used
+            instr_idx: 0,
+        });
+
+        init_fn.u32_const(self.mem_allocator.curr_mem_offset as u32);
+        init_fn.global_set(GlobalID(gid));
+    }
+
     pub fn configure_flush_routines(&mut self, io_adapter: &mut IOAdapter, err: &mut ErrorGen) {
         configure_flush_routines(
             self.app_wasm,
@@ -684,7 +688,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
                 self.strategy,
                 emitting_func,
                 self.table,
-                self.mem_tracker,
+                self.mem_allocator,
                 self.map_lib_adapter,
                 self.report_vars,
                 self.unshared_var_handler,
@@ -708,7 +712,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
                 self.strategy,
                 emitting_func,
                 self.table,
-                self.mem_tracker,
+                self.mem_allocator,
                 self.map_lib_adapter,
                 self.report_vars,
                 self.unshared_var_handler,
@@ -727,7 +731,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
                 self.strategy,
                 emitting_func,
                 self.table,
-                self.mem_tracker,
+                self.mem_allocator,
                 self.map_lib_adapter,
                 self.report_vars,
                 self.unshared_var_handler,
