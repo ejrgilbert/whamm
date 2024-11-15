@@ -64,7 +64,11 @@ impl UnsharedVarHandler {
                 let wasm_ty = whamm_type_to_wasm_type(ty);
                 if let Some(id) = self.use_available_gid(err_msg, err) {
                     if is_report {
-                        report_vars.put_local_metadata(id, var_name.to_string(), wasm_ty, err);
+                        if wasm_ty.len() == 1 {
+                            report_vars.put_local_metadata(id, var_name.to_string(), *wasm_ty.first().unwrap(), err);
+                        } else {
+                            todo!()
+                        }
                     }
 
                     *addr = Some(VarAddr::Global { addr: id });
@@ -73,7 +77,7 @@ impl UnsharedVarHandler {
                     false
                 }
             }
-            Some(VarAddr::Local { .. }) | Some(VarAddr::MapId { .. }) => {
+            Some(VarAddr::Local { .. }) | Some(VarAddr::MapId { .. }) | Some(VarAddr::MemLoc {..}) => {
                 //this shouldn't happen for unshared vars - need to err
                 err.unexpected_error(
                     true,

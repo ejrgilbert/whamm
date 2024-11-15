@@ -15,9 +15,8 @@ use orca_wasm::ir::module::Module;
 use orca_wasm::ir::types::{BlockType as OrcaBlockType, DataType as OrcaType, Value as OrcaValue};
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::{Instrumenter, MacroOpcode, Opcode};
-use orca_wasm::{DataSegment, DataSegmentKind, InitExpr, Location};
-use std::collections::HashMap;
-use crate::emitter::memory_allocator::{MemoryAllocator, StringAddr};
+use orca_wasm::{InitExpr, Location};
+use crate::emitter::memory_allocator::MemoryAllocator;
 
 const UNEXPECTED_ERR_MSG: &str =
     "ModuleEmitter: Looks like you've found a bug...please report this behavior!";
@@ -28,7 +27,7 @@ pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub app_wasm: &'a mut Module<'b>,
     pub emitting_func: Option<FunctionBuilder<'b>>,
     pub table: &'c mut SymbolTable,
-    mem_allocator: &'d mut MemoryAllocator,
+    pub mem_allocator: &'d mut MemoryAllocator,
     pub map_lib_adapter: &'e mut MapLibAdapter,
     pub report_vars: &'f mut ReportVars,
     pub unshared_var_handler: &'g mut UnsharedVarHandler,
@@ -77,7 +76,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     // ==== BASE MODULE SETUP LOGIC ====
     // =================================
 
-    pub fn setup_module(&mut self, create_tracker_global: bool, err: &mut ErrorGen) -> Option<u32> {
+    pub fn setup_module(&mut self, create_tracker_global: bool, err: &mut ErrorGen) {
         // setup maps
         if self.map_lib_adapter.is_used {
             self.create_instr_init(err);
@@ -90,15 +89,12 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
 
         // setup mem tracker global
         if create_tracker_global {
-            let gid = self.app_wasm.add_global(
+            self.mem_allocator.mem_tracker_global = self.app_wasm.add_global(
                 InitExpr::Value(OrcaValue::I32(0)),
                 OrcaType::I32,
                 true,
                 false,
             );
-            Some(*gid)
-        } else {
-            None
         }
     }
 
@@ -307,7 +303,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     // ==== EMIT `map` LOGIC ====
     // ===========================
 
-    fn create_instr_init(&mut self, err: &mut ErrorGen) {
+    fn create_instr_init(&mut self, err: &mut ErrorGen) -> FunctionID {
         // TODO -- move this into the MapAdapter
         //make a global bool for whether to run the instr_init fn
         self.map_lib_adapter.init_bool_location = *self.app_wasm.add_global(
@@ -331,6 +327,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     ),
                     None,
                 );
+                unreachable!()
             }
             None => {
                 //time to make a instr_init fn
@@ -339,6 +336,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 let instr_init_id = instr_init_fn.finish_module(self.app_wasm);
                 self.app_wasm
                     .set_fn_name(instr_init_id, "instr_init".to_string());
+                return instr_init_id;
             }
         }
     }
@@ -625,22 +623,15 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         self.emit_global_inner(name, ty, val, true, err)
     }
 
-    pub fn configure_mem_tracker_global(&mut self, gid: u32, err: &mut ErrorGen) {
+    pub fn configure_mem_tracker_global(&mut self, err: &mut ErrorGen) {
         // TODO -- factor out all this dupe logic
-        let Some(init_id) = self
+        let init_id = if let Some(fid) = self
             .app_wasm
             .functions
-            .get_local_fid_by_name("instr_init")
-        else {
-            err.unexpected_error(
-                true,
-                Some(format!(
-                    "{UNEXPECTED_ERR_MSG} \
-                                No instr_init found in the module!"
-                )),
-                None,
-            );
-            return
+            .get_local_fid_by_name("instr_init") {
+            fid
+        } else {
+            self.create_instr_init(err)
         };
 
         let Some(mut init_fn) = self.app_wasm.functions.get_fn_modifier(init_id) else {
@@ -660,7 +651,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         });
 
         init_fn.u32_const(self.mem_allocator.curr_mem_offset as u32);
-        init_fn.global_set(GlobalID(gid));
+        init_fn.global_set(self.mem_allocator.mem_tracker_global);
     }
 
     pub fn configure_flush_routines(&mut self, io_adapter: &mut IOAdapter, err: &mut ErrorGen) {

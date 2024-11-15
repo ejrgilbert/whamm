@@ -273,7 +273,6 @@ fn run_instr_wizard(
         injected_funcs: &mut injected_funcs,
         config,
         curr_script_id: "".to_string(),
-        mem_tracker_global: 0,
     };
     gen.run(wiz_ast, used_funcs, used_strings);
 }
@@ -363,6 +362,7 @@ fn get_memory_allocator(target_wasm: &mut Module, create_new_mem: bool) -> Memor
         curr_mem_offset: 0,
         required_initial_mem_size: 0,
         emitted_strings: HashMap::new(),
+        mem_tracker_global: GlobalID(0),
     }
 }
 

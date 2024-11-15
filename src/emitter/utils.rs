@@ -228,14 +228,22 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     //ignore, initial setup is done in init_gen
                     true
                 }
+                Some(VarAddr::MemLoc { .. }) => {
+                    //ignore, initial setup is done in $alloc
+                    true
+                }
                 Some(VarAddr::Local { .. }) | None => {
                     // If the local already exists, it would be because the probe has been
                     // emitted at another opcode location. Simply overwrite the previously saved
                     // address.
                     let wasm_ty = whamm_type_to_wasm_type(ty);
-                    let id = injector.add_local(wasm_ty);
-                    *addr = Some(VarAddr::Local { addr: *id });
-                    true
+                    if wasm_ty.len() == 1 {
+                        let id = injector.add_local(*wasm_ty.first().unwrap());
+                        *addr = Some(VarAddr::Local { addr: *id });
+                        true
+                    } else {
+                        todo!()
+                    }
                 }
             }
         }
@@ -312,6 +320,7 @@ fn emit_unshared_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             }
             InjectStrategy::Wizard => {
                 // ignore, this statement has already been processed!
+                return true;
             }
         }
     }
@@ -383,6 +392,7 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 var_id,
                 injector,
                 table,
+                mem_allocator,
                 report_vars,
                 unshared_var_handler,
                 err_msg,
@@ -473,48 +483,83 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 pub fn whamm_type_to_wasm_global(app_wasm: &mut Module, ty: &DataType) -> (GlobalID, OrcaType) {
     let orca_wasm_ty = whamm_type_to_wasm_type(ty);
 
-    match orca_wasm_ty {
-        OrcaType::I32 => {
-            let global_id = app_wasm.add_global(
-                InitExpr::Value(OrcaValue::I32(0)),
-                OrcaType::I32,
-                true,
-                false,
-            );
-            (global_id, OrcaType::I32)
+    if orca_wasm_ty.len() == 1 {
+        match orca_wasm_ty.first().unwrap() {
+            OrcaType::I32 => {
+                let global_id = app_wasm.add_global(
+                    InitExpr::Value(OrcaValue::I32(0)),
+                    OrcaType::I32,
+                    true,
+                    false,
+                );
+                (global_id, OrcaType::I32)
+            }
+            _ => unimplemented!(),
         }
-        _ => unimplemented!(),
+    } else {
+        todo!()
     }
 }
-pub fn whamm_type_to_wasm_type(ty: &DataType) -> OrcaType {
+pub fn whamm_type_to_wasm_type(ty: &DataType) -> Vec<OrcaType> {
     match ty {
-        DataType::I32 | DataType::U32 | DataType::Boolean => OrcaType::I32,
-        DataType::F32 => OrcaType::F32,
-        DataType::I64 | DataType::U64 => OrcaType::I64,
-        DataType::F64 => OrcaType::F64,
+        DataType::I32 | DataType::U32 | DataType::Boolean => vec![OrcaType::I32],
+        DataType::F32 => vec![OrcaType::F32],
+        DataType::I64 | DataType::U64 => vec![OrcaType::I64],
+        DataType::F64 => vec![OrcaType::F64],
         // the ID used to track this var in the lib
-        DataType::Map { .. } => OrcaType::I32,
+        DataType::Map { .. } => vec![OrcaType::I32],
         DataType::Null => unimplemented!(),
-        DataType::Str => unimplemented!(),
+        DataType::Str => vec![OrcaType::I32, OrcaType::I32],
         DataType::Tuple { .. } => unimplemented!(),
         DataType::AssumeGood => unimplemented!(),
     }
 }
+pub fn wasm_type_to_whamm_type(ty: &OrcaType) -> DataType {
+    match ty {
+        OrcaType::I32 => DataType::I32,
+        OrcaType::I64 => DataType::I64,
+        OrcaType::F32 => DataType::F32,
+        OrcaType::F64 => DataType::F64,
+        OrcaType::FuncRef |
+        OrcaType::ExternRef |
+        OrcaType::Any |
+        OrcaType::None |
+        OrcaType::NoExtern |
+        OrcaType::NoFunc |
+        OrcaType::Eq |
+        OrcaType::Struct |
+        OrcaType::Array |
+        OrcaType::I31 |
+        OrcaType::Exn |
+        OrcaType::NoExn |
+        OrcaType::Module(_) |
+        OrcaType::RecGroup(_) |
+        OrcaType::CoreTypeId(_) |
+        OrcaType::V128 => unimplemented!()
+    }
+}
 
-pub fn block_type_to_wasm(block: &Block) -> BlockType {
+pub fn block_type_to_wasm(
+    block: &Block
+) -> BlockType {
     match &block.return_ty {
         None => BlockType::Empty,
         Some(return_ty) => {
             let wasm_ty = whamm_type_to_wasm_type(return_ty);
-            BlockType::Type(wasm_ty)
+            if wasm_ty.len() == 1 {
+                BlockType::Type(*wasm_ty.first().unwrap())
+            } else {
+                todo!()
+            }
         }
     }
 }
 
-fn emit_set<'a, T: Opcode<'a>>(
+fn emit_set<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     var_id: &mut Expr,
     injector: &mut T,
     table: &mut SymbolTable,
+    mem_allocator: &MemoryAllocator,
     report_vars: &mut ReportVars,
     _unshared_var_handler: &mut UnsharedVarHandler,
     err_msg: &str,
@@ -531,6 +576,9 @@ fn emit_set<'a, T: Opcode<'a>>(
             Some(VarAddr::Global { addr }) => {
                 report_vars.mutating_var(*addr);
                 injector.global_set(GlobalID(*addr));
+            }
+            Some(VarAddr::MemLoc { mem_id, ty, var_offset }) => {
+                mem_allocator.set_in_mem(*mem_id, &wasm_type_to_whamm_type(ty), *var_offset, table, injector, err);
             }
             Some(VarAddr::Local { addr }) => {
                 report_vars.mutating_var(*addr);
@@ -910,6 +958,10 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 }
                 Some(VarAddr::Local { addr }) => {
                     injector.local_get(LocalID(*addr));
+                    true
+                }
+                Some(VarAddr::MemLoc { mem_id, ty, var_offset }) => {
+                    mem_allocator.get_from_mem(*mem_id, &wasm_type_to_whamm_type(ty), *var_offset, table, injector, err);
                     true
                 }
                 Some(VarAddr::MapId { .. }) => {

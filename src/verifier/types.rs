@@ -4,6 +4,7 @@ use crate::parser::types::{DataType, Definition, FnId, Location, ProbeRule, Valu
 use pest::error::LineColLocation;
 use std::collections::HashMap;
 use std::fmt;
+use orca_wasm::ir::types::DataType as OrcaType;
 
 const UNEXPECTED_ERR_MSG: &str =
     "SymbolTable: Looks like you've found a bug...please report this behavior!";
@@ -692,4 +693,14 @@ pub enum VarAddr {
     Local { addr: u32 },
     Global { addr: u32 },
     MapId { addr: u32 },
+    MemLoc {
+        // The ID of the memory that the var is stored in
+        mem_id: u32,
+        // The type of the data at this memory location
+        ty: OrcaType,
+        // The offset within a function's variable block...
+        // This should be added to a base offset value to find
+        // the true memory offset for this variable.
+        var_offset: u32
+    }
 }
