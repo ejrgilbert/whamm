@@ -224,29 +224,31 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
             let mut next_var_offset = 0;
 
             // store fid and pc
-            let (fid_addr, bytes_used) = self.emitter.mem_allocator.emit_store_from_local(next_var_offset, fid.id, &wasm_type_to_whamm_type(&fid.ty), &mut alloc);
+            let (_, bytes_used) = self.emitter.mem_allocator.emit_store_from_local(next_var_offset, fid.id, &wasm_type_to_whamm_type(&fid.ty), &mut alloc);
             next_var_offset += bytes_used;
-            self.emitter.table.put("fid".to_string(), Record::Var {
-                ty: wasm_type_to_whamm_type(&fid.ty),
-                name: "fid".to_string(),
-                value: None,
-                def: Definition::CompilerDynamic,
-                is_report_var: false,
-                addr: Some(fid_addr),
-                loc: None,
-            });
+            // TODO: I don't think I need this
+            // self.emitter.table.put("fid".to_string(), Record::Var {
+            //     ty: wasm_type_to_whamm_type(&fid.ty),
+            //     name: "fid".to_string(),
+            //     value: None,
+            //     def: Definition::CompilerDynamic,
+            //     is_report_var: false,
+            //     addr: Some(fid_addr),
+            //     loc: None,
+            // });
 
-            let (pc_addr, bytes_used) = self.emitter.mem_allocator.emit_store_from_local(next_var_offset, pc.id, &wasm_type_to_whamm_type(&pc.ty), &mut alloc);
+            let (_, bytes_used) = self.emitter.mem_allocator.emit_store_from_local(next_var_offset, pc.id, &wasm_type_to_whamm_type(&pc.ty), &mut alloc);
             next_var_offset += bytes_used;
-            self.emitter.table.put("pc".to_string(), Record::Var {
-                ty: wasm_type_to_whamm_type(&fid.ty),
-                name: "pc".to_string(),
-                value: None,
-                def: Definition::CompilerDynamic,
-                is_report_var: false,
-                addr: Some(pc_addr),
-                loc: None,
-            });
+            // TODO: I don't think I need this
+            // self.emitter.table.put("pc".to_string(), Record::Var {
+            //     ty: wasm_type_to_whamm_type(&fid.ty),
+            //     name: "pc".to_string(),
+            //     value: None,
+            //     def: Definition::CompilerDynamic,
+            //     is_report_var: false,
+            //     addr: Some(pc_addr),
+            //     loc: None,
+            // });
 
             // alloc each var
             for UnsharedVar { ty, name, is_report: _ } in probe.unshared_to_alloc.iter() {
