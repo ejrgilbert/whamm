@@ -226,7 +226,6 @@ impl ExprFolder {
                 if let Some(Var { ty, .. }) = table.lookup_var(name, &None, err, false) {
                     matches!(ty, DataType::Str)
                 } else {
-                    err.unexpected_error(true, Some("unexpected type".to_string()), None);
                     false
                 }
             }
@@ -239,7 +238,6 @@ impl ExprFolder {
                     if let Some(Record::Fn { ret_ty, .. }) = table.lookup_fn(name, false, err) {
                         matches!(ret_ty, DataType::Str)
                     } else {
-                        err.unexpected_error(true, Some("unexpected type".to_string()), None);
                         false
                     }
                 } else {
