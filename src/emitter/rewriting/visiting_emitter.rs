@@ -4,6 +4,7 @@ use crate::emitter::rewriting::rules::{Arg, LocInfo, ProbeRule, Provider, WhammP
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use std::collections::HashMap;
 
+use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::utils::{
     block_type_to_wasm, emit_expr, emit_stmt, print_report_all, whamm_type_to_wasm_global,
 };
@@ -24,7 +25,6 @@ use orca_wasm::iterator::module_iterator::ModuleIterator;
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::{Instrumenter, Opcode};
 use std::iter::Iterator;
-use crate::emitter::memory_allocator::MemoryAllocator;
 
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";

@@ -1,5 +1,6 @@
 #![allow(clippy::too_many_arguments)]
 use crate::common::error::ErrorGen;
+use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::InjectStrategy;
 use crate::generator::folding::ExprFolder;
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
@@ -14,7 +15,6 @@ use orca_wasm::ir::types::{BlockType, DataType as OrcaType, Value as OrcaValue};
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::{MacroOpcode, Opcode};
 use orca_wasm::{InitExpr, Module};
-use crate::emitter::memory_allocator::MemoryAllocator;
 // ==================================================================
 // ================ Emitter Helper Functions ========================
 // TODO -- add this documentation
@@ -520,28 +520,26 @@ pub fn wasm_type_to_whamm_type(ty: &OrcaType) -> DataType {
         OrcaType::I64 => DataType::I64,
         OrcaType::F32 => DataType::F32,
         OrcaType::F64 => DataType::F64,
-        OrcaType::FuncRef |
-        OrcaType::ExternRef |
-        OrcaType::Any |
-        OrcaType::None |
-        OrcaType::NoExtern |
-        OrcaType::NoFunc |
-        OrcaType::Eq |
-        OrcaType::Struct |
-        OrcaType::Array |
-        OrcaType::I31 |
-        OrcaType::Exn |
-        OrcaType::NoExn |
-        OrcaType::Module(_) |
-        OrcaType::RecGroup(_) |
-        OrcaType::CoreTypeId(_) |
-        OrcaType::V128 => unimplemented!()
+        OrcaType::FuncRef
+        | OrcaType::ExternRef
+        | OrcaType::Any
+        | OrcaType::None
+        | OrcaType::NoExtern
+        | OrcaType::NoFunc
+        | OrcaType::Eq
+        | OrcaType::Struct
+        | OrcaType::Array
+        | OrcaType::I31
+        | OrcaType::Exn
+        | OrcaType::NoExn
+        | OrcaType::Module(_)
+        | OrcaType::RecGroup(_)
+        | OrcaType::CoreTypeId(_)
+        | OrcaType::V128 => unimplemented!(),
     }
 }
 
-pub fn block_type_to_wasm(
-    block: &Block
-) -> BlockType {
+pub fn block_type_to_wasm(block: &Block) -> BlockType {
     match &block.return_ty {
         None => BlockType::Empty,
         Some(return_ty) => {
@@ -577,8 +575,19 @@ fn emit_set<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 report_vars.mutating_var(*addr);
                 injector.global_set(GlobalID(*addr));
             }
-            Some(VarAddr::MemLoc { mem_id, ty, var_offset }) => {
-                mem_allocator.set_in_mem(*mem_id, &wasm_type_to_whamm_type(ty), *var_offset, table, injector, err);
+            Some(VarAddr::MemLoc {
+                mem_id,
+                ty,
+                var_offset,
+            }) => {
+                mem_allocator.set_in_mem(
+                    *mem_id,
+                    &wasm_type_to_whamm_type(ty),
+                    *var_offset,
+                    table,
+                    injector,
+                    err,
+                );
             }
             Some(VarAddr::Local { addr }) => {
                 report_vars.mutating_var(*addr);
@@ -960,8 +969,19 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     injector.local_get(LocalID(*addr));
                     true
                 }
-                Some(VarAddr::MemLoc { mem_id, ty, var_offset }) => {
-                    mem_allocator.get_from_mem(*mem_id, &wasm_type_to_whamm_type(ty), *var_offset, table, injector, err);
+                Some(VarAddr::MemLoc {
+                    mem_id,
+                    ty,
+                    var_offset,
+                }) => {
+                    mem_allocator.get_from_mem(
+                        *mem_id,
+                        &wasm_type_to_whamm_type(ty),
+                        *var_offset,
+                        table,
+                        injector,
+                        err,
+                    );
                     true
                 }
                 Some(VarAddr::MapId { .. }) => {

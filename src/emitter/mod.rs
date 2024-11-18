@@ -1,5 +1,5 @@
-pub mod module_emitter;
 pub mod memory_allocator;
+pub mod module_emitter;
 pub mod rewriting;
 #[cfg(test)]
 pub mod tests;

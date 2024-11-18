@@ -149,11 +149,7 @@ impl DataType {
             DataType::Tuple { ty_info } => {
                 let mut size = 0;
                 for ty in ty_info.iter() {
-                    size += if let Some(len) = ty.num_bytes() {
-                        len
-                    } else {
-                        0
-                    };
+                    size += ty.num_bytes().unwrap_or_default();
                 }
                 Some(size)
             }

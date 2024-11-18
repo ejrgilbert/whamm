@@ -1,15 +1,15 @@
-use std::collections::HashMap;
-use orca_wasm::{DataSegment, DataSegmentKind, InitExpr, Module, Opcode};
+use crate::common::error::ErrorGen;
+use crate::emitter::utils::whamm_type_to_wasm_type;
+use crate::parser::types::DataType;
+use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca_wasm::ir::function::FunctionBuilder;
 use orca_wasm::ir::id::{GlobalID, LocalID};
 use orca_wasm::ir::types::Value as OrcaValue;
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::MacroOpcode;
+use orca_wasm::{DataSegment, DataSegmentKind, InitExpr, Module, Opcode};
+use std::collections::HashMap;
 use wasmparser::MemArg;
-use crate::common::error::ErrorGen;
-use crate::emitter::utils::whamm_type_to_wasm_type;
-use crate::parser::types::DataType;
-use crate::verifier::types::{Record, SymbolTable, VarAddr};
 
 pub const VAR_BLOCK_BASE_VAR: &str = "var_block_base_offset";
 
@@ -21,7 +21,7 @@ pub struct MemoryAllocator {
 
     // The Wasm Global ID for the global that tracks the current point
     // in memory that we can allocate to
-    pub mem_tracker_global: GlobalID
+    pub mem_tracker_global: GlobalID,
 }
 impl MemoryAllocator {
     // ===================
@@ -33,10 +33,16 @@ impl MemoryAllocator {
         var_offset: u32,
         table: &SymbolTable,
         injector: &mut T,
-        err: &mut ErrorGen
+        err: &mut ErrorGen,
     ) {
         // get the var block base offset variable
-        let Some(Record::Var { addr: Some(VarAddr::Local {addr: var_block_start}), .. }) = table.lookup_var(VAR_BLOCK_BASE_VAR, &None, err, true) else {
+        let Some(Record::Var {
+            addr: Some(VarAddr::Local {
+                addr: var_block_start,
+            }),
+            ..
+        }) = table.lookup_var(VAR_BLOCK_BASE_VAR, &None, err, true)
+        else {
             err.unexpected_error(true, Some("unexpected type".to_string()), None);
             return;
         };
@@ -54,44 +60,41 @@ impl MemoryAllocator {
         var_offset: u32,
         table: &SymbolTable,
         injector: &mut T,
-        err: &mut ErrorGen
+        err: &mut ErrorGen,
     ) {
         self.calc_offset(var_offset, table, injector, err);
 
         // perform the correct load based on the type of data at this memory location
         match ty {
-            DataType::U32 |
-            DataType::I32 |
-            DataType::Boolean => injector.i32_load(MemArg {
+            DataType::U32 | DataType::I32 | DataType::Boolean => injector.i32_load(MemArg {
                 align: 0,
                 max_align: 0,
                 offset: 0,
-                memory: mem_id
+                memory: mem_id,
             }),
             DataType::F32 => injector.f32_load(MemArg {
                 align: 0,
                 max_align: 0,
                 offset: 0,
-                memory: mem_id
+                memory: mem_id,
             }),
-            DataType::U64 |
-            DataType::I64 => injector.i64_load(MemArg {
+            DataType::U64 | DataType::I64 => injector.i64_load(MemArg {
                 align: 0,
                 max_align: 0,
                 offset: 0,
-                memory: mem_id
+                memory: mem_id,
             }),
             DataType::F64 => injector.f64_load(MemArg {
                 align: 0,
                 max_align: 0,
                 offset: 0,
-                memory: mem_id
+                memory: mem_id,
             }),
-            DataType::Null |
-            DataType::Str |
-            DataType::Tuple { .. } |
-            DataType::Map { .. } |
-            DataType::AssumeGood => unimplemented!()
+            DataType::Null
+            | DataType::Str
+            | DataType::Tuple { .. }
+            | DataType::Map { .. }
+            | DataType::AssumeGood => unimplemented!(),
         };
     }
 
@@ -102,44 +105,41 @@ impl MemoryAllocator {
         var_offset: u32,
         table: &SymbolTable,
         injector: &mut T,
-        err: &mut ErrorGen
+        err: &mut ErrorGen,
     ) {
         self.calc_offset(var_offset, table, injector, err);
 
         // perform the correct store based on the type of data at this memory location
         match ty {
-            DataType::U32 |
-            DataType::I32 |
-            DataType::Boolean => injector.i32_store(MemArg {
+            DataType::U32 | DataType::I32 | DataType::Boolean => injector.i32_store(MemArg {
                 align: 0,
                 max_align: 0,
                 offset: 0,
-                memory: mem_id
+                memory: mem_id,
             }),
             DataType::F32 => injector.f32_store(MemArg {
                 align: 0,
                 max_align: 0,
                 offset: 0,
-                memory: mem_id
+                memory: mem_id,
             }),
-            DataType::U64 |
-            DataType::I64 => injector.i64_store(MemArg {
+            DataType::U64 | DataType::I64 => injector.i64_store(MemArg {
                 align: 0,
                 max_align: 0,
                 offset: 0,
-                memory: mem_id
+                memory: mem_id,
             }),
             DataType::F64 => injector.f64_store(MemArg {
                 align: 0,
                 max_align: 0,
                 offset: 0,
-                memory: mem_id
+                memory: mem_id,
             }),
-            DataType::Null |
-            DataType::Str |
-            DataType::Tuple { .. } |
-            DataType::Map { .. } |
-            DataType::AssumeGood => unimplemented!()
+            DataType::Null
+            | DataType::Str
+            | DataType::Tuple { .. }
+            | DataType::Map { .. }
+            | DataType::AssumeGood => unimplemented!(),
         };
     }
 
@@ -150,7 +150,7 @@ impl MemoryAllocator {
         &mut self,
         next_var_offset: u32,
         ty: &DataType,
-        func: &mut FunctionBuilder
+        func: &mut FunctionBuilder,
     ) -> (VarAddr, u32) {
         // increment the memory byte offset global
         func.global_get(self.mem_tracker_global);
@@ -162,22 +162,25 @@ impl MemoryAllocator {
 
         // create the VarAddr
         let orca_ty = whamm_type_to_wasm_type(ty);
-        (VarAddr::MemLoc {
-            mem_id: self.mem_id,
-            ty: if orca_ty.len() == 1 {
-                *orca_ty.first().unwrap()
-            } else {
-                todo!()
+        (
+            VarAddr::MemLoc {
+                mem_id: self.mem_id,
+                ty: if orca_ty.len() == 1 {
+                    *orca_ty.first().unwrap()
+                } else {
+                    todo!()
+                },
+                var_offset: next_var_offset,
             },
-            var_offset: next_var_offset
-        }, bytes_used)
+            bytes_used,
+        )
     }
     pub fn emit_store_from_local(
         &mut self,
         next_var_offset: u32,
         local: LocalID,
         local_ty: &DataType,
-        func: &mut FunctionBuilder
+        func: &mut FunctionBuilder,
     ) -> (VarAddr, u32) {
         // store the local to memory
         func.global_get(self.mem_tracker_global);
@@ -186,14 +189,12 @@ impl MemoryAllocator {
             align: 0,
             max_align: 0,
             offset: 0,
-            memory: self.mem_id // instrumentation memory!
+            memory: self.mem_id, // instrumentation memory!
         });
 
         self.alloc_mem_space(next_var_offset, local_ty, func)
     }
-    pub fn emit_string(&mut self,
-                       wasm: &mut Module,
-                       val: &mut String) -> bool {
+    pub fn emit_string(&mut self, wasm: &mut Module, val: &mut String) -> bool {
         if self.emitted_strings.contains_key(val) {
             // the string has already been emitted into the module, don't emit again
             return true;
@@ -205,9 +206,7 @@ impl MemoryAllocator {
             data: val_bytes,
             kind: DataSegmentKind::Active {
                 memory_index: self.mem_id,
-                offset_expr: InitExpr::Value(OrcaValue::I32(
-                    self.curr_mem_offset as i32,
-                )),
+                offset_expr: InitExpr::Value(OrcaValue::I32(self.curr_mem_offset as i32)),
             },
         };
         wasm.data.push(data_segment);

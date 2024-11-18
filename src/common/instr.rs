@@ -1,6 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 use crate::cli::LibraryLinkStrategyArg;
 use crate::common::error::ErrorGen;
+use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::module_emitter::ModuleEmitter;
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::InjectStrategy;
@@ -26,7 +27,6 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::exit;
 use wasmparser::MemoryType;
-use crate::emitter::memory_allocator::MemoryAllocator;
 
 /// create output path if it doesn't exist
 pub(crate) fn try_path(path: &String) {

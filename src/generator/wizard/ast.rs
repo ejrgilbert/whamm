@@ -15,7 +15,7 @@ pub struct WizardScript {
 pub struct UnsharedVar {
     pub name: String,
     pub ty: DataType,
-    pub is_report: bool
+    pub is_report: bool,
 }
 
 #[derive(Clone, Default)]
@@ -39,7 +39,11 @@ impl WizardProbe {
         }
     }
     pub(crate) fn add_unshared(&mut self, name: String, ty: DataType, is_report: bool) {
-        self.unshared_to_alloc.push(UnsharedVar { name, ty, is_report });
+        self.unshared_to_alloc.push(UnsharedVar {
+            name,
+            ty,
+            is_report,
+        });
     }
 }
 

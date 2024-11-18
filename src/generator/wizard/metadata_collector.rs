@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use crate::common::error::ErrorGen;
 use crate::common::instr::Config;
 use crate::generator::wizard::ast::{WizardProbe, WizardScript};
@@ -9,6 +8,7 @@ use crate::parser::types::{
 };
 use crate::verifier::types::{Record, SymbolTable};
 use log::trace;
+use std::collections::HashSet;
 
 const UNEXPECTED_ERR_MSG: &str =
     "WizardProbeMetadataCollector: Looks like you've found a bug...please report this behavior!";
@@ -239,16 +239,24 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
             Statement::UnsharedDecl {
                 is_report,
                 decl,
-                loc
+                loc,
             } => {
-                if let Statement::Decl {ty, var_id: Expr::VarId {name, ..}, ..} = decl.as_ref() {
+                if let Statement::Decl {
+                    ty,
+                    var_id: Expr::VarId { name, .. },
+                    ..
+                } = decl.as_ref()
+                {
                     // change this to save off data to allocate
-                    self.curr_probe.add_unshared(name.clone(), ty.clone(), *is_report);
+                    self.curr_probe
+                        .add_unshared(name.clone(), ty.clone(), *is_report);
                 } else {
                     self.err.unexpected_error(
                         true,
-                        Some(format!("{UNEXPECTED_ERR_MSG} Incorrect type for a UnsharedDecl's contents!")),
-                        loc.clone().map(|l| l.line_col)
+                        Some(format!(
+                            "{UNEXPECTED_ERR_MSG} Incorrect type for a UnsharedDecl's contents!"
+                        )),
+                        loc.clone().map(|l| l.line_col),
                     )
                 }
             }
@@ -300,7 +308,8 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
                 self.visit_expr(rhs);
                 if self.check_strcmp {
                     // if this flag is still true, we need the strcmp function!
-                    self.used_provided_fns.insert(("whamm".to_string(), "strcmp".to_string()));
+                    self.used_provided_fns
+                        .insert(("whamm".to_string(), "strcmp".to_string()));
                 }
                 self.check_strcmp = false;
             }

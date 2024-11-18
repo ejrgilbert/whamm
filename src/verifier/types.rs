@@ -1,10 +1,10 @@
 use crate::common::error::ErrorGen;
 use crate::lang_features::libraries::core::WHAMM_CORE_LIB_NAME;
 use crate::parser::types::{DataType, Definition, FnId, Location, ProbeRule, Value};
+use orca_wasm::ir::types::DataType as OrcaType;
 use pest::error::LineColLocation;
 use std::collections::HashMap;
 use std::fmt;
-use orca_wasm::ir::types::DataType as OrcaType;
 
 const UNEXPECTED_ERR_MSG: &str =
     "SymbolTable: Looks like you've found a bug...please report this behavior!";
@@ -690,9 +690,15 @@ impl Record {
 /// the index of the variables (global/local) in app.wasm
 /// This is the relative index that's dependent on which function/module you're in.
 pub enum VarAddr {
-    Local { addr: u32 },
-    Global { addr: u32 },
-    MapId { addr: u32 },
+    Local {
+        addr: u32,
+    },
+    Global {
+        addr: u32,
+    },
+    MapId {
+        addr: u32,
+    },
     MemLoc {
         // The ID of the memory that the var is stored in
         mem_id: u32,
@@ -701,6 +707,6 @@ pub enum VarAddr {
         // The offset within a function's variable block...
         // This should be added to a base offset value to find
         // the true memory offset for this variable.
-        var_offset: u32
-    }
+        var_offset: u32,
+    },
 }

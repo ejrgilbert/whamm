@@ -161,9 +161,7 @@ impl ExprFolder {
                                 name: "strcmp".to_string(),
                                 loc: None,
                             }),
-                            args: vec![
-                                lhs, rhs
-                            ],
+                            args: vec![lhs, rhs],
                             loc: loc.clone(),
                         };
                     }
@@ -194,9 +192,7 @@ impl ExprFolder {
                                     name: "strcmp".to_string(),
                                     loc: None,
                                 }),
-                                args: vec![
-                                    lhs, rhs
-                                ],
+                                args: vec![lhs, rhs],
                                 loc: None,
                             }),
                             loc: loc.clone(),
@@ -226,7 +222,7 @@ impl ExprFolder {
 
     fn is_str(expr: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> bool {
         match expr {
-            Expr::VarId {name, ..} => {
+            Expr::VarId { name, .. } => {
                 if let Some(Var { ty, .. }) = table.lookup_var(name, &None, err, false) {
                     matches!(ty, DataType::Str)
                 } else {
@@ -234,12 +230,13 @@ impl ExprFolder {
                     false
                 }
             }
-            Expr::Primitive {val: Value::Str {..}, ..} => {
-                true
-            }
-            Expr::Call {fn_target, ..} => {
-                if let Expr::VarId {name, ..} = fn_target.as_ref() {
-                    if let Some(Record::Fn { ret_ty, .. }) = table.lookup_fn(&name, false, err) {
+            Expr::Primitive {
+                val: Value::Str { .. },
+                ..
+            } => true,
+            Expr::Call { fn_target, .. } => {
+                if let Expr::VarId { name, .. } = fn_target.as_ref() {
+                    if let Some(Record::Fn { ret_ty, .. }) = table.lookup_fn(name, false, err) {
                         matches!(ret_ty, DataType::Str)
                     } else {
                         err.unexpected_error(true, Some("unexpected type".to_string()), None);
@@ -249,7 +246,7 @@ impl ExprFolder {
                     false
                 }
             }
-            _ => false
+            _ => false,
         }
     }
 

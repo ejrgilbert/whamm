@@ -1,4 +1,5 @@
 use crate::common::error::{ErrorGen, WhammError};
+use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::rewriting::rules::Arg;
 use crate::emitter::utils::{emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global};
 use crate::emitter::{configure_flush_routines, Emitter, InjectStrategy};
@@ -16,11 +17,9 @@ use orca_wasm::ir::types::{BlockType as OrcaBlockType, DataType as OrcaType, Val
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::{Instrumenter, MacroOpcode, Opcode};
 use orca_wasm::{InitExpr, Location};
-use crate::emitter::memory_allocator::MemoryAllocator;
 
 const UNEXPECTED_ERR_MSG: &str =
     "ModuleEmitter: Looks like you've found a bug...please report this behavior!";
-
 
 pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub strategy: InjectStrategy,
@@ -312,11 +311,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             true,
             false,
         );
-        match self
-            .app_wasm
-            .functions
-            .get_local_fid_by_name("instr_init")
-        {
+        match self.app_wasm.functions.get_local_fid_by_name("instr_init") {
             Some(_) => {
                 debug!("instr_init function already exists");
                 err.unexpected_error(
@@ -336,7 +331,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 let instr_init_id = instr_init_fn.finish_module(self.app_wasm);
                 self.app_wasm
                     .set_fn_name(instr_init_id, "instr_init".to_string());
-                return instr_init_id;
+                instr_init_id
             }
         }
     }
@@ -424,10 +419,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             DataType::Map { .. } => {
                 // TODO -- move to MapAdapter
                 //time to set up the map_init fn
-                let Some(init_id) = self
-                    .app_wasm
-                    .functions
-                    .get_local_fid_by_name("instr_init")
+                let Some(init_id) = self.app_wasm.functions.get_local_fid_by_name("instr_init")
                 else {
                     err.unexpected_error(
                         true,
@@ -625,10 +617,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
 
     pub fn configure_mem_tracker_global(&mut self, err: &mut ErrorGen) {
         // TODO -- factor out all this dupe logic
-        let init_id = if let Some(fid) = self
-            .app_wasm
-            .functions
-            .get_local_fid_by_name("instr_init") {
+        let init_id = if let Some(fid) = self.app_wasm.functions.get_local_fid_by_name("instr_init")
+        {
             fid
         } else {
             self.create_instr_init(err)
@@ -643,7 +633,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 )),
                 None,
             );
-            return
+            return;
         };
         init_fn.before_at(Location::Module {
             func_idx: init_id, // not used
