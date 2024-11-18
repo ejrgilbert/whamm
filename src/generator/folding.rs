@@ -1,7 +1,7 @@
 use crate::common::error::ErrorGen;
-use crate::parser::types::{BinOp, DataType, Expr, UnOp, Value};
+use crate::parser::types::{BinOp, DataType, Definition, Expr, UnOp, Value};
 use crate::verifier::types::Record::Var;
-use crate::verifier::types::SymbolTable;
+use crate::verifier::types::{Record, SymbolTable};
 
 // =======================================
 // = Constant Propagation via ExprFolder =
@@ -22,7 +22,7 @@ impl ExprFolder {
     }
 
     fn fold_binop(binop: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
-        if let Expr::BinOp { lhs, op, rhs, .. } = &binop {
+        if let Expr::BinOp { lhs, op, rhs, loc } = &binop {
             let lhs = ExprFolder::fold_expr(lhs, table, err);
             let rhs = ExprFolder::fold_expr(rhs, table, err);
             match op {
@@ -152,6 +152,21 @@ impl ExprFolder {
                     if let Some(res) = ExprFolder::fold_strings(&lhs_val, &rhs_val, op) {
                         return res;
                     }
+
+                    if Self::is_str(&lhs, table, err) && Self::is_str(&rhs, table, err) {
+                        // Otherwise, replace with a call to strcmp!
+                        return Expr::Call {
+                            fn_target: Box::new(Expr::VarId {
+                                definition: Definition::CompilerDynamic,
+                                name: "strcmp".to_string(),
+                                loc: None,
+                            }),
+                            args: vec![
+                                lhs, rhs
+                            ],
+                            loc: loc.clone(),
+                        };
+                    }
                 }
                 BinOp::NE => {
                     let (lhs_val, rhs_val) = ExprFolder::get_bool(&lhs, &rhs);
@@ -167,6 +182,25 @@ impl ExprFolder {
                     let (lhs_val, rhs_val) = ExprFolder::get_str(&lhs, &rhs);
                     if let Some(res) = ExprFolder::fold_strings(&lhs_val, &rhs_val, op) {
                         return res;
+                    }
+
+                    if Self::is_str(&lhs, table, err) && Self::is_str(&rhs, table, err) {
+                        // Otherwise, replace with a call to strcmp!
+                        return Expr::UnOp {
+                            op: UnOp::Not,
+                            expr: Box::new(Expr::Call {
+                                fn_target: Box::new(Expr::VarId {
+                                    definition: Definition::CompilerDynamic,
+                                    name: "strcmp".to_string(),
+                                    loc: None,
+                                }),
+                                args: vec![
+                                    lhs, rhs
+                                ],
+                                loc: None,
+                            }),
+                            loc: loc.clone(),
+                        };
                     }
                 }
                 BinOp::GE
@@ -188,6 +222,35 @@ impl ExprFolder {
 
         // Cannot fold anymore
         binop.clone()
+    }
+
+    fn is_str(expr: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> bool {
+        match expr {
+            Expr::VarId {name, ..} => {
+                if let Some(Var { ty, .. }) = table.lookup_var(name, &None, err, false) {
+                    matches!(ty, DataType::Str)
+                } else {
+                    err.unexpected_error(true, Some("unexpected type".to_string()), None);
+                    false
+                }
+            }
+            Expr::Primitive {val: Value::Str {..}, ..} => {
+                true
+            }
+            Expr::Call {fn_target, ..} => {
+                if let Expr::VarId {name, ..} = fn_target.as_ref() {
+                    if let Some(Record::Fn { ret_ty, .. }) = table.lookup_fn(&name, false, err) {
+                        matches!(ret_ty, DataType::Str)
+                    } else {
+                        err.unexpected_error(true, Some("unexpected type".to_string()), None);
+                        false
+                    }
+                } else {
+                    false
+                }
+            }
+            _ => false
+        }
     }
 
     fn fold_map_get(expr: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {

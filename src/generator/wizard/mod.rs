@@ -1,6 +1,7 @@
 pub mod ast;
 pub mod metadata_collector;
 
+use std::collections::HashSet;
 use crate::common::error::ErrorGen;
 use crate::common::instr::Config;
 use crate::emitter::module_emitter::ModuleEmitter;
@@ -35,7 +36,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     pub fn run(
         &mut self,
         ast: Vec<WizardScript>,
-        used_provided_funcs: Vec<(String, String)>,
+        used_provided_funcs: HashSet<(String, String)>,
         strings_to_emit: Vec<String>,
     ) {
         // Reset the symbol table in the emitter just in case
@@ -64,7 +65,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         }
     }
 
-    fn emit_needed_funcs(&mut self, funcs: Vec<(String, String)>) {
+    fn emit_needed_funcs(&mut self, funcs: HashSet<(String, String)>) {
         for (context, fname) in funcs.iter() {
             if let Some(fid) = self.emitter.emit_provided_fn(
                 context,
