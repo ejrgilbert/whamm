@@ -135,6 +135,34 @@ pub enum DataType {
     AssumeGood,
 }
 impl DataType {
+    pub fn num_bytes(&self) -> Option<usize> {
+        match self {
+            DataType::U32 |
+            DataType::I32 |
+            DataType::F32 |
+            DataType::Boolean |
+            // We save the map ID as u32!
+            DataType::Map { .. } => Some(4),
+            DataType::U64 |
+            DataType::I64 |
+            DataType::F64 => Some(8),
+            DataType::Tuple { ty_info } => {
+                let mut size = 0;
+                for ty in ty_info.iter() {
+                    size += ty.num_bytes().unwrap_or_default();
+                }
+                Some(size)
+            }
+            DataType::Str |
+            DataType::Null |
+            DataType::AssumeGood => {
+                // TODO -- is this okay for AssumeGood?
+                // size should be determined respective to the context!
+                None
+            }
+        }
+    }
+
     pub fn print(&self, buffer: &mut Buffer) {
         match self {
             DataType::U32 => {

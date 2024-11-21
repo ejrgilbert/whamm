@@ -8,6 +8,7 @@ use crate::parser::types::{
 };
 use crate::verifier::types::{Record, SymbolTable};
 use log::trace;
+use std::collections::HashSet;
 
 const UNEXPECTED_ERR_MSG: &str =
     "WizardProbeMetadataCollector: Looks like you've found a bug...please report this behavior!";
@@ -25,7 +26,8 @@ enum Visiting {
 pub struct WizardProbeMetadataCollector<'a, 'b, 'c> {
     table: &'a mut SymbolTable,
     pub wizard_ast: Vec<WizardScript>,
-    pub used_provided_fns: Vec<(String, String)>,
+    pub used_provided_fns: HashSet<(String, String)>,
+    pub check_strcmp: bool,
     pub strings_to_emit: Vec<String>,
 
     visiting: Visiting,
@@ -34,7 +36,6 @@ pub struct WizardProbeMetadataCollector<'a, 'b, 'c> {
     curr_probe: WizardProbe,
     probe_count: i32,
 
-    // vars_to_alloc: Vec<(String, DataType)>, // TODO(unshared) (once we have 'unshared' variables)
     err: &'b mut ErrorGen,
     pub config: &'c Config,
 }
@@ -47,7 +48,8 @@ impl<'a, 'b, 'c> WizardProbeMetadataCollector<'a, 'b, 'c> {
         Self {
             table,
             wizard_ast: Vec::default(),
-            used_provided_fns: Vec::default(),
+            used_provided_fns: HashSet::default(),
+            check_strcmp: false,
             strings_to_emit: Vec::default(),
             visiting: Visiting::None,
             curr_rule: "".to_string(),
@@ -235,12 +237,28 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
                 // ignore
             }
             Statement::UnsharedDecl {
-                is_report: _is_report,
-                ..
+                is_report,
+                decl,
+                loc,
             } => {
-                self.curr_probe.incr_unshared();
-                // change this to save off data to allocate
-                todo!()
+                if let Statement::Decl {
+                    ty,
+                    var_id: Expr::VarId { name, .. },
+                    ..
+                } = decl.as_ref()
+                {
+                    // change this to save off data to allocate
+                    self.curr_probe
+                        .add_unshared(name.clone(), ty.clone(), *is_report);
+                } else {
+                    self.err.unexpected_error(
+                        true,
+                        Some(format!(
+                            "{UNEXPECTED_ERR_MSG} Incorrect type for a UnsharedDecl's contents!"
+                        )),
+                        loc.clone().map(|l| l.line_col),
+                    )
+                }
             }
             Statement::Assign { var_id, expr, .. } => {
                 if let Expr::VarId { name, .. } = var_id {
@@ -284,9 +302,16 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
                 self.visit_expr(conseq);
                 self.visit_expr(alt);
             }
-            Expr::BinOp { lhs, rhs, .. } => {
+            Expr::BinOp { lhs, rhs, op, .. } => {
+                self.check_strcmp = matches!(op, BinOp::EQ | BinOp::NE);
                 self.visit_expr(lhs);
                 self.visit_expr(rhs);
+                if self.check_strcmp {
+                    // if this flag is still true, we need the strcmp function!
+                    self.used_provided_fns
+                        .insert(("whamm".to_string(), "strcmp".to_string()));
+                }
+                self.check_strcmp = false;
             }
             Expr::Call {
                 args, fn_target, ..
@@ -303,16 +328,17 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
                         "".to_string()
                     }
                 };
-                let (Some(Record::Fn { def, .. }), context) =
+                let (Some(Record::Fn { def, ret_ty, .. }), context) =
                     self.table.lookup_fn_with_context(&fn_name, self.err)
                 else {
                     self.err
                         .unexpected_error(true, Some("unexpected type".to_string()), None);
                     return;
                 };
+                self.check_strcmp = matches!(ret_ty, DataType::Str);
                 if matches!(def, Definition::CompilerDynamic) {
                     // will need to emit this function!
-                    self.used_provided_fns.push((context, fn_name));
+                    self.used_provided_fns.insert((context, fn_name));
                 }
 
                 args.iter().for_each(|arg| {
@@ -322,6 +348,8 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
             Expr::Primitive { val, .. } => {
                 if let Value::Str { val, .. } = val {
                     self.strings_to_emit.push(val.clone());
+                } else {
+                    self.check_strcmp = false;
                 }
             }
             Expr::VarId { name, .. } => {
@@ -337,6 +365,7 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
 
                 // check if provided, remember in metadata!
                 let (def, ty, ..) = get_def(name, self.table, self.err);
+                self.check_strcmp = matches!(ty, DataType::Str);
 
                 if def.is_comp_provided() {
                     self.push_metadata(name, &ty);

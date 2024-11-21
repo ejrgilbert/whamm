@@ -1,6 +1,6 @@
 #![allow(clippy::too_many_arguments)]
 use crate::common::error::ErrorGen;
-use crate::emitter::module_emitter::MemoryTracker;
+use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::InjectStrategy;
 use crate::generator::folding::ExprFolder;
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
@@ -33,7 +33,7 @@ pub fn emit_body<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
-    mem_tracker: &MemoryTracker,
+    mem_allocator: &MemoryAllocator,
     map_lib_adapter: &mut MapLibAdapter,
     report_vars: &mut ReportVars,
     unshared_var_handler: &mut UnsharedVarHandler,
@@ -47,7 +47,7 @@ pub fn emit_body<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             strategy,
             injector,
             table,
-            mem_tracker,
+            mem_allocator,
             map_lib_adapter,
             report_vars,
             unshared_var_handler,
@@ -63,7 +63,7 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
-    mem_tracker: &MemoryTracker,
+    mem_allocator: &MemoryAllocator,
     map_lib_adapter: &mut MapLibAdapter,
     report_vars: &mut ReportVars,
     unshared_var_handler: &mut UnsharedVarHandler,
@@ -79,7 +79,7 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             strategy,
             injector,
             table,
-            mem_tracker,
+            mem_allocator,
             map_lib_adapter,
             report_vars,
             unshared_var_handler,
@@ -91,7 +91,7 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             strategy,
             injector,
             table,
-            mem_tracker,
+            mem_allocator,
             map_lib_adapter,
             report_vars,
             unshared_var_handler,
@@ -109,7 +109,7 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     strategy,
                     injector,
                     table,
-                    mem_tracker,
+                    mem_allocator,
                     map_lib_adapter,
                     report_vars,
                     unshared_var_handler,
@@ -124,7 +124,7 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     strategy,
                     injector,
                     table,
-                    mem_tracker,
+                    mem_allocator,
                     map_lib_adapter,
                     report_vars,
                     unshared_var_handler,
@@ -138,7 +138,7 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             strategy,
             injector,
             table,
-            mem_tracker,
+            mem_allocator,
             map_lib_adapter,
             report_vars,
             unshared_var_handler,
@@ -150,7 +150,7 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             strategy,
             injector,
             table,
-            mem_tracker,
+            mem_allocator,
             map_lib_adapter,
             report_vars,
             unshared_var_handler,
@@ -228,14 +228,22 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     //ignore, initial setup is done in init_gen
                     true
                 }
+                Some(VarAddr::MemLoc { .. }) => {
+                    //ignore, initial setup is done in $alloc
+                    true
+                }
                 Some(VarAddr::Local { .. }) | None => {
                     // If the local already exists, it would be because the probe has been
                     // emitted at another opcode location. Simply overwrite the previously saved
                     // address.
                     let wasm_ty = whamm_type_to_wasm_type(ty);
-                    let id = injector.add_local(wasm_ty);
-                    *addr = Some(VarAddr::Local { addr: *id });
-                    true
+                    if wasm_ty.len() == 1 {
+                        let id = injector.add_local(*wasm_ty.first().unwrap());
+                        *addr = Some(VarAddr::Local { addr: *id });
+                        true
+                    } else {
+                        todo!()
+                    }
                 }
             }
         }
@@ -257,14 +265,14 @@ fn emit_unshared_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
-    _mem_tracker: &MemoryTracker,
+    _mem_allocator: &MemoryAllocator,
     map_lib_adapter: &mut MapLibAdapter,
     report_vars: &mut ReportVars,
     unshared_var_handler: &mut UnsharedVarHandler,
     err_msg: &str,
     err: &mut ErrorGen,
 ) -> bool {
-    // TODO(unshared)
+    // TODO(unshared) (check me)
     //   call lang_features.unshared_vars.rewriting IF doing rewriting...
     //   ...will need to thread injection method through
     //   (ignore this statement on wizard target since it's already handled)
@@ -312,6 +320,7 @@ fn emit_unshared_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             }
             InjectStrategy::Wizard => {
                 // ignore, this statement has already been processed!
+                return true;
             }
         }
     }
@@ -330,7 +339,7 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
-    mem_tracker: &MemoryTracker,
+    mem_allocator: &MemoryAllocator,
     map_lib_adapter: &mut MapLibAdapter,
     report_vars: &mut ReportVars,
     unshared_var_handler: &mut UnsharedVarHandler,
@@ -368,7 +377,7 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 strategy,
                 injector,
                 table,
-                mem_tracker,
+                mem_allocator,
                 map_lib_adapter,
                 report_vars,
                 unshared_var_handler,
@@ -383,6 +392,7 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 var_id,
                 injector,
                 table,
+                mem_allocator,
                 report_vars,
                 unshared_var_handler,
                 err_msg,
@@ -408,7 +418,7 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
-    mem_tracker: &MemoryTracker,
+    mem_allocator: &MemoryAllocator,
     map_lib_adapter: &mut MapLibAdapter,
     report_vars: &mut ReportVars,
     unshared_var_handler: &mut UnsharedVarHandler,
@@ -433,7 +443,7 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             strategy,
             injector,
             table,
-            mem_tracker,
+            mem_allocator,
             map_lib_adapter,
             report_vars,
             unshared_var_handler,
@@ -445,7 +455,7 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             strategy,
             injector,
             table,
-            mem_tracker,
+            mem_allocator,
             map_lib_adapter,
             report_vars,
             unshared_var_handler,
@@ -473,31 +483,59 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 pub fn whamm_type_to_wasm_global(app_wasm: &mut Module, ty: &DataType) -> (GlobalID, OrcaType) {
     let orca_wasm_ty = whamm_type_to_wasm_type(ty);
 
-    match orca_wasm_ty {
-        OrcaType::I32 => {
-            let global_id = app_wasm.add_global(
-                InitExpr::Value(OrcaValue::I32(0)),
-                OrcaType::I32,
-                true,
-                false,
-            );
-            (global_id, OrcaType::I32)
+    if orca_wasm_ty.len() == 1 {
+        match orca_wasm_ty.first().unwrap() {
+            OrcaType::I32 => {
+                let global_id = app_wasm.add_global(
+                    InitExpr::Value(OrcaValue::I32(0)),
+                    OrcaType::I32,
+                    true,
+                    false,
+                );
+                (global_id, OrcaType::I32)
+            }
+            _ => unimplemented!(),
         }
-        _ => unimplemented!(),
+    } else {
+        todo!()
     }
 }
-pub fn whamm_type_to_wasm_type(ty: &DataType) -> OrcaType {
+pub fn whamm_type_to_wasm_type(ty: &DataType) -> Vec<OrcaType> {
     match ty {
-        DataType::I32 | DataType::U32 | DataType::Boolean => OrcaType::I32,
-        DataType::F32 => OrcaType::F32,
-        DataType::I64 | DataType::U64 => OrcaType::I64,
-        DataType::F64 => OrcaType::F64,
+        DataType::I32 | DataType::U32 | DataType::Boolean => vec![OrcaType::I32],
+        DataType::F32 => vec![OrcaType::F32],
+        DataType::I64 | DataType::U64 => vec![OrcaType::I64],
+        DataType::F64 => vec![OrcaType::F64],
         // the ID used to track this var in the lib
-        DataType::Map { .. } => OrcaType::I32,
+        DataType::Map { .. } => vec![OrcaType::I32],
         DataType::Null => unimplemented!(),
-        DataType::Str => unimplemented!(),
+        DataType::Str => vec![OrcaType::I32, OrcaType::I32],
         DataType::Tuple { .. } => unimplemented!(),
         DataType::AssumeGood => unimplemented!(),
+    }
+}
+pub fn wasm_type_to_whamm_type(ty: &OrcaType) -> DataType {
+    match ty {
+        OrcaType::I32 => DataType::I32,
+        OrcaType::I64 => DataType::I64,
+        OrcaType::F32 => DataType::F32,
+        OrcaType::F64 => DataType::F64,
+        OrcaType::FuncRef
+        | OrcaType::ExternRef
+        | OrcaType::Any
+        | OrcaType::None
+        | OrcaType::NoExtern
+        | OrcaType::NoFunc
+        | OrcaType::Eq
+        | OrcaType::Struct
+        | OrcaType::Array
+        | OrcaType::I31
+        | OrcaType::Exn
+        | OrcaType::NoExn
+        | OrcaType::Module(_)
+        | OrcaType::RecGroup(_)
+        | OrcaType::CoreTypeId(_)
+        | OrcaType::V128 => unimplemented!(),
     }
 }
 
@@ -506,15 +544,20 @@ pub fn block_type_to_wasm(block: &Block) -> BlockType {
         None => BlockType::Empty,
         Some(return_ty) => {
             let wasm_ty = whamm_type_to_wasm_type(return_ty);
-            BlockType::Type(wasm_ty)
+            if wasm_ty.len() == 1 {
+                BlockType::Type(*wasm_ty.first().unwrap())
+            } else {
+                todo!()
+            }
         }
     }
 }
 
-fn emit_set<'a, T: Opcode<'a>>(
+fn emit_set<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     var_id: &mut Expr,
     injector: &mut T,
     table: &mut SymbolTable,
+    mem_allocator: &MemoryAllocator,
     report_vars: &mut ReportVars,
     _unshared_var_handler: &mut UnsharedVarHandler,
     err_msg: &str,
@@ -531,6 +574,20 @@ fn emit_set<'a, T: Opcode<'a>>(
             Some(VarAddr::Global { addr }) => {
                 report_vars.mutating_var(*addr);
                 injector.global_set(GlobalID(*addr));
+            }
+            Some(VarAddr::MemLoc {
+                mem_id,
+                ty,
+                var_offset,
+            }) => {
+                mem_allocator.set_in_mem(
+                    *mem_id,
+                    &wasm_type_to_whamm_type(ty),
+                    *var_offset,
+                    table,
+                    injector,
+                    err,
+                );
             }
             Some(VarAddr::Local { addr }) => {
                 report_vars.mutating_var(*addr);
@@ -566,7 +623,7 @@ fn emit_if_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
-    mem_tracker: &MemoryTracker,
+    mem_allocator: &MemoryAllocator,
     map_lib_adapter: &mut MapLibAdapter,
     report_vars: &mut ReportVars,
     unshared_var_handler: &mut UnsharedVarHandler,
@@ -581,7 +638,7 @@ fn emit_if_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         strategy,
         injector,
         table,
-        mem_tracker,
+        mem_allocator,
         map_lib_adapter,
         report_vars,
         unshared_var_handler,
@@ -596,7 +653,7 @@ fn emit_if_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         strategy,
         injector,
         table,
-        mem_tracker,
+        mem_allocator,
         map_lib_adapter,
         report_vars,
         unshared_var_handler,
@@ -615,7 +672,7 @@ fn emit_if_else_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
-    mem_tracker: &MemoryTracker,
+    mem_allocator: &MemoryAllocator,
     map_lib_adapter: &mut MapLibAdapter,
     report_vars: &mut ReportVars,
     unshared_var_handler: &mut UnsharedVarHandler,
@@ -630,7 +687,7 @@ fn emit_if_else_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         strategy,
         injector,
         table,
-        mem_tracker,
+        mem_allocator,
         map_lib_adapter,
         report_vars,
         unshared_var_handler,
@@ -647,7 +704,7 @@ fn emit_if_else_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         strategy,
         injector,
         table,
-        mem_tracker,
+        mem_allocator,
         map_lib_adapter,
         report_vars,
         unshared_var_handler,
@@ -666,7 +723,7 @@ fn emit_if<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
-    mem_tracker: &MemoryTracker,
+    mem_allocator: &MemoryAllocator,
     map_lib_adapter: &mut MapLibAdapter,
     report_vars: &mut ReportVars,
     unshared_var_handler: &mut UnsharedVarHandler,
@@ -681,7 +738,7 @@ fn emit_if<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         strategy,
         injector,
         table,
-        mem_tracker,
+        mem_allocator,
         map_lib_adapter,
         report_vars,
         unshared_var_handler,
@@ -701,7 +758,7 @@ fn emit_if_else<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
-    mem_tracker: &MemoryTracker,
+    mem_allocator: &MemoryAllocator,
     map_lib_adapter: &mut MapLibAdapter,
     report_vars: &mut ReportVars,
     unshared_var_handler: &mut UnsharedVarHandler,
@@ -717,7 +774,7 @@ fn emit_if_else<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         strategy,
         injector,
         table,
-        mem_tracker,
+        mem_allocator,
         map_lib_adapter,
         report_vars,
         unshared_var_handler,
@@ -736,7 +793,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
-    mem_tracker: &MemoryTracker,
+    mem_allocator: &MemoryAllocator,
     map_lib_adapter: &mut MapLibAdapter,
     report_vars: &mut ReportVars,
     unshared_var_handler: &mut UnsharedVarHandler,
@@ -752,7 +809,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 strategy,
                 injector,
                 table,
-                mem_tracker,
+                mem_allocator,
                 map_lib_adapter,
                 report_vars,
                 unshared_var_handler,
@@ -768,7 +825,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 strategy,
                 injector,
                 table,
-                mem_tracker,
+                mem_allocator,
                 map_lib_adapter,
                 report_vars,
                 unshared_var_handler,
@@ -780,7 +837,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 strategy,
                 injector,
                 table,
-                mem_tracker,
+                mem_allocator,
                 map_lib_adapter,
                 report_vars,
                 unshared_var_handler,
@@ -832,7 +889,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 strategy,
                 injector,
                 table,
-                mem_tracker,
+                mem_allocator,
                 map_lib_adapter,
                 report_vars,
                 unshared_var_handler,
@@ -856,7 +913,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     strategy,
                     injector,
                     table,
-                    mem_tracker,
+                    mem_allocator,
                     map_lib_adapter,
                     report_vars,
                     unshared_var_handler,
@@ -912,6 +969,21 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     injector.local_get(LocalID(*addr));
                     true
                 }
+                Some(VarAddr::MemLoc {
+                    mem_id,
+                    ty,
+                    var_offset,
+                }) => {
+                    mem_allocator.get_from_mem(
+                        *mem_id,
+                        &wasm_type_to_whamm_type(ty),
+                        *var_offset,
+                        table,
+                        injector,
+                        err,
+                    );
+                    true
+                }
                 Some(VarAddr::MapId { .. }) => {
                     err.unexpected_error(
                         true,
@@ -943,7 +1015,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             strategy,
             injector,
             table,
-            mem_tracker,
+            mem_allocator,
             map_lib_adapter,
             report_vars,
             unshared_var_handler,
@@ -955,7 +1027,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             strategy,
             injector,
             table,
-            mem_tracker,
+            mem_allocator,
             map_lib_adapter,
             report_vars,
             unshared_var_handler,
@@ -1038,7 +1110,7 @@ fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
-    mem_tracker: &MemoryTracker,
+    mem_allocator: &MemoryAllocator,
     map_lib_adapter: &mut MapLibAdapter,
     report_vars: &mut ReportVars,
     unshared_var_handler: &mut UnsharedVarHandler,
@@ -1080,7 +1152,7 @@ fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             // 1. app_iter.app_wasm.data
             // 2. app_iter
 
-            if let Some(str_addr) = mem_tracker.emitted_strings.get(val) {
+            if let Some(str_addr) = mem_allocator.emitted_strings.get(val) {
                 // emit Wasm instructions for the memory address and string length
                 injector.u32_const(str_addr.mem_offset as u32);
                 injector.u32_const(str_addr.len as u32);
@@ -1103,7 +1175,7 @@ fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     strategy,
                     injector,
                     table,
-                    mem_tracker,
+                    mem_allocator,
                     map_lib_adapter,
                     report_vars,
                     unshared_var_handler,
@@ -1142,7 +1214,7 @@ fn emit_map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     strategy: InjectStrategy,
     injector: &mut T,
     table: &mut SymbolTable,
-    mem_tracker: &MemoryTracker,
+    mem_allocator: &MemoryAllocator,
     map_lib_adapter: &mut MapLibAdapter,
     report_vars: &mut ReportVars,
     unshared_var_handler: &mut UnsharedVarHandler,
@@ -1160,7 +1232,7 @@ fn emit_map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                         strategy,
                         injector,
                         table,
-                        mem_tracker,
+                        mem_allocator,
                         map_lib_adapter,
                         report_vars,
                         unshared_var_handler,
