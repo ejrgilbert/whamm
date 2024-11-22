@@ -19,6 +19,7 @@ use orca_wasm::ir::types::DataType as OrcaType;
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::Opcode;
 use std::collections::HashSet;
+use crate::lang_features::alloc_vars::wizard::emit_alloc_func;
 
 pub struct WizardGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j> {
     pub emitter: ModuleEmitter<'b, 'c, 'd, 'e, 'f, 'g, 'h>,
@@ -182,117 +183,6 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         (fid, param_str.to_string())
     }
 
-    fn emit_alloc_func(&mut self, probe: &mut WizardProbe) -> (Option<u32>, String) {
-        struct Local {
-            id: LocalID,
-            ty: OrcaType,
-        }
-
-        if probe.unshared_to_alloc.is_empty() {
-            (None, "".to_string())
-        } else {
-            // specify params
-            let fid = Local {
-                id: LocalID(0),
-                ty: OrcaType::I32,
-            };
-            let pc = Local {
-                id: LocalID(1),
-                ty: OrcaType::I32,
-            };
-
-            // params: (fid, pc)
-            let alloc_params = vec![fid.ty, pc.ty];
-            // results: mem_offset
-            let alloc_results = vec![OrcaType::I32];
-
-            let mut alloc = FunctionBuilder::new(&alloc_params, &alloc_results);
-            // specify locals
-            let orig_offset = Local {
-                id: alloc.add_local(OrcaType::I32),
-                ty: OrcaType::I32,
-            };
-
-            // remember the original memory offset
-            alloc.global_get(self.emitter.mem_allocator.mem_tracker_global);
-            alloc.local_set(orig_offset.id);
-
-            // track what's been allocated for this function thus far
-            let mut next_var_offset = 0;
-
-            // store fid and pc
-            let (_, bytes_used) = self.emitter.mem_allocator.emit_store_from_local(
-                next_var_offset,
-                fid.id,
-                &wasm_type_to_whamm_type(&fid.ty),
-                &mut alloc,
-            );
-            next_var_offset += bytes_used;
-            // TODO: I don't think I need this
-            // self.emitter.table.put("fid".to_string(), Record::Var {
-            //     ty: wasm_type_to_whamm_type(&fid.ty),
-            //     name: "fid".to_string(),
-            //     value: None,
-            //     def: Definition::CompilerDynamic,
-            //     is_report_var: false,
-            //     addr: Some(fid_addr),
-            //     loc: None,
-            // });
-
-            let (_, bytes_used) = self.emitter.mem_allocator.emit_store_from_local(
-                next_var_offset,
-                pc.id,
-                &wasm_type_to_whamm_type(&pc.ty),
-                &mut alloc,
-            );
-            next_var_offset += bytes_used;
-            // TODO: I don't think I need this
-            // self.emitter.table.put("pc".to_string(), Record::Var {
-            //     ty: wasm_type_to_whamm_type(&fid.ty),
-            //     name: "pc".to_string(),
-            //     value: None,
-            //     def: Definition::CompilerDynamic,
-            //     is_report_var: false,
-            //     addr: Some(pc_addr),
-            //     loc: None,
-            // });
-
-            // alloc each var
-            for UnsharedVar {
-                ty,
-                name,
-                is_report: _,
-            } in probe.unshared_to_alloc.iter()
-            {
-                let (var_addr, bytes_used) =
-                    self.emitter
-                        .mem_allocator
-                        .alloc_mem_space(next_var_offset, ty, &mut alloc);
-                next_var_offset += bytes_used;
-                self.emitter.table.put(
-                    name.clone(),
-                    Record::Var {
-                        ty: wasm_type_to_whamm_type(&fid.ty),
-                        name: name.clone(),
-                        value: None,
-                        def: Definition::CompilerDynamic,
-                        is_report_var: false,
-                        addr: Some(var_addr),
-                        loc: None,
-                    },
-                );
-
-                // TODO handle report variables!
-            }
-
-            // return the base memory offset where this function's var block starts
-            alloc.local_get(orig_offset.id);
-
-            let alloc_id = alloc.finish_module(self.emitter.app_wasm);
-            (Some(*alloc_id), "fid, pc".to_string())
-        }
-    }
-
     fn create_curr_loc(&self, probe: &WizardProbe) -> LocationData {
         let probe_id = format!("{}_{}", probe.probe_number, probe.rule);
 
@@ -328,7 +218,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         };
 
         // create the probe's $alloc method
-        let (alloc_fid, alloc_param_str) = self.emit_alloc_func(probe);
+        let (alloc_fid, alloc_param_str) = emit_alloc_func(&mut probe.unshared_to_alloc, &mut self.emitter);
 
         // create the probe body function
         let (body_fid, body_param_str) = if let Some(body) = &mut probe.body {

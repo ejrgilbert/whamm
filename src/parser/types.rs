@@ -114,7 +114,7 @@ impl PartialEq for DataType {
     }
 }
 
-#[derive(Clone, Debug, Eq)]
+#[derive(Clone, Debug, Eq, Hash)]
 pub enum DataType {
     U32,
     I32,
