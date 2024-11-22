@@ -99,9 +99,13 @@ pub fn emit_alloc_func(unshared_to_alloc: &mut Vec<UnsharedVar>, emitter: &mut M
         for UnsharedVar {
             ty,
             name,
-            is_report: _,
+            is_report,
         } in unshared_to_alloc.iter()
         {
+            if is_report {
+                // TODO handle report variables!
+                todo!()
+            }
             let (var_addr, bytes_used) =
                 emitter
                     .mem_allocator
@@ -119,8 +123,6 @@ pub fn emit_alloc_func(unshared_to_alloc: &mut Vec<UnsharedVar>, emitter: &mut M
                     loc: None,
                 },
             );
-
-            // TODO handle report variables!
         }
 
         // return the base memory offset where this function's var block starts
