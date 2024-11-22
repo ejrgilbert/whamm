@@ -10,21 +10,17 @@ use orca_wasm::Opcode;
 use crate::emitter::module_emitter::ModuleEmitter;
 use crate::emitter::utils::wasm_type_to_whamm_type;
 
-pub fn create_alloc_func(_to_alloc: Vec<DataType>) -> FunctionID {
-
-
-    // NOTE: `decl_init` statements should be run ONCE (can be in $alloc func)
-    todo!()
-}
-
 pub fn emit_alloc_func(unshared_to_alloc: &mut Vec<UnsharedVar>, emitter: &mut ModuleEmitter) -> (Option<u32>, String) {
     // Called once per probe definition with `unshared` OR `report` vars.
+
     // $alloc description:
     // Will generate a function that allocates the memory required.
     // The order of the data will go in the order of the `unshared_to_alloc` param.
     // The function will return the memory offset to use by the probe logic.
     // Will also need to update some global value that keeps track of the already (use memory allocator?)
     // allocated memory space. Make sure to check that memory size is big enough!
+
+    // TODO: `decl_init` statements should be run ONCE (can be in $alloc func)
     struct Local {
         id: LocalID,
         ty: OrcaType,
