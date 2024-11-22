@@ -187,11 +187,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         }
     }
 
-    pub(crate) fn emit_flush_fn(
-        &mut self,
-        dt: &DataType,
-        err: &mut ErrorGen
-    ) {
+    pub(crate) fn emit_flush_fn(&mut self, dt: &DataType, err: &mut ErrorGen) {
         self.report_vars.emit_flush_fn(dt, err);
     }
 
