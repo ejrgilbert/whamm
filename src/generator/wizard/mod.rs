@@ -38,12 +38,15 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         &mut self,
         ast: Vec<WizardScript>,
         used_provided_funcs: HashSet<(String, String)>,
+        used_report_dts: HashSet<DataType>,
         strings_to_emit: Vec<String>,
     ) {
         // Reset the symbol table in the emitter just in case
         self.emitter.reset_table();
         self.emitter.setup_module(true, self.err);
         self.emit_needed_funcs(used_provided_funcs);
+        self.emit_needed_flush_funcs(used_report_dts);
+        self.emit_end_func();
         self.emit_strings(strings_to_emit);
         self.visit_ast(ast);
         self.emitter.memory_grow(); // account for emitted strings in memory
@@ -85,6 +88,19 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
                 self.add_injected_func(fid);
             };
         }
+    }
+
+    fn emit_needed_flush_funcs(&mut self, report_dts: HashSet<DataType>) {
+        for dt in report_dts.iter() {
+            self.emitter.emit_flush_fn(
+                dt,
+                self.err
+            );
+        }
+    }
+
+    fn emit_end_func(&mut self) {
+        self.emitter.emit_end_fn(self.err);
     }
 
     // Visit the AST

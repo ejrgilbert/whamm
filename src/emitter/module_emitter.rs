@@ -187,6 +187,21 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         }
     }
 
+    pub(crate) fn emit_flush_fn(
+        &mut self,
+        dt: &DataType,
+        err: &mut ErrorGen
+    ) {
+        self.report_vars.emit_flush_fn(dt, err);
+    }
+
+    pub(crate) fn emit_end_fn(&mut self, err: &mut ErrorGen) {
+        // create the function
+        // call the report_vars to emit calls to all report var flushers
+        self.report_vars.call_dt_flushers(err);
+        todo!()
+    }
+
     fn emit_whamm_strcmp_fn(&mut self, f: &Fn, err: &mut ErrorGen) -> Option<FunctionID> {
         let strcmp_params = vec![OrcaType::I32, OrcaType::I32, OrcaType::I32, OrcaType::I32];
         let strcmp_result = vec![OrcaType::I32];
