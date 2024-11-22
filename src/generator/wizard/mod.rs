@@ -5,21 +5,18 @@ use crate::common::error::ErrorGen;
 use crate::common::instr::Config;
 use crate::emitter::memory_allocator::VAR_BLOCK_BASE_VAR;
 use crate::emitter::module_emitter::ModuleEmitter;
-use crate::emitter::utils::{wasm_type_to_whamm_type, whamm_type_to_wasm_type};
-use crate::generator::wizard::ast::{UnsharedVar, WizardProbe, WizardScript};
+use crate::emitter::utils::whamm_type_to_wasm_type;
+use crate::generator::wizard::ast::{WizardProbe, WizardScript};
 use crate::generator::GeneratingVisitor;
+use crate::lang_features::alloc_vars::wizard::emit_alloc_func;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::report_vars::{BytecodeLoc, LocationData};
 use crate::parser::types::{Block, DataType, Definition, FnId, Statement, Value, WhammVisitorMut};
 use crate::verifier::types::{Record, VarAddr};
 use log::trace;
-use orca_wasm::ir::function::FunctionBuilder;
 use orca_wasm::ir::id::{FunctionID, LocalID};
 use orca_wasm::ir::types::DataType as OrcaType;
-use orca_wasm::module_builder::AddLocal;
-use orca_wasm::Opcode;
 use std::collections::HashSet;
-use crate::lang_features::alloc_vars::wizard::emit_alloc_func;
 
 pub struct WizardGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j> {
     pub emitter: ModuleEmitter<'b, 'c, 'd, 'e, 'f, 'g, 'h>,
@@ -92,10 +89,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
 
     fn emit_needed_flush_funcs(&mut self, report_dts: HashSet<DataType>) {
         for dt in report_dts.iter() {
-            self.emitter.emit_flush_fn(
-                dt,
-                self.err
-            );
+            self.emitter.emit_flush_fn(dt, self.err);
         }
     }
 
@@ -234,7 +228,8 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         };
 
         // create the probe's $alloc method
-        let (alloc_fid, alloc_param_str) = emit_alloc_func(&mut probe.unshared_to_alloc, &mut self.emitter);
+        let (alloc_fid, alloc_param_str) =
+            emit_alloc_func(&mut probe.unshared_to_alloc, &mut self.emitter);
 
         // create the probe body function
         let (body_fid, body_param_str) = if let Some(body) = &mut probe.body {

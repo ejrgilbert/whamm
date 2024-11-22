@@ -1,16 +1,19 @@
+use crate::emitter::module_emitter::ModuleEmitter;
+use crate::emitter::utils::wasm_type_to_whamm_type;
+use crate::generator::wizard::ast::UnsharedVar;
 use crate::parser::types::{DataType, Definition};
 use crate::verifier::types::{Record, VarAddr};
-use orca_wasm::ir::id::{FunctionID, LocalID};
-use std::collections::HashMap;
 use orca_wasm::ir::function::FunctionBuilder;
-use crate::generator::wizard::ast::UnsharedVar;
+use orca_wasm::ir::id::LocalID;
 use orca_wasm::ir::types::DataType as OrcaType;
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::Opcode;
-use crate::emitter::module_emitter::ModuleEmitter;
-use crate::emitter::utils::wasm_type_to_whamm_type;
+use std::collections::HashMap;
 
-pub fn emit_alloc_func(unshared_to_alloc: &mut Vec<UnsharedVar>, emitter: &mut ModuleEmitter) -> (Option<u32>, String) {
+pub fn emit_alloc_func(
+    unshared_to_alloc: &mut [UnsharedVar],
+    emitter: &mut ModuleEmitter,
+) -> (Option<u32>, String) {
     // Called once per probe definition with `unshared` OR `report` vars.
 
     // $alloc description:
@@ -102,7 +105,7 @@ pub fn emit_alloc_func(unshared_to_alloc: &mut Vec<UnsharedVar>, emitter: &mut M
             is_report,
         } in unshared_to_alloc.iter()
         {
-            if is_report {
+            if *is_report {
                 // TODO handle report variables!
                 todo!()
             }

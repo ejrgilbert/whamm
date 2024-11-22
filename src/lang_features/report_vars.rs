@@ -14,7 +14,7 @@ pub struct ReportVars {
     pub flush_soon: bool,
 
     // $alloc tracking for Wizard
-    alloc_tracker: HashMap<DataType, ReportAllocTracker>
+    alloc_tracker: HashMap<DataType, ReportAllocTracker>,
 }
 
 // ===========================
@@ -30,7 +30,7 @@ impl ReportVars {
                 script_id: "UNINITIALIZED".to_string(),
             },
             flush_soon: false,
-            alloc_tracker: HashMap::default()
+            alloc_tracker: HashMap::default(),
         }
     }
     pub fn put_global_metadata(&mut self, gid: u32, name: String, err: &mut ErrorGen) -> bool {
@@ -142,7 +142,6 @@ impl ReportVars {
     pub fn performed_flush(&mut self) {
         self.flush_soon = false;
     }
-
 }
 
 // ===========================
@@ -318,5 +317,5 @@ struct ReportAllocTracker {
     // global that points to the memory location of the first allocated report variable of this type
     first_var: Option<u32>,
     // global that points to the most-recently allocated report variable of this type
-    last_var: Option<u32>
+    last_var: Option<u32>,
 }

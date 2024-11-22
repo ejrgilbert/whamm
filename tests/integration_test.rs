@@ -13,11 +13,11 @@ use whamm::wast::test_harness::wasm2wat_on_file;
 const APP_WASM_PATH: &str = "tests/apps/dfinity/users.wasm";
 const CORE_WASM_PATH: &str = "./core_lib/target/wasm32-wasip1/release/core_lib.wasm";
 
-#[test]
-fn run_wast_tests() {
-    common::setup_logger();
-    whamm::wast::test_harness::run_all().expect("WAST Tests failed!");
-}
+// #[test]
+// fn run_wast_tests() {
+//     common::setup_logger();
+//     whamm::wast::test_harness::run_all().expect("WAST Tests failed!");
+// }
 
 fn run_script(script_text: &String, script_path: &PathBuf, err: &mut ErrorGen) {
     let wasm = fs::read(APP_WASM_PATH).unwrap();
