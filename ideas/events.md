@@ -1,0 +1,11 @@
+- [ ] Function entry/exit/unwind, e.g. wasm:fn:enter:before
+- [ ] wasm:pc:<glob>
+- [ ] wasm:fid:<glob>
+- [ ] thread operation events
+- [ ] gc operation events
+- [ ] memory access (read/write) events
+- [ ] table access (read/write) events
+- [ ] WASI component operation events, e.g. wasi:http:send_req:alt
+- [ ] BEGIN/END events
+- [ ] traps
+- [ ] exception throw/rethrow/catch events
