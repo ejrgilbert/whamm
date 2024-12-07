@@ -254,6 +254,7 @@ fn run_instr_wizard(
     metadata_collector.visit_whamm(whamm);
     let wiz_ast = metadata_collector.wizard_ast;
     let used_funcs = metadata_collector.used_provided_fns;
+    let used_report_dts = metadata_collector.used_report_var_dts;
     let used_strings = metadata_collector.strings_to_emit;
 
     let mut injected_funcs = vec![];
@@ -274,7 +275,7 @@ fn run_instr_wizard(
         config,
         curr_script_id: "".to_string(),
     };
-    gen.run(wiz_ast, used_funcs, used_strings);
+    gen.run(wiz_ast, used_funcs, used_report_dts, used_strings);
 }
 
 fn run_instr_rewrite(

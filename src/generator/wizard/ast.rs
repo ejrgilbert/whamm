@@ -24,7 +24,7 @@ pub struct WizardProbe {
     pub predicate: Option<Expr>,
     pub body: Option<Block>,
     pub metadata: Metadata,
-    pub unshared_to_alloc: Vec<UnsharedVar>,
+    pub unshared_to_alloc: Vec<UnsharedVar>, // TODO -- make this a map: DT -> var
     pub probe_number: i32,
 }
 impl WizardProbe {

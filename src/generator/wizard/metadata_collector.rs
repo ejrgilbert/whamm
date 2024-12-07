@@ -26,7 +26,10 @@ enum Visiting {
 pub struct WizardProbeMetadataCollector<'a, 'b, 'c> {
     table: &'a mut SymbolTable,
     pub wizard_ast: Vec<WizardScript>,
+
+    // misc. trackers
     pub used_provided_fns: HashSet<(String, String)>,
+    pub used_report_var_dts: HashSet<DataType>,
     pub check_strcmp: bool,
     pub strings_to_emit: Vec<String>,
 
@@ -49,6 +52,7 @@ impl<'a, 'b, 'c> WizardProbeMetadataCollector<'a, 'b, 'c> {
             table,
             wizard_ast: Vec::default(),
             used_provided_fns: HashSet::default(),
+            used_report_var_dts: HashSet::default(),
             check_strcmp: false,
             strings_to_emit: Vec::default(),
             visiting: Visiting::None,
@@ -247,6 +251,10 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
                     ..
                 } = decl.as_ref()
                 {
+                    if *is_report {
+                        // keep track of the used report var datatypes across the whole AST
+                        self.used_report_var_dts.insert(ty.clone());
+                    }
                     // change this to save off data to allocate
                     self.curr_probe
                         .add_unshared(name.clone(), ty.clone(), *is_report);

@@ -3,6 +3,7 @@
 use pest::error::LineColLocation;
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::hash::{Hash, Hasher};
 use termcolor::{Buffer, ColorChoice, WriteColor};
 
 use crate::common::error::{ErrorGen, WhammError};
@@ -82,6 +83,74 @@ impl Location {
     }
 }
 
+#[derive(Clone, Debug, Eq)]
+pub enum DataType {
+    U32,
+    I32,
+    F32,
+    U64,
+    I64,
+    F64,
+    Boolean,
+    Null,
+    Str,
+    Tuple {
+        ty_info: Vec<Box<DataType>>,
+    },
+    Map {
+        key_ty: Box<DataType>,
+        val_ty: Box<DataType>,
+    },
+    AssumeGood,
+}
+impl Hash for DataType {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // use any distinct number as an enum variant identifier
+        match self {
+            DataType::U32 => {
+                state.write_u8(1);
+            }
+            DataType::I32 => {
+                state.write_u8(2);
+            }
+            DataType::F32 => {
+                state.write_u8(3);
+            }
+            DataType::U64 => {
+                state.write_u8(4);
+            }
+            DataType::I64 => {
+                state.write_u8(5);
+            }
+            DataType::F64 => {
+                state.write_u8(6);
+            }
+            DataType::Boolean => {
+                state.write_u8(7);
+            }
+            DataType::Null => {
+                state.write_u8(8);
+            }
+            DataType::Str => {
+                state.write_u8(9);
+            }
+            DataType::Tuple { ty_info } => {
+                for ty in ty_info {
+                    state.write_u8(10);
+                    ty.hash(state);
+                }
+            }
+            DataType::Map { key_ty, val_ty } => {
+                state.write_u8(11);
+                key_ty.hash(state);
+                val_ty.hash(state);
+            }
+            DataType::AssumeGood => {
+                state.write_u8(12);
+            }
+        }
+    }
+}
 impl PartialEq for DataType {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -112,27 +181,6 @@ impl PartialEq for DataType {
             _ => false,
         }
     }
-}
-
-#[derive(Clone, Debug, Eq)]
-pub enum DataType {
-    U32,
-    I32,
-    F32,
-    U64,
-    I64,
-    F64,
-    Boolean,
-    Null,
-    Str,
-    Tuple {
-        ty_info: Vec<Box<DataType>>,
-    },
-    Map {
-        key_ty: Box<DataType>,
-        val_ty: Box<DataType>,
-    },
-    AssumeGood,
 }
 impl DataType {
     pub fn num_bytes(&self) -> Option<usize> {
