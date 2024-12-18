@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 
 use crate::common::error::ErrorGen;
+use crate::parser::types::DataType;
 
 pub struct ReportVars {
     //MapID -> Metadata
@@ -11,13 +12,14 @@ pub struct ReportVars {
     pub all_metadata: HashSet<Metadata>,
     pub curr_location: LocationData,
     pub flush_soon: bool,
-}
-impl Default for ReportVars {
-    fn default() -> Self {
-        Self::new()
-    }
+
+    // $alloc tracking for Wizard
+    alloc_tracker: HashMap<DataType, ReportAllocTracker>,
 }
 
+// ===========================
+// ==== CODE FOR TRACKING ====
+// ===========================
 impl ReportVars {
     pub fn new() -> Self {
         ReportVars {
@@ -28,6 +30,7 @@ impl ReportVars {
                 script_id: "UNINITIALIZED".to_string(),
             },
             flush_soon: false,
+            alloc_tracker: HashMap::default(),
         }
     }
     pub fn put_global_metadata(&mut self, gid: u32, name: String, err: &mut ErrorGen) -> bool {
@@ -140,6 +143,74 @@ impl ReportVars {
         self.flush_soon = false;
     }
 }
+
+// ===========================
+// ==== CODE FOR EMITTING ====
+// ===========================
+impl ReportVars {
+    // =========================
+    // ==== WIZARD-SPECIFIC ====
+    // =========================
+
+    // ==== Call flush functions at program exit ====
+
+    pub fn call_dt_flushers(&mut self, _err: &mut ErrorGen) {
+        // iterate through all the data type flush functions and emit calls
+        todo!()
+    }
+
+    // ==== Flush functions per datatype ====
+    pub fn emit_flush_fn(&mut self, _dt: &DataType, _err: &mut ErrorGen) {
+        // There will be one function per report variable type used in the script.
+        // So, if the script only uses i32 report variables, there will be one function
+        // called to flush the final state.
+        //
+        // These functions will contain the logic to handle its respective datatype.
+        // For i32, for map, etc.
+        //
+        // There will be 2 global variables used per data type as well:
+        // - one global that points to the memory location of the first allocated report
+        //   variable of this type
+        // - one global that points to the most-recently allocated report variable of
+        //   this type
+        // The global variables are necessary since they will be used both during variable
+        // allocation and during variable flush.
+
+        // The ReportVars struct needs to have fields to keep track of the emitted globals per DT
+        // (to be used in the $alloc methods)!
+        todo!();
+    }
+
+    // TODO -- flush functions per data type here!
+
+    // ==== $alloc report variable per datatype ====
+
+    pub fn alloc_report_var_header(&mut self) {
+        // We will have a linked list in memory of the report variables. One linked list per type.
+        //
+        // | next            | value                  |
+        // | mem_offset: i32 | var_data: datatype_len |
+        //
+        // Each variable location will have two pieces of information:
+        // - mem_offset: i32: The memory offset to the next report variable of this type,
+        //   it is the offset from the current memory location.
+        // - var_data: datatype_len: The actual value of the variable, the type/len is dependent
+        //   on the type of the variable. Since a function is called that iterates over each datatype's linked list of report variables, it will know how to parse the variable contents!
+        //
+        // ** This function will take care of the following: **
+        // On the first allocation for a datatype, the global that points to the first memory
+        // location is updated to point to the memory address.
+        //
+        // When a new variable is allocated in memory, the global containing the memory address
+        // of the most-recently allocated variable of that type is used to update the next pointer
+        // to the difference between the previous and the current memory address (to find the offset).
+        // Then, that global is updated to the current memory address.
+        //
+        // The value of the variable is then placed in the var_data slot.
+        todo!()
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Metadata {
     Global {
@@ -235,4 +306,16 @@ impl BytecodeLoc {
     pub(crate) fn new(fid: u32, pc: u32) -> Self {
         Self { fid, pc }
     }
+}
+
+struct ReportAllocTracker {
+    // The data type that this instance tracks allocation of
+    data_type: DataType,
+    // The ID of the flush function for this DataType
+    flush_func: Option<u32>,
+
+    // global that points to the memory location of the first allocated report variable of this type
+    first_var: Option<u32>,
+    // global that points to the most-recently allocated report variable of this type
+    last_var: Option<u32>,
 }
