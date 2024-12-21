@@ -8,8 +8,8 @@ We enable running on `wasi` through the `wasmtime-runner` Rust project at the ba
 ## To Run ##
 
 To run:
-- In the base of this project (`whamm/core_lib`), execute: `cargo build --release --target wasm32-wasip1`
-- The built `wasm` binary will be located at `whamm/core_lib/target/wasm32-wasip1/release/core_lib.wasm`
+- In the base of this project (`whamm/whamm_core`), execute: `cargo build --release --target wasm32-wasip1`
+- The built `wasm` binary will be located at `whamm/whamm_core/target/wasm32-wasip1/release/whamm_core.wasm`
 - An example `whamm!` script lives at `./src/add_map.mm`
 
 ## Issues: ##

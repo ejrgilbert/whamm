@@ -74,8 +74,8 @@ fn import_lib(
                     let fid = import_func(
                         lib_name.as_str(),
                         export.name.as_str(),
-                        &ty.params.clone(),
-                        &ty.results.clone(),
+                        &ty.params().clone(),
+                        &ty.results().clone(),
                         app_wasm,
                     );
                     // save the FID
@@ -94,6 +94,9 @@ fn import_lib(
         }
     }
 
+    // enable the library to define in-module helper functions
+    package.define_helper_funcs(app_wasm, err);
+
     trace!("Exit import_lib");
 }
 
@@ -104,7 +107,7 @@ pub fn import_func(
     results: &[DataType],
     app_wasm: &mut Module,
 ) -> u32 {
-    let ty_id = app_wasm.types.add(params, results);
+    let ty_id = app_wasm.types.add_func_type(params, results);
     let (fid, imp_id) = app_wasm.add_import_func(module_name.to_string(), fname.to_string(), ty_id);
     app_wasm.imports.set_name(fname.to_string(), imp_id);
 

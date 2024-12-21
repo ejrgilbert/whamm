@@ -614,12 +614,12 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         let block_ty = match orig_ty_id {
             Some(ty_id) => {
                 let ty = match self.app_iter.module.types.get(TypeID(ty_id)) {
-                    Some(ty) => ty.results.clone(),
-                    None => Box::new([]),
+                    Some(ty) => ty.results().clone(),
+                    None => vec![],
                 };
 
                 // we only care about the result of the original
-                OrcaBlockType::FuncType(self.app_iter.module.types.add(&[], &ty))
+                OrcaBlockType::FuncType(self.app_iter.module.types.add_func_type(&[], &ty))
             }
             None => OrcaBlockType::Empty,
         };

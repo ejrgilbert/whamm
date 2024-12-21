@@ -117,6 +117,30 @@ pub struct ProbeRule {
     pub event: Option<RulePart>,
     pub mode: Option<WhammModeKind>,
 }
+impl ProbeRule {
+    pub fn to_string(&self) -> String {
+        let curr_provider = match &self.provider {
+            Some(provider) => provider.name.clone(),
+            None => "".to_string(),
+        };
+        let curr_package = match &self.package {
+            Some(package) => package.name.clone(),
+            None => "".to_string(),
+        };
+        let curr_event = match &self.event {
+            Some(event) => event.name.clone(),
+            None => "".to_string(),
+        };
+        let curr_mode = match &self.mode {
+            Some(mode) => mode.name().clone(),
+            None => "".to_string(),
+        };
+        format!(
+            "{}:{}:{}:{}",
+            curr_provider, curr_package, curr_event, curr_mode
+        )
+    }
+}
 
 #[derive(Default, Debug)]
 pub struct LocInfo<'a> {

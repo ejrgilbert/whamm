@@ -11,7 +11,7 @@ use whamm::common::instr::{Config, LibraryLinkStrategy};
 use whamm::wast::test_harness::wasm2wat_on_file;
 
 const APP_WASM_PATH: &str = "tests/apps/dfinity/users.wasm";
-const CORE_WASM_PATH: &str = "./core_lib/target/wasm32-wasip1/release/core_lib.wasm";
+const CORE_WASM_PATH: &str = "./whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
 
 #[test]
 fn run_wast_tests() {

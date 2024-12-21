@@ -151,10 +151,10 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
     fn visit_script(&mut self, script: &mut Script) -> bool {
         trace!("Entering: CodeGenerator::visit_script");
         self.set_curr_loc(LocationData::Global {
-            script_id: script.name.clone(),
+            script_id: script.id,
         });
         self.enter_scope();
-        self.append_context_name(format!(":{}", script.name.clone()));
+        self.append_context_name(format!(":script{}", script.id));
         let mut is_success = true;
 
         // visit fns

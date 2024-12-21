@@ -155,7 +155,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
     }
 
     fn visit_script(&mut self, script: &mut Script) -> Option<DataType> {
-        self.table.enter_named_scope(&script.name);
+        self.table.enter_named_scope(&script.id.to_string());
         self.in_script_global = true;
         script.global_stmts.iter_mut().for_each(|stmt| {
             self.visit_stmt(stmt);

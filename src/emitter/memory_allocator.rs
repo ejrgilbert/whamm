@@ -1,27 +1,34 @@
 use crate::common::error::ErrorGen;
-use crate::emitter::utils::whamm_type_to_wasm_type;
 use crate::parser::types::DataType;
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca_wasm::ir::function::FunctionBuilder;
-use orca_wasm::ir::id::{GlobalID, LocalID};
-use orca_wasm::ir::types::Value as OrcaValue;
+use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
+use orca_wasm::ir::types::{BlockType, InitExpr, Value as OrcaValue};
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::MacroOpcode;
-use orca_wasm::{DataSegment, DataSegmentKind, InitExpr, Module, Opcode};
+use orca_wasm::{DataSegment, DataSegmentKind, Instructions, Module, Opcode};
 use std::collections::HashMap;
 use wasmparser::MemArg;
+use orca_wasm::ir::types::DataType as OrcaType;
 
+pub const WASM_PAGE_SIZE: u32 = 65_536;
 pub const VAR_BLOCK_BASE_VAR: &str = "var_block_base_offset";
 
 pub struct MemoryAllocator {
     pub mem_id: u32,
     pub curr_mem_offset: usize,
     pub required_initial_mem_size: u64,
+    // Constant pool for strings emitted thus far
     pub emitted_strings: HashMap<String, StringAddr>,
 
     // The Wasm Global ID for the global that tracks the current point
     // in memory that we can allocate to
     pub mem_tracker_global: GlobalID,
+
+    // The Wasm func ID for a function that can be called to check
+    // the used memory (mem_tracker_global value) vs. the current memory size.
+    // It will grow the memory if necessary.
+    pub used_mem_checker_fid: Option<u32>,
 }
 impl MemoryAllocator {
     // ===================
@@ -146,53 +153,93 @@ impl MemoryAllocator {
     // =====================
     // ==== Allocations ====
     // =====================
-    pub fn alloc_mem_space(
+    pub fn update_mem_tracker(
         &mut self,
-        next_var_offset: u32,
-        ty: &DataType,
-        func: &mut FunctionBuilder,
-    ) -> (VarAddr, u32) {
+        offset: u32,
+        func: &mut FunctionBuilder
+    ) {
         // increment the memory byte offset global
-        func.global_get(self.mem_tracker_global);
+        func.global_get(self.mem_tracker_global)
+            .u32_const(offset)
+            .i32_add()
+            .global_set(self.mem_tracker_global);
+    }
+    pub fn gen_mem_checker_fn(&mut self, wasm: &mut Module) {
+        if self.used_mem_checker_fid.is_none() {
+            // specify params
+            let bytes_needed = LocalID(0);
+            let check_memsize_params = vec![OrcaType::I32];
 
-        let bytes_used = ty.num_bytes().unwrap() as u32;
-        func.u32_const(bytes_used);
-        func.i32_add();
-        func.global_set(self.mem_tracker_global);
+            let mut check_memsize = FunctionBuilder::new(&check_memsize_params, &[]);
 
-        // create the VarAddr
-        let orca_ty = whamm_type_to_wasm_type(ty);
-        (
-            VarAddr::MemLoc {
-                mem_id: self.mem_id,
-                ty: if orca_ty.len() == 1 {
-                    *orca_ty.first().unwrap()
-                } else {
-                    todo!()
-                },
-                var_offset: next_var_offset,
-            },
-            bytes_used,
-        )
+            // specify locals
+            let bytes_per_page = check_memsize.add_local(OrcaType::I32);
+            let curr_pages = check_memsize.add_local(OrcaType::I32);
+            let max_needed_addr = check_memsize.add_local(OrcaType::I32);
+
+            check_memsize.u32_const(WASM_PAGE_SIZE)
+                .local_set(bytes_per_page);
+            check_memsize.memory_size(self.mem_id)
+                .local_set(curr_pages);
+
+            check_memsize.global_get(self.mem_tracker_global)
+                .local_get(bytes_needed)
+                .i32_add()
+                .local_set(max_needed_addr);
+
+            // check if the needed memory range is larger than what is currently available
+            check_memsize.local_get(bytes_per_page)
+                .local_get(curr_pages)
+                .i32_mul()
+                .local_get(max_needed_addr)
+                .i32_lt_unsigned();
+
+            // If it is larger, grow memory by a page
+            check_memsize.if_stmt(BlockType::Empty)
+                .i32_const(1)
+                .memory_grow(self.mem_id)
+                .drop()
+            .end();
+
+            let check_memsize_fid = check_memsize.finish_module(wasm);
+            self.used_mem_checker_fid = Some(*check_memsize_fid);
+        }
+    }
+    pub fn emit_memsize_check(&self, needed_bytes: u32, func: &mut FunctionBuilder, err: &mut ErrorGen) {
+        let check_memsize_fid = match self.used_mem_checker_fid {
+            Some(fid) => fid,
+            None => {
+                err.wizard_error(true, "Unexpected state while generating the memory allocation function. \
+                    The memory size checker function has not been generated yet.".to_string(), &None);
+                unreachable!()
+            }
+        };
+
+        func.u32_const(needed_bytes);
+        func.call(FunctionID(check_memsize_fid));
     }
     pub fn emit_store_from_local(
         &mut self,
-        next_var_offset: u32,
+        curr_offset: u32,
         local: LocalID,
-        local_ty: &DataType,
+        local_ty: &OrcaType,
         func: &mut FunctionBuilder,
-    ) -> (VarAddr, u32) {
+    ) -> u32 {
         // store the local to memory
         func.global_get(self.mem_tracker_global);
         func.local_get(local);
-        func.i32_store(wasmparser::MemArg {
+
+        // todo -- store should be conditional on the datatype
+        func.i32_store(MemArg {
             align: 0,
             max_align: 0,
-            offset: 0,
+            offset: curr_offset as u64,
             memory: self.mem_id, // instrumentation memory!
         });
 
-        self.alloc_mem_space(next_var_offset, local_ty, func)
+        // todo -- return num bytes based on local_ty
+        // local_ty.num_bytes().unwrap() as u32
+        4
     }
     pub fn emit_string(&mut self, wasm: &mut Module, val: &mut String) -> bool {
         if self.emitted_strings.contains_key(val) {
@@ -206,7 +253,7 @@ impl MemoryAllocator {
             data: val_bytes,
             kind: DataSegmentKind::Active {
                 memory_index: self.mem_id,
-                offset_expr: InitExpr::Value(OrcaValue::I32(self.curr_mem_offset as i32)),
+                offset_expr: InitExpr::new(vec![Instructions::Value(OrcaValue::I32(self.curr_mem_offset as i32))])
             },
         };
         wasm.data.push(data_segment);

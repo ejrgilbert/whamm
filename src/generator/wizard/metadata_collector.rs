@@ -9,6 +9,7 @@ use crate::parser::types::{
 use crate::verifier::types::{Record, SymbolTable};
 use log::trace;
 use std::collections::HashSet;
+use crate::lang_features::report_vars::{BytecodeLoc, Metadata as ReportMetadata};
 
 const UNEXPECTED_ERR_MSG: &str =
     "WizardProbeMetadataCollector: Looks like you've found a bug...please report this behavior!";
@@ -26,13 +27,17 @@ enum Visiting {
 pub struct WizardProbeMetadataCollector<'a, 'b, 'c> {
     table: &'a mut SymbolTable,
     pub wizard_ast: Vec<WizardScript>,
+
+    // misc. trackers
     pub used_provided_fns: HashSet<(String, String)>,
+    pub used_report_var_dts: HashSet<DataType>,
     pub check_strcmp: bool,
     pub strings_to_emit: Vec<String>,
 
     visiting: Visiting,
     curr_rule: String,
     curr_script: WizardScript,
+    script_num: u8,
     curr_probe: WizardProbe,
     probe_count: i32,
 
@@ -49,11 +54,13 @@ impl<'a, 'b, 'c> WizardProbeMetadataCollector<'a, 'b, 'c> {
             table,
             wizard_ast: Vec::default(),
             used_provided_fns: HashSet::default(),
+            used_report_var_dts: HashSet::default(),
             check_strcmp: false,
             strings_to_emit: Vec::default(),
             visiting: Visiting::None,
             curr_rule: "".to_string(),
             curr_script: WizardScript::default(),
+            script_num: 0,
             curr_probe: WizardProbe::default(),
             probe_count: 0,
             err,
@@ -120,11 +127,13 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
             self.visit_script(script);
 
             // copy over state from original script
-            self.curr_script.name = script.name.to_owned();
+            self.curr_script.id = script.id;
             self.curr_script.fns = script.fns.to_owned();
             self.curr_script.globals = script.globals.to_owned();
             self.curr_script.global_stmts = script.global_stmts.to_owned();
-            self.wizard_ast.push(self.curr_script.clone())
+            self.wizard_ast.push(self.curr_script.clone());
+
+            self.script_num += 1;
         });
 
         trace!("Exiting: CodeGenerator::visit_whamm");
@@ -132,7 +141,7 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
 
     fn visit_script(&mut self, script: &Script) {
         trace!("Entering: CodeGenerator::visit_script");
-        self.table.enter_named_scope(&script.name);
+        self.table.enter_named_scope(&script.id.to_string());
 
         // visit providers
         script.providers.iter().for_each(|(_name, provider)| {
@@ -247,9 +256,22 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
                     ..
                 } = decl.as_ref()
                 {
+                    let report_metadata = if *is_report {
+                        // keep track of the used report var datatypes across the whole AST
+                        self.used_report_var_dts.insert(ty.clone());
+                        // this needs to also add report_var_metadata (if is_report)!
+                        Some(ReportMetadata::Local {
+                            name: name.clone(),
+                            script_id: self.script_num,
+                            bytecode_loc: BytecodeLoc::new(0, 0), // (unused)
+                            probe_id: self.curr_probe.to_string()
+                        })
+                    } else {
+                        None
+                    };
                     // change this to save off data to allocate
                     self.curr_probe
-                        .add_unshared(name.clone(), ty.clone(), *is_report);
+                        .add_unshared(name.clone(), ty.clone(), *is_report, report_metadata);
                 } else {
                     self.err.unexpected_error(
                         true,

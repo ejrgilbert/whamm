@@ -5,38 +5,38 @@ use crate::common::error::ErrorGen;
 use crate::common::instr::Config;
 use crate::emitter::memory_allocator::VAR_BLOCK_BASE_VAR;
 use crate::emitter::module_emitter::ModuleEmitter;
-use crate::emitter::utils::{wasm_type_to_whamm_type, whamm_type_to_wasm_type};
-use crate::generator::wizard::ast::{UnsharedVar, WizardProbe, WizardScript};
+use crate::emitter::utils::whamm_type_to_wasm_type;
+use crate::generator::wizard::ast::{WizardProbe, WizardScript};
 use crate::generator::GeneratingVisitor;
+use crate::lang_features::alloc_vars::wizard::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::report_vars::{BytecodeLoc, LocationData};
 use crate::parser::types::{Block, DataType, Definition, FnId, Statement, Value, WhammVisitorMut};
 use crate::verifier::types::{Record, VarAddr};
 use log::trace;
-use orca_wasm::ir::function::FunctionBuilder;
 use orca_wasm::ir::id::{FunctionID, LocalID};
 use orca_wasm::ir::types::DataType as OrcaType;
-use orca_wasm::module_builder::AddLocal;
-use orca_wasm::Opcode;
 use std::collections::HashSet;
 
-pub struct WizardGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j> {
-    pub emitter: ModuleEmitter<'b, 'c, 'd, 'e, 'f, 'g, 'h>,
-    pub io_adapter: &'i mut IOAdapter,
+pub struct WizardGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l> {
+    pub emitter: ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g>,
+    pub io_adapter: &'h mut IOAdapter,
     pub context_name: String,
-    pub err: &'a mut ErrorGen,
-    pub injected_funcs: &'i mut Vec<FunctionID>,
-    pub config: &'j Config,
+    pub err: &'i mut ErrorGen,
+    pub injected_funcs: &'j mut Vec<FunctionID>,
+    pub config: &'k Config,
 
     // tracking
-    pub curr_script_id: String,
+    pub curr_script_id: u8,
+    pub unshared_var_handler: &'l mut UnsharedVarHandler
 }
 
-impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     pub fn run(
         &mut self,
         ast: Vec<WizardScript>,
         used_provided_funcs: HashSet<(String, String)>,
+        used_report_dts: HashSet<DataType>,
         strings_to_emit: Vec<String>,
     ) {
         // Reset the symbol table in the emitter just in case
@@ -51,6 +51,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         self.emitter.configure_mem_tracker_global(self.err);
         self.emitter
             .configure_flush_routines(self.io_adapter, self.err);
+        self.emit_end_func(!used_report_dts.is_empty());
     }
 
     fn emit_strings(&mut self, strings_to_emit: Vec<String>) {
@@ -86,6 +87,10 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         }
     }
 
+    fn emit_end_func(&mut self, flush_reports: bool) {
+        self.emitter.emit_end_fn(flush_reports, self.io_adapter, self.err);
+    }
+
     // Visit the AST
     fn visit_ast(&mut self, mut ast: Vec<WizardScript>) {
         for script in ast.iter_mut() {
@@ -95,12 +100,12 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
 
     fn visit_wiz_script(&mut self, script: &mut WizardScript) {
         trace!("Entering: CodeGenerator::visit_script");
-        self.enter_named_scope(&script.name);
-        self.set_context_name(script.name.clone());
-        self.curr_script_id = script.name.clone();
+        self.enter_named_scope(&script.id.to_string());
+        self.set_context_name(script.id.to_string());
+        self.curr_script_id = script.id;
 
         self.set_curr_loc(LocationData::Global {
-            script_id: script.name.clone(),
+            script_id: script.id,
         });
 
         // visit fns
@@ -125,6 +130,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         param_reqs: &[(String, DataType)],
         results: &[OrcaType],
         body: &mut Block,
+        export: bool
     ) -> (Option<u32>, String) {
         // create the function
         let mut params = vec![];
@@ -177,120 +183,9 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
 
         let fid = self
             .emitter
-            .emit_special_fn(None, &params, results, body, self.err);
+            .emit_special_fn(None, &params, results, body, export, self.err);
 
         (fid, param_str.to_string())
-    }
-
-    fn emit_alloc_func(&mut self, probe: &mut WizardProbe) -> (Option<u32>, String) {
-        struct Local {
-            id: LocalID,
-            ty: OrcaType,
-        }
-
-        if probe.unshared_to_alloc.is_empty() {
-            (None, "".to_string())
-        } else {
-            // specify params
-            let fid = Local {
-                id: LocalID(0),
-                ty: OrcaType::I32,
-            };
-            let pc = Local {
-                id: LocalID(1),
-                ty: OrcaType::I32,
-            };
-
-            // params: (fid, pc)
-            let alloc_params = vec![fid.ty, pc.ty];
-            // results: mem_offset
-            let alloc_results = vec![OrcaType::I32];
-
-            let mut alloc = FunctionBuilder::new(&alloc_params, &alloc_results);
-            // specify locals
-            let orig_offset = Local {
-                id: alloc.add_local(OrcaType::I32),
-                ty: OrcaType::I32,
-            };
-
-            // remember the original memory offset
-            alloc.global_get(self.emitter.mem_allocator.mem_tracker_global);
-            alloc.local_set(orig_offset.id);
-
-            // track what's been allocated for this function thus far
-            let mut next_var_offset = 0;
-
-            // store fid and pc
-            let (_, bytes_used) = self.emitter.mem_allocator.emit_store_from_local(
-                next_var_offset,
-                fid.id,
-                &wasm_type_to_whamm_type(&fid.ty),
-                &mut alloc,
-            );
-            next_var_offset += bytes_used;
-            // TODO: I don't think I need this
-            // self.emitter.table.put("fid".to_string(), Record::Var {
-            //     ty: wasm_type_to_whamm_type(&fid.ty),
-            //     name: "fid".to_string(),
-            //     value: None,
-            //     def: Definition::CompilerDynamic,
-            //     is_report_var: false,
-            //     addr: Some(fid_addr),
-            //     loc: None,
-            // });
-
-            let (_, bytes_used) = self.emitter.mem_allocator.emit_store_from_local(
-                next_var_offset,
-                pc.id,
-                &wasm_type_to_whamm_type(&pc.ty),
-                &mut alloc,
-            );
-            next_var_offset += bytes_used;
-            // TODO: I don't think I need this
-            // self.emitter.table.put("pc".to_string(), Record::Var {
-            //     ty: wasm_type_to_whamm_type(&fid.ty),
-            //     name: "pc".to_string(),
-            //     value: None,
-            //     def: Definition::CompilerDynamic,
-            //     is_report_var: false,
-            //     addr: Some(pc_addr),
-            //     loc: None,
-            // });
-
-            // alloc each var
-            for UnsharedVar {
-                ty,
-                name,
-                is_report: _,
-            } in probe.unshared_to_alloc.iter()
-            {
-                let (var_addr, bytes_used) =
-                    self.emitter
-                        .mem_allocator
-                        .alloc_mem_space(next_var_offset, ty, &mut alloc);
-                next_var_offset += bytes_used;
-                self.emitter.table.put(
-                    name.clone(),
-                    Record::Var {
-                        ty: wasm_type_to_whamm_type(&fid.ty),
-                        name: name.clone(),
-                        value: None,
-                        def: Definition::CompilerDynamic,
-                        is_report_var: false,
-                        addr: Some(var_addr),
-                        loc: None,
-                    },
-                );
-
-                // TODO handle report variables!
-            }
-
-            // return the base memory offset where this function's var block starts
-            alloc.local_get(orig_offset.id);
-
-            let alloc_id = alloc.finish_module(self.emitter.app_wasm);
-            (Some(*alloc_id), "fid, pc".to_string())
-        }
     }
 
     fn create_curr_loc(&self, probe: &WizardProbe) -> LocationData {
@@ -298,7 +193,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
 
         //set the current location in bytecode and load some new globals for potential report vars
         LocationData::Local {
-            script_id: self.curr_script_id.clone(),
+            script_id: self.curr_script_id,
             bytecode_loc: BytecodeLoc::new(0, 0), // TODO -- request this from wizard
             probe_id,
             num_unshared: probe.unshared_to_alloc.len() as i32, //this is still used in the emitter to determine how many new globals to emit
@@ -322,13 +217,15 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
                 &probe.metadata.pred_args,
                 &[OrcaType::I32],
                 &mut block,
+                true
             )
         } else {
             (None, "".to_string())
         };
 
         // create the probe's $alloc method
-        let (alloc_fid, alloc_param_str) = self.emit_alloc_func(probe);
+        let (alloc_fid, alloc_param_str) =
+            self.unshared_var_handler.emit_alloc_func(&mut probe.unshared_to_alloc, &mut self.emitter, self.err);
 
         // create the probe body function
         let (body_fid, body_param_str) = if let Some(body) = &mut probe.body {
@@ -337,7 +234,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
             } else {
                 None
             };
-            self.emit_special_func(alloc_local, &probe.metadata.body_args, &[], body)
+            self.emit_special_func(alloc_local, &probe.metadata.body_args, &[], body, false)
         } else {
             (None, "".to_string())
         };
@@ -386,7 +283,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 }
 
-impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     // TODO -- these are all duplicates, try to factor out
     fn emit_string(&mut self, val: &mut Value) -> bool {
         self.emitter.emit_string(val, self.err)

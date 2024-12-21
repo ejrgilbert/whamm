@@ -20,7 +20,7 @@ use std::path::PathBuf;
 use std::process::exit;
 
 const ENABLE_WIZARD_ALT: bool = false;
-const CORE_WASM_PATH: &str = "./core_lib/target/wasm32-wasip1/release/core_lib.wasm";
+const CORE_WASM_PATH: &str = "./whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
 const MAX_ERRORS: i32 = 15;
 
 fn setup_logger() {

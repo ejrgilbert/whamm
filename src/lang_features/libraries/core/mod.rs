@@ -4,6 +4,7 @@ pub mod maps;
 use crate::common::error::ErrorGen;
 use crate::parser::types::WhammVisitor;
 use std::collections::HashMap;
+use orca_wasm::Module;
 
 pub const WHAMM_CORE_LIB_NAME: &str = "whamm_core";
 const UNEXPECTED_ERR_MSG: &str =
@@ -15,10 +16,12 @@ pub trait LibPackage: WhammVisitor<bool> {
     fn get_fn_names(&self) -> Vec<String>;
     fn add_fid_to_adapter(&mut self, fname: &str, fid: u32);
     fn set_adapter_usage(&mut self, is_used: bool);
+    fn define_helper_funcs(&mut self, app_wasm: &mut Module, err: &mut ErrorGen);
 }
 pub trait LibAdapter {
     fn get_funcs(&self) -> &HashMap<String, u32>;
     fn get_funcs_mut(&mut self) -> &mut HashMap<String, u32>;
+    fn define_helper_funcs(&mut self, app_wasm: &mut Module, err: &mut ErrorGen);
     fn get_fn_names(&self) -> Vec<String> {
         self.get_funcs().keys().cloned().collect()
     }
