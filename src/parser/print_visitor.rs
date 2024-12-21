@@ -83,7 +83,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         s += &format!("Scripts:{}", NL);
         self.increase_indent();
         for script in whamm.scripts.iter() {
-            s += &format!("{} `{}`:{}", self.get_indent(), script.name, NL);
+            s += &format!("{} `script{}`:{}", self.get_indent(), script.id, NL);
             self.increase_indent();
             s += &self.visit_script(script).to_string();
             self.decrease_indent();

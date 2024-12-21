@@ -11,10 +11,10 @@ use crate::parser::types::{
 };
 use crate::verifier::types::{line_col_from_loc, Record, SymbolTable, VarAddr};
 use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
-use orca_wasm::ir::types::{BlockType, DataType as OrcaType, Value as OrcaValue};
+use orca_wasm::ir::types::{BlockType, DataType as OrcaType, InitExpr, Value as OrcaValue};
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::{MacroOpcode, Opcode};
-use orca_wasm::{InitExpr, Module};
+use orca_wasm::{Instructions, Module};
 // ==================================================================
 // ================ Emitter Helper Functions ========================
 // TODO -- add this documentation
@@ -487,7 +487,9 @@ pub fn whamm_type_to_wasm_global(app_wasm: &mut Module, ty: &DataType) -> (Globa
         match orca_wasm_ty.first().unwrap() {
             OrcaType::I32 => {
                 let global_id = app_wasm.add_global(
-                    InitExpr::Value(OrcaValue::I32(0)),
+                    InitExpr::new(
+                    vec![Instructions::Value(OrcaValue::I32(0))]
+                    ),
                     OrcaType::I32,
                     true,
                     false,
@@ -521,21 +523,30 @@ pub fn wasm_type_to_whamm_type(ty: &OrcaType) -> DataType {
         OrcaType::F32 => DataType::F32,
         OrcaType::F64 => DataType::F64,
         OrcaType::FuncRef
+        | OrcaType::FuncRefNull
+        | OrcaType::Cont
+        | OrcaType::NoCont
         | OrcaType::ExternRef
+        | OrcaType::ExternRefNull
         | OrcaType::Any
+        | OrcaType::AnyNull
         | OrcaType::None
         | OrcaType::NoExtern
         | OrcaType::NoFunc
         | OrcaType::Eq
+        | OrcaType::EqNull
         | OrcaType::Struct
+        | OrcaType::StructNull
         | OrcaType::Array
+        | OrcaType::ArrayNull
         | OrcaType::I31
+        | OrcaType::I31Null
         | OrcaType::Exn
         | OrcaType::NoExn
-        | OrcaType::Module(_)
+        | OrcaType::Module{..}
         | OrcaType::RecGroup(_)
         | OrcaType::CoreTypeId(_)
-        | OrcaType::V128 => unimplemented!(),
+        | OrcaType::V128 => unimplemented!()
     }
 }
 

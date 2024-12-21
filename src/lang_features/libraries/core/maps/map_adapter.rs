@@ -33,6 +33,9 @@ impl LibAdapter for MapLibAdapter {
     fn get_funcs_mut(&mut self) -> &mut HashMap<String, u32> {
         &mut self.funcs
     }
+    fn define_helper_funcs(&mut self, app_wasm: &mut Module, err: &mut ErrorGen) {
+        self.emit_helper_funcs(app_wasm, err);
+    }
 }
 impl MapLibAdapter {
     pub fn new() -> Self {
@@ -75,6 +78,11 @@ impl MapLibAdapter {
             map_count: 0,
             init_bool_location: 0,
         }
+    }
+
+    pub fn emit_helper_funcs(&mut self, _app_wasm: &mut Module, _err: &mut ErrorGen) {
+        // (nothing to do)
+        return
     }
 
     pub fn map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(

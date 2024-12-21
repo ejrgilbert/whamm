@@ -613,7 +613,7 @@ pub enum Record {
         scripts: Vec<usize>,
     },
     Script {
-        name: String,
+        id: u8,
         fns: Vec<usize>,
         globals: Vec<usize>,
         providers: Vec<usize>,

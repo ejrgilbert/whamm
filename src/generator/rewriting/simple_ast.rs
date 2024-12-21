@@ -62,14 +62,14 @@ pub type SimpleAstProbes =
     HashMap<String, HashMap<String, HashMap<String, HashMap<WhammModeKind, Vec<SimpleProbe>>>>>;
 #[derive(Clone, Debug)]
 pub struct SimpleProbe {
-    pub script_id: String,
+    pub script_id: u8,
     pub predicate: Option<Expr>,
     pub body: Option<Block>,
     pub num_unshared: i32,
     pub probe_number: i32,
 }
 impl SimpleProbe {
-    fn new(script_id: String, probe: &dyn Probe, num_unshared: i32, probe_number: i32) -> Self {
+    fn new(script_id: u8, probe: &dyn Probe, num_unshared: i32, probe_number: i32) -> Self {
         Self {
             script_id,
             predicate: probe.predicate().to_owned(),
@@ -104,7 +104,7 @@ pub fn build_simple_ast(ast: &Whamm, err: &mut ErrorGen) -> SimpleAST {
     let mut visitor = SimpleASTBuilder {
         ast: &mut simple_ast,
         err,
-        script_id: "".to_string(),
+        script_id: u8::MAX,
         curr_provider_name: "".to_string(),
         curr_package_name: "".to_string(),
         curr_event_name: "".to_string(),
@@ -120,7 +120,7 @@ pub struct SimpleASTBuilder<'a, 'b> {
     pub ast: &'a mut SimpleAST,
     pub err: &'b mut ErrorGen,
 
-    script_id: String,
+    script_id: u8,
     curr_provider_name: String,
     curr_package_name: String,
     curr_event_name: String,
@@ -171,7 +171,7 @@ impl SimpleASTBuilder<'_, '_> {
                 if let Some(event) = package.get_mut(&self.curr_event_name) {
                     if let Some(probes) = event.get_mut(&probe.mode()) {
                         probes.push(SimpleProbe::new(
-                            self.script_id.clone(),
+                            self.script_id,
                             probe,
                             num_unshared,
                             self.probe_count,
@@ -181,7 +181,7 @@ impl SimpleASTBuilder<'_, '_> {
                         event.insert(
                             probe.mode(),
                             vec![SimpleProbe::new(
-                                self.script_id.clone(),
+                                self.script_id,
                                 probe,
                                 num_unshared,
                                 self.probe_count,
@@ -212,7 +212,7 @@ impl WhammVisitor<()> for SimpleASTBuilder<'_, '_> {
 
     fn visit_script(&mut self, script: &Script) {
         trace!("Entering: BehaviorTreeBuilder::visit_script");
-        self.script_id = script.name.clone();
+        self.script_id = script.id;
 
         // NOTE: visit_globals() is no longer needed since initializing user-defined globals is done
         // in the init_generator (which doesn't traverse the behavior tree)
@@ -226,7 +226,7 @@ impl WhammVisitor<()> for SimpleASTBuilder<'_, '_> {
             .for_each(|(_name, provider)| self.visit_provider(provider));
 
         trace!("Exiting: BehaviorTreeBuilder::visit_script");
-        self.script_id = "".to_string()
+        self.script_id = u8::MAX
     }
 
     fn visit_provider(&mut self, provider: &Box<dyn Provider>) {

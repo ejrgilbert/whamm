@@ -144,7 +144,7 @@ impl OpcodeEvent {
                     FuncKind::Import(ImportedFunction { ty_id, .. })
                     | FuncKind::Local(LocalFunction { ty_id, .. }) => {
                         if let Some(ty) = app_wasm.types.get(*ty_id) {
-                            (ty.params.to_vec(), Some(**ty_id))
+                            (ty.params().to_vec(), Some(**ty_id))
                         } else {
                             // no type info found!!
                             warn!("No type information found for import with FID {fid}");

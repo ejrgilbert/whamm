@@ -3,6 +3,7 @@
 use pest::error::LineColLocation;
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::hash::{Hash, Hasher};
 use termcolor::{Buffer, ColorChoice, WriteColor};
 
 use crate::common::error::{ErrorGen, WhammError};
@@ -82,6 +83,74 @@ impl Location {
     }
 }
 
+#[derive(Clone, Debug, Eq)]
+pub enum DataType {
+    U32,
+    I32,
+    F32,
+    U64,
+    I64,
+    F64,
+    Boolean,
+    Null,
+    Str,
+    Tuple {
+        ty_info: Vec<Box<DataType>>,
+    },
+    Map {
+        key_ty: Box<DataType>,
+        val_ty: Box<DataType>,
+    },
+    AssumeGood,
+}
+impl Hash for DataType {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // use any distinct number as an enum variant identifier
+        match self {
+            DataType::U32 => {
+                state.write_u8(1);
+            }
+            DataType::I32 => {
+                state.write_u8(2);
+            }
+            DataType::F32 => {
+                state.write_u8(3);
+            }
+            DataType::U64 => {
+                state.write_u8(4);
+            }
+            DataType::I64 => {
+                state.write_u8(5);
+            }
+            DataType::F64 => {
+                state.write_u8(6);
+            }
+            DataType::Boolean => {
+                state.write_u8(7);
+            }
+            DataType::Null => {
+                state.write_u8(8);
+            }
+            DataType::Str => {
+                state.write_u8(9);
+            }
+            DataType::Tuple { ty_info } => {
+                for ty in ty_info {
+                    state.write_u8(10);
+                    ty.hash(state);
+                }
+            }
+            DataType::Map { key_ty, val_ty } => {
+                state.write_u8(11);
+                key_ty.hash(state);
+                val_ty.hash(state);
+            }
+            DataType::AssumeGood => {
+                state.write_u8(12);
+            }
+        }
+    }
+}
 impl PartialEq for DataType {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -113,28 +182,47 @@ impl PartialEq for DataType {
         }
     }
 }
-
-#[derive(Clone, Debug, Eq)]
-pub enum DataType {
-    U32,
-    I32,
-    F32,
-    U64,
-    I64,
-    F64,
-    Boolean,
-    Null,
-    Str,
-    Tuple {
-        ty_info: Vec<Box<DataType>>,
-    },
-    Map {
-        key_ty: Box<DataType>,
-        val_ty: Box<DataType>,
-    },
-    AssumeGood,
-}
 impl DataType {
+    pub fn id(&self) -> i32 {
+        match self {
+            DataType::U32 => {
+                1
+            }
+            DataType::I32 => {
+                2
+            }
+            DataType::F32 => {
+                3
+            }
+            DataType::U64 => {
+                4
+            }
+            DataType::I64 => {
+                5
+            }
+            DataType::F64 => {
+                6
+            }
+            DataType::Boolean => {
+                7
+            }
+            DataType::Null => {
+                8
+            }
+            DataType::Str => {
+                9
+            }
+            DataType::Tuple { .. } => {
+                10
+            }
+            DataType::Map { .. } => {
+                11
+            }
+            DataType::AssumeGood => {
+                12
+            }
+        }
+    }
     pub fn num_bytes(&self) -> Option<usize> {
         match self {
             DataType::U32 |
@@ -631,7 +719,7 @@ impl Whamm {
 
     pub fn add_script(&mut self, mut script: Script) -> usize {
         let id = self.scripts.len();
-        script.name = format!("script{}", id);
+        script.id = self.scripts.len() as u8;
         self.scripts.push(script);
 
         id
@@ -784,7 +872,7 @@ impl ProbeRule {
 }
 
 pub struct Script {
-    pub name: String,
+    pub id: u8,
     /// The rules of the probes that have been used in the Script.
     pub providers: HashMap<String, Box<dyn Provider>>,
     pub fns: Vec<Fn>,                     // User-provided
@@ -799,7 +887,7 @@ impl Default for Script {
 impl Script {
     pub fn new() -> Self {
         Script {
-            name: "".to_string(),
+            id: u8::MAX,
             providers: HashMap::new(),
             fns: vec![],
             globals: HashMap::new(),

@@ -121,7 +121,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
                         self.set_curr_loc(probe_rule, probe);
                         is_success = self
                             .emitter
-                            .enter_scope_via_rule(&probe.script_id, probe_rule);
+                            .enter_scope_via_rule(&probe.script_id.to_string(), probe_rule);
 
                         // Initialize the symbol table with the metadata at this program point
                         add_to_table(&loc_info.static_data, &mut self.emitter, self.err);
@@ -161,27 +161,12 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
         is_success
     }
     fn set_curr_loc(&mut self, probe_rule: &ProbeRule, probe: &SimpleProbe) {
-        let curr_script_id = probe.script_id.clone();
+        let curr_script_id = probe.script_id;
         self.emitter.curr_num_unshared = probe.num_unshared;
-        let curr_provider = match &probe_rule.provider {
-            Some(provider) => provider.name.clone(),
-            None => "".to_string(),
-        };
-        let curr_package = match &probe_rule.package {
-            Some(package) => package.name.clone(),
-            None => "".to_string(),
-        };
-        let curr_event = match &probe_rule.event {
-            Some(event) => event.name.clone(),
-            None => "".to_string(),
-        };
-        let curr_mode = match &probe_rule.mode {
-            Some(mode) => mode.name().clone(),
-            None => "".to_string(),
-        };
+        let probe_rule_str = probe_rule.to_string();
         let curr_probe_id = format!(
-            "{}_{}:{}:{}:{}",
-            probe.probe_number, curr_provider, curr_package, curr_event, curr_mode
+            "{}_{}",
+            probe.probe_number, probe_rule_str
         );
         let loc = match self.emitter.app_iter.curr_loc().0 {
             OrcaLocation::Module {

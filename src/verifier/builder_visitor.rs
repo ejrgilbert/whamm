@@ -29,7 +29,7 @@ impl SymbolTableBuilder<'_> {
         In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
         just in case it is non-fatal to avoid having 2 strings w/same name in record */
         if check_duplicate_id(
-            &script.name,
+            &script.id.to_string(),
             &None,
             &Definition::CompilerStatic,
             &self.table,
@@ -40,14 +40,14 @@ impl SymbolTableBuilder<'_> {
 
         // create record
         let script_rec = Record::Script {
-            name: script.name.clone(),
+            id: script.id,
             fns: vec![],
             globals: vec![],
             providers: vec![],
         };
 
         // Add script to scope
-        let id = self.table.put(script.name.clone(), script_rec);
+        let id = self.table.put(script.id.to_string(), script_rec);
 
         // Add script to current whamm record
         match self.table.get_record_mut(self.curr_whamm.unwrap()).unwrap() {
@@ -66,7 +66,7 @@ impl SymbolTableBuilder<'_> {
 
         // set scope name and type
         self.table
-            .set_curr_scope_info(script.name.clone(), ScopeType::Script);
+            .set_curr_scope_info(script.id.to_string(), ScopeType::Script);
         self.table.set_curr_script(id);
     }
     fn add_provider(&mut self, provider: &dyn Provider) {
