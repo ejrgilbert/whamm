@@ -1,4 +1,5 @@
-use wasi_common::sync::WasiCtxBuilder;
+use std::fs::File;
+use wasi_common::sync::{Dir, WasiCtxBuilder};
 use wasmtime::*;
 
 const WASM_MODULE: &str = "../output/output.wasm";
@@ -20,6 +21,8 @@ fn main() -> Result<()> {
     let wasi = WasiCtxBuilder::new()
         .inherit_stdio()
         .inherit_args()?
+        .inherit_env()?
+        .preopened_dir(Dir::from_std_file(File::open("../")?), "./")?
         .build();
     let mut store = Store::new(&engine, wasi);
 
