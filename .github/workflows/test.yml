@@ -101,13 +101,11 @@ jobs:
           ./output/tests/interpreters/wasm --help
       - name: Build Whamm Core Library
         run: |
-          pushd core_lib
+          pushd whamm_core
           rustup target add wasm32-wasip1
           cargo build --release --target wasm32-wasip1
           popd
       - name: Build
-        run: |
-          rustup target add wasm32-unknown-unknown
-          cargo build
+        run: cargo build
       - name: Run tests
         run: cargo test --verbose -- --nocapture
