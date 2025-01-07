@@ -1,20 +1,20 @@
+use crate::common::error::ErrorGen;
+use crate::emitter::memory_allocator::StringAddr;
 use crate::emitter::module_emitter::ModuleEmitter;
+use crate::emitter::utils::whamm_type_to_wasm_type;
 use crate::generator::wizard::ast::UnsharedVar;
+use crate::lang_features::report_vars::Metadata as ReportMetadata;
+use crate::lang_features::report_vars::ReportVars;
 use crate::parser::types::{DataType, Definition};
 use crate::verifier::types::{Record, VarAddr};
 use orca_wasm::ir::function::FunctionBuilder;
 use orca_wasm::ir::id::LocalID;
 use orca_wasm::ir::types::DataType as OrcaType;
 use orca_wasm::module_builder::AddLocal;
+use orca_wasm::opcode::MacroOpcode;
 use orca_wasm::Opcode;
 use std::collections::HashMap;
-use orca_wasm::opcode::MacroOpcode;
 use wasmparser::MemArg;
-use crate::common::error::ErrorGen;
-use crate::emitter::memory_allocator::StringAddr;
-use crate::emitter::utils::whamm_type_to_wasm_type;
-use crate::lang_features::report_vars::ReportVars;
-use crate::lang_features::report_vars::Metadata as ReportMetadata;
 
 #[derive(Default)]
 pub struct UnsharedVarHandler {
@@ -24,9 +24,9 @@ pub struct UnsharedVarHandler {
 impl UnsharedVarHandler {
     pub fn emit_alloc_func(
         &mut self,
-        unshared_to_alloc: &mut Vec<UnsharedVar>,
+        unshared_to_alloc: &mut [UnsharedVar],
         emitter: &mut ModuleEmitter,
-        err: &mut ErrorGen
+        err: &mut ErrorGen,
     ) -> (Option<u32>, String) {
         // Called once per probe definition with `unshared` OR `report` vars.
 
@@ -50,17 +50,22 @@ impl UnsharedVarHandler {
                 if !var.is_report {
                     continue;
                 }
-                let Some(ReportMetadata::Local {
-                             name, probe_id, ..
-                         }) = &mut var.report_metadata else {
-                    err.unexpected_error(true, Some("Report variable metadata should be set, but it's not".to_string()), None);
+                let Some(ReportMetadata::Local { name, probe_id, .. }) = &mut var.report_metadata
+                else {
+                    err.unexpected_error(
+                        true,
+                        Some("Report variable metadata should be set, but it's not".to_string()),
+                        None,
+                    );
                     unreachable!()
                 };
 
                 // handle variable name
                 // handle probe_id
                 emitter.mem_allocator.emit_string(emitter.app_wasm, name);
-                emitter.mem_allocator.emit_string(emitter.app_wasm, probe_id);
+                emitter
+                    .mem_allocator
+                    .emit_string(emitter.app_wasm, probe_id);
 
                 if matches!(var.ty, DataType::Str) {
                     // handle variables that are strings
@@ -96,7 +101,8 @@ impl UnsharedVarHandler {
             };
 
             // remember the original memory offset
-            alloc.global_get(emitter.mem_allocator.mem_tracker_global)
+            alloc
+                .global_get(emitter.mem_allocator.mem_tracker_global)
                 .local_tee(orig_offset.id)
                 .local_set(curr_offset.id);
 
@@ -104,16 +110,20 @@ impl UnsharedVarHandler {
             let mut curr_offset = 0;
 
             // Make sure memory is large enough for the memory that will be allocated!
-            let num_bytes = self.calc_bytes_to_alloc(ReportVars::report_var_header_bytes(), unshared_to_alloc);
-            emitter.mem_allocator.emit_memsize_check(num_bytes, &mut alloc, err);
+            let num_bytes =
+                self.calc_bytes_to_alloc(ReportVars::report_var_header_bytes(), unshared_to_alloc);
+            emitter
+                .mem_allocator
+                .emit_memsize_check(num_bytes, &mut alloc, err);
 
             // alloc each var
             for UnsharedVar {
                 ty,
                 name,
                 is_report,
-                report_metadata
-            } in unshared_to_alloc.iter() {
+                report_metadata,
+            } in unshared_to_alloc.iter()
+            {
                 if *is_report {
                     // Emit the `report` var header (linked list)
                     curr_offset += emitter.report_vars.alloc_report_var_header(
@@ -121,7 +131,7 @@ impl UnsharedVarHandler {
                         emitter.mem_allocator.curr_mem_offset as u32,
                         emitter.mem_allocator.mem_id,
                         &mut alloc,
-                        emitter.app_wasm
+                        emitter.app_wasm,
                     );
                 }
 
@@ -129,7 +139,8 @@ impl UnsharedVarHandler {
                 // to make the flushing logic simpler)
                 curr_offset += self.store_probe_header(&mut alloc, curr_offset, &fid, &pc, emitter);
                 // Store the header for this variable
-                curr_offset += self.store_var_header(&mut alloc, curr_offset, report_metadata, emitter, err);
+                curr_offset +=
+                    self.store_var_header(&mut alloc, curr_offset, report_metadata, emitter, err);
 
                 // allocate the space for the datatype value
                 let orca_ty = whamm_type_to_wasm_type(ty);
@@ -156,63 +167,90 @@ impl UnsharedVarHandler {
                         loc: None,
                     },
                 );
+
+                curr_offset += ty.num_bytes().unwrap() as u32;
             }
 
             // update the memory allocator global to account for all the added data
-            emitter.mem_allocator.update_mem_tracker(curr_offset, &mut alloc);
+            emitter
+                .mem_allocator
+                .update_mem_tracker(curr_offset, &mut alloc);
 
             // return the base memory offset where this function's var block starts
             alloc.local_get(orig_offset.id);
 
             let alloc_id = alloc.finish_module(emitter.app_wasm);
-            emitter.app_wasm.exports.add_export_func(format!("${}", alloc_id.to_string()), *alloc_id);
+            emitter
+                .app_wasm
+                .exports
+                .add_export_func(format!("${}", *alloc_id), *alloc_id);
             (Some(*alloc_id), "fid, pc".to_string())
         }
     }
 
-    fn store_probe_header(&self, func: &mut FunctionBuilder, curr_offset: u32, fid: &Local, pc: &Local, emitter: &mut ModuleEmitter) -> u32 {
+    fn store_probe_header(
+        &self,
+        func: &mut FunctionBuilder,
+        curr_offset: u32,
+        fid: &Local,
+        pc: &Local,
+        emitter: &mut ModuleEmitter,
+    ) -> u32 {
         // | fid | pc  |
         // | i32 | i32 |
         let mut bytes_used = 0;
 
         // store fid
-        bytes_used += emitter.mem_allocator.emit_store_from_local(
-            curr_offset,
-            fid.id,
-            &fid.ty,
-            func
-        );
+        bytes_used +=
+            emitter
+                .mem_allocator
+                .emit_store_from_local(curr_offset, fid.id, &fid.ty, func);
 
         // store pc
-        bytes_used += emitter.mem_allocator.emit_store_from_local(
-            curr_offset,
-            pc.id,
-            &pc.ty,
-            func
-        );
+        bytes_used += emitter
+            .mem_allocator
+            .emit_store_from_local(curr_offset, pc.id, &pc.ty, func);
 
         bytes_used
     }
 
-    fn store_var_header(&self, func: &mut FunctionBuilder, curr_offset: u32, report_metadata: &Option<ReportMetadata>, emitter: &mut ModuleEmitter, err: &mut ErrorGen) -> u32 {
+    fn store_var_header(
+        &self,
+        func: &mut FunctionBuilder,
+        curr_offset: u32,
+        report_metadata: &Option<ReportMetadata>,
+        emitter: &mut ModuleEmitter,
+        err: &mut ErrorGen,
+    ) -> u32 {
         // | name_ptr | name_len | script_id | probe_id_ptr | probe_id_len |
         // | i32      | u8       | u8        | i32          | u8           |
         let mut bytes_used = 0;
         let mem_tracker_global = emitter.mem_allocator.mem_tracker_global;
 
         let Some(ReportMetadata::Local {
-                     name, script_id, probe_id, ..
-                 }) = &report_metadata else {
-            err.unexpected_error(true, Some("Report variable metadata should be set, but it's not".to_string()), None);
+            name,
+            script_id,
+            probe_id,
+            ..
+        }) = &report_metadata
+        else {
+            err.unexpected_error(
+                true,
+                Some("Report variable metadata should be set, but it's not".to_string()),
+                None,
+            );
             unreachable!()
         };
 
-        let err_msg = Some("Report variable metadata string should be emitted, but it's not been.".to_string());
+        let err_msg = Some(
+            "Report variable metadata string should be emitted, but it's not been.".to_string(),
+        );
 
         // store (name_ptr, name_len)
         let Some(StringAddr {
             mem_offset, len, ..
-        }) = emitter.mem_allocator.emitted_strings.get(name) else {
+        }) = emitter.mem_allocator.emitted_strings.get(name)
+        else {
             err.unexpected_error(true, err_msg, None);
             unreachable!()
         };
@@ -247,12 +285,13 @@ impl UnsharedVarHandler {
                 offset: (curr_offset + bytes_used) as u64,
                 memory: emitter.mem_allocator.mem_id, // instrumentation memory!
             });
-        bytes_used += size_of_val(&script_id) as u32;
+        bytes_used += size_of_val(script_id) as u32;
 
         // store (probe_id_ptr, probe_id_len)
         let Some(StringAddr {
             mem_offset, len, ..
-        }) = emitter.mem_allocator.emitted_strings.get(probe_id) else {
+        }) = emitter.mem_allocator.emitted_strings.get(probe_id)
+        else {
             err.unexpected_error(true, err_msg, None);
             unreachable!()
         };
@@ -281,7 +320,11 @@ impl UnsharedVarHandler {
         bytes_used
     }
 
-    fn calc_bytes_to_alloc(&self, report_header_bytes: u32, unshared_to_alloc: &mut Vec<UnsharedVar>) -> u32 {
+    fn calc_bytes_to_alloc(
+        &self,
+        report_header_bytes: u32,
+        unshared_to_alloc: &mut [UnsharedVar],
+    ) -> u32 {
         let mut num_bytes: u32 = 0;
 
         let i32_bytes = 4;

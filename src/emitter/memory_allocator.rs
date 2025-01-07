@@ -1,15 +1,16 @@
 use crate::common::error::ErrorGen;
+use crate::emitter::utils::wasm_type_to_whamm_type;
 use crate::parser::types::DataType;
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca_wasm::ir::function::FunctionBuilder;
 use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
+use orca_wasm::ir::types::DataType as OrcaType;
 use orca_wasm::ir::types::{BlockType, InitExpr, Value as OrcaValue};
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::MacroOpcode;
 use orca_wasm::{DataSegment, DataSegmentKind, Instructions, Module, Opcode};
 use std::collections::HashMap;
 use wasmparser::MemArg;
-use orca_wasm::ir::types::DataType as OrcaType;
 
 pub const WASM_PAGE_SIZE: u32 = 65_536;
 pub const VAR_BLOCK_BASE_VAR: &str = "var_block_base_offset";
@@ -153,11 +154,7 @@ impl MemoryAllocator {
     // =====================
     // ==== Allocations ====
     // =====================
-    pub fn update_mem_tracker(
-        &mut self,
-        offset: u32,
-        func: &mut FunctionBuilder
-    ) {
+    pub fn update_mem_tracker(&mut self, offset: u32, func: &mut FunctionBuilder) {
         // increment the memory byte offset global
         func.global_get(self.mem_tracker_global)
             .u32_const(offset)
@@ -177,40 +174,53 @@ impl MemoryAllocator {
             let curr_pages = check_memsize.add_local(OrcaType::I32);
             let max_needed_addr = check_memsize.add_local(OrcaType::I32);
 
-            check_memsize.u32_const(WASM_PAGE_SIZE)
+            check_memsize
+                .u32_const(WASM_PAGE_SIZE)
                 .local_set(bytes_per_page);
-            check_memsize.memory_size(self.mem_id)
-                .local_set(curr_pages);
+            check_memsize.memory_size(self.mem_id).local_set(curr_pages);
 
-            check_memsize.global_get(self.mem_tracker_global)
+            check_memsize
+                .global_get(self.mem_tracker_global)
                 .local_get(bytes_needed)
                 .i32_add()
                 .local_set(max_needed_addr);
 
             // check if the needed memory range is larger than what is currently available
-            check_memsize.local_get(bytes_per_page)
+            check_memsize
+                .local_get(bytes_per_page)
                 .local_get(curr_pages)
                 .i32_mul()
                 .local_get(max_needed_addr)
                 .i32_lt_unsigned();
 
             // If it is larger, grow memory by a page
-            check_memsize.if_stmt(BlockType::Empty)
+            check_memsize
+                .if_stmt(BlockType::Empty)
                 .i32_const(1)
                 .memory_grow(self.mem_id)
                 .drop()
-            .end();
+                .end();
 
             let check_memsize_fid = check_memsize.finish_module(wasm);
             self.used_mem_checker_fid = Some(*check_memsize_fid);
         }
     }
-    pub fn emit_memsize_check(&self, needed_bytes: u32, func: &mut FunctionBuilder, err: &mut ErrorGen) {
+    pub fn emit_memsize_check(
+        &self,
+        needed_bytes: u32,
+        func: &mut FunctionBuilder,
+        err: &mut ErrorGen,
+    ) {
         let check_memsize_fid = match self.used_mem_checker_fid {
             Some(fid) => fid,
             None => {
-                err.wizard_error(true, "Unexpected state while generating the memory allocation function. \
-                    The memory size checker function has not been generated yet.".to_string(), &None);
+                err.wizard_error(
+                    true,
+                    "Unexpected state while generating the memory allocation function. \
+                    The memory size checker function has not been generated yet."
+                        .to_string(),
+                    &None,
+                );
                 unreachable!()
             }
         };
@@ -237,9 +247,7 @@ impl MemoryAllocator {
             memory: self.mem_id, // instrumentation memory!
         });
 
-        // todo -- return num bytes based on local_ty
-        // local_ty.num_bytes().unwrap() as u32
-        4
+        wasm_type_to_whamm_type(local_ty).num_bytes().unwrap() as u32
     }
     pub fn emit_string(&mut self, wasm: &mut Module, val: &mut String) -> bool {
         if self.emitted_strings.contains_key(val) {
@@ -253,7 +261,9 @@ impl MemoryAllocator {
             data: val_bytes,
             kind: DataSegmentKind::Active {
                 memory_index: self.mem_id,
-                offset_expr: InitExpr::new(vec![Instructions::Value(OrcaValue::I32(self.curr_mem_offset as i32))])
+                offset_expr: InitExpr::new(vec![Instructions::Value(OrcaValue::I32(
+                    self.curr_mem_offset as i32,
+                ))]),
             },
         };
         wasm.data.push(data_segment);

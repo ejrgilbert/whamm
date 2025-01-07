@@ -487,9 +487,7 @@ pub fn whamm_type_to_wasm_global(app_wasm: &mut Module, ty: &DataType) -> (Globa
         match orca_wasm_ty.first().unwrap() {
             OrcaType::I32 => {
                 let global_id = app_wasm.add_global(
-                    InitExpr::new(
-                    vec![Instructions::Value(OrcaValue::I32(0))]
-                    ),
+                    InitExpr::new(vec![Instructions::Value(OrcaValue::I32(0))]),
                     OrcaType::I32,
                     true,
                     false,
@@ -543,10 +541,10 @@ pub fn wasm_type_to_whamm_type(ty: &OrcaType) -> DataType {
         | OrcaType::I31Null
         | OrcaType::Exn
         | OrcaType::NoExn
-        | OrcaType::Module{..}
+        | OrcaType::Module { .. }
         | OrcaType::RecGroup(_)
         | OrcaType::CoreTypeId(_)
-        | OrcaType::V128 => unimplemented!()
+        | OrcaType::V128 => unimplemented!(),
     }
 }
 

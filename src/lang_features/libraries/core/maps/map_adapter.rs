@@ -82,7 +82,6 @@ impl MapLibAdapter {
 
     pub fn emit_helper_funcs(&mut self, _app_wasm: &mut Module, _err: &mut ErrorGen) {
         // (nothing to do)
-        return
     }
 
     pub fn map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(

@@ -1,6 +1,7 @@
+use crate::lang_features::report_vars::Metadata as ReportMetadata;
 use crate::parser::types::{Block, DataType, Expr, Global, Statement};
 use std::collections::HashMap;
-use crate::lang_features::report_vars::Metadata as ReportMetadata;
+use std::fmt::{Display, Formatter};
 
 #[derive(Clone, Default)]
 pub struct WizardScript {
@@ -17,7 +18,7 @@ pub struct UnsharedVar {
     pub name: String,
     pub ty: DataType,
     pub is_report: bool,
-    pub report_metadata: Option<ReportMetadata>
+    pub report_metadata: Option<ReportMetadata>,
 }
 
 #[derive(Clone, Default)]
@@ -28,6 +29,11 @@ pub struct WizardProbe {
     pub metadata: Metadata,
     pub unshared_to_alloc: Vec<UnsharedVar>,
     pub probe_number: i32,
+}
+impl Display for WizardProbe {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}_{}", self.probe_number, self.rule)
+    }
 }
 impl WizardProbe {
     pub(crate) fn new(rule: String, probe_number: i32) -> Self {
@@ -40,17 +46,19 @@ impl WizardProbe {
             probe_number,
         }
     }
-    pub(crate) fn to_string(&self) -> String {
-        format!("{}_{}", self.probe_number, self.rule)
-    }
-    pub(crate) fn add_unshared(&mut self, name: String, ty: DataType, is_report: bool, report_metadata: Option<ReportMetadata>) {
-        self.unshared_to_alloc.push(
-            UnsharedVar {
-                name,
-                ty,
-                is_report,
-                report_metadata
-            });
+    pub(crate) fn add_unshared(
+        &mut self,
+        name: String,
+        ty: DataType,
+        is_report: bool,
+        report_metadata: Option<ReportMetadata>,
+    ) {
+        self.unshared_to_alloc.push(UnsharedVar {
+            name,
+            ty,
+            is_report,
+            report_metadata,
+        });
     }
 }
 

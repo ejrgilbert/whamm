@@ -117,7 +117,11 @@ fn setup_print_global_meta(
 
     // for each of the report globals, emit the printing logic
     for (key, val) in var_meta_str.iter() {
-        io_adapter.puts(format!("i32, global_id, {key}, {val}, "), &mut print_global_meta, err);
+        io_adapter.puts(
+            format!("i32, global_id, {key}, {val}, "),
+            &mut print_global_meta,
+            err,
+        );
 
         // get the value of this report global
         print_global_meta.global_get(GlobalID(*key));
@@ -165,7 +169,11 @@ fn setup_print_map_meta(
 
     // for each of the report maps, emit the printing logic
     for (key, val) in map_meta_str.iter() {
-        io_adapter.puts(format!("map, map_id, {key}, {val}, "), &mut print_map_meta, err);
+        io_adapter.puts(
+            format!("map, map_id, {key}, {val}, "),
+            &mut print_map_meta,
+            err,
+        );
 
         // print the value(s) of this map
         map_lib_adapter.print_map(*key, &mut print_map_meta, err);

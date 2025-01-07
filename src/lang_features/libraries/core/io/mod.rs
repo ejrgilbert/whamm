@@ -1,5 +1,6 @@
 pub mod io_adapter;
 
+use crate::common::error::ErrorGen;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::{LibAdapter, LibPackage};
 use crate::parser::rules::{Event, Package, Probe, Provider};
@@ -8,7 +9,6 @@ use crate::parser::types::{
 };
 use log::debug;
 use orca_wasm::Module;
-use crate::common::error::ErrorGen;
 
 #[derive(Default)]
 pub struct IOPackage {

@@ -28,7 +28,7 @@ pub struct WizardGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l> {
 
     // tracking
     pub curr_script_id: u8,
-    pub unshared_var_handler: &'l mut UnsharedVarHandler
+    pub unshared_var_handler: &'l mut UnsharedVarHandler,
 }
 
 impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
@@ -88,7 +88,8 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 
     fn emit_end_func(&mut self, flush_reports: bool) {
-        self.emitter.emit_end_fn(flush_reports, self.io_adapter, self.err);
+        self.emitter
+            .emit_end_fn(flush_reports, self.io_adapter, self.err);
     }
 
     // Visit the AST
@@ -130,7 +131,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         param_reqs: &[(String, DataType)],
         results: &[OrcaType],
         body: &mut Block,
-        export: bool
+        export: bool,
     ) -> (Option<u32>, String) {
         // create the function
         let mut params = vec![];
@@ -217,15 +218,18 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
                 &probe.metadata.pred_args,
                 &[OrcaType::I32],
                 &mut block,
-                true
+                true,
             )
         } else {
             (None, "".to_string())
         };
 
         // create the probe's $alloc method
-        let (alloc_fid, alloc_param_str) =
-            self.unshared_var_handler.emit_alloc_func(&mut probe.unshared_to_alloc, &mut self.emitter, self.err);
+        let (alloc_fid, alloc_param_str) = self.unshared_var_handler.emit_alloc_func(
+            &mut probe.unshared_to_alloc,
+            &mut self.emitter,
+            self.err,
+        );
 
         // create the probe body function
         let (body_fid, body_param_str) = if let Some(body) = &mut probe.body {

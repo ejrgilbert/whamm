@@ -3,8 +3,8 @@ pub mod maps;
 
 use crate::common::error::ErrorGen;
 use crate::parser::types::WhammVisitor;
-use std::collections::HashMap;
 use orca_wasm::Module;
+use std::collections::HashMap;
 
 pub const WHAMM_CORE_LIB_NAME: &str = "whamm_core";
 const UNEXPECTED_ERR_MSG: &str =

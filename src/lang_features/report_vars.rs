@@ -1,15 +1,15 @@
-use std::collections::{HashMap, HashSet};
-use std::fmt::Display;
-use std::hash::Hash;
-use orca_wasm::ir::function::FunctionBuilder;
-use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
-use orca_wasm::module_builder::AddLocal;
-use orca_wasm::{Instructions, Module, Opcode};
-use orca_wasm::opcode::MacroOpcode;
 use crate::common::error::ErrorGen;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::parser::types::DataType;
+use orca_wasm::ir::function::FunctionBuilder;
+use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
 use orca_wasm::ir::types::{BlockType, DataType as OrcaType, InitExpr, Value};
+use orca_wasm::module_builder::AddLocal;
+use orca_wasm::opcode::MacroOpcode;
+use orca_wasm::{Instructions, Module, Opcode};
+use std::collections::{HashMap, HashSet};
+use std::fmt::Display;
+use std::hash::Hash;
 use wasmparser::MemArg;
 
 pub const NULL_PTR: u32 = 0;
@@ -27,7 +27,11 @@ pub struct ReportVars {
     flush_tracker: FlushTracker,
     alloc_tracker: HashMap<DataType, ReportAllocTracker>,
 }
-
+impl Default for ReportVars {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 // ===========================
 // ==== CODE FOR TRACKING ====
 // ===========================
@@ -37,14 +41,12 @@ impl ReportVars {
             map_metadata: HashMap::new(),
             variable_metadata: HashMap::new(),
             all_metadata: HashSet::new(),
-            curr_location: LocationData::Global {
-                script_id: u8::MAX
-            },
+            curr_location: LocationData::Global { script_id: u8::MAX },
             flush_soon: false,
             alloc_tracker: HashMap::default(),
             flush_tracker: FlushTracker {
-                flush_var_metadata_fid: None
-            }
+                flush_var_metadata_fid: None,
+            },
         }
     }
     pub fn put_global_metadata(&mut self, gid: u32, name: String, err: &mut ErrorGen) -> bool {
@@ -64,7 +66,7 @@ impl ReportVars {
         };
         let metadata = Metadata::Global {
             name: name.clone(),
-            script_id: *script_id
+            script_id: *script_id,
         };
         self.variable_metadata.insert(gid, metadata.clone());
         if !self.all_metadata.insert(metadata) {
@@ -167,8 +169,14 @@ impl ReportVars {
     // =========================
 
     // ==== Call flush functions at program exit ====
-    pub fn emit_flush_logic(&mut self, func: &mut FunctionBuilder,
-                            io_adapter: &mut IOAdapter, mem_id: u32, wasm: &mut Module, err: &mut ErrorGen) {
+    pub fn emit_flush_logic(
+        &mut self,
+        func: &mut FunctionBuilder,
+        io_adapter: &mut IOAdapter,
+        mem_id: u32,
+        wasm: &mut Module,
+        err: &mut ErrorGen,
+    ) {
         // There will be one function per report variable type used in the script.
         // So, if the script only uses i32 report variables, there will be one function
         // called to flush the final state.
@@ -191,7 +199,14 @@ impl ReportVars {
         self.call_dt_flushers(func, io_adapter, mem_id, wasm, err);
     }
 
-    fn call_dt_flushers(&mut self, func: &mut FunctionBuilder, io_adapter: &mut IOAdapter, mem_id: u32, wasm: &mut Module, err: &mut ErrorGen) {
+    fn call_dt_flushers(
+        &mut self,
+        func: &mut FunctionBuilder,
+        io_adapter: &mut IOAdapter,
+        mem_id: u32,
+        wasm: &mut Module,
+        err: &mut ErrorGen,
+    ) {
         // Make sure the metadata flusher func exists
         self.emit_flush_var_metadata_fn(io_adapter, mem_id, wasm, err);
 
@@ -208,7 +223,13 @@ impl ReportVars {
             }
         }
     }
-    fn emit_flush_var_metadata_fn(&mut self, io_adapter: &mut IOAdapter, mem_id: u32, wasm: &mut Module, err: &mut ErrorGen) {
+    fn emit_flush_var_metadata_fn(
+        &mut self,
+        io_adapter: &mut IOAdapter,
+        mem_id: u32,
+        wasm: &mut Module,
+        err: &mut ErrorGen,
+    ) {
         // ==================== REPORT CSV FLUSH ========================
         // type, id_type, id, name, script_id, fid:pc, probe_id, value(s)
         let id_type = "memaddr".to_string();
@@ -260,9 +281,7 @@ impl ReportVars {
             .local_tee(curr_addr);
 
         // load pc (i32)
-        flush_fn
-            .i32_load(mem_arg)
-            .local_set(pc);
+        flush_fn.i32_load(mem_arg).local_set(pc);
 
         // update memory pointer
         flush_fn
@@ -272,9 +291,7 @@ impl ReportVars {
             .local_tee(curr_addr);
 
         // load name_ptr (i32)
-        flush_fn
-            .i32_load(mem_arg)
-            .local_set(name_ptr);
+        flush_fn.i32_load(mem_arg).local_set(name_ptr);
 
         // update memory pointer
         flush_fn
@@ -284,9 +301,7 @@ impl ReportVars {
             .local_tee(curr_addr);
 
         // load name_len (u8)
-        flush_fn
-            .i32_load8_u(mem_arg)
-            .local_set(name_len);
+        flush_fn.i32_load8_u(mem_arg).local_set(name_len);
 
         // update memory pointer
         flush_fn
@@ -296,9 +311,7 @@ impl ReportVars {
             .local_tee(curr_addr);
 
         // load script_id (u8)
-        flush_fn
-            .i32_load8_u(mem_arg)
-            .local_set(script_id);
+        flush_fn.i32_load8_u(mem_arg).local_set(script_id);
 
         // update memory pointer
         flush_fn
@@ -311,9 +324,7 @@ impl ReportVars {
         // | i32 | i32 | i32      | u8       | u8        | i32          | u8           |
 
         // load probe_id_ptr (i32)
-        flush_fn
-            .i32_load(mem_arg)
-            .local_set(probe_id_ptr);
+        flush_fn.i32_load(mem_arg).local_set(probe_id_ptr);
 
         // update memory pointer
         flush_fn
@@ -323,9 +334,7 @@ impl ReportVars {
             .local_tee(curr_addr);
 
         // load probe_id_len (u8)
-        flush_fn
-            .i32_load8_u(mem_arg)
-            .local_set(probe_id_len);
+        flush_fn.i32_load8_u(mem_arg).local_set(probe_id_len);
 
         // update memory pointer
         flush_fn
@@ -338,15 +347,13 @@ impl ReportVars {
         // TODO -- replace with br_table
         flush_fn
             .local_get(dt)
-            .i32_const(2)// see DataType::hash()
+            .i32_const(2) // see DataType::hash()
             .i32_eq()
             .if_stmt(BlockType::Empty);
         io_adapter.puts("i32, ".to_string(), &mut flush_fn, err);
 
         // TODO -- handle 'type' for non-i32 values
-        flush_fn.else_stmt()
-            .unreachable()
-            .end();
+        flush_fn.else_stmt().unreachable().end();
 
         // print 'id_type'
         io_adapter.puts(format!("{id_type}, "), &mut flush_fn, err);
@@ -356,8 +363,7 @@ impl ReportVars {
         io_adapter.call_puti(&mut flush_fn, err);
 
         // print 'name'
-        flush_fn.local_get(name_ptr)
-            .local_get(name_len);
+        flush_fn.local_get(name_ptr).local_get(name_len);
         io_adapter.call_puts(&mut flush_fn, err);
         io_adapter.puts(", ".to_string(), &mut flush_fn, err);
 
@@ -376,8 +382,7 @@ impl ReportVars {
         io_adapter.puts(", ".to_string(), &mut flush_fn, err);
 
         // print 'probe_id'
-        flush_fn.local_get(probe_id_ptr)
-            .local_get(probe_id_len);
+        flush_fn.local_get(probe_id_ptr).local_get(probe_id_len);
         io_adapter.call_puts(&mut flush_fn, err);
         io_adapter.puts(", ".to_string(), &mut flush_fn, err);
 
@@ -390,7 +395,13 @@ impl ReportVars {
     }
 
     // ==== Flush functions per datatype ====
-    fn emit_flush_i32_fn(&self, io_adapter: &mut IOAdapter, mem_id: u32, wasm: &mut Module, err: &mut ErrorGen) -> u32 {
+    fn emit_flush_i32_fn(
+        &self,
+        io_adapter: &mut IOAdapter,
+        mem_id: u32,
+        wasm: &mut Module,
+        err: &mut ErrorGen,
+    ) -> u32 {
         let Some(flush_metadata_fid) = self.flush_tracker.flush_var_metadata_fid else {
             err.unexpected_error(true, Some("Should have the flush variable metadata function ID, but it's not been generated yet.".to_string()), None);
             unreachable!()
@@ -413,16 +424,37 @@ impl ReportVars {
         let curr_addr = flush_fn.add_local(OrcaType::I32);
         let next_addr = flush_fn.add_local(OrcaType::I32);
 
-        flush_fn.global_get(GlobalID(self.alloc_tracker.get(&dt).unwrap().first_var.unwrap()))
+        flush_fn
+            .global_get(GlobalID(
+                self.alloc_tracker.get(&dt).unwrap().first_var.unwrap(),
+            ))
             .local_set(curr_addr);
 
         flush_fn.loop_stmt(BlockType::Empty);
 
+        // todo: next_addr is offset!
+        // alloc_func.u32_const(curr_addr)
+        //     .global_get(GlobalID(last_var_gid))
+        //     .i32_sub();
+
+        #[rustfmt::skip]
         // save the next_addr
         flush_fn
             .local_get(curr_addr)
             .i32_load(mem_arg)
-            .local_set(next_addr);
+            .local_tee(next_addr)
+
+            // If the next_addr is a NULL_PTR, leave it so...
+            // otherwise calculate the actual next address:
+            //    next_addr = curr_addr + next_addr_offset
+            .u32_const(NULL_PTR)
+            .i32_eq()
+            .if_stmt(BlockType::Empty)
+                .local_get(curr_addr)
+                .local_get(next_addr)
+                .i32_add()
+                .local_set(next_addr)
+            .end();
 
         // update memory pointer
         flush_fn
@@ -439,8 +471,7 @@ impl ReportVars {
             .local_tee(curr_addr);
 
         // print the value(s)
-        flush_fn
-            .i32_load(mem_arg);
+        flush_fn.i32_load(mem_arg);
         io_adapter.call_puti(&mut flush_fn, err);
         io_adapter.putln(&mut flush_fn, err);
 
@@ -453,6 +484,7 @@ impl ReportVars {
 
         // check if we should loop
         // while next_addr != NULL_PTR: curr_addr = next_addr; continue;
+
         #[rustfmt::skip]
         flush_fn
             .local_get(next_addr)
@@ -463,7 +495,7 @@ impl ReportVars {
                 .local_set(curr_addr)
                 .br(1)
             .end();
-            // otherwise, fall through to end.
+        // otherwise, fall through to end.
 
         flush_fn.end();
 
@@ -472,14 +504,21 @@ impl ReportVars {
         *flush_fid
     }
 
-
     pub fn report_var_header_bytes() -> u32 {
         // | next_addr |
         // | i32       |
-        let i32_bytes = 4;
-       1 * i32_bytes
+        // let i32_bytes = 4;
+        // i32_bytes
+        size_of::<i32>() as u32
     }
-    pub fn alloc_report_var_header(&mut self, data_type: &DataType, curr_addr: u32, mem_id: u32, alloc_func: &mut FunctionBuilder, wasm: &mut Module) -> u32 {
+    pub fn alloc_report_var_header(
+        &mut self,
+        data_type: &DataType,
+        curr_addr: u32,
+        mem_id: u32,
+        alloc_func: &mut FunctionBuilder,
+        wasm: &mut Module,
+    ) -> u32 {
         // We will have a linked list in memory of the report variables. One linked list per type.
         //
         // | next            | var_header    | value                  |
@@ -492,11 +531,12 @@ impl ReportVars {
         //   on the type of the variable. Since a function is called that iterates over each datatype's linked list of report variables, it will know how to parse the variable contents!
         let mut used_bytes = 0;
 
-        let tracker = self.alloc_tracker
+        let tracker = self
+            .alloc_tracker
             .entry(data_type.clone())
             .or_insert(ReportAllocTracker {
-                data_type: data_type.clone(),
-                flush_func: None,
+                // data_type: data_type.clone(),
+                // flush_func: None,
                 first_var: None,
                 last_var: None,
             });
@@ -504,9 +544,12 @@ impl ReportVars {
         if tracker.first_var.is_none() {
             // On the first allocation for a datatype, the global that points to the first memory
             // location is updated to point to the memory address.
-            let gid = wasm.add_global(InitExpr::new(
-                vec![Instructions::Value(Value::I32(curr_addr as i32))]
-            ), OrcaType::I32, false, false);
+            let gid = wasm.add_global(
+                InitExpr::new(vec![Instructions::Value(Value::I32(curr_addr as i32))]),
+                OrcaType::I32,
+                false,
+                false,
+            );
             tracker.first_var = Some(*gid);
         }
 
@@ -532,7 +575,8 @@ impl ReportVars {
             alloc_func.global_get(GlobalID(last_var_gid));
 
             // (what to store)
-            alloc_func.u32_const(curr_addr)
+            alloc_func
+                .u32_const(curr_addr)
                 .global_get(GlobalID(last_var_gid))
                 .i32_sub();
 
@@ -543,9 +587,12 @@ impl ReportVars {
                 memory: mem_id,
             });
         } else {
-            let gid = wasm.add_global(InitExpr::new(
-                vec![Instructions::Value(Value::I32(curr_addr as i32))]
-            ), OrcaType::I32, false, false);
+            let gid = wasm.add_global(
+                InitExpr::new(vec![Instructions::Value(Value::I32(curr_addr as i32))]),
+                OrcaType::I32,
+                false,
+                false,
+            );
             tracker.last_var = Some(*gid);
         }
 
@@ -598,7 +645,11 @@ impl Metadata {
             Self::Local { name, .. } | Self::Global { name, .. } => *name = new_name,
         }
     }
-    pub fn print_csv_header<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(func: &mut T, io_adapter: &mut IOAdapter, err: &mut ErrorGen) {
+    pub fn print_csv_header<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        func: &mut T,
+        io_adapter: &mut IOAdapter,
+        err: &mut ErrorGen,
+    ) {
         let header = r#"
 ==================== REPORT CSV FLUSH ========================
 type, id_type, id, name, script_id, fid:pc, probe_id, value(s)"#
@@ -620,7 +671,10 @@ type, id_type, id, name, script_id, fid:pc, probe_id, value(s)"#
                 probe_id.as_str(),
             ),
         };
-        format!("{}, script{}, {}, {}", name, script_id, bytecode_loc, probe_id)
+        format!(
+            "{}, script{}, {}, {}",
+            name, script_id, bytecode_loc, probe_id
+        )
     }
 }
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -652,10 +706,11 @@ impl BytecodeLoc {
 }
 
 struct ReportAllocTracker {
-    // The data type that this instance tracks allocation of
-    data_type: DataType,
-    // The ID of the flush function for this DataType
-    flush_func: Option<u32>,
+    // TODO -- may not need these
+    // // The data type that this instance tracks allocation of
+    // data_type: DataType,
+    // // The ID of the flush function for this DataType
+    // flush_func: Option<u32>,
 
     // global that points to the memory location of the first allocated report variable of this type
     first_var: Option<u32>,
@@ -663,5 +718,5 @@ struct ReportAllocTracker {
     last_var: Option<u32>,
 }
 struct FlushTracker {
-    flush_var_metadata_fid: Option<u32>
+    flush_var_metadata_fid: Option<u32>,
 }

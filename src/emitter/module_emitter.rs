@@ -13,7 +13,9 @@ use log::debug;
 use orca_wasm::ir::function::FunctionBuilder;
 use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
 use orca_wasm::ir::module::Module;
-use orca_wasm::ir::types::{BlockType as OrcaBlockType, DataType as OrcaType, InitExpr, Value as OrcaValue};
+use orca_wasm::ir::types::{
+    BlockType as OrcaBlockType, DataType as OrcaType, InitExpr, Value as OrcaValue,
+};
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::{Instrumenter, MacroOpcode, Opcode};
 use orca_wasm::{Instructions, Location};
@@ -162,10 +164,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 if export {
                     self.app_wasm.exports.add_export_func(name, *fid);
                 }
-            } else {
-                if export {
-                    self.app_wasm.exports.add_export_func(format!("${}", fid.to_string()), *fid);
-                }
+            } else if export {
+                self.app_wasm
+                    .exports
+                    .add_export_func(format!("${}", *fid), *fid);
             }
             Some(*fid)
         } else {
@@ -195,18 +197,31 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         }
     }
 
-    pub(crate) fn emit_end_fn(&mut self, flush_reports: bool, io_adapter: &mut IOAdapter, err: &mut ErrorGen) {
+    pub(crate) fn emit_end_fn(
+        &mut self,
+        flush_reports: bool,
+        io_adapter: &mut IOAdapter,
+        err: &mut ErrorGen,
+    ) {
         if flush_reports {
             // (ONLY DO THIS IF THERE ARE REPORT VARIABLES)
             let mut on_exit = FunctionBuilder::new(&[], &[]);
 
             // call the report_vars to emit calls to all report var flushers
-            self.report_vars.emit_flush_logic(&mut on_exit, io_adapter, self.mem_allocator.mem_id, self.app_wasm, err);
+            self.report_vars.emit_flush_logic(
+                &mut on_exit,
+                io_adapter,
+                self.mem_allocator.mem_id,
+                self.app_wasm,
+                err,
+            );
 
             let on_exit_id = on_exit.finish_module(self.app_wasm);
             self.app_wasm.set_fn_name(on_exit_id, "on_exit".to_string());
 
-            self.app_wasm.exports.add_export_func("wasm:exit".to_string(), *on_exit_id);
+            self.app_wasm
+                .exports
+                .add_export_func("wasm:exit".to_string(), *on_exit_id);
         }
     }
 

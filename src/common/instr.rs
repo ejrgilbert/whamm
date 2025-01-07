@@ -258,7 +258,8 @@ fn run_instr_wizard(
     let used_strings = metadata_collector.strings_to_emit;
 
     let mut injected_funcs = vec![];
-    let mut wizard_unshared_var_handler = crate::lang_features::alloc_vars::wizard::UnsharedVarHandler::default();
+    let mut wizard_unshared_var_handler =
+        crate::lang_features::alloc_vars::wizard::UnsharedVarHandler::default();
     let mut gen = crate::generator::wizard::WizardGenerator {
         emitter: ModuleEmitter::new(
             InjectStrategy::Wizard,
@@ -275,7 +276,7 @@ fn run_instr_wizard(
         injected_funcs: &mut injected_funcs,
         config,
         curr_script_id: u8::MAX,
-        unshared_var_handler: &mut wizard_unshared_var_handler
+        unshared_var_handler: &mut wizard_unshared_var_handler,
     };
     gen.run(wiz_ast, used_funcs, used_report_dts, used_strings);
 }
@@ -366,7 +367,7 @@ fn get_memory_allocator(target_wasm: &mut Module, create_new_mem: bool) -> Memor
         required_initial_mem_size: 0,
         emitted_strings: HashMap::new(),
         mem_tracker_global: GlobalID(0),
-        used_mem_checker_fid: None
+        used_mem_checker_fid: None,
     }
 }
 

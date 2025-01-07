@@ -1,6 +1,7 @@
 use crate::common::error::ErrorGen;
 use crate::common::instr::Config;
 use crate::generator::wizard::ast::{WizardProbe, WizardScript};
+use crate::lang_features::report_vars::{BytecodeLoc, Metadata as ReportMetadata};
 use crate::parser::rules::{Event, Package, Probe, Provider};
 use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Location, Script, Statement, UnOp, Value, Whamm,
@@ -9,7 +10,6 @@ use crate::parser::types::{
 use crate::verifier::types::{Record, SymbolTable};
 use log::trace;
 use std::collections::HashSet;
-use crate::lang_features::report_vars::{BytecodeLoc, Metadata as ReportMetadata};
 
 const UNEXPECTED_ERR_MSG: &str =
     "WizardProbeMetadataCollector: Looks like you've found a bug...please report this behavior!";
@@ -264,14 +264,18 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
                             name: name.clone(),
                             script_id: self.script_num,
                             bytecode_loc: BytecodeLoc::new(0, 0), // (unused)
-                            probe_id: self.curr_probe.to_string()
+                            probe_id: self.curr_probe.to_string(),
                         })
                     } else {
                         None
                     };
                     // change this to save off data to allocate
-                    self.curr_probe
-                        .add_unshared(name.clone(), ty.clone(), *is_report, report_metadata);
+                    self.curr_probe.add_unshared(
+                        name.clone(),
+                        ty.clone(),
+                        *is_report,
+                        report_metadata,
+                    );
                 } else {
                     self.err.unexpected_error(
                         true,

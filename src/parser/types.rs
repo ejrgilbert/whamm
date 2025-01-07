@@ -185,42 +185,18 @@ impl PartialEq for DataType {
 impl DataType {
     pub fn id(&self) -> i32 {
         match self {
-            DataType::U32 => {
-                1
-            }
-            DataType::I32 => {
-                2
-            }
-            DataType::F32 => {
-                3
-            }
-            DataType::U64 => {
-                4
-            }
-            DataType::I64 => {
-                5
-            }
-            DataType::F64 => {
-                6
-            }
-            DataType::Boolean => {
-                7
-            }
-            DataType::Null => {
-                8
-            }
-            DataType::Str => {
-                9
-            }
-            DataType::Tuple { .. } => {
-                10
-            }
-            DataType::Map { .. } => {
-                11
-            }
-            DataType::AssumeGood => {
-                12
-            }
+            DataType::U32 => 1,
+            DataType::I32 => 2,
+            DataType::F32 => 3,
+            DataType::U64 => 4,
+            DataType::I64 => 5,
+            DataType::F64 => 6,
+            DataType::Boolean => 7,
+            DataType::Null => 8,
+            DataType::Str => 9,
+            DataType::Tuple { .. } => 10,
+            DataType::Map { .. } => 11,
+            DataType::AssumeGood => 12,
         }
     }
     pub fn num_bytes(&self) -> Option<usize> {

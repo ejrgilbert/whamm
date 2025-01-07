@@ -8,6 +8,7 @@ use orca_wasm::ir::module::Module;
 use orca_wasm::ir::types::DataType as OrcaType;
 use orca_wasm::Location;
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
 use wasmparser::Operator;
 
 mod core;
@@ -117,8 +118,8 @@ pub struct ProbeRule {
     pub event: Option<RulePart>,
     pub mode: Option<WhammModeKind>,
 }
-impl ProbeRule {
-    pub fn to_string(&self) -> String {
+impl Display for ProbeRule {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let curr_provider = match &self.provider {
             Some(provider) => provider.name.clone(),
             None => "".to_string(),
@@ -135,7 +136,8 @@ impl ProbeRule {
             Some(mode) => mode.name().clone(),
             None => "".to_string(),
         };
-        format!(
+        write!(
+            f,
             "{}:{}:{}:{}",
             curr_provider, curr_package, curr_event, curr_mode
         )

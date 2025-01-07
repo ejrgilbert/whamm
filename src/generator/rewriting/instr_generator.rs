@@ -164,10 +164,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
         let curr_script_id = probe.script_id;
         self.emitter.curr_num_unshared = probe.num_unshared;
         let probe_rule_str = probe_rule.to_string();
-        let curr_probe_id = format!(
-            "{}_{}",
-            probe.probe_number, probe_rule_str
-        );
+        let curr_probe_id = format!("{}_{}", probe.probe_number, probe_rule_str);
         let loc = match self.emitter.app_iter.curr_loc().0 {
             OrcaLocation::Module {
                 func_idx,

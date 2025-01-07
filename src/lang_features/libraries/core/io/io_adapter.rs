@@ -1,12 +1,12 @@
 use crate::common::error::ErrorGen;
 use crate::lang_features::libraries::core::LibAdapter;
+use orca_wasm::ir::function::FunctionBuilder;
 use orca_wasm::ir::id::{FunctionID, LocalID};
+use orca_wasm::ir::types::{BlockType, DataType as OrcaType};
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::MacroOpcode;
 use orca_wasm::{Module, Opcode};
 use std::collections::HashMap;
-use orca_wasm::ir::function::FunctionBuilder;
-use orca_wasm::ir::types::{BlockType, DataType as OrcaType};
 
 pub const PUTS: &str = "puts";
 pub const PUTC: &str = "putc";
@@ -16,7 +16,7 @@ pub const PUTI: &str = "puti";
 pub struct IOAdapter {
     pub is_used: bool,
     // func_name -> fid
-    funcs: HashMap<String, u32>
+    funcs: HashMap<String, u32>,
 }
 impl LibAdapter for IOAdapter {
     fn get_funcs(&self) -> &HashMap<String, u32> {
@@ -36,11 +36,15 @@ impl Default for IOAdapter {
 }
 impl IOAdapter {
     pub fn new() -> Self {
-        let funcs = HashMap::from([(PUTC.to_string(), 0), (PUTI.to_string(), 0), (PUTS.to_string(), 0)]);
+        let funcs = HashMap::from([
+            (PUTC.to_string(), 0),
+            (PUTI.to_string(), 0),
+            (PUTS.to_string(), 0),
+        ]);
         //Reserve map 0 for the var metadata map and map 1 for the map metadata map
         IOAdapter {
             is_used: false,
-            funcs
+            funcs,
         }
     }
 
@@ -79,7 +83,7 @@ impl IOAdapter {
 
         self.call_putc(&mut puts, err);
 
-            // Increment i and continue loop
+        // Increment i and continue loop
         puts.local_get(i)
             .i32_const(1)
             .i32_add()
