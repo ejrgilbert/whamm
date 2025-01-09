@@ -85,6 +85,10 @@ impl Location {
 
 #[derive(Clone, Debug, Eq)]
 pub enum DataType {
+    U8,
+    I8,
+    U16,
+    I16,
     U32,
     I32,
     F32,
@@ -107,46 +111,32 @@ impl Hash for DataType {
     fn hash<H: Hasher>(&self, state: &mut H) {
         // use any distinct number as an enum variant identifier
         match self {
-            DataType::U32 => {
-                state.write_u8(1);
-            }
-            DataType::I32 => {
-                state.write_u8(2);
-            }
-            DataType::F32 => {
-                state.write_u8(3);
-            }
-            DataType::U64 => {
-                state.write_u8(4);
-            }
-            DataType::I64 => {
-                state.write_u8(5);
-            }
-            DataType::F64 => {
-                state.write_u8(6);
-            }
-            DataType::Boolean => {
-                state.write_u8(7);
-            }
-            DataType::Null => {
-                state.write_u8(8);
-            }
-            DataType::Str => {
-                state.write_u8(9);
+            DataType::U8
+            | DataType::I8
+            | DataType::U16
+            | DataType::I16
+            | DataType::U32
+            | DataType::I32
+            | DataType::F32
+            | DataType::U64
+            | DataType::I64
+            | DataType::F64
+            | DataType::Boolean
+            | DataType::Null
+            | DataType::Str
+            | DataType::AssumeGood => {
+                state.write_u8(self.id() as u8);
             }
             DataType::Tuple { ty_info } => {
                 for ty in ty_info {
-                    state.write_u8(10);
+                    state.write_u8(self.id() as u8);
                     ty.hash(state);
                 }
             }
             DataType::Map { key_ty, val_ty } => {
-                state.write_u8(11);
+                state.write_u8(self.id() as u8);
                 key_ty.hash(state);
                 val_ty.hash(state);
-            }
-            DataType::AssumeGood => {
-                state.write_u8(12);
             }
         }
     }
@@ -185,22 +175,28 @@ impl PartialEq for DataType {
 impl DataType {
     pub fn id(&self) -> i32 {
         match self {
-            DataType::U32 => 1,
-            DataType::I32 => 2,
-            DataType::F32 => 3,
-            DataType::U64 => 4,
-            DataType::I64 => 5,
-            DataType::F64 => 6,
-            DataType::Boolean => 7,
-            DataType::Null => 8,
-            DataType::Str => 9,
-            DataType::Tuple { .. } => 10,
-            DataType::Map { .. } => 11,
-            DataType::AssumeGood => 12,
+            DataType::U8 => 0,
+            DataType::I8 => 1,
+            DataType::U16 => 2,
+            DataType::I16 => 3,
+            DataType::U32 => 4,
+            DataType::I32 => 5,
+            DataType::F32 => 6,
+            DataType::U64 => 7,
+            DataType::I64 => 8,
+            DataType::F64 => 9,
+            DataType::Boolean => 10,
+            DataType::Null => 11,
+            DataType::Str => 12,
+            DataType::Tuple { .. } => 13,
+            DataType::Map { .. } => 14,
+            DataType::AssumeGood => 15,
         }
     }
     pub fn num_bytes(&self) -> Option<usize> {
         match self {
+            DataType::U8 | DataType::I8 => Some(1),
+            DataType::U16 | DataType::I16 => Some(2),
             DataType::U32 |
             DataType::I32 |
             DataType::F32 |
@@ -229,6 +225,18 @@ impl DataType {
 
     pub fn print(&self, buffer: &mut Buffer) {
         match self {
+            DataType::U8 => {
+                yellow(true, "u8".to_string(), buffer);
+            }
+            DataType::I8 => {
+                yellow(true, "i8".to_string(), buffer);
+            }
+            DataType::U16 => {
+                yellow(true, "u16".to_string(), buffer);
+            }
+            DataType::I16 => {
+                yellow(true, "i16".to_string(), buffer);
+            }
             DataType::U32 => {
                 yellow(true, "u32".to_string(), buffer);
             }
@@ -280,6 +288,40 @@ impl DataType {
             DataType::AssumeGood => {
                 yellow(true, "unknown, not type checked".to_string(), buffer);
             }
+        }
+    }
+    pub fn to_string(&self) -> String {
+        match self {
+            DataType::U8 => "u8".to_string(),
+            DataType::I8 => "i8".to_string(),
+            DataType::U16 => "u16".to_string(),
+            DataType::I16 => "i16".to_string(),
+            DataType::U32 => "u32".to_string(),
+            DataType::I32 => "i32".to_string(),
+            DataType::F32 => "f32".to_string(),
+            DataType::U64 => "u64".to_string(),
+            DataType::I64 => "i64".to_string(),
+            DataType::F64 => "f64".to_string(),
+            DataType::Boolean => "bool".to_string(),
+            DataType::Null => "null".to_string(),
+            DataType::Str => "str".to_string(),
+            DataType::Tuple { ty_info } => {
+                let mut s = "".to_string();
+                s += "(";
+                s += &ty_info
+                    .iter()
+                    .map(|ty| ty.to_string())
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                s += ")";
+                s
+            }
+            DataType::Map { key_ty, val_ty, .. } => format!(
+                "map<{}, {}>",
+                key_ty.to_string(),
+                val_ty.to_string()
+            ),
+            DataType::AssumeGood => "unknown".to_string(),
         }
     }
 }

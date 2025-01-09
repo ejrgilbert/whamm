@@ -484,10 +484,8 @@ impl WhammVisitor<String> for AsStrVisitor {
 
     fn visit_unop(&mut self, op: &UnOp) -> String {
         match op {
-            UnOp::Not => "!",
+            UnOp::Not => "!".to_string()
         }
-        .parse()
-        .unwrap()
     }
 
     fn visit_binop(&mut self, op: &BinOp) -> String {
@@ -511,34 +509,7 @@ impl WhammVisitor<String> for AsStrVisitor {
     }
 
     fn visit_datatype(&mut self, datatype: &DataType) -> String {
-        match datatype {
-            DataType::U32 => "u32".to_string(),
-            DataType::I32 => "i32".to_string(),
-            DataType::F32 => "f32".to_string(),
-            DataType::U64 => "u64".to_string(),
-            DataType::I64 => "i64".to_string(),
-            DataType::F64 => "f64".to_string(),
-            DataType::Boolean => "bool".to_string(),
-            DataType::Null => "null".to_string(),
-            DataType::Str => "str".to_string(),
-            DataType::Tuple { ty_info } => {
-                let mut s = "".to_string();
-                s += "(";
-                s += &ty_info
-                    .iter()
-                    .map(|ty| self.visit_datatype(ty))
-                    .collect::<Vec<String>>()
-                    .join(", ");
-                s += ")";
-                s
-            }
-            DataType::Map { key_ty, val_ty, .. } => format!(
-                "map<{}, {}>",
-                self.visit_datatype(key_ty),
-                self.visit_datatype(val_ty)
-            ),
-            DataType::AssumeGood => "unknown".to_string(),
-        }
+        datatype.to_string()
     }
 
     fn visit_value(&mut self, value: &Value) -> String {

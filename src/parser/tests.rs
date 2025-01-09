@@ -13,6 +13,25 @@ pub fn setup_logger() {
 }
 
 const VALID_SCRIPTS: &[&str] = &[
+    // all numeric types
+    r#"
+u8 i;
+i8 i;
+u16 i;
+i16 i;
+u32 i;
+i32 i;
+f32 i;
+u64 i;
+i64 i;
+f64 i;
+bool i;
+str i;
+(i32, i32) i;
+map<i32, i32> i;
+
+BEGIN { }
+    "#,
     // Ternary
     r#"
 wasm:opcode:br:before {
@@ -348,8 +367,8 @@ const FATAL_SCRIPTS: &[&str] = &[
 core::br:before / i == 1 / { i = 0; }  // SHOULD FAIL HERE
 
     "#,
-    // Numerics (not supported yet: https://github.com/ejrgilbert/whamm/issues/141)
-    "wasm:opcode:call:alt { i64 num = 0; }",
+    // // Numerics (not supported yet: https://github.com/ejrgilbert/whamm/issues/141)
+    // "wasm:opcode:call:alt { i64 num = 0; }",
     // trigger unavailable modes per event
     "wasm:opcode:unreachable:after {}",
     "wasm:opcode:unreachable:at_target {}",

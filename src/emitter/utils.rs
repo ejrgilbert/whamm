@@ -502,7 +502,7 @@ pub fn whamm_type_to_wasm_global(app_wasm: &mut Module, ty: &DataType) -> (Globa
 }
 pub fn whamm_type_to_wasm_type(ty: &DataType) -> Vec<OrcaType> {
     match ty {
-        DataType::I32 | DataType::U32 | DataType::Boolean => vec![OrcaType::I32],
+        DataType::U8 | DataType::I8 | DataType::U16 | DataType::I16 | DataType::I32 | DataType::U32 | DataType::Boolean => vec![OrcaType::I32],
         DataType::F32 => vec![OrcaType::F32],
         DataType::I64 | DataType::U64 => vec![OrcaType::I64],
         DataType::F64 => vec![OrcaType::F64],

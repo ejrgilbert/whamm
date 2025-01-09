@@ -49,6 +49,10 @@ PROBE_RULE = ${
 // ---- Types ----
 // ===============
 
+TY_U8 = @{ "u8" }
+TY_I8 = @{ "i8" }
+TY_U16 = @{ "u16" }
+TY_I16 = @{ "i16" }
 TY_U32 = @{ "u32" }
 TY_I32 = @{ "i32" }
 TY_F32 = @{ "f32" }
@@ -63,7 +67,25 @@ TY_TUPLE = { "(" ~ ")"| "(" ~ TYPE ~ ( "," ~ TYPE )* ~ ")" }
 // first TYPE is the type of the key, second TYPE is the type of the value
 TY_MAP = { "map<" ~ TYPE ~ "," ~ TYPE ~ ">" }
 
-TYPE = _{ TY_U32 | TY_I32 | TY_F32 | TY_U64 | TY_I64 | TY_F64 | TY_BOOL | TY_STRING | TY_TUPLE | TY_MAP }
+TYPE = _{
+    TYPE_PRIMITIVE |
+    TY_TUPLE |
+    TY_MAP
+}
+TYPE_PRIMITIVE = _{
+    TY_U8 |
+    TY_I8 |
+    TY_U16 |
+    TY_I16 |
+    TY_U32 |
+    TY_I32 |
+    TY_F32 |
+    TY_U64 |
+    TY_I64 |
+    TY_F64 |
+    TY_BOOL |
+    TY_STRING
+}
 
 // ====================
 // ---- Statements ----
@@ -79,7 +101,7 @@ block = { "{" ~ (if_stmt | statement)* ~ "}" }
 ret = { "return" ~ expr ? }
 
 // calls
-arg = { tuple | expr | val | ternary }
+arg = { tuple | expr | val | ternary } // todo -- tuple and val are redundant
 fn_call = { ID ~ "(" ~ ( arg )? ~ ( "," ~ arg )* ~ ")" }
 
 // unop
