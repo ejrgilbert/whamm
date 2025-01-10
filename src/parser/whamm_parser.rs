@@ -1697,10 +1697,7 @@ fn handle_bool(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     let val = pair.as_str().parse::<bool>().unwrap();
 
     Ok(Expr::Primitive {
-        val: Value::Boolean {
-            ty: DataType::Boolean,
-            val,
-        },
+        val: Value::Boolean { val },
         loc: Some(Location {
             line_col: LineColLocation::from(pair.as_span()),
             path: None,
@@ -1724,10 +1721,7 @@ fn handle_string(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     }
 
     Ok(Expr::Primitive {
-        val: Value::Str {
-            ty: DataType::Str,
-            val,
-        },
+        val: Value::Str { val },
         loc: Some(Location {
             line_col: LineColLocation::from(pair.as_span()),
             path: None,

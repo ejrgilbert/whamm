@@ -58,7 +58,6 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         for string in strings_to_emit.iter() {
             self.emitter.emit_string(
                 &mut Value::Str {
-                    ty: DataType::Str,
                     val: string.clone(),
                 },
                 self.err,

@@ -3,7 +3,7 @@ use crate::emitter::rewriting::rules::wasm::{OpcodeEvent, WasmPackage};
 use crate::generator::rewriting::simple_ast::{SimpleAstProbes, SimpleProbe};
 use crate::parser::rules::core::WhammModeKind;
 use crate::parser::rules::{FromStr, WhammProviderKind};
-use crate::parser::types::{DataType, IntLit, NumFmt, RulePart, Value};
+use crate::parser::types::{IntLit, NumFmt, RulePart, Value};
 use orca_wasm::ir::module::Module;
 use orca_wasm::ir::types::DataType as OrcaType;
 use orca_wasm::Location;
@@ -297,13 +297,9 @@ impl Provider for WhammProvider {
                     }),
                 );
 
-                loc_info.static_data.insert(
-                    "fname".to_string(),
-                    Some(Value::Str {
-                        ty: DataType::Str,
-                        val: fname.clone(),
-                    }),
-                );
+                loc_info
+                    .static_data
+                    .insert("fname".to_string(), Some(Value::Str { val: fname.clone() }));
 
                 // Don't think we need this right now...
                 // loc_info.static_data.insert(

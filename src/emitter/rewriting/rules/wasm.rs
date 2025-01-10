@@ -5,7 +5,7 @@ use crate::for_each_opcode;
 use crate::generator::rewriting::simple_ast::SimpleProbe;
 use crate::parser::rules::core::WhammModeKind;
 use crate::parser::rules::wasm::{OpcodeEventKind, WasmPackageKind};
-use crate::parser::types::{DataType, IntLit, NumFmt, RulePart, Value};
+use crate::parser::types::{IntLit, NumFmt, RulePart, Value};
 use log::warn;
 use orca_wasm::ir::id::FunctionID;
 use orca_wasm::ir::module::module_functions::{FuncKind, ImportedFunction, LocalFunction};
@@ -278,10 +278,6 @@ impl Event for OpcodeEvent {
                     loc_info.dynamic_data.insert(
                         "targets".to_string(),
                         Some(Value::U32U32Map {
-                            ty: DataType::Map {
-                                key_ty: Box::new(DataType::U32),
-                                val_ty: Box::new(DataType::U32),
-                            },
                             val: Box::new(target_map),
                         }),
                     );
@@ -323,21 +319,18 @@ impl Event for OpcodeEvent {
                     loc_info.static_data.insert(
                         "target_fn_name".to_string(),
                         Some(Value::Str {
-                            ty: DataType::Str,
                             val: func_info.name.to_string(),
                         }),
                     );
                     loc_info.static_data.insert(
                         "target_fn_type".to_string(),
                         Some(Value::Str {
-                            ty: DataType::Str,
                             val: func_info.func_kind.to_string(),
                         }),
                     );
                     loc_info.static_data.insert(
                         "target_imp_module".to_string(),
                         Some(Value::Str {
-                            ty: DataType::Str,
                             val: func_info.module.to_string(),
                         }),
                     );

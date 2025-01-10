@@ -346,6 +346,14 @@ impl IntLit {
     pub fn u64(val: u64) -> Self {
         Self::U64 { val }
     }
+    pub fn ty(&self) -> DataType {
+        match self {
+            IntLit::I32 { .. } => DataType::I32,
+            IntLit::U32 { .. } => DataType::U32,
+            IntLit::I64 { .. } => DataType::I64,
+            IntLit::U64 { .. } => DataType::U64,
+        }
+    }
 }
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum FloatLit {
@@ -358,6 +366,12 @@ impl FloatLit {
     }
     pub fn f64(val: f64) -> Self {
         Self::F64 { val }
+    }
+    pub fn ty(&self) -> DataType {
+        match self {
+            FloatLit::F32 { .. } => DataType::F32,
+            FloatLit::F64 { .. } => DataType::F64,
+        }
     }
 }
 
@@ -395,11 +409,9 @@ pub enum Value {
         // digits: u8 // (max 64 bits), todo: may not need
     },
     Boolean {
-        ty: DataType,
         val: bool,
     },
     Str {
-        ty: DataType,
         val: String,
     },
     Tuple {
@@ -407,9 +419,23 @@ pub enum Value {
         vals: Vec<Expr>,
     },
     U32U32Map {
-        ty: DataType,
         val: Box<HashMap<u32, u32>>,
     },
+}
+impl Value {
+    pub fn ty(&self) -> DataType {
+        match self {
+            Value::Int { val, .. } => val.ty(),
+            Value::Float { val, .. } => val.ty(),
+            Value::Boolean { .. } => DataType::Boolean,
+            Value::Str { .. } => DataType::Str,
+            Value::Tuple { ty, .. } => ty.clone(),
+            Value::U32U32Map { .. } => DataType::Map {
+                key_ty: Box::new(DataType::U32),
+                val_ty: Box::new(DataType::U32),
+            },
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default)]

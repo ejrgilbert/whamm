@@ -318,10 +318,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     let assign = Statement::Assign {
                         var_id: var_id.clone(),
                         expr: Expr::Primitive {
-                            val: Value::Boolean {
-                                ty: DataType::Boolean,
-                                val: *val,
-                            },
+                            val: Value::Boolean { val: *val },
                             loc: None,
                         },
                         loc: None,
@@ -339,10 +336,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     let assign = Statement::Assign {
                         var_id: var_id.clone(),
                         expr: Expr::Primitive {
-                            val: Value::Str {
-                                ty: DataType::Str,
-                                val: val.clone(),
-                            },
+                            val: Value::Str { val: val.clone() },
                             loc: None,
                         },
                         loc: None,
@@ -370,16 +364,16 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     };
                     vec![decl, assign]
                 }
-                Some(Value::U32U32Map { val, ty }) => {
+                Some(Value::U32U32Map { val: map_val }) => {
                     // create a declaration
                     let decl = Statement::Decl {
-                        ty: ty.clone(),
+                        ty: val.as_ref().unwrap().ty(),
                         var_id: var_id.clone(),
                         loc: None,
                     };
                     // create assignments
                     let mut stmts = vec![decl];
-                    for (key, val) in val.iter() {
+                    for (key, val) in map_val.iter() {
                         stmts.push(Statement::SetMap {
                             map: var_id.clone(),
                             key: Expr::Primitive {

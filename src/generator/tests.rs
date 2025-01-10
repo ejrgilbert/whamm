@@ -6,7 +6,7 @@ use crate::common::error::ErrorGen;
 use crate::generator::folding::ExprFolder;
 use crate::parser::tests;
 use crate::parser::types::Expr::{BinOp as ExprBinOp, VarId};
-use crate::parser::types::{BinOp, DataType, Expr, Value, Whamm};
+use crate::parser::types::{BinOp, Expr, Value, Whamm};
 use crate::verifier::types::{Record, ScopeType, SymbolTable};
 use crate::verifier::verifier;
 use log::{debug, error};
@@ -100,7 +100,6 @@ fn hardcode_compiler_constants(table: &mut SymbolTable, err: &mut ErrorGen) {
     let target_fn_type = get_rec(table, "target_fn_type");
     if let Some(Record::Var { value, .. }) = target_fn_type {
         *value = Some(Value::Str {
-            ty: DataType::Str,
             val: "import".to_string(),
         })
     } else {
@@ -112,7 +111,6 @@ fn hardcode_compiler_constants(table: &mut SymbolTable, err: &mut ErrorGen) {
     let target_imp_module = get_rec(table, "target_imp_module");
     if let Some(Record::Var { value, .. }) = target_imp_module {
         *value = Some(Value::Str {
-            ty: DataType::Str,
             val: "ic0".to_string(),
         })
     } else {
@@ -124,7 +122,6 @@ fn hardcode_compiler_constants(table: &mut SymbolTable, err: &mut ErrorGen) {
     let target_fn_name = get_rec(table, "target_fn_name");
     if let Some(Record::Var { value, .. }) = target_fn_name {
         *value = Some(Value::Str {
-            ty: DataType::Str,
             val: "call_new".to_string(),
         })
     } else {

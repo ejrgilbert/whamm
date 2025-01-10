@@ -33,7 +33,6 @@ impl ExprFolder {
                             // both are boolean primitives
                             return Expr::Primitive {
                                 val: Value::Boolean {
-                                    ty: DataType::Boolean,
                                     val: lhs_bool && rhs_bool,
                                 },
                                 loc: None,
@@ -46,10 +45,7 @@ impl ExprFolder {
                             rhs
                         } else {
                             Expr::Primitive {
-                                val: Value::Boolean {
-                                    ty: DataType::Boolean,
-                                    val: false,
-                                },
+                                val: Value::Boolean { val: false },
                                 loc: None,
                             }
                         }
@@ -63,10 +59,7 @@ impl ExprFolder {
                                 lhs
                             } else {
                                 Expr::Primitive {
-                                    val: Value::Boolean {
-                                        ty: DataType::Boolean,
-                                        val: false,
-                                    },
+                                    val: Value::Boolean { val: false },
                                     loc: None,
                                 }
                             }
@@ -89,7 +82,6 @@ impl ExprFolder {
                             // both are boolean primitives
                             return Expr::Primitive {
                                 val: Value::Boolean {
-                                    ty: DataType::Boolean,
                                     val: lhs_bool || rhs_bool,
                                 },
                                 loc: None,
@@ -100,10 +92,7 @@ impl ExprFolder {
                         // - if it's a true,  this expression is true
                         if lhs_bool {
                             Expr::Primitive {
-                                val: Value::Boolean {
-                                    ty: DataType::Boolean,
-                                    val: true,
-                                },
+                                val: Value::Boolean { val: true },
                                 loc: None,
                             }
                         } else {
@@ -117,10 +106,7 @@ impl ExprFolder {
                             // - if it's a false, can drop it
                             if rhs_bool {
                                 Expr::Primitive {
-                                    val: Value::Boolean {
-                                        ty: DataType::Boolean,
-                                        val: true,
-                                    },
+                                    val: Value::Boolean { val: true },
                                     loc: None,
                                 }
                             } else {
@@ -270,10 +256,7 @@ impl ExprFolder {
                     let expr_val = ExprFolder::get_single_bool(&expr);
                     if let Some(expr_bool) = expr_val {
                         Expr::Primitive {
-                            val: Value::Boolean {
-                                ty: DataType::Boolean,
-                                val: !expr_bool,
-                            },
+                            val: Value::Boolean { val: !expr_bool },
                             loc: None,
                         }
                     } else {
@@ -296,14 +279,12 @@ impl ExprFolder {
                 return match op {
                     BinOp::EQ => Some(Expr::Primitive {
                         val: Value::Boolean {
-                            ty: DataType::Boolean,
                             val: lhs_bool == rhs_bool,
                         },
                         loc: None,
                     }),
                     BinOp::NE => Some(Expr::Primitive {
                         val: Value::Boolean {
-                            ty: DataType::Boolean,
                             val: lhs_bool != rhs_bool,
                         },
                         loc: None,
@@ -321,42 +302,36 @@ impl ExprFolder {
                 return match op {
                     BinOp::EQ => Some(Expr::Primitive {
                         val: Value::Boolean {
-                            ty: DataType::Boolean,
                             val: lhs_int == rhs_int,
                         },
                         loc: None,
                     }),
                     BinOp::NE => Some(Expr::Primitive {
                         val: Value::Boolean {
-                            ty: DataType::Boolean,
                             val: lhs_int != rhs_int,
                         },
                         loc: None,
                     }),
                     BinOp::GE => Some(Expr::Primitive {
                         val: Value::Boolean {
-                            ty: DataType::Boolean,
                             val: lhs_int >= rhs_int,
                         },
                         loc: None,
                     }),
                     BinOp::GT => Some(Expr::Primitive {
                         val: Value::Boolean {
-                            ty: DataType::Boolean,
                             val: lhs_int > rhs_int,
                         },
                         loc: None,
                     }),
                     BinOp::LE => Some(Expr::Primitive {
                         val: Value::Boolean {
-                            ty: DataType::Boolean,
                             val: lhs_int <= rhs_int,
                         },
                         loc: None,
                     }),
                     BinOp::LT => Some(Expr::Primitive {
                         val: Value::Boolean {
-                            ty: DataType::Boolean,
                             val: lhs_int < rhs_int,
                         },
                         loc: None,
@@ -428,14 +403,12 @@ impl ExprFolder {
                 return match op {
                     BinOp::EQ => Some(Expr::Primitive {
                         val: Value::Boolean {
-                            ty: DataType::Boolean,
                             val: lhs_str == rhs_str,
                         },
                         loc: None,
                     }),
                     BinOp::NE => Some(Expr::Primitive {
                         val: Value::Boolean {
-                            ty: DataType::Boolean,
                             val: lhs_str != rhs_str,
                         },
                         loc: None,

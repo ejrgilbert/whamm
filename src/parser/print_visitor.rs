@@ -514,7 +514,7 @@ impl WhammVisitor<String> for AsStrVisitor {
 
     fn visit_value(&mut self, value: &Value) -> String {
         match value {
-            Value::Boolean { ty: _ty, val } => {
+            Value::Boolean { val } => {
                 let mut s = "".to_string();
                 s += &format!("{}", val);
                 s
@@ -537,10 +537,10 @@ impl WhammVisitor<String> for AsStrVisitor {
                 s += ")";
                 s
             }
-            Value::U32U32Map { ty, val } => {
+            Value::U32U32Map { val } => {
                 let mut s = "".to_string();
 
-                s += &format!("{} ", self.visit_datatype(ty));
+                s += &format!("{} ", self.visit_datatype(&value.ty()));
                 s += "[";
                 s += &val
                     .iter()

@@ -944,16 +944,11 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
 
     fn visit_value(&mut self, val: &mut Value) -> Option<DataType> {
         match val {
-            // Value::U32 { .. } => Some(DataType::U32),
-            // Value::I32 { .. } => Some(DataType::I32),
-            // Value::F32 { .. } => Some(DataType::F32),
-            // Value::U64 { .. } => Some(DataType::U64),
-            // Value::I64 { .. } => Some(DataType::I64),
-            // Value::F64 { .. } => Some(DataType::F64),
-            Value::Int { .. } => todo!(),
-            Value::Float { .. } => todo!(),
-            Value::Str { .. } => Some(DataType::Str),
-            Value::Boolean { .. } => Some(DataType::Boolean),
+            Value::Int { .. }
+            | Value::Float { .. }
+            | Value::Str { .. }
+            | Value::Boolean { .. }
+            | Value::U32U32Map { .. } => Some(val.ty()),
             Value::Tuple { ty: _, vals } => {
                 // this ty does not contain the DataType in ty_info
                 // Whamm parser doesn't give the ty_info for Tuples
@@ -981,7 +976,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 }
                 Some(DataType::Tuple { ty_info: all_tys })
             }
-            Value::U32U32Map { ty, .. } => Some(ty.clone()),
         }
     }
 }
