@@ -341,9 +341,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         match expr.implicit_cast(&lhs_ty) {
                             Ok(_) => None,
                             Err((msg, fatal)) => {
-                                let loc =
-                                    Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
-                                self.err.type_check_error(fatal, msg, &Some(loc.line_col));
+                                self.err.type_check_error(fatal, msg, &Some(rhs_loc.line_col));
                                 None
                             }
                         }
@@ -541,18 +539,18 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         | BinOp::Multiply
                         | BinOp::Divide
                         | BinOp::Modulo => {
+                            if matches!(lhs_ty, DataType::AssumeGood) {
+                                return Some(rhs_ty);
+                            } else if matches!(rhs_ty, DataType::AssumeGood) {
+                                return Some(lhs_ty);
+                            }
                             if lhs_ty == rhs_ty && lhs_ty.is_numeric() {
                                 Some(lhs_ty)
                             } else if lhs_ty.is_numeric() && rhs_ty.is_numeric() {
                                 match rhs.implicit_cast(&lhs_ty) {
                                     Ok(_) => Some(lhs_ty),
                                     Err((msg, fatal)) => {
-                                        let loc = Location::from(
-                                            &lhs_loc.line_col,
-                                            &rhs_loc.line_col,
-                                            None,
-                                        );
-                                        self.err.type_check_error(fatal, msg, &Some(loc.line_col));
+                                        self.err.type_check_error(fatal, msg, &Some(rhs_loc.line_col));
                                         Some(lhs_ty)
                                     }
                                 }
@@ -568,6 +566,9 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             }
                         }
                         BinOp::And | BinOp::Or => {
+                            if matches!(lhs_ty, DataType::AssumeGood) || matches!(rhs_ty, DataType::AssumeGood) {
+                                return Some(DataType::Boolean);
+                            }
                             if lhs_ty == DataType::Boolean && rhs_ty == DataType::Boolean {
                                 Some(DataType::Boolean)
                             } else {
@@ -580,18 +581,16 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             }
                         }
                         BinOp::EQ | BinOp::NE => {
+                            if matches!(lhs_ty, DataType::AssumeGood) || matches!(rhs_ty, DataType::AssumeGood) {
+                                return Some(DataType::Boolean);
+                            }
                             if lhs_ty == rhs_ty {
                                 Some(DataType::Boolean)
                             } else if lhs_ty.is_numeric() && rhs_ty.is_numeric() {
                                 match rhs.implicit_cast(&lhs_ty) {
                                     Ok(_) => Some(DataType::Boolean),
                                     Err((msg, fatal)) => {
-                                        let loc = Location::from(
-                                            &lhs_loc.line_col,
-                                            &rhs_loc.line_col,
-                                            None,
-                                        );
-                                        self.err.type_check_error(fatal, msg, &Some(loc.line_col));
+                                        self.err.type_check_error(fatal, msg, &Some(rhs_loc.line_col));
                                         Some(DataType::Boolean)
                                     }
                                 }
@@ -609,18 +608,16 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             }
                         }
                         BinOp::GT | BinOp::LT | BinOp::GE | BinOp::LE => {
+                            if matches!(lhs_ty, DataType::AssumeGood) || matches!(rhs_ty, DataType::AssumeGood) {
+                                return Some(DataType::Boolean);
+                            }
                             if lhs_ty == rhs_ty && lhs_ty.is_numeric() {
                                 Some(DataType::Boolean)
                             } else if lhs_ty.is_numeric() && rhs_ty.is_numeric() {
                                 match rhs.implicit_cast(&lhs_ty) {
                                     Ok(_) => Some(DataType::Boolean),
                                     Err((msg, fatal)) => {
-                                        let loc = Location::from(
-                                            &lhs_loc.line_col,
-                                            &rhs_loc.line_col,
-                                            None,
-                                        );
-                                        self.err.type_check_error(fatal, msg, &Some(loc.line_col));
+                                        self.err.type_check_error(fatal, msg, &Some(rhs_loc.line_col));
                                         Some(DataType::Boolean)
                                     }
                                 }
@@ -791,13 +788,25 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         {
                             match (expected, actual) {
                                 (Some(expected), Some(actual)) => {
-                                    // if actual is a tuple, it's not structural equality
+                                    // if actual is a tuple, it's not structurally equal
                                     if expected != actual {
-                                        self.err.type_check_error(
-                                            false,
-                                            format! {"Expected type {:?} for the {} param, got {:?}", expected, i+1, actual},
-                                            &Some(args.get(i).as_ref().unwrap().loc().clone().unwrap().line_col),
-                                        );
+                                        let arg = args.get_mut(i).unwrap();
+                                        let arg_loc = arg.loc().clone().unwrap();
+                                        if expected.is_numeric() && actual.is_numeric() {
+                                            // try to implicitly do a cast here
+                                            match arg.implicit_cast(expected) {
+                                                Err((msg, fatal)) => {
+                                                    self.err.type_check_error(fatal, msg, &Some(arg_loc.line_col))
+                                                },
+                                                Ok(_) => {} // nothing to do
+                                            }
+                                        } else {
+                                            self.err.type_check_error(
+                                                false,
+                                                format! {"Expected type {:?} param {}, got {:?}", expected, i, actual},
+                                                &Some(arg_loc.line_col)
+                                            );
+                                        }
                                     }
                                 }
                                 _ => {

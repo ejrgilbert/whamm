@@ -523,28 +523,34 @@ impl ExprFolder {
     }
     pub fn get_i32(lhs: &Expr, rhs: &Expr) -> (Option<i32>, Option<i32>) {
         let lhs_val = match lhs {
-            Expr::Primitive { val, .. } => match val.clone().implicit_cast(&DataType::I32) {
-                Ok(()) => match val {
-                    Value::Int {
-                        val: IntLit::I32 { val },
-                        ..
-                    } => Some(*val),
+            Expr::Primitive { val, .. } => {
+                let mut casted = val.clone();
+                match casted.implicit_cast(&DataType::I32) {
+                    Ok(()) => match casted {
+                        Value::Int {
+                            val: IntLit::I32 { val },
+                            ..
+                        } => Some(val),
+                        _ => None,
+                    },
                     _ => None,
-                },
-                _ => None,
+                }
             },
             _ => None,
         };
         let rhs_val = match rhs {
-            Expr::Primitive { val, .. } => match val.clone().implicit_cast(&DataType::I32) {
-                Ok(()) => match val {
-                    Value::Int {
-                        val: IntLit::I32 { val },
-                        ..
-                    } => Some(*val),
+            Expr::Primitive { val, .. } => {
+                let mut casted = val.clone();
+                match casted.implicit_cast(&DataType::I32) {
+                    Ok(()) => match casted {
+                        Value::Int {
+                            val: IntLit::I32 { val },
+                            ..
+                        } => Some(val),
+                        _ => None,
+                    },
                     _ => None,
-                },
-                _ => None,
+                }
             },
             _ => None,
         };

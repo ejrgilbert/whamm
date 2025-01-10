@@ -875,29 +875,27 @@ pub enum Expr {
 }
 impl Expr {
     pub fn implicit_cast(&mut self, target: &DataType) -> Result<(), (String, bool)> {
-        let (err_reason, is_unexp) = match self {
+        match self.internal_implicit_cast(target) {
+            Err(msg) => Err((format!("CastError: Cannot implicitly cast {msg} to {target}. Please add an explicit cast."), false)),
+            _ => Ok(())
+        }
+    }
+    fn internal_implicit_cast(&mut self, target: &DataType) -> Result<(), String> {
+        match self {
             Self::Primitive { val: value, .. } => match value.implicit_cast(target) {
                 Ok(()) => return Ok(()),
-                Err(msg) => (msg, false),
+                Err(res) => Err(res),
             },
-            Self::Ternary { conseq, alt, .. } => match conseq.implicit_cast(target) {
-                Ok(()) => match alt.implicit_cast(target) {
+            Self::Ternary { conseq, alt, .. } => match conseq.internal_implicit_cast(target) {
+                Ok(()) => match alt.internal_implicit_cast(target) {
                     Ok(()) => return Ok(()),
-                    Err(res) => res,
+                    Err(res) => Err(res),
                 },
-                Err(res) => res,
+                Err(res) => Err(res),
             },
-            _ => ("cannot implicitly cast expressions".to_string(), true),
-        };
-        let unexp_msg = if is_unexp {
-            "Looks like you've found a bug...please report this behavior! Exiting now..."
-        } else {
-            ""
-        };
-        Err((
-            format!("CastError: Cannot implicitly cast {err_reason}. {unexp_msg}"),
-            true,
-        ))
+            _ => Err("expression".to_string()),
+        }
+        // Err(format!("CastError: Cannot implicitly cast {err_reason}. {unexp_msg}"))
     }
 
     pub fn loc(&self) -> &Option<Location> {
