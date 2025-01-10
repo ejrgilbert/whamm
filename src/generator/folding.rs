@@ -1,5 +1,5 @@
 use crate::common::error::ErrorGen;
-use crate::parser::types::{BinOp, DataType, Definition, Expr, UnOp, Value};
+use crate::parser::types::{BinOp, DataType, Definition, Expr, IntLit, NumFmt, UnOp, Value};
 use crate::verifier::types::Record::Var;
 use crate::verifier::types::{Record, SymbolTable};
 
@@ -362,37 +362,52 @@ impl ExprFolder {
                         loc: None,
                     }),
                     BinOp::Add => Some(Expr::Primitive {
-                        val: Value::I32 {
-                            ty: DataType::I32,
-                            val: lhs_int + rhs_int,
+                        val: Value::Int {
+                            val: IntLit::I32 {
+                                val: lhs_int + rhs_int
+                            },
+                            token: "".to_string(),
+                            fmt: NumFmt::NA
                         },
                         loc: None,
                     }),
                     BinOp::Subtract => Some(Expr::Primitive {
-                        val: Value::I32 {
-                            ty: DataType::I32,
-                            val: lhs_int - rhs_int,
+                        val: Value::Int {
+                            val: IntLit::I32 {
+                                val: lhs_int - rhs_int
+                            },
+                            token: "".to_string(),
+                            fmt: NumFmt::NA
                         },
                         loc: None,
                     }),
                     BinOp::Multiply => Some(Expr::Primitive {
-                        val: Value::I32 {
-                            ty: DataType::I32,
-                            val: lhs_int * rhs_int,
+                        val: Value::Int {
+                            val: IntLit::I32 {
+                                val: lhs_int * rhs_int
+                            },
+                            token: "".to_string(),
+                            fmt: NumFmt::NA
                         },
                         loc: None,
                     }),
                     BinOp::Divide => Some(Expr::Primitive {
-                        val: Value::I32 {
-                            ty: DataType::I32,
-                            val: lhs_int / rhs_int,
+                        val: Value::Int {
+                            val: IntLit::I32 {
+                                val: lhs_int / rhs_int
+                            },
+                            token: "".to_string(),
+                            fmt: NumFmt::NA
                         },
                         loc: None,
                     }),
                     BinOp::Modulo => Some(Expr::Primitive {
-                        val: Value::I32 {
-                            ty: DataType::I32,
-                            val: lhs_int % rhs_int,
+                        val: Value::Int {
+                            val: IntLit::I32 {
+                                val: lhs_int % rhs_int
+                            },
+                            token: "".to_string(),
+                            fmt: NumFmt::NA
                         },
                         loc: None,
                     }),
@@ -531,29 +546,37 @@ impl ExprFolder {
     pub fn get_i32(lhs: &Expr, rhs: &Expr) -> (Option<i32>, Option<i32>) {
         let lhs_val = match lhs {
             Expr::Primitive {
-                val: Value::I32 { val: lhs_val, .. },
-                ..
-            } => Some(*lhs_val),
-            Expr::Primitive {
-                val: Value::U32 { val: lhs_val, .. },
+                val: Value::Int { val: _lhs_val, .. },
                 ..
             } => {
-                // TODO -- check overflow here!
-                Some(*lhs_val as i32)
-            }
+                // Some(*lhs_val)
+                todo!()
+            },
+            // Expr::Primitive {
+            //     val: Value::Int { val: _lhs_val, .. },
+            //     ..
+            // } => {
+            //     // TODO -- check overflow here!
+            //     // Some(*lhs_val as i32)
+            //     todo!()
+            // }
             _ => None,
         };
         let rhs_val = match rhs {
             Expr::Primitive {
-                val: Value::I32 { val: rhs_val, .. },
+                val: Value::Int { val: _rhs_val, .. },
                 ..
-            } => Some(*rhs_val),
+            } => {
+                // Some(*rhs_val)
+                todo!()
+            },
             Expr::Primitive {
-                val: Value::U32 { val: rhs_val, .. },
+                val: Value::Float { val: _rhs_val, .. },
                 ..
             } => {
                 // TODO -- check overflow here!
-                Some(*rhs_val as i32)
+                // Some(*rhs_val as i32)
+                todo!()
             }
             _ => None,
         };

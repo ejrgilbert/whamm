@@ -326,32 +326,85 @@ impl DataType {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum IntLit {
+    I32 {
+        val: i32,
+    },
+    U32 {
+        val: u32,
+    },
+    I64 {
+        val: i64,
+    },
+    U64 {
+        val: u64,
+    }
+}
+impl IntLit {
+    pub fn i32(val: i32) -> Self {
+        Self::I32 { val }
+    }
+    pub fn u32(val: u32) -> Self {
+        Self::U32 {val}
+    }
+    pub fn i64(val: i64) -> Self {
+        Self::I64 {val}
+    }
+    pub fn u64(val: u64) -> Self {
+        Self::U64 {val}
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum FloatLit {
+    F32 {
+        val: f32,
+    },
+    F64 {
+        val: f64,
+    }
+}
+impl FloatLit {
+    pub fn f32(val: f32) -> Self {
+        Self::F32 { val }
+    }
+    pub fn f64(val: f64) -> Self {
+        Self::F64 { val }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum NumFmt {
+    Bin,
+    Hex,
+    Dec,
+    NA // not applicable (created by compiler)
+}
+impl NumFmt {
+    pub fn base(&self) -> u32 {
+        match self {
+            Self::Bin => 2,
+            Self::Hex => 16,
+            Self::Dec => 10,
+            Self::NA => u32::MAX
+        }
+    }
+}
+
 // Values
 #[derive(Clone, Debug)]
 pub enum Value {
-    U32 {
-        ty: DataType,
-        val: u32,
+    Int {
+        val: IntLit,
+        // is_neg: bool, // todo: may not need
+        token: String,
+        fmt: NumFmt,
+        // digits: u8 // (max 64 bits), todo: may not need
     },
-    I32 {
-        ty: DataType,
-        val: i32,
-    },
-    F32 {
-        ty: DataType,
-        val: f32,
-    },
-    U64 {
-        ty: DataType,
-        val: u64,
-    },
-    I64 {
-        ty: DataType,
-        val: i64,
-    },
-    F64 {
-        ty: DataType,
-        val: f64,
+    Float {
+        val: FloatLit,
+        token: String,
+        // digits: u8 // (max 64 bits), todo: may not need
     },
     Boolean {
         ty: DataType,
@@ -449,9 +502,12 @@ impl Statement {
     pub fn dummy() -> Self {
         Self::Expr {
             expr: Expr::Primitive {
-                val: Value::I32 {
-                    ty: DataType::I32,
-                    val: 0,
+                val: Value::Int {
+                    val: IntLit::U32 {
+                        val: 0
+                    },
+                    token: "0".to_string(),
+                    fmt: NumFmt::Dec
                 },
                 loc: None,
             },

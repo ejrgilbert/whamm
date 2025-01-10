@@ -5,7 +5,7 @@ use crate::for_each_opcode;
 use crate::generator::rewriting::simple_ast::SimpleProbe;
 use crate::parser::rules::core::WhammModeKind;
 use crate::parser::rules::wasm::{OpcodeEventKind, WasmPackageKind};
-use crate::parser::types::{DataType, RulePart, Value};
+use crate::parser::types::{DataType, IntLit, NumFmt, RulePart, Value};
 use log::warn;
 use orca_wasm::ir::id::FunctionID;
 use orca_wasm::ir::module::module_functions::{FuncKind, ImportedFunction, LocalFunction};
@@ -213,9 +213,12 @@ impl Event for OpcodeEvent {
                 if let Operator::Br { relative_depth } = instr {
                     loc_info.static_data.insert(
                         "imm0".to_string(),
-                        Some(Value::U32 {
-                            ty: DataType::U32,
-                            val: *relative_depth,
+                        Some(Value::Int {
+                            val: IntLit::U32 {
+                                val: *relative_depth
+                            },
+                            token: "".to_string(),
+                            fmt: NumFmt::NA
                         }),
                     );
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -225,9 +228,12 @@ impl Event for OpcodeEvent {
                 if let Operator::BrIf { relative_depth } = instr {
                     loc_info.static_data.insert(
                         "imm0".to_string(),
-                        Some(Value::U32 {
-                            ty: DataType::U32,
-                            val: *relative_depth,
+                        Some(Value::Int {
+                            val: IntLit::U32 {
+                                val: *relative_depth
+                            },
+                            token: "".to_string(),
+                            fmt: NumFmt::NA
                         }),
                     );
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -237,16 +243,22 @@ impl Event for OpcodeEvent {
                 if let Operator::BrTable { targets } = instr {
                     loc_info.static_data.insert(
                         "num_targets".to_string(),
-                        Some(Value::U32 {
-                            ty: DataType::U32,
-                            val: targets.len(),
+                        Some(Value::Int {
+                            val: IntLit::U32 {
+                                val: targets.len()
+                            },
+                            token: "".to_string(),
+                            fmt: NumFmt::NA
                         }),
                     );
                     loc_info.static_data.insert(
                         "default_target".to_string(),
-                        Some(Value::U32 {
-                            ty: DataType::U32,
-                            val: targets.default(),
+                        Some(Value::Int {
+                            val: IntLit::U32 {
+                                val: targets.default()
+                            },
+                            token: "".to_string(),
+                            fmt: NumFmt::NA
                         }),
                     );
 
@@ -256,9 +268,12 @@ impl Event for OpcodeEvent {
                         if let Ok(target) = target {
                             loc_info.static_data.insert(
                                 format!("imm{i}"),
-                                Some(Value::U32 {
-                                    ty: DataType::U32,
-                                    val: target,
+                                Some(Value::Int {
+                                    val: IntLit::U32 {
+                                        val: target
+                                    },
+                                    token: "".to_string(),
+                                    fmt: NumFmt::NA
                                 }),
                             );
                             target_map.insert(i as u32, target);
@@ -332,9 +347,12 @@ impl Event for OpcodeEvent {
                     );
                     loc_info.static_data.insert(
                         "imm0".to_string(),
-                        Some(Value::U32 {
-                            ty: DataType::U32,
-                            val: *fid,
+                        Some(Value::Int {
+                            val: IntLit::U32 {
+                                val: *fid
+                            },
+                            token: "".to_string(),
+                            fmt: NumFmt::NA
                         }),
                     );
 
@@ -346,9 +364,12 @@ impl Event for OpcodeEvent {
                 if let Operator::LocalGet { local_index } = instr {
                     loc_info.static_data.insert(
                         "imm0".to_string(),
-                        Some(Value::U32 {
-                            ty: DataType::U32,
-                            val: *local_index,
+                        Some(Value::Int {
+                            val: IntLit::U32 {
+                                val: *local_index
+                            },
+                            token: "".to_string(),
+                            fmt: NumFmt::NA
                         }),
                     );
 
@@ -360,9 +381,12 @@ impl Event for OpcodeEvent {
                 if let Operator::LocalSet { local_index } = instr {
                     loc_info.static_data.insert(
                         "imm0".to_string(),
-                        Some(Value::U32 {
-                            ty: DataType::U32,
-                            val: *local_index,
+                        Some(Value::Int {
+                            val: IntLit::U32 {
+                                val: *local_index
+                            },
+                            token: "".to_string(),
+                            fmt: NumFmt::NA
                         }),
                     );
 
@@ -374,9 +398,12 @@ impl Event for OpcodeEvent {
                 if let Operator::LocalTee { local_index } = instr {
                     loc_info.static_data.insert(
                         "imm0".to_string(),
-                        Some(Value::U32 {
-                            ty: DataType::U32,
-                            val: *local_index,
+                        Some(Value::Int {
+                            val: IntLit::U32 {
+                                val: *local_index
+                            },
+                            token: "".to_string(),
+                            fmt: NumFmt::NA
                         }),
                     );
 
@@ -388,9 +415,12 @@ impl Event for OpcodeEvent {
                 if let Operator::GlobalGet { global_index } = instr {
                     loc_info.static_data.insert(
                         "imm0".to_string(),
-                        Some(Value::U32 {
-                            ty: DataType::U32,
-                            val: *global_index,
+                        Some(Value::Int {
+                            val: IntLit::U32 {
+                                val: *global_index
+                            },
+                            token: "".to_string(),
+                            fmt: NumFmt::NA
                         }),
                     );
 
@@ -402,9 +432,12 @@ impl Event for OpcodeEvent {
                 if let Operator::GlobalSet { global_index } = instr {
                     loc_info.static_data.insert(
                         "imm0".to_string(),
-                        Some(Value::U32 {
-                            ty: DataType::U32,
-                            val: *global_index,
+                        Some(Value::Int {
+                            val: IntLit::U32 {
+                                val: *global_index
+                            },
+                            token: "".to_string(),
+                            fmt: NumFmt::NA
                         }),
                     );
 
@@ -416,9 +449,12 @@ impl Event for OpcodeEvent {
                 if let Operator::I32Const { value } = instr {
                     loc_info.static_data.insert(
                         "imm0".to_string(),
-                        Some(Value::I32 {
-                            ty: DataType::I32,
-                            val: *value,
+                        Some(Value::Int {
+                            val: IntLit::I32 {
+                                val: *value
+                            },
+                            token: "".to_string(),
+                            fmt: NumFmt::NA
                         }),
                     );
 
@@ -430,9 +466,12 @@ impl Event for OpcodeEvent {
                 if let Operator::I64Const { value } = instr {
                     loc_info.static_data.insert(
                         "imm0".to_string(),
-                        Some(Value::I64 {
-                            ty: DataType::I64,
-                            val: *value,
+                        Some(Value::Int {
+                            val: IntLit::I64 {
+                                val: *value
+                            },
+                            token: "".to_string(),
+                            fmt: NumFmt::NA
                         }),
                     );
 

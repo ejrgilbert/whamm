@@ -519,34 +519,14 @@ impl WhammVisitor<String> for AsStrVisitor {
                 s += &format!("{}", val);
                 s
             }
-            Value::U32 { val, .. } => {
+            Value::Int { token, .. } => {
                 let mut s = "".to_string();
-                s += &format!("{}", val);
+                s += &format!("{}", token);
                 s
             }
-            Value::I32 { val, .. } => {
+            Value::Float { token, .. } => {
                 let mut s = "".to_string();
-                s += &format!("{}", val);
-                s
-            }
-            Value::F32 { val, .. } => {
-                let mut s = "".to_string();
-                s += &format!("{}", val);
-                s
-            }
-            Value::U64 { val, .. } => {
-                let mut s = "".to_string();
-                s += &format!("{}", val);
-                s
-            }
-            Value::I64 { val, .. } => {
-                let mut s = "".to_string();
-                s += &format!("{}", val);
-                s
-            }
-            Value::F64 { val, .. } => {
-                let mut s = "".to_string();
-                s += &format!("{}", val);
+                s += &format!("{}", token);
                 s
             }
             Value::Str { val, .. } => {

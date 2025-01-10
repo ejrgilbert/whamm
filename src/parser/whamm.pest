@@ -129,7 +129,7 @@ prefix = _{ UNOP }
 UNOP = _{ neg }
     neg = { "!" }
 
-val = _{ BOOL | get_map | ID | INT | DEC | STRING | tuple }
+val = _{ BOOL | get_map | ID | INT | FLOAT | STRING | tuple }
 operand = _{ fn_call | "(" ~ expr ~ ")" | val }
 
 tuple = { "(" ~ ")" | "(" ~ (val) ~ ( "," ~ val )* ~ ")" }
@@ -166,18 +166,31 @@ BINOP = _{ LOGOP | RELOP | SUMOP | MULOP }
 // ===================
 
 // TODO -- make sure that the binary/octal/hexadecimal formats are parsed correctly
-INT = @{
-    "0x" ~ ASCII_HEX_DIGIT+ // Hexadecimal digit
-    | "0b" ~ ASCII_BIN_DIGIT+ // Binary digit
-    | "0" ~ ASCII_OCT_DIGIT+ // Octal digit
-    | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT+ // Multiple digit, base 10
-    | ASCII_DIGIT // Single digit, base 10 (account for having just '0')
-    | "-" ~ ASCII_NONZERO_DIGIT ~ ASCII_DIGIT* //negative anything but 0
+// TODO -- support exponents?
+INT = {
+    int_hex
+    | int_bin
+//     | int_oct
+    | int
 }
+    int_hex = @{ ^"0x" ~ ASCII_HEX_DIGIT+ } // Hexadecimal digit
+    int_bin = @{ ^"0b" ~ ASCII_BIN_DIGIT+ } // Binary digit
+//     int_oct = @{ "-"? ~ "0" ~ ASCII_OCT_DIGIT+ }  // Octal digit
+    int = @{
+        "-"? ~ ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*  // Multiple digit, base 10 AND negative anything but 0
+        | ASCII_DIGIT                              // Single digit, base 10 (account for having just '0')
+    }
 
-DEC = @{
-    ASCII_NONZERO_DIGIT ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT*
+FLOAT = {
+    float
 }
+    float = @{
+        "-"? ~ ^"inf" |
+        "-"? ~ ^"infinity" |
+        "-"? ~ ^"NaN" |
+        "-"? ~ ASCII_DIGIT+ ~ "."? ~ ASCII_DIGIT* ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+ )? |
+        "-"? ~ ASCII_DIGIT+ ~ "."? ~ ASCII_DIGIT*
+    }
 
 BOOL = @{
     "true"
@@ -189,6 +202,7 @@ STRING = @{ "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
 // ===========================
 // ---- Reserved Keywords ----
 // ===========================
+// TODO -- may not need this after adding argN type assertions
 
 instr_arg = { "arg" ~ ASCII_DIGIT+ }
 

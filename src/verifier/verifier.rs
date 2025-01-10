@@ -944,12 +944,14 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
 
     fn visit_value(&mut self, val: &mut Value) -> Option<DataType> {
         match val {
-            Value::U32 { .. } => Some(DataType::U32),
-            Value::I32 { .. } => Some(DataType::I32),
-            Value::F32 { .. } => Some(DataType::F32),
-            Value::U64 { .. } => Some(DataType::U64),
-            Value::I64 { .. } => Some(DataType::I64),
-            Value::F64 { .. } => Some(DataType::F64),
+            // Value::U32 { .. } => Some(DataType::U32),
+            // Value::I32 { .. } => Some(DataType::I32),
+            // Value::F32 { .. } => Some(DataType::F32),
+            // Value::U64 { .. } => Some(DataType::U64),
+            // Value::I64 { .. } => Some(DataType::I64),
+            // Value::F64 { .. } => Some(DataType::F64),
+            Value::Int { .. } => todo!(),
+            Value::Float { .. } => todo!(),
             Value::Str { .. } => Some(DataType::Str),
             Value::Boolean { .. } => Some(DataType::Boolean),
             Value::Tuple { ty: _, vals } => {

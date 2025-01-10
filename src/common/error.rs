@@ -878,7 +878,7 @@ impl WarnType {
         }
     }
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum ErrorType {
     InstrumentationError {
         message: String,

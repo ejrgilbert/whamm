@@ -1,9 +1,7 @@
+use std::str::FromStr;
 use crate::common::error::{ErrorGen, WhammError};
 use crate::parser::types;
-use crate::parser::types::{
-    BinOp, Block, DataType, Definition, Expr, FnId, Location, ProbeRule, Rule, RulePart, Script,
-    Statement, UnOp, Value, Whamm, WhammParser, PRATT_PARSER,
-};
+use crate::parser::types::{BinOp, Block, DataType, Definition, Expr, FnId, Location, ProbeRule, Rule, RulePart, Script, Statement, UnOp, Value, Whamm, WhammParser, PRATT_PARSER, NumFmt, IntLit, FloatLit};
 use log::trace;
 use pest::error::{Error, LineColLocation};
 use pest::iterators::{Pair, Pairs};
@@ -491,9 +489,12 @@ fn handle_incrementor(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     vec![handle_custom_binop(
         BinOp::Add,
         Expr::Primitive {
-            val: Value::I32 {
-                ty: DataType::I32,
-                val: 1,
+            val: Value::Int {
+                val: IntLit::U32 {
+                    val: 1
+                },
+                token: "1".to_string(),
+                fmt: NumFmt::Dec
             },
             loc: Some(Location {
                 line_col: LineColLocation::from(pair.as_span()),
@@ -509,9 +510,12 @@ fn handle_decrementor(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     vec![handle_custom_binop(
         BinOp::Subtract,
         Expr::Primitive {
-            val: Value::I32 {
-                ty: DataType::I32,
-                val: 1,
+            val: Value::Int {
+                val: IntLit::U32 {
+                    val: 1
+                },
+                token: "1".to_string(),
+                fmt: NumFmt::Dec
             },
             loc: Some(Location {
                 line_col: LineColLocation::from(pair.as_span()),
@@ -1164,7 +1168,7 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
         Rule::ID => Ok(handle_id(pair)),
         Rule::tuple => handle_tuple(pair),
         Rule::INT => handle_int(pair),
-        Rule::DEC => handle_dec(pair),
+        Rule::FLOAT => handle_float(pair),
         Rule::BOOL => handle_bool(pair),
         Rule::STRING => handle_string(pair),
         Rule::get_map => handle_map_get(pair),
@@ -1515,27 +1519,185 @@ fn handle_tuple(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     })
 }
 
-fn handle_int(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
-    let val = pair.as_str().parse::<i32>().unwrap();
-    Ok(Expr::Primitive {
-        val: Value::I32 {
-            ty: DataType::I32,
-            val,
+pub fn handle_int(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
+    let pair = pair.into_inner().next().unwrap();
+    let token = pair.as_str().to_uppercase();
+    let mut digits = token.len() as i32;
+    let is_neg = if let Some(first) = token.chars().next() {
+        if first == '-' {
+            // remove '-' from digits count
+            digits -= 1;
+            true
+        } else {
+            false
+        }
+    } else {
+        // should always be at least two chars to even make it past pest parsing!
+        unreachable!()
+    };
+
+    let (to_parse, fmt) = match pair.as_rule() {
+        Rule::int_hex => {
+            // remove '0x' from token to parse (required by rust utils)
+            // but still keep '-' if used
+            let delim = "0X";
+            digits -= delim.len() as i32;
+
+            // number of binary digits per hex char
+            digits = digits * 4;
+            (token.strip_prefix(delim).unwrap().to_string(), NumFmt::Hex)
         },
-        loc: Some(Location {
-            line_col: LineColLocation::from(pair.as_span()),
-            path: None,
-        }),
-    })
+        Rule::int_bin => {
+            // remove '0b' from token to parse (required by rust utils)
+            // but still keep '-' if used
+            let delim = "0B";
+            digits -= delim.len() as i32;
+
+            (token.strip_prefix(delim).unwrap().to_string(), NumFmt::Bin)
+        },
+        Rule::int => {
+            // number of binary digits required to represent is unknown
+            digits = -1;
+            (token.clone(), NumFmt::Dec)
+        },
+        rule => return Err(vec![ErrorGen::get_parse_error(
+            true,
+            Some(UNEXPECTED_ERR_MSG.to_string()),
+            Some(LineColLocation::from(pair.as_span())),
+            vec![
+                Rule::int_hex,
+                Rule::int_bin,
+                Rule::int
+            ],
+            vec![rule],
+        )])
+    };
+
+    let val = if is_neg || fmt == NumFmt::Bin || fmt == NumFmt::Hex {
+        // By default, always parse hex and binary as signed
+        if digits > 32 {
+            if let Ok(val) = i64::from_str_radix(&to_parse, fmt.base()) {
+                Ok(IntLit::i64(val))
+            } else {
+                if fmt == NumFmt::Bin || fmt == NumFmt::Hex {
+                    if let Ok(val) = u64::from_str_radix(&to_parse, fmt.base()) {
+                        // convert and allow wrapping
+                        Ok(IntLit::i64(val as i64))
+                    } else {
+                        Err("i32 OR u32")
+                    }
+                } else {
+                    Err("i64")
+                }
+            }
+        } else if digits >= 0 {
+            if let Ok(val) = i32::from_str_radix(&to_parse, fmt.base()) {
+                Ok(IntLit::i32(val))
+            } else {
+                if fmt == NumFmt::Bin || fmt == NumFmt::Hex {
+                    if let Ok(val) = u32::from_str_radix(&to_parse, fmt.base()) {
+                        // convert and allow wrapping
+                        Ok(IntLit::i32(val as i32))
+                    } else {
+                        Err("i32 OR u32")
+                    }
+                } else {
+                    Err("i32")
+                }
+            }
+        } else {
+            // num digits required is unknown, figure it out!
+            if let Ok(val) = i32::from_str_radix(&to_parse, fmt.base()) {
+                Ok(IntLit::i32(val))
+            } else if let Ok(val) = i64::from_str_radix(&to_parse, fmt.base()) {
+                Ok(IntLit::i64(val))
+            } else {
+                Err("i32 OR i64")
+            }
+        }
+    } else {
+        if digits >= 32 {
+            if let Ok(val) = u64::from_str_radix(&to_parse, fmt.base()) {
+                Ok(IntLit::u64(val))
+            } else {
+                Err("u64")
+            }
+        } else if digits >= 0 {
+            if let Ok(val) = u32::from_str_radix(&to_parse, fmt.base()) {
+                Ok(IntLit::u32(val))
+            } else {
+                Err("u32")
+            }
+        } else {
+            // num digits required is unknown, figure it out!
+            if let Ok(val) = u32::from_str_radix(&to_parse, fmt.base()) {
+                Ok(IntLit::u32(val))
+            } else if let Ok(val) = u64::from_str_radix(&to_parse, fmt.base()) {
+                Ok(IntLit::u64(val))
+            } else {
+                Err("u32 OR u64")
+            }
+        }
+    };
+
+    match val {
+        Ok(val) => {
+            Ok(Expr::Primitive {
+                val: Value::Int {
+                    val,
+                    token: token.to_string(),
+                    fmt
+                },
+                loc: Some(Location {
+                    line_col: LineColLocation::from(pair.as_span()),
+                    path: None,
+                }),
+            })
+        },
+        Err(ty) => {
+            Err(vec![ErrorGen::get_parse_error(
+                true,
+                Some(format!("Failed to parse value into {ty}: {token}")),
+                Some(LineColLocation::from(pair.as_span())),
+                vec![],
+                vec![],
+            )])
+        }
+    }
 }
 
-fn handle_dec(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
-    let val = pair.as_str().parse::<f32>().unwrap();
+pub fn handle_float(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
+    let pair = pair.into_inner().next().unwrap();
+    let token = pair.as_str().to_lowercase();
+
+    // num digits required is unknown, figure it out!
+    let val = if let Ok(val) = f32::from_str(&token) {
+        let mut res = FloatLit::f32(val);
+        if val.is_infinite() && !token.contains("inf") {
+            // try to parse as f64
+            if let Ok(new_val) = f64::from_str(&token) {
+                if !new_val.is_infinite() {
+                    res = FloatLit::f64(new_val)
+                }
+            }
+        }
+        res
+    } else if let Ok(val) = f64::from_str(&token) {
+        FloatLit::f64(val)
+    } else {
+        return Err(vec![ErrorGen::get_parse_error(
+            true,
+            Some(format!("Failed to parse value into f32 OR f64: {token}")),
+            Some(LineColLocation::from(pair.as_span())),
+            vec![],
+            vec![],
+        )])
+    };
 
     Ok(Expr::Primitive {
-        val: Value::F32 {
-            ty: DataType::F32,
+        val: Value::Float {
             val,
+            token: token.to_string(),
         },
         loc: Some(Location {
             line_col: LineColLocation::from(pair.as_span()),

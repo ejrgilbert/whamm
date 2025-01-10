@@ -6,9 +6,7 @@ use crate::generator::folding::ExprFolder;
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::lang_features::report_vars::ReportVars;
-use crate::parser::types::{
-    BinOp, Block, DataType, Definition, Expr, Location, Statement, UnOp, Value,
-};
+use crate::parser::types::{BinOp, Block, DataType, Definition, Expr, FloatLit, IntLit, Location, Statement, UnOp, Value};
 use crate::verifier::types::{line_col_from_loc, Record, SymbolTable, VarAddr};
 use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
 use orca_wasm::ir::types::{BlockType, DataType as OrcaType, InitExpr, Value as OrcaValue};
@@ -1128,29 +1126,37 @@ fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 ) -> bool {
     let mut is_success = true;
     match val {
-        Value::U32 { val, .. } => {
-            injector.u32_const(*val);
-            is_success &= true;
+        Value::Int { val, .. } => {
+            match val {
+                IntLit::U32 {val} => {
+                    injector.u32_const(*val);
+                    is_success &= true;
+                }
+                IntLit::I32 {val} => {
+                    injector.i32_const(*val);
+                    is_success &= true;
+                }
+                IntLit::U64 {val} => {
+                    injector.u64_const(*val);
+                    is_success &= true;
+                }
+                IntLit::I64 {val} => {
+                    injector.i64_const(*val);
+                    is_success &= true;
+                }
+            }
         }
-        Value::I32 { val, .. } => {
-            injector.i32_const(*val);
-            is_success &= true;
-        }
-        Value::F32 { val, .. } => {
-            injector.f32_const(*val);
-            is_success &= true;
-        }
-        Value::U64 { val, .. } => {
-            injector.u64_const(*val);
-            is_success &= true;
-        }
-        Value::I64 { val, .. } => {
-            injector.i64_const(*val);
-            is_success &= true;
-        }
-        Value::F64 { val, .. } => {
-            injector.f64_const(*val);
-            is_success &= true;
+        Value::Float { val, .. } => {
+            match val {
+                FloatLit::F32 {val} => {
+                    injector.f32_const(*val);
+                    is_success &= true;
+                }
+                FloatLit::F64 {val} => {
+                    injector.f64_const(*val);
+                    is_success &= true;
+                }
+            }
         }
         Value::Str { val, .. } => {
             // At this point the String has been emitted into the Wasm module!
