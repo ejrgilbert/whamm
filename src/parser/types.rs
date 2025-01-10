@@ -36,6 +36,7 @@ lazy_static::lazy_static! {
             ).op(Op::infix(add, Left) | Op::infix(subtract, Left)) // SUMOP
             .op(Op::infix(multiply, Left) | Op::infix(divide, Left) | Op::infix(modulo, Left)) // MULOP
             .op(Op::prefix(neg))
+            .op(Op::postfix(cast))
     };
 }
 
@@ -1607,7 +1608,10 @@ impl ProvidedFunction {
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum UnOp {
-    Not,
+    Cast {
+        target: DataType
+    },
+    Not
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]

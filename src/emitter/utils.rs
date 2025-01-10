@@ -1112,6 +1112,7 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, injector: &mut T) -> bool {
 
 fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, injector: &mut T) -> bool {
     match op {
+        UnOp::Cast {..} => todo!(),
         UnOp::Not => {
             // return 1 if 0, return 0 otherwise
             injector.i32_eqz();

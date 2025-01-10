@@ -10,6 +10,22 @@ use glob::{glob, glob_with};
 use log::{debug, error, info, warn};
 
 const VALID_SCRIPTS: &[&str] = &[
+    // casts
+    r#"
+u8 i;
+
+BEGIN {
+    u32 j = i as u32;
+}
+    "#,
+    r#"
+u8 i;
+
+BEGIN {
+    bool b = true;
+    u32 j = b ? i as u32 : 1 as u32;
+}
+    "#,
     // all numeric types
     r#"
 u8 i;

@@ -692,6 +692,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 let expr_ty_op = self.visit_expr(expr);
                 if let Some(expr_ty) = expr_ty_op {
                     match op {
+                        UnOp::Cast {..} => todo!(),
                         UnOp::Not => {
                             if expr_ty == DataType::Boolean {
                                 Some(DataType::Boolean)

@@ -278,7 +278,7 @@ pub fn handle_fn_def(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, e
         Some(pair) => {
             if !matches!(pair.as_rule(), Rule::block) {
                 next = pairs.next();
-                type_from_rule(pair, err)
+                type_from_rule_handler(pair, err)
             } else {
                 DataType::Tuple { ty_info: vec![] }
             }
@@ -424,7 +424,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
 fn handle_decl(pair: &mut Pairs<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     let type_rule = pair.next().unwrap();
     let type_line_col = LineColLocation::from(type_rule.as_span());
-    let ty = type_from_rule(type_rule, err);
+    let ty = type_from_rule_handler(type_rule, err);
 
     let var_id_rule = pair.next().unwrap();
     let var_id_line_col = LineColLocation::from(var_id_rule.as_span());
@@ -912,7 +912,7 @@ fn handle_special_decl(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
 fn handle_param(mut pairs: Pairs<Rule>, err: &mut ErrorGen) -> Option<(Expr, DataType)> {
     if let Some(param_rule) = pairs.next() {
         // process the type
-        let ty = type_from_rule(param_rule, err);
+        let ty = type_from_rule_handler(param_rule, err);
         // process the name
         let id = handle_id(pairs.next().unwrap());
         Some((id, ty))
@@ -1061,7 +1061,7 @@ fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                                 true,
                                 Some(UNEXPECTED_ERR_MSG.to_string()),
                                 Some(LineColLocation::from(op.as_span())),
-                                vec![Rule::prefix],
+                                vec![Rule::neg],
                                 vec![rule],
                             )]);
                         }
@@ -1158,6 +1158,47 @@ fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
 
                     Err(errors)
                 }
+            };
+        })
+        .map_postfix(|lhs, op| -> Result<Expr, Vec<WhammError>> {
+            return match lhs {
+                Ok(lhs) => {
+                    let op_rule = op.as_rule();
+                    let op_span = op.as_span();
+                    let target = match type_from_rule(op.into_inner().next().unwrap()) {
+                        Ok(ty) => ty,
+                        Err(e) => return Err(e)
+                    };
+
+                    let op = match op_rule {
+                        Rule::cast => UnOp::Cast {
+                            target,
+                        },
+                        rule => {
+                            return Err(vec![ErrorGen::get_parse_error(
+                                true,
+                                Some(UNEXPECTED_ERR_MSG.to_string()),
+                                Some(LineColLocation::from(op_span)),
+                                vec![Rule::cast],
+                                vec![rule],
+                            )]);
+                        }
+                    };
+
+                    let loc = if let Some(rhs_loc) = lhs.loc() {
+                        let rhs_line_col = rhs_loc.line_col.clone();
+                        Some(Location::from(&rhs_line_col, &rhs_line_col, None))
+                    } else {
+                        None
+                    };
+
+                    Ok(Expr::UnOp {
+                        op,
+                        expr: Box::new(lhs),
+                        loc,
+                    })
+                }
+                Err(errors) => Err(errors),
             };
         })
         .parse(pairs)
@@ -1291,153 +1332,45 @@ fn probe_rule_part_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> RulePart {
 }
 
 // TYPES
+fn type_from_rule_handler(pair: Pair<Rule>, err: &mut ErrorGen) -> DataType {
+    match type_from_rule(pair) {
+        Ok(ty) => ty,
+        Err(errs) => {
+            err.add_errors(errs);
+            DataType::AssumeGood
+        }
+    }
+}
 
-fn type_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> DataType {
+fn type_from_rule(pair: Pair<Rule>) -> Result<DataType, Vec<WhammError>> {
     trace!("Entering type_from_rule");
     return match pair.as_rule() {
-        Rule::TY_U8 => {
-            // err.parse_error(
-            //     true,
-            //     Some("u8 not supported yet, see Issue #29: https://github.com/ejrgilbert/whamm/issues/141".to_string()),
-            //     Some(LineColLocation::from(pair.as_span())),
-            //     vec![
-            //         Rule::TY_I32,
-            //         Rule::TY_BOOL,
-            //         Rule::TY_STRING,
-            //         Rule::TY_TUPLE,
-            //         Rule::TY_MAP,
-            //     ],
-            //     vec![pair.as_rule()],
-            // );
-            DataType::U8
-        }
-        Rule::TY_I8 => {
-            // err.parse_error(
-            //     true,
-            //     Some("i8 not supported yet, see Issue #29: https://github.com/ejrgilbert/whamm/issues/141".to_string()),
-            //     Some(LineColLocation::from(pair.as_span())),
-            //     vec![
-            //         Rule::TY_I32,
-            //         Rule::TY_BOOL,
-            //         Rule::TY_STRING,
-            //         Rule::TY_TUPLE,
-            //         Rule::TY_MAP,
-            //     ],
-            //     vec![pair.as_rule()],
-            // );
-            DataType::I8
-        }
-        Rule::TY_U16 => {
-            // err.parse_error(
-            //     true,
-            //     Some("u16 not supported yet, see Issue #29: https://github.com/ejrgilbert/whamm/issues/141".to_string()),
-            //     Some(LineColLocation::from(pair.as_span())),
-            //     vec![
-            //         Rule::TY_I32,
-            //         Rule::TY_BOOL,
-            //         Rule::TY_STRING,
-            //         Rule::TY_TUPLE,
-            //         Rule::TY_MAP,
-            //     ],
-            //     vec![pair.as_rule()],
-            // );
-            DataType::U16
-        }
-        Rule::TY_I16 => {
-            // err.parse_error(
-            //     true,
-            //     Some("i16 not supported yet, see Issue #29: https://github.com/ejrgilbert/whamm/issues/141".to_string()),
-            //     Some(LineColLocation::from(pair.as_span())),
-            //     vec![
-            //         Rule::TY_I32,
-            //         Rule::TY_BOOL,
-            //         Rule::TY_STRING,
-            //         Rule::TY_TUPLE,
-            //         Rule::TY_MAP,
-            //     ],
-            //     vec![pair.as_rule()],
-            // );
-            DataType::I16
-        }
-        Rule::TY_U32 => DataType::U32,
-        Rule::TY_I32 => DataType::I32,
-        Rule::TY_F32 => {
-            // err.parse_error(
-            //     true,
-            //     Some("f32 not supported yet, see Issue #29: https://github.com/ejrgilbert/whamm/issues/141".to_string()),
-            //     Some(LineColLocation::from(pair.as_span())),
-            //     vec![
-            //         Rule::TY_I32,
-            //         Rule::TY_BOOL,
-            //         Rule::TY_STRING,
-            //         Rule::TY_TUPLE,
-            //         Rule::TY_MAP,
-            //     ],
-            //     vec![pair.as_rule()],
-            // );
-            DataType::F32
-        }
-        Rule::TY_U64 => {
-            // err.parse_error(
-            //     true,
-            //     Some("u64 not supported yet, see Issue #29: https://github.com/ejrgilbert/whamm/issues/141".to_string()),
-            //     Some(LineColLocation::from(pair.as_span())),
-            //     vec![
-            //         Rule::TY_I32,
-            //         Rule::TY_BOOL,
-            //         Rule::TY_STRING,
-            //         Rule::TY_TUPLE,
-            //         Rule::TY_MAP,
-            //     ],
-            //     vec![pair.as_rule()],
-            // );
-            DataType::U64
-        }
-        Rule::TY_I64 => {
-            // err.parse_error(
-            //     true,
-            //     Some("i64 not supported yet, see Issue #29: https://github.com/ejrgilbert/whamm/issues/141".to_string()),
-            //     Some(LineColLocation::from(pair.as_span())),
-            //     vec![
-            //         Rule::TY_I32,
-            //         Rule::TY_BOOL,
-            //         Rule::TY_STRING,
-            //         Rule::TY_TUPLE,
-            //         Rule::TY_MAP,
-            //     ],
-            //     vec![pair.as_rule()],
-            // );
-            DataType::I64
-        }
-        Rule::TY_F64 => {
-            // err.parse_error(
-            //     true,
-            //     Some("f64 not supported yet, see Issue #29: https://github.com/ejrgilbert/whamm/issues/141".to_string()),
-            //     Some(LineColLocation::from(pair.as_span())),
-            //     vec![
-            //         Rule::TY_I32,
-            //         Rule::TY_BOOL,
-            //         Rule::TY_STRING,
-            //         Rule::TY_TUPLE,
-            //         Rule::TY_MAP,
-            //     ],
-            //     vec![pair.as_rule()],
-            // );
-            DataType::F64
-        }
-        Rule::TY_BOOL => DataType::Boolean,
-        Rule::TY_STRING => DataType::Str,
+        Rule::TY_U8 => Ok(DataType::U8),
+        Rule::TY_I8 => Ok(DataType::I8),
+        Rule::TY_U16 => Ok(DataType::U16),
+        Rule::TY_I16 => Ok(DataType::U16),
+        Rule::TY_U32 => Ok(DataType::U32),
+        Rule::TY_I32 => Ok(DataType::I32),
+        Rule::TY_F32 => Ok(DataType::F32),
+        Rule::TY_U64 => Ok(DataType::U64),
+        Rule::TY_I64 => Ok(DataType::I64),
+        Rule::TY_F64 => Ok(DataType::F64),
+        Rule::TY_BOOL => Ok(DataType::Boolean),
+        Rule::TY_STRING => Ok(DataType::Str),
         Rule::TY_TUPLE => {
             let mut tuple_content_types = vec![];
-            pair.into_inner().for_each(|p| {
-                tuple_content_types.push(Box::new(type_from_rule(p, err)));
-            });
-            return if tuple_content_types.is_empty() {
-                DataType::Tuple { ty_info: vec![] }
-            } else {
-                DataType::Tuple {
-                    ty_info: tuple_content_types,
+            for p in pair.into_inner() {
+                match type_from_rule(p) {
+                    Ok(res) => tuple_content_types.push(Box::new(res)),
+                    Err(e) => return Err(e)
                 }
+            }
+            return if tuple_content_types.is_empty() {
+                Ok(DataType::Tuple { ty_info: vec![] })
+            } else {
+                Ok(DataType::Tuple {
+                    ty_info: tuple_content_types,
+                })
             };
         }
         Rule::TY_MAP => {
@@ -1445,16 +1378,22 @@ fn type_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> DataType {
             let key_ty_rule = pair.next().unwrap();
             let val_ty_rule = pair.next().unwrap();
 
-            let key_ty = type_from_rule(key_ty_rule, err);
-            let val_ty = type_from_rule(val_ty_rule, err);
+            let key_ty = match type_from_rule(key_ty_rule) {
+                Ok(res) => res,
+                Err(e) => return Err(e)
+            };
+            let val_ty = match type_from_rule(val_ty_rule) {
+                Ok(res) => res,
+                Err(e) => return Err(e)
+            };
 
-            return DataType::Map {
+            return Ok(DataType::Map {
                 key_ty: Box::new(key_ty),
                 val_ty: Box::new(val_ty),
-            };
+            });
         }
         rule => {
-            err.parse_error(
+            return Err(vec![ErrorGen::get_parse_error(
                 true,
                 Some(UNEXPECTED_ERR_MSG.to_string()),
                 Some(LineColLocation::from(pair.as_span())),
@@ -1475,9 +1414,7 @@ fn type_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> DataType {
                     Rule::TY_MAP,
                 ],
                 vec![rule],
-            );
-            // should have exited above (since it's a fatal error)
-            unreachable!();
+            )]);
         }
     };
 }

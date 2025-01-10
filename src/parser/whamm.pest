@@ -123,14 +123,15 @@ decl_init = { (special_decl | decl) ~ "=" ~ (ternary | expr) }
 
 ternary = { expr ~ "?" ~ expr ~ ":" ~ expr }
 
-expr = { prefix? ~ operand ~ (BINOP ~ prefix? ~ operand)* }
+expr = { operand ~ (BINOP ~ operand)* }
 
-prefix = _{ UNOP }
-UNOP = _{ neg }
+prefix = _{ neg }
     neg = { "!" }
+postfix = _{ cast }
+    cast = { "as" ~ TYPE_PRIMITIVE }
 
 val = _{ BOOL | get_map | ID | INT | FLOAT | STRING | tuple }
-operand = _{ fn_call | "(" ~ expr ~ ")" | val }
+operand = _{ prefix? ~ ( fn_call | "(" ~ expr ~ ")" | val ) ~ postfix? }
 
 tuple = { "(" ~ ")" | "(" ~ (val) ~ ( "," ~ val )* ~ ")" }
 

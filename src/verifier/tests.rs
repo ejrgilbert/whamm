@@ -525,8 +525,8 @@ pub fn test_recursive_calls() {
             return a;
         }
         wasm::call:alt {
-            i32 a = 0;
-            i32 b = make5(a);
+            u32 a = 0;
+            i32 b = make5(a as i32);
         }
     "#;
     let mut ast = tests::get_ast(script, &mut err);

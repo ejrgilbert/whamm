@@ -252,6 +252,7 @@ impl ExprFolder {
         if let Expr::UnOp { op, expr, .. } = &unop {
             let expr = ExprFolder::fold_expr(expr, table, err);
             return match op {
+                UnOp::Cast {..} => todo!(),
                 UnOp::Not => {
                     let expr_val = ExprFolder::get_single_bool(&expr);
                     if let Some(expr_bool) = expr_val {
