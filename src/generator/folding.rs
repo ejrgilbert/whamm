@@ -252,7 +252,34 @@ impl ExprFolder {
         if let Expr::UnOp { op, expr, .. } = &unop {
             let expr = ExprFolder::fold_expr(expr, table, err);
             return match op {
-                UnOp::Cast {..} => todo!(),
+                UnOp::Cast {target} => {
+                    match &expr {
+                        Expr::Primitive { val, .. } => {
+                            let mut casted = val.clone();
+                            match casted.explicit_cast(target) {
+                                Ok(()) => Expr::Primitive {
+                                    val: casted,
+                                    loc: None,
+                                },
+                                Err(_) => Expr::UnOp {
+                                    op: UnOp::Cast {target: target.clone()},
+                                    expr: Box::new(expr),
+                                    loc: None,
+                                }
+                            }
+                        },
+                        Expr::UnOp { .. } => Self::fold_unop(&expr, table, err),
+                        Expr::Ternary { .. }
+                        | Expr::BinOp { .. }
+                        | Expr::Call { .. }
+                        | Expr::VarId { .. }
+                        | Expr::MapGet { .. } => Expr::UnOp {
+                            op: UnOp::Cast {target: target.clone()},
+                            expr: Box::new(expr),
+                            loc: None,
+                        }
+                    }
+                },
                 UnOp::Not => {
                     let expr_val = ExprFolder::get_single_bool(&expr);
                     if let Some(expr_bool) = expr_val {

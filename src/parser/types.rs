@@ -208,7 +208,46 @@ impl Display for DataType {
     }
 }
 impl DataType {
-    pub fn is_numeric(&self) -> bool {
+    pub fn is_compatible_with(&self, other: &DataType) -> bool {
+        match self {
+            DataType::U8
+             | DataType::I8
+             | DataType::U16
+             | DataType::I16
+             | DataType::U32
+             | DataType::I32
+             | DataType::Boolean => other.represented_as_i32(),
+            DataType::U64
+            | DataType::I64 => other.represented_as_i64(),
+            DataType::F32
+            | DataType::F64
+            | DataType::Null
+            | DataType::Str
+            | DataType::AssumeGood
+            | DataType::Tuple {..}
+            | DataType::Map {..} => *other == *self
+        }
+    }
+    pub fn represented_as_i32(&self) -> bool {
+        match self {
+            DataType::U8
+            | DataType::I8
+            | DataType::U16
+            | DataType::I16
+            | DataType::U32
+            | DataType::I32
+            | DataType::Boolean => true,
+            _ => false
+        }
+    }
+    pub fn represented_as_i64(&self) -> bool {
+        match self {
+            DataType::U64
+            | DataType::I64 => true,
+            _ => false
+        }
+    }
+    pub fn can_implicitly_cast(&self) -> bool {
         match self {
             DataType::U8
             | DataType::I8
@@ -220,10 +259,18 @@ impl DataType {
             | DataType::U64
             | DataType::I64
             | DataType::F64 => true,
+            DataType::Tuple { ty_info } => {
+                // check for numeric types
+                for ty in ty_info.iter() {
+                    if ty.can_implicitly_cast() {
+                        return true;
+                    }
+                }
+                false
+            },
             DataType::Boolean
             | DataType::Null
             | DataType::Str
-            | DataType::Tuple { .. }
             | DataType::Map { .. }
             | DataType::AssumeGood => false,
         }
@@ -536,6 +583,74 @@ pub enum FloatLit {
     F64 { val: f64 },
 }
 impl FloatLit {
+    pub fn as_u32(&self) -> Result<IntLit, String> {
+        let new = match self {
+            Self::F32 { val } => {
+                if *val < u32::MIN as f32 || *val > u32::MAX as f32 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as u32
+            }
+            Self::F64 { val } => {
+                if *val < u32::MIN as f64 || *val > u32::MAX as f64 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as u32
+            }
+        };
+        Ok(IntLit::u32(new))
+    }
+    pub fn as_i32(&self) -> Result<IntLit, String> {
+        let new = match self {
+            Self::F32 { val } => {
+                if *val < i32::MIN as f32 || *val > i32::MAX as f32 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as i32
+            }
+            Self::F64 { val } => {
+                if *val < i32::MIN as f64 || *val > i32::MAX as f64 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as i32
+            }
+        };
+        Ok(IntLit::i32(new))
+    }
+    pub fn as_u64(&self) -> Result<IntLit, String> {
+        let new = match self {
+            Self::F32 { val } => {
+                if *val < u64::MIN as f32 || *val > u64::MAX as f32 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as u64
+            }
+            Self::F64 { val } => {
+                if *val < u64::MIN as f64 || *val > u64::MAX as f64 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as u64
+            }
+        };
+        Ok(IntLit::u64(new))
+    }
+    pub fn as_i64(&self) -> Result<IntLit, String> {
+        let new = match self {
+            Self::F32 { val } => {
+                if *val < i64::MIN as f32 || *val > i64::MAX as f32 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as i64
+            }
+            Self::F64 { val } => {
+                if *val < i64::MIN as f64 || *val > i64::MAX as f64 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as i64
+            }
+        };
+        Ok(IntLit::i64(new))
+    }
     pub fn as_f32(&mut self) -> Result<(), String> {
         let new = match self {
             Self::F32 { .. } => return Ok(()),
@@ -559,6 +674,12 @@ impl FloatLit {
         };
         *self = Self::f64(new);
         Ok(())
+    }
+    pub fn is_true_ish(&self) -> bool {
+        match self {
+            Self::F32 { val } => *val != 0f32,
+            Self::F64 { val } => *val != 0f64,
+        }
     }
     pub fn f32(val: f32) -> Self {
         Self::F32 { val }
@@ -622,7 +743,7 @@ pub enum Value {
     },
 }
 impl Value {
-    pub fn is_numeric(&self) -> bool {
+    pub fn can_implicitly_cast(&self) -> bool {
         match self {
             Self::Int { .. } | Self::Float { .. } => true,
             Self::Boolean { .. }
@@ -722,18 +843,208 @@ impl Value {
                         }
                         Err(msg) => Err(msg),
                     },
-                    // DataType::Boolean => {
-                    //     *self = Self::Primitive {
-                    //         val: Value::Boolean { val: val.is_true_ish() },
-                    //         loc: None,
-                    //     };
-                    //     return Ok(());
-                    // },
                     _ => Err(format!("{} to {}", self.ty(), target)),
                 }
             }
-            Value::Float { .. } => todo!(),
-            // Value::Boolean { val } => todo!(),
+            Value::Float { val, .. } => {
+                match target {
+                    DataType::U8 | DataType::I8 | DataType::U16 | DataType::I16 | DataType::U32 => {
+                        match val.as_u32() {
+                            Ok(int) => {
+                                *self = Value::Int {
+                                    val: int,
+                                    ty: target.clone(),
+                                    token: "".to_string(),
+                                    fmt: NumFmt::NA
+                                };
+                                Ok(())
+                            }
+                            Err(msg) => Err(msg),
+                        }
+                    }
+                    DataType::I32 => match val.as_i32() {
+                        Ok(int) => {
+                            *self = Value::Int {
+                                val: int,
+                                ty: target.clone(),
+                                token: "".to_string(),
+                                fmt: NumFmt::NA
+                            };
+                            Ok(())
+                        }
+                        Err(msg) => Err(msg),
+                    },
+                    DataType::U64 => match val.as_u64() {
+                        Ok(int) => {
+                            *self = Value::Int {
+                                val: int,
+                                ty: target.clone(),
+                                token: "".to_string(),
+                                fmt: NumFmt::NA
+                            };
+                            Ok(())
+                        }
+                        Err(msg) => Err(msg),
+                    },
+                    DataType::I64 => match val.as_i64() {
+                        Ok(int) => {
+                            *self = Value::Int {
+                                val: int,
+                                ty: target.clone(),
+                                token: "".to_string(),
+                                fmt: NumFmt::NA
+                            };
+                            Ok(())
+                        }
+                        Err(msg) => Err(msg),
+                    },
+                    DataType::F32 => match val.as_f32() {
+                        Ok(_) => {
+                            *self = Value::Float {
+                                val: val.to_owned(),
+                                token: "".to_string(),
+                                fmt: NumFmt::NA
+                            };
+                            Ok(())
+                        }
+                        Err(msg) => Err(msg),
+                    },
+                    DataType::F64 => match val.as_f64() {
+                        Ok(_) => {
+                            *self = Value::Float {
+                                val: val.to_owned(),
+                                token: "".to_string(),
+                                fmt: NumFmt::NA
+                            };
+                            Ok(())
+                        }
+                        Err(msg) => Err(msg),
+                    },
+                    _ => Err(format!("{} to {}", self.ty(), target)),
+                }
+            }
+            Value::Tuple {vals, ty} => {
+                // constraints on the target data type
+                if let DataType::Tuple {ty_info} = target {
+                    if vals.len() != ty_info.len() {
+                        return Err(format!("{ty} to {target}"));
+                    }
+
+                    let mut success = false;
+                    let mut msg = "".to_string();
+                    for (i, val) in vals.iter_mut().enumerate() {
+                        match val.internal_implicit_cast(ty_info.get(i).unwrap()) {
+                            Ok(()) => success = true, // do nothing
+                            Err(e) => msg = e
+                        }
+                    }
+                    if !success {
+                        Err(msg)
+                    } else {
+                        Ok(())
+                    }
+                } else {
+                    return Err(format!("{ty} to {target}"));
+                }
+            }
+            _ => Err("non-numeric values".to_string()),
+        }
+    }
+    pub fn explicit_cast(&mut self, target: &DataType) -> Result<(), String> {
+        match self {
+            Value::Int {
+                val, ..
+            } => {
+                match target {
+                    DataType::U8 | DataType::I8 | DataType::U16 | DataType::I16
+                    | DataType::U32 | DataType::I32 | DataType::U64 | DataType::I64
+                    | DataType::F32 | DataType::F64 => {
+                        self.implicit_cast(target)
+                    }
+                    DataType::Boolean => {
+                        *self = Self::Boolean {
+                            val: val.is_true_ish()
+                        };
+                        return Ok(());
+                    },
+                    _ => Err(format!("{} to {}", self.ty(), target)),
+                }
+            }
+            Value::Float { val, .. } => match target {
+                DataType::U8 | DataType::I8 | DataType::U16 | DataType::I16
+                | DataType::U32 | DataType::I32 | DataType::U64 | DataType::I64
+                | DataType::F32 | DataType::F64 => {
+                    self.implicit_cast(target)
+                }
+                DataType::Boolean => {
+                    *self = Self::Boolean {
+                        val: val.is_true_ish()
+                    };
+                    return Ok(());
+                },
+                _ => Err(format!("{} to {}", self.ty(), target)),
+            },
+            Value::Boolean { val } => {
+                let num_rep = if *val { 1 } else { 0 };
+                match target {
+                    DataType::U8 | DataType::I8 | DataType::U16 | DataType::I16 | DataType::U32 => {
+                        *self = Value::Int {
+                            val: IntLit::u32(num_rep),
+                            ty: target.clone(),
+                            token: "".to_string(),
+                            fmt: NumFmt::NA,
+                        };
+                        Ok(())
+                    }
+                    DataType::I32 => {
+                        *self = Value::Int {
+                            val: IntLit::i32(num_rep as i32),
+                            ty: target.clone(),
+                            token: "".to_string(),
+                            fmt: NumFmt::NA,
+                        };
+                        Ok(())
+                    }
+                    DataType::U64 => {
+                        *self = Value::Int {
+                            val: IntLit::u64(num_rep as u64),
+                            ty: target.clone(),
+                            token: "".to_string(),
+                            fmt: NumFmt::NA,
+                        };
+                        Ok(())
+                    }
+                    DataType::I64 => {
+                        *self = Value::Int {
+                            val: IntLit::i64(num_rep as i64),
+                            ty: target.clone(),
+                            token: "".to_string(),
+                            fmt: NumFmt::NA,
+                        };
+                        Ok(())
+                    }
+                    DataType::F32 => {
+                        *self = Value::Float {
+                            val: FloatLit::f32(num_rep as f32),
+                            token: "".to_string(),
+                            fmt: NumFmt::NA,
+                        };
+                        Ok(())
+                    }
+                    DataType::F64 => {
+                        *self = Value::Float {
+                            val: FloatLit::f64(num_rep as f64),
+                            token: "".to_string(),
+                            fmt: NumFmt::NA,
+                        };
+                        Ok(())
+                    }
+                    _ => Err(format!("{} to {}", self.ty(), target))
+                }
+            },
+            Value::Tuple {..} => {
+                todo!()
+            }
             _ => Err("non-numeric values".to_string()),
         }
     }
@@ -896,7 +1207,6 @@ impl Expr {
             },
             _ => Err("expression".to_string()),
         }
-        // Err(format!("CastError: Cannot implicitly cast {err_reason}. {unexp_msg}"))
     }
 
     pub fn loc(&self) -> &Option<Location> {

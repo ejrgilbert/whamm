@@ -337,7 +337,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 if let (Some(lhs_ty), Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {
                     if lhs_ty == rhs_ty {
                         None
-                    } else if rhs_ty.is_numeric() && lhs_ty.is_numeric() {
+                    } else if rhs_ty.can_implicitly_cast() && lhs_ty.can_implicitly_cast() {
                         match expr.implicit_cast(&lhs_ty) {
                             Ok(_) => None,
                             Err((msg, fatal)) => {
@@ -489,19 +489,41 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         {
                             //ensure that the key_ty matches and the val_ty matches
                             if key_ty != *map_key_ty {
-                                self.err.type_check_error(
-                                    false,
-                                    format! {"Type Mismatch, key:{:?}, map_key:{:?}", key_ty, map_key_ty},
-                                    &loc.clone().map(|l| l.line_col),
-                                );
+                                let key_loc = key.loc().clone().unwrap();
+                                if key_ty.can_implicitly_cast() && map_key_ty.can_implicitly_cast() {
+                                    // try to implicitly do a cast here
+                                    match key.implicit_cast(map_key_ty.as_ref()) {
+                                        Err((msg, fatal)) => {
+                                            self.err.type_check_error(fatal, msg, &Some(key_loc.line_col))
+                                        },
+                                        Ok(_) => {} // nothing to do
+                                    }
+                                } else {
+                                    self.err.type_check_error(
+                                        false,
+                                        format! {"Type Mismatch, expected key type: {:?}, actual key type:{:?}", map_key_ty, key_ty},
+                                        &Some(key_loc.line_col),
+                                    );
+                                }
                                 return None;
                             }
                             if val_ty != *map_val_ty {
-                                self.err.type_check_error(
-                                    false,
-                                    format! {"Type Mismatch, val:{:?}, map_val:{:?}", val_ty, map_val_ty},
-                                    &loc.clone().map(|l| l.line_col),
-                                );
+                                let val_loc = val.loc().clone().unwrap();
+                                if val_ty.can_implicitly_cast() && map_val_ty.can_implicitly_cast() {
+                                    // try to implicitly do a cast here
+                                    match val.implicit_cast(map_val_ty.as_ref()) {
+                                        Err((msg, fatal)) => {
+                                            self.err.type_check_error(fatal, msg, &Some(val_loc.line_col))
+                                        },
+                                        Ok(_) => {} // nothing to do
+                                    }
+                                } else {
+                                    self.err.type_check_error(
+                                        false,
+                                        format! {"Type Mismatch, expected val type: {:?}, actual val type:{:?}", map_val_ty, val_ty},
+                                        &Some(val_loc.line_col),
+                                    );
+                                }
                                 return None;
                             }
                         } else if matches!(map_ty, DataType::AssumeGood) {
@@ -544,9 +566,9 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             } else if matches!(rhs_ty, DataType::AssumeGood) {
                                 return Some(lhs_ty);
                             }
-                            if lhs_ty == rhs_ty && lhs_ty.is_numeric() {
+                            if lhs_ty == rhs_ty && lhs_ty.can_implicitly_cast() {
                                 Some(lhs_ty)
-                            } else if lhs_ty.is_numeric() && rhs_ty.is_numeric() {
+                            } else if lhs_ty.can_implicitly_cast() && rhs_ty.can_implicitly_cast() {
                                 match rhs.implicit_cast(&lhs_ty) {
                                     Ok(_) => Some(lhs_ty),
                                     Err((msg, fatal)) => {
@@ -586,7 +608,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             }
                             if lhs_ty == rhs_ty {
                                 Some(DataType::Boolean)
-                            } else if lhs_ty.is_numeric() && rhs_ty.is_numeric() {
+                            } else if lhs_ty.can_implicitly_cast() && rhs_ty.can_implicitly_cast() {
                                 match rhs.implicit_cast(&lhs_ty) {
                                     Ok(_) => Some(DataType::Boolean),
                                     Err((msg, fatal)) => {
@@ -611,9 +633,9 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             if matches!(lhs_ty, DataType::AssumeGood) || matches!(rhs_ty, DataType::AssumeGood) {
                                 return Some(DataType::Boolean);
                             }
-                            if lhs_ty == rhs_ty && lhs_ty.is_numeric() {
+                            if lhs_ty == rhs_ty && lhs_ty.can_implicitly_cast() {
                                 Some(DataType::Boolean)
-                            } else if lhs_ty.is_numeric() && rhs_ty.is_numeric() {
+                            } else if lhs_ty.can_implicitly_cast() && rhs_ty.can_implicitly_cast() {
                                 match rhs.implicit_cast(&lhs_ty) {
                                     Ok(_) => Some(DataType::Boolean),
                                     Err((msg, fatal)) => {
@@ -688,11 +710,19 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
 
                 Some(DataType::AssumeGood)
             }
-            Expr::UnOp { op, expr, loc } => {
-                let expr_ty_op = self.visit_expr(expr);
+            Expr::UnOp { op, expr: inner_expr, loc } => {
+                let expr_ty_op = self.visit_expr(inner_expr);
                 if let Some(expr_ty) = expr_ty_op {
                     match op {
-                        UnOp::Cast {..} => todo!(),
+                        UnOp::Cast {target} => {
+                            // If the inner expression's type is the same as the cast,
+                            // we can remove the cast from the AST!
+                            let t = target.clone();
+                            if expr_ty.is_compatible_with(target) {
+                                *expr = *inner_expr.to_owned();
+                            }
+                            Some(t)
+                        },
                         UnOp::Not => {
                             if expr_ty == DataType::Boolean {
                                 Some(DataType::Boolean)
@@ -793,7 +823,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                     if expected != actual {
                                         let arg = args.get_mut(i).unwrap();
                                         let arg_loc = arg.loc().clone().unwrap();
-                                        if expected.is_numeric() && actual.is_numeric() {
+                                        if expected.can_implicitly_cast() && actual.can_implicitly_cast() {
                                             // try to implicitly do a cast here
                                             match arg.implicit_cast(expected) {
                                                 Err((msg, fatal)) => {
@@ -862,11 +892,22 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         {
                             //ensure that the key_ty matches and the val_ty matches
                             if key_ty != *map_key_ty {
-                                self.err.type_check_error(
-                                    false,
-                                    format! {"Type Mismatch, key:{:?}, map_key:{:?}", key_ty, map_key_ty},
-                                    &loc.clone().map(|l| l.line_col),
-                                );
+                                let key_loc = key.loc().clone().unwrap();
+                                if key_ty.can_implicitly_cast() && map_key_ty.can_implicitly_cast() {
+                                    // try to implicitly do a cast here
+                                    match key.implicit_cast(map_key_ty.as_ref()) {
+                                        Err((msg, fatal)) => {
+                                            self.err.type_check_error(fatal, msg, &Some(key_loc.line_col))
+                                        },
+                                        Ok(_) => {} // nothing to do
+                                    }
+                                } else {
+                                    self.err.type_check_error(
+                                        false,
+                                        format! {"Type Mismatch, expected key type: {:?}, actual key type:{:?}", map_key_ty, key_ty},
+                                        &Some(key_loc.line_col),
+                                    );
+                                }
                                 return Some(DataType::AssumeGood);
                             }
                             Some(*val_ty)

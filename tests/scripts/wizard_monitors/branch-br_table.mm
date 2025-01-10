@@ -30,7 +30,7 @@ wasm::br_if:before {
 wasm::br_table:before {
   // which branch was taken?
   i32 index;
-  index = arg0 < (num_targets - 1) ? targets[arg0] : default_target;
+  index = arg0 < (num_targets - 1) ? targets[arg0] as i32 : default_target as i32;
 
   // count stores an array of counters
   count[(fid, pc, index)]++;
