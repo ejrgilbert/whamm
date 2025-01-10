@@ -215,10 +215,10 @@ impl Event for OpcodeEvent {
                         "imm0".to_string(),
                         Some(Value::Int {
                             val: IntLit::U32 {
-                                val: *relative_depth
+                                val: *relative_depth,
                             },
                             token: "".to_string(),
-                            fmt: NumFmt::NA
+                            fmt: NumFmt::NA,
                         }),
                     );
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -230,10 +230,10 @@ impl Event for OpcodeEvent {
                         "imm0".to_string(),
                         Some(Value::Int {
                             val: IntLit::U32 {
-                                val: *relative_depth
+                                val: *relative_depth,
                             },
                             token: "".to_string(),
-                            fmt: NumFmt::NA
+                            fmt: NumFmt::NA,
                         }),
                     );
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -244,21 +244,19 @@ impl Event for OpcodeEvent {
                     loc_info.static_data.insert(
                         "num_targets".to_string(),
                         Some(Value::Int {
-                            val: IntLit::U32 {
-                                val: targets.len()
-                            },
+                            val: IntLit::U32 { val: targets.len() },
                             token: "".to_string(),
-                            fmt: NumFmt::NA
+                            fmt: NumFmt::NA,
                         }),
                     );
                     loc_info.static_data.insert(
                         "default_target".to_string(),
                         Some(Value::Int {
                             val: IntLit::U32 {
-                                val: targets.default()
+                                val: targets.default(),
                             },
                             token: "".to_string(),
-                            fmt: NumFmt::NA
+                            fmt: NumFmt::NA,
                         }),
                     );
 
@@ -269,11 +267,9 @@ impl Event for OpcodeEvent {
                             loc_info.static_data.insert(
                                 format!("imm{i}"),
                                 Some(Value::Int {
-                                    val: IntLit::U32 {
-                                        val: target
-                                    },
+                                    val: IntLit::U32 { val: target },
                                     token: "".to_string(),
-                                    fmt: NumFmt::NA
+                                    fmt: NumFmt::NA,
                                 }),
                             );
                             target_map.insert(i as u32, target);
@@ -348,11 +344,9 @@ impl Event for OpcodeEvent {
                     loc_info.static_data.insert(
                         "imm0".to_string(),
                         Some(Value::Int {
-                            val: IntLit::U32 {
-                                val: *fid
-                            },
+                            val: IntLit::U32 { val: *fid },
                             token: "".to_string(),
-                            fmt: NumFmt::NA
+                            fmt: NumFmt::NA,
                         }),
                     );
 
@@ -365,11 +359,9 @@ impl Event for OpcodeEvent {
                     loc_info.static_data.insert(
                         "imm0".to_string(),
                         Some(Value::Int {
-                            val: IntLit::U32 {
-                                val: *local_index
-                            },
+                            val: IntLit::U32 { val: *local_index },
                             token: "".to_string(),
-                            fmt: NumFmt::NA
+                            fmt: NumFmt::NA,
                         }),
                     );
 
@@ -382,11 +374,9 @@ impl Event for OpcodeEvent {
                     loc_info.static_data.insert(
                         "imm0".to_string(),
                         Some(Value::Int {
-                            val: IntLit::U32 {
-                                val: *local_index
-                            },
+                            val: IntLit::U32 { val: *local_index },
                             token: "".to_string(),
-                            fmt: NumFmt::NA
+                            fmt: NumFmt::NA,
                         }),
                     );
 
@@ -399,11 +389,9 @@ impl Event for OpcodeEvent {
                     loc_info.static_data.insert(
                         "imm0".to_string(),
                         Some(Value::Int {
-                            val: IntLit::U32 {
-                                val: *local_index
-                            },
+                            val: IntLit::U32 { val: *local_index },
                             token: "".to_string(),
-                            fmt: NumFmt::NA
+                            fmt: NumFmt::NA,
                         }),
                     );
 
@@ -416,11 +404,9 @@ impl Event for OpcodeEvent {
                     loc_info.static_data.insert(
                         "imm0".to_string(),
                         Some(Value::Int {
-                            val: IntLit::U32 {
-                                val: *global_index
-                            },
+                            val: IntLit::U32 { val: *global_index },
                             token: "".to_string(),
-                            fmt: NumFmt::NA
+                            fmt: NumFmt::NA,
                         }),
                     );
 
@@ -433,11 +419,9 @@ impl Event for OpcodeEvent {
                     loc_info.static_data.insert(
                         "imm0".to_string(),
                         Some(Value::Int {
-                            val: IntLit::U32 {
-                                val: *global_index
-                            },
+                            val: IntLit::U32 { val: *global_index },
                             token: "".to_string(),
-                            fmt: NumFmt::NA
+                            fmt: NumFmt::NA,
                         }),
                     );
 
@@ -450,11 +434,9 @@ impl Event for OpcodeEvent {
                     loc_info.static_data.insert(
                         "imm0".to_string(),
                         Some(Value::Int {
-                            val: IntLit::I32 {
-                                val: *value
-                            },
+                            val: IntLit::I32 { val: *value },
                             token: "".to_string(),
-                            fmt: NumFmt::NA
+                            fmt: NumFmt::NA,
                         }),
                     );
 
@@ -467,11 +449,9 @@ impl Event for OpcodeEvent {
                     loc_info.static_data.insert(
                         "imm0".to_string(),
                         Some(Value::Int {
-                            val: IntLit::I64 {
-                                val: *value
-                            },
+                            val: IntLit::I64 { val: *value },
                             token: "".to_string(),
-                            fmt: NumFmt::NA
+                            fmt: NumFmt::NA,
                         }),
                     );
 

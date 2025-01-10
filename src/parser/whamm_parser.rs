@@ -1,11 +1,14 @@
-use std::str::FromStr;
 use crate::common::error::{ErrorGen, WhammError};
 use crate::parser::types;
-use crate::parser::types::{BinOp, Block, DataType, Definition, Expr, FnId, Location, ProbeRule, Rule, RulePart, Script, Statement, UnOp, Value, Whamm, WhammParser, PRATT_PARSER, NumFmt, IntLit, FloatLit};
+use crate::parser::types::{
+    BinOp, Block, DataType, Definition, Expr, FloatLit, FnId, IntLit, Location, NumFmt, ProbeRule,
+    Rule, RulePart, Script, Statement, UnOp, Value, Whamm, WhammParser, PRATT_PARSER,
+};
 use log::trace;
 use pest::error::{Error, LineColLocation};
 use pest::iterators::{Pair, Pairs};
 use pest::Parser;
+use std::str::FromStr;
 
 const UNEXPECTED_ERR_MSG: &str =
     "WhammParser: Looks like you've found a bug...please report this behavior! Exiting now...";
@@ -280,7 +283,7 @@ pub fn handle_fn_def(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, e
                 DataType::Tuple { ty_info: vec![] }
             }
         }
-        None => DataType::Tuple { ty_info: vec![] }
+        None => DataType::Tuple { ty_info: vec![] },
     };
 
     // Get the function body
@@ -490,11 +493,9 @@ fn handle_incrementor(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
         BinOp::Add,
         Expr::Primitive {
             val: Value::Int {
-                val: IntLit::U32 {
-                    val: 1
-                },
+                val: IntLit::U32 { val: 1 },
                 token: "1".to_string(),
-                fmt: NumFmt::Dec
+                fmt: NumFmt::Dec,
             },
             loc: Some(Location {
                 line_col: LineColLocation::from(pair.as_span()),
@@ -511,11 +512,9 @@ fn handle_decrementor(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
         BinOp::Subtract,
         Expr::Primitive {
             val: Value::Int {
-                val: IntLit::U32 {
-                    val: 1
-                },
+                val: IntLit::U32 { val: 1 },
                 token: "1".to_string(),
-                fmt: NumFmt::Dec
+                fmt: NumFmt::Dec,
             },
             loc: Some(Location {
                 line_col: LineColLocation::from(pair.as_span()),
@@ -1309,7 +1308,7 @@ fn type_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> DataType {
             //     vec![pair.as_rule()],
             // );
             DataType::U8
-        },
+        }
         Rule::TY_I8 => {
             // err.parse_error(
             //     true,
@@ -1325,7 +1324,7 @@ fn type_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> DataType {
             //     vec![pair.as_rule()],
             // );
             DataType::I8
-        },
+        }
         Rule::TY_U16 => {
             // err.parse_error(
             //     true,
@@ -1341,7 +1340,7 @@ fn type_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> DataType {
             //     vec![pair.as_rule()],
             // );
             DataType::U16
-        },
+        }
         Rule::TY_I16 => {
             // err.parse_error(
             //     true,
@@ -1357,7 +1356,7 @@ fn type_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> DataType {
             //     vec![pair.as_rule()],
             // );
             DataType::I16
-        },
+        }
         Rule::TY_U32 => DataType::U32,
         Rule::TY_I32 => DataType::I32,
         Rule::TY_F32 => {
@@ -1544,9 +1543,9 @@ pub fn handle_int(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
             digits -= delim.len() as i32;
 
             // number of binary digits per hex char
-            digits = digits * 4;
+            digits *= 4;
             (token.strip_prefix(delim).unwrap().to_string(), NumFmt::Hex)
-        },
+        }
         Rule::int_bin => {
             // remove '0b' from token to parse (required by rust utils)
             // but still keep '-' if used
@@ -1554,23 +1553,21 @@ pub fn handle_int(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
             digits -= delim.len() as i32;
 
             (token.strip_prefix(delim).unwrap().to_string(), NumFmt::Bin)
-        },
+        }
         Rule::int => {
             // number of binary digits required to represent is unknown
             digits = -1;
             (token.clone(), NumFmt::Dec)
-        },
-        rule => return Err(vec![ErrorGen::get_parse_error(
-            true,
-            Some(UNEXPECTED_ERR_MSG.to_string()),
-            Some(LineColLocation::from(pair.as_span())),
-            vec![
-                Rule::int_hex,
-                Rule::int_bin,
-                Rule::int
-            ],
-            vec![rule],
-        )])
+        }
+        rule => {
+            return Err(vec![ErrorGen::get_parse_error(
+                true,
+                Some(UNEXPECTED_ERR_MSG.to_string()),
+                Some(LineColLocation::from(pair.as_span())),
+                vec![Rule::int_hex, Rule::int_bin, Rule::int],
+                vec![rule],
+            )])
+        }
     };
 
     let val = if is_neg || fmt == NumFmt::Bin || fmt == NumFmt::Hex {
@@ -1578,32 +1575,28 @@ pub fn handle_int(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
         if digits > 32 {
             if let Ok(val) = i64::from_str_radix(&to_parse, fmt.base()) {
                 Ok(IntLit::i64(val))
-            } else {
-                if fmt == NumFmt::Bin || fmt == NumFmt::Hex {
-                    if let Ok(val) = u64::from_str_radix(&to_parse, fmt.base()) {
-                        // convert and allow wrapping
-                        Ok(IntLit::i64(val as i64))
-                    } else {
-                        Err("i32 OR u32")
-                    }
+            } else if fmt == NumFmt::Bin || fmt == NumFmt::Hex {
+                if let Ok(val) = u64::from_str_radix(&to_parse, fmt.base()) {
+                    // convert and allow wrapping
+                    Ok(IntLit::i64(val as i64))
                 } else {
-                    Err("i64")
+                    Err("i32 OR u32")
                 }
+            } else {
+                Err("i64")
             }
         } else if digits >= 0 {
             if let Ok(val) = i32::from_str_radix(&to_parse, fmt.base()) {
                 Ok(IntLit::i32(val))
-            } else {
-                if fmt == NumFmt::Bin || fmt == NumFmt::Hex {
-                    if let Ok(val) = u32::from_str_radix(&to_parse, fmt.base()) {
-                        // convert and allow wrapping
-                        Ok(IntLit::i32(val as i32))
-                    } else {
-                        Err("i32 OR u32")
-                    }
+            } else if fmt == NumFmt::Bin || fmt == NumFmt::Hex {
+                if let Ok(val) = u32::from_str_radix(&to_parse, fmt.base()) {
+                    // convert and allow wrapping
+                    Ok(IntLit::i32(val as i32))
                 } else {
-                    Err("i32")
+                    Err("i32 OR u32")
                 }
+            } else {
+                Err("i32")
             }
         } else {
             // num digits required is unknown, figure it out!
@@ -1615,54 +1608,48 @@ pub fn handle_int(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                 Err("i32 OR i64")
             }
         }
-    } else {
-        if digits >= 32 {
-            if let Ok(val) = u64::from_str_radix(&to_parse, fmt.base()) {
-                Ok(IntLit::u64(val))
-            } else {
-                Err("u64")
-            }
-        } else if digits >= 0 {
-            if let Ok(val) = u32::from_str_radix(&to_parse, fmt.base()) {
-                Ok(IntLit::u32(val))
-            } else {
-                Err("u32")
-            }
+    } else if digits >= 32 {
+        if let Ok(val) = u64::from_str_radix(&to_parse, fmt.base()) {
+            Ok(IntLit::u64(val))
         } else {
-            // num digits required is unknown, figure it out!
-            if let Ok(val) = u32::from_str_radix(&to_parse, fmt.base()) {
-                Ok(IntLit::u32(val))
-            } else if let Ok(val) = u64::from_str_radix(&to_parse, fmt.base()) {
-                Ok(IntLit::u64(val))
-            } else {
-                Err("u32 OR u64")
-            }
+            Err("u64")
+        }
+    } else if digits >= 0 {
+        if let Ok(val) = u32::from_str_radix(&to_parse, fmt.base()) {
+            Ok(IntLit::u32(val))
+        } else {
+            Err("u32")
+        }
+    } else {
+        // num digits required is unknown, figure it out!
+        if let Ok(val) = u32::from_str_radix(&to_parse, fmt.base()) {
+            Ok(IntLit::u32(val))
+        } else if let Ok(val) = u64::from_str_radix(&to_parse, fmt.base()) {
+            Ok(IntLit::u64(val))
+        } else {
+            Err("u32 OR u64")
         }
     };
 
     match val {
-        Ok(val) => {
-            Ok(Expr::Primitive {
-                val: Value::Int {
-                    val,
-                    token: token.to_string(),
-                    fmt
-                },
-                loc: Some(Location {
-                    line_col: LineColLocation::from(pair.as_span()),
-                    path: None,
-                }),
-            })
-        },
-        Err(ty) => {
-            Err(vec![ErrorGen::get_parse_error(
-                true,
-                Some(format!("Failed to parse value into {ty}: {token}")),
-                Some(LineColLocation::from(pair.as_span())),
-                vec![],
-                vec![],
-            )])
-        }
+        Ok(val) => Ok(Expr::Primitive {
+            val: Value::Int {
+                val,
+                token: token.to_string(),
+                fmt,
+            },
+            loc: Some(Location {
+                line_col: LineColLocation::from(pair.as_span()),
+                path: None,
+            }),
+        }),
+        Err(ty) => Err(vec![ErrorGen::get_parse_error(
+            true,
+            Some(format!("Failed to parse value into {ty}: {token}")),
+            Some(LineColLocation::from(pair.as_span())),
+            vec![],
+            vec![],
+        )]),
     }
 }
 
@@ -1691,7 +1678,7 @@ pub fn handle_float(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
             Some(LineColLocation::from(pair.as_span())),
             vec![],
             vec![],
-        )])
+        )]);
     };
 
     Ok(Expr::Primitive {

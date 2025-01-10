@@ -364,50 +364,50 @@ impl ExprFolder {
                     BinOp::Add => Some(Expr::Primitive {
                         val: Value::Int {
                             val: IntLit::I32 {
-                                val: lhs_int + rhs_int
+                                val: lhs_int + rhs_int,
                             },
                             token: "".to_string(),
-                            fmt: NumFmt::NA
+                            fmt: NumFmt::NA,
                         },
                         loc: None,
                     }),
                     BinOp::Subtract => Some(Expr::Primitive {
                         val: Value::Int {
                             val: IntLit::I32 {
-                                val: lhs_int - rhs_int
+                                val: lhs_int - rhs_int,
                             },
                             token: "".to_string(),
-                            fmt: NumFmt::NA
+                            fmt: NumFmt::NA,
                         },
                         loc: None,
                     }),
                     BinOp::Multiply => Some(Expr::Primitive {
                         val: Value::Int {
                             val: IntLit::I32 {
-                                val: lhs_int * rhs_int
+                                val: lhs_int * rhs_int,
                             },
                             token: "".to_string(),
-                            fmt: NumFmt::NA
+                            fmt: NumFmt::NA,
                         },
                         loc: None,
                     }),
                     BinOp::Divide => Some(Expr::Primitive {
                         val: Value::Int {
                             val: IntLit::I32 {
-                                val: lhs_int / rhs_int
+                                val: lhs_int / rhs_int,
                             },
                             token: "".to_string(),
-                            fmt: NumFmt::NA
+                            fmt: NumFmt::NA,
                         },
                         loc: None,
                     }),
                     BinOp::Modulo => Some(Expr::Primitive {
                         val: Value::Int {
                             val: IntLit::I32 {
-                                val: lhs_int % rhs_int
+                                val: lhs_int % rhs_int,
                             },
                             token: "".to_string(),
-                            fmt: NumFmt::NA
+                            fmt: NumFmt::NA,
                         },
                         loc: None,
                     }),
@@ -551,7 +551,7 @@ impl ExprFolder {
             } => {
                 // Some(*lhs_val)
                 todo!()
-            },
+            }
             // Expr::Primitive {
             //     val: Value::Int { val: _lhs_val, .. },
             //     ..
@@ -569,7 +569,7 @@ impl ExprFolder {
             } => {
                 // Some(*rhs_val)
                 todo!()
-            },
+            }
             Expr::Primitive {
                 val: Value::Float { val: _rhs_val, .. },
                 ..

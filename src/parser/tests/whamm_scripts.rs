@@ -5,9 +5,9 @@ use crate::common::error::ErrorGen;
 use crate::parser::print_visitor::AsStrVisitor;
 use crate::parser::rules::core::WhammModeKind;
 
-use log::{debug, error, info, warn};
-use glob::{glob, glob_with};
 use crate::parser::tests::{get_ast, setup_logger};
+use glob::{glob, glob_with};
+use log::{debug, error, info, warn};
 
 const VALID_SCRIPTS: &[&str] = &[
     // all numeric types
@@ -552,7 +552,7 @@ pub fn get_test_scripts(sub_dir: &str) -> Vec<String> {
         &(TEST_RSC_DIR.to_owned() + sub_dir + "/" + &*TODO.to_owned()),
         options,
     )
-        .expect("Failed to read glob pattern")
+    .expect("Failed to read glob pattern")
     {
         warn!(
             "File marked with TODO: {}",

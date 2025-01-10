@@ -484,7 +484,7 @@ impl WhammVisitor<String> for AsStrVisitor {
 
     fn visit_unop(&mut self, op: &UnOp) -> String {
         match op {
-            UnOp::Not => "!".to_string()
+            UnOp::Not => "!".to_string(),
         }
     }
 
@@ -519,16 +519,7 @@ impl WhammVisitor<String> for AsStrVisitor {
                 s += &format!("{}", val);
                 s
             }
-            Value::Int { token, .. } => {
-                let mut s = "".to_string();
-                s += &format!("{}", token);
-                s
-            }
-            Value::Float { token, .. } => {
-                let mut s = "".to_string();
-                s += &format!("{}", token);
-                s
-            }
+            Value::Int { token, .. } | Value::Float { token, .. } => token.clone(),
             Value::Str { val, .. } => {
                 let mut s = "".to_string();
                 s += &format!("\"{}\"", val);

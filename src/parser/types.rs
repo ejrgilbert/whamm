@@ -2,7 +2,7 @@
 
 use pest::error::LineColLocation;
 use std::collections::HashMap;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 use termcolor::{Buffer, ColorChoice, WriteColor};
 
@@ -172,6 +172,40 @@ impl PartialEq for DataType {
         }
     }
 }
+impl Display for DataType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DataType::U8 => write!(f, "u8"),
+            DataType::I8 => write!(f, "i8"),
+            DataType::U16 => write!(f, "u16"),
+            DataType::I16 => write!(f, "i16"),
+            DataType::U32 => write!(f, "u32"),
+            DataType::I32 => write!(f, "i32"),
+            DataType::F32 => write!(f, "f32"),
+            DataType::U64 => write!(f, "u64"),
+            DataType::I64 => write!(f, "i64"),
+            DataType::F64 => write!(f, "f64"),
+            DataType::Boolean => write!(f, "bool"),
+            DataType::Null => write!(f, "null"),
+            DataType::Str => write!(f, "str"),
+            DataType::Tuple { ty_info } => {
+                let mut s = "".to_string();
+                s += "(";
+                s += &ty_info
+                    .iter()
+                    .map(|ty| ty.to_string())
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                s += ")";
+                write!(f, "{s}")
+            }
+            DataType::Map { key_ty, val_ty, .. } => {
+                write!(f, "map<{}, {}>", key_ty, val_ty)
+            }
+            DataType::AssumeGood => write!(f, "unknown"),
+        }
+    }
+}
 impl DataType {
     pub fn id(&self) -> i32 {
         match self {
@@ -290,79 +324,33 @@ impl DataType {
             }
         }
     }
-    pub fn to_string(&self) -> String {
-        match self {
-            DataType::U8 => "u8".to_string(),
-            DataType::I8 => "i8".to_string(),
-            DataType::U16 => "u16".to_string(),
-            DataType::I16 => "i16".to_string(),
-            DataType::U32 => "u32".to_string(),
-            DataType::I32 => "i32".to_string(),
-            DataType::F32 => "f32".to_string(),
-            DataType::U64 => "u64".to_string(),
-            DataType::I64 => "i64".to_string(),
-            DataType::F64 => "f64".to_string(),
-            DataType::Boolean => "bool".to_string(),
-            DataType::Null => "null".to_string(),
-            DataType::Str => "str".to_string(),
-            DataType::Tuple { ty_info } => {
-                let mut s = "".to_string();
-                s += "(";
-                s += &ty_info
-                    .iter()
-                    .map(|ty| ty.to_string())
-                    .collect::<Vec<String>>()
-                    .join(", ");
-                s += ")";
-                s
-            }
-            DataType::Map { key_ty, val_ty, .. } => format!(
-                "map<{}, {}>",
-                key_ty.to_string(),
-                val_ty.to_string()
-            ),
-            DataType::AssumeGood => "unknown".to_string(),
-        }
-    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum IntLit {
-    I32 {
-        val: i32,
-    },
-    U32 {
-        val: u32,
-    },
-    I64 {
-        val: i64,
-    },
-    U64 {
-        val: u64,
-    }
+    I32 { val: i32 },
+    U32 { val: u32 },
+    I64 { val: i64 },
+    U64 { val: u64 },
 }
 impl IntLit {
     pub fn i32(val: i32) -> Self {
         Self::I32 { val }
     }
     pub fn u32(val: u32) -> Self {
-        Self::U32 {val}
+        Self::U32 { val }
     }
     pub fn i64(val: i64) -> Self {
-        Self::I64 {val}
+        Self::I64 { val }
     }
     pub fn u64(val: u64) -> Self {
-        Self::U64 {val}
+        Self::U64 { val }
     }
 }
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum FloatLit {
-    F32 {
-        val: f32,
-    },
-    F64 {
-        val: f64,
-    }
+    F32 { val: f32 },
+    F64 { val: f64 },
 }
 impl FloatLit {
     pub fn f32(val: f32) -> Self {
@@ -378,7 +366,7 @@ pub enum NumFmt {
     Bin,
     Hex,
     Dec,
-    NA // not applicable (created by compiler)
+    NA, // not applicable (created by compiler)
 }
 impl NumFmt {
     pub fn base(&self) -> u32 {
@@ -386,7 +374,7 @@ impl NumFmt {
             Self::Bin => 2,
             Self::Hex => 16,
             Self::Dec => 10,
-            Self::NA => u32::MAX
+            Self::NA => u32::MAX,
         }
     }
 }
@@ -503,11 +491,9 @@ impl Statement {
         Self::Expr {
             expr: Expr::Primitive {
                 val: Value::Int {
-                    val: IntLit::U32 {
-                        val: 0
-                    },
+                    val: IntLit::U32 { val: 0 },
                     token: "0".to_string(),
-                    fmt: NumFmt::Dec
+                    fmt: NumFmt::Dec,
                 },
                 loc: None,
             },

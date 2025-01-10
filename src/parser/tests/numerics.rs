@@ -1,14 +1,13 @@
-#[rustfmt::skip]
-
-use log::error;
-use pest::iterators::Pair;
-use pest::Parser;
 use crate::common::error::WhammError;
 use crate::parser::tests::setup_logger;
 use crate::parser::types::{Expr, FloatLit, IntLit, Rule, Value, WhammParser};
 use crate::parser::whamm_parser::{handle_float, handle_int};
+use log::error;
+use pest::iterators::Pair;
+use pest::Parser;
 
 #[test]
+#[rustfmt::skip]
 pub fn test_int32s() {
     setup_logger();
     let s = test_i32;
@@ -245,6 +244,7 @@ pub fn test_int32s() {
     u(3,        "3",        "0x3",        "0b0000000011");
 }
 #[test]
+#[rustfmt::skip]
 pub fn test_int64s() {
     setup_logger();
     let t = parse_int;
@@ -450,6 +450,7 @@ pub fn test_int64s() {
     t(IntLit::i64(0xABA3A5D6EB700BEFu64 as i64), "0b1010101110100011101001011101011011101011011100000000101111101111");
 }
 #[test]
+#[rustfmt::skip]
 pub fn test_f32s() {
     setup_logger();
     let t = test_float;
@@ -508,6 +509,7 @@ pub fn test_f32s() {
 }
 
 #[test]
+#[rustfmt::skip]
 pub fn test_exp() {
     let t = test_float;
 
@@ -585,36 +587,36 @@ fn test_float(exp: FloatLit, float: &str) {
 
 fn parse_int(exp: IntLit, token: &str) {
     match call_parser(Rule::INT, token, &handle_int) {
-        Ok(Expr::Primitive { val: Value::Int {
-            val,
+        Ok(Expr::Primitive {
+            val: Value::Int { val, .. },
             ..
-        }, .. }) => {
+        }) => {
             assert_eq!(exp, val);
-        },
-        unexp => handle_unexp_fail(unexp, token)
+        }
+        unexp => handle_unexp_fail(unexp, token),
     }
 }
 
 fn parse_float(exp: FloatLit, token: &str) {
     match call_parser(Rule::FLOAT, token, &handle_float) {
-        Ok(Expr::Primitive { val: Value::Float {
-            val,
+        Ok(Expr::Primitive {
+            val: Value::Float { val, .. },
             ..
-        }, .. }) => {
+        }) => {
             assert_eq!(exp, val);
-        },
-        unexp => handle_unexp_fail(unexp, token)
+        }
+        unexp => handle_unexp_fail(unexp, token),
     }
 }
 
 fn fail_parse_float(token: &str) {
     match fail_parser(Rule::FLOAT, token, &handle_float) {
-        Ok(Expr::Primitive { val: Value::Float {
-            val,
+        Ok(Expr::Primitive {
+            val: Value::Float { val, .. },
             ..
-        }, .. }) => {
+        }) => {
             handle_unexp_pass(val, token);
-        },
+        }
         _ => {} // passes, nothing to do
     }
 }
@@ -636,18 +638,21 @@ fn handle_unexp_fail(res: Result<Expr, Vec<WhammError>>, token: &str) {
 }
 
 fn handle_unexp_pass(expr: FloatLit, token: &str) {
-    error!("Number passed the parse, but it shouldn't have: {token} -> {:?}", expr);
+    error!(
+        "Number passed the parse, but it shouldn't have: {token} -> {:?}",
+        expr
+    );
     panic!();
 }
 
-fn call_parser(parse_rule: Rule, token: &str, handler: &dyn Fn(Pair<Rule>) -> Result<Expr, Vec<WhammError>>) -> Result<Expr, Vec<WhammError>> {
+fn call_parser(
+    parse_rule: Rule,
+    token: &str,
+    handler: &dyn Fn(Pair<Rule>) -> Result<Expr, Vec<WhammError>>,
+) -> Result<Expr, Vec<WhammError>> {
     let parse_res = WhammParser::parse(parse_rule, token);
     match parse_res {
-        Ok(mut pairs) => {
-            handler(
-                pairs.next().unwrap()
-            )
-        }
+        Ok(mut pairs) => handler(pairs.next().unwrap()),
         Err(e) => {
             error!("Parsing the number caused errors: {token}\n{:?}", e);
             panic!();
@@ -655,12 +660,14 @@ fn call_parser(parse_rule: Rule, token: &str, handler: &dyn Fn(Pair<Rule>) -> Re
     }
 }
 
-fn fail_parser(parse_rule: Rule, token: &str, handler: &dyn Fn(Pair<Rule>) -> Result<Expr, Vec<WhammError>>) -> Result<Expr, Vec<WhammError>> {
+fn fail_parser(
+    parse_rule: Rule,
+    token: &str,
+    handler: &dyn Fn(Pair<Rule>) -> Result<Expr, Vec<WhammError>>,
+) -> Result<Expr, Vec<WhammError>> {
     let parse_res = WhammParser::parse(parse_rule, token);
     match parse_res {
-        Ok(mut pairs) => {
-            handler(pairs.next().unwrap())
-        }
-        Err(_) => Err(vec![])
+        Ok(mut pairs) => handler(pairs.next().unwrap()),
+        Err(_) => Err(vec![]),
     }
 }

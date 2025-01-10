@@ -1,7 +1,7 @@
-use log::{error, info};
 use crate::common::error::ErrorGen;
 use crate::parser::types::Whamm;
 use crate::parser::whamm_parser::parse_script;
+use log::{error, info};
 
 pub mod numerics;
 pub mod whamm_scripts;

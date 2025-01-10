@@ -291,11 +291,9 @@ impl Provider for WhammProvider {
                 loc_info.static_data.insert(
                     "fid".to_string(),
                     Some(Value::Int {
-                        val: IntLit::U32 {
-                            val: *fid
-                        },
+                        val: IntLit::U32 { val: *fid },
                         token: "".to_string(),
-                        fmt: NumFmt::NA
+                        fmt: NumFmt::NA,
                     }),
                 );
 
@@ -319,11 +317,9 @@ impl Provider for WhammProvider {
                 loc_info.static_data.insert(
                     "pc".to_string(),
                     Some(Value::Int {
-                        val: IntLit::U32 {
-                            val: pc as u32
-                        },
+                        val: IntLit::U32 { val: pc as u32 },
                         token: "".to_string(),
-                        fmt: NumFmt::NA
+                        fmt: NumFmt::NA,
                     }),
                 );
             }

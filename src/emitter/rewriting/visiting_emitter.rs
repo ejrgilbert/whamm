@@ -15,7 +15,9 @@ use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::report_vars::ReportVars;
 use crate::parser;
 use crate::parser::rules::UNKNOWN_IMMS;
-use crate::parser::types::{Block, DataType, Definition, Expr, FloatLit, IntLit, NumFmt, RulePart, Statement, Value};
+use crate::parser::types::{
+    Block, DataType, Definition, Expr, FloatLit, IntLit, NumFmt, RulePart, Statement, Value,
+};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca_wasm::ir::id::{FunctionID, LocalID, TypeID};
 use orca_wasm::ir::module::Module;
@@ -157,7 +159,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 loc: None,
             };
             let mut block: Vec<Statement> = match val {
-                Some(Value::Int { val: IntLit::U32 {val}, .. }) => {
+                Some(Value::Int {
+                    val: IntLit::U32 { val },
+                    ..
+                }) => {
                     // create a declaration
                     let decl = Statement::Decl {
                         ty: DataType::U32,
@@ -169,11 +174,9 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                         var_id: var_id.clone(),
                         expr: Expr::Primitive {
                             val: Value::Int {
-                                val: IntLit::U32 {
-                                    val: *val
-                                },
+                                val: IntLit::U32 { val: *val },
                                 token: "".to_string(),
-                                fmt: NumFmt::NA
+                                fmt: NumFmt::NA,
                             },
                             loc: None,
                         },
@@ -181,7 +184,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     };
                     vec![decl, assign]
                 }
-                Some(Value::Int { val: IntLit::I32 {val}, .. }) => {
+                Some(Value::Int {
+                    val: IntLit::I32 { val },
+                    ..
+                }) => {
                     // create a declaration
                     let decl = Statement::Decl {
                         ty: DataType::I32,
@@ -193,11 +199,9 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                         var_id: var_id.clone(),
                         expr: Expr::Primitive {
                             val: Value::Int {
-                                val: IntLit::I32 {
-                                    val: *val
-                                },
+                                val: IntLit::I32 { val: *val },
                                 token: "".to_string(),
-                                fmt: NumFmt::NA
+                                fmt: NumFmt::NA,
                             },
                             loc: None,
                         },
@@ -205,7 +209,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     };
                     vec![decl, assign]
                 }
-                Some(Value::Float { val: FloatLit::F32 {val}, .. }) => {
+                Some(Value::Float {
+                    val: FloatLit::F32 { val },
+                    ..
+                }) => {
                     // create a declaration
                     let decl = Statement::Decl {
                         ty: DataType::F32,
@@ -217,10 +224,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                         var_id: var_id.clone(),
                         expr: Expr::Primitive {
                             val: Value::Float {
-                                val: FloatLit::F32 {
-                                    val: *val
-                                },
-                                token: "".to_string()
+                                val: FloatLit::F32 { val: *val },
+                                token: "".to_string(),
                             },
                             loc: None,
                         },
@@ -228,7 +233,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     };
                     vec![decl, assign]
                 }
-                Some(Value::Int { val: IntLit::U64 {val}, .. }) => {
+                Some(Value::Int {
+                    val: IntLit::U64 { val },
+                    ..
+                }) => {
                     // create a declaration
                     let decl = Statement::Decl {
                         ty: DataType::U64,
@@ -240,11 +248,9 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                         var_id: var_id.clone(),
                         expr: Expr::Primitive {
                             val: Value::Int {
-                                val: IntLit::U64 {
-                                    val: *val
-                                },
+                                val: IntLit::U64 { val: *val },
                                 token: "".to_string(),
-                                fmt: NumFmt::NA
+                                fmt: NumFmt::NA,
                             },
                             loc: None,
                         },
@@ -252,7 +258,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     };
                     vec![decl, assign]
                 }
-                Some(Value::Int { val: IntLit::I64 {val}, .. }) => {
+                Some(Value::Int {
+                    val: IntLit::I64 { val },
+                    ..
+                }) => {
                     // create a declaration
                     let decl = Statement::Decl {
                         ty: DataType::I64,
@@ -264,11 +273,9 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                         var_id: var_id.clone(),
                         expr: Expr::Primitive {
                             val: Value::Int {
-                                val: IntLit::I64 {
-                                    val: *val
-                                },
+                                val: IntLit::I64 { val: *val },
                                 token: "".to_string(),
-                                fmt: NumFmt::NA
+                                fmt: NumFmt::NA,
                             },
                             loc: None,
                         },
@@ -276,7 +283,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     };
                     vec![decl, assign]
                 }
-                Some(Value::Float { val: FloatLit::F64 {val}, .. }) => {
+                Some(Value::Float {
+                    val: FloatLit::F64 { val },
+                    ..
+                }) => {
                     // create a declaration
                     let decl = Statement::Decl {
                         ty: DataType::F64,
@@ -288,10 +298,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                         var_id: var_id.clone(),
                         expr: Expr::Primitive {
                             val: Value::Float {
-                                val: FloatLit::F64 {
-                                    val: *val
-                                },
-                                token: "".to_string()
+                                val: FloatLit::F64 { val: *val },
+                                token: "".to_string(),
                             },
                             loc: None,
                         },
@@ -376,21 +384,17 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                             map: var_id.clone(),
                             key: Expr::Primitive {
                                 val: Value::Int {
-                                    val: IntLit::U32 {
-                                        val: *key
-                                    },
+                                    val: IntLit::U32 { val: *key },
                                     token: "".to_string(),
-                                    fmt: NumFmt::NA
+                                    fmt: NumFmt::NA,
                                 },
                                 loc: None,
                             },
                             val: Expr::Primitive {
                                 val: Value::Int {
-                                    val: IntLit::U32 {
-                                        val: *val
-                                    },
+                                    val: IntLit::U32 { val: *val },
                                     token: "".to_string(),
-                                    fmt: NumFmt::NA
+                                    fmt: NumFmt::NA,
                                 },
                                 loc: None,
                             },
@@ -696,7 +700,11 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         // Assume the correct args since we've gone through typechecking at this point!
         let func_id = match args.iter().next().unwrap() {
             Expr::Primitive {
-                val: Value::Int { val: IntLit::I32 {val}, .. },
+                val:
+                    Value::Int {
+                        val: IntLit::I32 { val },
+                        ..
+                    },
                 ..
             } => *val,
             _ => return false,
