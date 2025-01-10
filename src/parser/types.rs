@@ -207,6 +207,26 @@ impl Display for DataType {
     }
 }
 impl DataType {
+    pub fn is_numeric(&self) -> bool {
+        match self {
+            DataType::U8
+            | DataType::I8
+            | DataType::U16
+            | DataType::I16
+            | DataType::U32
+            | DataType::I32
+            | DataType::F32
+            | DataType::U64
+            | DataType::I64
+            | DataType::F64 => true,
+            DataType::Boolean
+            | DataType::Null
+            | DataType::Str
+            | DataType::Tuple { .. }
+            | DataType::Map { .. }
+            | DataType::AssumeGood => false,
+        }
+    }
     pub fn id(&self) -> i32 {
         match self {
             DataType::U8 => 0,
@@ -334,6 +354,160 @@ pub enum IntLit {
     U64 { val: u64 },
 }
 impl IntLit {
+    pub fn as_u32(&mut self) -> Result<(), String> {
+        let new = match self {
+            IntLit::I32 { val } => {
+                // always fits
+                *val as u32
+            }
+            IntLit::U32 { .. } => return Ok(()),
+            IntLit::I64 { val } => {
+                if *val < u32::MIN as i64 || *val > u32::MAX as i64 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as u32
+            }
+            IntLit::U64 { val } => {
+                if *val < u32::MIN as u64 || *val > u32::MAX as u64 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as u32
+            }
+        };
+        *self = Self::u32(new);
+        Ok(())
+    }
+    pub fn as_i32(&mut self) -> Result<(), String> {
+        let new = match self {
+            IntLit::I32 { .. } => return Ok(()),
+            IntLit::U32 { val } => {
+                if *val > i32::MAX as u32 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as i32
+            }
+            IntLit::I64 { val } => {
+                if *val < i32::MIN as i64 || *val > i32::MAX as i64 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as i32
+            }
+            IntLit::U64 { val } => {
+                if *val > i32::MAX as u64 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as i32
+            }
+        };
+        *self = Self::i32(new);
+        Ok(())
+    }
+    pub fn as_u64(&mut self) -> Result<(), String> {
+        let new = match self {
+            IntLit::I32 { val } => {
+                // always fits
+                *val as u64
+            }
+            IntLit::U32 { val } => {
+                // always fits
+                *val as u64
+            }
+            IntLit::I64 { val } => {
+                // always fits
+                *val as u64
+            }
+            IntLit::U64 { .. } => return Ok(()),
+        };
+        *self = Self::u64(new);
+        Ok(())
+    }
+    pub fn as_i64(&mut self) -> Result<(), String> {
+        let new = match self {
+            IntLit::I32 { val } => {
+                // always fits
+                *val as i64
+            }
+            IntLit::U32 { val } => {
+                // always fits
+                *val as i64
+            }
+            IntLit::I64 { .. } => return Ok(()),
+            IntLit::U64 { val } => {
+                if *val > i64::MAX as u64 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as i64
+            }
+        };
+        *self = Self::i64(new);
+        Ok(())
+    }
+    pub fn as_f32(&self) -> Result<FloatLit, String> {
+        let new = match self {
+            IntLit::I32 { val } => {
+                if *val < f32::MIN as i32 || *val > f32::MAX as i32 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as f32
+            }
+            IntLit::U32 { val } => {
+                if *val < f32::MIN as u32 || *val > f32::MAX as u32 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as f32
+            }
+            IntLit::I64 { val } => {
+                if *val < f32::MIN as i64 || *val > f32::MAX as i64 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as f32
+            }
+            IntLit::U64 { val } => {
+                if *val < f32::MIN as u64 || *val > f32::MAX as u64 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as f32
+            }
+        };
+        Ok(FloatLit::f32(new))
+    }
+    pub fn as_f64(&self) -> Result<FloatLit, String> {
+        let new = match self {
+            IntLit::I32 { val } => {
+                if *val < f64::MIN as i32 || *val > f64::MAX as i32 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as f64
+            }
+            IntLit::U32 { val } => {
+                if *val < f64::MIN as u32 || *val > f64::MAX as u32 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as f64
+            }
+            IntLit::I64 { val } => {
+                if *val < f64::MIN as i64 || *val > f64::MAX as i64 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as f64
+            }
+            IntLit::U64 { val } => {
+                if *val < f64::MIN as u64 || *val > f64::MAX as u64 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as f64
+            }
+        };
+        Ok(FloatLit::f64(new))
+    }
+    pub fn is_true_ish(&self) -> bool {
+        match self {
+            IntLit::I32 { val } => *val != 0,
+            IntLit::U32 { val } => *val != 0,
+            IntLit::I64 { val } => *val != 0,
+            IntLit::U64 { val } => *val != 0,
+        }
+    }
     pub fn i32(val: i32) -> Self {
         Self::I32 { val }
     }
@@ -361,6 +535,30 @@ pub enum FloatLit {
     F64 { val: f64 },
 }
 impl FloatLit {
+    pub fn as_f32(&mut self) -> Result<(), String> {
+        let new = match self {
+            Self::F32 { .. } => return Ok(()),
+            Self::F64 { val } => {
+                if *val < f32::MIN as f64 || *val > f32::MAX as f64 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as f32
+            }
+        };
+        *self = Self::f32(new);
+        Ok(())
+    }
+    pub fn as_f64(&mut self) -> Result<(), String> {
+        let new = match self {
+            Self::F32 { val } => {
+                // always fits
+                *val as f64
+            }
+            Self::F64 { .. } => return Ok(()),
+        };
+        *self = Self::f64(new);
+        Ok(())
+    }
     pub fn f32(val: f32) -> Self {
         Self::F32 { val }
     }
@@ -398,15 +596,15 @@ impl NumFmt {
 pub enum Value {
     Int {
         val: IntLit,
+        ty: DataType,
         // is_neg: bool, // todo: may not need
         token: String,
-        fmt: NumFmt,
-        // digits: u8 // (max 64 bits), todo: may not need
+        fmt: NumFmt, // digits: u8 // (max 64 bits), todo: may not need
     },
     Float {
         val: FloatLit,
         token: String,
-        // digits: u8 // (max 64 bits), todo: may not need
+        fmt: NumFmt, // digits: u8 // (max 64 bits), todo: may not need
     },
     Boolean {
         val: bool,
@@ -423,6 +621,15 @@ pub enum Value {
     },
 }
 impl Value {
+    pub fn is_numeric(&self) -> bool {
+        match self {
+            Self::Int { .. } | Self::Float { .. } => true,
+            Self::Boolean { .. }
+            | Self::Str { .. }
+            | Self::Tuple { .. }
+            | Self::U32U32Map { .. } => false,
+        }
+    }
     pub fn ty(&self) -> DataType {
         match self {
             Value::Int { val, .. } => val.ty(),
@@ -434,6 +641,99 @@ impl Value {
                 key_ty: Box::new(DataType::U32),
                 val_ty: Box::new(DataType::U32),
             },
+        }
+    }
+    pub fn implicit_cast(&mut self, target: &DataType) -> Result<(), String> {
+        match self {
+            Value::Int {
+                val, token, fmt, ..
+            } => {
+                match target {
+                    DataType::U8 | DataType::I8 | DataType::U16 | DataType::I16 | DataType::U32 => {
+                        match val.as_u32() {
+                            Ok(_) => {
+                                *self = Value::Int {
+                                    val: val.to_owned(),
+                                    ty: target.clone(),
+                                    token: token.to_owned(),
+                                    fmt: fmt.to_owned(),
+                                };
+                                Ok(())
+                            }
+                            Err(msg) => Err(msg),
+                        }
+                    }
+                    DataType::I32 => match val.as_i32() {
+                        Ok(_) => {
+                            *self = Value::Int {
+                                val: val.to_owned(),
+                                ty: target.clone(),
+                                token: token.to_owned(),
+                                fmt: fmt.to_owned(),
+                            };
+                            Ok(())
+                        }
+                        Err(msg) => Err(msg),
+                    },
+                    DataType::U64 => match val.as_u64() {
+                        Ok(_) => {
+                            *self = Value::Int {
+                                val: val.to_owned(),
+                                ty: target.clone(),
+                                token: token.to_owned(),
+                                fmt: fmt.to_owned(),
+                            };
+                            Ok(())
+                        }
+                        Err(msg) => Err(msg),
+                    },
+                    DataType::I64 => match val.as_i64() {
+                        Ok(_) => {
+                            *self = Value::Int {
+                                val: val.to_owned(),
+                                ty: target.clone(),
+                                token: token.to_owned(),
+                                fmt: fmt.to_owned(),
+                            };
+                            Ok(())
+                        }
+                        Err(msg) => Err(msg),
+                    },
+                    DataType::F32 => match val.as_f32() {
+                        Ok(float) => {
+                            *self = Value::Float {
+                                val: float,
+                                token: token.to_owned(),
+                                fmt: fmt.to_owned(),
+                            };
+                            Ok(())
+                        }
+                        Err(msg) => Err(msg),
+                    },
+                    DataType::F64 => match val.as_f64() {
+                        Ok(float) => {
+                            *self = Value::Float {
+                                val: float,
+                                token: token.to_owned(),
+                                fmt: fmt.to_owned(),
+                            };
+                            Ok(())
+                        }
+                        Err(msg) => Err(msg),
+                    },
+                    // DataType::Boolean => {
+                    //     *self = Self::Primitive {
+                    //         val: Value::Boolean { val: val.is_true_ish() },
+                    //         loc: None,
+                    //     };
+                    //     return Ok(());
+                    // },
+                    _ => Err(format!("{} to {}", self.ty(), target)),
+                }
+            }
+            Value::Float { .. } => todo!(),
+            // Value::Boolean { val } => todo!(),
+            _ => Err("non-numeric values".to_string()),
         }
     }
 }
@@ -518,6 +818,7 @@ impl Statement {
             expr: Expr::Primitive {
                 val: Value::Int {
                     val: IntLit::U32 { val: 0 },
+                    ty: DataType::U32,
                     token: "0".to_string(),
                     fmt: NumFmt::Dec,
                 },
@@ -573,6 +874,32 @@ pub enum Expr {
     },
 }
 impl Expr {
+    pub fn implicit_cast(&mut self, target: &DataType) -> Result<(), (String, bool)> {
+        let (err_reason, is_unexp) = match self {
+            Self::Primitive { val: value, .. } => match value.implicit_cast(target) {
+                Ok(()) => return Ok(()),
+                Err(msg) => (msg, false),
+            },
+            Self::Ternary { conseq, alt, .. } => match conseq.implicit_cast(target) {
+                Ok(()) => match alt.implicit_cast(target) {
+                    Ok(()) => return Ok(()),
+                    Err(res) => res,
+                },
+                Err(res) => res,
+            },
+            _ => ("cannot implicitly cast expressions".to_string(), true),
+        };
+        let unexp_msg = if is_unexp {
+            "Looks like you've found a bug...please report this behavior! Exiting now..."
+        } else {
+            ""
+        };
+        Err((
+            format!("CastError: Cannot implicitly cast {err_reason}. {unexp_msg}"),
+            true,
+        ))
+    }
+
     pub fn loc(&self) -> &Option<Location> {
         match self {
             Expr::UnOp { loc, .. }

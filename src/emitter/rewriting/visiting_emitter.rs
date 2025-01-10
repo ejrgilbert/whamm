@@ -175,6 +175,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                         expr: Expr::Primitive {
                             val: Value::Int {
                                 val: IntLit::U32 { val: *val },
+                                ty: DataType::U32,
                                 token: "".to_string(),
                                 fmt: NumFmt::NA,
                             },
@@ -200,6 +201,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                         expr: Expr::Primitive {
                             val: Value::Int {
                                 val: IntLit::I32 { val: *val },
+                                ty: DataType::I32,
                                 token: "".to_string(),
                                 fmt: NumFmt::NA,
                             },
@@ -226,6 +228,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                             val: Value::Float {
                                 val: FloatLit::F32 { val: *val },
                                 token: "".to_string(),
+                                fmt: NumFmt::NA,
                             },
                             loc: None,
                         },
@@ -249,6 +252,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                         expr: Expr::Primitive {
                             val: Value::Int {
                                 val: IntLit::U64 { val: *val },
+                                ty: DataType::U64,
                                 token: "".to_string(),
                                 fmt: NumFmt::NA,
                             },
@@ -274,6 +278,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                         expr: Expr::Primitive {
                             val: Value::Int {
                                 val: IntLit::I64 { val: *val },
+                                ty: DataType::I64,
                                 token: "".to_string(),
                                 fmt: NumFmt::NA,
                             },
@@ -300,6 +305,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                             val: Value::Float {
                                 val: FloatLit::F64 { val: *val },
                                 token: "".to_string(),
+                                fmt: NumFmt::NA,
                             },
                             loc: None,
                         },
@@ -379,6 +385,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                             key: Expr::Primitive {
                                 val: Value::Int {
                                     val: IntLit::U32 { val: *key },
+                                    ty: DataType::U32,
                                     token: "".to_string(),
                                     fmt: NumFmt::NA,
                                 },
@@ -387,6 +394,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                             val: Expr::Primitive {
                                 val: Value::Int {
                                     val: IntLit::U32 { val: *val },
+                                    ty: DataType::U32,
                                     token: "".to_string(),
                                     fmt: NumFmt::NA,
                                 },

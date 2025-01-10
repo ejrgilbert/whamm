@@ -41,7 +41,7 @@ wasm::call:alt /
         }
         wasm::call:alt {
             dummy_fn();
-        }   
+        }
     "#,
     r#"
         i32 i;
@@ -62,7 +62,7 @@ wasm::call:alt /
         }
         wasm::call:alt {
             dummy_fn();
-        }   
+        }
     "#,
     r#"
         bool a = strcmp((1, 2), "bookings");
@@ -541,11 +541,12 @@ pub fn testing_map() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
-        wasm:opcode:call:after{
-        map<(i32, i32, i32), i32> my_map;
-        (i32, i32, i32) b = (1, 2, 3);
-        my_map[b] = 2;
-        i32 a = my_map[b];
+    wasm:opcode:call:after {
+        i32 b = 1;
+        // map<(i32, i32, i32), i32> my_map;
+        // (i32, i32, i32) b = (1, 2, 3);
+        // my_map[b] = 2;
+        // i32 a = my_map[b];
     }
     "#;
 

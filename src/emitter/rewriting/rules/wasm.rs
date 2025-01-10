@@ -5,7 +5,7 @@ use crate::for_each_opcode;
 use crate::generator::rewriting::simple_ast::SimpleProbe;
 use crate::parser::rules::core::WhammModeKind;
 use crate::parser::rules::wasm::{OpcodeEventKind, WasmPackageKind};
-use crate::parser::types::{IntLit, NumFmt, RulePart, Value};
+use crate::parser::types::{DataType, IntLit, NumFmt, RulePart, Value};
 use log::warn;
 use orca_wasm::ir::id::FunctionID;
 use orca_wasm::ir::module::module_functions::{FuncKind, ImportedFunction, LocalFunction};
@@ -217,6 +217,7 @@ impl Event for OpcodeEvent {
                             val: IntLit::U32 {
                                 val: *relative_depth,
                             },
+                            ty: DataType::U32,
                             token: "".to_string(),
                             fmt: NumFmt::NA,
                         }),
@@ -232,6 +233,7 @@ impl Event for OpcodeEvent {
                             val: IntLit::U32 {
                                 val: *relative_depth,
                             },
+                            ty: DataType::U32,
                             token: "".to_string(),
                             fmt: NumFmt::NA,
                         }),
@@ -245,6 +247,7 @@ impl Event for OpcodeEvent {
                         "num_targets".to_string(),
                         Some(Value::Int {
                             val: IntLit::U32 { val: targets.len() },
+                            ty: DataType::U32,
                             token: "".to_string(),
                             fmt: NumFmt::NA,
                         }),
@@ -255,6 +258,7 @@ impl Event for OpcodeEvent {
                             val: IntLit::U32 {
                                 val: targets.default(),
                             },
+                            ty: DataType::U32,
                             token: "".to_string(),
                             fmt: NumFmt::NA,
                         }),
@@ -268,6 +272,7 @@ impl Event for OpcodeEvent {
                                 format!("imm{i}"),
                                 Some(Value::Int {
                                     val: IntLit::U32 { val: target },
+                                    ty: DataType::U32,
                                     token: "".to_string(),
                                     fmt: NumFmt::NA,
                                 }),
@@ -338,6 +343,7 @@ impl Event for OpcodeEvent {
                         "imm0".to_string(),
                         Some(Value::Int {
                             val: IntLit::U32 { val: *fid },
+                            ty: DataType::U32,
                             token: "".to_string(),
                             fmt: NumFmt::NA,
                         }),
@@ -353,6 +359,7 @@ impl Event for OpcodeEvent {
                         "imm0".to_string(),
                         Some(Value::Int {
                             val: IntLit::U32 { val: *local_index },
+                            ty: DataType::U32,
                             token: "".to_string(),
                             fmt: NumFmt::NA,
                         }),
@@ -368,6 +375,7 @@ impl Event for OpcodeEvent {
                         "imm0".to_string(),
                         Some(Value::Int {
                             val: IntLit::U32 { val: *local_index },
+                            ty: DataType::U32,
                             token: "".to_string(),
                             fmt: NumFmt::NA,
                         }),
@@ -383,6 +391,7 @@ impl Event for OpcodeEvent {
                         "imm0".to_string(),
                         Some(Value::Int {
                             val: IntLit::U32 { val: *local_index },
+                            ty: DataType::U32,
                             token: "".to_string(),
                             fmt: NumFmt::NA,
                         }),
@@ -398,6 +407,7 @@ impl Event for OpcodeEvent {
                         "imm0".to_string(),
                         Some(Value::Int {
                             val: IntLit::U32 { val: *global_index },
+                            ty: DataType::U32,
                             token: "".to_string(),
                             fmt: NumFmt::NA,
                         }),
@@ -413,6 +423,7 @@ impl Event for OpcodeEvent {
                         "imm0".to_string(),
                         Some(Value::Int {
                             val: IntLit::U32 { val: *global_index },
+                            ty: DataType::U32,
                             token: "".to_string(),
                             fmt: NumFmt::NA,
                         }),
@@ -428,6 +439,7 @@ impl Event for OpcodeEvent {
                         "imm0".to_string(),
                         Some(Value::Int {
                             val: IntLit::I32 { val: *value },
+                            ty: DataType::I32,
                             token: "".to_string(),
                             fmt: NumFmt::NA,
                         }),
@@ -443,6 +455,7 @@ impl Event for OpcodeEvent {
                         "imm0".to_string(),
                         Some(Value::Int {
                             val: IntLit::I64 { val: *value },
+                            ty: DataType::I64,
                             token: "".to_string(),
                             fmt: NumFmt::NA,
                         }),

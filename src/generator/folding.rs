@@ -338,9 +338,10 @@ impl ExprFolder {
                     }),
                     BinOp::Add => Some(Expr::Primitive {
                         val: Value::Int {
-                            val: IntLit::I32 {
-                                val: lhs_int + rhs_int,
+                            val: IntLit::U32 {
+                                val: (lhs_int + rhs_int) as u32,
                             },
+                            ty: DataType::I32,
                             token: "".to_string(),
                             fmt: NumFmt::NA,
                         },
@@ -348,9 +349,10 @@ impl ExprFolder {
                     }),
                     BinOp::Subtract => Some(Expr::Primitive {
                         val: Value::Int {
-                            val: IntLit::I32 {
-                                val: lhs_int - rhs_int,
+                            val: IntLit::U32 {
+                                val: (lhs_int - rhs_int) as u32,
                             },
+                            ty: DataType::I32,
                             token: "".to_string(),
                             fmt: NumFmt::NA,
                         },
@@ -358,9 +360,10 @@ impl ExprFolder {
                     }),
                     BinOp::Multiply => Some(Expr::Primitive {
                         val: Value::Int {
-                            val: IntLit::I32 {
-                                val: lhs_int * rhs_int,
+                            val: IntLit::U32 {
+                                val: (lhs_int * rhs_int) as u32,
                             },
+                            ty: DataType::I32,
                             token: "".to_string(),
                             fmt: NumFmt::NA,
                         },
@@ -368,9 +371,10 @@ impl ExprFolder {
                     }),
                     BinOp::Divide => Some(Expr::Primitive {
                         val: Value::Int {
-                            val: IntLit::I32 {
-                                val: lhs_int / rhs_int,
+                            val: IntLit::U32 {
+                                val: (lhs_int / rhs_int) as u32,
                             },
+                            ty: DataType::I32,
                             token: "".to_string(),
                             fmt: NumFmt::NA,
                         },
@@ -381,6 +385,7 @@ impl ExprFolder {
                             val: IntLit::I32 {
                                 val: lhs_int % rhs_int,
                             },
+                            ty: DataType::I32,
                             token: "".to_string(),
                             fmt: NumFmt::NA,
                         },
@@ -518,39 +523,29 @@ impl ExprFolder {
     }
     pub fn get_i32(lhs: &Expr, rhs: &Expr) -> (Option<i32>, Option<i32>) {
         let lhs_val = match lhs {
-            Expr::Primitive {
-                val: Value::Int { val: _lhs_val, .. },
-                ..
-            } => {
-                // Some(*lhs_val)
-                todo!()
-            }
-            // Expr::Primitive {
-            //     val: Value::Int { val: _lhs_val, .. },
-            //     ..
-            // } => {
-            //     // TODO -- check overflow here!
-            //     // Some(*lhs_val as i32)
-            //     todo!()
-            // }
+            Expr::Primitive { val, .. } => match val.clone().implicit_cast(&DataType::I32) {
+                Ok(()) => match val {
+                    Value::Int {
+                        val: IntLit::I32 { val },
+                        ..
+                    } => Some(*val),
+                    _ => None,
+                },
+                _ => None,
+            },
             _ => None,
         };
         let rhs_val = match rhs {
-            Expr::Primitive {
-                val: Value::Int { val: _rhs_val, .. },
-                ..
-            } => {
-                // Some(*rhs_val)
-                todo!()
-            }
-            Expr::Primitive {
-                val: Value::Float { val: _rhs_val, .. },
-                ..
-            } => {
-                // TODO -- check overflow here!
-                // Some(*rhs_val as i32)
-                todo!()
-            }
+            Expr::Primitive { val, .. } => match val.clone().implicit_cast(&DataType::I32) {
+                Ok(()) => match val {
+                    Value::Int {
+                        val: IntLit::I32 { val },
+                        ..
+                    } => Some(*val),
+                    _ => None,
+                },
+                _ => None,
+            },
             _ => None,
         };
         (lhs_val, rhs_val)

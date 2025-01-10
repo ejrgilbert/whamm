@@ -494,6 +494,7 @@ fn handle_incrementor(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
         Expr::Primitive {
             val: Value::Int {
                 val: IntLit::U32 { val: 1 },
+                ty: DataType::U32,
                 token: "1".to_string(),
                 fmt: NumFmt::Dec,
             },
@@ -513,6 +514,7 @@ fn handle_decrementor(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
         Expr::Primitive {
             val: Value::Int {
                 val: IntLit::U32 { val: 1 },
+                ty: DataType::U32,
                 token: "1".to_string(),
                 fmt: NumFmt::Dec,
             },
@@ -1635,6 +1637,7 @@ pub fn handle_int(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
         Ok(val) => Ok(Expr::Primitive {
             val: Value::Int {
                 val,
+                ty: DataType::U32,
                 token: token.to_string(),
                 fmt,
             },
@@ -1685,6 +1688,7 @@ pub fn handle_float(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
         val: Value::Float {
             val,
             token: token.to_string(),
+            fmt: NumFmt::Dec,
         },
         loc: Some(Location {
             line_col: LineColLocation::from(pair.as_span()),
