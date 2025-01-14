@@ -380,8 +380,6 @@ const FATAL_SCRIPTS: &[&str] = &[
 core::br:before / i == 1 / { i = 0; }  // SHOULD FAIL HERE
 
     "#,
-    // // Numerics (not supported yet: https://github.com/ejrgilbert/whamm/issues/141)
-    // "wasm:opcode:call:alt { i64 num = 0; }",
     // trigger unavailable modes per event
     "wasm:opcode:unreachable:after {}",
     "wasm:opcode:unreachable:at_target {}",
@@ -418,8 +416,6 @@ map<i32, i32> count;
     // Empty predicate
     "wasm:opcode:call:alt  // { }",
     "wasm:opcode:call:alt / 5i < r77 / { }",
-    //            "wasm:opcode:call:alt / i < 1 < 2 / { }", // TODO -- make invalid on semantic pass
-    //            "wasm:opcode:call:alt / (1 + 3) / { i }", // TODO -- make invalid on type check
     r#"wasm:opcode:call:alt  / i == """" / { }"#,
     // bad statement
     "wasm:opcode:call:alt / i == 1 / { i; }",

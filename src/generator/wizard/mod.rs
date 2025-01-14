@@ -5,7 +5,6 @@ use crate::common::error::ErrorGen;
 use crate::common::instr::Config;
 use crate::emitter::memory_allocator::VAR_BLOCK_BASE_VAR;
 use crate::emitter::module_emitter::ModuleEmitter;
-use crate::emitter::utils::whamm_type_to_wasm_type;
 use crate::generator::wizard::ast::{WizardProbe, WizardScript};
 use crate::generator::GeneratingVisitor;
 use crate::lang_features::alloc_vars::wizard::UnsharedVarHandler;
@@ -158,7 +157,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         for (param_name, param_ty) in param_reqs.iter() {
             let local_id = params.len() as u32;
             // handle param list
-            params.extend(whamm_type_to_wasm_type(param_ty));
+            params.extend(param_ty.to_wasm_type());
 
             // handle the param string
             if !param_str.is_empty() {

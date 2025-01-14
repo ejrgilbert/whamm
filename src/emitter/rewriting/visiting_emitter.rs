@@ -16,7 +16,7 @@ use crate::lang_features::report_vars::ReportVars;
 use crate::parser;
 use crate::parser::rules::UNKNOWN_IMMS;
 use crate::parser::types::{
-    Block, DataType, Definition, Expr, FloatLit, IntLit, NumFmt, RulePart, Statement, Value,
+    Block, DataType, Definition, Expr, FloatLit, IntLit, RulePart, Statement, Value,
 };
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca_wasm::ir::id::{FunctionID, LocalID, TypeID};
@@ -173,12 +173,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     let assign = Statement::Assign {
                         var_id: var_id.clone(),
                         expr: Expr::Primitive {
-                            val: Value::Int {
-                                val: IntLit::U32 { val: *val },
-                                ty: DataType::U32,
-                                token: "".to_string(),
-                                fmt: NumFmt::NA,
-                            },
+                            val: Value::gen_u32(*val),
                             loc: None,
                         },
                         loc: None,
@@ -199,12 +194,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     let assign = Statement::Assign {
                         var_id: var_id.clone(),
                         expr: Expr::Primitive {
-                            val: Value::Int {
-                                val: IntLit::I32 { val: *val },
-                                ty: DataType::I32,
-                                token: "".to_string(),
-                                fmt: NumFmt::NA,
-                            },
+                            val: Value::gen_i32(*val),
                             loc: None,
                         },
                         loc: None,
@@ -225,11 +215,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     let assign = Statement::Assign {
                         var_id: var_id.clone(),
                         expr: Expr::Primitive {
-                            val: Value::Float {
-                                val: FloatLit::F32 { val: *val },
-                                token: "".to_string(),
-                                fmt: NumFmt::NA,
-                            },
+                            val: Value::gen_f32(*val),
                             loc: None,
                         },
                         loc: None,
@@ -250,12 +236,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     let assign = Statement::Assign {
                         var_id: var_id.clone(),
                         expr: Expr::Primitive {
-                            val: Value::Int {
-                                val: IntLit::U64 { val: *val },
-                                ty: DataType::U64,
-                                token: "".to_string(),
-                                fmt: NumFmt::NA,
-                            },
+                            val: Value::gen_u64(*val),
                             loc: None,
                         },
                         loc: None,
@@ -276,12 +257,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     let assign = Statement::Assign {
                         var_id: var_id.clone(),
                         expr: Expr::Primitive {
-                            val: Value::Int {
-                                val: IntLit::I64 { val: *val },
-                                ty: DataType::I64,
-                                token: "".to_string(),
-                                fmt: NumFmt::NA,
-                            },
+                            val: Value::gen_i64(*val),
                             loc: None,
                         },
                         loc: None,
@@ -302,11 +278,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     let assign = Statement::Assign {
                         var_id: var_id.clone(),
                         expr: Expr::Primitive {
-                            val: Value::Float {
-                                val: FloatLit::F64 { val: *val },
-                                token: "".to_string(),
-                                fmt: NumFmt::NA,
-                            },
+                            val: Value::gen_f64(*val),
                             loc: None,
                         },
                         loc: None,
@@ -383,21 +355,11 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                         stmts.push(Statement::SetMap {
                             map: var_id.clone(),
                             key: Expr::Primitive {
-                                val: Value::Int {
-                                    val: IntLit::U32 { val: *key },
-                                    ty: DataType::U32,
-                                    token: "".to_string(),
-                                    fmt: NumFmt::NA,
-                                },
+                                val: Value::gen_u32(*key),
                                 loc: None,
                             },
                             val: Expr::Primitive {
-                                val: Value::Int {
-                                    val: IntLit::U32 { val: *val },
-                                    ty: DataType::U32,
-                                    token: "".to_string(),
-                                    fmt: NumFmt::NA,
-                                },
+                                val: Value::gen_u32(*val),
                                 loc: None,
                             },
                             loc: None,

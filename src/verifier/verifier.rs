@@ -341,7 +341,8 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         match expr.implicit_cast(&lhs_ty) {
                             Ok(_) => None,
                             Err((msg, fatal)) => {
-                                self.err.type_check_error(fatal, msg, &Some(rhs_loc.line_col));
+                                self.err
+                                    .type_check_error(fatal, msg, &Some(rhs_loc.line_col));
                                 None
                             }
                         }
@@ -490,13 +491,17 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             //ensure that the key_ty matches and the val_ty matches
                             if key_ty != *map_key_ty {
                                 let key_loc = key.loc().clone().unwrap();
-                                if key_ty.can_implicitly_cast() && map_key_ty.can_implicitly_cast() {
+                                if key_ty.can_implicitly_cast() && map_key_ty.can_implicitly_cast()
+                                {
                                     // try to implicitly do a cast here
-                                    match key.implicit_cast(map_key_ty.as_ref()) {
-                                        Err((msg, fatal)) => {
-                                            self.err.type_check_error(fatal, msg, &Some(key_loc.line_col))
-                                        },
-                                        Ok(_) => {} // nothing to do
+                                    if let Err((msg, fatal)) =
+                                        key.implicit_cast(map_key_ty.as_ref())
+                                    {
+                                        self.err.type_check_error(
+                                            fatal,
+                                            msg,
+                                            &Some(key_loc.line_col),
+                                        )
                                     }
                                 } else {
                                     self.err.type_check_error(
@@ -509,13 +514,17 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             }
                             if val_ty != *map_val_ty {
                                 let val_loc = val.loc().clone().unwrap();
-                                if val_ty.can_implicitly_cast() && map_val_ty.can_implicitly_cast() {
+                                if val_ty.can_implicitly_cast() && map_val_ty.can_implicitly_cast()
+                                {
                                     // try to implicitly do a cast here
-                                    match val.implicit_cast(map_val_ty.as_ref()) {
-                                        Err((msg, fatal)) => {
-                                            self.err.type_check_error(fatal, msg, &Some(val_loc.line_col))
-                                        },
-                                        Ok(_) => {} // nothing to do
+                                    if let Err((msg, fatal)) =
+                                        val.implicit_cast(map_val_ty.as_ref())
+                                    {
+                                        self.err.type_check_error(
+                                            fatal,
+                                            msg,
+                                            &Some(val_loc.line_col),
+                                        )
                                     }
                                 } else {
                                     self.err.type_check_error(
@@ -572,7 +581,11 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 match rhs.implicit_cast(&lhs_ty) {
                                     Ok(_) => Some(lhs_ty),
                                     Err((msg, fatal)) => {
-                                        self.err.type_check_error(fatal, msg, &Some(rhs_loc.line_col));
+                                        self.err.type_check_error(
+                                            fatal,
+                                            msg,
+                                            &Some(rhs_loc.line_col),
+                                        );
                                         Some(lhs_ty)
                                     }
                                 }
@@ -588,7 +601,9 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             }
                         }
                         BinOp::And | BinOp::Or => {
-                            if matches!(lhs_ty, DataType::AssumeGood) || matches!(rhs_ty, DataType::AssumeGood) {
+                            if matches!(lhs_ty, DataType::AssumeGood)
+                                || matches!(rhs_ty, DataType::AssumeGood)
+                            {
                                 return Some(DataType::Boolean);
                             }
                             if lhs_ty == DataType::Boolean && rhs_ty == DataType::Boolean {
@@ -603,7 +618,9 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             }
                         }
                         BinOp::EQ | BinOp::NE => {
-                            if matches!(lhs_ty, DataType::AssumeGood) || matches!(rhs_ty, DataType::AssumeGood) {
+                            if matches!(lhs_ty, DataType::AssumeGood)
+                                || matches!(rhs_ty, DataType::AssumeGood)
+                            {
                                 return Some(DataType::Boolean);
                             }
                             if lhs_ty == rhs_ty {
@@ -612,7 +629,11 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 match rhs.implicit_cast(&lhs_ty) {
                                     Ok(_) => Some(DataType::Boolean),
                                     Err((msg, fatal)) => {
-                                        self.err.type_check_error(fatal, msg, &Some(rhs_loc.line_col));
+                                        self.err.type_check_error(
+                                            fatal,
+                                            msg,
+                                            &Some(rhs_loc.line_col),
+                                        );
                                         Some(DataType::Boolean)
                                     }
                                 }
@@ -630,7 +651,9 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             }
                         }
                         BinOp::GT | BinOp::LT | BinOp::GE | BinOp::LE => {
-                            if matches!(lhs_ty, DataType::AssumeGood) || matches!(rhs_ty, DataType::AssumeGood) {
+                            if matches!(lhs_ty, DataType::AssumeGood)
+                                || matches!(rhs_ty, DataType::AssumeGood)
+                            {
                                 return Some(DataType::Boolean);
                             }
                             if lhs_ty == rhs_ty && lhs_ty.can_implicitly_cast() {
@@ -639,7 +662,11 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 match rhs.implicit_cast(&lhs_ty) {
                                     Ok(_) => Some(DataType::Boolean),
                                     Err((msg, fatal)) => {
-                                        self.err.type_check_error(fatal, msg, &Some(rhs_loc.line_col));
+                                        self.err.type_check_error(
+                                            fatal,
+                                            msg,
+                                            &Some(rhs_loc.line_col),
+                                        );
                                         Some(DataType::Boolean)
                                     }
                                 }
@@ -710,11 +737,15 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
 
                 Some(DataType::AssumeGood)
             }
-            Expr::UnOp { op, expr: inner_expr, loc } => {
+            Expr::UnOp {
+                op,
+                expr: inner_expr,
+                loc,
+            } => {
                 let expr_ty_op = self.visit_expr(inner_expr);
                 if let Some(expr_ty) = expr_ty_op {
                     match op {
-                        UnOp::Cast {target} => {
+                        UnOp::Cast { target } => {
                             // If the inner expression's type is the same as the cast,
                             // we can remove the cast from the AST!
                             let t = target.clone();
@@ -722,7 +753,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 *expr = *inner_expr.to_owned();
                             }
                             Some(t)
-                        },
+                        }
                         UnOp::Not => {
                             if expr_ty == DataType::Boolean {
                                 Some(DataType::Boolean)
@@ -823,13 +854,16 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                     if expected != actual {
                                         let arg = args.get_mut(i).unwrap();
                                         let arg_loc = arg.loc().clone().unwrap();
-                                        if expected.can_implicitly_cast() && actual.can_implicitly_cast() {
+                                        if expected.can_implicitly_cast()
+                                            && actual.can_implicitly_cast()
+                                        {
                                             // try to implicitly do a cast here
-                                            match arg.implicit_cast(expected) {
-                                                Err((msg, fatal)) => {
-                                                    self.err.type_check_error(fatal, msg, &Some(arg_loc.line_col))
-                                                },
-                                                Ok(_) => {} // nothing to do
+                                            if let Err((msg, fatal)) = arg.implicit_cast(expected) {
+                                                self.err.type_check_error(
+                                                    fatal,
+                                                    msg,
+                                                    &Some(arg_loc.line_col),
+                                                )
                                             }
                                         } else {
                                             self.err.type_check_error(
@@ -893,13 +927,17 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             //ensure that the key_ty matches and the val_ty matches
                             if key_ty != *map_key_ty {
                                 let key_loc = key.loc().clone().unwrap();
-                                if key_ty.can_implicitly_cast() && map_key_ty.can_implicitly_cast() {
+                                if key_ty.can_implicitly_cast() && map_key_ty.can_implicitly_cast()
+                                {
                                     // try to implicitly do a cast here
-                                    match key.implicit_cast(map_key_ty.as_ref()) {
-                                        Err((msg, fatal)) => {
-                                            self.err.type_check_error(fatal, msg, &Some(key_loc.line_col))
-                                        },
-                                        Ok(_) => {} // nothing to do
+                                    if let Err((msg, fatal)) =
+                                        key.implicit_cast(map_key_ty.as_ref())
+                                    {
+                                        self.err.type_check_error(
+                                            fatal,
+                                            msg,
+                                            &Some(key_loc.line_col),
+                                        )
                                     }
                                 } else {
                                     self.err.type_check_error(

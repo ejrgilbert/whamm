@@ -1,5 +1,5 @@
 use crate::common::error::ErrorGen;
-use crate::parser::types::{BinOp, DataType, Definition, Expr, IntLit, NumFmt, UnOp, Value};
+use crate::parser::types::{BinOp, DataType, Definition, Expr, IntLit, UnOp, Value};
 use crate::verifier::types::Record::Var;
 use crate::verifier::types::{Record, SymbolTable};
 
@@ -252,33 +252,35 @@ impl ExprFolder {
         if let Expr::UnOp { op, expr, .. } = &unop {
             let expr = ExprFolder::fold_expr(expr, table, err);
             return match op {
-                UnOp::Cast {target} => {
-                    match &expr {
-                        Expr::Primitive { val, .. } => {
-                            let mut casted = val.clone();
-                            match casted.explicit_cast(target) {
-                                Ok(()) => Expr::Primitive {
-                                    val: casted,
-                                    loc: None,
+                UnOp::Cast { target } => match &expr {
+                    Expr::Primitive { val, .. } => {
+                        let mut casted = val.clone();
+                        match casted.check_explicit_cast(target) {
+                            Ok(()) => Expr::Primitive {
+                                val: casted,
+                                loc: None,
+                            },
+                            Err(_) => Expr::UnOp {
+                                op: UnOp::Cast {
+                                    target: target.clone(),
                                 },
-                                Err(_) => Expr::UnOp {
-                                    op: UnOp::Cast {target: target.clone()},
-                                    expr: Box::new(expr),
-                                    loc: None,
-                                }
-                            }
-                        },
-                        Expr::UnOp { .. } => Self::fold_unop(&expr, table, err),
-                        Expr::Ternary { .. }
-                        | Expr::BinOp { .. }
-                        | Expr::Call { .. }
-                        | Expr::VarId { .. }
-                        | Expr::MapGet { .. } => Expr::UnOp {
-                            op: UnOp::Cast {target: target.clone()},
-                            expr: Box::new(expr),
-                            loc: None,
+                                expr: Box::new(expr),
+                                loc: None,
+                            },
                         }
                     }
+                    Expr::UnOp { .. } => Self::fold_unop(&expr, table, err),
+                    Expr::Ternary { .. }
+                    | Expr::BinOp { .. }
+                    | Expr::Call { .. }
+                    | Expr::VarId { .. }
+                    | Expr::MapGet { .. } => Expr::UnOp {
+                        op: UnOp::Cast {
+                            target: target.clone(),
+                        },
+                        expr: Box::new(expr),
+                        loc: None,
+                    },
                 },
                 UnOp::Not => {
                     let expr_val = ExprFolder::get_single_bool(&expr);
@@ -365,58 +367,23 @@ impl ExprFolder {
                         loc: None,
                     }),
                     BinOp::Add => Some(Expr::Primitive {
-                        val: Value::Int {
-                            val: IntLit::U32 {
-                                val: (lhs_int + rhs_int) as u32,
-                            },
-                            ty: DataType::I32,
-                            token: "".to_string(),
-                            fmt: NumFmt::NA,
-                        },
+                        val: Value::gen_u32((lhs_int + rhs_int) as u32),
                         loc: None,
                     }),
                     BinOp::Subtract => Some(Expr::Primitive {
-                        val: Value::Int {
-                            val: IntLit::U32 {
-                                val: (lhs_int - rhs_int) as u32,
-                            },
-                            ty: DataType::I32,
-                            token: "".to_string(),
-                            fmt: NumFmt::NA,
-                        },
+                        val: Value::gen_u32((lhs_int - rhs_int) as u32),
                         loc: None,
                     }),
                     BinOp::Multiply => Some(Expr::Primitive {
-                        val: Value::Int {
-                            val: IntLit::U32 {
-                                val: (lhs_int * rhs_int) as u32,
-                            },
-                            ty: DataType::I32,
-                            token: "".to_string(),
-                            fmt: NumFmt::NA,
-                        },
+                        val: Value::gen_u32((lhs_int * rhs_int) as u32),
                         loc: None,
                     }),
                     BinOp::Divide => Some(Expr::Primitive {
-                        val: Value::Int {
-                            val: IntLit::U32 {
-                                val: (lhs_int / rhs_int) as u32,
-                            },
-                            ty: DataType::I32,
-                            token: "".to_string(),
-                            fmt: NumFmt::NA,
-                        },
+                        val: Value::gen_u32((lhs_int / rhs_int) as u32),
                         loc: None,
                     }),
                     BinOp::Modulo => Some(Expr::Primitive {
-                        val: Value::Int {
-                            val: IntLit::I32 {
-                                val: lhs_int % rhs_int,
-                            },
-                            ty: DataType::I32,
-                            token: "".to_string(),
-                            fmt: NumFmt::NA,
-                        },
+                        val: Value::gen_i32(lhs_int % rhs_int),
                         loc: None,
                     }),
                     _ => None,
@@ -563,7 +530,7 @@ impl ExprFolder {
                     },
                     _ => None,
                 }
-            },
+            }
             _ => None,
         };
         let rhs_val = match rhs {
@@ -579,7 +546,7 @@ impl ExprFolder {
                     },
                     _ => None,
                 }
-            },
+            }
             _ => None,
         };
         (lhs_val, rhs_val)

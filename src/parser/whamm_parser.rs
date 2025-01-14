@@ -491,18 +491,7 @@ fn handle_function_call_outer(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<State
 fn handle_incrementor(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     vec![handle_custom_binop(
         BinOp::Add,
-        Expr::Primitive {
-            val: Value::Int {
-                val: IntLit::U32 { val: 1 },
-                ty: DataType::U32,
-                token: "1".to_string(),
-                fmt: NumFmt::Dec,
-            },
-            loc: Some(Location {
-                line_col: LineColLocation::from(pair.as_span()),
-                path: None,
-            }),
-        },
+        Expr::one(LineColLocation::from(pair.as_span())),
         pair,
         err,
     )]
@@ -511,18 +500,7 @@ fn handle_incrementor(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
 fn handle_decrementor(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     vec![handle_custom_binop(
         BinOp::Subtract,
-        Expr::Primitive {
-            val: Value::Int {
-                val: IntLit::U32 { val: 1 },
-                ty: DataType::U32,
-                token: "1".to_string(),
-                fmt: NumFmt::Dec,
-            },
-            loc: Some(Location {
-                line_col: LineColLocation::from(pair.as_span()),
-                path: None,
-            }),
-        },
+        Expr::one(LineColLocation::from(pair.as_span())),
         pair,
         err,
     )]
@@ -1066,13 +1044,7 @@ fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                             )]);
                         }
                     };
-
-                    let loc = if let Some(rhs_loc) = rhs.loc() {
-                        let rhs_line_col = rhs_loc.line_col.clone();
-                        Some(Location::from(&rhs_line_col, &rhs_line_col, None))
-                    } else {
-                        None
-                    };
+                    let loc = rhs.loc().clone();
 
                     Ok(Expr::UnOp {
                         op,
@@ -1167,13 +1139,11 @@ fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                     let op_span = op.as_span();
                     let target = match type_from_rule(op.into_inner().next().unwrap()) {
                         Ok(ty) => ty,
-                        Err(e) => return Err(e)
+                        Err(e) => return Err(e),
                     };
 
                     let op = match op_rule {
-                        Rule::cast => UnOp::Cast {
-                            target,
-                        },
+                        Rule::cast => UnOp::Cast { target },
                         rule => {
                             return Err(vec![ErrorGen::get_parse_error(
                                 true,
@@ -1184,13 +1154,7 @@ fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                             )]);
                         }
                     };
-
-                    let loc = if let Some(rhs_loc) = lhs.loc() {
-                        let rhs_line_col = rhs_loc.line_col.clone();
-                        Some(Location::from(&rhs_line_col, &rhs_line_col, None))
-                    } else {
-                        None
-                    };
+                    let loc = lhs.loc().clone();
 
                     Ok(Expr::UnOp {
                         op,
@@ -1362,7 +1326,7 @@ fn type_from_rule(pair: Pair<Rule>) -> Result<DataType, Vec<WhammError>> {
             for p in pair.into_inner() {
                 match type_from_rule(p) {
                     Ok(res) => tuple_content_types.push(Box::new(res)),
-                    Err(e) => return Err(e)
+                    Err(e) => return Err(e),
                 }
             }
             return if tuple_content_types.is_empty() {
@@ -1380,11 +1344,11 @@ fn type_from_rule(pair: Pair<Rule>) -> Result<DataType, Vec<WhammError>> {
 
             let key_ty = match type_from_rule(key_ty_rule) {
                 Ok(res) => res,
-                Err(e) => return Err(e)
+                Err(e) => return Err(e),
             };
             let val_ty = match type_from_rule(val_ty_rule) {
                 Ok(res) => res,
-                Err(e) => return Err(e)
+                Err(e) => return Err(e),
             };
 
             return Ok(DataType::Map {

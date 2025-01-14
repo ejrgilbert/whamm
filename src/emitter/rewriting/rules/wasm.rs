@@ -5,7 +5,7 @@ use crate::for_each_opcode;
 use crate::generator::rewriting::simple_ast::SimpleProbe;
 use crate::parser::rules::core::WhammModeKind;
 use crate::parser::rules::wasm::{OpcodeEventKind, WasmPackageKind};
-use crate::parser::types::{DataType, IntLit, NumFmt, RulePart, Value};
+use crate::parser::types::{RulePart, Value};
 use log::warn;
 use orca_wasm::ir::id::FunctionID;
 use orca_wasm::ir::module::module_functions::{FuncKind, ImportedFunction, LocalFunction};
@@ -211,33 +211,17 @@ impl Event for OpcodeEvent {
             }
             OpcodeEventKind::Br { .. } => {
                 if let Operator::Br { relative_depth } = instr {
-                    loc_info.static_data.insert(
-                        "imm0".to_string(),
-                        Some(Value::Int {
-                            val: IntLit::U32 {
-                                val: *relative_depth,
-                            },
-                            ty: DataType::U32,
-                            token: "".to_string(),
-                            fmt: NumFmt::NA,
-                        }),
-                    );
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*relative_depth)));
                     loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
             OpcodeEventKind::BrIf { .. } => {
                 if let Operator::BrIf { relative_depth } = instr {
-                    loc_info.static_data.insert(
-                        "imm0".to_string(),
-                        Some(Value::Int {
-                            val: IntLit::U32 {
-                                val: *relative_depth,
-                            },
-                            ty: DataType::U32,
-                            token: "".to_string(),
-                            fmt: NumFmt::NA,
-                        }),
-                    );
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*relative_depth)));
                     loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
@@ -245,38 +229,20 @@ impl Event for OpcodeEvent {
                 if let Operator::BrTable { targets } = instr {
                     loc_info.static_data.insert(
                         "num_targets".to_string(),
-                        Some(Value::Int {
-                            val: IntLit::U32 { val: targets.len() },
-                            ty: DataType::U32,
-                            token: "".to_string(),
-                            fmt: NumFmt::NA,
-                        }),
+                        Some(Value::gen_u32(targets.len())),
                     );
                     loc_info.static_data.insert(
                         "default_target".to_string(),
-                        Some(Value::Int {
-                            val: IntLit::U32 {
-                                val: targets.default(),
-                            },
-                            ty: DataType::U32,
-                            token: "".to_string(),
-                            fmt: NumFmt::NA,
-                        }),
+                        Some(Value::gen_u32(targets.default())),
                     );
 
                     let mut target_map = HashMap::new();
 
                     for (i, target) in targets.targets().enumerate() {
                         if let Ok(target) = target {
-                            loc_info.static_data.insert(
-                                format!("imm{i}"),
-                                Some(Value::Int {
-                                    val: IntLit::U32 { val: target },
-                                    ty: DataType::U32,
-                                    token: "".to_string(),
-                                    fmt: NumFmt::NA,
-                                }),
-                            );
+                            loc_info
+                                .static_data
+                                .insert(format!("imm{i}"), Some(Value::gen_u32(target)));
                             target_map.insert(i as u32, target);
                         }
                     }
@@ -339,15 +305,9 @@ impl Event for OpcodeEvent {
                             val: func_info.module.to_string(),
                         }),
                     );
-                    loc_info.static_data.insert(
-                        "imm0".to_string(),
-                        Some(Value::Int {
-                            val: IntLit::U32 { val: *fid },
-                            ty: DataType::U32,
-                            token: "".to_string(),
-                            fmt: NumFmt::NA,
-                        }),
-                    );
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*fid)));
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -355,15 +315,9 @@ impl Event for OpcodeEvent {
             }
             OpcodeEventKind::LocalGet { .. } => {
                 if let Operator::LocalGet { local_index } = instr {
-                    loc_info.static_data.insert(
-                        "imm0".to_string(),
-                        Some(Value::Int {
-                            val: IntLit::U32 { val: *local_index },
-                            ty: DataType::U32,
-                            token: "".to_string(),
-                            fmt: NumFmt::NA,
-                        }),
-                    );
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*local_index)));
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -371,15 +325,9 @@ impl Event for OpcodeEvent {
             }
             OpcodeEventKind::LocalSet { .. } => {
                 if let Operator::LocalSet { local_index } = instr {
-                    loc_info.static_data.insert(
-                        "imm0".to_string(),
-                        Some(Value::Int {
-                            val: IntLit::U32 { val: *local_index },
-                            ty: DataType::U32,
-                            token: "".to_string(),
-                            fmt: NumFmt::NA,
-                        }),
-                    );
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*local_index)));
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -387,15 +335,9 @@ impl Event for OpcodeEvent {
             }
             OpcodeEventKind::LocalTee { .. } => {
                 if let Operator::LocalTee { local_index } = instr {
-                    loc_info.static_data.insert(
-                        "imm0".to_string(),
-                        Some(Value::Int {
-                            val: IntLit::U32 { val: *local_index },
-                            ty: DataType::U32,
-                            token: "".to_string(),
-                            fmt: NumFmt::NA,
-                        }),
-                    );
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*local_index)));
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -403,15 +345,9 @@ impl Event for OpcodeEvent {
             }
             OpcodeEventKind::GlobalGet { .. } => {
                 if let Operator::GlobalGet { global_index } = instr {
-                    loc_info.static_data.insert(
-                        "imm0".to_string(),
-                        Some(Value::Int {
-                            val: IntLit::U32 { val: *global_index },
-                            ty: DataType::U32,
-                            token: "".to_string(),
-                            fmt: NumFmt::NA,
-                        }),
-                    );
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*global_index)));
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -419,15 +355,9 @@ impl Event for OpcodeEvent {
             }
             OpcodeEventKind::GlobalSet { .. } => {
                 if let Operator::GlobalSet { global_index } = instr {
-                    loc_info.static_data.insert(
-                        "imm0".to_string(),
-                        Some(Value::Int {
-                            val: IntLit::U32 { val: *global_index },
-                            ty: DataType::U32,
-                            token: "".to_string(),
-                            fmt: NumFmt::NA,
-                        }),
-                    );
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*global_index)));
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -435,15 +365,9 @@ impl Event for OpcodeEvent {
             }
             OpcodeEventKind::I32Const { .. } => {
                 if let Operator::I32Const { value } = instr {
-                    loc_info.static_data.insert(
-                        "imm0".to_string(),
-                        Some(Value::Int {
-                            val: IntLit::I32 { val: *value },
-                            ty: DataType::I32,
-                            token: "".to_string(),
-                            fmt: NumFmt::NA,
-                        }),
-                    );
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_i32(*value)));
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -451,15 +375,9 @@ impl Event for OpcodeEvent {
             }
             OpcodeEventKind::I64Const { .. } => {
                 if let Operator::I64Const { value } = instr {
-                    loc_info.static_data.insert(
-                        "imm0".to_string(),
-                        Some(Value::Int {
-                            val: IntLit::I64 { val: *value },
-                            ty: DataType::I64,
-                            token: "".to_string(),
-                            fmt: NumFmt::NA,
-                        }),
-                    );
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_i64(*value)));
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);

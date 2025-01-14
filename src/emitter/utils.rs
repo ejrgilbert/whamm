@@ -236,7 +236,7 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     // If the local already exists, it would be because the probe has been
                     // emitted at another opcode location. Simply overwrite the previously saved
                     // address.
-                    let wasm_ty = whamm_type_to_wasm_type(ty);
+                    let wasm_ty = ty.to_wasm_type();
                     if wasm_ty.len() == 1 {
                         let id = injector.add_local(*wasm_ty.first().unwrap());
                         *addr = Some(VarAddr::Local { addr: *id });
@@ -481,7 +481,7 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 // TODO: Might be more generic to also include Local
 // TODO: Do we really want to depend on wasmparser::ValType, or create a wrapper?
 pub fn whamm_type_to_wasm_global(app_wasm: &mut Module, ty: &DataType) -> (GlobalID, OrcaType) {
-    let orca_wasm_ty = whamm_type_to_wasm_type(ty);
+    let orca_wasm_ty = ty.to_wasm_type();
 
     if orca_wasm_ty.len() == 1 {
         match orca_wasm_ty.first().unwrap() {
@@ -500,65 +500,12 @@ pub fn whamm_type_to_wasm_global(app_wasm: &mut Module, ty: &DataType) -> (Globa
         todo!()
     }
 }
-pub fn whamm_type_to_wasm_type(ty: &DataType) -> Vec<OrcaType> {
-    match ty {
-        DataType::U8
-        | DataType::I8
-        | DataType::U16
-        | DataType::I16
-        | DataType::I32
-        | DataType::U32
-        | DataType::Boolean => vec![OrcaType::I32],
-        DataType::F32 => vec![OrcaType::F32],
-        DataType::I64 | DataType::U64 => vec![OrcaType::I64],
-        DataType::F64 => vec![OrcaType::F64],
-        // the ID used to track this var in the lib
-        DataType::Map { .. } => vec![OrcaType::I32],
-        DataType::Null => unimplemented!(),
-        DataType::Str => vec![OrcaType::I32, OrcaType::I32],
-        DataType::Tuple { .. } => unimplemented!(),
-        DataType::AssumeGood => unimplemented!(),
-    }
-}
-pub fn wasm_type_to_whamm_type(ty: &OrcaType) -> DataType {
-    match ty {
-        OrcaType::I32 => DataType::I32,
-        OrcaType::I64 => DataType::I64,
-        OrcaType::F32 => DataType::F32,
-        OrcaType::F64 => DataType::F64,
-        OrcaType::FuncRef
-        | OrcaType::FuncRefNull
-        | OrcaType::Cont
-        | OrcaType::NoCont
-        | OrcaType::ExternRef
-        | OrcaType::ExternRefNull
-        | OrcaType::Any
-        | OrcaType::AnyNull
-        | OrcaType::None
-        | OrcaType::NoExtern
-        | OrcaType::NoFunc
-        | OrcaType::Eq
-        | OrcaType::EqNull
-        | OrcaType::Struct
-        | OrcaType::StructNull
-        | OrcaType::Array
-        | OrcaType::ArrayNull
-        | OrcaType::I31
-        | OrcaType::I31Null
-        | OrcaType::Exn
-        | OrcaType::NoExn
-        | OrcaType::Module { .. }
-        | OrcaType::RecGroup(_)
-        | OrcaType::CoreTypeId(_)
-        | OrcaType::V128 => unimplemented!(),
-    }
-}
 
 pub fn block_type_to_wasm(block: &Block) -> BlockType {
     match &block.return_ty {
         None => BlockType::Empty,
         Some(return_ty) => {
-            let wasm_ty = whamm_type_to_wasm_type(return_ty);
+            let wasm_ty = return_ty.to_wasm_type();
             if wasm_ty.len() == 1 {
                 BlockType::Type(*wasm_ty.first().unwrap())
             } else {
@@ -597,7 +544,7 @@ fn emit_set<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             }) => {
                 mem_allocator.set_in_mem(
                     *mem_id,
-                    &wasm_type_to_whamm_type(ty),
+                    &DataType::from_wasm_type(ty),
                     *var_offset,
                     table,
                     injector,
@@ -991,7 +938,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 }) => {
                     mem_allocator.get_from_mem(
                         *mem_id,
-                        &wasm_type_to_whamm_type(ty),
+                        &DataType::from_wasm_type(ty),
                         *var_offset,
                         table,
                         injector,
@@ -1112,7 +1059,7 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, injector: &mut T) -> bool {
 
 fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, injector: &mut T) -> bool {
     match op {
-        UnOp::Cast {..} => todo!(),
+        UnOp::Cast { .. } => todo!(),
         UnOp::Not => {
             // return 1 if 0, return 0 otherwise
             injector.i32_eqz();

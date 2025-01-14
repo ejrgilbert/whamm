@@ -484,7 +484,7 @@ impl WhammVisitor<String> for AsStrVisitor {
 
     fn visit_unop(&mut self, op: &UnOp) -> String {
         match op {
-            UnOp::Cast {target} => format!("as {target}"),
+            UnOp::Cast { target } => format!("as {target}"),
             UnOp::Not => "!".to_string(),
         }
     }

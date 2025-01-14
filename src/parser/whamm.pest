@@ -166,8 +166,6 @@ BINOP = _{ LOGOP | RELOP | SUMOP | MULOP }
 // ---- Terminals ----
 // ===================
 
-// TODO -- make sure that the binary/octal/hexadecimal formats are parsed correctly
-// TODO -- support exponents?
 INT = {
     int_hex
     | int_bin

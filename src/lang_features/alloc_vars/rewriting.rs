@@ -1,6 +1,5 @@
 #![allow(clippy::too_many_arguments)]
 use crate::common::error::ErrorGen;
-use crate::emitter::utils::whamm_type_to_wasm_type;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::lang_features::report_vars::ReportVars;
 use crate::parser::types::DataType;
@@ -61,7 +60,7 @@ impl UnsharedVarHandler {
         }
         match addr {
             Some(VarAddr::Global { .. }) | None => {
-                let wasm_ty = whamm_type_to_wasm_type(ty);
+                let wasm_ty = ty.to_wasm_type();
                 if let Some(id) = self.use_available_gid(err_msg, err) {
                     if is_report {
                         if wasm_ty.len() == 1 {

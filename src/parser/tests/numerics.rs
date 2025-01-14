@@ -572,13 +572,11 @@ pub fn test_exp() {
 fn test_i32(exp: i32, dec: &str, hex: &str, bin: &str) {
     parse_int(IntLit::i32(exp), dec);
     parse_int(IntLit::i32(exp), hex);
-    // parse_int(exp, oct);
     parse_int(IntLit::i32(exp), bin);
 }
 fn test_u32(exp: u32, dec: &str, hex: &str, bin: &str) {
     parse_int(IntLit::u32(exp), dec);
     parse_int(IntLit::i32(exp as i32), hex);
-    // parse_int(exp, oct);
     parse_int(IntLit::i32(exp as i32), bin);
 }
 fn test_float(exp: FloatLit, float: &str) {

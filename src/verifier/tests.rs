@@ -99,17 +99,18 @@ wasm::call:alt /
     "#,
     // numerics
     "wasm:opcode:call:alt { i32 num = 0; }",
-    // todo -- https://github.com/ejrgilbert/whamm/issues/141
-    // "wasm:opcode:call:alt { i64 num = 0; }",
-    // r#"
-    //     i32 count;
-    //     wasm::i64_const:before / imm0 == 9223372036854775807 / {
-    //         count++;
-    //     }
-    // "#,
+    "wasm:opcode:call:alt { i64 num = 0; }",
+    r#"
+        i32 count;
+        wasm::i64_const:before / imm0 == 9223372036854775807 / {
+            count++;
+        }
+    "#,
 ];
 
 const TYPE_ERROR_SCRIPTS: &[&str] = &[
+    "wasm:opcode:call:alt / i < 1 < 2 / { }",
+    "wasm:opcode:call:alt / (1 + 3) / { i32 i; }",
     // predicate
     // note that this will have cascading type check errors
     // might want to make type check errors fatal so that we can stop early

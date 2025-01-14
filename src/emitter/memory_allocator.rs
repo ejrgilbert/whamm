@@ -1,5 +1,4 @@
 use crate::common::error::ErrorGen;
-use crate::emitter::utils::wasm_type_to_whamm_type;
 use crate::parser::types::DataType;
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca_wasm::ir::function::FunctionBuilder;
@@ -249,7 +248,7 @@ impl MemoryAllocator {
             memory: self.mem_id, // instrumentation memory!
         });
 
-        wasm_type_to_whamm_type(local_ty).num_bytes().unwrap() as u32
+        DataType::from_wasm_type(local_ty).num_bytes().unwrap() as u32
     }
     pub fn emit_string(&mut self, wasm: &mut Module, val: &mut String) -> bool {
         if self.emitted_strings.contains_key(val) {

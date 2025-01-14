@@ -11,6 +11,7 @@ use crate::common::terminal::{green, grey_italics, long_line, magenta, white, ye
 use crate::parser::rules::{
     print_provider_docs, provider_factory, Event, Package, Probe, Provider, WhammProvider,
 };
+use orca_wasm::ir::types::DataType as OrcaType;
 use pest::pratt_parser::PrattParser;
 use pest_derive::Parser;
 use termcolor::BufferWriter;
@@ -211,40 +212,79 @@ impl DataType {
     pub fn is_compatible_with(&self, other: &DataType) -> bool {
         match self {
             DataType::U8
-             | DataType::I8
-             | DataType::U16
-             | DataType::I16
-             | DataType::U32
-             | DataType::I32
-             | DataType::Boolean => other.represented_as_i32(),
-            DataType::U64
-            | DataType::I64 => other.represented_as_i64(),
-            DataType::F32
-            | DataType::F64
-            | DataType::Null
-            | DataType::Str
-            | DataType::AssumeGood
-            | DataType::Tuple {..}
-            | DataType::Map {..} => *other == *self
-        }
-    }
-    pub fn represented_as_i32(&self) -> bool {
-        match self {
-            DataType::U8
             | DataType::I8
             | DataType::U16
             | DataType::I16
             | DataType::U32
             | DataType::I32
-            | DataType::Boolean => true,
-            _ => false
+            | DataType::Boolean => other.as_i32_in_wasm(),
+            DataType::U64 | DataType::I64 => other.as_i64_in_wasm(),
+            DataType::F32
+            | DataType::F64
+            | DataType::Null
+            | DataType::Str
+            | DataType::AssumeGood
+            | DataType::Tuple { .. }
+            | DataType::Map { .. } => *other == *self,
         }
     }
-    pub fn represented_as_i64(&self) -> bool {
+    fn as_i32_in_wasm(&self) -> bool {
+        self.to_wasm_type() == vec![OrcaType::I32]
+    }
+    fn as_i64_in_wasm(&self) -> bool {
+        self.to_wasm_type() == vec![OrcaType::I64]
+    }
+    pub fn to_wasm_type(&self) -> Vec<OrcaType> {
         match self {
-            DataType::U64
-            | DataType::I64 => true,
-            _ => false
+            DataType::U8
+            | DataType::I8
+            | DataType::U16
+            | DataType::I16
+            | DataType::I32
+            | DataType::U32
+            | DataType::Boolean => vec![OrcaType::I32],
+            DataType::F32 => vec![OrcaType::F32],
+            DataType::I64 | DataType::U64 => vec![OrcaType::I64],
+            DataType::F64 => vec![OrcaType::F64],
+            // the ID used to track this var in the lib
+            DataType::Map { .. } => vec![OrcaType::I32],
+            DataType::Null => unimplemented!(),
+            DataType::Str => vec![OrcaType::I32, OrcaType::I32],
+            DataType::Tuple { .. } => unimplemented!(),
+            DataType::AssumeGood => unimplemented!(),
+        }
+    }
+    pub fn from_wasm_type(ty: &OrcaType) -> Self {
+        match ty {
+            OrcaType::I32 => DataType::I32,
+            OrcaType::I64 => DataType::I64,
+            OrcaType::F32 => DataType::F32,
+            OrcaType::F64 => DataType::F64,
+            OrcaType::FuncRef
+            | OrcaType::FuncRefNull
+            | OrcaType::Cont
+            | OrcaType::NoCont
+            | OrcaType::ExternRef
+            | OrcaType::ExternRefNull
+            | OrcaType::Any
+            | OrcaType::AnyNull
+            | OrcaType::None
+            | OrcaType::NoExtern
+            | OrcaType::NoFunc
+            | OrcaType::Eq
+            | OrcaType::EqNull
+            | OrcaType::Struct
+            | OrcaType::StructNull
+            | OrcaType::Array
+            | OrcaType::ArrayNull
+            | OrcaType::I31
+            | OrcaType::I31Null
+            | OrcaType::Exn
+            | OrcaType::NoExn
+            | OrcaType::Module { .. }
+            | OrcaType::RecGroup(_)
+            | OrcaType::CoreTypeId(_)
+            | OrcaType::V128 => unimplemented!(),
         }
     }
     pub fn can_implicitly_cast(&self) -> bool {
@@ -267,10 +307,11 @@ impl DataType {
                     }
                 }
                 false
-            },
+            }
             DataType::Boolean
             | DataType::Null
             | DataType::Str
+            // | DataType::Tuple { .. }
             | DataType::Map { .. }
             | DataType::AssumeGood => false,
         }
@@ -743,13 +784,39 @@ pub enum Value {
     },
 }
 impl Value {
-    pub fn can_implicitly_cast(&self) -> bool {
-        match self {
-            Self::Int { .. } | Self::Float { .. } => true,
-            Self::Boolean { .. }
-            | Self::Str { .. }
-            | Self::Tuple { .. }
-            | Self::U32U32Map { .. } => false,
+    pub fn gen_u32(val: u32) -> Self {
+        Self::gen_int(IntLit::u32(val), DataType::U32)
+    }
+    pub fn gen_i32(val: i32) -> Self {
+        Self::gen_int(IntLit::i32(val), DataType::I32)
+    }
+    pub fn gen_u64(val: u64) -> Self {
+        Self::gen_int(IntLit::u64(val), DataType::U64)
+    }
+    pub fn gen_i64(val: i64) -> Self {
+        Self::gen_int(IntLit::i64(val), DataType::I64)
+    }
+    fn gen_int(val: IntLit, ty: DataType) -> Self {
+        // generated by the compiler
+        Self::Int {
+            val,
+            ty,
+            token: "".to_string(),
+            fmt: NumFmt::NA,
+        }
+    }
+    pub fn gen_f32(val: f32) -> Self {
+        Self::gen_float(FloatLit::f32(val))
+    }
+    pub fn gen_f64(val: f64) -> Self {
+        Self::gen_float(FloatLit::f64(val))
+    }
+    fn gen_float(val: FloatLit) -> Self {
+        // generated by the compiler
+        Self::Float {
+            val,
+            token: "".to_string(),
+            fmt: NumFmt::NA,
         }
     }
     pub fn ty(&self) -> DataType {
@@ -769,163 +836,131 @@ impl Value {
         match self {
             Value::Int {
                 val, token, fmt, ..
-            } => {
-                match target {
-                    DataType::U8 | DataType::I8 | DataType::U16 | DataType::I16 | DataType::U32 => {
-                        match val.as_u32() {
-                            Ok(_) => {
-                                *self = Value::Int {
-                                    val: val.to_owned(),
-                                    ty: target.clone(),
-                                    token: token.to_owned(),
-                                    fmt: fmt.to_owned(),
-                                };
-                                Ok(())
-                            }
-                            Err(msg) => Err(msg),
+            } => match target {
+                DataType::U8 | DataType::I8 | DataType::U16 | DataType::I16 | DataType::U32 => {
+                    match val.as_u32() {
+                        Ok(_) => {
+                            *self = Value::Int {
+                                val: val.to_owned(),
+                                ty: target.clone(),
+                                token: token.to_owned(),
+                                fmt: fmt.to_owned(),
+                            };
+                            Ok(())
                         }
+                        Err(msg) => Err(msg),
                     }
-                    DataType::I32 => match val.as_i32() {
-                        Ok(_) => {
-                            *self = Value::Int {
-                                val: val.to_owned(),
-                                ty: target.clone(),
-                                token: token.to_owned(),
-                                fmt: fmt.to_owned(),
-                            };
-                            Ok(())
-                        }
-                        Err(msg) => Err(msg),
-                    },
-                    DataType::U64 => match val.as_u64() {
-                        Ok(_) => {
-                            *self = Value::Int {
-                                val: val.to_owned(),
-                                ty: target.clone(),
-                                token: token.to_owned(),
-                                fmt: fmt.to_owned(),
-                            };
-                            Ok(())
-                        }
-                        Err(msg) => Err(msg),
-                    },
-                    DataType::I64 => match val.as_i64() {
-                        Ok(_) => {
-                            *self = Value::Int {
-                                val: val.to_owned(),
-                                ty: target.clone(),
-                                token: token.to_owned(),
-                                fmt: fmt.to_owned(),
-                            };
-                            Ok(())
-                        }
-                        Err(msg) => Err(msg),
-                    },
-                    DataType::F32 => match val.as_f32() {
-                        Ok(float) => {
-                            *self = Value::Float {
-                                val: float,
-                                token: token.to_owned(),
-                                fmt: fmt.to_owned(),
-                            };
-                            Ok(())
-                        }
-                        Err(msg) => Err(msg),
-                    },
-                    DataType::F64 => match val.as_f64() {
-                        Ok(float) => {
-                            *self = Value::Float {
-                                val: float,
-                                token: token.to_owned(),
-                                fmt: fmt.to_owned(),
-                            };
-                            Ok(())
-                        }
-                        Err(msg) => Err(msg),
-                    },
-                    _ => Err(format!("{} to {}", self.ty(), target)),
                 }
-            }
-            Value::Float { val, .. } => {
-                match target {
-                    DataType::U8 | DataType::I8 | DataType::U16 | DataType::I16 | DataType::U32 => {
-                        match val.as_u32() {
-                            Ok(int) => {
-                                *self = Value::Int {
-                                    val: int,
-                                    ty: target.clone(),
-                                    token: "".to_string(),
-                                    fmt: NumFmt::NA
-                                };
-                                Ok(())
-                            }
-                            Err(msg) => Err(msg),
-                        }
+                DataType::I32 => match val.as_i32() {
+                    Ok(_) => {
+                        *self = Value::Int {
+                            val: val.to_owned(),
+                            ty: target.clone(),
+                            token: token.to_owned(),
+                            fmt: fmt.to_owned(),
+                        };
+                        Ok(())
                     }
-                    DataType::I32 => match val.as_i32() {
+                    Err(msg) => Err(msg),
+                },
+                DataType::U64 => match val.as_u64() {
+                    Ok(_) => {
+                        *self = Value::Int {
+                            val: val.to_owned(),
+                            ty: target.clone(),
+                            token: token.to_owned(),
+                            fmt: fmt.to_owned(),
+                        };
+                        Ok(())
+                    }
+                    Err(msg) => Err(msg),
+                },
+                DataType::I64 => match val.as_i64() {
+                    Ok(_) => {
+                        *self = Value::Int {
+                            val: val.to_owned(),
+                            ty: target.clone(),
+                            token: token.to_owned(),
+                            fmt: fmt.to_owned(),
+                        };
+                        Ok(())
+                    }
+                    Err(msg) => Err(msg),
+                },
+                DataType::F32 => match val.as_f32() {
+                    Ok(float) => {
+                        *self = Value::Float {
+                            val: float,
+                            token: token.to_owned(),
+                            fmt: fmt.to_owned(),
+                        };
+                        Ok(())
+                    }
+                    Err(msg) => Err(msg),
+                },
+                DataType::F64 => match val.as_f64() {
+                    Ok(float) => {
+                        *self = Value::Float {
+                            val: float,
+                            token: token.to_owned(),
+                            fmt: fmt.to_owned(),
+                        };
+                        Ok(())
+                    }
+                    Err(msg) => Err(msg),
+                },
+                _ => Err(format!("{} to {}", self.ty(), target)),
+            },
+            Value::Float { val, .. } => match target {
+                DataType::U8 | DataType::I8 | DataType::U16 | DataType::I16 | DataType::U32 => {
+                    match val.as_u32() {
                         Ok(int) => {
-                            *self = Value::Int {
-                                val: int,
-                                ty: target.clone(),
-                                token: "".to_string(),
-                                fmt: NumFmt::NA
-                            };
+                            *self = Value::gen_int(int, target.clone());
                             Ok(())
                         }
                         Err(msg) => Err(msg),
-                    },
-                    DataType::U64 => match val.as_u64() {
-                        Ok(int) => {
-                            *self = Value::Int {
-                                val: int,
-                                ty: target.clone(),
-                                token: "".to_string(),
-                                fmt: NumFmt::NA
-                            };
-                            Ok(())
-                        }
-                        Err(msg) => Err(msg),
-                    },
-                    DataType::I64 => match val.as_i64() {
-                        Ok(int) => {
-                            *self = Value::Int {
-                                val: int,
-                                ty: target.clone(),
-                                token: "".to_string(),
-                                fmt: NumFmt::NA
-                            };
-                            Ok(())
-                        }
-                        Err(msg) => Err(msg),
-                    },
-                    DataType::F32 => match val.as_f32() {
-                        Ok(_) => {
-                            *self = Value::Float {
-                                val: val.to_owned(),
-                                token: "".to_string(),
-                                fmt: NumFmt::NA
-                            };
-                            Ok(())
-                        }
-                        Err(msg) => Err(msg),
-                    },
-                    DataType::F64 => match val.as_f64() {
-                        Ok(_) => {
-                            *self = Value::Float {
-                                val: val.to_owned(),
-                                token: "".to_string(),
-                                fmt: NumFmt::NA
-                            };
-                            Ok(())
-                        }
-                        Err(msg) => Err(msg),
-                    },
-                    _ => Err(format!("{} to {}", self.ty(), target)),
+                    }
                 }
-            }
-            Value::Tuple {vals, ty} => {
+                DataType::I32 => match val.as_i32() {
+                    Ok(int) => {
+                        *self = Value::gen_int(int, target.clone());
+                        Ok(())
+                    }
+                    Err(msg) => Err(msg),
+                },
+                DataType::U64 => match val.as_u64() {
+                    Ok(int) => {
+                        *self = Value::gen_int(int, target.clone());
+                        Ok(())
+                    }
+                    Err(msg) => Err(msg),
+                },
+                DataType::I64 => match val.as_i64() {
+                    Ok(int) => {
+                        *self = Value::gen_int(int, target.clone());
+                        Ok(())
+                    }
+                    Err(msg) => Err(msg),
+                },
+                DataType::F32 => match val.as_f32() {
+                    Ok(_) => {
+                        *self = Value::gen_float(val.to_owned());
+                        Ok(())
+                    }
+                    Err(msg) => Err(msg),
+                },
+                DataType::F64 => match val.as_f64() {
+                    Ok(_) => {
+                        *self = Value::gen_float(val.to_owned());
+                        Ok(())
+                    }
+                    Err(msg) => Err(msg),
+                },
+                _ => Err(format!("{} to {}", self.ty(), target)),
+            },
+            Value::Tuple { vals, ty } => {
                 // constraints on the target data type
-                if let DataType::Tuple {ty_info} = target {
+                if let DataType::Tuple { ty_info } = target {
                     if vals.len() != ty_info.len() {
                         return Err(format!("{ty} to {target}"));
                     }
@@ -935,7 +970,7 @@ impl Value {
                     for (i, val) in vals.iter_mut().enumerate() {
                         match val.internal_implicit_cast(ty_info.get(i).unwrap()) {
                             Ok(()) => success = true, // do nothing
-                            Err(e) => msg = e
+                            Err(e) => msg = e,
                         }
                     }
                     if !success {
@@ -944,105 +979,97 @@ impl Value {
                         Ok(())
                     }
                 } else {
-                    return Err(format!("{ty} to {target}"));
+                    Err(format!("{ty} to {target}"))
                 }
             }
             _ => Err("non-numeric values".to_string()),
         }
     }
-    pub fn explicit_cast(&mut self, target: &DataType) -> Result<(), String> {
+    pub fn check_explicit_cast(&mut self, target: &DataType) -> Result<(), String> {
+        self.explicit_cast(target, false)
+    }
+    pub fn do_explicit_cast(&mut self, target: &DataType) -> Result<(), String> {
+        self.explicit_cast(target, true)
+    }
+    fn explicit_cast(&mut self, target: &DataType, perform_cast: bool) -> Result<(), String> {
         match self {
-            Value::Int {
-                val, ..
-            } => {
-                match target {
-                    DataType::U8 | DataType::I8 | DataType::U16 | DataType::I16
-                    | DataType::U32 | DataType::I32 | DataType::U64 | DataType::I64
-                    | DataType::F32 | DataType::F64 => {
-                        self.implicit_cast(target)
-                    }
-                    DataType::Boolean => {
+            Value::Int { val, .. } => {
+                if target.can_implicitly_cast() {
+                    // can just go ahead and do the implicit cast whether
+                    // perform_cast is true...it's just a primitive...
+                    // which is a local cast operation by nature.
+                    self.implicit_cast(target)
+                } else if matches!(target, DataType::Boolean) {
+                    if perform_cast {
                         *self = Self::Boolean {
-                            val: val.is_true_ish()
+                            val: val.is_true_ish(),
                         };
-                        return Ok(());
-                    },
-                    _ => Err(format!("{} to {}", self.ty(), target)),
+                    }
+                    Ok(())
+                } else {
+                    Err(format!("{} to {}", self.ty(), target))
                 }
             }
-            Value::Float { val, .. } => match target {
-                DataType::U8 | DataType::I8 | DataType::U16 | DataType::I16
-                | DataType::U32 | DataType::I32 | DataType::U64 | DataType::I64
-                | DataType::F32 | DataType::F64 => {
+            Value::Float { val, .. } => {
+                if target.can_implicitly_cast() {
+                    // can just go ahead and do the implicit cast whether
+                    // perform_cast is true...it's just a primitive...
+                    // which is a local cast operation by nature.
                     self.implicit_cast(target)
+                } else if matches!(target, DataType::Boolean) {
+                    if perform_cast {
+                        *self = Self::Boolean {
+                            val: val.is_true_ish(),
+                        };
+                    }
+                    Ok(())
+                } else {
+                    Err(format!("{} to {}", self.ty(), target))
                 }
-                DataType::Boolean => {
-                    *self = Self::Boolean {
-                        val: val.is_true_ish()
-                    };
-                    return Ok(());
-                },
-                _ => Err(format!("{} to {}", self.ty(), target)),
-            },
+            }
             Value::Boolean { val } => {
                 let num_rep = if *val { 1 } else { 0 };
                 match target {
                     DataType::U8 | DataType::I8 | DataType::U16 | DataType::I16 | DataType::U32 => {
-                        *self = Value::Int {
-                            val: IntLit::u32(num_rep),
-                            ty: target.clone(),
-                            token: "".to_string(),
-                            fmt: NumFmt::NA,
-                        };
+                        if perform_cast {
+                            *self = Value::gen_int(IntLit::u32(num_rep), target.clone());
+                        }
                         Ok(())
                     }
                     DataType::I32 => {
-                        *self = Value::Int {
-                            val: IntLit::i32(num_rep as i32),
-                            ty: target.clone(),
-                            token: "".to_string(),
-                            fmt: NumFmt::NA,
-                        };
+                        if perform_cast {
+                            *self = Value::gen_int(IntLit::i32(num_rep as i32), target.clone());
+                        }
                         Ok(())
                     }
                     DataType::U64 => {
-                        *self = Value::Int {
-                            val: IntLit::u64(num_rep as u64),
-                            ty: target.clone(),
-                            token: "".to_string(),
-                            fmt: NumFmt::NA,
-                        };
+                        if perform_cast {
+                            *self = Value::gen_int(IntLit::u64(num_rep as u64), target.clone());
+                        }
                         Ok(())
                     }
                     DataType::I64 => {
-                        *self = Value::Int {
-                            val: IntLit::i64(num_rep as i64),
-                            ty: target.clone(),
-                            token: "".to_string(),
-                            fmt: NumFmt::NA,
-                        };
+                        if perform_cast {
+                            *self = Value::gen_int(IntLit::i64(num_rep as i64), target.clone());
+                        }
                         Ok(())
                     }
                     DataType::F32 => {
-                        *self = Value::Float {
-                            val: FloatLit::f32(num_rep as f32),
-                            token: "".to_string(),
-                            fmt: NumFmt::NA,
-                        };
+                        if perform_cast {
+                            *self = Value::gen_float(FloatLit::f32(num_rep as f32));
+                        }
                         Ok(())
                     }
                     DataType::F64 => {
-                        *self = Value::Float {
-                            val: FloatLit::f64(num_rep as f64),
-                            token: "".to_string(),
-                            fmt: NumFmt::NA,
-                        };
+                        if perform_cast {
+                            *self = Value::gen_float(FloatLit::f64(num_rep as f64));
+                        }
                         Ok(())
                     }
-                    _ => Err(format!("{} to {}", self.ty(), target))
+                    _ => Err(format!("{} to {}", self.ty(), target)),
                 }
-            },
-            Value::Tuple {..} => {
+            }
+            Value::Tuple { .. } => {
                 todo!()
             }
             _ => Err("non-numeric values".to_string()),
@@ -1129,7 +1156,7 @@ impl Statement {
         Self::Expr {
             expr: Expr::Primitive {
                 val: Value::Int {
-                    val: IntLit::U32 { val: 0 },
+                    val: IntLit::u32(0),
                     ty: DataType::U32,
                     token: "0".to_string(),
                     fmt: NumFmt::Dec,
@@ -1186,6 +1213,20 @@ pub enum Expr {
     },
 }
 impl Expr {
+    pub fn one(line_col: LineColLocation) -> Self {
+        Expr::Primitive {
+            val: Value::Int {
+                val: IntLit::u32(1),
+                ty: DataType::U32,
+                token: "1".to_string(),
+                fmt: NumFmt::Dec,
+            },
+            loc: Some(Location {
+                line_col,
+                path: None,
+            }),
+        }
+    }
     pub fn implicit_cast(&mut self, target: &DataType) -> Result<(), (String, bool)> {
         match self.internal_implicit_cast(target) {
             Err(msg) => Err((format!("CastError: Cannot implicitly cast {msg} to {target}. Please add an explicit cast."), false)),
@@ -1195,12 +1236,12 @@ impl Expr {
     fn internal_implicit_cast(&mut self, target: &DataType) -> Result<(), String> {
         match self {
             Self::Primitive { val: value, .. } => match value.implicit_cast(target) {
-                Ok(()) => return Ok(()),
+                Ok(()) => Ok(()),
                 Err(res) => Err(res),
             },
             Self::Ternary { conseq, alt, .. } => match conseq.internal_implicit_cast(target) {
                 Ok(()) => match alt.internal_implicit_cast(target) {
-                    Ok(()) => return Ok(()),
+                    Ok(()) => Ok(()),
                     Err(res) => Err(res),
                 },
                 Err(res) => Err(res),
@@ -1511,12 +1552,7 @@ impl ProbeRule {
         );
         if let Some(package_patt) = &self.package {
             white(true, format!(":{}", &package_patt.name), buffer);
-            if let Some(event_patt) = &self.event {
-                white(true, format!(":{}", &event_patt.name), buffer);
-                if let Some(mode_patt) = &self.mode {
-                    white(true, format!(":{}", &mode_patt.name), buffer);
-                }
-            }
+            self.print_event(buffer);
         }
         white(true, "\n".to_string(), buffer);
         grey_italics(true, "matches the following rules:\n\n".to_string(), buffer);
@@ -1533,18 +1569,21 @@ impl ProbeRule {
             self.package.as_ref().unwrap().name.to_string(),
             buffer,
         );
-        if let Some(event_patt) = &self.event {
-            white(true, format!(":{}", &event_patt.name), buffer);
-            if let Some(mode_patt) = &self.mode {
-                white(true, format!(":{}", &mode_patt.name), buffer);
-            }
-        }
+        self.print_event(buffer);
         white(true, "\n".to_string(), buffer);
         grey_italics(
             true,
             "matches the following packages:\n\n".to_string(),
             buffer,
         );
+    }
+    fn print_event(&self, buffer: &mut Buffer) {
+        if let Some(event_patt) = &self.event {
+            white(true, format!(":{}", &event_patt.name), buffer);
+            if let Some(mode_patt) = &self.mode {
+                white(true, format!(":{}", &mode_patt.name), buffer);
+            }
+        }
     }
 
     pub fn print_bold_event(&self, buffer: &mut Buffer) {
@@ -1918,10 +1957,8 @@ impl ProvidedFunction {
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum UnOp {
-    Cast {
-        target: DataType
-    },
-    Not
+    Cast { target: DataType },
+    Not,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
