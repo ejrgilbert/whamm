@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use std::env;
-use std::fs::{create_dir_all, File, OpenOptions};
+use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::Path;
 
@@ -65,7 +65,6 @@ fn init_outfile() {
                 Ok(val) => val,
                 Err(_) => DEFAULT_OUTDIR.to_string(),
             };
-            let _ = create_dir_all(outdir.as_str());
 
             let outfile = match env::var("WHAMM_OUTFILE") {
                 Ok(val) => val,
@@ -80,17 +79,25 @@ fn init_outfile() {
             OUTFILE.with(|outfile| {
                 let outfile = &mut *outfile.borrow_mut();
 
-                if !Path::new(&outpath).exists() {
-                    // create the outfile if it doesn't exist
-                    *outfile = match File::create(&outpath) {
-                        Err(why) => panic!("couldn't create {}: {}", outpath, why),
-                        Ok(file) => Some(file),
-                    };
-                } else {
-                    *outfile = Some(OpenOptions::new()
-                        .append(true)
-                        .open(outpath.clone())
-                        .expect(format!("cannot open file at: {}", outpath).as_str()));
+                match Path::new(&outpath).try_exists() {
+                    Ok(exists) => {
+                        if !exists {
+                            // create the outfile if it doesn't exist
+                            *outfile = match File::create(&outpath) {
+                                Err(why) => panic!("couldn't create {}: {}", outpath, why),
+                                Ok(file) => Some(file),
+                            };
+                        } else {
+                            *outfile = Some(OpenOptions::new()
+                                .append(true)
+                                .open(outpath.clone())
+                                .expect(format!("cannot open file at: {}", outpath).as_str()));
+                        }
+                    },
+                    Err(e) => {
+                        println!("Could not open file due to error: {:?}", e);
+                        panic!("exiting...");
+                    }
                 }
             });
         }
