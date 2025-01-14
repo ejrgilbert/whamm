@@ -22,7 +22,7 @@ impl ExprFolder {
     }
 
     fn fold_binop(binop: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
-        if let Expr::BinOp { lhs, op, rhs, loc } = &binop {
+        if let Expr::BinOp { lhs, op, rhs, done_on, loc } = &binop {
             let lhs = ExprFolder::fold_expr(lhs, table, err);
             let rhs = ExprFolder::fold_expr(rhs, table, err);
             match op {
@@ -70,6 +70,7 @@ impl ExprFolder {
                                 lhs: Box::new(lhs),
                                 op: BinOp::And,
                                 rhs: Box::new(rhs),
+                                done_on: done_on.clone(),
                                 loc: None,
                             }
                         }
@@ -119,6 +120,7 @@ impl ExprFolder {
                                 lhs: Box::new(lhs),
                                 op: BinOp::Or,
                                 rhs: Box::new(rhs),
+                                done_on: DataType::I32,
                                 loc: None,
                             }
                         }
@@ -181,6 +183,7 @@ impl ExprFolder {
                                 args: vec![lhs, rhs],
                                 loc: None,
                             }),
+                            done_on: DataType::I32,
                             loc: loc.clone(),
                         };
                     }
@@ -249,7 +252,7 @@ impl ExprFolder {
 
     // similar to the logic of fold_binop
     fn fold_unop(unop: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
-        if let Expr::UnOp { op, expr, .. } = &unop {
+        if let Expr::UnOp { op, expr, done_on, .. } = &unop {
             let expr = ExprFolder::fold_expr(expr, table, err);
             return match op {
                 UnOp::Cast { target } => match &expr {
@@ -265,6 +268,7 @@ impl ExprFolder {
                                     target: target.clone(),
                                 },
                                 expr: Box::new(expr),
+                                done_on: done_on.clone(),
                                 loc: None,
                             },
                         }
@@ -279,6 +283,7 @@ impl ExprFolder {
                             target: target.clone(),
                         },
                         expr: Box::new(expr),
+                        done_on: done_on.clone(),
                         loc: None,
                     },
                 },
@@ -293,6 +298,7 @@ impl ExprFolder {
                         Expr::UnOp {
                             op: UnOp::Not,
                             expr: Box::new(expr),
+                            done_on: done_on.clone(),
                             loc: None,
                         }
                     }

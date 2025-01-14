@@ -73,7 +73,30 @@ impl MemoryAllocator {
 
         // perform the correct load based on the type of data at this memory location
         match ty {
-            DataType::U8 | DataType::I8 | DataType::U16 | DataType::I16 => unimplemented!(),
+            DataType::U8 => injector.i32_load8_u(MemArg {
+                align: 0,
+                max_align: 0,
+                offset: 0,
+                memory: mem_id,
+            }),
+            DataType::I8 => injector.i32_load8_s(MemArg {
+                align: 0,
+                max_align: 0,
+                offset: 0,
+                memory: mem_id,
+            }),
+            DataType::U16 => injector.i32_load16_u(MemArg {
+                align: 0,
+                max_align: 0,
+                offset: 0,
+                memory: mem_id,
+            }),
+            DataType::I16 => injector.i32_load16_s(MemArg {
+                align: 0,
+                max_align: 0,
+                offset: 0,
+                memory: mem_id,
+            }),
             DataType::U32 | DataType::I32 | DataType::Boolean => injector.i32_load(MemArg {
                 align: 0,
                 max_align: 0,
@@ -119,7 +142,18 @@ impl MemoryAllocator {
 
         // perform the correct store based on the type of data at this memory location
         match ty {
-            DataType::U8 | DataType::I8 | DataType::U16 | DataType::I16 => unimplemented!(),
+            DataType::U8 | DataType::I8 => injector.i32_store8(MemArg {
+                align: 0,
+                max_align: 0,
+                offset: 0,
+                memory: mem_id,
+            }),
+            DataType::U16 | DataType::I16 => injector.i32_store16(MemArg {
+                align: 0,
+                max_align: 0,
+                offset: 0,
+                memory: mem_id,
+            }),
             DataType::U32 | DataType::I32 | DataType::Boolean => injector.i32_store(MemArg {
                 align: 0,
                 max_align: 0,

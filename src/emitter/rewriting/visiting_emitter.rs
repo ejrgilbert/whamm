@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::utils::{
-    block_type_to_wasm, emit_expr, emit_stmt, print_report_all, whamm_type_to_wasm_global,
+    block_type_to_wasm, emit_expr, emit_stmt, print_report_all, whamm_type_to_wasm_global, EmitCtx,
 };
 use crate::emitter::{configure_flush_routines, Emitter, InjectStrategy};
 use crate::generator::folding::ExprFolder;
@@ -376,13 +376,15 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     stmt,
                     self.strategy,
                     &mut self.app_iter,
-                    self.table,
-                    self.mem_allocator,
-                    self.map_lib_adapter,
-                    self.report_vars,
-                    self.unshared_var_handler,
-                    UNEXPECTED_ERR_MSG,
-                    err,
+                    &mut EmitCtx::new(
+                        self.table,
+                        self.mem_allocator,
+                        self.map_lib_adapter,
+                        self.report_vars,
+                        self.unshared_var_handler,
+                        UNEXPECTED_ERR_MSG,
+                        err,
+                    ),
                 );
             }
         }
@@ -750,10 +752,15 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
         //now emit the call to print the changes to the report vars if needed
         print_report_all(
             &mut self.app_iter,
-            self.table,
-            self.report_vars,
-            self.unshared_var_handler,
-            err,
+            &mut EmitCtx::new(
+                self.table,
+                self.mem_allocator,
+                self.map_lib_adapter,
+                self.report_vars,
+                self.unshared_var_handler,
+                UNEXPECTED_ERR_MSG,
+                err,
+            ),
         );
         is_success
     }
@@ -793,13 +800,15 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
             stmt,
             self.strategy,
             &mut self.app_iter,
-            self.table,
-            self.mem_allocator,
-            self.map_lib_adapter,
-            self.report_vars,
-            self.unshared_var_handler,
-            UNEXPECTED_ERR_MSG,
-            err,
+            &mut EmitCtx::new(
+                self.table,
+                self.mem_allocator,
+                self.map_lib_adapter,
+                self.report_vars,
+                self.unshared_var_handler,
+                UNEXPECTED_ERR_MSG,
+                err,
+            ),
         )
     }
 
@@ -808,13 +817,15 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
             expr,
             self.strategy,
             &mut self.app_iter,
-            self.table,
-            self.mem_allocator,
-            self.map_lib_adapter,
-            self.report_vars,
-            self.unshared_var_handler,
-            UNEXPECTED_ERR_MSG,
-            err,
+            &mut EmitCtx::new(
+                self.table,
+                self.mem_allocator,
+                self.map_lib_adapter,
+                self.report_vars,
+                self.unshared_var_handler,
+                UNEXPECTED_ERR_MSG,
+                err,
+            ),
         )
     }
 }

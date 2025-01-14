@@ -17,7 +17,6 @@ use orca_wasm::opcode::{MacroOpcode, Opcode};
 use orca_wasm::{Instructions, Module};
 // ==================================================================
 // ================ Emitter Helper Functions ========================
-// TODO -- add this documentation
 // - Necessary to extract common logic between Emitter and InstrumentationVisitor.
 // - Can't pass an Emitter instance to InstrumentationVisitor due to Rust not
 // - allowing nested references to a common mutable object. So I can't pass the
@@ -26,34 +25,46 @@ use orca_wasm::{Instructions, Module};
 // ==================================================================
 // ==================================================================
 
-// TODO -- make this a struct that contains all the data to be passed around!
-
-pub fn emit_body<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
-    body: &mut Block,
-    strategy: InjectStrategy,
-    injector: &mut T,
-    table: &mut SymbolTable,
-    mem_allocator: &MemoryAllocator,
-    map_lib_adapter: &mut MapLibAdapter,
-    report_vars: &mut ReportVars,
-    unshared_var_handler: &mut UnsharedVarHandler,
-    err_msg: &str,
-    err: &mut ErrorGen,
-) -> bool {
-    let mut is_success = true;
-    for stmt in body.stmts.iter_mut() {
-        is_success &= emit_stmt(
-            stmt,
-            strategy,
-            injector,
+pub struct EmitCtx<'a, 'b, 'c, 'd, 'e, 'f> {
+    table: &'a mut SymbolTable,
+    mem_allocator: &'b MemoryAllocator,
+    map_lib_adapter: &'c mut MapLibAdapter,
+    report_vars: &'d mut ReportVars,
+    unshared_var_handler: &'e mut UnsharedVarHandler,
+    err_msg: String,
+    err: &'f mut ErrorGen,
+}
+impl<'a, 'b, 'c, 'd, 'e, 'f> EmitCtx<'a, 'b, 'c, 'd, 'e, 'f> {
+    pub fn new(
+        table: &'a mut SymbolTable,
+        mem_allocator: &'b MemoryAllocator,
+        map_lib_adapter: &'c mut MapLibAdapter,
+        report_vars: &'d mut ReportVars,
+        unshared_var_handler: &'e mut UnsharedVarHandler,
+        err_msg: &str,
+        err: &'f mut ErrorGen,
+    ) -> Self {
+        Self {
             table,
             mem_allocator,
             map_lib_adapter,
             report_vars,
             unshared_var_handler,
-            err_msg,
+            err_msg: err_msg.to_string(),
             err,
-        );
+        }
+    }
+}
+
+pub fn emit_body<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    body: &mut Block,
+    strategy: InjectStrategy,
+    injector: &mut T,
+    ctx: &mut EmitCtx,
+) -> bool {
+    let mut is_success = true;
+    for stmt in body.stmts.iter_mut() {
+        is_success &= emit_stmt(stmt, strategy, injector, ctx);
     }
     is_success
 }
@@ -62,121 +73,43 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     stmt: &mut Statement,
     strategy: InjectStrategy,
     injector: &mut T,
-    table: &mut SymbolTable,
-    mem_allocator: &MemoryAllocator,
-    map_lib_adapter: &mut MapLibAdapter,
-    report_vars: &mut ReportVars,
-    unshared_var_handler: &mut UnsharedVarHandler,
-    err_msg: &str,
-    err: &mut ErrorGen,
+    ctx: &mut EmitCtx,
 ) -> bool {
     match stmt {
-        Statement::Decl { .. } => {
-            emit_decl_stmt(stmt, injector, table, map_lib_adapter, err_msg, err)
+        Statement::Decl { .. } => emit_decl_stmt(stmt, injector, ctx),
+        Statement::Assign { .. } => emit_assign_stmt(stmt, strategy, injector, ctx),
+        Statement::Expr { expr, .. } | Statement::Return { expr, .. } => {
+            emit_expr(expr, strategy, injector, ctx)
         }
-        Statement::Assign { .. } => emit_assign_stmt(
-            stmt,
-            strategy,
-            injector,
-            table,
-            mem_allocator,
-            map_lib_adapter,
-            report_vars,
-            unshared_var_handler,
-            err_msg,
-            err,
-        ),
-        Statement::Expr { expr, .. } | Statement::Return { expr, .. } => emit_expr(
-            expr,
-            strategy,
-            injector,
-            table,
-            mem_allocator,
-            map_lib_adapter,
-            report_vars,
-            unshared_var_handler,
-            err_msg,
-            err,
-        ),
 
         Statement::If {
             cond, conseq, alt, ..
         } => {
             if alt.stmts.is_empty() {
-                emit_if(
-                    cond,
-                    conseq,
-                    strategy,
-                    injector,
-                    table,
-                    mem_allocator,
-                    map_lib_adapter,
-                    report_vars,
-                    unshared_var_handler,
-                    err_msg,
-                    err,
-                )
+                emit_if(cond, conseq, strategy, injector, ctx)
             } else {
-                emit_if_else(
-                    cond,
-                    conseq,
-                    alt,
-                    strategy,
-                    injector,
-                    table,
-                    mem_allocator,
-                    map_lib_adapter,
-                    report_vars,
-                    unshared_var_handler,
-                    err_msg,
-                    err,
-                )
+                emit_if_else(cond, conseq, alt, strategy, injector, ctx)
             }
         }
-        Statement::UnsharedDecl { .. } => emit_unshared_decl_stmt(
-            stmt,
-            strategy,
-            injector,
-            table,
-            mem_allocator,
-            map_lib_adapter,
-            report_vars,
-            unshared_var_handler,
-            err_msg,
-            err,
-        ),
-        Statement::SetMap { .. } => emit_set_map_stmt(
-            stmt,
-            strategy,
-            injector,
-            table,
-            mem_allocator,
-            map_lib_adapter,
-            report_vars,
-            unshared_var_handler,
-            err_msg,
-            err,
-        ),
+        Statement::UnsharedDecl { .. } => emit_unshared_decl_stmt(stmt, strategy, injector, ctx),
+        Statement::SetMap { .. } => emit_set_map_stmt(stmt, strategy, injector, ctx),
     }
 }
 
 fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     stmt: &mut Statement,
     injector: &mut T,
-    table: &mut SymbolTable,
-    map_lib_adapter: &mut MapLibAdapter,
-    err_msg: &str,
-    err: &mut ErrorGen,
+    ctx: &mut EmitCtx,
 ) -> bool {
     match stmt {
         Statement::Decl { ty, var_id, .. } => {
             // look up in symbol table
             let mut addr = if let Expr::VarId { name, .. } = var_id {
-                let var_rec_id = match table.lookup(name) {
+                let var_rec_id = match ctx.table.lookup(name) {
                     Some(rec_id) => rec_id,
                     None => {
                         // add variables from body into symbol table (at this point, the verifier should have run to catch variable initialization without declaration)
-                        table.put(
+                        ctx.table.put(
                             name.clone(),
                             Record::Var {
                                 ty: ty.clone(),
@@ -190,35 +123,41 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                         )
                     }
                 };
-                match table.get_record_mut(var_rec_id) {
+                match ctx.table.get_record_mut(var_rec_id) {
                     Some(Record::Var { addr, .. }) => addr,
                     Some(ty) => {
-                        err.unexpected_error(
+                        ctx.err.unexpected_error(
                             true,
                             Some(format!(
-                                "{err_msg} Incorrect variable record, expected Record::Var, found: {:?}",
-                                ty
+                                "{} Incorrect variable record, expected Record::Var, found: {:?}",
+                                ctx.err_msg, ty
                             )),
                             None,
                         );
                         return false;
                     }
                     None => {
-                        err.unexpected_error(
+                        ctx.err.unexpected_error(
                             true,
-                            Some(format!("{err_msg} Variable symbol does not exist!")),
+                            Some(format!("{} Variable symbol does not exist!", ctx.err_msg)),
                             None,
                         );
                         return false;
                     }
                 }
             } else {
-                err.unexpected_error(true, Some(format!("{err_msg} Expected VarId.")), None);
+                ctx.err.unexpected_error(
+                    true,
+                    Some(format!("{} Expected VarId.", ctx.err_msg)),
+                    None,
+                );
                 return false;
             };
 
             if let DataType::Map { .. } = ty {
-                let map_id = map_lib_adapter.map_create(ty.clone(), injector, err);
+                let map_id = ctx
+                    .map_lib_adapter
+                    .map_create(ty.clone(), injector, ctx.err);
                 *addr = Some(VarAddr::MapId { addr: map_id });
 
                 return true;
@@ -248,10 +187,11 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             }
         }
         _ => {
-            err.unexpected_error(
+            ctx.err.unexpected_error(
                 false,
                 Some(format!(
-                    "{err_msg} Wrong statement type, should be `assign`"
+                    "{} Wrong statement type, should be `assign`",
+                    ctx.err_msg
                 )),
                 None,
             );
@@ -264,13 +204,7 @@ fn emit_unshared_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     stmt: &mut Statement,
     strategy: InjectStrategy,
     injector: &mut T,
-    table: &mut SymbolTable,
-    _mem_allocator: &MemoryAllocator,
-    map_lib_adapter: &mut MapLibAdapter,
-    report_vars: &mut ReportVars,
-    unshared_var_handler: &mut UnsharedVarHandler,
-    err_msg: &str,
-    err: &mut ErrorGen,
+    ctx: &mut EmitCtx,
 ) -> bool {
     // TODO(unshared) (check me)
     //   call lang_features.unshared_vars.rewriting IF doing rewriting...
@@ -290,28 +224,35 @@ fn emit_unshared_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     } => {
                         // look up in symbol table
                         let Some(Record::Var { addr, .. }) =
-                            table.lookup_var_mut(var_name, &None, err)
+                            ctx.table.lookup_var_mut(var_name, &None, ctx.err)
                         else {
-                            err.unexpected_error(true, Some("unexpected type".to_string()), None);
+                            ctx.err.unexpected_error(
+                                true,
+                                Some("unexpected type".to_string()),
+                                None,
+                            );
                             return false;
                         };
 
-                        unshared_var_handler.allocate_var(
+                        ctx.unshared_var_handler.allocate_var(
                             var_name,
                             ty,
                             *is_report,
                             addr,
                             injector,
-                            map_lib_adapter,
-                            report_vars,
-                            err_msg,
-                            err,
+                            ctx.map_lib_adapter,
+                            ctx.report_vars,
+                            &ctx.err_msg,
+                            ctx.err,
                         )
                     }
                     _ => {
-                        err.unexpected_error(
+                        ctx.err.unexpected_error(
                             false,
-                            Some(format!("{err_msg} Wrong statement type, should be `decl`")),
+                            Some(format!(
+                                "{} Wrong statement type, should be `decl`",
+                                ctx.err_msg
+                            )),
                             None,
                         );
                         false
@@ -324,10 +265,11 @@ fn emit_unshared_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             }
         }
     }
-    err.unexpected_error(
+    ctx.err.unexpected_error(
         false,
         Some(format!(
-            "{err_msg} Wrong statement type, should be `report_decl`"
+            "{} Wrong statement type, should be `report_decl`",
+            ctx.err_msg
         )),
         None,
     );
@@ -338,13 +280,7 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     stmt: &mut Statement,
     strategy: InjectStrategy,
     injector: &mut T,
-    table: &mut SymbolTable,
-    mem_allocator: &MemoryAllocator,
-    map_lib_adapter: &mut MapLibAdapter,
-    report_vars: &mut ReportVars,
-    unshared_var_handler: &mut UnsharedVarHandler,
-    err_msg: &str,
-    err: &mut ErrorGen,
+    ctx: &mut EmitCtx,
 ) -> bool {
     match stmt {
         Statement::Assign { var_id, expr, .. } => {
@@ -356,9 +292,10 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     def,
                     is_report_var,
                     ..
-                }) = table.lookup_var_mut(name, &None, err)
+                }) = ctx.table.lookup_var_mut(name, &None, ctx.err)
                 else {
-                    err.unexpected_error(true, Some("unexpected type".to_string()), None);
+                    ctx.err
+                        .unexpected_error(true, Some("unexpected type".to_string()), None);
                     return false;
                 };
 
@@ -368,43 +305,24 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 }
                 if *is_report_var {
                     //you changed a report variable: need to turn dirty bool to true and then print somewhere
-                    report_vars.flush_soon = true;
+                    ctx.report_vars.flush_soon = true;
                 }
             }
 
-            if !emit_expr(
-                expr,
-                strategy,
-                injector,
-                table,
-                mem_allocator,
-                map_lib_adapter,
-                report_vars,
-                unshared_var_handler,
-                err_msg,
-                err,
-            ) {
+            if !emit_expr(expr, strategy, injector, ctx) {
                 return false;
             }
 
             // Emit the instruction that sets the variable's value to the emitted expression
-            emit_set(
-                var_id,
-                injector,
-                table,
-                mem_allocator,
-                report_vars,
-                unshared_var_handler,
-                err_msg,
-                err,
-            )
+            emit_set(var_id, injector, ctx)
         }
         _ => {
-            err.unexpected_error(
+            ctx.err.unexpected_error(
                 false,
                 Some(format!(
-                    "{err_msg} \
-                    Wrong statement type, should be `assign`"
+                    "{} \
+                    Wrong statement type, should be `assign`",
+                    ctx.err_msg
                 )),
                 None,
             );
@@ -417,13 +335,7 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     stmt: &mut Statement,
     strategy: InjectStrategy,
     injector: &mut T,
-    table: &mut SymbolTable,
-    mem_allocator: &MemoryAllocator,
-    map_lib_adapter: &mut MapLibAdapter,
-    report_vars: &mut ReportVars,
-    unshared_var_handler: &mut UnsharedVarHandler,
-    err_msg: &str,
-    err: &mut ErrorGen,
+    ctx: &mut EmitCtx,
 ) -> bool {
     if let Statement::SetMap {
         map: Expr::VarId { name, .. },
@@ -432,44 +344,24 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         ..
     } = stmt
     {
-        let Some((map_id, key_ty, val_ty)) = get_map_info(table, name, err) else {
+        let Some((map_id, key_ty, val_ty)) = get_map_info(name, ctx) else {
             return false;
         };
-        report_vars.mutating_map(map_id);
+        ctx.report_vars.mutating_map(map_id);
 
         injector.u32_const(map_id);
-        emit_expr(
-            key,
-            strategy,
-            injector,
-            table,
-            mem_allocator,
-            map_lib_adapter,
-            report_vars,
-            unshared_var_handler,
-            err_msg,
-            err,
-        );
-        emit_expr(
-            val,
-            strategy,
-            injector,
-            table,
-            mem_allocator,
-            map_lib_adapter,
-            report_vars,
-            unshared_var_handler,
-            err_msg,
-            err,
-        );
-        map_lib_adapter.map_insert(key_ty, val_ty, injector, err);
+        emit_expr(key, strategy, injector, ctx);
+        emit_expr(val, strategy, injector, ctx);
+        ctx.map_lib_adapter
+            .map_insert(key_ty, val_ty, injector, ctx.err);
         true
     } else {
-        err.unexpected_error(
+        ctx.err.unexpected_error(
             false,
             Some(format!(
-                "{err_msg} \
-            Wrong statement type, should be `set_map`"
+                "{} \
+            Wrong statement type, should be `set_map`",
+                ctx.err_msg
             )),
             None,
         );
@@ -479,7 +371,6 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 
 // transform a whamm type to default wasm type, used for creating new global
 // TODO: Might be more generic to also include Local
-// TODO: Do we really want to depend on wasmparser::ValType, or create a wrapper?
 pub fn whamm_type_to_wasm_global(app_wasm: &mut Module, ty: &DataType) -> (GlobalID, OrcaType) {
     let orca_wasm_ty = ty.to_wasm_type();
 
@@ -518,23 +409,20 @@ pub fn block_type_to_wasm(block: &Block) -> BlockType {
 fn emit_set<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     var_id: &mut Expr,
     injector: &mut T,
-    table: &mut SymbolTable,
-    mem_allocator: &MemoryAllocator,
-    report_vars: &mut ReportVars,
-    _unshared_var_handler: &mut UnsharedVarHandler,
-    err_msg: &str,
-    err: &mut ErrorGen,
+    ctx: &mut EmitCtx,
 ) -> bool {
     if let Expr::VarId { name, .. } = var_id {
-        let Some(Record::Var { addr, loc, .. }) = table.lookup_var_mut(name, &None, err) else {
-            err.unexpected_error(true, Some("unexpected type".to_string()), None);
+        let Some(Record::Var { addr, loc, .. }) = ctx.table.lookup_var_mut(name, &None, ctx.err)
+        else {
+            ctx.err
+                .unexpected_error(true, Some("unexpected type".to_string()), None);
             return false;
         };
 
         // this will be different based on if this is a global or local var
         match addr {
             Some(VarAddr::Global { addr }) => {
-                report_vars.mutating_var(*addr);
+                ctx.report_vars.mutating_var(*addr);
                 injector.global_set(GlobalID(*addr));
             }
             Some(VarAddr::MemLoc {
@@ -542,21 +430,21 @@ fn emit_set<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 ty,
                 var_offset,
             }) => {
-                mem_allocator.set_in_mem(
+                ctx.mem_allocator.set_in_mem(
                     *mem_id,
                     &DataType::from_wasm_type(ty),
                     *var_offset,
-                    table,
+                    ctx.table,
                     injector,
-                    err,
+                    ctx.err,
                 );
             }
             Some(VarAddr::Local { addr }) => {
-                report_vars.mutating_var(*addr);
+                ctx.report_vars.mutating_var(*addr);
                 injector.local_set(LocalID(*addr));
             }
             Some(VarAddr::MapId { .. }) => {
-                err.type_check_error(
+                ctx.err.type_check_error(
                     false,
                     format!("Attempted to assign a var to Map: {}", name),
                     &line_col_from_loc(loc),
@@ -564,7 +452,7 @@ fn emit_set<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 return false;
             }
             None => {
-                err.type_check_error(
+                ctx.err.type_check_error(
                     false,
                     format!("Variable assigned before declared: {}", name),
                     &line_col_from_loc(loc),
@@ -574,7 +462,8 @@ fn emit_set<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         }
         true
     } else {
-        err.unexpected_error(true, Some(format!("{err_msg} Expected VarId.")), None);
+        ctx.err
+            .unexpected_error(true, Some(format!("{} Expected VarId.", ctx.err_msg)), None);
         false
     }
 }
@@ -584,44 +473,16 @@ fn emit_if_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     conseq: &mut Block,
     strategy: InjectStrategy,
     injector: &mut T,
-    table: &mut SymbolTable,
-    mem_allocator: &MemoryAllocator,
-    map_lib_adapter: &mut MapLibAdapter,
-    report_vars: &mut ReportVars,
-    unshared_var_handler: &mut UnsharedVarHandler,
-    err_msg: &str,
-    err: &mut ErrorGen,
+    ctx: &mut EmitCtx,
 ) -> bool {
     let mut is_success = true;
 
     // emit the condition of the `if` expression
-    is_success &= emit_expr(
-        condition,
-        strategy,
-        injector,
-        table,
-        mem_allocator,
-        map_lib_adapter,
-        report_vars,
-        unshared_var_handler,
-        err_msg,
-        err,
-    );
+    is_success &= emit_expr(condition, strategy, injector, ctx);
     // emit the beginning of the if block
     injector.if_stmt(block_type_to_wasm(conseq));
     // emit the consequent body
-    is_success &= emit_body(
-        conseq,
-        strategy,
-        injector,
-        table,
-        mem_allocator,
-        map_lib_adapter,
-        report_vars,
-        unshared_var_handler,
-        err_msg,
-        err,
-    );
+    is_success &= emit_body(conseq, strategy, injector, ctx);
 
     // INTENTIONALLY DON'T END IF BLOCK
     is_success
@@ -633,46 +494,17 @@ fn emit_if_else_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     alternate: &mut Block,
     strategy: InjectStrategy,
     injector: &mut T,
-    table: &mut SymbolTable,
-    mem_allocator: &MemoryAllocator,
-    map_lib_adapter: &mut MapLibAdapter,
-    report_vars: &mut ReportVars,
-    unshared_var_handler: &mut UnsharedVarHandler,
-    err_msg: &str,
-    err: &mut ErrorGen,
+    ctx: &mut EmitCtx,
 ) -> bool {
     let mut is_success = true;
 
-    is_success &= emit_if_preamble(
-        condition,
-        conseq,
-        strategy,
-        injector,
-        table,
-        mem_allocator,
-        map_lib_adapter,
-        report_vars,
-        unshared_var_handler,
-        err_msg,
-        err,
-    );
+    is_success &= emit_if_preamble(condition, conseq, strategy, injector, ctx);
 
     // emit the beginning of the else
     injector.else_stmt();
 
     // emit the alternate body
-    is_success &= emit_body(
-        alternate,
-        strategy,
-        injector,
-        table,
-        mem_allocator,
-        map_lib_adapter,
-        report_vars,
-        unshared_var_handler,
-        err_msg,
-        err,
-    );
+    is_success &= emit_body(alternate, strategy, injector, ctx);
 
     // INTENTIONALLY DON'T END IF/ELSE BLOCK
 
@@ -684,29 +516,11 @@ fn emit_if<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     conseq: &mut Block,
     strategy: InjectStrategy,
     injector: &mut T,
-    table: &mut SymbolTable,
-    mem_allocator: &MemoryAllocator,
-    map_lib_adapter: &mut MapLibAdapter,
-    report_vars: &mut ReportVars,
-    unshared_var_handler: &mut UnsharedVarHandler,
-    err_msg: &str,
-    err: &mut ErrorGen,
+    ctx: &mut EmitCtx,
 ) -> bool {
     let mut is_success = true;
 
-    is_success &= emit_if_preamble(
-        condition,
-        conseq,
-        strategy,
-        injector,
-        table,
-        mem_allocator,
-        map_lib_adapter,
-        report_vars,
-        unshared_var_handler,
-        err_msg,
-        err,
-    );
+    is_success &= emit_if_preamble(condition, conseq, strategy, injector, ctx);
 
     // emit the end of the if block
     injector.end();
@@ -719,30 +533,11 @@ fn emit_if_else<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     alternate: &mut Block,
     strategy: InjectStrategy,
     injector: &mut T,
-    table: &mut SymbolTable,
-    mem_allocator: &MemoryAllocator,
-    map_lib_adapter: &mut MapLibAdapter,
-    report_vars: &mut ReportVars,
-    unshared_var_handler: &mut UnsharedVarHandler,
-    err_msg: &str,
-    err: &mut ErrorGen,
+    ctx: &mut EmitCtx,
 ) -> bool {
     let mut is_success = true;
 
-    is_success &= emit_if_else_preamble(
-        condition,
-        conseq,
-        alternate,
-        strategy,
-        injector,
-        table,
-        mem_allocator,
-        map_lib_adapter,
-        report_vars,
-        unshared_var_handler,
-        err_msg,
-        err,
-    );
+    is_success &= emit_if_else_preamble(condition, conseq, alternate, strategy, injector, ctx);
 
     // emit the end of the if block
     injector.end();
@@ -754,59 +549,20 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     expr: &mut Expr,
     strategy: InjectStrategy,
     injector: &mut T,
-    table: &mut SymbolTable,
-    mem_allocator: &MemoryAllocator,
-    map_lib_adapter: &mut MapLibAdapter,
-    report_vars: &mut ReportVars,
-    unshared_var_handler: &mut UnsharedVarHandler,
-    err_msg: &str,
-    err: &mut ErrorGen,
+    ctx: &mut EmitCtx,
 ) -> bool {
     // fold it first!
-    let mut folded_expr = ExprFolder::fold_expr(expr, table, err);
+    let mut folded_expr = ExprFolder::fold_expr(expr, ctx.table, ctx.err);
     match &mut folded_expr {
-        Expr::UnOp { op, expr, .. } => {
-            let mut is_success = emit_expr(
-                expr,
-                strategy,
-                injector,
-                table,
-                mem_allocator,
-                map_lib_adapter,
-                report_vars,
-                unshared_var_handler,
-                err_msg,
-                err,
-            );
-            is_success &= emit_unop(op, injector);
+        Expr::UnOp { op, expr, done_on, .. } => {
+            let mut is_success = emit_expr(expr, strategy, injector, ctx);
+            is_success &= emit_unop(op, done_on, injector);
             is_success
         }
-        Expr::BinOp { lhs, op, rhs, .. } => {
-            let mut is_success = emit_expr(
-                lhs,
-                strategy,
-                injector,
-                table,
-                mem_allocator,
-                map_lib_adapter,
-                report_vars,
-                unshared_var_handler,
-                err_msg,
-                err,
-            );
-            is_success &= emit_expr(
-                rhs,
-                strategy,
-                injector,
-                table,
-                mem_allocator,
-                map_lib_adapter,
-                report_vars,
-                unshared_var_handler,
-                err_msg,
-                err,
-            );
-            is_success &= emit_binop(op, injector);
+        Expr::BinOp { lhs, op, rhs, done_on, .. } => {
+            let mut is_success = emit_expr(lhs, strategy, injector, ctx);
+            is_success &= emit_expr(rhs, strategy, injector, ctx);
+            is_success &= emit_binop(op, done_on, injector);
             is_success
         }
         Expr::Ternary {
@@ -816,14 +572,12 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             ty,
             ..
         } => {
-            // change conseq and alt types to stmt for easier API call
-            // TODO -- the block return_types should be populated!
             if matches!(ty, DataType::Null) {
-                err.unexpected_error(
+                ctx.err.unexpected_error(
                     true,
                     Some(format!(
-                        "{err_msg} \
-                                The result type of the ternary should have been set in the type checker."
+                        "{} \
+                                The result type of the ternary should have been set in the type checker.", ctx.err_msg
                     )),
                     None,
                 );
@@ -850,13 +604,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 },
                 strategy,
                 injector,
-                table,
-                mem_allocator,
-                map_lib_adapter,
-                report_vars,
-                unshared_var_handler,
-                err_msg,
-                err,
+                ctx,
             )
         }
         Expr::Call {
@@ -870,32 +618,23 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             // emit the arguments
             let mut is_success = true;
             for arg in args.iter_mut() {
-                is_success = emit_expr(
-                    arg,
-                    strategy,
-                    injector,
-                    table,
-                    mem_allocator,
-                    map_lib_adapter,
-                    report_vars,
-                    unshared_var_handler,
-                    err_msg,
-                    err,
-                );
+                is_success = emit_expr(arg, strategy, injector, ctx);
             }
 
-            let Some(Record::Fn { addr, .. }) = table.lookup_fn(&fn_name, true, err) else {
-                err.unexpected_error(true, Some("unexpected type".to_string()), None);
+            let Some(Record::Fn { addr, .. }) = ctx.table.lookup_fn(&fn_name, true, ctx.err) else {
+                ctx.err
+                    .unexpected_error(true, Some("unexpected type".to_string()), None);
                 return false;
             };
             if let Some(f_id) = addr {
                 injector.call(FunctionID(*f_id));
             } else {
-                err.unexpected_error(
+                ctx.err.unexpected_error(
                     true,
                     Some(format!(
-                        "{err_msg} \
-                                fn_target address not in symbol table, not emitted yet..."
+                        "{} \
+                                fn_target address not in symbol table, not emitted yet...",
+                        ctx.err_msg,
                     )),
                     None,
                 );
@@ -905,16 +644,19 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         }
         Expr::VarId { name, .. } => {
             // TODO -- support string vars (unimplemented)
-            let Some(Record::Var { addr, def, .. }) = table.lookup_var_mut(name, &None, err) else {
-                err.unexpected_error(true, Some("unexpected type".to_string()), None);
+            let Some(Record::Var { addr, def, .. }) =
+                ctx.table.lookup_var_mut(name, &None, ctx.err)
+            else {
+                ctx.err
+                    .unexpected_error(true, Some("unexpected type".to_string()), None);
                 return false;
             };
             if matches!(def, Definition::CompilerStatic) && addr.is_none() {
-                err.unexpected_error(
+                ctx.err.unexpected_error(
                     true,
                     Some(format!(
-                        "{err_msg} \
-                    Variable is provided statically by the compiler, it should've been folded by this point: {}",
+                        "{} \
+                    Variable is provided statically by the compiler, it should've been folded by this point: {}", ctx.err_msg,
                         name
                     )),
                     None,
@@ -936,35 +678,35 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     ty,
                     var_offset,
                 }) => {
-                    mem_allocator.get_from_mem(
+                    ctx.mem_allocator.get_from_mem(
                         *mem_id,
                         &DataType::from_wasm_type(ty),
                         *var_offset,
-                        table,
+                        ctx.table,
                         injector,
-                        err,
+                        ctx.err,
                     );
                     true
                 }
                 Some(VarAddr::MapId { .. }) => {
-                    err.unexpected_error(
+                    ctx.err.unexpected_error(
                         true,
                         Some(format!(
-                            "{err_msg} \
+                            "{} \
                                 Variable you are trying to use in expr is a Map object {}",
-                            name
+                            ctx.err_msg, name
                         )),
                         None,
                     );
                     return false;
                 }
                 None => {
-                    err.unexpected_error(
+                    ctx.err.unexpected_error(
                         true,
                         Some(format!(
-                            "{err_msg} \
+                            "{} \
                     Variable does not exist in scope: {}",
-                            name
+                            ctx.err_msg, name
                         )),
                         None,
                     );
@@ -972,97 +714,598 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 }
             };
         }
-        Expr::Primitive { val, .. } => emit_value(
-            val,
-            strategy,
-            injector,
-            table,
-            mem_allocator,
-            map_lib_adapter,
-            report_vars,
-            unshared_var_handler,
-            err_msg,
-            err,
-        ),
-        Expr::MapGet { .. } => emit_map_get(
-            expr,
-            strategy,
-            injector,
-            table,
-            mem_allocator,
-            map_lib_adapter,
-            report_vars,
-            unshared_var_handler,
-            err_msg,
-            err,
-        ),
+        Expr::Primitive { val, .. } => emit_value(val, strategy, injector, ctx),
+        Expr::MapGet { .. } => emit_map_get(expr, strategy, injector, ctx),
     }
 }
 
-fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, injector: &mut T) -> bool {
+fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut T) -> bool {
     match op {
         BinOp::And => {
-            // we only support i32's at the moment
-            injector.i32_and();
+            match done_on {
+                DataType::U8
+                | DataType::I8
+                | DataType::U16
+                | DataType::I16
+                | DataType::U32
+                | DataType::I32
+                | DataType::Boolean => injector.i32_and(),
+                DataType::U64
+                | DataType::I64 => injector.i64_and(),
+                DataType::F32 => {
+                    injector.i32_reinterpret_f32();
+                    injector.i32_and();
+                    injector.f32_reinterpret_i32()
+                },
+                DataType::F64 => {
+                    injector.i64_reinterpret_f64();
+                    injector.i64_and();
+                    injector.f64_reinterpret_i64()
+                },
+                DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. }
+                | DataType::AssumeGood => unimplemented!(),
+            };
         }
         BinOp::Or => {
-            // we only support i32's at the moment
-            injector.i32_or();
+            match done_on {
+                DataType::U8
+                | DataType::I8
+                | DataType::U16
+                | DataType::I16
+                | DataType::U32
+                | DataType::I32
+                | DataType::Boolean => injector.i32_or(),
+                DataType::U64
+                | DataType::I64 => injector.i64_or(),
+                DataType::F32 => {
+                    injector.i32_reinterpret_f32();
+                    injector.i32_or();
+                    injector.f32_reinterpret_i32()
+                },
+                DataType::F64 => {
+                    injector.i64_reinterpret_f64();
+                    injector.i64_or();
+                    injector.f64_reinterpret_i64()
+                },
+                DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. }
+                | DataType::AssumeGood => unimplemented!(),
+            };
         }
         BinOp::EQ => {
-            // we only support i32's at the moment
-            injector.i32_eq();
+            match done_on {
+                DataType::U8
+                | DataType::I8
+                | DataType::U16
+                | DataType::I16
+                | DataType::U32
+                | DataType::I32
+                | DataType::Boolean => injector.i32_eq(),
+                DataType::U64
+                | DataType::I64 => injector.i64_eq(),
+                DataType::F32 => injector.f32_eq(),
+                DataType::F64 => injector.f64_eq(),
+                DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. }
+                | DataType::AssumeGood => unimplemented!(),
+            };
         }
         BinOp::NE => {
-            // we only support i32's at the moment
-            injector.i32_ne();
+            match done_on {
+                DataType::U8
+                | DataType::I8
+                | DataType::U16
+                | DataType::I16
+                | DataType::U32
+                | DataType::I32
+                | DataType::Boolean => injector.i32_ne(),
+                DataType::U64
+                | DataType::I64 => injector.i64_ne(),
+                DataType::F32 => injector.f32_ne(),
+                DataType::F64 => injector.f64_ne(),
+                DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. }
+                | DataType::AssumeGood => unimplemented!(),
+            };
         }
         BinOp::GE => {
-            // we only support i32's at the moment (assumes signed)
-            injector.i32_gte_signed();
+            match done_on {
+                DataType::U8
+                | DataType::I8
+                | DataType::U16
+                | DataType::I16
+                | DataType::I32
+                | DataType::Boolean => injector.i32_gte_signed(),
+                DataType::U32 => injector.i32_gte_unsigned(),
+                DataType::U64 => injector.i64_gte_unsigned(),
+                DataType::I64 => injector.i64_gte_signed(),
+                DataType::F32 => injector.f32_ge(),
+                DataType::F64 => injector.f64_ge(),
+                DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. }
+                | DataType::AssumeGood => unimplemented!(),
+            };
         }
         BinOp::GT => {
-            // we only support i32's at the moment (assumes signed)
-            injector.i32_gt_signed();
+            match done_on {
+                DataType::U8
+                | DataType::I8
+                | DataType::U16
+                | DataType::I16
+                | DataType::I32
+                | DataType::Boolean => injector.i32_gt_signed(),
+                DataType::U32 => injector.i32_gt_unsigned(),
+                DataType::U64 => injector.i64_gt_unsigned(),
+                DataType::I64 => injector.i64_gt_signed(),
+                DataType::F32 => injector.f32_gt(),
+                DataType::F64 => injector.f64_gt(),
+                DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. }
+                | DataType::AssumeGood => unimplemented!(),
+            };
         }
         BinOp::LE => {
-            // we only support i32's at the moment (assumes signed)
-            injector.i32_lte_signed();
+            match done_on {
+                DataType::U8
+                | DataType::I8
+                | DataType::U16
+                | DataType::I16
+                | DataType::I32
+                | DataType::Boolean => injector.i32_lte_signed(),
+                DataType::U32 => injector.i32_lte_unsigned(),
+                DataType::U64 => injector.i64_lte_unsigned(),
+                DataType::I64 => injector.i64_lte_signed(),
+                DataType::F32 => injector.f32_le(),
+                DataType::F64 => injector.f64_le(),
+                DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. }
+                | DataType::AssumeGood => unimplemented!(),
+            };
         }
         BinOp::LT => {
-            // we only support i32's at the moment (assumes signed)
-            injector.i32_lt_signed();
+            match done_on {
+                DataType::U8
+                | DataType::I8
+                | DataType::U16
+                | DataType::I16
+                | DataType::I32
+                | DataType::Boolean => injector.i32_lt_signed(),
+                DataType::U32 => injector.i32_lt_unsigned(),
+                DataType::U64 => injector.i64_lt_unsigned(),
+                DataType::I64 => injector.i64_lt_signed(),
+                DataType::F32 => injector.f32_lt(),
+                DataType::F64 => injector.f64_lt(),
+                DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. }
+                | DataType::AssumeGood => unimplemented!(),
+            };
         }
         BinOp::Add => {
-            // we only support i32's at the moment
-            injector.i32_add();
+            match done_on {
+                DataType::U8
+                | DataType::I8
+                | DataType::U16
+                | DataType::I16
+                | DataType::U32
+                | DataType::I32
+                | DataType::Boolean => injector.i32_add(),
+                DataType::U64
+                | DataType::I64 => injector.i64_add(),
+                DataType::F32 => injector.f32_add(),
+                DataType::F64 => injector.f64_add(),
+                DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. }
+                | DataType::AssumeGood => unimplemented!(),
+            };
         }
         BinOp::Subtract => {
-            // we only support i32's at the moment
-            injector.i32_sub();
+            match done_on {
+                DataType::U8
+                | DataType::I8
+                | DataType::U16
+                | DataType::I16
+                | DataType::U32
+                | DataType::I32
+                | DataType::Boolean => injector.i32_sub(),
+                DataType::U64
+                | DataType::I64 => injector.i64_sub(),
+                DataType::F32 => injector.f32_sub(),
+                DataType::F64 => injector.f64_sub(),
+                DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. }
+                | DataType::AssumeGood => unimplemented!(),
+            };
         }
         BinOp::Multiply => {
-            // we only support i32's at the moment (assumes signed)
-            injector.i32_mul();
+            match done_on {
+                DataType::U8
+                | DataType::I8
+                | DataType::U16
+                | DataType::I16
+                | DataType::U32
+                | DataType::I32
+                | DataType::Boolean => injector.i32_mul(),
+                DataType::U64
+                | DataType::I64 => injector.i64_mul(),
+                DataType::F32 => injector.f32_mul(),
+                DataType::F64 => injector.f64_mul(),
+                DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. }
+                | DataType::AssumeGood => unimplemented!(),
+            };
         }
         BinOp::Divide => {
-            // we only support i32's at the moment (assumes signed)
-            injector.i32_div_signed();
+            match done_on {
+                DataType::U8
+                | DataType::I8
+                | DataType::U16
+                | DataType::I16
+                | DataType::I32
+                | DataType::Boolean => injector.i32_div_signed(),
+                DataType::U32 => injector.i32_div_unsigned(),
+                DataType::U64 => injector.i64_div_unsigned(),
+                DataType::I64 => injector.i64_div_signed(),
+                DataType::F32 => injector.f32_div(),
+                DataType::F64 => injector.f64_div(),
+                DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. }
+                | DataType::AssumeGood => unimplemented!(),
+            };
         }
         BinOp::Modulo => {
-            // we only support i32's at the moment (assumes signed)
-            injector.i32_rem_signed();
+            match done_on {
+                DataType::U8
+                | DataType::I8
+                | DataType::U16
+                | DataType::I16
+                | DataType::I32
+                | DataType::Boolean => injector.i32_rem_signed(),
+                DataType::U32 => injector.i32_rem_unsigned(),
+                DataType::U64 => injector.i64_rem_unsigned(),
+                DataType::I64 => injector.i64_rem_signed(),
+                DataType::F32 => unimplemented!(), // todo -- maybe require a cast to an int?
+                DataType::F64 => unimplemented!(), // todo -- maybe require a cast to an int?
+                DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. }
+                | DataType::AssumeGood => unimplemented!(),
+            };
         }
     }
     true
 }
 
-fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, injector: &mut T) -> bool {
+fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T) -> bool {
     match op {
-        UnOp::Cast { .. } => todo!(),
+        UnOp::Cast { target } => {
+            match (done_on, target) {
+                // From U8
+                (DataType::U8,
+                    DataType::U8
+                    | DataType::I8
+                    | DataType::U16
+                    | DataType::I16
+                    | DataType::U32
+                    | DataType::I32) => {}, // nothing to do
+                (DataType::U8, DataType::Boolean) => {
+                    // "truthy"
+                    unimplemented!();
+                }
+                (DataType::U8,
+                    DataType::U64 | DataType::I64) => { injector.i64_extend_i32u(); },
+                (DataType::U8, DataType::F32) => { unimplemented!(); },
+                (DataType::U8, DataType::F64) => { unimplemented!(); },
+                (DataType::U8, _) => {
+                    // probably error
+                    unimplemented!();
+                },
+
+                // From I8
+                (DataType::I8, DataType::U8
+                    | DataType::I8) => {}, // nothing to do
+                (DataType::I8, DataType::U16 | DataType::I16) => {
+                    // sign extend
+                    unimplemented!();
+                }
+                (DataType::I8, DataType::I32 | DataType::U32) => {
+                    injector.i32_extend_8s();
+                }
+                (DataType::I8, DataType::Boolean) => {
+                    // "truthy"
+                    unimplemented!();
+                }
+                (DataType::I8,
+                    DataType::U64 | DataType::I64) => {
+                    injector.i32_extend_8s();
+                    injector.i64_extend_i32s();
+                },
+                (DataType::I8, DataType::F32) => { unimplemented!(); },
+                (DataType::I8, DataType::F64) => { unimplemented!(); },
+                (DataType::I8, _) => {
+                    // probably error
+                    unimplemented!();
+                },
+
+                // From U16
+                (DataType::U16, DataType::U8
+                | DataType::I8) => {
+                    // some type of truncation
+                    unimplemented!()
+                },
+                (DataType::U16, DataType::U16
+                | DataType::I16
+                | DataType::U32
+                | DataType::I32) => {}, // nothing to do
+                (DataType::U16, DataType::Boolean) => {
+                    // "truthy"
+                    unimplemented!();
+                }
+                (DataType::U16,
+                    DataType::U64 | DataType::I64) => {
+                    injector.i64_extend_i32u();
+                },
+                (DataType::U16, DataType::F32) => { unimplemented!(); },
+                (DataType::U16, DataType::F64) => { unimplemented!(); },
+                (DataType::U16, _) => {
+                    // probably error
+                    unimplemented!();
+                },
+
+                // From I16
+                (DataType::I16, DataType::U8
+                | DataType::I8) => {
+                    // some kind of truncation
+                    unimplemented!()
+                },
+                (DataType::I16, DataType::U16
+                | DataType::I16) => {}, // nothing to do
+                (DataType::I16, DataType::Boolean) => {
+                    // "truthy"
+                    unimplemented!();
+                }
+                (DataType::I16, DataType::I32 | DataType::U32) => {
+                    injector.i32_extend_16s();
+                }
+                (DataType::I16,
+                    DataType::U64 | DataType::I64) => {
+                    injector.i32_extend_8s();
+                    injector.i64_extend_i32s();
+                },
+                (DataType::I16, DataType::F32) => { unimplemented!(); },
+                (DataType::I16, DataType::F64) => { unimplemented!(); },
+                (DataType::I16, _) => {
+                    // probably error
+                    unimplemented!();
+                },
+
+                // From U32
+                (DataType::U32, DataType::U8
+                | DataType::I8) => {
+                    // some kind of truncation
+                    unimplemented!()
+                },
+                (DataType::U32, DataType::U16
+                | DataType::I16) => {
+                    // some kind of truncation
+                    unimplemented!()
+                },
+                (DataType::U32, DataType::U32
+                | DataType::I32) => {}, // nothing to do
+                (DataType::U32, DataType::Boolean) => {
+                    // "truthy"
+                    unimplemented!();
+                }
+                (DataType::U32,
+                    DataType::U64 | DataType::I64) => {
+                    injector.i64_extend_i32u();
+                },
+                (DataType::U32, DataType::F32) => { unimplemented!(); },
+                (DataType::U32, DataType::F64) => { unimplemented!(); },
+                (DataType::U32, _) => {
+                    // probably error
+                    unimplemented!();
+                },
+
+                // From I32
+                (DataType::I32, DataType::U8
+                | DataType::I8) => {
+                    // some kind of truncation
+                    unimplemented!()
+                },
+                (DataType::I32, DataType::U16
+                | DataType::I16) => {
+                    // some kind of truncation
+                    unimplemented!()
+                },
+                (DataType::I32, DataType::U32
+                | DataType::I32) => {}, // nothing to do
+                (DataType::I32, DataType::Boolean) => {
+                    // "truthy"
+                    unimplemented!();
+                }
+                (DataType::I32,
+                    DataType::U64 | DataType::I64) => {
+                    injector.i64_extend_i32s();
+                },
+                (DataType::I32, DataType::F32) => { unimplemented!(); },
+                (DataType::I32, DataType::F64) => { unimplemented!(); },
+                (DataType::I32, _) => {
+                    // probably error
+                    unimplemented!();
+                },
+
+                // From U64
+                (DataType::U64, DataType::U8
+                | DataType::I8) => {
+                    // some kind of truncation
+                    unimplemented!()
+                },
+                (DataType::U64, DataType::U16
+                | DataType::I16) => {
+                    // some kind of truncation
+                    unimplemented!()
+                },
+                (DataType::U64, DataType::U32
+                | DataType::I32) => {
+                    // some kind of truncation
+                    unimplemented!()
+                },
+                (DataType::U64, DataType::Boolean) => {
+                    // "truthy"
+                    unimplemented!();
+                }
+                (DataType::U64,
+                    DataType::U64 | DataType::I64) => {}, // nothing to do
+                (DataType::U64, DataType::F32) => { unimplemented!(); },
+                (DataType::U64, DataType::F64) => { unimplemented!(); },
+                (DataType::U64, _) => {
+                    // probably error
+                    unimplemented!();
+                },
+
+                // From I64
+                (DataType::I64, DataType::U8
+                | DataType::I8) => {
+                    // some kind of truncation
+                    unimplemented!()
+                },
+                (DataType::I64, DataType::U16
+                | DataType::I16) => {
+                    // some kind of truncation
+                    unimplemented!()
+                },
+                (DataType::I64, DataType::U32
+                | DataType::I32) => {
+                    // some kind of truncation
+                    unimplemented!()
+                },
+                (DataType::I64, DataType::Boolean) => {
+                    // "truthy"
+                    unimplemented!();
+                }
+                (DataType::I64,
+                    DataType::U64 | DataType::I64) => {}, // nothing to do
+                (DataType::I64, DataType::F32) => { unimplemented!(); },
+                (DataType::I64, DataType::F64) => { unimplemented!(); },
+                (DataType::I64, _) => {
+                    // probably error
+                    unimplemented!();
+                },
+
+                // From F32
+                (DataType::F32, DataType::U8
+                | DataType::I8) => {
+                    // some kind of truncation
+                    unimplemented!()
+                },
+                (DataType::F32, DataType::U16
+                | DataType::I16) => {
+                    // some kind of truncation
+                    unimplemented!()
+                },
+                (DataType::F32, DataType::U32
+                | DataType::I32) => unimplemented!(),
+                (DataType::F32, DataType::Boolean) => {
+                    // "truthy"
+                    unimplemented!();
+                }
+                (DataType::F32,
+                    DataType::U64 | DataType::I64) => unimplemented!(),
+                (DataType::F32, DataType::F32) => {}, // nothing to do
+                (DataType::F32, DataType::F64) => unimplemented!(),
+                (DataType::F32, _) => {
+                    // probably error
+                    unimplemented!();
+                },
+
+                // From F64
+                (DataType::F64, DataType::U8
+                | DataType::I8) => {
+                    // some kind of truncation
+                    unimplemented!()
+                },
+                (DataType::F64, DataType::U16
+                | DataType::I16) => {
+                    // some kind of truncation
+                    unimplemented!()
+                },
+                (DataType::F64, DataType::U32
+                | DataType::I32) => {
+                    // some kind of truncation
+                    unimplemented!()
+                },
+                (DataType::F64, DataType::Boolean) => {
+                    // "truthy"
+                    unimplemented!();
+                }
+                (DataType::F64,
+                    DataType::U64 | DataType::I64) => unimplemented!(),
+                (DataType::F64, DataType::F32) => {
+                    // some kind of truncation
+                    unimplemented!()
+                },
+                (DataType::F64, DataType::F64) => {}, // nothing to do
+                (DataType::F64, _) => {
+                    // probably error
+                    unimplemented!();
+                },
+                _ => {
+                    // probably error
+                    unimplemented!();
+                },
+            };
+        },
         UnOp::Not => {
-            // return 1 if 0, return 0 otherwise
-            injector.i32_eqz();
+            match done_on {
+                DataType::U8
+                | DataType::I8
+                | DataType::U16
+                | DataType::I16
+                | DataType::U32
+                | DataType::I32
+                | DataType::Boolean => injector.i32_eqz(),
+                DataType::U64
+                | DataType::I64 => injector.i64_eqz(),
+                DataType::F32 => {
+                    injector.f32_const(0f32);
+                    injector.f32_eq()
+                },
+                DataType::F64 => {
+                    injector.f64_const(0f64);
+                    injector.f64_eq()
+                },
+                DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. }
+                | DataType::AssumeGood => unimplemented!(),
+            };
         }
     }
     true
@@ -1072,13 +1315,7 @@ fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     val: &mut Value,
     strategy: InjectStrategy,
     injector: &mut T,
-    table: &mut SymbolTable,
-    mem_allocator: &MemoryAllocator,
-    map_lib_adapter: &mut MapLibAdapter,
-    report_vars: &mut ReportVars,
-    unshared_var_handler: &mut UnsharedVarHandler,
-    err_msg: &str,
-    err: &mut ErrorGen,
+    ctx: &mut EmitCtx,
 ) -> bool {
     let mut is_success = true;
     match val {
@@ -1119,16 +1356,17 @@ fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             // 1. app_iter.app_wasm.data
             // 2. app_iter
 
-            if let Some(str_addr) = mem_allocator.emitted_strings.get(val) {
+            if let Some(str_addr) = ctx.mem_allocator.emitted_strings.get(val) {
                 // emit Wasm instructions for the memory address and string length
                 injector.u32_const(str_addr.mem_offset as u32);
                 injector.u32_const(str_addr.len as u32);
                 is_success &= true;
             } else {
-                err.unexpected_error(
+                ctx.err.unexpected_error(
                     true,
                     Some(format!(
-                        "{err_msg} String has not been emitted yet for value: '{val}'!"
+                        "{} String has not been emitted yet for value: '{val}'!",
+                        ctx.err_msg
                     )),
                     None,
                 );
@@ -1137,18 +1375,7 @@ fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         }
         Value::Tuple { vals, .. } => {
             for val in vals.iter_mut() {
-                is_success &= emit_expr(
-                    val,
-                    strategy,
-                    injector,
-                    table,
-                    mem_allocator,
-                    map_lib_adapter,
-                    report_vars,
-                    unshared_var_handler,
-                    err_msg,
-                    err,
-                );
+                is_success &= emit_expr(val, strategy, injector, ctx);
             }
         }
         Value::Boolean { val, .. } => {
@@ -1164,11 +1391,12 @@ fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             }
             is_success &= true;
         }
-        Value::U32U32Map { .. } => err.unexpected_error(
+        Value::U32U32Map { .. } => ctx.err.unexpected_error(
             false,
             Some(format!(
-                "{err_msg} \
-            `emit_value` shouldn't be called with a U32U32Map type...should already be handled!"
+                "{} \
+            `emit_value` shouldn't be called with a U32U32Map type...should already be handled!",
+                ctx.err_msg
             )),
             None,
         ),
@@ -1180,56 +1408,39 @@ fn emit_map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     expr: &mut Expr,
     strategy: InjectStrategy,
     injector: &mut T,
-    table: &mut SymbolTable,
-    mem_allocator: &MemoryAllocator,
-    map_lib_adapter: &mut MapLibAdapter,
-    report_vars: &mut ReportVars,
-    unshared_var_handler: &mut UnsharedVarHandler,
-    err_msg: &str,
-    err: &mut ErrorGen,
+    ctx: &mut EmitCtx,
 ) -> bool {
     if let Expr::MapGet { map, key, .. } = expr {
         let map = &mut (**map);
         if let Expr::VarId { name, .. } = map {
-            return match get_map_info(table, name, err) {
+            return match get_map_info(name, ctx) {
                 Some((map_id, key_ty, val_ty)) => {
                     injector.u32_const(map_id);
-                    emit_expr(
-                        key,
-                        strategy,
-                        injector,
-                        table,
-                        mem_allocator,
-                        map_lib_adapter,
-                        report_vars,
-                        unshared_var_handler,
-                        err_msg,
-                        err,
-                    );
-                    map_lib_adapter.map_get(key_ty, val_ty, injector, err);
+                    emit_expr(key, strategy, injector, ctx);
+                    ctx.map_lib_adapter
+                        .map_get(key_ty, val_ty, injector, ctx.err);
                     true
                 }
                 None => false,
             };
         }
     }
-    err.unexpected_error(
+    ctx.err.unexpected_error(
         false,
         Some(format!(
-            "{err_msg} \
-            Wrong statement type, should be `map_get`"
+            "{} \
+            Wrong statement type, should be `map_get`",
+            ctx.err_msg
         )),
         None,
     );
     false
 }
-fn get_map_info(
-    table: &mut SymbolTable,
-    name: &mut str,
-    err: &mut ErrorGen,
-) -> Option<(u32, DataType, DataType)> {
-    let Some(Record::Var { ty, addr, loc, .. }) = table.lookup_var(name, &None, err, true) else {
-        err.unexpected_error(true, Some("unexpected type".to_string()), None);
+fn get_map_info(name: &mut str, ctx: &mut EmitCtx) -> Option<(u32, DataType, DataType)> {
+    let Some(Record::Var { ty, addr, loc, .. }) = ctx.table.lookup_var(name, &None, ctx.err, true)
+    else {
+        ctx.err
+            .unexpected_error(true, Some("unexpected type".to_string()), None);
         return None;
     };
     match addr {
@@ -1245,7 +1456,7 @@ fn get_map_info(
                 let val_ty = *v.clone();
                 Some((*map_id, key_ty, val_ty))
             } else {
-                err.unexpected_error(
+                ctx.err.unexpected_error(
                     true,
                     Some(format!(
                         "Incorrect DataType, expected Map, found: {:?}",
@@ -1258,7 +1469,7 @@ fn get_map_info(
             }
         }
         _ => {
-            err.unexpected_error(
+            ctx.err.unexpected_error(
                 true,
                 Some(format!(
                     "Incorrect variable record, expected MapId, found: {:?}",
@@ -1270,32 +1481,27 @@ fn get_map_info(
         }
     }
 }
-pub fn print_report_all<'a, T: Opcode<'a> + AddLocal>(
-    injector: &mut T,
-    table: &mut SymbolTable,
-    report_vars: &mut ReportVars,
-    _unshared_var_handler: &mut UnsharedVarHandler,
-    err: &mut ErrorGen,
-) {
-    if !report_vars.flush_soon {
+pub fn print_report_all<'a, T: Opcode<'a> + AddLocal>(injector: &mut T, ctx: &mut EmitCtx) {
+    if !ctx.report_vars.flush_soon {
         return;
     }
     let Some(Record::Fn {
         addr: Some(fid), ..
-    }) = table.lookup_fn("print_global_meta", true, err)
+    }) = ctx.table.lookup_fn("print_global_meta", true, ctx.err)
     else {
-        err.unexpected_error(true, Some("unexpected type".to_string()), None);
+        ctx.err
+            .unexpected_error(true, Some("unexpected type".to_string()), None);
         return;
     };
     injector.call(FunctionID(*fid));
 
     let Some(Record::Fn {
         addr: Some(fid), ..
-    }) = table.lookup_fn("print_map_meta", false, err)
+    }) = ctx.table.lookup_fn("print_map_meta", false, ctx.err)
     else {
         // maps must not be used in this script, ignore
         return;
     };
     injector.call(FunctionID(*fid));
-    report_vars.performed_flush();
+    ctx.report_vars.performed_flush();
 }

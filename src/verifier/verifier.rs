@@ -555,7 +555,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
     fn visit_expr(&mut self, expr: &mut Expr) -> Option<DataType> {
         match expr {
             Expr::Primitive { val, .. } => self.visit_value(val),
-            Expr::BinOp { lhs, rhs, op, .. } => {
+            Expr::BinOp { lhs, rhs, op, done_on, .. } => {
                 let lhs_loc = lhs.loc().clone().unwrap();
                 let rhs_loc = match rhs.loc().clone() {
                     Some(loc) => loc,
@@ -564,6 +564,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 let lhs_ty_op = self.visit_expr(lhs);
                 let rhs_ty_op = self.visit_expr(rhs);
                 if let (Some(lhs_ty), Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {
+                    *done_on = lhs_ty.clone();
                     match op {
                         BinOp::Add
                         | BinOp::Subtract
@@ -740,6 +741,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
             Expr::UnOp {
                 op,
                 expr: inner_expr,
+                done_on,
                 loc,
             } => {
                 let expr_ty_op = self.visit_expr(inner_expr);
@@ -749,6 +751,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             // If the inner expression's type is the same as the cast,
                             // we can remove the cast from the AST!
                             let t = target.clone();
+                            *done_on = expr_ty.clone();
                             if expr_ty.is_compatible_with(target) {
                                 *expr = *inner_expr.to_owned();
                             }

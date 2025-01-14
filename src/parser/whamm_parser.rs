@@ -548,6 +548,8 @@ fn handle_custom_binop(op: BinOp, rhs: Expr, pair: Pair<Rule>, err: &mut ErrorGe
         lhs: Box::new(binop_lhs),
         op,
         rhs: Box::new(rhs),
+
+        done_on: DataType::AssumeGood,
         loc: Some(Location {
             line_col: full_loc.clone(),
             path: None,
@@ -1049,6 +1051,7 @@ fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                     Ok(Expr::UnOp {
                         op,
                         expr: Box::new(rhs),
+                        done_on: DataType::AssumeGood,
                         loc,
                     })
                 }
@@ -1116,6 +1119,7 @@ fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                         lhs: Box::new(lhs),
                         op,
                         rhs: Box::new(rhs),
+                        done_on: DataType::AssumeGood,
                         loc,
                     })
                 }
@@ -1159,6 +1163,7 @@ fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                     Ok(Expr::UnOp {
                         op,
                         expr: Box::new(lhs),
+                        done_on: DataType::AssumeGood,
                         loc,
                     })
                 }
