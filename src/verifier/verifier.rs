@@ -555,7 +555,13 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
     fn visit_expr(&mut self, expr: &mut Expr) -> Option<DataType> {
         match expr {
             Expr::Primitive { val, .. } => self.visit_value(val),
-            Expr::BinOp { lhs, rhs, op, done_on, .. } => {
+            Expr::BinOp {
+                lhs,
+                rhs,
+                op,
+                done_on,
+                ..
+            } => {
                 let lhs_loc = lhs.loc().clone().unwrap();
                 let rhs_loc = match rhs.loc().clone() {
                     Some(loc) => loc,

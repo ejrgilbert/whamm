@@ -22,7 +22,14 @@ impl ExprFolder {
     }
 
     fn fold_binop(binop: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
-        if let Expr::BinOp { lhs, op, rhs, done_on, loc } = &binop {
+        if let Expr::BinOp {
+            lhs,
+            op,
+            rhs,
+            done_on,
+            loc,
+        } = &binop
+        {
             let lhs = ExprFolder::fold_expr(lhs, table, err);
             let rhs = ExprFolder::fold_expr(rhs, table, err);
             match op {
@@ -252,7 +259,10 @@ impl ExprFolder {
 
     // similar to the logic of fold_binop
     fn fold_unop(unop: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
-        if let Expr::UnOp { op, expr, done_on, .. } = &unop {
+        if let Expr::UnOp {
+            op, expr, done_on, ..
+        } = &unop
+        {
             let expr = ExprFolder::fold_expr(expr, table, err);
             return match op {
                 UnOp::Cast { target } => match &expr {

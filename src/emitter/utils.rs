@@ -554,12 +554,20 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     // fold it first!
     let mut folded_expr = ExprFolder::fold_expr(expr, ctx.table, ctx.err);
     match &mut folded_expr {
-        Expr::UnOp { op, expr, done_on, .. } => {
+        Expr::UnOp {
+            op, expr, done_on, ..
+        } => {
             let mut is_success = emit_expr(expr, strategy, injector, ctx);
             is_success &= emit_unop(op, done_on, injector);
             is_success
         }
-        Expr::BinOp { lhs, op, rhs, done_on, .. } => {
+        Expr::BinOp {
+            lhs,
+            op,
+            rhs,
+            done_on,
+            ..
+        } => {
             let mut is_success = emit_expr(lhs, strategy, injector, ctx);
             is_success &= emit_expr(rhs, strategy, injector, ctx);
             is_success &= emit_binop(op, done_on, injector);
@@ -730,18 +738,17 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut 
                 | DataType::U32
                 | DataType::I32
                 | DataType::Boolean => injector.i32_and(),
-                DataType::U64
-                | DataType::I64 => injector.i64_and(),
+                DataType::U64 | DataType::I64 => injector.i64_and(),
                 DataType::F32 => {
                     injector.i32_reinterpret_f32();
                     injector.i32_and();
                     injector.f32_reinterpret_i32()
-                },
+                }
                 DataType::F64 => {
                     injector.i64_reinterpret_f64();
                     injector.i64_and();
                     injector.f64_reinterpret_i64()
-                },
+                }
                 DataType::Null
                 | DataType::Str
                 | DataType::Tuple { .. }
@@ -758,18 +765,17 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut 
                 | DataType::U32
                 | DataType::I32
                 | DataType::Boolean => injector.i32_or(),
-                DataType::U64
-                | DataType::I64 => injector.i64_or(),
+                DataType::U64 | DataType::I64 => injector.i64_or(),
                 DataType::F32 => {
                     injector.i32_reinterpret_f32();
                     injector.i32_or();
                     injector.f32_reinterpret_i32()
-                },
+                }
                 DataType::F64 => {
                     injector.i64_reinterpret_f64();
                     injector.i64_or();
                     injector.f64_reinterpret_i64()
-                },
+                }
                 DataType::Null
                 | DataType::Str
                 | DataType::Tuple { .. }
@@ -786,8 +792,7 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut 
                 | DataType::U32
                 | DataType::I32
                 | DataType::Boolean => injector.i32_eq(),
-                DataType::U64
-                | DataType::I64 => injector.i64_eq(),
+                DataType::U64 | DataType::I64 => injector.i64_eq(),
                 DataType::F32 => injector.f32_eq(),
                 DataType::F64 => injector.f64_eq(),
                 DataType::Null
@@ -806,8 +811,7 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut 
                 | DataType::U32
                 | DataType::I32
                 | DataType::Boolean => injector.i32_ne(),
-                DataType::U64
-                | DataType::I64 => injector.i64_ne(),
+                DataType::U64 | DataType::I64 => injector.i64_ne(),
                 DataType::F32 => injector.f32_ne(),
                 DataType::F64 => injector.f64_ne(),
                 DataType::Null
@@ -906,8 +910,7 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut 
                 | DataType::U32
                 | DataType::I32
                 | DataType::Boolean => injector.i32_add(),
-                DataType::U64
-                | DataType::I64 => injector.i64_add(),
+                DataType::U64 | DataType::I64 => injector.i64_add(),
                 DataType::F32 => injector.f32_add(),
                 DataType::F64 => injector.f64_add(),
                 DataType::Null
@@ -926,8 +929,7 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut 
                 | DataType::U32
                 | DataType::I32
                 | DataType::Boolean => injector.i32_sub(),
-                DataType::U64
-                | DataType::I64 => injector.i64_sub(),
+                DataType::U64 | DataType::I64 => injector.i64_sub(),
                 DataType::F32 => injector.f32_sub(),
                 DataType::F64 => injector.f64_sub(),
                 DataType::Null
@@ -946,8 +948,7 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut 
                 | DataType::U32
                 | DataType::I32
                 | DataType::Boolean => injector.i32_mul(),
-                DataType::U64
-                | DataType::I64 => injector.i64_mul(),
+                DataType::U64 | DataType::I64 => injector.i64_mul(),
                 DataType::F32 => injector.f32_mul(),
                 DataType::F64 => injector.f64_mul(),
                 DataType::Null
@@ -1006,307 +1007,388 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
         UnOp::Cast { target } => {
             match (done_on, target) {
                 // From U8
-                (DataType::U8,
+                (
+                    DataType::U8,
                     DataType::U8
                     | DataType::I8
                     | DataType::U16
                     | DataType::I16
                     | DataType::U32
-                    | DataType::I32) => {}, // nothing to do
+                    | DataType::I32,
+                ) => {} // nothing to do
                 (DataType::U8, DataType::Boolean) => {
-                    // "truthy"
-                    unimplemented!();
+                    // "truthy" (if it DOES NOT equal 0)
+                    injector.i32_eqz();
+                    injector.i32_eqz();
                 }
-                (DataType::U8,
-                    DataType::U64 | DataType::I64) => { injector.i64_extend_i32u(); },
-                (DataType::U8, DataType::F32) => { unimplemented!(); },
-                (DataType::U8, DataType::F64) => { unimplemented!(); },
+                (DataType::U8, DataType::U64 | DataType::I64) => {
+                    injector.i64_extend_i32u();
+                }
+                (DataType::U8, DataType::F32) => {
+                    injector.f32_convert_i32u();
+                }
+                (DataType::U8, DataType::F64) => {
+                    injector.f64_convert_i32u();
+                }
                 (DataType::U8, _) => {
-                    // probably error
-                    unimplemented!();
-                },
+                    // should've been handled by type checker
+                    unreachable!();
+                }
 
                 // From I8
-                (DataType::I8, DataType::U8
-                    | DataType::I8) => {}, // nothing to do
+                (DataType::I8, DataType::U8 | DataType::I8) => {} // nothing to do
                 (DataType::I8, DataType::U16 | DataType::I16) => {
                     // sign extend
-                    unimplemented!();
+                    injector.i32_extend_8s();
                 }
                 (DataType::I8, DataType::I32 | DataType::U32) => {
+                    // sign extend
                     injector.i32_extend_8s();
                 }
                 (DataType::I8, DataType::Boolean) => {
-                    // "truthy"
-                    unimplemented!();
+                    // "truthy" (if it DOES NOT equal 0)
+                    injector.i32_eqz();
+                    injector.i32_eqz();
                 }
-                (DataType::I8,
-                    DataType::U64 | DataType::I64) => {
+                (DataType::I8, DataType::U64 | DataType::I64) => {
                     injector.i32_extend_8s();
                     injector.i64_extend_i32s();
-                },
-                (DataType::I8, DataType::F32) => { unimplemented!(); },
-                (DataType::I8, DataType::F64) => { unimplemented!(); },
+                }
+                (DataType::I8, DataType::F32) => {
+                    injector.i32_extend_8s();
+                    injector.f32_convert_i32s();
+                }
+                (DataType::I8, DataType::F64) => {
+                    injector.i32_extend_8s();
+                    injector.f64_convert_i32s();
+                }
                 (DataType::I8, _) => {
-                    // probably error
-                    unimplemented!();
-                },
+                    // should've been handled by type checker
+                    unreachable!();
+                }
 
                 // From U16
-                (DataType::U16, DataType::U8
-                | DataType::I8) => {
-                    // some type of truncation
-                    unimplemented!()
-                },
-                (DataType::U16, DataType::U16
-                | DataType::I16
-                | DataType::U32
-                | DataType::I32) => {}, // nothing to do
-                (DataType::U16, DataType::Boolean) => {
-                    // "truthy"
-                    unimplemented!();
+                (DataType::U16, DataType::U8 | DataType::I8) => {
+                    //  truncating cast for ints (zero out higher bits)
+                    injector.i32_const(0xFF);
+                    injector.i32_and();
                 }
-                (DataType::U16,
-                    DataType::U64 | DataType::I64) => {
+                (DataType::U16, DataType::U16 | DataType::I16 | DataType::U32 | DataType::I32) => {} // nothing to do
+                (DataType::U16, DataType::Boolean) => {
+                    // "truthy" (if it DOES NOT equal 0)
+                    injector.i32_eqz();
+                    injector.i32_eqz();
+                }
+                (DataType::U16, DataType::U64 | DataType::I64) => {
                     injector.i64_extend_i32u();
-                },
-                (DataType::U16, DataType::F32) => { unimplemented!(); },
-                (DataType::U16, DataType::F64) => { unimplemented!(); },
+                }
+                (DataType::U16, DataType::F32) => {
+                    injector.f32_convert_i32u();
+                }
+                (DataType::U16, DataType::F64) => {
+                    injector.f64_convert_i32u();
+                }
                 (DataType::U16, _) => {
-                    // probably error
-                    unimplemented!();
-                },
+                    // should've been handled by type checker
+                    unreachable!();
+                }
 
                 // From I16
-                (DataType::I16, DataType::U8
-                | DataType::I8) => {
-                    // some kind of truncation
-                    unimplemented!()
-                },
-                (DataType::I16, DataType::U16
-                | DataType::I16) => {}, // nothing to do
+                (DataType::I16, DataType::U8 | DataType::I8) => {
+                    //  truncating cast for ints (zero out higher bits)
+                    injector.i32_const(0xFF);
+                    injector.i32_and();
+                }
+                (DataType::I16, DataType::U16 | DataType::I16) => {} // nothing to do
                 (DataType::I16, DataType::Boolean) => {
-                    // "truthy"
-                    unimplemented!();
+                    // "truthy" (if it DOES NOT equal 0)
+                    injector.i32_eqz();
+                    injector.i32_eqz();
                 }
                 (DataType::I16, DataType::I32 | DataType::U32) => {
                     injector.i32_extend_16s();
                 }
-                (DataType::I16,
-                    DataType::U64 | DataType::I64) => {
-                    injector.i32_extend_8s();
+                (DataType::I16, DataType::U64 | DataType::I64) => {
+                    injector.i32_extend_16s();
                     injector.i64_extend_i32s();
-                },
-                (DataType::I16, DataType::F32) => { unimplemented!(); },
-                (DataType::I16, DataType::F64) => { unimplemented!(); },
+                }
+                (DataType::I16, DataType::F32) => {
+                    injector.i32_extend_16s();
+                    injector.f32_convert_i32s();
+                }
+                (DataType::I16, DataType::F64) => {
+                    injector.i32_extend_16s();
+                    injector.f64_convert_i32s();
+                }
                 (DataType::I16, _) => {
-                    // probably error
-                    unimplemented!();
-                },
+                    // should've been handled by type checker
+                    unreachable!();
+                }
 
                 // From U32
-                (DataType::U32, DataType::U8
-                | DataType::I8) => {
-                    // some kind of truncation
-                    unimplemented!()
-                },
-                (DataType::U32, DataType::U16
-                | DataType::I16) => {
-                    // some kind of truncation
-                    unimplemented!()
-                },
-                (DataType::U32, DataType::U32
-                | DataType::I32) => {}, // nothing to do
-                (DataType::U32, DataType::Boolean) => {
-                    // "truthy"
-                    unimplemented!();
+                (DataType::U32, DataType::U8 | DataType::I8) => {
+                    //  truncating cast for ints (zero out higher bits)
+                    injector.i32_const(0xFF);
+                    injector.i32_and();
                 }
-                (DataType::U32,
-                    DataType::U64 | DataType::I64) => {
+                (DataType::U32, DataType::U16 | DataType::I16) => {
+                    //  truncating cast for ints (zero out higher bits)
+                    injector.i32_const(0xFFFF);
+                    injector.i32_and();
+                }
+                (DataType::U32, DataType::U32 | DataType::I32) => {} // nothing to do
+                (DataType::U32, DataType::Boolean) => {
+                    // "truthy" (if it DOES NOT equal 0)
+                    injector.i32_eqz();
+                    injector.i32_eqz();
+                }
+                (DataType::U32, DataType::U64 | DataType::I64) => {
                     injector.i64_extend_i32u();
-                },
-                (DataType::U32, DataType::F32) => { unimplemented!(); },
-                (DataType::U32, DataType::F64) => { unimplemented!(); },
+                }
+                (DataType::U32, DataType::F32) => {
+                    injector.f32_convert_i32u();
+                }
+                (DataType::U32, DataType::F64) => {
+                    injector.f64_convert_i32u();
+                }
                 (DataType::U32, _) => {
-                    // probably error
-                    unimplemented!();
-                },
+                    // should've been handled by type checker
+                    unreachable!();
+                }
 
                 // From I32
-                (DataType::I32, DataType::U8
-                | DataType::I8) => {
-                    // some kind of truncation
-                    unimplemented!()
-                },
-                (DataType::I32, DataType::U16
-                | DataType::I16) => {
-                    // some kind of truncation
-                    unimplemented!()
-                },
-                (DataType::I32, DataType::U32
-                | DataType::I32) => {}, // nothing to do
-                (DataType::I32, DataType::Boolean) => {
-                    // "truthy"
-                    unimplemented!();
+                (DataType::I32, DataType::U8 | DataType::I8) => {
+                    //  truncating cast for ints (zero out higher bits)
+                    injector.i32_const(0xFF);
+                    injector.i32_and();
                 }
-                (DataType::I32,
-                    DataType::U64 | DataType::I64) => {
+                (DataType::I32, DataType::U16 | DataType::I16) => {
+                    //  truncating cast for ints (zero out higher bits)
+                    injector.i32_const(0xFFFF);
+                    injector.i32_and();
+                }
+                (DataType::I32, DataType::U32 | DataType::I32) => {} // nothing to do
+                (DataType::I32, DataType::Boolean) => {
+                    // "truthy" (if it DOES NOT equal 0)
+                    injector.i32_eqz();
+                    injector.i32_eqz();
+                }
+                (DataType::I32, DataType::U64 | DataType::I64) => {
                     injector.i64_extend_i32s();
-                },
-                (DataType::I32, DataType::F32) => { unimplemented!(); },
-                (DataType::I32, DataType::F64) => { unimplemented!(); },
+                }
+                (DataType::I32, DataType::F32) => {
+                    injector.f32_convert_i32s();
+                }
+                (DataType::I32, DataType::F64) => {
+                    injector.f64_convert_i32s();
+                }
                 (DataType::I32, _) => {
-                    // probably error
-                    unimplemented!();
-                },
+                    // should've been handled by type checker
+                    unreachable!();
+                }
 
                 // From U64
-                (DataType::U64, DataType::U8
-                | DataType::I8) => {
-                    // some kind of truncation
-                    unimplemented!()
-                },
-                (DataType::U64, DataType::U16
-                | DataType::I16) => {
-                    // some kind of truncation
-                    unimplemented!()
-                },
-                (DataType::U64, DataType::U32
-                | DataType::I32) => {
-                    // some kind of truncation
-                    unimplemented!()
-                },
-                (DataType::U64, DataType::Boolean) => {
-                    // "truthy"
-                    unimplemented!();
+                (DataType::U64, DataType::U8 | DataType::I8) => {
+                    //  truncating cast for ints (zero out higher bits)
+                    injector.i64_const(0xFF);
+                    injector.i64_and();
                 }
-                (DataType::U64,
-                    DataType::U64 | DataType::I64) => {}, // nothing to do
-                (DataType::U64, DataType::F32) => { unimplemented!(); },
-                (DataType::U64, DataType::F64) => { unimplemented!(); },
+                (DataType::U64, DataType::U16 | DataType::I16) => {
+                    //  truncating cast for ints (zero out higher bits)
+                    injector.i64_const(0xFFFF);
+                    injector.i64_and();
+                }
+                (DataType::U64, DataType::U32 | DataType::I32) => {
+                    // truncating cast for ints (zero out higher bits)
+                    injector.i32_wrap_i64();
+                }
+                (DataType::U64, DataType::Boolean) => {
+                    // "truthy" (if it DOES NOT equal 0)
+                    injector.i64_eqz();
+                    injector.i64_eqz();
+                }
+                (DataType::U64, DataType::U64 | DataType::I64) => {} // nothing to do
+                (DataType::U64, DataType::F32) => {
+                    injector.f32_convert_i64u();
+                }
+                (DataType::U64, DataType::F64) => {
+                    injector.f64_convert_i64u();
+                }
                 (DataType::U64, _) => {
-                    // probably error
-                    unimplemented!();
-                },
+                    // should've been handled by type checker
+                    unreachable!();
+                }
 
                 // From I64
-                (DataType::I64, DataType::U8
-                | DataType::I8) => {
-                    // some kind of truncation
-                    unimplemented!()
-                },
-                (DataType::I64, DataType::U16
-                | DataType::I16) => {
-                    // some kind of truncation
-                    unimplemented!()
-                },
-                (DataType::I64, DataType::U32
-                | DataType::I32) => {
-                    // some kind of truncation
-                    unimplemented!()
-                },
-                (DataType::I64, DataType::Boolean) => {
-                    // "truthy"
-                    unimplemented!();
+                (DataType::I64, DataType::U8 | DataType::I8) => {
+                    //  truncating cast for ints (zero out higher bits)
+                    injector.i64_const(0xFF);
+                    injector.i64_and();
                 }
-                (DataType::I64,
-                    DataType::U64 | DataType::I64) => {}, // nothing to do
-                (DataType::I64, DataType::F32) => { unimplemented!(); },
-                (DataType::I64, DataType::F64) => { unimplemented!(); },
+                (DataType::I64, DataType::U16 | DataType::I16) => {
+                    //  truncating cast for ints (zero out higher bits)
+                    injector.i64_const(0xFFFF);
+                    injector.i64_and();
+                }
+                (DataType::I64, DataType::U32 | DataType::I32) => {
+                    // truncating cast for ints (zero out higher bits)
+                    injector.i32_wrap_i64();
+                }
+                (DataType::I64, DataType::Boolean) => {
+                    // "truthy" (if it DOES NOT equal 0)
+                    injector.i64_eqz();
+                    injector.i64_eqz();
+                }
+                (DataType::I64, DataType::U64 | DataType::I64) => {} // nothing to do
+                (DataType::I64, DataType::F32) => {
+                    injector.f32_convert_i64s();
+                }
+                (DataType::I64, DataType::F64) => {
+                    injector.f64_convert_i64s();
+                }
                 (DataType::I64, _) => {
-                    // probably error
-                    unimplemented!();
-                },
+                    // should've been handled by type checker
+                    unreachable!();
+                }
 
                 // From F32
-                (DataType::F32, DataType::U8
-                | DataType::I8) => {
-                    // some kind of truncation
-                    unimplemented!()
-                },
-                (DataType::F32, DataType::U16
-                | DataType::I16) => {
-                    // some kind of truncation
-                    unimplemented!()
-                },
-                (DataType::F32, DataType::U32
-                | DataType::I32) => unimplemented!(),
-                (DataType::F32, DataType::Boolean) => {
-                    // "truthy"
-                    unimplemented!();
+                (DataType::F32, DataType::U8) => {
+                    // truncating cast for floats
+                    injector.i32_trunc_f32u();
+                    injector.i32_const(0xFF);
+                    injector.i32_and();
                 }
-                (DataType::F32,
-                    DataType::U64 | DataType::I64) => unimplemented!(),
-                (DataType::F32, DataType::F32) => {}, // nothing to do
-                (DataType::F32, DataType::F64) => unimplemented!(),
+                (DataType::F32, DataType::I8) => {
+                    // truncating cast for floats
+                    injector.i32_trunc_f32s();
+                    injector.i32_const(0xFF);
+                    injector.i32_and();
+                }
+                (DataType::F32, DataType::U16) => {
+                    // truncating cast for floats
+                    injector.i32_trunc_f32u();
+                    injector.i32_const(0xFFFF);
+                    injector.i32_and();
+                }
+                (DataType::F32, DataType::I16) => {
+                    // truncating cast for floats
+                    injector.i32_trunc_f32s();
+                    injector.i32_const(0xFFFF);
+                    injector.i32_and();
+                }
+                (DataType::F32, DataType::U32) => {
+                    injector.i32_trunc_f32u();
+                }
+                (DataType::F32, DataType::I32) => {
+                    injector.i32_trunc_f32s();
+                }
+                (DataType::F32, DataType::Boolean) => {
+                    // "truthy" (if it DOES NOT equal 0)
+                    injector.f32_const(0f32);
+                    injector.f32_eq();
+                    injector.f32_const(0f32);
+                    injector.f32_eq();
+                }
+                (DataType::F32, DataType::U64) => {
+                    injector.i64_trunc_f32u();
+                }
+                (DataType::F32, DataType::I64) => {
+                    injector.i64_trunc_f32s();
+                }
+                (DataType::F32, DataType::F32) => {} // nothing to do
+                (DataType::F32, DataType::F64) => {
+                    injector.f64_promote_f32();
+                }
                 (DataType::F32, _) => {
-                    // probably error
-                    unimplemented!();
-                },
+                    // should've been handled by type checker
+                    unreachable!();
+                }
 
                 // From F64
-                (DataType::F64, DataType::U8
-                | DataType::I8) => {
-                    // some kind of truncation
-                    unimplemented!()
-                },
-                (DataType::F64, DataType::U16
-                | DataType::I16) => {
-                    // some kind of truncation
-                    unimplemented!()
-                },
-                (DataType::F64, DataType::U32
-                | DataType::I32) => {
-                    // some kind of truncation
-                    unimplemented!()
-                },
-                (DataType::F64, DataType::Boolean) => {
-                    // "truthy"
-                    unimplemented!();
+                (DataType::F64, DataType::U8) => {
+                    // truncating cast for floats
+                    injector.i32_trunc_f64u();
+                    injector.i32_const(0xFF);
+                    injector.i32_and();
                 }
-                (DataType::F64,
-                    DataType::U64 | DataType::I64) => unimplemented!(),
-                (DataType::F64, DataType::F32) => {
-                    // some kind of truncation
-                    unimplemented!()
-                },
-                (DataType::F64, DataType::F64) => {}, // nothing to do
-                (DataType::F64, _) => {
-                    // probably error
-                    unimplemented!();
-                },
-                _ => {
-                    // probably error
-                    unimplemented!();
-                },
-            };
-        },
-        UnOp::Not => {
-            match done_on {
-                DataType::U8
-                | DataType::I8
-                | DataType::U16
-                | DataType::I16
-                | DataType::U32
-                | DataType::I32
-                | DataType::Boolean => injector.i32_eqz(),
-                DataType::U64
-                | DataType::I64 => injector.i64_eqz(),
-                DataType::F32 => {
-                    injector.f32_const(0f32);
-                    injector.f32_eq()
-                },
-                DataType::F64 => {
+                (DataType::F64, DataType::I8) => {
+                    // truncating cast for floats
+                    injector.i32_trunc_f64s();
+                    injector.i32_const(0xFF);
+                    injector.i32_and();
+                }
+                (DataType::F64, DataType::U16) => {
+                    // truncating cast for floats
+                    injector.i32_trunc_f64u();
+                    injector.i32_const(0xFFFF);
+                    injector.i32_and();
+                }
+                (DataType::F64, DataType::I16) => {
+                    // truncating cast for floats
+                    injector.i32_trunc_f64s();
+                    injector.i32_const(0xFFFF);
+                    injector.i32_and();
+                }
+                (DataType::F64, DataType::U32) => {
+                    injector.i32_trunc_f64u();
+                }
+                (DataType::F64, DataType::I32) => {
+                    injector.i32_trunc_f64s();
+                }
+                (DataType::F64, DataType::Boolean) => {
+                    // "truthy" (if it DOES NOT equal 0)
                     injector.f64_const(0f64);
-                    injector.f64_eq()
-                },
-                DataType::Null
-                | DataType::Str
-                | DataType::Tuple { .. }
-                | DataType::Map { .. }
-                | DataType::AssumeGood => unimplemented!(),
+                    injector.f64_eq();
+                    injector.f64_const(0f64);
+                    injector.f64_eq();
+                }
+                (DataType::F64, DataType::U64) => {
+                    injector.i64_trunc_f64u();
+                }
+                (DataType::F64, DataType::I64) => {
+                    injector.i64_trunc_f64s();
+                }
+                (DataType::F64, DataType::F32) => {
+                    injector.f32_demote_f64();
+                }
+                (DataType::F64, DataType::F64) => {} // nothing to do
+                (DataType::F64, _) => {
+                    // should've been handled by type checker
+                    unreachable!();
+                }
+                _ => {
+                    // should've been handled by type checker
+                    unreachable!();
+                }
             };
         }
+        UnOp::Not => match done_on {
+            DataType::U8
+            | DataType::I8
+            | DataType::U16
+            | DataType::I16
+            | DataType::U32
+            | DataType::I32
+            | DataType::Boolean => {
+                injector.i32_eqz();
+            }
+            DataType::U64 | DataType::I64 => {
+                injector.i64_eqz();
+            }
+            DataType::F32 => {
+                injector.f32_const(0f32);
+                injector.f32_eq();
+            }
+            DataType::F64 => {
+                injector.f64_const(0f64);
+                injector.f64_eq();
+            }
+            DataType::Null
+            | DataType::Str
+            | DataType::Tuple { .. }
+            | DataType::Map { .. }
+            | DataType::AssumeGood => unimplemented!(),
+        },
     }
     true
 }
