@@ -795,11 +795,13 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut 
                 DataType::U64 | DataType::I64 => injector.i64_eq(),
                 DataType::F32 => injector.f32_eq(),
                 DataType::F64 => injector.f64_eq(),
-                DataType::Null
-                | DataType::Str
-                | DataType::Tuple { .. }
-                | DataType::Map { .. }
-                | DataType::AssumeGood => unimplemented!(),
+                DataType::AssumeGood => {
+                    // TODO -- fix after type bounds are implemented
+                    injector.i32_eq()
+                }
+                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                    unimplemented!()
+                }
             };
         }
         BinOp::NE => {
@@ -814,11 +816,13 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut 
                 DataType::U64 | DataType::I64 => injector.i64_ne(),
                 DataType::F32 => injector.f32_ne(),
                 DataType::F64 => injector.f64_ne(),
-                DataType::Null
-                | DataType::Str
-                | DataType::Tuple { .. }
-                | DataType::Map { .. }
-                | DataType::AssumeGood => unimplemented!(),
+                DataType::AssumeGood => {
+                    // TODO -- fix after type bounds are implemented
+                    injector.i32_ne()
+                }
+                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                    unimplemented!()
+                }
             };
         }
         BinOp::GE => {
@@ -834,11 +838,13 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut 
                 DataType::I64 => injector.i64_gte_signed(),
                 DataType::F32 => injector.f32_ge(),
                 DataType::F64 => injector.f64_ge(),
-                DataType::Null
-                | DataType::Str
-                | DataType::Tuple { .. }
-                | DataType::Map { .. }
-                | DataType::AssumeGood => unimplemented!(),
+                DataType::AssumeGood => {
+                    // TODO -- fix after type bounds are implemented
+                    injector.i32_gte_signed()
+                }
+                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                    unimplemented!()
+                }
             };
         }
         BinOp::GT => {
@@ -854,11 +860,13 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut 
                 DataType::I64 => injector.i64_gt_signed(),
                 DataType::F32 => injector.f32_gt(),
                 DataType::F64 => injector.f64_gt(),
-                DataType::Null
-                | DataType::Str
-                | DataType::Tuple { .. }
-                | DataType::Map { .. }
-                | DataType::AssumeGood => unimplemented!(),
+                DataType::AssumeGood => {
+                    // TODO -- fix after type bounds are implemented
+                    injector.i32_gt_signed()
+                }
+                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                    unimplemented!()
+                }
             };
         }
         BinOp::LE => {
@@ -874,11 +882,13 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut 
                 DataType::I64 => injector.i64_lte_signed(),
                 DataType::F32 => injector.f32_le(),
                 DataType::F64 => injector.f64_le(),
-                DataType::Null
-                | DataType::Str
-                | DataType::Tuple { .. }
-                | DataType::Map { .. }
-                | DataType::AssumeGood => unimplemented!(),
+                DataType::AssumeGood => {
+                    // TODO -- fix after type bounds are implemented
+                    injector.i32_lte_signed()
+                }
+                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                    unimplemented!()
+                }
             };
         }
         BinOp::LT => {
@@ -894,11 +904,13 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut 
                 DataType::I64 => injector.i64_lt_signed(),
                 DataType::F32 => injector.f32_lt(),
                 DataType::F64 => injector.f64_lt(),
-                DataType::Null
-                | DataType::Str
-                | DataType::Tuple { .. }
-                | DataType::Map { .. }
-                | DataType::AssumeGood => unimplemented!(),
+                DataType::AssumeGood => {
+                    // TODO -- fix after type bounds are implemented
+                    injector.i32_lt_signed()
+                }
+                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                    unimplemented!()
+                }
             };
         }
         BinOp::Add => {
@@ -913,11 +925,13 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut 
                 DataType::U64 | DataType::I64 => injector.i64_add(),
                 DataType::F32 => injector.f32_add(),
                 DataType::F64 => injector.f64_add(),
-                DataType::Null
-                | DataType::Str
-                | DataType::Tuple { .. }
-                | DataType::Map { .. }
-                | DataType::AssumeGood => unimplemented!(),
+                DataType::AssumeGood => {
+                    // TODO -- fix after type bounds are implemented
+                    injector.i32_add()
+                }
+                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                    unimplemented!()
+                }
             };
         }
         BinOp::Subtract => {
@@ -932,11 +946,13 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut 
                 DataType::U64 | DataType::I64 => injector.i64_sub(),
                 DataType::F32 => injector.f32_sub(),
                 DataType::F64 => injector.f64_sub(),
-                DataType::Null
-                | DataType::Str
-                | DataType::Tuple { .. }
-                | DataType::Map { .. }
-                | DataType::AssumeGood => unimplemented!(),
+                DataType::AssumeGood => {
+                    // TODO -- fix after type bounds are implemented
+                    injector.i32_sub()
+                }
+                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                    unimplemented!()
+                }
             };
         }
         BinOp::Multiply => {
@@ -951,11 +967,13 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut 
                 DataType::U64 | DataType::I64 => injector.i64_mul(),
                 DataType::F32 => injector.f32_mul(),
                 DataType::F64 => injector.f64_mul(),
-                DataType::Null
-                | DataType::Str
-                | DataType::Tuple { .. }
-                | DataType::Map { .. }
-                | DataType::AssumeGood => unimplemented!(),
+                DataType::AssumeGood => {
+                    // TODO -- fix after type bounds are implemented
+                    injector.i32_mul()
+                }
+                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                    unimplemented!()
+                }
             };
         }
         BinOp::Divide => {
@@ -971,11 +989,13 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut 
                 DataType::I64 => injector.i64_div_signed(),
                 DataType::F32 => injector.f32_div(),
                 DataType::F64 => injector.f64_div(),
-                DataType::Null
-                | DataType::Str
-                | DataType::Tuple { .. }
-                | DataType::Map { .. }
-                | DataType::AssumeGood => unimplemented!(),
+                DataType::AssumeGood => {
+                    // TODO -- fix after type bounds are implemented
+                    injector.i32_div_signed()
+                }
+                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                    unimplemented!()
+                }
             };
         }
         BinOp::Modulo => {
@@ -991,11 +1011,13 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut 
                 DataType::I64 => injector.i64_rem_signed(),
                 DataType::F32 => unimplemented!(), // todo -- maybe require a cast to an int?
                 DataType::F64 => unimplemented!(), // todo -- maybe require a cast to an int?
-                DataType::Null
-                | DataType::Str
-                | DataType::Tuple { .. }
-                | DataType::Map { .. }
-                | DataType::AssumeGood => unimplemented!(),
+                DataType::AssumeGood => {
+                    // TODO -- fix after type bounds are implemented
+                    injector.i32_rem_signed()
+                }
+                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                    unimplemented!()
+                }
             };
         }
     }
