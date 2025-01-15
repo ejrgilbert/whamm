@@ -130,7 +130,7 @@ prefix = _{ neg }
 postfix = _{ cast }
     cast = { "as" ~ TYPE_PRIMITIVE }
 
-val = _{ BOOL | get_map | ID | INT | FLOAT | STRING | tuple }
+val = _{ BOOL | get_map | ID | FLOAT | INT | STRING | tuple }
 operand = _{ prefix? ~ ( fn_call | "(" ~ expr ~ ")" | val ) ~ postfix? }
 
 tuple = { "(" ~ ")" | "(" ~ (val) ~ ( "," ~ val )* ~ ")" }
@@ -187,8 +187,8 @@ FLOAT = {
         "-"? ~ ^"inf" |
         "-"? ~ ^"infinity" |
         "-"? ~ ^"NaN" |
-        "-"? ~ ASCII_DIGIT+ ~ "."? ~ ASCII_DIGIT* ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+ )? |
-        "-"? ~ ASCII_DIGIT+ ~ "."? ~ ASCII_DIGIT*
+        "-"? ~ ASCII_DIGIT+ ~ "."? ~ ASCII_DIGIT* ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+ ) |
+        "-"? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT*
     }
 
 BOOL = @{

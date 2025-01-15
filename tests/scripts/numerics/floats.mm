@@ -30,10 +30,10 @@ wasm:opcode:call:before {
     report bool eq_test0;
     eq_test0 = v32 == v32;
     report bool eq_test1;
-    eq_test1 = v32 == (v64 as v32);
+    eq_test1 = v32 == (v64 as f32);
 
     report bool eq_test2;
-    eq_test2 = v64 == (v32 as u64);
+    eq_test2 = v64 == (v32 as f64);
     report bool eq_test3;
     eq_test3 = v64 == v64;
 
@@ -49,9 +49,9 @@ wasm:opcode:call:before {
     // TEST: !=
 
     report bool ne_test0;
-    ne_test10 = v32 != v32;
+    ne_test0 = v32 != v32;
     report bool ne_test1;
-    ne_test11 = v32 != (v64 as f32);
+    ne_test1 = v32 != (v64 as f32);
 
     report bool ne_test2;
     ne_test2 = v64 != (v32 as f64);
@@ -69,9 +69,9 @@ wasm:opcode:call:before {
     
     // TEST: >=
     report bool ge_test0;
-    ge_test10 = v32 >= v32;
+    ge_test0 = v32 >= v32;
     report bool ge_test1;
-    ge_test11 = v32 >= (v64 as f32);
+    ge_test1 = v32 >= (v64 as f32);
 
     report bool ge_test2;
     ge_test2 = v64 >= (v32 as f64);
@@ -89,9 +89,9 @@ wasm:opcode:call:before {
     
     // TEST: >
     report bool gt_test0;
-    gt_test10 = v32 > v32;
+    gt_test0 = v32 > v32;
     report bool gt_test1;
-    gt_test11 = v32 > (v64 as f32);
+    gt_test1 = v32 > (v64 as f32);
 
     report bool gt_test2;
     gt_test2 = v64 > (v32 as f64);
@@ -109,9 +109,9 @@ wasm:opcode:call:before {
     
     // TEST: <=
     report bool le_test0;
-    le_test10 = v32 <= v32;
+    le_test0 = v32 <= v32;
     report bool le_test1;
-    le_test11 = v32 <= (v64 as f32);
+    le_test1 = v32 <= (v64 as f32);
 
     report bool le_test2;
     le_test2 = v64 <= (v32 as f64);
@@ -129,9 +129,9 @@ wasm:opcode:call:before {
     
     // TEST: <
     report bool lt_test0;
-    lt_test10 = v32 < v32;
+    lt_test0 = v32 < v32;
     report bool lt_test1;
-    lt_test11 = v32 < (v64 as f32);
+    lt_test1 = v32 < (v64 as f32);
 
     report bool lt_test2;
     lt_test2 = v64 < (v32 as f64);
@@ -157,9 +157,9 @@ wasm:opcode:call:before {
 
     // TEST: +
     report bool add_test0;
-    add_test10 = v32 + v32;
+    add_test0 = v32 + v32;
     report bool add_test1;
-    add_test11 = v32 + (v64 as f32);
+    add_test1 = v32 + (v64 as f32);
 
     report bool add_test2;
     add_test2 = v64 + (v32 as f64);
@@ -182,9 +182,9 @@ wasm:opcode:call:before {
 
     // TEST: -
     report bool sub_test0;
-    sub_test10 = v32 - v32;
+    sub_test0 = v32 - v32;
     report bool sub_test1;
-    sub_test11 = v32 - (v64 as f32);
+    sub_test1 = v32 - (v64 as f32);
 
     report bool sub_test2;
     sub_test2 = v64 - (v32 as f64);
@@ -207,9 +207,9 @@ wasm:opcode:call:before {
 
     // TEST: *
     report bool mul_test0;
-    mul_test10 = v32 * v32;
+    mul_test0 = v32 * v32;
     report bool mul_test1;
-    mul_test11 = v32 * (v64 as f32);
+    mul_test1 = v32 * (v64 as f32);
 
     report bool mul_test2;
     mul_test2 = v64 * (v32 as f64);
@@ -230,26 +230,26 @@ wasm:opcode:call:before {
     report f64 mul_test9;
     mul_test9 = F64_MIN * 1;
     
-    report f32 mul_test8;
-    mul_test8 = F32_MIN * 2;
-    report f64 mul_test9;
-    mul_test9 = F64_MIN * 2;
+    report f32 mul_test10;
+    mul_test10 = F32_MIN * 2;
+    report f64 mul_test11;
+    mul_test11 = F64_MIN * 2;
     
-    report f32 mul_test8;
-    mul_test8 = F32_MAX * 1;
-    report f64 mul_test9;
-    mul_test9 = F64_MAX * 1;
+    report f32 mul_test12;
+    mul_test12 = F32_MAX * 1;
+    report f64 mul_test13;
+    mul_test13 = F64_MAX * 1;
     
-    report f32 mul_test8;
-    mul_test8 = F32_MAX * 2;
-    report f64 mul_test9;
-    mul_test9 = F64_MAX * 2;
+    report f32 mul_test14;
+    mul_test14 = F32_MAX * 2;
+    report f64 mul_test15;
+    mul_test15 = F64_MAX * 2;
 
     // TEST: /
     report bool div_test0;
-    div_test10 = v32 / v32;
+    div_test0 = v32 / v32;
     report bool div_test1;
-    div_test11 = v32 / (v64 as f32);
+    div_test1 = v32 / (v64 as f32);
 
     report bool div_test2;
     div_test2 = v64 / (v32 as f64);
@@ -272,9 +272,9 @@ wasm:opcode:call:before {
     
     // TEST: %
     report bool mod_test0;
-    mod_test10 = v32 % v32;
+    mod_test0 = v32 % v32;
     report bool mod_test1;
-    mod_test11 = v32 % (v64 as f32);
+    mod_test1 = v32 % (v64 as f32);
 
     report bool mod_test2;
     mod_test2 = v64 % (v32 as f64);
@@ -315,13 +315,13 @@ wasm:opcode:call:before {
     report f32 trunc_test0;
     trunc_test0 = F64_MAX as f32;
     // TEST: truncation (signed)
-    report f64 trunc_test0;
-    trunc_test0 = F64_MIN as f32;
+    report f64 trunc_test1;
+    trunc_test1 = F64_MIN as f32;
 
     // TEST: extension (unsigned)
-    report f64 trunc_test0;
-    trunc_test0 = F32_MAX as f64;
+    report f64 trunc_test2;
+    trunc_test2 = F32_MAX as f64;
     // TEST: extension (signed)
-    report f64 trunc_test0;
-    trunc_test0 = F32_MIN as f64;
+    report f64 trunc_test3;
+    trunc_test3 = F32_MIN as f64;
 }
