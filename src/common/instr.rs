@@ -21,7 +21,7 @@ use crate::parser::whamm_parser::parse_script;
 use crate::verifier::types::SymbolTable;
 use crate::verifier::verifier::{build_symbol_table, type_check};
 use log::{error, info};
-use orca_wasm::ir::id::GlobalID;
+use orca_wasm::ir::id::{FunctionID, GlobalID};
 use orca_wasm::Module;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -168,7 +168,7 @@ pub fn run(
     let mut map_package = MapLibPackage::default();
     let mut io_package = IOPackage::default();
     let mut core_packages: Vec<&mut dyn LibPackage> = vec![&mut map_package, &mut io_package];
-    crate::lang_features::libraries::actions::link_core_lib(
+    let mut injected_funcs = crate::lang_features::libraries::actions::link_core_lib(
         &config.library_strategy,
         &whamm,
         target_wasm,
@@ -208,6 +208,7 @@ pub fn run(
             &mut map_lib_adapter,
             &mut report_vars,
             &mut unshared_var_handler,
+            &mut injected_funcs,
             &mut err,
         );
     }
@@ -290,12 +291,12 @@ fn run_instr_rewrite(
     map_lib_adapter: &mut MapLibAdapter,
     report_vars: &mut ReportVars,
     unshared_var_handler: &mut UnsharedVarHandler,
+    injected_funcs: &mut Vec<FunctionID>,
     err: &mut ErrorGen,
 ) {
     let mut mem_allocator = get_memory_allocator(target_wasm, true);
 
     // Phase 0 of instrumentation (emit globals and provided fns)
-    let mut injected_funcs = vec![];
     let mut init = InitGenerator {
         emitter: ModuleEmitter::new(
             InjectStrategy::Rewriting,
@@ -308,7 +309,7 @@ fn run_instr_rewrite(
         ),
         context_name: "".to_string(),
         err,
-        injected_funcs: &mut injected_funcs,
+        injected_funcs,
     };
     init.run(whamm);
     // If there were any errors encountered, report and exit!
@@ -321,7 +322,7 @@ fn run_instr_rewrite(
         VisitingEmitter::new(
             InjectStrategy::Rewriting,
             target_wasm,
-            &injected_funcs,
+            injected_funcs,
             symbol_table,
             &mut mem_allocator,
             map_lib_adapter,

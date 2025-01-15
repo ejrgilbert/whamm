@@ -25,8 +25,12 @@ impl LibAdapter for IOAdapter {
     fn get_funcs_mut(&mut self) -> &mut HashMap<String, u32> {
         &mut self.funcs
     }
-    fn define_helper_funcs(&mut self, app_wasm: &mut Module, err: &mut ErrorGen) {
-        self.emit_helper_funcs(app_wasm, err);
+    fn define_helper_funcs(
+        &mut self,
+        app_wasm: &mut Module,
+        err: &mut ErrorGen,
+    ) -> Vec<FunctionID> {
+        self.emit_helper_funcs(app_wasm, err)
     }
 }
 impl Default for IOAdapter {
@@ -48,10 +52,10 @@ impl IOAdapter {
         }
     }
 
-    fn emit_helper_funcs(&mut self, app_wasm: &mut Module, err: &mut ErrorGen) {
-        self.emit_puts(app_wasm, err);
+    fn emit_helper_funcs(&mut self, app_wasm: &mut Module, err: &mut ErrorGen) -> Vec<FunctionID> {
+        vec![self.emit_puts(app_wasm, err)]
     }
-    fn emit_puts(&mut self, app_wasm: &mut Module, err: &mut ErrorGen) {
+    fn emit_puts(&mut self, app_wasm: &mut Module, err: &mut ErrorGen) -> FunctionID {
         let start_addr = LocalID(0);
         let len = LocalID(1);
         let mut puts = FunctionBuilder::new(&[OrcaType::I32, OrcaType::I32], &[]);
@@ -94,6 +98,8 @@ impl IOAdapter {
         let puts_fid = puts.finish_module(app_wasm);
         app_wasm.set_fn_name(puts_fid, "puts".to_string());
         self.add_fid(PUTS, *puts_fid);
+
+        puts_fid
     }
 
     pub fn putsln<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(

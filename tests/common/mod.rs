@@ -131,3 +131,13 @@ pub fn setup_replay() -> Vec<(PathBuf, String)> {
 
     scripts
 }
+
+pub fn setup_numerics_monitors() -> Vec<(PathBuf, String)> {
+    setup_logger();
+    let scripts = get_test_scripts("numerics");
+    if scripts.is_empty() {
+        warn!("No test scripts found for `numerics` test.");
+    }
+
+    scripts
+}

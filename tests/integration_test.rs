@@ -19,15 +19,21 @@ fn run_wast_tests() {
     whamm::wast::test_harness::run_all().expect("WAST Tests failed!");
 }
 
-fn run_script(script_text: &String, script_path: &PathBuf, err: &mut ErrorGen) {
-    let wasm = fs::read(APP_WASM_PATH).unwrap();
+fn run_script(
+    script_text: &String,
+    script_path: &PathBuf,
+    app_wasm_path: &str,
+    output_path: Option<String>,
+    err: &mut ErrorGen,
+) {
+    let wasm = fs::read(app_wasm_path).unwrap();
     let mut module_to_instrument = Module::parse(&wasm, false).unwrap();
     let _ = whamm::common::instr::run(
         CORE_WASM_PATH,
         &mut module_to_instrument,
         &script_text,
         &format!("{:?}", script_path.clone().as_path()),
-        None,
+        output_path,
         0,
         Config {
             wizard: false,
@@ -49,7 +55,7 @@ fn instrument_dfinity_with_fault_injection() {
     assert!(!processed_scripts.is_empty());
     err.fatal_report("Integration Test");
     for (script_path, script_text) in processed_scripts {
-        run_script(&script_text, &script_path, &mut err);
+        run_script(&script_text, &script_path, APP_WASM_PATH, None, &mut err);
     }
 }
 
@@ -145,7 +151,7 @@ fn instrument_with_wizard_monitors() {
     assert!(!processed_scripts.is_empty());
     err.fatal_report("Integration Test");
     for (script_path, script_text) in processed_scripts {
-        run_script(&script_text, &script_path, &mut err);
+        run_script(&script_text, &script_path, APP_WASM_PATH, None, &mut err);
     }
 }
 
@@ -155,4 +161,78 @@ fn instrument_with_replay() {
     let processed_scripts = common::setup_replay();
     // TODO -- change this when you've supported this monitor type
     assert_eq!(processed_scripts.len(), 0);
+}
+
+#[test]
+fn instrument_with_numerics_scripts() {
+    common::setup_logger();
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let processed_scripts = common::setup_numerics_monitors();
+    assert!(!processed_scripts.is_empty());
+    err.fatal_report("Integration Test");
+
+    struct TestCase {
+        script: PathBuf,
+        script_str: String,
+        app: PathBuf,
+        exp: PathBuf,
+    }
+    let mut testcases = vec![];
+    for (script_path, script_str) in processed_scripts.iter() {
+        let fname = script_path.file_name().unwrap().to_str().unwrap();
+        let path = script_path.parent().unwrap();
+
+        let app = path.join("app").join(format!("{}.app", fname));
+        let exp = path.join("expected").join(format!("{}.exp", fname));
+
+        testcases.push(TestCase {
+            script: script_path.clone(),
+            script_str: script_str.clone(),
+            app,
+            exp,
+        })
+    }
+
+    let instr_app_path = "output/output.wasm".to_string();
+    for TestCase {
+        script,
+        script_str,
+        app,
+        exp,
+    } in testcases.iter()
+    {
+        let app_path_str =
+            fs::read_to_string(app).unwrap_or_else(|_| panic!("Unable to read file at {:?}", app));
+        let exp_output =
+            fs::read_to_string(exp).unwrap_or_else(|_| panic!("Unable to read file at {:?}", exp));
+
+        // run the script on configured application
+        run_script(
+            &script_str,
+            &script,
+            &app_path_str,
+            Some(instr_app_path.clone()),
+            &mut err,
+        );
+
+        // run the instrumented application
+        let res = Command::new("cargo")
+            .env("TO_CONSOLE", "true")
+            .current_dir("wasmtime-runner")
+            .arg("run")
+            .output()
+            .expect("failed to run wasmtime-runner");
+        if !res.status.success() {
+            error!(
+                "Failed to run wasmtime-runner:\n{}\n{}",
+                String::from_utf8(res.stdout).unwrap(),
+                String::from_utf8(res.stderr).unwrap()
+            );
+            assert!(false);
+        } else {
+            // make sure the output is as expected
+            let stdout = String::from_utf8(res.stdout).unwrap();
+            assert_eq!(exp_output.trim(), stdout.trim());
+        }
+    }
 }
