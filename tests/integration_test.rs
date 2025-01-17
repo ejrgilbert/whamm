@@ -232,7 +232,7 @@ fn instrument_with_numerics_scripts() {
         } else {
             // make sure the output is as expected
             let stdout = String::from_utf8(res.stdout).unwrap();
-            assert_eq!(exp_output.trim(), stdout.trim());
+            assert_eq!(stdout.trim(), exp_output.trim());
         }
     }
 }
