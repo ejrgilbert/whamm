@@ -1,8 +1,8 @@
 use crate::common::error::{ErrorGen, WhammError};
 use crate::parser::types;
 use crate::parser::types::{
-    BinOp, Block, DataType, Definition, Expr, FnId, NumLit, Location, NumFmt, ProbeRule,
-    Rule, RulePart, Script, Statement, UnOp, Value, Whamm, WhammParser, PRATT_PARSER,
+    BinOp, Block, DataType, Definition, Expr, FnId, Location, NumFmt, NumLit, ProbeRule, Rule,
+    RulePart, Script, Statement, UnOp, Value, Whamm, WhammParser, PRATT_PARSER,
 };
 use log::trace;
 use pest::error::{Error, LineColLocation};

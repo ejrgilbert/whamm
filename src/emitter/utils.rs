@@ -7,7 +7,7 @@ use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::lang_features::report_vars::ReportVars;
 use crate::parser::types::{
-    BinOp, Block, DataType, Definition, Expr, NumLit, Location, Statement, UnOp, Value,
+    BinOp, Block, DataType, Definition, Expr, Location, NumLit, Statement, UnOp, Value,
 };
 use crate::verifier::types::{line_col_from_loc, Record, SymbolTable, VarAddr};
 use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};

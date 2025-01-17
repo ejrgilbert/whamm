@@ -519,48 +519,26 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             //ensure that the key_ty matches and the val_ty matches
                             if key_ty != *map_key_ty {
                                 let key_loc = key.loc().clone().unwrap();
-                                if key_ty.can_implicitly_cast() && map_key_ty.can_implicitly_cast()
-                                {
-                                    // try to implicitly do a cast here
-                                    if let Err((msg, fatal)) =
-                                        key.implicit_cast(map_key_ty.as_ref())
-                                    {
-                                        self.err.type_check_error(
-                                            fatal,
-                                            msg,
-                                            &Some(key_loc.line_col),
-                                        )
-                                    }
-                                } else {
-                                    self.err.type_check_error(
-                                        false,
-                                        format! {"Type Mismatch, expected key type: {:?}, actual key type:{:?}", map_key_ty, key_ty},
-                                        &Some(key_loc.line_col),
-                                    );
-                                }
+                                attempt_implicit_cast(
+                                    key,
+                                    &map_key_ty,
+                                    &key_ty,
+                                    key_loc,
+                                    "key",
+                                    self.err,
+                                );
                                 return None;
                             }
                             if val_ty != *map_val_ty {
                                 let val_loc = val.loc().clone().unwrap();
-                                if val_ty.can_implicitly_cast() && map_val_ty.can_implicitly_cast()
-                                {
-                                    // try to implicitly do a cast here
-                                    if let Err((msg, fatal)) =
-                                        val.implicit_cast(map_val_ty.as_ref())
-                                    {
-                                        self.err.type_check_error(
-                                            fatal,
-                                            msg,
-                                            &Some(val_loc.line_col),
-                                        )
-                                    }
-                                } else {
-                                    self.err.type_check_error(
-                                        false,
-                                        format! {"Type Mismatch, expected val type: {:?}, actual val type:{:?}", map_val_ty, val_ty},
-                                        &Some(val_loc.line_col),
-                                    );
-                                }
+                                attempt_implicit_cast(
+                                    val,
+                                    &map_val_ty,
+                                    &val_ty,
+                                    val_loc,
+                                    "val",
+                                    self.err,
+                                );
                                 return None;
                             }
                         } else if matches!(map_ty, DataType::AssumeGood) {
@@ -615,89 +593,43 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 if *exp_ty == lhs_ty {
                                     if lhs_ty == rhs_ty {
                                         Some(lhs_ty)
-                                    } else if exp_ty.can_implicitly_cast()
-                                        && rhs_ty.can_implicitly_cast()
-                                    {
-                                        // rhs isn't of the right type
-                                        match rhs.implicit_cast(exp_ty) {
-                                            Ok(_) => Some(exp_ty.clone()),
-                                            Err((msg, fatal)) => {
-                                                self.err.type_check_error(
-                                                    fatal,
-                                                    msg,
-                                                    &Some(rhs_loc.line_col),
-                                                );
-                                                Some(DataType::AssumeGood)
-                                            }
-                                        }
                                     } else {
                                         let loc = Location::from(
                                             &lhs_loc.line_col,
                                             &rhs_loc.line_col,
                                             None,
                                         );
-                                        self.err.type_check_error(
-                                            false,
-                                            format! {"Type Mismatch, lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty},
-                                            &Some(loc.line_col),
-                                        );
-                                        Some(DataType::AssumeGood)
-                                    }
-                                } else if exp_ty.can_implicitly_cast()
-                                    && lhs_ty.can_implicitly_cast()
-                                {
-                                    // lhs isn't of the right type
-                                    match lhs.implicit_cast(exp_ty) {
-                                        Ok(_) => Some(exp_ty.clone()),
-                                        Err((msg, fatal)) => {
-                                            self.err.type_check_error(
-                                                fatal,
-                                                msg,
-                                                &Some(rhs_loc.line_col),
-                                            );
+                                        if attempt_implicit_cast(
+                                            rhs, exp_ty, &rhs_ty, loc, "value", self.err,
+                                        ) {
+                                            Some(exp_ty.clone())
+                                        } else {
                                             Some(DataType::AssumeGood)
                                         }
                                     }
                                 } else {
                                     let loc =
                                         Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
-                                    self.err.type_check_error(
-                                        false,
-                                        format! {"Type Mismatch, lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty},
-                                        &Some(loc.line_col),
-                                    );
-                                    Some(DataType::AssumeGood)
-                                }
-                            } else if lhs_ty == rhs_ty && lhs_ty.can_implicitly_cast() {
-                                Some(lhs_ty)
-                            } else if lhs_ty.can_implicitly_cast() && rhs_ty.can_implicitly_cast() {
-                                match rhs.implicit_cast(&lhs_ty) {
-                                    Ok(_) => Some(lhs_ty),
-                                    Err((msg, fatal)) => {
-                                        self.err.type_check_error(
-                                            fatal,
-                                            msg,
-                                            &Some(
-                                                Location::from(
-                                                    &lhs_loc.line_col,
-                                                    &rhs_loc.line_col,
-                                                    None,
-                                                )
-                                                .line_col,
-                                            ),
-                                        );
-                                        Some(lhs_ty)
+                                    if attempt_implicit_cast(
+                                        lhs, exp_ty, &lhs_ty, loc, "value", self.err,
+                                    ) {
+                                        Some(exp_ty.clone())
+                                    } else {
+                                        Some(DataType::AssumeGood)
                                     }
                                 }
+                            } else if lhs_ty == rhs_ty {
+                                Some(lhs_ty)
                             } else {
                                 let loc =
                                     Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
-                                self.err.type_check_error(
-                                    false,
-                                    format! {"Type Mismatch, lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty},
-                                    &Some(loc.line_col),
-                                );
-                                Some(DataType::AssumeGood)
+                                if attempt_implicit_cast(
+                                    rhs, &lhs_ty, &rhs_ty, loc, "value", self.err,
+                                ) {
+                                    Some(lhs_ty)
+                                } else {
+                                    Some(DataType::AssumeGood)
+                                }
                             }
                         }
                         BinOp::And | BinOp::Or => {
@@ -728,36 +660,16 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             }
                             if lhs_ty == rhs_ty {
                                 Some(DataType::Boolean)
-                            } else if lhs_ty.can_implicitly_cast() && rhs_ty.can_implicitly_cast() {
-                                match rhs.implicit_cast(&lhs_ty) {
-                                    Ok(_) => Some(DataType::Boolean),
-                                    Err((msg, fatal)) => {
-                                        self.err.type_check_error(
-                                            fatal,
-                                            msg,
-                                            &Some(
-                                                Location::from(
-                                                    &lhs_loc.line_col,
-                                                    &rhs_loc.line_col,
-                                                    None,
-                                                )
-                                                .line_col,
-                                            ),
-                                        );
-                                        Some(DataType::Boolean)
-                                    }
-                                }
                             } else {
-                                // using a struct in parser to merge two locations
                                 let loc =
                                     Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
-                                self.err.type_check_error(
-                                    false,
-                                    format! {"Type Mismatch, lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty},
-                                    &Some(loc.line_col),
-                                );
-
-                                Some(DataType::AssumeGood)
+                                if attempt_implicit_cast(
+                                    rhs, &lhs_ty, &rhs_ty, loc, "value", self.err,
+                                ) {
+                                    Some(DataType::Boolean)
+                                } else {
+                                    Some(DataType::AssumeGood)
+                                }
                             }
                         }
                         BinOp::GT | BinOp::LT | BinOp::GE | BinOp::LE => {
@@ -768,29 +680,16 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             }
                             if lhs_ty == rhs_ty && lhs_ty.can_implicitly_cast() {
                                 Some(DataType::Boolean)
-                            } else if lhs_ty.can_implicitly_cast() && rhs_ty.can_implicitly_cast() {
-                                match rhs.implicit_cast(&lhs_ty) {
-                                    Ok(_) => Some(DataType::Boolean),
-                                    Err((msg, fatal)) => {
-                                        self.err.type_check_error(
-                                            fatal,
-                                            msg,
-                                            &Some(rhs_loc.line_col),
-                                        );
-                                        Some(DataType::Boolean)
-                                    }
-                                }
                             } else {
-                                // using a struct in parser to merge two locations
                                 let loc =
                                     Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
-                                self.err.type_check_error(
-                                    false,
-                                    format! {"Type Mismatch, lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty},
-                                    &Some(loc.line_col),
-                                );
-
-                                Some(DataType::AssumeGood)
+                                if attempt_implicit_cast(
+                                    rhs, &lhs_ty, &rhs_ty, loc, "value", self.err,
+                                ) {
+                                    Some(DataType::Boolean)
+                                } else {
+                                    Some(DataType::AssumeGood)
+                                }
                             }
                         }
                     }
@@ -1213,4 +1112,30 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
             }
         }
     }
+}
+
+fn attempt_implicit_cast(
+    to_cast: &mut Expr,
+    exp_ty: &DataType,
+    actual_ty: &DataType,
+    loc: Location,
+    name_in_err: &str,
+    err: &mut ErrorGen,
+) -> bool {
+    if exp_ty.can_implicitly_cast() && actual_ty.can_implicitly_cast() {
+        // try to implicitly do a cast here
+        if let Err((msg, fatal)) = to_cast.implicit_cast(exp_ty) {
+            err.type_check_error(fatal, msg, &Some(loc.line_col));
+            return false;
+        } else {
+            return true;
+        }
+    } else {
+        err.type_check_error(
+            false,
+            format! {"Type Mismatch, expected {name_in_err} type: {:?}, actual {name_in_err} type:{:?}", exp_ty, actual_ty},
+            &Some(loc.line_col),
+        );
+    }
+    false
 }

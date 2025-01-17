@@ -1,7 +1,5 @@
 use crate::common::error::ErrorGen;
-use crate::parser::types::{
-    BinOp, DataType, Definition, Expr, NumLit, Location, UnOp, Value,
-};
+use crate::parser::types::{BinOp, DataType, Definition, Expr, Location, NumLit, UnOp, Value};
 use crate::verifier::types::Record::Var;
 use crate::verifier::types::{Record, SymbolTable};
 use std::ops::{Add, Div, Mul, Sub};

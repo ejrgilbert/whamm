@@ -467,7 +467,9 @@ pub enum NumLit {
 impl NumLit {
     fn implicit_cast(&mut self, target: &DataType) -> Result<(), String> {
         match target {
-            DataType::U8 | DataType::I8 | DataType::U16 | DataType::I16 | DataType::U32 => self.as_u32(),
+            DataType::U8 | DataType::I8 | DataType::U16 | DataType::I16 | DataType::U32 => {
+                self.as_u32()
+            }
             DataType::I32 => self.as_i32(),
             DataType::U64 => self.as_u64(),
             DataType::I64 => self.as_i64(),
@@ -749,7 +751,7 @@ pub enum Value {
         val: NumLit,
         ty: DataType,
         token: String,
-        fmt: NumFmt
+        fmt: NumFmt,
     },
     Boolean {
         val: bool,
@@ -823,9 +825,7 @@ impl Value {
                 val, token, fmt, ..
             } => {
                 let new_val = match val.implicit_cast(target) {
-                    Ok(_) => {
-                        val.to_owned()
-                    }
+                    Ok(_) => val.to_owned(),
                     Err(msg) => return Err(msg),
                 };
 
@@ -836,7 +836,7 @@ impl Value {
                     fmt: fmt.to_owned(),
                 };
                 Ok(())
-            },
+            }
             Value::Tuple { vals, ty } => {
                 // constraints on the target data type
                 if let DataType::Tuple { ty_info } = target {
@@ -899,17 +899,18 @@ impl Value {
             Value::Boolean { val } => {
                 let num_rep = if *val { 1 } else { 0 };
                 if !perform_cast {
-                    return Ok(())
+                    return Ok(());
                 }
-                *self =
-                match target {
-                    DataType::U8 | DataType::I8 | DataType::U16 | DataType::I16 | DataType::U32 => Value::gen_num(NumLit::u32(num_rep), target.clone()),
+                *self = match target {
+                    DataType::U8 | DataType::I8 | DataType::U16 | DataType::I16 | DataType::U32 => {
+                        Value::gen_num(NumLit::u32(num_rep), target.clone())
+                    }
                     DataType::I32 => Value::gen_num(NumLit::i32(num_rep as i32), target.clone()),
                     DataType::U64 => Value::gen_num(NumLit::u64(num_rep as u64), target.clone()),
                     DataType::I64 => Value::gen_num(NumLit::i64(num_rep as i64), target.clone()),
                     DataType::F32 => Value::gen_num(NumLit::f32(num_rep as f32), target.clone()),
                     DataType::F64 => Value::gen_num(NumLit::f64(num_rep as f64), target.clone()),
-                    _ => return Err(format!("{} to {}", self.ty(), target))
+                    _ => return Err(format!("{} to {}", self.ty(), target)),
                 };
                 Ok(())
             }

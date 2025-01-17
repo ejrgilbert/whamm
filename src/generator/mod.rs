@@ -433,9 +433,7 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
                 });
                 is_success
             }
-            Value::Number { .. }
-            | Value::Boolean { .. }
-            | Value::U32U32Map { .. } => {
+            Value::Number { .. } | Value::Boolean { .. } | Value::U32U32Map { .. } => {
                 // ignore, will not have a string to emit
                 true
             }

@@ -15,9 +15,7 @@ use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::report_vars::ReportVars;
 use crate::parser;
 use crate::parser::rules::UNKNOWN_IMMS;
-use crate::parser::types::{
-    Block, DataType, Definition, Expr, NumLit, RulePart, Statement, Value,
-};
+use crate::parser::types::{Block, DataType, Definition, Expr, NumLit, RulePart, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use itertools::Itertools;
 use orca_wasm::ir::id::{FunctionID, LocalID, TypeID};
