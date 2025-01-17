@@ -1,15 +1,18 @@
 wasm:opcode:call:before {
+    // Call target, parameters are used as type values (all are set to '1'):
+    // (u8, i8, u16, i16, u32, i32, u64, i64, f32, f64)
+
     // ==== BINOP ====
 
     // --- logical operators ---
     // setup
-    i8 t_8 = 1;
+    i8 t_8 = arg1;
     i8 f_8 = 0;
-    i16 t_16 = 1;
+    i16 t_16 = arg3;
     i16 f_16 = 0;
-    i32 t_32 = 1;
+    i32 t_32 = arg5;
     i32 f_32 = 0;
-    i64 t_64 = 1;
+    i64 t_64 = arg7;
     i64 f_64 = 0;
 
     // TEST: and
@@ -22,7 +25,7 @@ wasm:opcode:call:before {
     report bool and_test3;
     and_test3 = t_64 as bool && f_64 as bool;
     report bool and_test4;
-    and_test4 = 1 as bool && 0 as bool;
+    and_test4 = t_32 as bool && 0 as bool;
 
     // TEST: or
     report bool or_test0;
@@ -34,14 +37,14 @@ wasm:opcode:call:before {
     report bool or_test3;
     or_test3 = t_64 as bool || f_64 as bool;
     report bool or_test4;
-    or_test4 = 1 as bool || 0 as bool;
+    or_test4 = t_32 as bool || 0 as bool;
 
     // --- relational operators ---
     // setup
-    i8 v8 = 1;
-    i16 v16 = 1;
-    i32 v32 = 1;
-    i64 v64 = 1;
+    i8 v8 = arg1;
+    i16 v16 = arg3;
+    i32 v32 = arg5;
+    i64 v64 = arg7;
 
     // TEST: ==
     report bool eq_test0;
@@ -81,13 +84,13 @@ wasm:opcode:call:before {
     eq_test15 = v64 == v64;
 
     report bool eq_test16;
-    eq_test16 = 1 as i8 == 0;
+    eq_test16 = v32 as i8 == 0;
     report bool eq_test17;
-    eq_test17 = 1 as i16 == 0;
+    eq_test17 = v32 as i16 == 0;
     report bool eq_test18;
-    eq_test18 = 1 as i32 == 0;
+    eq_test18 = v32 as i32 == 0;
     report bool eq_test19;
-    eq_test19 = 1 as i64 == 0;
+    eq_test19 = v32 as i64 == 0;
 
     // TEST: !=
     report bool ne_test0;
@@ -127,13 +130,13 @@ wasm:opcode:call:before {
     ne_test15 = v64 != v64;
 
     report bool ne_test16;
-    ne_test16 = 1 as i8 != 0;
+    ne_test16 = v32 as i8 != 0;
     report bool ne_test17;
-    ne_test17 = 1 as i16 != 0;
+    ne_test17 = v32 as i16 != 0;
     report bool ne_test18;
-    ne_test18 = 1 as i32 != 0;
+    ne_test18 = v32 as i32 != 0;
     report bool ne_test19;
-    ne_test19 = 1 as i64 != 0;
+    ne_test19 = v32 as i64 != 0;
 
     // TEST: >=
     report bool ge_test0;
@@ -173,13 +176,13 @@ wasm:opcode:call:before {
     ge_test15 = v64 >= v64;
 
     report bool ge_test16;
-    ge_test16 = 1 as i8 >= 0;
+    ge_test16 = v32 as i8 >= 0;
     report bool ge_test17;
-    ge_test17 = 1 as i16 >= 0;
+    ge_test17 = v32 as i16 >= 0;
     report bool ge_test18;
-    ge_test18 = 1 as i32 >= 0;
+    ge_test18 = v32 as i32 >= 0;
     report bool ge_test19;
-    ge_test19 = 1 as i64 >= 0;
+    ge_test19 = v32 as i64 >= 0;
 
     // TEST: >
     report bool gt_test0;
@@ -219,13 +222,13 @@ wasm:opcode:call:before {
     gt_test15 = v64 > v64;
 
     report bool gt_test16;
-    gt_test16 = 1 as i8 > 0;
+    gt_test16 = v32 as i8 > 0;
     report bool gt_test17;
-    gt_test17 = 1 as i16 > 0;
+    gt_test17 = v32 as i16 > 0;
     report bool gt_test18;
-    gt_test18 = 1 as i32 > 0;
+    gt_test18 = v32 as i32 > 0;
     report bool gt_test19;
-    gt_test19 = 1 as i64 > 0;
+    gt_test19 = v32 as i64 > 0;
 
     // TEST: <=
     report bool le_test0;
@@ -265,13 +268,13 @@ wasm:opcode:call:before {
     le_test15 = v64 <= v64;
 
     report bool le_test16;
-    le_test16 = 1 as i8 <= 0;
+    le_test16 = v32 as i8 <= 0;
     report bool le_test17;
-    le_test17 = 1 as i16 <= 0;
+    le_test17 = v32 as i16 <= 0;
     report bool le_test18;
-    le_test18 = 1 as i32 <= 0;
+    le_test18 = v32 as i32 <= 0;
     report bool le_test19;
-    le_test19 = 1 as i64 <= 0;
+    le_test19 = v32 as i64 <= 0;
 
     // TEST: <
     report bool lt_test0;
@@ -311,13 +314,13 @@ wasm:opcode:call:before {
     lt_test15 = v64 < v64;
 
     report bool lt_test16;
-    lt_test16 = 1 as i8 < 0;
+    lt_test16 = v32 as i8 < 0;
     report bool lt_test17;
-    lt_test17 = 1 as i16 < 0;
+    lt_test17 = v32 as i16 < 0;
     report bool lt_test18;
-    lt_test18 = 1 as i32 < 0;
+    lt_test18 = v32 as i32 < 0;
     report bool lt_test19;
-    lt_test19 = 1 as i64 < 0;
+    lt_test19 = v32 as i64 < 0;
 
     // --- arithmetic operators ---
     // setup
@@ -371,22 +374,22 @@ wasm:opcode:call:before {
     add_test15 = v64 + v64;
 
     report i8 add_test16;
-    add_test16 = 1 as i8 + 0;
+    add_test16 = v32 as i8 + 0;
     report i16 add_test17;
-    add_test17 = 1 as i16 + 0;
+    add_test17 = v32 as i16 + 0;
     report i32 add_test18;
-    add_test18 = 1 as i32 + 0;
+    add_test18 = v32 as i32 + 0;
     report i64 add_test19;
-    add_test19 = 1 as i64 + 0;
+    add_test19 = v32 as i64 + 0;
 
     report i8 add_test20;
-    add_test20 = I8_MAX + 1;
+    add_test20 = I8_MAX + v32 as i8;
     report i16 add_test21;
-    add_test21 = I16_MAX + 1;
+    add_test21 = I16_MAX + v32 as i16;
     report i32 add_test22;
-    add_test22 = I32_MAX + 1;
+    add_test22 = I32_MAX + v32;
     report i64 add_test23;
-    add_test23 = I64_MAX + 1;
+    add_test23 = I64_MAX + v32 as i64;
 
     // TEST: -
     report i8 sub_test0;
@@ -426,22 +429,22 @@ wasm:opcode:call:before {
     sub_test15 = v64 - v64;
 
     report i8 sub_test16;
-    sub_test16 = 1 as i8 - 0;
+    sub_test16 = v32 as i8 - 0;
     report i16 sub_test17;
-    sub_test17 = 1 as i16 - 0;
+    sub_test17 = v32 as i16 - 0;
     report i32 sub_test18;
-    sub_test18 = 1 as i32 - 0;
+    sub_test18 = v32 as i32 - 0;
     report i64 sub_test19;
-    sub_test19 = 1 as i64 - 0;
+    sub_test19 = v32 as i64 - 0;
 
     report i8 sub_test20;
-    sub_test20 = I8_MIN - 1;
+    sub_test20 = I8_MIN - v32 as i8;
     report i16 sub_test21;
-    sub_test21 = I16_MIN - 1;
+    sub_test21 = I16_MIN - v32 as i16;
     report i32 sub_test22;
-    sub_test22 = I32_MIN - 1;
+    sub_test22 = I32_MIN - v32;
     report i64 sub_test23;
-    sub_test23 = I64_MIN - 1;
+    sub_test23 = I64_MIN - v32 as i64;
 
     // TEST: *
     report i8 mul_test0;
@@ -481,49 +484,50 @@ wasm:opcode:call:before {
     mul_test15 = v64 * v64;
 
     report i8 mul_test16;
-    mul_test16 = 1 as i8 * 0;
+    mul_test16 = v32 as i8 * 0;
     report i16 mul_test17;
-    mul_test17 = 1 as i16 * 0;
+    mul_test17 = v32 as i16 * 0;
     report i32 mul_test18;
-    mul_test18 = 1 as i32 * 0;
+    mul_test18 = v32 as i32 * 0;
     report i64 mul_test19;
-    mul_test19 = 1 as i64 * 0;
+    mul_test19 = v32 as i64 * 0;
 
     report i8 mul_test20;
-    mul_test20 = I8_MIN * 1;
+    mul_test20 = I8_MIN * v32 as i8;
     report i16 mul_test21;
-    mul_test21 = I16_MIN * 1;
+    mul_test21 = I16_MIN * v32 as i16;
     report i32 mul_test22;
-    mul_test22 = I32_MIN * 1;
+    mul_test22 = I32_MIN * v32;
     report i64 mul_test23;
-    mul_test23 = I64_MIN * 1;
+    mul_test23 = I64_MIN * v32 as i64;
 
+    i32 TWO = (v32 + v32);
     report i8 mul_test24;
-    mul_test24 = I8_MIN * 2;
+    mul_test24 = I8_MIN * TWO as i8;
     report i16 mul_test25;
-    mul_test25 = I16_MIN * 2;
+    mul_test25 = I16_MIN * TWO as i16;
     report i32 mul_test26;
-    mul_test26 = I32_MIN * 2;
+    mul_test26 = I32_MIN * TWO;
     report i64 mul_test27;
-    mul_test27 = I64_MIN * 2;
+    mul_test27 = I64_MIN * TWO as i64;
 
     report i8 mul_test28;
-    mul_test28 = I8_MAX * 1;
+    mul_test28 = I8_MAX * v32 as i8;
     report i16 mul_test29;
-    mul_test29 = I16_MAX * 1;
+    mul_test29 = I16_MAX * v32 as i16;
     report i32 mul_test30;
-    mul_test30 = I32_MAX * 1;
+    mul_test30 = I32_MAX * v32;
     report i64 mul_test31;
-    mul_test31 = I64_MAX * 1;
+    mul_test31 = I64_MAX * v32 as i64;
 
     report i8 mul_test32;
-    mul_test32 = I8_MAX * 2;
+    mul_test32 = I8_MAX * TWO as i8;
     report i16 mul_test33;
-    mul_test33 = I16_MAX * 2;
+    mul_test33 = I16_MAX * TWO as i16;
     report i32 mul_test34;
-    mul_test34 = I32_MAX * 2;
+    mul_test34 = I32_MAX * TWO;
     report i64 mul_test35;
-    mul_test35 = I64_MAX * 2;
+    mul_test35 = I64_MAX * TWO as i64;
 
     // TEST: /
     report i8 div_test0;
@@ -563,13 +567,13 @@ wasm:opcode:call:before {
     div_test15 = v64 / v64;
 
     report i8 div_test20;
-    div_test20 = I8_MIN / 1;
+    div_test20 = I8_MIN / v32 as i8;
     report i16 div_test21;
-    div_test21 = I16_MIN / 1;
+    div_test21 = I16_MIN / v32 as i16;
     report i32 div_test22;
-    div_test22 = I32_MIN / 1;
+    div_test22 = I32_MIN / v32;
     report i64 div_test23;
-    div_test23 = I64_MIN / 1;
+    div_test23 = I64_MIN / v32 as i64;
 
     // TEST: %
     report i8 mod_test0;
@@ -609,35 +613,35 @@ wasm:opcode:call:before {
     mod_test15 = v64 % v64;
 
     report i8 mod_test20;
-    mod_test20 = I8_MIN % 1;
+    mod_test20 = I8_MIN % v32 as i8;
     report i16 mod_test21;
-    mod_test21 = I16_MIN % 1;
+    mod_test21 = I16_MIN % v32 as i16;
     report i32 mod_test22;
-    mod_test22 = I32_MIN % 1;
+    mod_test22 = I32_MIN % v32;
     report i64 mod_test23;
-    mod_test23 = I64_MIN % 1;
+    mod_test23 = I64_MIN % v32 as i64;
 
     // ==== UNOP ====
     // --- casts ---
 
     // TEST: implicit with primitive
     report i8 imp_test0;
-    imp_test0 = v8 + 1;
+    imp_test0 = v8 + v32 as i8;
     report i16 imp_test1;
-    imp_test1 = v16 + 1;
+    imp_test1 = v16 + v32 as i16;
     report i32 imp_test2;
-    imp_test2 = v32 + 1;
+    imp_test2 = v32 + v32;
     report i64 imp_test3;
-    imp_test3 = v64 + 1;
+    imp_test3 = v64 + v32 as i64;
 
     report i8 imp_test4;
-    imp_test4 = 1 + v8;
+    imp_test4 = v32 as i8 + v8;
     report i16 imp_test5;
-    imp_test5 = 1 + v16;
+    imp_test5 = v32 as i16 + v16;
     report i32 imp_test6;
-    imp_test6 = 1 + v32;
+    imp_test6 = v32 + v32;
     report i64 imp_test7;
-    imp_test7 = 1 + v64;
+    imp_test7 = v32 as i64 + v64;
 
     // TEST: explicit (done in above BINOP tests)
 

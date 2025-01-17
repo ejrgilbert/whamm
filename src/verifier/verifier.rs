@@ -677,7 +677,14 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                         self.err.type_check_error(
                                             fatal,
                                             msg,
-                                            &Some(rhs_loc.line_col),
+                                            &Some(
+                                                Location::from(
+                                                    &lhs_loc.line_col,
+                                                    &rhs_loc.line_col,
+                                                    None,
+                                                )
+                                                .line_col,
+                                            ),
                                         );
                                         Some(lhs_ty)
                                     }
@@ -705,7 +712,10 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 self.err.type_check_error(
                                     false,
                                     "Different types for lhs and rhs".to_owned(),
-                                    &None,
+                                    &Some(
+                                        Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None)
+                                            .line_col,
+                                    ),
                                 );
                                 Some(DataType::AssumeGood)
                             }
@@ -725,7 +735,14 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                         self.err.type_check_error(
                                             fatal,
                                             msg,
-                                            &Some(rhs_loc.line_col),
+                                            &Some(
+                                                Location::from(
+                                                    &lhs_loc.line_col,
+                                                    &rhs_loc.line_col,
+                                                    None,
+                                                )
+                                                .line_col,
+                                            ),
                                         );
                                         Some(DataType::Boolean)
                                     }
@@ -844,9 +861,9 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             // we can remove the cast from the AST!
                             let t = target.clone();
                             *done_on = expr_ty.clone();
-                            if expr_ty.is_compatible_with(target) {
-                                *expr = *inner_expr.to_owned();
-                            }
+                            // if expr_ty.is_compatible_with(target) {
+                            //     *expr = *inner_expr.to_owned();
+                            // }
                             Some(t)
                         }
                         UnOp::Not => {

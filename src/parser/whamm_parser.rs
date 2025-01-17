@@ -1317,7 +1317,7 @@ fn type_from_rule(pair: Pair<Rule>) -> Result<DataType, Vec<WhammError>> {
         Rule::TY_U8 => Ok(DataType::U8),
         Rule::TY_I8 => Ok(DataType::I8),
         Rule::TY_U16 => Ok(DataType::U16),
-        Rule::TY_I16 => Ok(DataType::U16),
+        Rule::TY_I16 => Ok(DataType::I16),
         Rule::TY_U32 => Ok(DataType::U32),
         Rule::TY_I32 => Ok(DataType::I32),
         Rule::TY_F32 => Ok(DataType::F32),

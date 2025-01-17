@@ -656,6 +656,11 @@ impl Metadata {
             Self::Local { whamm_ty, .. } | Self::Global { whamm_ty, .. } => *whamm_ty = new_ty,
         }
     }
+    pub fn get_whamm_ty(&self) -> DataType {
+        match self {
+            Self::Local { whamm_ty, .. } | Self::Global { whamm_ty, .. } => whamm_ty.clone(),
+        }
+    }
     pub fn set_wasm_ty(&mut self, new_ty: OrcaType) {
         match self {
             Self::Local { wasm_ty, .. } | Self::Global { wasm_ty, .. } => *wasm_ty = new_ty,

@@ -10,7 +10,9 @@ use std::collections::HashMap;
 
 pub const PUTS: &str = "puts";
 pub const PUTC: &str = "putc";
+pub const PUTU32: &str = "putu32";
 pub const PUTI32: &str = "puti32";
+pub const PUTU64: &str = "putu64";
 pub const PUTI64: &str = "puti64";
 pub const PUTF32: &str = "putf32";
 pub const PUTF64: &str = "putf64";
@@ -45,7 +47,9 @@ impl IOAdapter {
     pub fn new() -> Self {
         let funcs = HashMap::from([
             (PUTC.to_string(), 0),
+            (PUTU32.to_string(), 0),
             (PUTI32.to_string(), 0),
+            (PUTU64.to_string(), 0),
             (PUTI64.to_string(), 0),
             (PUTF32.to_string(), 0),
             (PUTF64.to_string(), 0),
@@ -150,12 +154,28 @@ impl IOAdapter {
         self.puts("\n".to_string(), func, err)
     }
 
+    pub fn call_putu32<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        func: &mut T,
+        err: &mut ErrorGen,
+    ) {
+        self.call(PUTU32, func, err);
+    }
+
     pub fn call_puti32<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         &mut self,
         func: &mut T,
         err: &mut ErrorGen,
     ) {
         self.call(PUTI32, func, err);
+    }
+
+    pub fn call_putu64<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        func: &mut T,
+        err: &mut ErrorGen,
+    ) {
+        self.call(PUTU64, func, err);
     }
 
     pub fn call_puti64<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(

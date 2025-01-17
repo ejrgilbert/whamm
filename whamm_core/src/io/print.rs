@@ -130,7 +130,17 @@ pub fn putc(c: u8) {
 }
 
 #[no_mangle]
+pub fn putu32(i: u32) {
+    print(&format!("{i}"));
+}
+
+#[no_mangle]
 pub fn puti32(i: i32) {
+    print(&format!("{i}"));
+}
+
+#[no_mangle]
+pub fn putu64(i: u64) {
     print(&format!("{i}"));
 }
 

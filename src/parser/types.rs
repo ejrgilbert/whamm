@@ -804,6 +804,18 @@ pub enum Value {
     },
 }
 impl Value {
+    pub fn gen_u8(val: u32) -> Self {
+        Self::gen_int(IntLit::u32(val), DataType::U8)
+    }
+    pub fn gen_i8(val: u32) -> Self {
+        Self::gen_int(IntLit::u32(val), DataType::I8)
+    }
+    pub fn gen_u16(val: u32) -> Self {
+        Self::gen_int(IntLit::u32(val), DataType::U16)
+    }
+    pub fn gen_i16(val: u32) -> Self {
+        Self::gen_int(IntLit::u32(val), DataType::I16)
+    }
     pub fn gen_u32(val: u32) -> Self {
         Self::gen_int(IntLit::u32(val), DataType::U32)
     }
