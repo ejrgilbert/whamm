@@ -112,6 +112,27 @@ impl ErrorGen {
         self.add_error(err);
     }
 
+    pub fn get_arithmetic_error(fatal: bool, message: String, loc: Option<Location>) -> WhammError {
+        let err_loc = loc.as_ref().map(|err_loc| CodeLocation {
+            is_err: true,
+            message: Some(message.clone()),
+            line_col: err_loc.line_col.clone(),
+            line_str: None,
+            line2_str: None,
+        });
+        WhammError {
+            fatal,
+            ty: ErrorType::ArithmeticError { message },
+            err_loc,
+            info_loc: None,
+        }
+    }
+
+    pub fn div_by_zero(&mut self, loc: Option<Location>) {
+        let err = Self::get_arithmetic_error(true, "attempt to divide by zero".to_string(), loc);
+        self.add_error(err);
+    }
+
     pub fn get_parse_error(
         fatal: bool,
         message: Option<String>,
@@ -905,6 +926,9 @@ pub enum ErrorType {
     Error {
         message: Option<String>,
     },
+    ArithmeticError {
+        message: String,
+    },
 }
 impl ErrorType {
     pub fn name(&self) -> &str {
@@ -915,6 +939,7 @@ impl ErrorType {
             ErrorType::TypeCheckError { .. } => "TypeCheckError",
             ErrorType::WizardError { .. } => "WizardError",
             ErrorType::Error { .. } => "GeneralError",
+            ErrorType::ArithmeticError { .. } => "ArithmeticError",
         }
     }
     pub fn message(&self) -> Cow<'_, str> {
@@ -943,6 +968,7 @@ impl ErrorType {
                     Cow::Borrowed("An error occurred.")
                 }
             }
+            ErrorType::ArithmeticError { ref message } => Cow::Borrowed(message),
         }
     }
 

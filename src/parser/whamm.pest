@@ -176,7 +176,7 @@ INT = {
     int_bin = @{ ^"0b" ~ ASCII_BIN_DIGIT+ } // Binary digit
 //     int_oct = @{ "-"? ~ "0" ~ ASCII_OCT_DIGIT+ }  // Octal digit
     int = @{
-        "-"? ~ ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*  // Multiple digit, base 10 AND negative anything but 0
+        "-"? ~ ASCII_NONZERO_DIGIT ~ ("_" | ASCII_DIGIT)* ~ ASCII_DIGIT*  // Multiple digit, base 10 AND negative anything but 0
         | ASCII_DIGIT                              // Single digit, base 10 (account for having just '0')
     }
 
@@ -187,8 +187,8 @@ FLOAT = {
         "-"? ~ ^"inf" |
         "-"? ~ ^"infinity" |
         "-"? ~ ^"NaN" |
-        "-"? ~ ASCII_DIGIT+ ~ "."? ~ ASCII_DIGIT* ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+ ) |
-        "-"? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT*
+        "-"? ~ ASCII_DIGIT+ ~ ("_" | ASCII_DIGIT)* ~ "."? ~ ASCII_DIGIT* ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+ ) |
+        "-"? ~ ASCII_DIGIT+ ~ ("_" | ASCII_DIGIT)* ~ "." ~ ASCII_DIGIT*
     }
 
 BOOL = @{

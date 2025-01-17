@@ -1,4 +1,5 @@
 #![allow(clippy::too_many_arguments)]
+
 use crate::common::error::ErrorGen;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::lang_features::report_vars::ReportVars;
@@ -7,28 +8,40 @@ use crate::verifier::types::VarAddr;
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::MacroOpcode;
 use orca_wasm::Opcode;
+use std::collections::HashMap;
 
 #[derive(Default)]
 pub struct UnsharedVarHandler {
-    pub used_i32_gids: Vec<u32>,
-    pub available_i32_gids: Vec<u32>,
+    pub available_gids: HashMap<DataType, Vec<u32>>,
 }
 impl UnsharedVarHandler {
-    pub fn use_available_gid(&mut self, err_msg: &str, err: &mut ErrorGen) -> Option<u32> {
-        if self.available_i32_gids.is_empty() {
-            err.unexpected_error(
-                true,
-                Some(format!(
-                    "{err_msg} No available global I32s for unshared vars"
-                )),
-                None,
-            );
-            return None;
+    pub fn add_available_gid(&mut self, gid: u32, ty: &DataType) {
+        self.available_gids
+            .entry(ty.clone())
+            .and_modify(|list| {
+                list.push(gid);
+            })
+            .or_insert(vec![gid]);
+    }
+    pub fn use_available_gid(
+        &mut self,
+        ty: &DataType,
+        err_msg: &str,
+        err: &mut ErrorGen,
+    ) -> Option<u32> {
+        if let Some(list) = self.available_gids.get_mut(ty) {
+            if !list.is_empty() {
+                return Some(list.remove(0));
+            }
         }
-        let id = self.available_i32_gids.remove(0);
-        self.used_i32_gids.push(id);
-
-        Some(id)
+        err.unexpected_error(
+            true,
+            Some(format!(
+                "{err_msg} No available global {ty}s for unshared vars"
+            )),
+            None,
+        );
+        None
     }
     pub fn allocate_var<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         &mut self,
@@ -60,19 +73,9 @@ impl UnsharedVarHandler {
         }
         match addr {
             Some(VarAddr::Global { .. }) | None => {
-                let wasm_ty = ty.to_wasm_type();
-                if let Some(id) = self.use_available_gid(err_msg, err) {
+                if let Some(id) = self.use_available_gid(ty, err_msg, err) {
                     if is_report {
-                        if wasm_ty.len() == 1 {
-                            report_vars.put_local_metadata(
-                                id,
-                                var_name.to_string(),
-                                *wasm_ty.first().unwrap(),
-                                err,
-                            );
-                        } else {
-                            todo!()
-                        }
+                        report_vars.put_local_metadata(id, var_name.to_string(), ty.clone(), err);
                     }
 
                     *addr = Some(VarAddr::Global { addr: id });

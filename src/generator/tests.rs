@@ -6,7 +6,7 @@ use crate::common::error::ErrorGen;
 use crate::generator::folding::ExprFolder;
 use crate::parser::tests;
 use crate::parser::types::Expr::{BinOp as ExprBinOp, VarId};
-use crate::parser::types::{BinOp, Expr, Value, Whamm};
+use crate::parser::types::{BinOp, DataType, Expr, Value, Whamm};
 use crate::verifier::types::{Record, ScopeType, SymbolTable};
 use crate::verifier::verifier;
 use log::{debug, error};
@@ -159,6 +159,56 @@ pub fn basic_test() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     basic_run("wasm::call:alt / i / {}", &mut err);
+}
+
+fn fatal_fold(expr: &Expr) {
+    let result = std::panic::catch_unwind(|| {
+        let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+        ExprFolder::fold_expr(expr, &SymbolTable::new(), &mut err);
+    });
+    match result {
+        Ok(_) => {
+            panic!("Expected a fatal error, but got Ok");
+        }
+        Err(_) => {
+            //this means the function properly exited with a fatal error
+        }
+    }
+}
+#[test]
+pub fn div_by_zero() {
+    // 1 / 0
+    fatal_fold(&Expr::BinOp {
+        lhs: Box::new(Expr::Primitive {
+            val: Value::gen_i32(1),
+            loc: None,
+        }),
+        op: BinOp::Divide,
+        rhs: Box::new(Expr::Primitive {
+            val: Value::gen_i32(0),
+            loc: None,
+        }),
+        done_on: DataType::U8,
+        loc: None,
+    })
+}
+
+#[test]
+pub fn mod_by_zero() {
+    // 1 % 0
+    fatal_fold(&Expr::BinOp {
+        lhs: Box::new(Expr::Primitive {
+            val: Value::gen_i32(1),
+            loc: None,
+        }),
+        op: BinOp::Modulo,
+        rhs: Box::new(Expr::Primitive {
+            val: Value::gen_i32(0),
+            loc: None,
+        }),
+        done_on: DataType::U8,
+        loc: None,
+    })
 }
 
 #[test]

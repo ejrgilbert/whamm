@@ -104,13 +104,11 @@ fn init_outfile() {
     });
 }
 
-#[no_mangle]
-pub fn putc(c: u8) {
+fn print(str: &str) {
     init();
     TO_CONSOLE.with(|to_console| {
         let to_console = to_console.borrow();
         if *to_console {
-            let str = String::from_utf8([c].to_vec()).expect("Our bytes should be valid utf8");
             print!("{str}");
         } else {
             OUTFILE.with(|outfile| {
@@ -119,7 +117,7 @@ pub fn putc(c: u8) {
                 };
 
                 // Write to a file
-                out.write(&[c])
+                out.write(str.as_bytes())
                     .expect("write failed");
             });
         }
@@ -127,23 +125,26 @@ pub fn putc(c: u8) {
 }
 
 #[no_mangle]
-pub fn puti(i: i32) {
-    init();
-    TO_CONSOLE.with(|to_console| {
-        let to_console = to_console.borrow();
-        if *to_console {
-            print!("{i}");
-        } else {
-            OUTFILE.with(|outfile| {
-                let Some(ref mut out) = &mut *outfile.borrow_mut() else {
-                    panic!("No out file has been configured, please report this bug.");
-                };
+pub fn putc(c: u8) {
+    print(&String::from_utf8([c].to_vec()).expect("Our bytes should be valid utf8"));
+}
 
-                // Write to a file
-                out.write(i.to_string().as_bytes())
-                    .expect("write failed");
-            });
-        }
-    });
-    return;
+#[no_mangle]
+pub fn puti32(i: i32) {
+    print(&format!("{i}"));
+}
+
+#[no_mangle]
+pub fn puti64(i: i64) {
+    print(&format!("{i}"));
+}
+
+#[no_mangle]
+pub fn putf32(f: f32) {
+    print(&format!("{f}"));
+}
+
+#[no_mangle]
+pub fn putf64(f: f64) {
+    print(&format!("{f}"));
 }

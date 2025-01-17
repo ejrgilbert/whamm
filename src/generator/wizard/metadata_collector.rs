@@ -260,8 +260,15 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
                         // keep track of the used report var datatypes across the whole AST
                         self.used_report_var_dts.insert(ty.clone());
                         // this needs to also add report_var_metadata (if is_report)!
+                        let wasm_ty = if ty.to_wasm_type().len() > 1 {
+                            unimplemented!()
+                        } else {
+                            *ty.to_wasm_type().first().unwrap()
+                        };
                         Some(ReportMetadata::Local {
                             name: name.clone(),
+                            whamm_ty: ty.clone(),
+                            wasm_ty,
                             script_id: self.script_num,
                             bytecode_loc: BytecodeLoc::new(0, 0), // (unused)
                             probe_id: self.curr_probe.to_string(),

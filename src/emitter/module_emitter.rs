@@ -508,7 +508,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 //now save off the global variable metadata
                 if report_mode {
                     self.report_vars
-                        .put_global_metadata(*global_id, name.clone(), err);
+                        .put_global_metadata(*global_id, name.clone(), ty, err);
                 }
                 Some(self.emit_global_getter(&global_id, name, global_ty))
             }

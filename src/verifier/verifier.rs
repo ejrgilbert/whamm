@@ -11,6 +11,19 @@ use std::vec;
 const UNEXPECTED_ERR_MSG: &str =
     "TypeChecker: Looks like you've found a bug...please report this behavior! Exiting now...";
 
+pub fn type_check(ast: &mut Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> bool {
+    let mut type_checker = TypeChecker {
+        table: st,
+        err,
+        in_script_global: false,
+        in_function: false,
+        assign_ty: None,
+    };
+    type_checker.visit_whamm(ast);
+    // note that parser errors might propagate here
+    !err.has_errors
+}
+
 pub fn build_symbol_table(ast: &mut Whamm, err: &mut ErrorGen) -> SymbolTable {
     let mut visitor = SymbolTableBuilder {
         table: SymbolTable::new(),
@@ -102,6 +115,9 @@ struct TypeChecker<'a> {
     err: &'a mut ErrorGen,
     in_script_global: bool,
     in_function: bool,
+
+    // bookkeeping for casting
+    assign_ty: Option<DataType>,
 }
 
 impl TypeChecker<'_> {
@@ -332,12 +348,22 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 let lhs_loc = var_id.loc().clone().unwrap();
                 let rhs_loc = expr.loc().clone().unwrap();
                 let lhs_ty_op = self.visit_expr(var_id);
+                self.assign_ty = lhs_ty_op.clone();
                 let rhs_ty_op = self.visit_expr(expr);
 
-                if let (Some(lhs_ty), Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {
+                let res = if let (Some(lhs_ty), Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {
                     if lhs_ty == rhs_ty {
                         None
-                    } else if rhs_ty.can_implicitly_cast() && lhs_ty.can_implicitly_cast() {
+                    } else if rhs_ty.can_implicitly_cast()
+                        && lhs_ty.can_implicitly_cast()
+                        && !matches!(
+                            expr,
+                            Expr::UnOp {
+                                op: UnOp::Cast { .. },
+                                ..
+                            }
+                        )
+                    {
                         match expr.implicit_cast(&lhs_ty) {
                             Ok(_) => None,
                             Err((msg, fatal)) => {
@@ -365,7 +391,9 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         &Some(loc.line_col),
                     );
                     None
-                }
+                };
+                self.assign_ty = None;
+                res
             }
             Statement::UnsharedDecl { decl, .. } => self.visit_stmt(decl),
             Statement::Expr { expr, .. } => {
@@ -582,7 +610,65 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             } else if matches!(rhs_ty, DataType::AssumeGood) {
                                 return Some(lhs_ty);
                             }
-                            if lhs_ty == rhs_ty && lhs_ty.can_implicitly_cast() {
+
+                            if let Some(exp_ty) = &self.assign_ty {
+                                if *exp_ty == lhs_ty {
+                                    if lhs_ty == rhs_ty {
+                                        Some(lhs_ty)
+                                    } else if exp_ty.can_implicitly_cast()
+                                        && rhs_ty.can_implicitly_cast()
+                                    {
+                                        // rhs isn't of the right type
+                                        match rhs.implicit_cast(exp_ty) {
+                                            Ok(_) => Some(exp_ty.clone()),
+                                            Err((msg, fatal)) => {
+                                                self.err.type_check_error(
+                                                    fatal,
+                                                    msg,
+                                                    &Some(rhs_loc.line_col),
+                                                );
+                                                Some(DataType::AssumeGood)
+                                            }
+                                        }
+                                    } else {
+                                        let loc = Location::from(
+                                            &lhs_loc.line_col,
+                                            &rhs_loc.line_col,
+                                            None,
+                                        );
+                                        self.err.type_check_error(
+                                            false,
+                                            format! {"Type Mismatch, lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty},
+                                            &Some(loc.line_col),
+                                        );
+                                        Some(DataType::AssumeGood)
+                                    }
+                                } else if exp_ty.can_implicitly_cast()
+                                    && lhs_ty.can_implicitly_cast()
+                                {
+                                    // lhs isn't of the right type
+                                    match lhs.implicit_cast(exp_ty) {
+                                        Ok(_) => Some(exp_ty.clone()),
+                                        Err((msg, fatal)) => {
+                                            self.err.type_check_error(
+                                                fatal,
+                                                msg,
+                                                &Some(rhs_loc.line_col),
+                                            );
+                                            Some(DataType::AssumeGood)
+                                        }
+                                    }
+                                } else {
+                                    let loc =
+                                        Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
+                                    self.err.type_check_error(
+                                        false,
+                                        format! {"Type Mismatch, lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty},
+                                        &Some(loc.line_col),
+                                    );
+                                    Some(DataType::AssumeGood)
+                                }
+                            } else if lhs_ty == rhs_ty && lhs_ty.can_implicitly_cast() {
                                 Some(lhs_ty)
                             } else if lhs_ty.can_implicitly_cast() && rhs_ty.can_implicitly_cast() {
                                 match rhs.implicit_cast(&lhs_ty) {
@@ -978,6 +1064,8 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 ty,
                 ..
             } => {
+                let saved_exp_ty = self.assign_ty.to_owned();
+                self.assign_ty = None;
                 let cond_ty = self.visit_expr(cond);
                 //have to clone before the "if let" block
                 let cond_ty_clone = cond_ty.clone();
@@ -995,6 +1083,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     }
                 }
 
+                self.assign_ty = saved_exp_ty;
                 let conseq_ty = self.visit_expr(conseq);
                 let alt_ty = self.visit_expr(alt);
 
@@ -1053,11 +1142,31 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
 
     fn visit_value(&mut self, val: &mut Value) -> Option<DataType> {
         match val {
-            Value::Int { .. }
-            | Value::Float { .. }
-            | Value::Str { .. }
-            | Value::Boolean { .. }
-            | Value::U32U32Map { .. } => Some(val.ty()),
+            Value::Int { .. } | Value::Float { .. } | Value::Boolean { .. } => {
+                if let Some(exp_ty) = &self.assign_ty {
+                    let val_ty = val.ty();
+                    if *exp_ty == val_ty {
+                        Some(val_ty)
+                    } else if exp_ty.can_implicitly_cast() && val_ty.can_implicitly_cast() {
+                        match val.implicit_cast(exp_ty) {
+                            Ok(_) => Some(val.ty()),
+                            Err(msg) => {
+                                self.err.type_check_error(false, format!("CastError: Cannot implicitly cast {msg}. Please add an explicit cast."), &None);
+                                return Some(DataType::AssumeGood);
+                            }
+                        }
+                    } else {
+                        Some(DataType::Unknown)
+                    }
+                } else {
+                    Some(val.ty())
+                }
+            }
+            Value::Str { .. } => Some(DataType::Str),
+            Value::U32U32Map { .. } => Some(DataType::Map {
+                key_ty: Box::new(DataType::U32),
+                val_ty: Box::new(DataType::U32),
+            }),
             Value::Tuple { ty: _, vals } => {
                 // this ty does not contain the DataType in ty_info
                 // Whamm parser doesn't give the ty_info for Tuples
@@ -1087,16 +1196,4 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
             }
         }
     }
-}
-
-pub fn type_check(ast: &mut Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> bool {
-    let mut type_checker = TypeChecker {
-        table: st,
-        err,
-        in_script_global: false,
-        in_function: false,
-    };
-    type_checker.visit_whamm(ast);
-    // note that parser errors might propagate here
-    !err.has_errors
 }

@@ -549,7 +549,7 @@ fn handle_custom_binop(op: BinOp, rhs: Expr, pair: Pair<Rule>, err: &mut ErrorGe
         op,
         rhs: Box::new(rhs),
 
-        done_on: DataType::AssumeGood,
+        done_on: DataType::Unknown,
         loc: Some(Location {
             line_col: full_loc.clone(),
             path: None,
@@ -1051,7 +1051,7 @@ fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                     Ok(Expr::UnOp {
                         op,
                         expr: Box::new(rhs),
-                        done_on: DataType::AssumeGood,
+                        done_on: DataType::Unknown,
                         loc,
                     })
                 }
@@ -1119,7 +1119,7 @@ fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                         lhs: Box::new(lhs),
                         op,
                         rhs: Box::new(rhs),
-                        done_on: DataType::AssumeGood,
+                        done_on: DataType::Unknown,
                         loc,
                     })
                 }
@@ -1163,7 +1163,7 @@ fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                     Ok(Expr::UnOp {
                         op,
                         expr: Box::new(lhs),
-                        done_on: DataType::AssumeGood,
+                        done_on: DataType::Unknown,
                         loc,
                     })
                 }
@@ -1306,7 +1306,7 @@ fn type_from_rule_handler(pair: Pair<Rule>, err: &mut ErrorGen) -> DataType {
         Ok(ty) => ty,
         Err(errs) => {
             err.add_errors(errs);
-            DataType::AssumeGood
+            DataType::Unknown
         }
     }
 }
@@ -1428,7 +1428,8 @@ fn handle_tuple(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
 
 pub fn handle_int(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     let pair = pair.into_inner().next().unwrap();
-    let token = pair.as_str().to_uppercase();
+    // make uppercase and remove all '_'
+    let token = pair.as_str().to_uppercase().replace("_", "");
     let mut digits = token.len() as i32;
     let is_neg = if let Some(first) = token.chars().next() {
         if first == '-' {
@@ -1564,7 +1565,8 @@ pub fn handle_int(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
 
 pub fn handle_float(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     let pair = pair.into_inner().next().unwrap();
-    let token = pair.as_str().to_lowercase();
+    // make lowercase and remove all '_'
+    let token = pair.as_str().to_lowercase().replace("_", "");
 
     // num digits required is unknown, figure it out!
     let val = if let Ok(val) = f32::from_str(&token) {

@@ -107,6 +107,7 @@ pub enum DataType {
         key_ty: Box<DataType>,
         val_ty: Box<DataType>,
     },
+    Unknown,
     AssumeGood,
 }
 impl Hash for DataType {
@@ -126,7 +127,8 @@ impl Hash for DataType {
             | DataType::Boolean
             | DataType::Null
             | DataType::Str
-            | DataType::AssumeGood => {
+            | DataType::AssumeGood
+            | DataType::Unknown => {
                 state.write_u8(self.id() as u8);
             }
             DataType::Tuple { ty_info } => {
@@ -146,11 +148,20 @@ impl Hash for DataType {
 impl PartialEq for DataType {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (DataType::U32, DataType::U32)
+            (DataType::U8, DataType::U8)
+            | (DataType::I8, DataType::I8)
+            | (DataType::U16, DataType::U16)
+            | (DataType::I16, DataType::I16)
+            | (DataType::U32, DataType::U32)
             | (DataType::I32, DataType::I32)
+            | (DataType::U64, DataType::U64)
+            | (DataType::I64, DataType::I64)
+            | (DataType::F32, DataType::F32)
+            | (DataType::F64, DataType::F64)
             | (DataType::Boolean, DataType::Boolean)
             | (DataType::Null, DataType::Null)
             | (DataType::Str, DataType::Str)
+            | (DataType::Unknown, DataType::Unknown)
             | (_, DataType::AssumeGood)
             | (DataType::AssumeGood, _) => true,
             (DataType::Tuple { ty_info: ty_info0 }, DataType::Tuple { ty_info: ty_info1 }) => {
@@ -204,7 +215,8 @@ impl Display for DataType {
             DataType::Map { key_ty, val_ty, .. } => {
                 write!(f, "map<{}, {}>", key_ty, val_ty)
             }
-            DataType::AssumeGood => write!(f, "unknown"),
+            DataType::AssumeGood => write!(f, "assume_good"),
+            DataType::Unknown => write!(f, "unknown"),
         }
     }
 }
@@ -224,6 +236,7 @@ impl DataType {
             | DataType::Null
             | DataType::Str
             | DataType::AssumeGood
+            | DataType::Unknown
             | DataType::Tuple { .. }
             | DataType::Map { .. } => *other == *self,
         }
@@ -251,6 +264,7 @@ impl DataType {
             DataType::Null => unimplemented!(),
             DataType::Str => vec![OrcaType::I32, OrcaType::I32],
             DataType::Tuple { .. } => unimplemented!(),
+            DataType::Unknown => unimplemented!(),
             DataType::AssumeGood => unimplemented!(),
         }
     }
@@ -298,7 +312,8 @@ impl DataType {
             | DataType::F32
             | DataType::U64
             | DataType::I64
-            | DataType::F64 => true,
+            | DataType::F64
+            | DataType::Unknown => true,
             DataType::Tuple { ty_info } => {
                 // check for numeric types
                 for ty in ty_info.iter() {
@@ -334,6 +349,7 @@ impl DataType {
             DataType::Tuple { .. } => 13,
             DataType::Map { .. } => 14,
             DataType::AssumeGood => 15,
+            DataType::Unknown => 16,
         }
     }
     pub fn num_bytes(&self) -> Option<usize> {
@@ -358,7 +374,8 @@ impl DataType {
             }
             DataType::Str |
             DataType::Null |
-            DataType::AssumeGood => {
+            DataType::AssumeGood |
+            DataType::Unknown => {
                 // TODO -- is this okay for AssumeGood?
                 // size should be determined respective to the context!
                 None
@@ -429,6 +446,9 @@ impl DataType {
                 white(true, ">".to_string(), buffer);
             }
             DataType::AssumeGood => {
+                yellow(true, "assume_good, not type checked".to_string(), buffer);
+            }
+            DataType::Unknown => {
                 yellow(true, "unknown, not type checked".to_string(), buffer);
             }
         }
@@ -992,6 +1012,13 @@ impl Value {
         self.explicit_cast(target, true)
     }
     fn explicit_cast(&mut self, target: &DataType, perform_cast: bool) -> Result<(), String> {
+        if matches!(target, DataType::Boolean) {
+            // first make the value represented as an i32
+            match self.implicit_cast(&DataType::I32) {
+                Ok(_) => {}
+                Err(e) => return Err(e),
+            }
+        }
         match self {
             Value::Int { val, .. } => {
                 if target.can_implicitly_cast() {

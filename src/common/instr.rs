@@ -338,10 +338,12 @@ fn run_instr_rewrite(
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
 
-    for gid in unshared_var_handler.available_i32_gids.iter() {
+    for (ty, list) in unshared_var_handler.available_gids.iter() {
         //should be 0, but good for cleanup
-        err.add_compiler_warn(format!("Unused i32 GID: {}", gid));
-        target_wasm.delete_global(GlobalID(*gid));
+        for gid in list.iter() {
+            err.add_compiler_warn(format!("Unused {ty} GID: {}", gid));
+            target_wasm.delete_global(GlobalID(*gid));
+        }
     }
 }
 

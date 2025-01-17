@@ -125,7 +125,8 @@ impl MemoryAllocator {
             | DataType::Str
             | DataType::Tuple { .. }
             | DataType::Map { .. }
-            | DataType::AssumeGood => unimplemented!(),
+            | DataType::AssumeGood
+            | DataType::Unknown => unimplemented!(),
         };
     }
 
@@ -182,7 +183,8 @@ impl MemoryAllocator {
             | DataType::Str
             | DataType::Tuple { .. }
             | DataType::Map { .. }
-            | DataType::AssumeGood => unimplemented!(),
+            | DataType::AssumeGood
+            | DataType::Unknown => unimplemented!(),
         };
     }
 

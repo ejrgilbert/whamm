@@ -200,7 +200,7 @@ impl MapLibAdapter {
             );
         };
 
-        let metadata = Metadata::new(name.clone(), &report_vars.curr_location);
+        let metadata = Metadata::new(name.clone(), DataType::I32, &report_vars.curr_location);
         report_vars.map_metadata.insert(map_id, metadata.clone());
         if !report_vars.all_metadata.insert(metadata) {
             err.unexpected_error(

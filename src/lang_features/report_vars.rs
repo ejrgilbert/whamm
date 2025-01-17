@@ -18,7 +18,7 @@ pub struct ReportVars {
     //MapID -> Metadata
     pub map_metadata: HashMap<u32, Metadata>,
     //GID -> Metadata
-    pub variable_metadata: HashMap<u32, Metadata>,
+    pub variable_metadata: HashMap<u32, (OrcaType, Metadata)>,
     pub all_metadata: HashSet<Metadata>,
     pub curr_location: LocationData,
     pub flush_soon: bool,
@@ -49,26 +49,27 @@ impl ReportVars {
             },
         }
     }
-    pub fn put_global_metadata(&mut self, gid: u32, name: String, err: &mut ErrorGen) -> bool {
-        let script_id = match &self.curr_location {
-            LocationData::Global { script_id } => script_id,
-            _ => {
-                err.unexpected_error(
-                    true,
-                    Some(format!(
-                        "Expected global location data, but got: {:?}",
-                        self.curr_location
-                    )),
-                    None,
-                );
-                return false;
-            }
-        };
-        let metadata = Metadata::Global {
-            name: name.clone(),
-            script_id: *script_id,
-        };
-        self.variable_metadata.insert(gid, metadata.clone());
+    pub fn put_global_metadata(
+        &mut self,
+        gid: u32,
+        name: String,
+        whamm_ty: &DataType,
+        err: &mut ErrorGen,
+    ) -> bool {
+        if !matches!(self.curr_location, LocationData::Global { .. }) {
+            err.unexpected_error(
+                true,
+                Some(format!(
+                    "Expected global location data, but got: {:?}",
+                    self.curr_location
+                )),
+                None,
+            );
+            return false;
+        }
+        let metadata = Metadata::new(name.clone(), whamm_ty.clone(), &self.curr_location);
+        self.variable_metadata
+            .insert(gid, (metadata.get_wasm_ty(), metadata.clone()));
         if !self.all_metadata.insert(metadata) {
             err.unexpected_error(
                 true,
@@ -83,33 +84,10 @@ impl ReportVars {
         &mut self,
         gid: u32,
         name: String,
-        ty: orca_wasm::ir::types::DataType,
+        ty: DataType,
         err: &mut ErrorGen,
     ) -> bool {
-        if ty != orca_wasm::ir::types::DataType::I32 {
-            err.unexpected_error(
-                true,
-                Some(format!(
-                    "Expected I32 type for unshared var, found: {:?}. Further support is upcoming",
-                    ty
-                )),
-                None,
-            );
-            return false;
-        }
-        if let LocationData::Local { .. } = &self.curr_location {
-            let metadata = Metadata::new(name.clone(), &self.curr_location);
-            self.variable_metadata.insert(gid, metadata.clone());
-            if !self.all_metadata.insert(metadata) {
-                err.unexpected_error(
-                    true,
-                    Some(format!("Duplicate metadata with name: {}", name)),
-                    None,
-                );
-                return false;
-            }
-            true
-        } else {
+        if !matches!(self.curr_location, LocationData::Local { .. }) {
             err.unexpected_error(
                 true,
                 Some(format!(
@@ -118,8 +96,21 @@ impl ReportVars {
                 )),
                 None,
             );
-            false
+            return false;
         }
+
+        let metadata = Metadata::new(name.clone(), ty, &self.curr_location);
+        self.variable_metadata
+            .insert(gid, (metadata.get_wasm_ty(), metadata.clone()));
+        if !self.all_metadata.insert(metadata) {
+            err.unexpected_error(
+                true,
+                Some(format!("Duplicate metadata with name: {}", name)),
+                None,
+            );
+            return false;
+        }
+        true
     }
     pub fn print_metadata(&self) {
         if self.all_metadata.is_empty() {
@@ -360,7 +351,7 @@ impl ReportVars {
 
         // print 'id'
         flush_fn.local_get(addr);
-        io_adapter.call_puti(&mut flush_fn, err);
+        io_adapter.call_puti32(&mut flush_fn, err);
 
         // print 'name'
         flush_fn.local_get(name_ptr).local_get(name_len);
@@ -370,15 +361,15 @@ impl ReportVars {
         // print 'script_id'
         io_adapter.puts("script".to_string(), &mut flush_fn, err);
         flush_fn.local_get(script_id);
-        io_adapter.call_puti(&mut flush_fn, err);
+        io_adapter.call_puti32(&mut flush_fn, err);
         io_adapter.puts(", ".to_string(), &mut flush_fn, err);
 
         // print 'fid:pc'
         flush_fn.local_get(fid);
-        io_adapter.call_puti(&mut flush_fn, err);
+        io_adapter.call_puti32(&mut flush_fn, err);
         io_adapter.puts(":".to_string(), &mut flush_fn, err);
         flush_fn.local_get(pc);
-        io_adapter.call_puti(&mut flush_fn, err);
+        io_adapter.call_puti32(&mut flush_fn, err);
         io_adapter.puts(", ".to_string(), &mut flush_fn, err);
 
         // print 'probe_id'
@@ -472,7 +463,7 @@ impl ReportVars {
 
         // print the value(s)
         flush_fn.i32_load(mem_arg);
-        io_adapter.call_puti(&mut flush_fn, err);
+        io_adapter.call_puti32(&mut flush_fn, err);
         io_adapter.putln(&mut flush_fn, err);
 
         // update memory pointer
@@ -604,10 +595,14 @@ impl ReportVars {
 pub enum Metadata {
     Global {
         name: String,
+        whamm_ty: DataType,
+        wasm_ty: OrcaType,
         script_id: u8,
     },
     Local {
         name: String,
+        whamm_ty: DataType,
+        wasm_ty: OrcaType,
         script_id: u8,
         bytecode_loc: BytecodeLoc,
         probe_id: String,
@@ -623,26 +618,52 @@ impl From<&LocationData> for Metadata {
                 ..
             } => Self::Local {
                 name: "".to_string(),
+                whamm_ty: DataType::I32,
+                wasm_ty: OrcaType::I32,
                 script_id: *script_id,
                 bytecode_loc: bytecode_loc.clone(),
                 probe_id: probe_id.clone(),
             },
             LocationData::Global { script_id } => Self::Global {
                 name: "".to_string(),
+                whamm_ty: DataType::I32,
+                wasm_ty: OrcaType::I32,
                 script_id: *script_id,
             },
         }
     }
 }
 impl Metadata {
-    pub fn new(name: String, loc: &LocationData) -> Self {
+    pub fn new(name: String, whamm_ty: DataType, loc: &LocationData) -> Self {
         let mut meta = Self::from(loc);
         meta.set_name(name);
+        let wasm_ty = whamm_ty.to_wasm_type();
+        if wasm_ty.len() > 1 {
+            unimplemented!()
+        } else {
+            meta.set_wasm_ty(*wasm_ty.first().unwrap());
+        }
+        meta.set_whamm_ty(whamm_ty);
         meta
     }
     pub fn set_name(&mut self, new_name: String) {
         match self {
             Self::Local { name, .. } | Self::Global { name, .. } => *name = new_name,
+        }
+    }
+    pub fn set_whamm_ty(&mut self, new_ty: DataType) {
+        match self {
+            Self::Local { whamm_ty, .. } | Self::Global { whamm_ty, .. } => *whamm_ty = new_ty,
+        }
+    }
+    pub fn set_wasm_ty(&mut self, new_ty: OrcaType) {
+        match self {
+            Self::Local { wasm_ty, .. } | Self::Global { wasm_ty, .. } => *wasm_ty = new_ty,
+        }
+    }
+    pub fn get_wasm_ty(&self) -> OrcaType {
+        match self {
+            Self::Local { wasm_ty, .. } | Self::Global { wasm_ty, .. } => *wasm_ty,
         }
     }
     pub fn print_csv_header<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
@@ -651,33 +672,49 @@ impl Metadata {
         err: &mut ErrorGen,
     ) {
         let header = r#"
-==================== REPORT CSV FLUSH ========================
-type, id_type, id, name, script_id, fid:pc, probe_id, value(s)"#
+============================= REPORT CSV FLUSH ================================
+id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)"#
             .to_string();
         io_adapter.putsln(header, func, err);
     }
     pub fn to_csv(&self) -> String {
-        let (name, script_id, bytecode_loc, probe_id) = match self {
-            Metadata::Global { name, script_id } => (name.as_str(), *script_id, "", ""),
+        let (name, whamm_ty, wasm_ty, script_id, bytecode_loc, probe_id) = match self {
+            Metadata::Global {
+                name,
+                whamm_ty,
+                wasm_ty,
+                script_id,
+            } => (
+                name.as_str(),
+                whamm_ty.to_string(),
+                wasm_ty.to_string(),
+                *script_id,
+                "",
+                "",
+            ),
             Metadata::Local {
                 name,
+                whamm_ty,
+                wasm_ty,
                 script_id,
                 bytecode_loc,
                 probe_id,
             } => (
                 name.as_str(),
+                whamm_ty.to_string(),
+                wasm_ty.to_string(),
                 *script_id,
                 &*bytecode_loc.to_string(),
                 probe_id.as_str(),
             ),
         };
         format!(
-            "{}, script{}, {}, {}",
-            name, script_id, bytecode_loc, probe_id
+            "global_id, {name}, {whamm_ty}, {wasm_ty}, script{script_id}, {}, {probe_id}",
+            bytecode_loc
         )
     }
 }
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LocationData {
     Global {
         script_id: u8,
@@ -686,7 +723,7 @@ pub enum LocationData {
         script_id: u8,
         bytecode_loc: BytecodeLoc,
         probe_id: String,
-        num_unshared: i32,
+        unshared: HashMap<DataType, i32>,
     },
 }
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

@@ -385,10 +385,37 @@ pub fn whamm_type_to_wasm_global(app_wasm: &mut Module, ty: &DataType) -> (Globa
                 );
                 (global_id, OrcaType::I32)
             }
+            OrcaType::I64 => {
+                let global_id = app_wasm.add_global(
+                    InitExpr::new(vec![Instructions::Value(OrcaValue::I64(0))]),
+                    OrcaType::I64,
+                    true,
+                    false,
+                );
+                (global_id, OrcaType::I64)
+            }
+            OrcaType::F32 => {
+                let global_id = app_wasm.add_global(
+                    InitExpr::new(vec![Instructions::Value(OrcaValue::F32(0f32))]),
+                    OrcaType::F32,
+                    true,
+                    false,
+                );
+                (global_id, OrcaType::F32)
+            }
+            OrcaType::F64 => {
+                let global_id = app_wasm.add_global(
+                    InitExpr::new(vec![Instructions::Value(OrcaValue::F64(0f64))]),
+                    OrcaType::F64,
+                    true,
+                    false,
+                );
+                (global_id, OrcaType::F64)
+            }
             _ => unimplemented!(),
         }
     } else {
-        todo!()
+        unimplemented!()
     }
 }
 
@@ -557,7 +584,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         Expr::UnOp {
             op, expr, done_on, ..
         } => {
-            let mut is_success = emit_expr(expr, strategy, injector, ctx);
+            let mut is_success = emit_expr(&mut *expr, strategy, injector, ctx);
             is_success &= emit_unop(op, done_on, injector);
             is_success
         }
@@ -568,8 +595,8 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             done_on,
             ..
         } => {
-            let mut is_success = emit_expr(lhs, strategy, injector, ctx);
-            is_success &= emit_expr(rhs, strategy, injector, ctx);
+            let mut is_success = emit_expr(&mut *lhs, strategy, injector, ctx);
+            is_success &= emit_expr(&mut *rhs, strategy, injector, ctx);
             is_success &= emit_binop(op, done_on, injector);
             is_success
         }
@@ -593,10 +620,10 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             }
 
             emit_if_else(
-                cond,
+                &mut *cond,
                 &mut Block {
                     stmts: vec![Statement::Expr {
-                        expr: (**conseq).clone(),
+                        expr: *(*conseq).clone(),
                         loc: None,
                     }],
                     return_ty: Some(ty.clone()),
@@ -604,7 +631,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 },
                 &mut Block {
                     stmts: vec![Statement::Expr {
-                        expr: (**alt).clone(),
+                        expr: *(*alt).clone(),
                         loc: None,
                     }],
                     return_ty: Some(ty.clone()),
@@ -618,7 +645,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         Expr::Call {
             fn_target, args, ..
         } => {
-            let fn_name = match &**fn_target {
+            let fn_name = match fn_target.as_ref() {
                 Expr::VarId { name, .. } => name.clone(),
                 _ => return false,
             };
@@ -753,7 +780,8 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut 
                 | DataType::Str
                 | DataType::Tuple { .. }
                 | DataType::Map { .. }
-                | DataType::AssumeGood => unimplemented!(),
+                | DataType::AssumeGood
+                | DataType::Unknown => unimplemented!(),
             };
         }
         BinOp::Or => {
@@ -780,7 +808,8 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut 
                 | DataType::Str
                 | DataType::Tuple { .. }
                 | DataType::Map { .. }
-                | DataType::AssumeGood => unimplemented!(),
+                | DataType::AssumeGood
+                | DataType::Unknown => unimplemented!(),
             };
         }
         BinOp::EQ => {
@@ -799,7 +828,11 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut 
                     // TODO -- fix after type bounds are implemented
                     injector.i32_eq()
                 }
-                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. }
+                | DataType::Unknown => {
                     unimplemented!()
                 }
             };
@@ -820,7 +853,11 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut 
                     // TODO -- fix after type bounds are implemented
                     injector.i32_ne()
                 }
-                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. }
+                | DataType::Unknown => {
                     unimplemented!()
                 }
             };
@@ -842,7 +879,11 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut 
                     // TODO -- fix after type bounds are implemented
                     injector.i32_gte_signed()
                 }
-                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. }
+                | DataType::Unknown => {
                     unimplemented!()
                 }
             };
@@ -864,7 +905,11 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut 
                     // TODO -- fix after type bounds are implemented
                     injector.i32_gt_signed()
                 }
-                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. }
+                | DataType::Unknown => {
                     unimplemented!()
                 }
             };
@@ -886,7 +931,11 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut 
                     // TODO -- fix after type bounds are implemented
                     injector.i32_lte_signed()
                 }
-                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. }
+                | DataType::Unknown => {
                     unimplemented!()
                 }
             };
@@ -908,7 +957,11 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut 
                     // TODO -- fix after type bounds are implemented
                     injector.i32_lt_signed()
                 }
-                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. }
+                | DataType::Unknown => {
                     unimplemented!()
                 }
             };
@@ -929,7 +982,11 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut 
                     // TODO -- fix after type bounds are implemented
                     injector.i32_add()
                 }
-                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. }
+                | DataType::Unknown => {
                     unimplemented!()
                 }
             };
@@ -950,7 +1007,11 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut 
                     // TODO -- fix after type bounds are implemented
                     injector.i32_sub()
                 }
-                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. }
+                | DataType::Unknown => {
                     unimplemented!()
                 }
             };
@@ -971,7 +1032,11 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut 
                     // TODO -- fix after type bounds are implemented
                     injector.i32_mul()
                 }
-                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. }
+                | DataType::Unknown => {
                     unimplemented!()
                 }
             };
@@ -993,7 +1058,11 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut 
                     // TODO -- fix after type bounds are implemented
                     injector.i32_div_signed()
                 }
-                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. }
+                | DataType::Unknown => {
                     unimplemented!()
                 }
             };
@@ -1015,7 +1084,11 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut 
                     // TODO -- fix after type bounds are implemented
                     injector.i32_rem_signed()
                 }
-                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. }
+                | DataType::Unknown => {
                     unimplemented!()
                 }
             };
@@ -1409,7 +1482,8 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
             | DataType::Str
             | DataType::Tuple { .. }
             | DataType::Map { .. }
-            | DataType::AssumeGood => unimplemented!(),
+            | DataType::AssumeGood
+            | DataType::Unknown => unimplemented!(),
         },
     }
     true

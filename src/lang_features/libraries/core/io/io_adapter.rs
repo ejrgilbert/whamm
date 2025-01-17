@@ -10,7 +10,10 @@ use std::collections::HashMap;
 
 pub const PUTS: &str = "puts";
 pub const PUTC: &str = "putc";
-pub const PUTI: &str = "puti";
+pub const PUTI32: &str = "puti32";
+pub const PUTI64: &str = "puti64";
+pub const PUTF32: &str = "putf32";
+pub const PUTF64: &str = "putf64";
 
 // //this is the code that knows which functions to call in lib.rs based on what is in the AST -> will be in emitter folder eventually
 pub struct IOAdapter {
@@ -42,7 +45,10 @@ impl IOAdapter {
     pub fn new() -> Self {
         let funcs = HashMap::from([
             (PUTC.to_string(), 0),
-            (PUTI.to_string(), 0),
+            (PUTI32.to_string(), 0),
+            (PUTI64.to_string(), 0),
+            (PUTF32.to_string(), 0),
+            (PUTF64.to_string(), 0),
             (PUTS.to_string(), 0),
         ]);
         //Reserve map 0 for the var metadata map and map 1 for the map metadata map
@@ -144,12 +150,36 @@ impl IOAdapter {
         self.puts("\n".to_string(), func, err)
     }
 
-    pub fn call_puti<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub fn call_puti32<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         &mut self,
         func: &mut T,
         err: &mut ErrorGen,
     ) {
-        self.call(PUTI, func, err);
+        self.call(PUTI32, func, err);
+    }
+
+    pub fn call_puti64<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        func: &mut T,
+        err: &mut ErrorGen,
+    ) {
+        self.call(PUTI64, func, err);
+    }
+
+    pub fn call_putf32<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        func: &mut T,
+        err: &mut ErrorGen,
+    ) {
+        self.call(PUTF32, func, err);
+    }
+
+    pub fn call_putf64<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        func: &mut T,
+        err: &mut ErrorGen,
+    ) {
+        self.call(PUTF64, func, err);
     }
 
     fn putc<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(

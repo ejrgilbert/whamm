@@ -19,6 +19,7 @@ use crate::parser::types::{
     Block, DataType, Definition, Expr, FloatLit, IntLit, RulePart, Statement, Value,
 };
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
+use itertools::Itertools;
 use orca_wasm::ir::id::{FunctionID, LocalID, TypeID};
 use orca_wasm::ir::module::Module;
 use orca_wasm::ir::types::BlockType as OrcaBlockType;
@@ -41,7 +42,7 @@ pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub(crate) report_vars: &'g mut ReportVars,
     pub(crate) unshared_var_handler: &'g mut UnsharedVarHandler,
     instr_created_args: Vec<(String, usize)>,
-    pub curr_num_unshared: i32,
+    pub curr_unshared: HashMap<DataType, i32>,
 }
 
 impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
@@ -67,7 +68,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             report_vars,
             unshared_var_handler,
             instr_created_args: vec![],
-            curr_num_unshared: 0,
+            curr_unshared: HashMap::default(),
         };
 
         a
@@ -740,12 +741,17 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
 impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
     fn emit_body(&mut self, curr_instr_args: &[Arg], body: &mut Block, err: &mut ErrorGen) -> bool {
         let mut is_success = true;
-        for _ in 0..self.curr_num_unshared {
-            let (global_id, ..) = whamm_type_to_wasm_global(self.app_iter.module, &DataType::I32);
-            self.unshared_var_handler
-                .available_i32_gids
-                .push(*global_id);
+
+        // Create the required globals for this probe
+        // Sort by datatype to make generation deterministic!
+        let sorted_unshared = self.curr_unshared.iter().sorted_by_key(|(ty, _)| ty.id());
+        for (ty, num) in sorted_unshared.into_iter() {
+            for _ in 0..*num {
+                let (global_id, ..) = whamm_type_to_wasm_global(self.app_iter.module, ty);
+                self.unshared_var_handler.add_available_gid(*global_id, ty);
+            }
         }
+
         for stmt in body.stmts.iter_mut() {
             is_success &= self.emit_stmt(curr_instr_args, stmt, err);
         }

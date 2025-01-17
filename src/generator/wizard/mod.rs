@@ -5,7 +5,7 @@ use crate::common::error::ErrorGen;
 use crate::common::instr::Config;
 use crate::emitter::memory_allocator::VAR_BLOCK_BASE_VAR;
 use crate::emitter::module_emitter::ModuleEmitter;
-use crate::generator::wizard::ast::{WizardProbe, WizardScript};
+use crate::generator::wizard::ast::{UnsharedVar, WizardProbe, WizardScript};
 use crate::generator::GeneratingVisitor;
 use crate::lang_features::alloc_vars::wizard::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
@@ -15,7 +15,7 @@ use crate::verifier::types::{Record, VarAddr};
 use log::trace;
 use orca_wasm::ir::id::{FunctionID, LocalID};
 use orca_wasm::ir::types::DataType as OrcaType;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 pub struct WizardGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l> {
     pub emitter: ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g>,
@@ -190,12 +190,22 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     fn create_curr_loc(&self, probe: &WizardProbe) -> LocationData {
         let probe_id = format!("{}_{}", probe.probe_number, probe.rule);
 
+        // translate wizard unshared vars to the correct format
+        let mut vars = HashMap::default();
+        for UnsharedVar { ty, .. } in probe.unshared_to_alloc.iter() {
+            vars.entry(ty.clone())
+                .and_modify(|count| {
+                    *count += 1;
+                })
+                .or_insert(1);
+        }
+
         //set the current location in bytecode and load some new globals for potential report vars
         LocationData::Local {
             script_id: self.curr_script_id,
             bytecode_loc: BytecodeLoc::new(0, 0), // TODO -- request this from wizard
             probe_id,
-            num_unshared: probe.unshared_to_alloc.len() as i32, //this is still used in the emitter to determine how many new globals to emit
+            unshared: vars, //this is still used in the emitter to determine the new globals to emit
         }
     }
 

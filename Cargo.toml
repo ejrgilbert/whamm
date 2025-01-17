@@ -33,6 +33,7 @@ clap_complete = "4.5.2"
 # wabt
 wabt = "0.10.0"
 wat = "1.214.0"
+itertools = "0.14.0"
 
 [build-dependencies]
 clap = { version = "4.5.4", features = ["derive", "cargo", "env"] }

@@ -12,8 +12,10 @@ use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::lang_features::report_vars::{Metadata, ReportVars};
 use crate::parser::types::{Block, Expr, Statement};
 use crate::verifier::types::{Record, SymbolTable};
+use itertools::Itertools;
 use orca_wasm::ir::id::{FunctionID, GlobalID};
-use orca_wasm::{Module, Opcode};
+use orca_wasm::ir::types::DataType as OrcaType;
+use orca_wasm::{DataType, Module, Opcode};
 use std::collections::HashMap;
 
 #[derive(Copy, Clone)]
@@ -52,10 +54,10 @@ pub fn configure_flush_routines(
     }
 
     //convert the metadata into strings, add those to the data section, then use those to populate the maps
-    let var_meta: HashMap<u32, String> = report_vars
+    let var_meta: HashMap<u32, (OrcaType, String)> = report_vars
         .variable_metadata
         .iter()
-        .map(|(key, value)| (*key, value.to_csv()))
+        .map(|(key, (ty, value))| (*key, (*ty, value.to_csv())))
         .collect();
     let map_meta: HashMap<u32, String> = report_vars
         .map_metadata
@@ -79,7 +81,7 @@ pub fn configure_flush_routines(
 
 /// set up the print_global_meta function for insertions
 fn setup_print_global_meta(
-    var_meta_str: &HashMap<u32, String>,
+    var_meta_str: &HashMap<u32, (OrcaType, String)>,
     wasm: &mut Module,
     table: &mut SymbolTable,
     io_adapter: &mut IOAdapter,
@@ -116,18 +118,23 @@ fn setup_print_global_meta(
     Metadata::print_csv_header(&mut print_global_meta, io_adapter, err);
 
     // for each of the report globals, emit the printing logic
-    for (key, val) in var_meta_str.iter() {
-        io_adapter.puts(
-            format!("i32, global_id, {key}, {val}, "),
-            &mut print_global_meta,
-            err,
-        );
+    let sorted_metadata = var_meta_str.iter().sorted_by_key(|data| data.0);
+
+    for (key, (ty, val)) in sorted_metadata.into_iter() {
+        io_adapter.puts(format!("{key}, {val}, "), &mut print_global_meta, err);
 
         // get the value of this report global
         print_global_meta.global_get(GlobalID(*key));
-        io_adapter.call_puti(&mut print_global_meta, err);
+        match ty {
+            DataType::I32 => io_adapter.call_puti32(&mut print_global_meta, err),
+            DataType::I64 => io_adapter.call_puti64(&mut print_global_meta, err),
+            DataType::F32 => io_adapter.call_putf32(&mut print_global_meta, err),
+            DataType::F64 => io_adapter.call_putf64(&mut print_global_meta, err),
+            _ => unimplemented!(),
+        }
         io_adapter.putln(&mut print_global_meta, err);
     }
+
     true
 }
 
@@ -168,7 +175,7 @@ fn setup_print_map_meta(
     };
 
     // for each of the report maps, emit the printing logic
-    for (key, val) in map_meta_str.iter() {
+    for (key, val) in map_meta_str.iter().sorted() {
         io_adapter.puts(
             format!("map, map_id, {key}, {val}, "),
             &mut print_map_meta,

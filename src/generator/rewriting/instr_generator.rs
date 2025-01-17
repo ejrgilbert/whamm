@@ -162,7 +162,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
     }
     fn set_curr_loc(&mut self, probe_rule: &ProbeRule, probe: &SimpleProbe) {
         let curr_script_id = probe.script_id;
-        self.emitter.curr_num_unshared = probe.num_unshared;
+        // todo -- this clone is bad
+        self.emitter.curr_unshared = probe.num_unshared.clone();
         let probe_rule_str = probe_rule.to_string();
         let curr_probe_id = format!("{}_{}", probe.probe_number, probe_rule_str);
         let loc = match self.emitter.app_iter.curr_loc().0 {
@@ -182,7 +183,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
             script_id: curr_script_id,
             bytecode_loc: loc,
             probe_id: curr_probe_id,
-            num_unshared: self.emitter.curr_num_unshared, //this is still used in the emitter to determine how many new globals to emit
+            // todo -- this clone is bad
+            unshared: self.emitter.curr_unshared.clone(), //this is still used in the emitter to determine how many new globals to emit
         };
     }
 }
