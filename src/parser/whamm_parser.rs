@@ -1,7 +1,7 @@
 use crate::common::error::{ErrorGen, WhammError};
 use crate::parser::types;
 use crate::parser::types::{
-    BinOp, Block, DataType, Definition, Expr, FloatLit, FnId, IntLit, Location, NumFmt, ProbeRule,
+    BinOp, Block, DataType, Definition, Expr, FnId, NumLit, Location, NumFmt, ProbeRule,
     Rule, RulePart, Script, Statement, UnOp, Value, Whamm, WhammParser, PRATT_PARSER,
 };
 use log::trace;
@@ -1483,11 +1483,11 @@ pub fn handle_int(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
         // By default, always parse hex and binary as signed
         if digits > 32 {
             if let Ok(val) = i64::from_str_radix(&to_parse, fmt.base()) {
-                Ok(IntLit::i64(val))
+                Ok(NumLit::i64(val))
             } else if fmt == NumFmt::Bin || fmt == NumFmt::Hex {
                 if let Ok(val) = u64::from_str_radix(&to_parse, fmt.base()) {
                     // convert and allow wrapping
-                    Ok(IntLit::i64(val as i64))
+                    Ok(NumLit::i64(val as i64))
                 } else {
                     Err("i32 OR u32")
                 }
@@ -1496,11 +1496,11 @@ pub fn handle_int(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
             }
         } else if digits >= 0 {
             if let Ok(val) = i32::from_str_radix(&to_parse, fmt.base()) {
-                Ok(IntLit::i32(val))
+                Ok(NumLit::i32(val))
             } else if fmt == NumFmt::Bin || fmt == NumFmt::Hex {
                 if let Ok(val) = u32::from_str_radix(&to_parse, fmt.base()) {
                     // convert and allow wrapping
-                    Ok(IntLit::i32(val as i32))
+                    Ok(NumLit::i32(val as i32))
                 } else {
                     Err("i32 OR u32")
                 }
@@ -1510,31 +1510,31 @@ pub fn handle_int(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
         } else {
             // num digits required is unknown, figure it out!
             if let Ok(val) = i32::from_str_radix(&to_parse, fmt.base()) {
-                Ok(IntLit::i32(val))
+                Ok(NumLit::i32(val))
             } else if let Ok(val) = i64::from_str_radix(&to_parse, fmt.base()) {
-                Ok(IntLit::i64(val))
+                Ok(NumLit::i64(val))
             } else {
                 Err("i32 OR i64")
             }
         }
     } else if digits >= 32 {
         if let Ok(val) = u64::from_str_radix(&to_parse, fmt.base()) {
-            Ok(IntLit::u64(val))
+            Ok(NumLit::u64(val))
         } else {
             Err("u64")
         }
     } else if digits >= 0 {
         if let Ok(val) = u32::from_str_radix(&to_parse, fmt.base()) {
-            Ok(IntLit::u32(val))
+            Ok(NumLit::u32(val))
         } else {
             Err("u32")
         }
     } else {
         // num digits required is unknown, figure it out!
         if let Ok(val) = u32::from_str_radix(&to_parse, fmt.base()) {
-            Ok(IntLit::u32(val))
+            Ok(NumLit::u32(val))
         } else if let Ok(val) = u64::from_str_radix(&to_parse, fmt.base()) {
-            Ok(IntLit::u64(val))
+            Ok(NumLit::u64(val))
         } else {
             Err("u32 OR u64")
         }
@@ -1542,7 +1542,7 @@ pub fn handle_int(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
 
     match val {
         Ok(val) => Ok(Expr::Primitive {
-            val: Value::Int {
+            val: Value::Number {
                 val,
                 ty: DataType::U32,
                 token: token.to_string(),
@@ -1569,19 +1569,19 @@ pub fn handle_float(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     let token = pair.as_str().to_lowercase().replace("_", "");
 
     // num digits required is unknown, figure it out!
-    let val = if let Ok(val) = f32::from_str(&token) {
-        let mut res = FloatLit::f32(val);
+    let (val, ty) = if let Ok(val) = f32::from_str(&token) {
+        let mut res = (NumLit::f32(val), DataType::F32);
         if val.is_infinite() && !token.contains("inf") {
             // try to parse as f64
             if let Ok(new_val) = f64::from_str(&token) {
                 if !new_val.is_infinite() {
-                    res = FloatLit::f64(new_val)
+                    res = (NumLit::f64(new_val), DataType::F64)
                 }
             }
         }
         res
     } else if let Ok(val) = f64::from_str(&token) {
-        FloatLit::f64(val)
+        (NumLit::f64(val), DataType::F64)
     } else {
         return Err(vec![ErrorGen::get_parse_error(
             true,
@@ -1593,8 +1593,9 @@ pub fn handle_float(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     };
 
     Ok(Expr::Primitive {
-        val: Value::Float {
+        val: Value::Number {
             val,
+            ty,
             token: token.to_string(),
             fmt: NumFmt::Dec,
         },

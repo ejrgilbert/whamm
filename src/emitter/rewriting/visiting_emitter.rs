@@ -16,7 +16,7 @@ use crate::lang_features::report_vars::ReportVars;
 use crate::parser;
 use crate::parser::rules::UNKNOWN_IMMS;
 use crate::parser::types::{
-    Block, DataType, Definition, Expr, FloatLit, IntLit, RulePart, Statement, Value,
+    Block, DataType, Definition, Expr, NumLit, RulePart, Statement, Value,
 };
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use itertools::Itertools;
@@ -160,8 +160,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 loc: None,
             };
             let mut block: Vec<Statement> = match val {
-                Some(Value::Int {
-                    val: IntLit::U32 { val },
+                Some(Value::Number {
+                    val: NumLit::U32 { val },
                     ..
                 }) => {
                     // create a declaration
@@ -181,8 +181,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     };
                     vec![decl, assign]
                 }
-                Some(Value::Int {
-                    val: IntLit::I32 { val },
+                Some(Value::Number {
+                    val: NumLit::I32 { val },
                     ..
                 }) => {
                     // create a declaration
@@ -202,8 +202,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     };
                     vec![decl, assign]
                 }
-                Some(Value::Float {
-                    val: FloatLit::F32 { val },
+                Some(Value::Number {
+                    val: NumLit::F32 { val },
                     ..
                 }) => {
                     // create a declaration
@@ -223,8 +223,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     };
                     vec![decl, assign]
                 }
-                Some(Value::Int {
-                    val: IntLit::U64 { val },
+                Some(Value::Number {
+                    val: NumLit::U64 { val },
                     ..
                 }) => {
                     // create a declaration
@@ -244,8 +244,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     };
                     vec![decl, assign]
                 }
-                Some(Value::Int {
-                    val: IntLit::I64 { val },
+                Some(Value::Number {
+                    val: NumLit::I64 { val },
                     ..
                 }) => {
                     // create a declaration
@@ -265,8 +265,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     };
                     vec![decl, assign]
                 }
-                Some(Value::Float {
-                    val: FloatLit::F64 { val },
+                Some(Value::Number {
+                    val: NumLit::F64 { val },
                     ..
                 }) => {
                     // create a declaration
@@ -668,8 +668,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         let func_id = match args.iter().next().unwrap() {
             Expr::Primitive {
                 val:
-                    Value::Int {
-                        val: IntLit::I32 { val },
+                    Value::Number {
+                        val: NumLit::I32 { val },
                         ..
                     },
                 ..

@@ -1,6 +1,6 @@
 use crate::common::error::ErrorGen;
 use crate::parser::types::{
-    BinOp, DataType, Definition, Expr, FloatLit, IntLit, Location, UnOp, Value,
+    BinOp, DataType, Definition, Expr, NumLit, Location, UnOp, Value,
 };
 use crate::verifier::types::Record::Var;
 use crate::verifier::types::{Record, SymbolTable};
@@ -1176,8 +1176,8 @@ impl ExprFolder {
         match expr {
             Expr::Primitive {
                 val:
-                    Value::Int {
-                        val: IntLit::I32 { val },
+                    Value::Number {
+                        val: NumLit::I32 { val },
                         ..
                     },
                 ..
@@ -1192,8 +1192,8 @@ impl ExprFolder {
         match expr {
             Expr::Primitive {
                 val:
-                    Value::Int {
-                        val: IntLit::U32 { val },
+                    Value::Number {
+                        val: NumLit::U32 { val },
                         ..
                     },
                 ..
@@ -1208,8 +1208,8 @@ impl ExprFolder {
         match expr {
             Expr::Primitive {
                 val:
-                    Value::Int {
-                        val: IntLit::I64 { val },
+                    Value::Number {
+                        val: NumLit::I64 { val },
                         ..
                     },
                 ..
@@ -1224,8 +1224,8 @@ impl ExprFolder {
         match expr {
             Expr::Primitive {
                 val:
-                    Value::Int {
-                        val: IntLit::U64 { val },
+                    Value::Number {
+                        val: NumLit::U64 { val },
                         ..
                     },
                 ..
@@ -1240,8 +1240,8 @@ impl ExprFolder {
         match expr {
             Expr::Primitive {
                 val:
-                    Value::Float {
-                        val: FloatLit::F32 { val },
+                    Value::Number {
+                        val: NumLit::F32 { val },
                         ..
                     },
                 ..
@@ -1256,8 +1256,8 @@ impl ExprFolder {
         match expr {
             Expr::Primitive {
                 val:
-                    Value::Float {
-                        val: FloatLit::F64 { val },
+                    Value::Number {
+                        val: NumLit::F64 { val },
                         ..
                     },
                 ..

@@ -1159,7 +1159,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
 
     fn visit_value(&mut self, val: &mut Value) -> Option<DataType> {
         match val {
-            Value::Int { .. } | Value::Float { .. } | Value::Boolean { .. } => {
+            Value::Number { .. } | Value::Boolean { .. } => {
                 if let Some(exp_ty) = &self.assign_ty {
                     let val_ty = val.ty();
                     if *exp_ty == val_ty {

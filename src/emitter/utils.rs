@@ -7,7 +7,7 @@ use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::lang_features::report_vars::ReportVars;
 use crate::parser::types::{
-    BinOp, Block, DataType, Definition, Expr, FloatLit, IntLit, Location, Statement, UnOp, Value,
+    BinOp, Block, DataType, Definition, Expr, NumLit, Location, Statement, UnOp, Value,
 };
 use crate::verifier::types::{line_col_from_loc, Record, SymbolTable, VarAddr};
 use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
@@ -1619,8 +1619,8 @@ fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 ) -> bool {
     let mut is_success = true;
     match val {
-        Value::Int { val, ty, .. } => match val {
-            IntLit::U32 { val } => {
+        Value::Number { val, ty, .. } => match val {
+            NumLit::U32 { val } => {
                 // handle what's represented as u32s in the compiler
                 match ty {
                     DataType::U8 => injector.u32_const((*val as u8) as u32),
@@ -1632,25 +1632,23 @@ fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 };
                 is_success &= true;
             }
-            IntLit::I32 { val } => {
+            NumLit::I32 { val } => {
                 injector.i32_const(*val);
                 is_success &= true;
             }
-            IntLit::U64 { val } => {
+            NumLit::U64 { val } => {
                 injector.u64_const(*val);
                 is_success &= true;
             }
-            IntLit::I64 { val } => {
+            NumLit::I64 { val } => {
                 injector.i64_const(*val);
                 is_success &= true;
             }
-        },
-        Value::Float { val, .. } => match val {
-            FloatLit::F32 { val } => {
+            NumLit::F32 { val } => {
                 injector.f32_const(*val);
                 is_success &= true;
             }
-            FloatLit::F64 { val } => {
+            NumLit::F64 { val } => {
                 injector.f64_const(*val);
                 is_success &= true;
             }

@@ -520,7 +520,7 @@ impl WhammVisitor<String> for AsStrVisitor {
                 s += &format!("{}", val);
                 s
             }
-            Value::Int { token, .. } | Value::Float { token, .. } => token.clone(),
+            Value::Number { token, .. } => token.clone(),
             Value::Str { val, .. } => {
                 let mut s = "".to_string();
                 s += &format!("\"{}\"", val);
