@@ -754,7 +754,11 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     }
 }
 
-fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut T) -> bool {
+fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
+    op: &BinOp,
+    done_on: &DataType,
+    injector: &mut T,
+) -> bool {
     match op {
         BinOp::And => {
             match done_on {
@@ -1198,8 +1202,68 @@ fn emit_binop<'a, T: Opcode<'a>>(op: &BinOp, done_on: &DataType, injector: &mut 
                 DataType::U32 => injector.i32_rem_unsigned(),
                 DataType::U64 => injector.i64_rem_unsigned(),
                 DataType::I64 => injector.i64_rem_signed(),
-                DataType::F32 => unimplemented!(), // todo -- maybe require a cast to an int?
-                DataType::F64 => unimplemented!(), // todo -- maybe require a cast to an int?
+                #[rustfmt::skip]
+                DataType::F32 => {
+                    let a = injector.add_local(OrcaType::F32);
+                    let b = injector.add_local(OrcaType::F32);
+
+                    // Step 0: Do some stack juggling
+                    injector.local_set(b)
+                        .local_set(a)
+                        .local_get(a)
+                        .local_get(b)
+
+                        // Step 1: Divide a by b
+                        .f32_div()
+
+                        // Step 2: Floor the result
+                        .f32_floor()
+
+                        // Step 3: Multiply the floor result by b
+                        .local_get(b)
+                        .f32_mul()
+                        .local_set(b)
+
+                        // Step 4: Subtract the result of the multiplication from a to get the remainder
+                        .local_get(a)
+                        .local_get(b)
+                        .f32_sub()
+
+                        // Step 5: Make sure the sign is the same as the first operand
+                        .local_get(a)
+                        .f32_copysign()
+                }
+                #[rustfmt::skip]
+                DataType::F64 => {
+                    let a = injector.add_local(OrcaType::F64);
+                    let b = injector.add_local(OrcaType::F64);
+
+                    // Step 0: Do some stack juggling
+                    injector.local_set(b)
+                        .local_set(a)
+                        .local_get(a)
+                        .local_get(b)
+
+                        // Step 1: Divide a by b
+                        .f64_div()
+
+                        // Step 2: Floor the result
+                        .f64_floor()
+
+                        // Step 3: Multiply the floor result by b
+                        .local_get(b)
+                        .f64_mul()
+                        .local_set(b)
+
+                        // Step 4: Subtract the result of the multiplication from a to get the remainder
+                        .local_get(a)
+                        .local_get(b)
+                        .f64_sub()
+
+                        // Step 5: Make sure the sign is the same as the first operand
+                        .local_get(a)
+                        .f64_copysign()
+                }
                 DataType::AssumeGood => {
                     // TODO -- fix after type bounds are implemented
                     injector.i32_rem_signed()

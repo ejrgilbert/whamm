@@ -151,10 +151,10 @@ pub fn puti64(i: i64) {
 
 #[no_mangle]
 pub fn putf32(f: f32) {
-    print(&format!("{f}"));
+    print(&format!("{:+e}", f));
 }
 
 #[no_mangle]
 pub fn putf64(f: f64) {
-    print(&format!("{f}"));
+    print(&format!("{:+e}", f));
 }

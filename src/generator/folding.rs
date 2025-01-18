@@ -2,7 +2,7 @@ use crate::common::error::ErrorGen;
 use crate::parser::types::{BinOp, DataType, Definition, Expr, Location, NumLit, UnOp, Value};
 use crate::verifier::types::Record::Var;
 use crate::verifier::types::{Record, SymbolTable};
-use std::ops::{Add, Div, Mul, Sub};
+use std::ops::{Add, Div, Mul, Rem, Sub};
 
 // =======================================
 // = Constant Propagation via ExprFolder =
@@ -701,7 +701,6 @@ impl ExprFolder {
         lhs_val: &Option<i64>,
         rhs_val: &Option<i64>,
         op: &BinOp,
-        // done_on: &DataType,
         err: &mut ErrorGen,
     ) -> Option<Expr> {
         if let Some(lhs_int) = lhs_val {
@@ -784,7 +783,6 @@ impl ExprFolder {
         lhs_val: &Option<u64>,
         rhs_val: &Option<u64>,
         op: &BinOp,
-        // done_on: &DataType,
         err: &mut ErrorGen,
     ) -> Option<Expr> {
         if let Some(lhs_int) = lhs_val {
@@ -868,7 +866,6 @@ impl ExprFolder {
         lhs_val: &Option<f32>,
         rhs_val: &Option<f32>,
         op: &BinOp,
-        // done_on: &DataType,
         err: &mut ErrorGen,
     ) -> Option<Expr> {
         if let Some(lhs_int) = lhs_val {
@@ -936,7 +933,7 @@ impl ExprFolder {
                             err.div_by_zero(self.curr_loc.clone())
                         }
                         Some(Expr::Primitive {
-                            val: Value::gen_f32(lhs_int % rhs_int),
+                            val: Value::gen_f32(lhs_int.rem(rhs_int)),
                             loc: None,
                         })
                     }
@@ -952,7 +949,6 @@ impl ExprFolder {
         lhs_val: &Option<f64>,
         rhs_val: &Option<f64>,
         op: &BinOp,
-        // done_on: &DataType,
         err: &mut ErrorGen,
     ) -> Option<Expr> {
         if let Some(lhs_int) = lhs_val {
@@ -1020,7 +1016,7 @@ impl ExprFolder {
                             err.div_by_zero(self.curr_loc.clone())
                         }
                         Some(Expr::Primitive {
-                            val: Value::gen_f64(lhs_int % rhs_int),
+                            val: Value::gen_f64(lhs_int.rem(rhs_int)),
                             loc: None,
                         })
                     }
