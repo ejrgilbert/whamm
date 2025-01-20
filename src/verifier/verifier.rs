@@ -17,6 +17,7 @@ pub fn type_check(ast: &mut Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> 
         err,
         in_script_global: false,
         in_function: false,
+        outer_cast_fixes_assign: false,
         assign_ty: None,
     };
     type_checker.visit_whamm(ast);
@@ -117,6 +118,7 @@ struct TypeChecker<'a> {
     in_function: bool,
 
     // bookkeeping for casting
+    outer_cast_fixes_assign: bool,
     assign_ty: Option<DataType>,
 }
 
@@ -348,6 +350,12 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 let lhs_loc = var_id.loc().clone().unwrap();
                 let rhs_loc = expr.loc().clone().unwrap();
                 let lhs_ty_op = self.visit_expr(var_id);
+
+                if let Some(lhs_ty) = &lhs_ty_op {
+                    if let Expr::UnOp {op: UnOp::Cast {target}, ..} = expr {
+                        self.outer_cast_fixes_assign = lhs_ty == target;
+                    }
+                }
                 self.assign_ty = lhs_ty_op.clone();
                 let rhs_ty_op = self.visit_expr(expr);
 
@@ -392,6 +400,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     );
                     None
                 };
+                self.outer_cast_fixes_assign = false;
                 self.assign_ty = None;
                 res
             }
@@ -589,48 +598,45 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 return Some(lhs_ty);
                             }
 
-                            if let Some(exp_ty) = &self.assign_ty {
-                                if *exp_ty == lhs_ty {
-                                    if lhs_ty == rhs_ty {
-                                        Some(lhs_ty)
-                                    } else {
-                                        let loc = Location::from(
-                                            &lhs_loc.line_col,
-                                            &rhs_loc.line_col,
-                                            None,
-                                        );
-                                        if attempt_implicit_cast(
-                                            rhs, exp_ty, &rhs_ty, loc, "value", self.err,
-                                        ) {
-                                            Some(exp_ty.clone())
+                            if !self.outer_cast_fixes_assign {
+                                if let Some(exp_ty) = &self.assign_ty {
+                                    if *exp_ty == lhs_ty {
+                                        if lhs_ty == rhs_ty {
+                                            return Some(lhs_ty);
                                         } else {
-                                            Some(DataType::AssumeGood)
+                                            let loc = Location::from(
+                                                &lhs_loc.line_col,
+                                                &rhs_loc.line_col,
+                                                None,
+                                            );
+                                            if attempt_implicit_cast(
+                                                rhs, exp_ty, &rhs_ty, loc, "value", self.err,
+                                            ) {
+                                                return Some(exp_ty.clone());
+                                            }
                                         }
-                                    }
-                                } else {
-                                    let loc =
-                                        Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
-                                    if attempt_implicit_cast(
-                                        lhs, exp_ty, &lhs_ty, loc, "value", self.err,
-                                    ) {
-                                        Some(exp_ty.clone())
                                     } else {
-                                        Some(DataType::AssumeGood)
+                                        let loc =
+                                            Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
+                                        if attempt_implicit_cast(
+                                            lhs, exp_ty, &lhs_ty, loc, "value", self.err,
+                                        ) {
+                                            return Some(exp_ty.clone());
+                                        }
                                     }
                                 }
                             } else if lhs_ty == rhs_ty {
-                                Some(lhs_ty)
+                                return Some(lhs_ty);
                             } else {
                                 let loc =
                                     Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
                                 if attempt_implicit_cast(
                                     rhs, &lhs_ty, &rhs_ty, loc, "value", self.err,
                                 ) {
-                                    Some(lhs_ty)
-                                } else {
-                                    Some(DataType::AssumeGood)
+                                    return Some(lhs_ty);
                                 }
                             }
+                            return Some(DataType::AssumeGood)
                         }
                         BinOp::And | BinOp::Or => {
                             if matches!(lhs_ty, DataType::AssumeGood)
@@ -760,9 +766,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             // we can remove the cast from the AST!
                             let t = target.clone();
                             *done_on = expr_ty.clone();
-                            // if expr_ty.is_compatible_with(target) {
-                            //     *expr = *inner_expr.to_owned();
-                            // }
                             Some(t)
                         }
                         UnOp::Not => {
@@ -1059,24 +1062,26 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
     fn visit_value(&mut self, val: &mut Value) -> Option<DataType> {
         match val {
             Value::Number { .. } | Value::Boolean { .. } => {
-                if let Some(exp_ty) = &self.assign_ty {
-                    let val_ty = val.ty();
-                    if *exp_ty == val_ty {
-                        Some(val_ty)
-                    } else if exp_ty.can_implicitly_cast() && val_ty.can_implicitly_cast() {
-                        match val.implicit_cast(exp_ty) {
-                            Ok(_) => Some(val.ty()),
-                            Err(msg) => {
-                                self.err.type_check_error(false, format!("CastError: Cannot implicitly cast {msg}. Please add an explicit cast."), &None);
-                                return Some(DataType::AssumeGood);
+                if !self.outer_cast_fixes_assign {
+                    if let Some(exp_ty) = &self.assign_ty {
+                        let val_ty = val.ty();
+                        if *exp_ty == val_ty {
+                            return Some(val_ty);
+                        } else if exp_ty.can_implicitly_cast() && val_ty.can_implicitly_cast() {
+                            match val.implicit_cast(exp_ty) {
+                                Ok(_) => return Some(val.ty()),
+                                Err(msg) => {
+                                    self.err.type_check_error(false, format!("CastError: Cannot implicitly cast {msg}. Please add an explicit cast."), &None);
+                                    return Some(DataType::AssumeGood);
+                                }
                             }
+                        } else {
+                            return Some(DataType::Unknown);
                         }
-                    } else {
-                        Some(DataType::Unknown)
                     }
-                } else {
-                    Some(val.ty())
                 }
+                return Some(val.ty());
+
             }
             Value::Str { .. } => Some(DataType::Str),
             Value::U32U32Map { .. } => Some(DataType::Map {
@@ -1124,11 +1129,11 @@ fn attempt_implicit_cast(
 ) -> bool {
     if exp_ty.can_implicitly_cast() && actual_ty.can_implicitly_cast() {
         // try to implicitly do a cast here
-        if let Err((msg, fatal)) = to_cast.implicit_cast(exp_ty) {
-            err.type_check_error(fatal, msg, &Some(loc.line_col));
-            return false;
+        return if let Err((msg, fatal)) = to_cast.implicit_cast(exp_ty) {
+                err.type_check_error(fatal, msg, &Some(loc.line_col));
+            false
         } else {
-            return true;
+            true
         }
     } else {
         err.type_check_error(

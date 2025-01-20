@@ -1637,9 +1637,9 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
                     // should've been handled by type checker
                     unreachable!();
                 }
-                _ => {
+                (from, to) => {
                     // should've been handled by type checker
-                    unreachable!();
+                    unreachable!("{} to {}", from, to);
                 }
             };
         }
