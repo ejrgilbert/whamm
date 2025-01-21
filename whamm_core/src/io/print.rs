@@ -130,6 +130,26 @@ pub fn putc(c: u8) {
 }
 
 #[no_mangle]
+pub fn putu8(i: u8) {
+    print(&format!("{i}"));
+}
+
+#[no_mangle]
+pub fn puti8(i: i8) {
+    print(&format!("{i}"));
+}
+
+#[no_mangle]
+pub fn putu16(i: u16) {
+    print(&format!("{i}"));
+}
+
+#[no_mangle]
+pub fn puti16(i: i16) {
+    print(&format!("{i}"));
+}
+
+#[no_mangle]
 pub fn putu32(i: u32) {
     print(&format!("{i}"));
 }

@@ -352,7 +352,11 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 let lhs_ty_op = self.visit_expr(var_id);
 
                 if let Some(lhs_ty) = &lhs_ty_op {
-                    if let Expr::UnOp {op: UnOp::Cast {target}, ..} = expr {
+                    if let Expr::UnOp {
+                        op: UnOp::Cast { target },
+                        ..
+                    } = expr
+                    {
                         self.outer_cast_fixes_assign = lhs_ty == target;
                     }
                 }
@@ -362,16 +366,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 let res = if let (Some(lhs_ty), Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {
                     if lhs_ty == rhs_ty {
                         None
-                    } else if rhs_ty.can_implicitly_cast()
-                        && lhs_ty.can_implicitly_cast()
-                        && !matches!(
-                            expr,
-                            Expr::UnOp {
-                                op: UnOp::Cast { .. },
-                                ..
-                            }
-                        )
-                    {
+                    } else if rhs_ty.can_implicitly_cast() && lhs_ty.can_implicitly_cast() {
                         match expr.implicit_cast(&lhs_ty) {
                             Ok(_) => None,
                             Err((msg, fatal)) => {
@@ -616,8 +611,11 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                             }
                                         }
                                     } else {
-                                        let loc =
-                                            Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
+                                        let loc = Location::from(
+                                            &lhs_loc.line_col,
+                                            &rhs_loc.line_col,
+                                            None,
+                                        );
                                         if attempt_implicit_cast(
                                             lhs, exp_ty, &lhs_ty, loc, "value", self.err,
                                         ) {
@@ -636,7 +634,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                     return Some(lhs_ty);
                                 }
                             }
-                            return Some(DataType::AssumeGood)
+                            Some(DataType::AssumeGood)
                         }
                         BinOp::And | BinOp::Or => {
                             if matches!(lhs_ty, DataType::AssumeGood)
@@ -1080,8 +1078,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         }
                     }
                 }
-                return Some(val.ty());
-
+                Some(val.ty())
             }
             Value::Str { .. } => Some(DataType::Str),
             Value::U32U32Map { .. } => Some(DataType::Map {
@@ -1130,11 +1127,11 @@ fn attempt_implicit_cast(
     if exp_ty.can_implicitly_cast() && actual_ty.can_implicitly_cast() {
         // try to implicitly do a cast here
         return if let Err((msg, fatal)) = to_cast.implicit_cast(exp_ty) {
-                err.type_check_error(fatal, msg, &Some(loc.line_col));
+            err.type_check_error(fatal, msg, &Some(loc.line_col));
             false
         } else {
             true
-        }
+        };
     } else {
         err.type_check_error(
             false,

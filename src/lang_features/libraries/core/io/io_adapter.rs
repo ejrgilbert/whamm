@@ -10,6 +10,10 @@ use std::collections::HashMap;
 
 pub const PUTS: &str = "puts";
 pub const PUTC: &str = "putc";
+pub const PUTU8: &str = "putu8";
+pub const PUTI8: &str = "puti8";
+pub const PUTU16: &str = "putu16";
+pub const PUTI16: &str = "puti16";
 pub const PUTU32: &str = "putu32";
 pub const PUTI32: &str = "puti32";
 pub const PUTU64: &str = "putu64";
@@ -47,6 +51,10 @@ impl IOAdapter {
     pub fn new() -> Self {
         let funcs = HashMap::from([
             (PUTC.to_string(), 0),
+            (PUTU8.to_string(), 0),
+            (PUTI8.to_string(), 0),
+            (PUTU16.to_string(), 0),
+            (PUTI16.to_string(), 0),
             (PUTU32.to_string(), 0),
             (PUTI32.to_string(), 0),
             (PUTU64.to_string(), 0),
@@ -152,6 +160,38 @@ impl IOAdapter {
         err: &mut ErrorGen,
     ) {
         self.puts("\n".to_string(), func, err)
+    }
+
+    pub fn call_putu8<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        func: &mut T,
+        err: &mut ErrorGen,
+    ) {
+        self.call(PUTU8, func, err);
+    }
+
+    pub fn call_puti8<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        func: &mut T,
+        err: &mut ErrorGen,
+    ) {
+        self.call(PUTI8, func, err);
+    }
+
+    pub fn call_putu16<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        func: &mut T,
+        err: &mut ErrorGen,
+    ) {
+        self.call(PUTU16, func, err);
+    }
+
+    pub fn call_puti16<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        func: &mut T,
+        err: &mut ErrorGen,
+    ) {
+        self.call(PUTI16, func, err);
     }
 
     pub fn call_putu32<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(

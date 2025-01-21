@@ -1282,6 +1282,9 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
 }
 
 fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T) -> bool {
+    // if let UnOp::Cast {target} = op {
+    //     println!("EMIT: from {} to {}", done_on, target);
+    // }
     match op {
         UnOp::Cast { target } => {
             match (done_on, target) {
@@ -1319,6 +1322,9 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
                 (DataType::I8, DataType::U16 | DataType::I16) => {
                     // sign extend
                     injector.i32_extend_8s();
+                    //  truncating cast for ints (zero out higher bits)
+                    injector.i32_const(0xFFFF);
+                    injector.i32_and();
                 }
                 (DataType::I8, DataType::I32 | DataType::U32) => {
                     // sign extend
@@ -1683,17 +1689,25 @@ fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 ) -> bool {
     let mut is_success = true;
     match val {
-        Value::Number { val, ty, .. } => match val {
+        Value::Number { val, .. } => match val {
+            NumLit::I8 { val } => {
+                injector.u32_const(*val as u32);
+                is_success &= true;
+            }
+            NumLit::U8 { val } => {
+                injector.u32_const(*val as u32);
+                is_success &= true;
+            }
+            NumLit::I16 { val } => {
+                injector.u32_const(*val as u32);
+                is_success &= true;
+            }
+            NumLit::U16 { val } => {
+                injector.u32_const(*val as u32);
+                is_success &= true;
+            }
             NumLit::U32 { val } => {
-                // handle what's represented as u32s in the compiler
-                match ty {
-                    DataType::U8 => injector.u32_const((*val as u8) as u32),
-                    DataType::I8 => injector.u32_const((*val as i8) as u32),
-                    DataType::U16 => injector.u32_const((*val as u16) as u32),
-                    DataType::I16 => injector.u32_const((*val as i16) as u32),
-                    DataType::U32 => injector.u32_const(*val),
-                    _ => unreachable!(),
-                };
+                injector.u32_const(*val);
                 is_success &= true;
             }
             NumLit::I32 { val } => {

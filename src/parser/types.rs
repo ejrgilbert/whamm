@@ -457,6 +457,10 @@ impl DataType {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum NumLit {
+    I8 { val: i8 },
+    U8 { val: u8 },
+    I16 { val: i16 },
+    U16 { val: u16 },
     I32 { val: i32 },
     U32 { val: u32 },
     I64 { val: i64 },
@@ -467,9 +471,11 @@ pub enum NumLit {
 impl NumLit {
     fn implicit_cast(&mut self, target: &DataType) -> Result<(), String> {
         match target {
-            DataType::U8 | DataType::I8 | DataType::U16 | DataType::I16 | DataType::U32 => {
-                self.as_u32()
-            }
+            DataType::U8 => self.as_u8(),
+            DataType::I8 => self.as_i8(),
+            DataType::U16 => self.as_u16(),
+            DataType::I16 => self.as_i16(),
+            DataType::U32 => self.as_u32(),
             DataType::I32 => self.as_i32(),
             DataType::U64 => self.as_u64(),
             DataType::I64 => self.as_i64(),
@@ -478,8 +484,76 @@ impl NumLit {
             _ => Err(format!("{} to {}", self.ty(), target)),
         }
     }
+    pub fn as_u8(&mut self) -> Result<(), String> {
+        let new = match self {
+            NumLit::I8 { val } => *val as u8,
+            NumLit::U8 { val } => *val,
+            NumLit::I16 { val } => (*val & 0xFF) as u8,
+            NumLit::U16 { val } => (*val & 0xFF) as u8,
+            NumLit::I32 { val } => (*val & 0xFF) as u8,
+            NumLit::U32 { val } => (*val & 0xFF) as u8,
+            NumLit::I64 { val } => (*val & 0xFF) as u8,
+            NumLit::U64 { val } => (*val & 0xFF) as u8,
+            NumLit::F32 { val } => val.trunc() as u8,
+            NumLit::F64 { val } => val.trunc() as u8,
+        };
+        *self = Self::u8(new);
+        Ok(())
+    }
+    pub fn as_i8(&mut self) -> Result<(), String> {
+        let new = match self {
+            NumLit::I8 { val } => *val,
+            NumLit::U8 { val } => *val as i8,
+            NumLit::I16 { val } => (*val & 0xFF) as i8,
+            NumLit::U16 { val } => (*val & 0xFF) as i8,
+            NumLit::I32 { val } => (*val & 0xFF) as i8,
+            NumLit::U32 { val } => (*val & 0xFF) as i8,
+            NumLit::I64 { val } => (*val & 0xFF) as i8,
+            NumLit::U64 { val } => (*val & 0xFF) as i8,
+            NumLit::F32 { val } => val.trunc() as i8,
+            NumLit::F64 { val } => val.trunc() as i8,
+        };
+        *self = Self::i8(new);
+        Ok(())
+    }
+    pub fn as_u16(&mut self) -> Result<(), String> {
+        let new = match self {
+            NumLit::I8 { val } => *val as u16,
+            NumLit::U8 { val } => *val as u16,
+            NumLit::I16 { val } => *val as u16,
+            NumLit::U16 { val } => *val,
+            NumLit::I32 { val } => (*val & 0xFFFF) as u16,
+            NumLit::U32 { val } => (*val & 0xFFFF) as u16,
+            NumLit::I64 { val } => (*val & 0xFFFF) as u16,
+            NumLit::U64 { val } => (*val & 0xFFFF) as u16,
+            NumLit::F32 { val } => val.trunc() as u16,
+            NumLit::F64 { val } => val.trunc() as u16,
+        };
+        *self = Self::u16(new);
+        Ok(())
+    }
+    pub fn as_i16(&mut self) -> Result<(), String> {
+        let new = match self {
+            NumLit::I8 { val } => *val as i16,
+            NumLit::U8 { val } => *val as i16,
+            NumLit::I16 { val } => *val,
+            NumLit::U16 { val } => *val as i16,
+            NumLit::I32 { val } => (*val & 0xFFFF) as i16,
+            NumLit::U32 { val } => (*val & 0xFFFF) as i16,
+            NumLit::I64 { val } => (*val & 0xFFFF) as i16,
+            NumLit::U64 { val } => (*val & 0xFFFF) as i16,
+            NumLit::F32 { val } => val.trunc() as i16,
+            NumLit::F64 { val } => val.trunc() as i16,
+        };
+        *self = Self::i16(new);
+        Ok(())
+    }
     pub fn as_u32(&mut self) -> Result<(), String> {
         let new = match self {
+            NumLit::I8 { val } => *val as u32,
+            NumLit::U8 { val } => *val as u32,
+            NumLit::I16 { val } => *val as u32,
+            NumLit::U16 { val } => *val as u32,
             NumLit::I32 { val } => {
                 // always fits
                 *val as u32
@@ -515,6 +589,10 @@ impl NumLit {
     }
     pub fn as_i32(&mut self) -> Result<(), String> {
         let new = match self {
+            NumLit::I8 { val } => *val as i32,
+            NumLit::U8 { val } => *val as i32,
+            NumLit::I16 { val } => *val as i32,
+            NumLit::U16 { val } => *val as i32,
             NumLit::I32 { .. } => return Ok(()),
             NumLit::U32 { val } => {
                 if *val > i32::MAX as u32 {
@@ -552,6 +630,10 @@ impl NumLit {
     }
     pub fn as_u64(&mut self) -> Result<(), String> {
         let new = match self {
+            NumLit::I8 { val } => *val as u64,
+            NumLit::U8 { val } => *val as u64,
+            NumLit::I16 { val } => *val as u64,
+            NumLit::U16 { val } => *val as u64,
             NumLit::I32 { val } => {
                 // always fits
                 *val as u64
@@ -583,6 +665,10 @@ impl NumLit {
     }
     pub fn as_i64(&mut self) -> Result<(), String> {
         let new = match self {
+            NumLit::I8 { val } => *val as i64,
+            NumLit::U8 { val } => *val as i64,
+            NumLit::I16 { val } => *val as i64,
+            NumLit::U16 { val } => *val as i64,
             NumLit::I32 { val } => {
                 // always fits
                 *val as i64
@@ -616,6 +702,10 @@ impl NumLit {
     }
     pub fn as_f32(&mut self) -> Result<(), String> {
         let new = match self {
+            NumLit::I8 { val } => *val as f32,
+            NumLit::U8 { val } => *val as f32,
+            NumLit::I16 { val } => *val as f32,
+            NumLit::U16 { val } => *val as f32,
             NumLit::I32 { val } => {
                 if *val < f32::MIN as i32 || *val > f32::MAX as i32 {
                     return Err("out of min/max range".to_string());
@@ -653,6 +743,10 @@ impl NumLit {
     }
     pub fn as_f64(&mut self) -> Result<(), String> {
         let new = match self {
+            NumLit::I8 { val } => *val as f64,
+            NumLit::U8 { val } => *val as f64,
+            NumLit::I16 { val } => *val as f64,
+            NumLit::U16 { val } => *val as f64,
             NumLit::I32 { val } => {
                 if *val < f64::MIN as i32 || *val > f64::MAX as i32 {
                     return Err("out of min/max range".to_string());
@@ -688,6 +782,10 @@ impl NumLit {
     }
     pub fn is_true_ish(&self) -> bool {
         match self {
+            NumLit::I8 { val } => *val != 0,
+            NumLit::U8 { val } => *val != 0,
+            NumLit::I16 { val } => *val != 0,
+            NumLit::U16 { val } => *val != 0,
             NumLit::I32 { val } => *val != 0,
             NumLit::U32 { val } => *val != 0,
             NumLit::I64 { val } => *val != 0,
@@ -695,6 +793,18 @@ impl NumLit {
             NumLit::F32 { val } => *val != 0f32,
             NumLit::F64 { val } => *val != 0f64,
         }
+    }
+    pub fn i8(val: i8) -> Self {
+        Self::I8 { val }
+    }
+    pub fn u8(val: u8) -> Self {
+        Self::U8 { val }
+    }
+    pub fn i16(val: i16) -> Self {
+        Self::I16 { val }
+    }
+    pub fn u16(val: u16) -> Self {
+        Self::U16 { val }
     }
     pub fn i32(val: i32) -> Self {
         Self::I32 { val }
@@ -716,6 +826,10 @@ impl NumLit {
     }
     pub fn ty(&self) -> DataType {
         match self {
+            NumLit::I8 { .. } => DataType::I8,
+            NumLit::U8 { .. } => DataType::U8,
+            NumLit::I16 { .. } => DataType::I16,
+            NumLit::U16 { .. } => DataType::U16,
             NumLit::I32 { .. } => DataType::I32,
             NumLit::U32 { .. } => DataType::U32,
             NumLit::I64 { .. } => DataType::I64,
@@ -768,17 +882,17 @@ pub enum Value {
     },
 }
 impl Value {
-    pub fn gen_u8(val: u32) -> Self {
-        Self::gen_num(NumLit::u32(val), DataType::U8)
+    pub fn gen_u8(val: u8) -> Self {
+        Self::gen_num(NumLit::u8(val), DataType::U8)
     }
-    pub fn gen_i8(val: u32) -> Self {
-        Self::gen_num(NumLit::u32(val), DataType::I8)
+    pub fn gen_i8(val: i8) -> Self {
+        Self::gen_num(NumLit::i8(val), DataType::I8)
     }
-    pub fn gen_u16(val: u32) -> Self {
-        Self::gen_num(NumLit::u32(val), DataType::U16)
+    pub fn gen_u16(val: u16) -> Self {
+        Self::gen_num(NumLit::u16(val), DataType::U16)
     }
-    pub fn gen_i16(val: u32) -> Self {
-        Self::gen_num(NumLit::u32(val), DataType::I16)
+    pub fn gen_i16(val: i16) -> Self {
+        Self::gen_num(NumLit::i16(val), DataType::I16)
     }
     pub fn gen_u32(val: u32) -> Self {
         Self::gen_num(NumLit::u32(val), DataType::U32)

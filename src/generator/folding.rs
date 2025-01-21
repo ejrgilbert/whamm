@@ -268,6 +268,9 @@ impl ExprFolder {
 
     // similar to the logic of fold_binop
     fn fold_unop(&mut self, unop: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
+        // if let Expr::UnOp{ op: UnOp::Cast { target }, done_on, .. } = unop {
+        //     println!("FOLD: from {} to {}", done_on, target);
+        // }
         self.curr_loc = unop.loc().clone();
         if let Expr::UnOp {
             op, expr, done_on, ..
@@ -278,7 +281,7 @@ impl ExprFolder {
                 UnOp::Cast { target } => match &expr {
                     Expr::Primitive { val, .. } => {
                         let mut casted = val.clone();
-                        match casted.check_explicit_cast(target) {
+                        match casted.do_explicit_cast(target) {
                             Ok(()) => Expr::Primitive {
                                 val: casted,
                                 loc: None,
@@ -293,8 +296,8 @@ impl ExprFolder {
                             },
                         }
                     }
-                    Expr::UnOp { .. } => self.fold_unop(&expr, table, err),
-                    Expr::Ternary { .. }
+                    Expr::UnOp { .. }
+                    | Expr::Ternary { .. }
                     | Expr::BinOp { .. }
                     | Expr::Call { .. }
                     | Expr::VarId { .. }
@@ -525,26 +528,22 @@ impl ExprFolder {
                         // handle what's represented as u32s in the compiler
                         match done_on {
                             DataType::U8 => Some(Expr::Primitive {
-                                val: Value::gen_u8(
-                                    (*lhs_int as u8).wrapping_add(*rhs_int as u8) as u32
-                                ),
+                                val: Value::gen_u8((*lhs_int as u8).wrapping_add(*rhs_int as u8)),
                                 loc: None,
                             }),
                             DataType::I8 => Some(Expr::Primitive {
-                                val: Value::gen_i8(
-                                    (*lhs_int as i8).wrapping_add(*rhs_int as i8) as u32
-                                ),
+                                val: Value::gen_i8((*lhs_int as i8).wrapping_add(*rhs_int as i8)),
                                 loc: None,
                             }),
                             DataType::U16 => Some(Expr::Primitive {
                                 val: Value::gen_u16(
-                                    (*lhs_int as u16).wrapping_add(*rhs_int as u16) as u32,
+                                    (*lhs_int as u16).wrapping_add(*rhs_int as u16),
                                 ),
                                 loc: None,
                             }),
                             DataType::I16 => Some(Expr::Primitive {
                                 val: Value::gen_i16(
-                                    (*lhs_int as i16).wrapping_add(*rhs_int as i16) as u32,
+                                    (*lhs_int as i16).wrapping_add(*rhs_int as i16),
                                 ),
                                 loc: None,
                             }),
@@ -559,26 +558,22 @@ impl ExprFolder {
                         // handle what's represented as u32s in the compiler
                         match done_on {
                             DataType::U8 => Some(Expr::Primitive {
-                                val: Value::gen_u8(
-                                    (*lhs_int as u8).wrapping_sub(*rhs_int as u8) as u32
-                                ),
+                                val: Value::gen_u8((*lhs_int as u8).wrapping_sub(*rhs_int as u8)),
                                 loc: None,
                             }),
                             DataType::I8 => Some(Expr::Primitive {
-                                val: Value::gen_i8(
-                                    (*lhs_int as i8).wrapping_sub(*rhs_int as i8) as u32
-                                ),
+                                val: Value::gen_i8((*lhs_int as i8).wrapping_sub(*rhs_int as i8)),
                                 loc: None,
                             }),
                             DataType::U16 => Some(Expr::Primitive {
                                 val: Value::gen_u16(
-                                    (*lhs_int as u16).wrapping_sub(*rhs_int as u16) as u32,
+                                    (*lhs_int as u16).wrapping_sub(*rhs_int as u16),
                                 ),
                                 loc: None,
                             }),
                             DataType::I16 => Some(Expr::Primitive {
                                 val: Value::gen_i16(
-                                    (*lhs_int as i16).wrapping_sub(*rhs_int as i16) as u32,
+                                    (*lhs_int as i16).wrapping_sub(*rhs_int as i16),
                                 ),
                                 loc: None,
                             }),
@@ -593,26 +588,22 @@ impl ExprFolder {
                         // handle what's represented as u32s in the compiler
                         match done_on {
                             DataType::U8 => Some(Expr::Primitive {
-                                val: Value::gen_u8(
-                                    (*lhs_int as u8).wrapping_mul(*rhs_int as u8) as u32
-                                ),
+                                val: Value::gen_u8((*lhs_int as u8).wrapping_mul(*rhs_int as u8)),
                                 loc: None,
                             }),
                             DataType::I8 => Some(Expr::Primitive {
-                                val: Value::gen_i8(
-                                    (*lhs_int as i8).wrapping_mul(*rhs_int as i8) as u32
-                                ),
+                                val: Value::gen_i8((*lhs_int as i8).wrapping_mul(*rhs_int as i8)),
                                 loc: None,
                             }),
                             DataType::U16 => Some(Expr::Primitive {
                                 val: Value::gen_u16(
-                                    (*lhs_int as u16).wrapping_mul(*rhs_int as u16) as u32,
+                                    (*lhs_int as u16).wrapping_mul(*rhs_int as u16),
                                 ),
                                 loc: None,
                             }),
                             DataType::I16 => Some(Expr::Primitive {
                                 val: Value::gen_i16(
-                                    (*lhs_int as i16).wrapping_mul(*rhs_int as i16) as u32,
+                                    (*lhs_int as i16).wrapping_mul(*rhs_int as i16),
                                 ),
                                 loc: None,
                             }),
@@ -630,26 +621,22 @@ impl ExprFolder {
                         // handle what's represented as u32s in the compiler
                         match done_on {
                             DataType::U8 => Some(Expr::Primitive {
-                                val: Value::gen_u8(
-                                    (*lhs_int as u8).wrapping_div(*rhs_int as u8) as u32
-                                ),
+                                val: Value::gen_u8((*lhs_int as u8).wrapping_div(*rhs_int as u8)),
                                 loc: None,
                             }),
                             DataType::I8 => Some(Expr::Primitive {
-                                val: Value::gen_i8(
-                                    (*lhs_int as i8).wrapping_div(*rhs_int as i8) as u32
-                                ),
+                                val: Value::gen_i8((*lhs_int as i8).wrapping_div(*rhs_int as i8)),
                                 loc: None,
                             }),
                             DataType::U16 => Some(Expr::Primitive {
                                 val: Value::gen_u16(
-                                    (*lhs_int as u16).wrapping_div(*rhs_int as u16) as u32,
+                                    (*lhs_int as u16).wrapping_div(*rhs_int as u16),
                                 ),
                                 loc: None,
                             }),
                             DataType::I16 => Some(Expr::Primitive {
                                 val: Value::gen_i16(
-                                    (*lhs_int as i16).wrapping_div(*rhs_int as i16) as u32,
+                                    (*lhs_int as i16).wrapping_div(*rhs_int as i16),
                                 ),
                                 loc: None,
                             }),
@@ -667,19 +654,19 @@ impl ExprFolder {
                         // handle what's represented as u32s in the compiler
                         match done_on {
                             DataType::U8 => Some(Expr::Primitive {
-                                val: Value::gen_u8((*lhs_int as u8 % *rhs_int as u8) as u32),
+                                val: Value::gen_u8(*lhs_int as u8 % *rhs_int as u8),
                                 loc: None,
                             }),
                             DataType::I8 => Some(Expr::Primitive {
-                                val: Value::gen_i8((*lhs_int as i8 % *rhs_int as i8) as u32),
+                                val: Value::gen_i8(*lhs_int as i8 % *rhs_int as i8),
                                 loc: None,
                             }),
                             DataType::U16 => Some(Expr::Primitive {
-                                val: Value::gen_u16((*lhs_int as u16 % *rhs_int as u16) as u32),
+                                val: Value::gen_u16(*lhs_int as u16 % *rhs_int as u16),
                                 loc: None,
                             }),
                             DataType::I16 => Some(Expr::Primitive {
-                                val: Value::gen_i16((*lhs_int as i16 % *rhs_int as i16) as u32),
+                                val: Value::gen_i16(*lhs_int as i16 % *rhs_int as i16),
                                 loc: None,
                             }),
                             DataType::U32 => Some(Expr::Primitive {

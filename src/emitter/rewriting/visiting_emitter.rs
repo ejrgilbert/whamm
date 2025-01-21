@@ -159,6 +159,90 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             };
             let mut block: Vec<Statement> = match val {
                 Some(Value::Number {
+                    val: NumLit::U8 { val },
+                    ..
+                }) => {
+                    // create a declaration
+                    let decl = Statement::Decl {
+                        ty: DataType::U32,
+                        var_id: var_id.clone(),
+                        loc: None,
+                    };
+                    // create an assignment
+                    let assign = Statement::Assign {
+                        var_id: var_id.clone(),
+                        expr: Expr::Primitive {
+                            val: Value::gen_u8(*val),
+                            loc: None,
+                        },
+                        loc: None,
+                    };
+                    vec![decl, assign]
+                }
+                Some(Value::Number {
+                    val: NumLit::I8 { val },
+                    ..
+                }) => {
+                    // create a declaration
+                    let decl = Statement::Decl {
+                        ty: DataType::U32,
+                        var_id: var_id.clone(),
+                        loc: None,
+                    };
+                    // create an assignment
+                    let assign = Statement::Assign {
+                        var_id: var_id.clone(),
+                        expr: Expr::Primitive {
+                            val: Value::gen_i8(*val),
+                            loc: None,
+                        },
+                        loc: None,
+                    };
+                    vec![decl, assign]
+                }
+                Some(Value::Number {
+                    val: NumLit::U16 { val },
+                    ..
+                }) => {
+                    // create a declaration
+                    let decl = Statement::Decl {
+                        ty: DataType::U32,
+                        var_id: var_id.clone(),
+                        loc: None,
+                    };
+                    // create an assignment
+                    let assign = Statement::Assign {
+                        var_id: var_id.clone(),
+                        expr: Expr::Primitive {
+                            val: Value::gen_u16(*val),
+                            loc: None,
+                        },
+                        loc: None,
+                    };
+                    vec![decl, assign]
+                }
+                Some(Value::Number {
+                    val: NumLit::I16 { val },
+                    ..
+                }) => {
+                    // create a declaration
+                    let decl = Statement::Decl {
+                        ty: DataType::U32,
+                        var_id: var_id.clone(),
+                        loc: None,
+                    };
+                    // create an assignment
+                    let assign = Statement::Assign {
+                        var_id: var_id.clone(),
+                        expr: Expr::Primitive {
+                            val: Value::gen_i16(*val),
+                            loc: None,
+                        },
+                        loc: None,
+                    };
+                    vec![decl, assign]
+                }
+                Some(Value::Number {
                     val: NumLit::U32 { val },
                     ..
                 }) => {

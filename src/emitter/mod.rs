@@ -125,15 +125,16 @@ fn setup_print_global_meta(
         // get the value of this report global
         print_global_meta.global_get(GlobalID(*key));
         match whamm_ty {
-            DataType::U8
-            | DataType::I8
-            | DataType::U16
-            | DataType::I16
-            | DataType::I32
-            | DataType::Boolean => io_adapter.call_puti32(&mut print_global_meta, err),
-            DataType::I64 => io_adapter.call_puti64(&mut print_global_meta, err),
+            DataType::U8 => io_adapter.call_putu8(&mut print_global_meta, err),
+            DataType::I8 => io_adapter.call_puti8(&mut print_global_meta, err),
+            DataType::U16 => io_adapter.call_putu16(&mut print_global_meta, err),
+            DataType::I16 => io_adapter.call_puti16(&mut print_global_meta, err),
+            DataType::I32 | DataType::Boolean => {
+                io_adapter.call_puti32(&mut print_global_meta, err)
+            }
             // special case for unsigned integers (so the print is correctly signed)
             DataType::U32 => io_adapter.call_putu32(&mut print_global_meta, err),
+            DataType::I64 => io_adapter.call_puti64(&mut print_global_meta, err),
             DataType::U64 => io_adapter.call_putu64(&mut print_global_meta, err),
             DataType::F32 => io_adapter.call_putf32(&mut print_global_meta, err),
             DataType::F64 => io_adapter.call_putf64(&mut print_global_meta, err),
