@@ -1036,6 +1036,7 @@ fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                 Ok(rhs) => {
                     let op = match op.as_rule() {
                         Rule::neg => UnOp::Not,
+                        Rule::binary_not => UnOp::BitwiseNot,
                         rule => {
                             return Err(vec![ErrorGen::get_parse_error(
                                 true,
@@ -1082,6 +1083,14 @@ fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                         Rule::multiply => BinOp::Multiply,
                         Rule::divide => BinOp::Divide,
                         Rule::modulo => BinOp::Modulo,
+
+                        // Bitwise Operators
+                        Rule::lshift => BinOp::LShift,
+                        Rule::rshift => BinOp::RShift,
+                        Rule::binary_and => BinOp::BitAnd,
+                        Rule::binary_or => BinOp::BitOr,
+                        Rule::binary_xor => BinOp::BitXor,
+
                         rule => {
                             return Err(vec![ErrorGen::get_parse_error(
                                 true,
@@ -1101,6 +1110,11 @@ fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                                     Rule::multiply,
                                     Rule::divide,
                                     Rule::modulo,
+                                    Rule::lshift,
+                                    Rule::rshift,
+                                    Rule::binary_and,
+                                    Rule::binary_or,
+                                    Rule::binary_xor,
                                 ],
                                 vec![rule],
                             )]);

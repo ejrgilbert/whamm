@@ -486,6 +486,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         match op {
             UnOp::Cast { target } => format!("as {target}"),
             UnOp::Not => "!".to_string(),
+            UnOp::BitwiseNot => "~".to_string(),
         }
     }
 
@@ -504,6 +505,11 @@ impl WhammVisitor<String> for AsStrVisitor {
             BinOp::Multiply => "*",
             BinOp::Divide => "/",
             BinOp::Modulo => "%",
+            BinOp::LShift => "<<",
+            BinOp::RShift => ">>",
+            BinOp::BitAnd => "&",
+            BinOp::BitOr => "|",
+            BinOp::BitXor => "^",
         }
         .parse()
         .unwrap()

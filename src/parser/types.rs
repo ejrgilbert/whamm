@@ -26,17 +26,22 @@ lazy_static::lazy_static! {
         use Rule::*;
 
         // Precedence is defined lowest to highest
+        // Follows: https://en.cppreference.com/w/c/language/operator_precedence
         PrattParser::new()
             .op(Op::infix(and, Left) | Op::infix(or, Left)) // LOGOP
+            .op(Op::infix(binary_or, Left)) // bitwise OR
+            .op(Op::infix(binary_xor, Left)) // bitwise XOR
+            .op(Op::infix(binary_and, Left)) // bitwise AND
             .op(Op::infix(eq, Left)                         // RELOP
                 | Op::infix(ne, Left)
                 | Op::infix(ge, Left)
                 | Op::infix(gt, Left)
                 | Op::infix(le, Left)
                 | Op::infix(lt, Left)
-            ).op(Op::infix(add, Left) | Op::infix(subtract, Left)) // SUMOP
+            ).op(Op::infix(lshift, Left) | Op::infix(rshift, Left)) // Bitwise left shift and right shift
+            .op(Op::infix(add, Left) | Op::infix(subtract, Left)) // SUMOP
             .op(Op::infix(multiply, Left) | Op::infix(divide, Left) | Op::infix(modulo, Left)) // MULOP
-            .op(Op::prefix(neg))
+            .op(Op::prefix(neg) | Op::prefix(binary_not)) // Logical NOT and bitwise NOT
             .op(Op::postfix(cast))
     };
 }
@@ -221,6 +226,21 @@ impl Display for DataType {
     }
 }
 impl DataType {
+    pub fn is_numeric(&self) -> bool {
+        matches!(
+            self,
+            DataType::U8
+                | DataType::I8
+                | DataType::U16
+                | DataType::I16
+                | DataType::U32
+                | DataType::I32
+                | DataType::U64
+                | DataType::I64
+                | DataType::F32
+                | DataType::F64
+        )
+    }
     pub fn is_compatible_with(&self, other: &DataType) -> bool {
         match self {
             DataType::U8
@@ -1922,6 +1942,7 @@ impl ProvidedFunction {
 pub enum UnOp {
     Cast { target: DataType },
     Not,
+    BitwiseNot,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -1946,6 +1967,13 @@ pub enum BinOp {
     Multiply,
     Divide,
     Modulo,
+
+    // Bitwise operators
+    LShift,
+    RShift,
+    BitAnd,
+    BitOr,
+    BitXor,
 }
 
 // =================

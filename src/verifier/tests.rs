@@ -109,6 +109,22 @@ wasm::call:alt /
 ];
 
 const TYPE_ERROR_SCRIPTS: &[&str] = &[
+    // binary operations
+    "wasm:opcode:call:alt {
+        i32 i = 1 << (1, 2, 3);
+    }",
+    "wasm:opcode:call:alt {
+        i32 i = 1 >> \"blah\";
+    }",
+    "wasm:opcode:call:alt {
+        i32 i = 1 ^ (1, 2, 3);
+    }",
+    "wasm:opcode:call:alt {
+        i32 i = 1 & (1, 2, 3);
+    }",
+    "wasm:opcode:call:alt {
+        i32 i = 1 | (1, 2, 3);
+    }",
     "wasm:opcode:call:alt / i < 1 < 2 / { }",
     "wasm:opcode:call:alt / (1 + 3) / { i32 i; }",
     // predicate

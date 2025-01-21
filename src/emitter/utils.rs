@@ -1277,6 +1277,138 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 }
             };
         }
+        BinOp::LShift => {
+            match done_on {
+                DataType::U8
+                | DataType::I8
+                | DataType::U16
+                | DataType::I16
+                | DataType::U32
+                | DataType::I32
+                | DataType::Boolean => {
+                    injector.i32_shl();
+                    // convert back if smaller than i32 and signed
+                    match done_on {
+                        DataType::U8 => {
+                            injector.i32_const(0xFF);
+                            injector.i32_and()
+                        }
+                        DataType::I8 => {
+                            injector.i32_const(0xFF);
+                            injector.i32_and();
+                            injector.i32_extend_8s()
+                        }
+                        DataType::U16 => {
+                            injector.i32_const(0xFFFF);
+                            injector.i32_and()
+                        }
+                        DataType::I16 => {
+                            injector.i32_const(0xFFFF);
+                            injector.i32_and();
+                            injector.i32_extend_16s()
+                        }
+                        _ => injector,
+                    }
+                }
+                DataType::U64 | DataType::I64 => injector.i64_shl(),
+                DataType::F32
+                | DataType::F64
+                | DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. }
+                | DataType::Unknown => {
+                    unimplemented!()
+                }
+                DataType::AssumeGood => unreachable!(),
+            };
+        }
+        BinOp::RShift => {
+            match done_on {
+                DataType::U8 | DataType::U16 | DataType::U32 | DataType::Boolean => {
+                    injector.i32_shr_unsigned()
+                }
+                DataType::I8 | DataType::I16 | DataType::I32 => injector.i32_shr_signed(),
+                DataType::U64 => injector.i64_shr_unsigned(),
+                DataType::I64 => injector.i64_shr_signed(),
+                DataType::F32
+                | DataType::F64
+                | DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. }
+                | DataType::Unknown => {
+                    unimplemented!()
+                }
+                DataType::AssumeGood => unreachable!(),
+            };
+        }
+        BinOp::BitAnd => {
+            match done_on {
+                DataType::U8
+                | DataType::U16
+                | DataType::U32
+                | DataType::I8
+                | DataType::I16
+                | DataType::I32
+                | DataType::Boolean => injector.i32_and(),
+                DataType::U64 | DataType::I64 => injector.i64_and(),
+                DataType::F32
+                | DataType::F64
+                | DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. }
+                | DataType::Unknown => {
+                    unimplemented!()
+                }
+                DataType::AssumeGood => unreachable!(),
+            };
+        }
+        BinOp::BitOr => {
+            match done_on {
+                DataType::U8
+                | DataType::U16
+                | DataType::U32
+                | DataType::I8
+                | DataType::I16
+                | DataType::I32
+                | DataType::Boolean => injector.i32_or(),
+                DataType::U64 | DataType::I64 => injector.i64_or(),
+                DataType::F32
+                | DataType::F64
+                | DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. }
+                | DataType::Unknown => {
+                    unimplemented!()
+                }
+                DataType::AssumeGood => unreachable!(),
+            };
+        }
+        BinOp::BitXor => {
+            match done_on {
+                DataType::U8
+                | DataType::U16
+                | DataType::U32
+                | DataType::I8
+                | DataType::I16
+                | DataType::I32
+                | DataType::Boolean => injector.i32_xor(),
+                DataType::U64 | DataType::I64 => injector.i64_xor(),
+                DataType::F32
+                | DataType::F64
+                | DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. }
+                | DataType::Unknown => {
+                    unimplemented!()
+                }
+                DataType::AssumeGood => unreachable!(),
+            };
+        }
     }
     true
 }
@@ -1318,13 +1450,22 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
                 }
 
                 // From I8
-                (DataType::I8, DataType::U8 | DataType::I8) => {} // nothing to do
-                (DataType::I8, DataType::U16 | DataType::I16) => {
+                (DataType::I8, DataType::U8) => {
+                    //  truncating cast for ints (zero out higher bits)
+                    injector.i32_const(0xFF);
+                    injector.i32_and();
+                }
+                (DataType::I8, DataType::I8) => {} // nothing to do
+                (DataType::I8, DataType::U16) => {
                     // sign extend
                     injector.i32_extend_8s();
                     //  truncating cast for ints (zero out higher bits)
                     injector.i32_const(0xFFFF);
                     injector.i32_and();
+                }
+                (DataType::I8, DataType::I16) => {
+                    // sign extend
+                    injector.i32_extend_8s();
                 }
                 (DataType::I8, DataType::I32 | DataType::U32) => {
                     // sign extend
@@ -1677,6 +1818,7 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
             | DataType::AssumeGood
             | DataType::Unknown => unimplemented!(),
         },
+        UnOp::BitwiseNot => unimplemented!(),
     }
     true
 }
@@ -1692,6 +1834,7 @@ fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         Value::Number { val, .. } => match val {
             NumLit::I8 { val } => {
                 injector.u32_const(*val as u32);
+                injector.i32_extend_8s();
                 is_success &= true;
             }
             NumLit::U8 { val } => {
@@ -1700,6 +1843,7 @@ fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             }
             NumLit::I16 { val } => {
                 injector.u32_const(*val as u32);
+                injector.i32_extend_16s();
                 is_success &= true;
             }
             NumLit::U16 { val } => {

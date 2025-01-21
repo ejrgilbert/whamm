@@ -211,7 +211,12 @@ impl ExprFolder {
                 | BinOp::Subtract
                 | BinOp::Multiply
                 | BinOp::Divide
-                | BinOp::Modulo => {
+                | BinOp::Modulo
+                | BinOp::LShift
+                | BinOp::RShift
+                | BinOp::BitAnd
+                | BinOp::BitOr
+                | BinOp::BitXor => {
                     if let Some(res) = self.fold_numerics(&lhs, &rhs, op, done_on, err) {
                         return res;
                     }
@@ -326,6 +331,7 @@ impl ExprFolder {
                         }
                     }
                 }
+                UnOp::BitwiseNot => unimplemented!(),
             };
         }
 
@@ -471,6 +477,26 @@ impl ExprFolder {
                             loc: None,
                         })
                     }
+                    BinOp::LShift => Some(Expr::Primitive {
+                        val: Value::gen_u32((lhs_int << rhs_int) as u32),
+                        loc: None,
+                    }),
+                    BinOp::RShift => Some(Expr::Primitive {
+                        val: Value::gen_u32((lhs_int >> rhs_int) as u32),
+                        loc: None,
+                    }),
+                    BinOp::BitAnd => Some(Expr::Primitive {
+                        val: Value::gen_u32((lhs_int & rhs_int) as u32),
+                        loc: None,
+                    }),
+                    BinOp::BitOr => Some(Expr::Primitive {
+                        val: Value::gen_u32((lhs_int | rhs_int) as u32),
+                        loc: None,
+                    }),
+                    BinOp::BitXor => Some(Expr::Primitive {
+                        val: Value::gen_u32((lhs_int ^ rhs_int) as u32),
+                        loc: None,
+                    }),
                     _ => None,
                 };
             }
@@ -676,6 +702,26 @@ impl ExprFolder {
                             _ => unreachable!(),
                         }
                     }
+                    BinOp::LShift => Some(Expr::Primitive {
+                        val: Value::gen_u32(lhs_int << rhs_int),
+                        loc: None,
+                    }),
+                    BinOp::RShift => Some(Expr::Primitive {
+                        val: Value::gen_u32(lhs_int >> rhs_int),
+                        loc: None,
+                    }),
+                    BinOp::BitAnd => Some(Expr::Primitive {
+                        val: Value::gen_u32(lhs_int & rhs_int),
+                        loc: None,
+                    }),
+                    BinOp::BitOr => Some(Expr::Primitive {
+                        val: Value::gen_u32(lhs_int | rhs_int),
+                        loc: None,
+                    }),
+                    BinOp::BitXor => Some(Expr::Primitive {
+                        val: Value::gen_u32(lhs_int ^ rhs_int),
+                        loc: None,
+                    }),
                     _ => None,
                 };
             }
@@ -759,6 +805,26 @@ impl ExprFolder {
                             loc: None,
                         })
                     }
+                    BinOp::LShift => Some(Expr::Primitive {
+                        val: Value::gen_u64((lhs_int << rhs_int) as u64),
+                        loc: None,
+                    }),
+                    BinOp::RShift => Some(Expr::Primitive {
+                        val: Value::gen_u64((lhs_int >> rhs_int) as u64),
+                        loc: None,
+                    }),
+                    BinOp::BitAnd => Some(Expr::Primitive {
+                        val: Value::gen_u64((lhs_int & rhs_int) as u64),
+                        loc: None,
+                    }),
+                    BinOp::BitOr => Some(Expr::Primitive {
+                        val: Value::gen_u64((lhs_int | rhs_int) as u64),
+                        loc: None,
+                    }),
+                    BinOp::BitXor => Some(Expr::Primitive {
+                        val: Value::gen_u64((lhs_int ^ rhs_int) as u64),
+                        loc: None,
+                    }),
                     _ => None,
                 };
             }
@@ -841,6 +907,26 @@ impl ExprFolder {
                             loc: None,
                         })
                     }
+                    BinOp::LShift => Some(Expr::Primitive {
+                        val: Value::gen_u64(lhs_int << rhs_int),
+                        loc: None,
+                    }),
+                    BinOp::RShift => Some(Expr::Primitive {
+                        val: Value::gen_u64(lhs_int >> rhs_int),
+                        loc: None,
+                    }),
+                    BinOp::BitAnd => Some(Expr::Primitive {
+                        val: Value::gen_u64(lhs_int & rhs_int),
+                        loc: None,
+                    }),
+                    BinOp::BitOr => Some(Expr::Primitive {
+                        val: Value::gen_u64(lhs_int | rhs_int),
+                        loc: None,
+                    }),
+                    BinOp::BitXor => Some(Expr::Primitive {
+                        val: Value::gen_u64(lhs_int ^ rhs_int),
+                        loc: None,
+                    }),
                     _ => None,
                 };
             }
@@ -924,6 +1010,11 @@ impl ExprFolder {
                             loc: None,
                         })
                     }
+                    BinOp::LShift => unimplemented!(),
+                    BinOp::RShift => unimplemented!(),
+                    BinOp::BitAnd => unimplemented!(),
+                    BinOp::BitOr => unimplemented!(),
+                    BinOp::BitXor => unimplemented!(),
                     _ => None,
                 };
             }
@@ -1007,6 +1098,11 @@ impl ExprFolder {
                             loc: None,
                         })
                     }
+                    BinOp::LShift => unimplemented!(),
+                    BinOp::RShift => unimplemented!(),
+                    BinOp::BitAnd => unimplemented!(),
+                    BinOp::BitOr => unimplemented!(),
+                    BinOp::BitXor => unimplemented!(),
                     _ => None,
                 };
             }

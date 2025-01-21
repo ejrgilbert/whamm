@@ -1,6 +1,11 @@
 wasm:opcode:call:before {
     // ==== BINOP ====
 
+    // --- precedence ---
+
+    report i8 prec_test0;
+    prec_test0 = 1 + 2 * 2;
+
     // --- logical operators ---
     // setup
     i8 t_8 = 1;

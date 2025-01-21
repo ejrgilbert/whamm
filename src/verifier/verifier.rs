@@ -696,6 +696,106 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 }
                             }
                         }
+                        BinOp::LShift => {
+                            if matches!(lhs_ty, DataType::AssumeGood) {
+                                return Some(DataType::AssumeGood);
+                            } else if matches!(rhs_ty, DataType::AssumeGood) {
+                                return Some(lhs_ty);
+                            }
+
+                            if lhs_ty == rhs_ty {
+                                return Some(lhs_ty);
+                            } else {
+                                let loc =
+                                    Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
+                                if attempt_implicit_cast(
+                                    rhs, &lhs_ty, &rhs_ty, loc, "value", self.err,
+                                ) {
+                                    return Some(lhs_ty);
+                                }
+                            }
+                            Some(DataType::AssumeGood)
+                        }
+                        BinOp::RShift => {
+                            if matches!(lhs_ty, DataType::AssumeGood) {
+                                return Some(DataType::AssumeGood);
+                            } else if matches!(rhs_ty, DataType::AssumeGood) {
+                                return Some(lhs_ty);
+                            }
+
+                            if lhs_ty == rhs_ty {
+                                return Some(lhs_ty);
+                            } else {
+                                let loc =
+                                    Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
+                                if attempt_implicit_cast(
+                                    rhs, &lhs_ty, &rhs_ty, loc, "value", self.err,
+                                ) {
+                                    return Some(lhs_ty);
+                                }
+                            }
+                            Some(DataType::AssumeGood)
+                        }
+                        BinOp::BitAnd => {
+                            if matches!(lhs_ty, DataType::AssumeGood) {
+                                return Some(DataType::AssumeGood);
+                            } else if matches!(rhs_ty, DataType::AssumeGood) {
+                                return Some(lhs_ty);
+                            }
+
+                            if lhs_ty == rhs_ty {
+                                return Some(lhs_ty);
+                            } else {
+                                let loc =
+                                    Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
+                                if attempt_implicit_cast(
+                                    rhs, &lhs_ty, &rhs_ty, loc, "value", self.err,
+                                ) {
+                                    return Some(lhs_ty);
+                                }
+                            }
+                            Some(DataType::AssumeGood)
+                        }
+                        BinOp::BitOr => {
+                            if matches!(lhs_ty, DataType::AssumeGood) {
+                                return Some(DataType::AssumeGood);
+                            } else if matches!(rhs_ty, DataType::AssumeGood) {
+                                return Some(lhs_ty);
+                            }
+
+                            if lhs_ty == rhs_ty {
+                                return Some(lhs_ty);
+                            } else {
+                                let loc =
+                                    Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
+                                if attempt_implicit_cast(
+                                    rhs, &lhs_ty, &rhs_ty, loc, "value", self.err,
+                                ) {
+                                    return Some(lhs_ty);
+                                }
+                            }
+                            Some(DataType::AssumeGood)
+                        }
+                        BinOp::BitXor => {
+                            if matches!(lhs_ty, DataType::AssumeGood) {
+                                return Some(DataType::AssumeGood);
+                            } else if matches!(rhs_ty, DataType::AssumeGood) {
+                                return Some(lhs_ty);
+                            }
+
+                            if lhs_ty == rhs_ty {
+                                return Some(lhs_ty);
+                            } else {
+                                let loc =
+                                    Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
+                                if attempt_implicit_cast(
+                                    rhs, &lhs_ty, &rhs_ty, loc, "value", self.err,
+                                ) {
+                                    return Some(lhs_ty);
+                                }
+                            }
+                            Some(DataType::AssumeGood)
+                        }
                     }
                 } else {
                     let loc = Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
@@ -778,6 +878,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 Some(DataType::AssumeGood)
                             }
                         }
+                        UnOp::BitwiseNot => todo!(),
                     }
                 } else {
                     self.err.type_check_error(

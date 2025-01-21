@@ -125,8 +125,9 @@ ternary = { expr ~ "?" ~ expr ~ ":" ~ expr }
 
 expr = { operand ~ (BINOP ~ operand)* }
 
-prefix = _{ neg }
+prefix = _{ neg | binary_not }
     neg = { "!" }
+    binary_not = { "~" }
 postfix = _{ cast }
     cast = { "as" ~ TYPE_PRIMITIVE }
 
@@ -136,11 +137,23 @@ operand = _{ prefix? ~ ( fn_call | "(" ~ expr ~ ")" | val ) ~ postfix? }
 tuple = { "(" ~ ")" | "(" ~ (val) ~ ( "," ~ val )* ~ ")" }
 
 
-BINOP = _{ LOGOP | RELOP | SUMOP | MULOP }
+BINOP = _{ SHIFTOP | LOGOP | BITOP | RELOP | SUMOP | MULOP }
+
+    // Binary operators
+    lshift = { "<<" }
+    rshift = { ">>" }
+    SHIFTOP = _{ lshift | rshift }
+
     // Logical operators
     and = { "&&" }
     or = { "||" }
     LOGOP = _{ and | or }
+
+    // Bitwise operators
+    binary_and = { "&" }
+    binary_or = { "|" }
+    binary_xor = { "^" }
+    BITOP = _{ binary_and | binary_or | binary_xor }
 
     // Relational operators
     eq = { "==" }
