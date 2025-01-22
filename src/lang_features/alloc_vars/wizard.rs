@@ -1,7 +1,6 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::StringAddr;
 use crate::emitter::module_emitter::ModuleEmitter;
-use crate::emitter::utils::whamm_type_to_wasm_type;
 use crate::generator::wizard::ast::UnsharedVar;
 use crate::lang_features::report_vars::Metadata as ReportMetadata;
 use crate::lang_features::report_vars::ReportVars;
@@ -143,7 +142,7 @@ impl UnsharedVarHandler {
                     self.store_var_header(&mut alloc, curr_offset, report_metadata, emitter, err);
 
                 // allocate the space for the datatype value
-                let orca_ty = whamm_type_to_wasm_type(ty);
+                let orca_ty = ty.to_wasm_type();
                 let var_addr = VarAddr::MemLoc {
                     mem_id: emitter.mem_allocator.mem_id,
                     ty: if orca_ty.len() == 1 {

@@ -10,7 +10,16 @@ use std::collections::HashMap;
 
 pub const PUTS: &str = "puts";
 pub const PUTC: &str = "putc";
-pub const PUTI: &str = "puti";
+pub const PUTU8: &str = "putu8";
+pub const PUTI8: &str = "puti8";
+pub const PUTU16: &str = "putu16";
+pub const PUTI16: &str = "puti16";
+pub const PUTU32: &str = "putu32";
+pub const PUTI32: &str = "puti32";
+pub const PUTU64: &str = "putu64";
+pub const PUTI64: &str = "puti64";
+pub const PUTF32: &str = "putf32";
+pub const PUTF64: &str = "putf64";
 
 // //this is the code that knows which functions to call in lib.rs based on what is in the AST -> will be in emitter folder eventually
 pub struct IOAdapter {
@@ -25,8 +34,12 @@ impl LibAdapter for IOAdapter {
     fn get_funcs_mut(&mut self) -> &mut HashMap<String, u32> {
         &mut self.funcs
     }
-    fn define_helper_funcs(&mut self, app_wasm: &mut Module, err: &mut ErrorGen) {
-        self.emit_helper_funcs(app_wasm, err);
+    fn define_helper_funcs(
+        &mut self,
+        app_wasm: &mut Module,
+        err: &mut ErrorGen,
+    ) -> Vec<FunctionID> {
+        self.emit_helper_funcs(app_wasm, err)
     }
 }
 impl Default for IOAdapter {
@@ -38,7 +51,16 @@ impl IOAdapter {
     pub fn new() -> Self {
         let funcs = HashMap::from([
             (PUTC.to_string(), 0),
-            (PUTI.to_string(), 0),
+            (PUTU8.to_string(), 0),
+            (PUTI8.to_string(), 0),
+            (PUTU16.to_string(), 0),
+            (PUTI16.to_string(), 0),
+            (PUTU32.to_string(), 0),
+            (PUTI32.to_string(), 0),
+            (PUTU64.to_string(), 0),
+            (PUTI64.to_string(), 0),
+            (PUTF32.to_string(), 0),
+            (PUTF64.to_string(), 0),
             (PUTS.to_string(), 0),
         ]);
         //Reserve map 0 for the var metadata map and map 1 for the map metadata map
@@ -48,10 +70,10 @@ impl IOAdapter {
         }
     }
 
-    fn emit_helper_funcs(&mut self, app_wasm: &mut Module, err: &mut ErrorGen) {
-        self.emit_puts(app_wasm, err);
+    fn emit_helper_funcs(&mut self, app_wasm: &mut Module, err: &mut ErrorGen) -> Vec<FunctionID> {
+        vec![self.emit_puts(app_wasm, err)]
     }
-    fn emit_puts(&mut self, app_wasm: &mut Module, err: &mut ErrorGen) {
+    fn emit_puts(&mut self, app_wasm: &mut Module, err: &mut ErrorGen) -> FunctionID {
         let start_addr = LocalID(0);
         let len = LocalID(1);
         let mut puts = FunctionBuilder::new(&[OrcaType::I32, OrcaType::I32], &[]);
@@ -94,6 +116,8 @@ impl IOAdapter {
         let puts_fid = puts.finish_module(app_wasm);
         app_wasm.set_fn_name(puts_fid, "puts".to_string());
         self.add_fid(PUTS, *puts_fid);
+
+        puts_fid
     }
 
     pub fn putsln<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
@@ -138,12 +162,84 @@ impl IOAdapter {
         self.puts("\n".to_string(), func, err)
     }
 
-    pub fn call_puti<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub fn call_putu8<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         &mut self,
         func: &mut T,
         err: &mut ErrorGen,
     ) {
-        self.call(PUTI, func, err);
+        self.call(PUTU8, func, err);
+    }
+
+    pub fn call_puti8<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        func: &mut T,
+        err: &mut ErrorGen,
+    ) {
+        self.call(PUTI8, func, err);
+    }
+
+    pub fn call_putu16<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        func: &mut T,
+        err: &mut ErrorGen,
+    ) {
+        self.call(PUTU16, func, err);
+    }
+
+    pub fn call_puti16<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        func: &mut T,
+        err: &mut ErrorGen,
+    ) {
+        self.call(PUTI16, func, err);
+    }
+
+    pub fn call_putu32<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        func: &mut T,
+        err: &mut ErrorGen,
+    ) {
+        self.call(PUTU32, func, err);
+    }
+
+    pub fn call_puti32<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        func: &mut T,
+        err: &mut ErrorGen,
+    ) {
+        self.call(PUTI32, func, err);
+    }
+
+    pub fn call_putu64<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        func: &mut T,
+        err: &mut ErrorGen,
+    ) {
+        self.call(PUTU64, func, err);
+    }
+
+    pub fn call_puti64<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        func: &mut T,
+        err: &mut ErrorGen,
+    ) {
+        self.call(PUTI64, func, err);
+    }
+
+    pub fn call_putf32<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        func: &mut T,
+        err: &mut ErrorGen,
+    ) {
+        self.call(PUTF32, func, err);
+    }
+
+    pub fn call_putf64<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        func: &mut T,
+        err: &mut ErrorGen,
+    ) {
+        self.call(PUTF64, func, err);
     }
 
     fn putc<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(

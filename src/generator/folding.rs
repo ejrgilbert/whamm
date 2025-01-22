@@ -1,39 +1,58 @@
 use crate::common::error::ErrorGen;
-use crate::parser::types::{BinOp, DataType, Definition, Expr, UnOp, Value};
+use crate::parser::types::{BinOp, DataType, Definition, Expr, Location, NumLit, UnOp, Value};
 use crate::verifier::types::Record::Var;
 use crate::verifier::types::{Record, SymbolTable};
+use std::ops::{Add, Div, Mul, Rem, Sub};
 
 // =======================================
 // = Constant Propagation via ExprFolder =
 // =======================================
 
-pub struct ExprFolder;
+pub struct ExprFolder {
+    curr_loc: Option<Location>,
+}
 impl ExprFolder {
     pub fn fold_expr(expr: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
+        let mut instance = Self { curr_loc: None };
+        instance.fold_expr_inner(expr, table, err)
+    }
+    pub fn get_single_bool(expr: &Expr) -> Option<bool> {
+        let mut instance = Self { curr_loc: None };
+        instance.get_single_bool_inner(expr)
+    }
+    fn fold_expr_inner(&mut self, expr: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
+        self.curr_loc = expr.loc().clone();
         match *expr {
-            Expr::UnOp { .. } => ExprFolder::fold_unop(expr, table, err),
-            Expr::BinOp { .. } => ExprFolder::fold_binop(expr, table, err),
-            Expr::Ternary { .. } => ExprFolder::fold_ternary(expr, table, err),
-            Expr::Call { .. } => ExprFolder::fold_call(expr, table),
-            Expr::VarId { .. } => ExprFolder::fold_var_id(expr, table, err),
-            Expr::Primitive { .. } => ExprFolder::fold_primitive(expr, table, err),
-            Expr::MapGet { .. } => ExprFolder::fold_map_get(expr, table, err),
+            Expr::UnOp { .. } => self.fold_unop(expr, table, err),
+            Expr::BinOp { .. } => self.fold_binop(expr, table, err),
+            Expr::Ternary { .. } => self.fold_ternary(expr, table, err),
+            Expr::Call { .. } => self.fold_call(expr, table),
+            Expr::VarId { .. } => self.fold_var_id(expr, table, err),
+            Expr::Primitive { .. } => self.fold_primitive(expr, table, err),
+            Expr::MapGet { .. } => self.fold_map_get(expr, table, err),
         }
     }
 
-    fn fold_binop(binop: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
-        if let Expr::BinOp { lhs, op, rhs, loc } = &binop {
-            let lhs = ExprFolder::fold_expr(lhs, table, err);
-            let rhs = ExprFolder::fold_expr(rhs, table, err);
+    fn fold_binop(&mut self, binop: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
+        self.curr_loc = binop.loc().clone();
+        if let Expr::BinOp {
+            lhs,
+            op,
+            rhs,
+            done_on,
+            loc,
+        } = &binop
+        {
+            let lhs = self.fold_expr_inner(lhs, table, err);
+            let rhs = self.fold_expr_inner(rhs, table, err);
             match op {
                 BinOp::And => {
-                    let (lhs_val, rhs_val) = ExprFolder::get_bool(&lhs, &rhs);
+                    let (lhs_val, rhs_val) = self.get_bool(&lhs, &rhs);
                     return if let Some(lhs_bool) = lhs_val {
                         if let Some(rhs_bool) = rhs_val {
                             // both are boolean primitives
                             return Expr::Primitive {
                                 val: Value::Boolean {
-                                    ty: DataType::Boolean,
                                     val: lhs_bool && rhs_bool,
                                 },
                                 loc: None,
@@ -46,10 +65,7 @@ impl ExprFolder {
                             rhs
                         } else {
                             Expr::Primitive {
-                                val: Value::Boolean {
-                                    ty: DataType::Boolean,
-                                    val: false,
-                                },
+                                val: Value::Boolean { val: false },
                                 loc: None,
                             }
                         }
@@ -63,10 +79,7 @@ impl ExprFolder {
                                 lhs
                             } else {
                                 Expr::Primitive {
-                                    val: Value::Boolean {
-                                        ty: DataType::Boolean,
-                                        val: false,
-                                    },
+                                    val: Value::Boolean { val: false },
                                     loc: None,
                                 }
                             }
@@ -77,19 +90,19 @@ impl ExprFolder {
                                 lhs: Box::new(lhs),
                                 op: BinOp::And,
                                 rhs: Box::new(rhs),
+                                done_on: done_on.clone(),
                                 loc: None,
                             }
                         }
                     };
                 }
                 BinOp::Or => {
-                    let (lhs_val, rhs_val) = ExprFolder::get_bool(&lhs, &rhs);
+                    let (lhs_val, rhs_val) = self.get_bool(&lhs, &rhs);
                     return if let Some(lhs_bool) = lhs_val {
                         if let Some(rhs_bool) = rhs_val {
                             // both are boolean primitives
                             return Expr::Primitive {
                                 val: Value::Boolean {
-                                    ty: DataType::Boolean,
                                     val: lhs_bool || rhs_bool,
                                 },
                                 loc: None,
@@ -100,10 +113,7 @@ impl ExprFolder {
                         // - if it's a true,  this expression is true
                         if lhs_bool {
                             Expr::Primitive {
-                                val: Value::Boolean {
-                                    ty: DataType::Boolean,
-                                    val: true,
-                                },
+                                val: Value::Boolean { val: true },
                                 loc: None,
                             }
                         } else {
@@ -117,10 +127,7 @@ impl ExprFolder {
                             // - if it's a false, can drop it
                             if rhs_bool {
                                 Expr::Primitive {
-                                    val: Value::Boolean {
-                                        ty: DataType::Boolean,
-                                        val: true,
-                                    },
+                                    val: Value::Boolean { val: true },
                                     loc: None,
                                 }
                             } else {
@@ -133,27 +140,26 @@ impl ExprFolder {
                                 lhs: Box::new(lhs),
                                 op: BinOp::Or,
                                 rhs: Box::new(rhs),
+                                done_on: DataType::I32,
                                 loc: None,
                             }
                         }
                     };
                 }
                 BinOp::EQ => {
-                    let (lhs_val, rhs_val) = ExprFolder::get_bool(&lhs, &rhs);
-                    if let Some(res) = ExprFolder::fold_bools(&lhs_val, &rhs_val, op) {
+                    let (lhs_val, rhs_val) = self.get_bool(&lhs, &rhs);
+                    if let Some(res) = self.fold_bools(&lhs_val, &rhs_val, op) {
+                        return res;
+                    }
+                    if let Some(res) = self.fold_numeric_binop(&lhs, &rhs, op, done_on, err) {
+                        return res;
+                    }
+                    let (lhs_val, rhs_val) = self.get_str(&lhs, &rhs);
+                    if let Some(res) = self.fold_strings(&lhs_val, &rhs_val, op) {
                         return res;
                     }
 
-                    let (lhs_val, rhs_val) = ExprFolder::get_i32(&lhs, &rhs);
-                    if let Some(res) = ExprFolder::fold_ints(&lhs_val, &rhs_val, op) {
-                        return res;
-                    }
-                    let (lhs_val, rhs_val) = ExprFolder::get_str(&lhs, &rhs);
-                    if let Some(res) = ExprFolder::fold_strings(&lhs_val, &rhs_val, op) {
-                        return res;
-                    }
-
-                    if Self::is_str(&lhs, table, err) && Self::is_str(&rhs, table, err) {
+                    if self.is_str(&lhs, table, err) && self.is_str(&rhs, table, err) {
                         // Otherwise, replace with a call to strcmp!
                         return Expr::Call {
                             fn_target: Box::new(Expr::VarId {
@@ -167,22 +173,19 @@ impl ExprFolder {
                     }
                 }
                 BinOp::NE => {
-                    let (lhs_val, rhs_val) = ExprFolder::get_bool(&lhs, &rhs);
-                    if let Some(res) = ExprFolder::fold_bools(&lhs_val, &rhs_val, op) {
+                    let (lhs_val, rhs_val) = self.get_bool(&lhs, &rhs);
+                    if let Some(res) = self.fold_bools(&lhs_val, &rhs_val, op) {
+                        return res;
+                    }
+                    if let Some(res) = self.fold_numeric_binop(&lhs, &rhs, op, done_on, err) {
+                        return res;
+                    }
+                    let (lhs_val, rhs_val) = self.get_str(&lhs, &rhs);
+                    if let Some(res) = self.fold_strings(&lhs_val, &rhs_val, op) {
                         return res;
                     }
 
-                    let (lhs_val, rhs_val) = ExprFolder::get_i32(&lhs, &rhs);
-                    if let Some(res) = ExprFolder::fold_ints(&lhs_val, &rhs_val, op) {
-                        return res;
-                    }
-
-                    let (lhs_val, rhs_val) = ExprFolder::get_str(&lhs, &rhs);
-                    if let Some(res) = ExprFolder::fold_strings(&lhs_val, &rhs_val, op) {
-                        return res;
-                    }
-
-                    if Self::is_str(&lhs, table, err) && Self::is_str(&rhs, table, err) {
+                    if self.is_str(&lhs, table, err) && self.is_str(&rhs, table, err) {
                         // Otherwise, replace with a call to strcmp!
                         return Expr::UnOp {
                             op: UnOp::Not,
@@ -195,6 +198,7 @@ impl ExprFolder {
                                 args: vec![lhs, rhs],
                                 loc: None,
                             }),
+                            done_on: DataType::I32,
                             loc: loc.clone(),
                         };
                     }
@@ -207,9 +211,13 @@ impl ExprFolder {
                 | BinOp::Subtract
                 | BinOp::Multiply
                 | BinOp::Divide
-                | BinOp::Modulo => {
-                    let (lhs_val, rhs_val) = ExprFolder::get_i32(&lhs, &rhs);
-                    if let Some(res) = ExprFolder::fold_ints(&lhs_val, &rhs_val, op) {
+                | BinOp::Modulo
+                | BinOp::LShift
+                | BinOp::RShift
+                | BinOp::BitAnd
+                | BinOp::BitOr
+                | BinOp::BitXor => {
+                    if let Some(res) = self.fold_numeric_binop(&lhs, &rhs, op, done_on, err) {
                         return res;
                     }
                 }
@@ -220,7 +228,8 @@ impl ExprFolder {
         binop.clone()
     }
 
-    fn is_str(expr: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> bool {
+    fn is_str(&mut self, expr: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> bool {
+        self.curr_loc = expr.loc().clone();
         match expr {
             Expr::VarId { name, .. } => {
                 if let Some(Var { ty, .. }) = table.lookup_var(name, &None, err, false) {
@@ -248,10 +257,11 @@ impl ExprFolder {
         }
     }
 
-    fn fold_map_get(expr: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
+    fn fold_map_get(&mut self, expr: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
+        self.curr_loc = expr.loc().clone();
         if let Expr::MapGet { map, key, .. } = &expr {
-            let map = ExprFolder::fold_expr(map, table, err);
-            let key = ExprFolder::fold_expr(key, table, err);
+            let map = self.fold_expr_inner(map, table, err);
+            let key = self.fold_expr_inner(key, table, err);
             return Expr::MapGet {
                 map: Box::new(map),
                 key: Box::new(key),
@@ -262,24 +272,70 @@ impl ExprFolder {
     }
 
     // similar to the logic of fold_binop
-    fn fold_unop(unop: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
-        if let Expr::UnOp { op, expr, .. } = &unop {
-            let expr = ExprFolder::fold_expr(expr, table, err);
+    fn fold_unop(&mut self, unop: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
+        self.curr_loc = unop.loc().clone();
+        if let Expr::UnOp {
+            op, expr, done_on, ..
+        } = &unop
+        {
+            let expr = self.fold_expr_inner(expr, table, err);
             return match op {
+                UnOp::Cast { target } => match &expr {
+                    Expr::Primitive { val, .. } => {
+                        let mut casted = val.clone();
+                        match casted.do_explicit_cast(target) {
+                            Ok(()) => Expr::Primitive {
+                                val: casted,
+                                loc: None,
+                            },
+                            Err(_) => Expr::UnOp {
+                                op: UnOp::Cast {
+                                    target: target.clone(),
+                                },
+                                expr: Box::new(expr),
+                                done_on: done_on.clone(),
+                                loc: None,
+                            },
+                        }
+                    }
+                    Expr::UnOp { .. }
+                    | Expr::Ternary { .. }
+                    | Expr::BinOp { .. }
+                    | Expr::Call { .. }
+                    | Expr::VarId { .. }
+                    | Expr::MapGet { .. } => Expr::UnOp {
+                        op: UnOp::Cast {
+                            target: target.clone(),
+                        },
+                        expr: Box::new(expr),
+                        done_on: done_on.clone(),
+                        loc: None,
+                    },
+                },
                 UnOp::Not => {
-                    let expr_val = ExprFolder::get_single_bool(&expr);
+                    let expr_val = self.get_single_bool_inner(&expr);
                     if let Some(expr_bool) = expr_val {
                         Expr::Primitive {
-                            val: Value::Boolean {
-                                ty: DataType::Boolean,
-                                val: !expr_bool,
-                            },
+                            val: Value::Boolean { val: !expr_bool },
                             loc: None,
                         }
                     } else {
-                        Expr::UnOp {
+                        return Expr::UnOp {
                             op: UnOp::Not,
                             expr: Box::new(expr),
+                            done_on: done_on.clone(),
+                            loc: None,
+                        };
+                    }
+                }
+                UnOp::BitwiseNot => {
+                    if let Some(res) = self.fold_numeric_unop(&expr, op, done_on, err) {
+                        res
+                    } else {
+                        Expr::UnOp {
+                            op: UnOp::BitwiseNot,
+                            expr: Box::new(expr),
+                            done_on: done_on.clone(),
                             loc: None,
                         }
                     }
@@ -290,20 +346,23 @@ impl ExprFolder {
         unop.to_owned()
     }
 
-    fn fold_bools(lhs_val: &Option<bool>, rhs_val: &Option<bool>, op: &BinOp) -> Option<Expr> {
+    fn fold_bools(
+        &mut self,
+        lhs_val: &Option<bool>,
+        rhs_val: &Option<bool>,
+        op: &BinOp,
+    ) -> Option<Expr> {
         if let Some(lhs_bool) = lhs_val {
             if let Some(rhs_bool) = rhs_val {
                 return match op {
                     BinOp::EQ => Some(Expr::Primitive {
                         val: Value::Boolean {
-                            ty: DataType::Boolean,
                             val: lhs_bool == rhs_bool,
                         },
                         loc: None,
                     }),
                     BinOp::NE => Some(Expr::Primitive {
                         val: Value::Boolean {
-                            ty: DataType::Boolean,
                             val: lhs_bool != rhs_bool,
                         },
                         loc: None,
@@ -315,85 +374,360 @@ impl ExprFolder {
         None
     }
 
-    fn fold_ints(lhs_val: &Option<i32>, rhs_val: &Option<i32>, op: &BinOp) -> Option<Expr> {
+    fn fold_numeric_binop(
+        &mut self,
+        lhs: &Expr,
+        rhs: &Expr,
+        op: &BinOp,
+        done_on: &DataType,
+        err: &mut ErrorGen,
+    ) -> Option<Expr> {
+        let (lhs_val, rhs_val) = self.get_i32s(lhs, rhs);
+        if let Some(res) = self.fold_i32s_binop(&lhs_val, &rhs_val, op, err) {
+            return Some(res);
+        }
+        let (lhs_val, rhs_val) = self.get_u32s(lhs, rhs);
+        if let Some(res) = self.fold_u32s_binop(&lhs_val, &rhs_val, op, done_on, err) {
+            return Some(res);
+        }
+        let (lhs_val, rhs_val) = self.get_i64s(lhs, rhs);
+        if let Some(res) = self.fold_i64s_binop(&lhs_val, &rhs_val, op, err) {
+            return Some(res);
+        }
+        let (lhs_val, rhs_val) = self.get_u64s(lhs, rhs);
+        if let Some(res) = self.fold_u64s_binop(&lhs_val, &rhs_val, op, err) {
+            return Some(res);
+        }
+        let (lhs_val, rhs_val) = self.get_f32s(lhs, rhs);
+        if let Some(res) = self.fold_f32s_binop(&lhs_val, &rhs_val, op, err) {
+            return Some(res);
+        }
+        let (lhs_val, rhs_val) = self.get_f64s(lhs, rhs);
+        if let Some(res) = self.fold_f64s_binop(&lhs_val, &rhs_val, op, err) {
+            return Some(res);
+        }
+        None
+    }
+
+    fn fold_i32s_binop(
+        &mut self,
+        lhs_val: &Option<i32>,
+        rhs_val: &Option<i32>,
+        op: &BinOp,
+        err: &mut ErrorGen,
+    ) -> Option<Expr> {
         if let Some(lhs_int) = lhs_val {
             if let Some(rhs_int) = rhs_val {
                 return match op {
                     BinOp::EQ => Some(Expr::Primitive {
                         val: Value::Boolean {
-                            ty: DataType::Boolean,
                             val: lhs_int == rhs_int,
                         },
                         loc: None,
                     }),
                     BinOp::NE => Some(Expr::Primitive {
                         val: Value::Boolean {
-                            ty: DataType::Boolean,
                             val: lhs_int != rhs_int,
                         },
                         loc: None,
                     }),
                     BinOp::GE => Some(Expr::Primitive {
                         val: Value::Boolean {
-                            ty: DataType::Boolean,
                             val: lhs_int >= rhs_int,
                         },
                         loc: None,
                     }),
                     BinOp::GT => Some(Expr::Primitive {
                         val: Value::Boolean {
-                            ty: DataType::Boolean,
                             val: lhs_int > rhs_int,
                         },
                         loc: None,
                     }),
                     BinOp::LE => Some(Expr::Primitive {
                         val: Value::Boolean {
-                            ty: DataType::Boolean,
                             val: lhs_int <= rhs_int,
                         },
                         loc: None,
                     }),
                     BinOp::LT => Some(Expr::Primitive {
                         val: Value::Boolean {
-                            ty: DataType::Boolean,
                             val: lhs_int < rhs_int,
                         },
                         loc: None,
                     }),
                     BinOp::Add => Some(Expr::Primitive {
-                        val: Value::I32 {
-                            ty: DataType::I32,
-                            val: lhs_int + rhs_int,
-                        },
+                        val: Value::gen_u32(lhs_int.wrapping_add(*rhs_int) as u32),
                         loc: None,
                     }),
                     BinOp::Subtract => Some(Expr::Primitive {
-                        val: Value::I32 {
-                            ty: DataType::I32,
-                            val: lhs_int - rhs_int,
-                        },
+                        val: Value::gen_u32(lhs_int.wrapping_sub(*rhs_int) as u32),
                         loc: None,
                     }),
                     BinOp::Multiply => Some(Expr::Primitive {
-                        val: Value::I32 {
-                            ty: DataType::I32,
-                            val: lhs_int * rhs_int,
+                        val: Value::gen_u32(lhs_int.wrapping_mul(*rhs_int) as u32),
+                        loc: None,
+                    }),
+                    BinOp::Divide => {
+                        if *rhs_int == 0 {
+                            err.div_by_zero(self.curr_loc.clone())
+                        }
+                        Some(Expr::Primitive {
+                            val: Value::gen_u32(lhs_int.wrapping_div(*rhs_int) as u32),
+                            loc: None,
+                        })
+                    }
+                    BinOp::Modulo => {
+                        if *rhs_int == 0 {
+                            err.div_by_zero(self.curr_loc.clone())
+                        }
+                        Some(Expr::Primitive {
+                            val: Value::gen_u32((lhs_int % rhs_int) as u32),
+                            loc: None,
+                        })
+                    }
+                    BinOp::LShift => Some(Expr::Primitive {
+                        val: Value::gen_u32((lhs_int << rhs_int) as u32),
+                        loc: None,
+                    }),
+                    BinOp::RShift => Some(Expr::Primitive {
+                        val: Value::gen_u32((lhs_int >> rhs_int) as u32),
+                        loc: None,
+                    }),
+                    BinOp::BitAnd => Some(Expr::Primitive {
+                        val: Value::gen_u32((lhs_int & rhs_int) as u32),
+                        loc: None,
+                    }),
+                    BinOp::BitOr => Some(Expr::Primitive {
+                        val: Value::gen_u32((lhs_int | rhs_int) as u32),
+                        loc: None,
+                    }),
+                    BinOp::BitXor => Some(Expr::Primitive {
+                        val: Value::gen_u32((lhs_int ^ rhs_int) as u32),
+                        loc: None,
+                    }),
+                    _ => None,
+                };
+            }
+        }
+        None
+    }
+    fn fold_u32s_binop(
+        &mut self,
+        lhs_val: &Option<u32>,
+        rhs_val: &Option<u32>,
+        op: &BinOp,
+        done_on: &DataType,
+        err: &mut ErrorGen,
+    ) -> Option<Expr> {
+        if let Some(lhs_int) = lhs_val {
+            if let Some(rhs_int) = rhs_val {
+                return match op {
+                    BinOp::EQ => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            val: lhs_int == rhs_int,
                         },
                         loc: None,
                     }),
-                    BinOp::Divide => Some(Expr::Primitive {
-                        val: Value::I32 {
-                            ty: DataType::I32,
-                            val: lhs_int / rhs_int,
+                    BinOp::NE => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            val: lhs_int != rhs_int,
                         },
                         loc: None,
                     }),
-                    BinOp::Modulo => Some(Expr::Primitive {
-                        val: Value::I32 {
-                            ty: DataType::I32,
-                            val: lhs_int % rhs_int,
+                    BinOp::GE => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            val: lhs_int >= rhs_int,
                         },
+                        loc: None,
+                    }),
+                    BinOp::GT => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            val: lhs_int > rhs_int,
+                        },
+                        loc: None,
+                    }),
+                    BinOp::LE => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            val: lhs_int <= rhs_int,
+                        },
+                        loc: None,
+                    }),
+                    BinOp::LT => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            val: lhs_int < rhs_int,
+                        },
+                        loc: None,
+                    }),
+                    BinOp::Add => {
+                        // handle what's represented as u32s in the compiler
+                        match done_on {
+                            DataType::U8 => Some(Expr::Primitive {
+                                val: Value::gen_u8((*lhs_int as u8).wrapping_add(*rhs_int as u8)),
+                                loc: None,
+                            }),
+                            DataType::I8 => Some(Expr::Primitive {
+                                val: Value::gen_i8((*lhs_int as i8).wrapping_add(*rhs_int as i8)),
+                                loc: None,
+                            }),
+                            DataType::U16 => Some(Expr::Primitive {
+                                val: Value::gen_u16(
+                                    (*lhs_int as u16).wrapping_add(*rhs_int as u16),
+                                ),
+                                loc: None,
+                            }),
+                            DataType::I16 => Some(Expr::Primitive {
+                                val: Value::gen_i16(
+                                    (*lhs_int as i16).wrapping_add(*rhs_int as i16),
+                                ),
+                                loc: None,
+                            }),
+                            DataType::U32 => Some(Expr::Primitive {
+                                val: Value::gen_u32(lhs_int.wrapping_add(*rhs_int)),
+                                loc: None,
+                            }),
+                            _ => unreachable!(),
+                        }
+                    }
+                    BinOp::Subtract => {
+                        // handle what's represented as u32s in the compiler
+                        match done_on {
+                            DataType::U8 => Some(Expr::Primitive {
+                                val: Value::gen_u8((*lhs_int as u8).wrapping_sub(*rhs_int as u8)),
+                                loc: None,
+                            }),
+                            DataType::I8 => Some(Expr::Primitive {
+                                val: Value::gen_i8((*lhs_int as i8).wrapping_sub(*rhs_int as i8)),
+                                loc: None,
+                            }),
+                            DataType::U16 => Some(Expr::Primitive {
+                                val: Value::gen_u16(
+                                    (*lhs_int as u16).wrapping_sub(*rhs_int as u16),
+                                ),
+                                loc: None,
+                            }),
+                            DataType::I16 => Some(Expr::Primitive {
+                                val: Value::gen_i16(
+                                    (*lhs_int as i16).wrapping_sub(*rhs_int as i16),
+                                ),
+                                loc: None,
+                            }),
+                            DataType::U32 => Some(Expr::Primitive {
+                                val: Value::gen_u32(lhs_int.wrapping_sub(*rhs_int)),
+                                loc: None,
+                            }),
+                            _ => unreachable!(),
+                        }
+                    }
+                    BinOp::Multiply => {
+                        // handle what's represented as u32s in the compiler
+                        match done_on {
+                            DataType::U8 => Some(Expr::Primitive {
+                                val: Value::gen_u8((*lhs_int as u8).wrapping_mul(*rhs_int as u8)),
+                                loc: None,
+                            }),
+                            DataType::I8 => Some(Expr::Primitive {
+                                val: Value::gen_i8((*lhs_int as i8).wrapping_mul(*rhs_int as i8)),
+                                loc: None,
+                            }),
+                            DataType::U16 => Some(Expr::Primitive {
+                                val: Value::gen_u16(
+                                    (*lhs_int as u16).wrapping_mul(*rhs_int as u16),
+                                ),
+                                loc: None,
+                            }),
+                            DataType::I16 => Some(Expr::Primitive {
+                                val: Value::gen_i16(
+                                    (*lhs_int as i16).wrapping_mul(*rhs_int as i16),
+                                ),
+                                loc: None,
+                            }),
+                            DataType::U32 => Some(Expr::Primitive {
+                                val: Value::gen_u32(lhs_int.wrapping_mul(*rhs_int)),
+                                loc: None,
+                            }),
+                            _ => unreachable!(),
+                        }
+                    }
+                    BinOp::Divide => {
+                        if *rhs_int == 0 {
+                            err.div_by_zero(self.curr_loc.clone())
+                        }
+                        // handle what's represented as u32s in the compiler
+                        match done_on {
+                            DataType::U8 => Some(Expr::Primitive {
+                                val: Value::gen_u8((*lhs_int as u8).wrapping_div(*rhs_int as u8)),
+                                loc: None,
+                            }),
+                            DataType::I8 => Some(Expr::Primitive {
+                                val: Value::gen_i8((*lhs_int as i8).wrapping_div(*rhs_int as i8)),
+                                loc: None,
+                            }),
+                            DataType::U16 => Some(Expr::Primitive {
+                                val: Value::gen_u16(
+                                    (*lhs_int as u16).wrapping_div(*rhs_int as u16),
+                                ),
+                                loc: None,
+                            }),
+                            DataType::I16 => Some(Expr::Primitive {
+                                val: Value::gen_i16(
+                                    (*lhs_int as i16).wrapping_div(*rhs_int as i16),
+                                ),
+                                loc: None,
+                            }),
+                            DataType::U32 => Some(Expr::Primitive {
+                                val: Value::gen_u32(lhs_int.wrapping_div(*rhs_int)),
+                                loc: None,
+                            }),
+                            _ => unreachable!(),
+                        }
+                    }
+                    BinOp::Modulo => {
+                        if *rhs_int == 0 {
+                            err.div_by_zero(self.curr_loc.clone())
+                        }
+                        // handle what's represented as u32s in the compiler
+                        match done_on {
+                            DataType::U8 => Some(Expr::Primitive {
+                                val: Value::gen_u8(*lhs_int as u8 % *rhs_int as u8),
+                                loc: None,
+                            }),
+                            DataType::I8 => Some(Expr::Primitive {
+                                val: Value::gen_i8(*lhs_int as i8 % *rhs_int as i8),
+                                loc: None,
+                            }),
+                            DataType::U16 => Some(Expr::Primitive {
+                                val: Value::gen_u16(*lhs_int as u16 % *rhs_int as u16),
+                                loc: None,
+                            }),
+                            DataType::I16 => Some(Expr::Primitive {
+                                val: Value::gen_i16(*lhs_int as i16 % *rhs_int as i16),
+                                loc: None,
+                            }),
+                            DataType::U32 => Some(Expr::Primitive {
+                                val: Value::gen_u32(lhs_int % rhs_int),
+                                loc: None,
+                            }),
+                            _ => unreachable!(),
+                        }
+                    }
+                    BinOp::LShift => Some(Expr::Primitive {
+                        val: Value::gen_u32(lhs_int << rhs_int),
+                        loc: None,
+                    }),
+                    BinOp::RShift => Some(Expr::Primitive {
+                        val: Value::gen_u32(lhs_int >> rhs_int),
+                        loc: None,
+                    }),
+                    BinOp::BitAnd => Some(Expr::Primitive {
+                        val: Value::gen_u32(lhs_int & rhs_int),
+                        loc: None,
+                    }),
+                    BinOp::BitOr => Some(Expr::Primitive {
+                        val: Value::gen_u32(lhs_int | rhs_int),
+                        loc: None,
+                    }),
+                    BinOp::BitXor => Some(Expr::Primitive {
+                        val: Value::gen_u32(lhs_int ^ rhs_int),
                         loc: None,
                     }),
                     _ => None,
@@ -403,7 +737,495 @@ impl ExprFolder {
         None
     }
 
+    fn fold_i64s_binop(
+        &mut self,
+        lhs_val: &Option<i64>,
+        rhs_val: &Option<i64>,
+        op: &BinOp,
+        err: &mut ErrorGen,
+    ) -> Option<Expr> {
+        if let Some(lhs_int) = lhs_val {
+            if let Some(rhs_int) = rhs_val {
+                return match op {
+                    BinOp::EQ => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            val: lhs_int == rhs_int,
+                        },
+                        loc: None,
+                    }),
+                    BinOp::NE => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            val: lhs_int != rhs_int,
+                        },
+                        loc: None,
+                    }),
+                    BinOp::GE => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            val: lhs_int >= rhs_int,
+                        },
+                        loc: None,
+                    }),
+                    BinOp::GT => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            val: lhs_int > rhs_int,
+                        },
+                        loc: None,
+                    }),
+                    BinOp::LE => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            val: lhs_int <= rhs_int,
+                        },
+                        loc: None,
+                    }),
+                    BinOp::LT => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            val: lhs_int < rhs_int,
+                        },
+                        loc: None,
+                    }),
+                    BinOp::Add => Some(Expr::Primitive {
+                        val: Value::gen_u64(lhs_int.wrapping_add(*rhs_int) as u64),
+                        loc: None,
+                    }),
+                    BinOp::Subtract => Some(Expr::Primitive {
+                        val: Value::gen_u64(lhs_int.wrapping_sub(*rhs_int) as u64),
+                        loc: None,
+                    }),
+                    BinOp::Multiply => Some(Expr::Primitive {
+                        val: Value::gen_u64(lhs_int.wrapping_mul(*rhs_int) as u64),
+                        loc: None,
+                    }),
+                    BinOp::Divide => {
+                        if *rhs_int == 0 {
+                            err.div_by_zero(self.curr_loc.clone())
+                        }
+                        Some(Expr::Primitive {
+                            val: Value::gen_u64(lhs_int.wrapping_div(*rhs_int) as u64),
+                            loc: None,
+                        })
+                    }
+                    BinOp::Modulo => {
+                        if *rhs_int == 0 {
+                            err.div_by_zero(self.curr_loc.clone())
+                        }
+                        Some(Expr::Primitive {
+                            val: Value::gen_u64((lhs_int % rhs_int) as u64),
+                            loc: None,
+                        })
+                    }
+                    BinOp::LShift => Some(Expr::Primitive {
+                        val: Value::gen_u64((lhs_int << rhs_int) as u64),
+                        loc: None,
+                    }),
+                    BinOp::RShift => Some(Expr::Primitive {
+                        val: Value::gen_u64((lhs_int >> rhs_int) as u64),
+                        loc: None,
+                    }),
+                    BinOp::BitAnd => Some(Expr::Primitive {
+                        val: Value::gen_u64((lhs_int & rhs_int) as u64),
+                        loc: None,
+                    }),
+                    BinOp::BitOr => Some(Expr::Primitive {
+                        val: Value::gen_u64((lhs_int | rhs_int) as u64),
+                        loc: None,
+                    }),
+                    BinOp::BitXor => Some(Expr::Primitive {
+                        val: Value::gen_u64((lhs_int ^ rhs_int) as u64),
+                        loc: None,
+                    }),
+                    _ => None,
+                };
+            }
+        }
+        None
+    }
+    fn fold_u64s_binop(
+        &mut self,
+        lhs_val: &Option<u64>,
+        rhs_val: &Option<u64>,
+        op: &BinOp,
+        err: &mut ErrorGen,
+    ) -> Option<Expr> {
+        if let Some(lhs_int) = lhs_val {
+            if let Some(rhs_int) = rhs_val {
+                return match op {
+                    BinOp::EQ => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            val: lhs_int == rhs_int,
+                        },
+                        loc: None,
+                    }),
+                    BinOp::NE => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            val: lhs_int != rhs_int,
+                        },
+                        loc: None,
+                    }),
+                    BinOp::GE => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            val: lhs_int >= rhs_int,
+                        },
+                        loc: None,
+                    }),
+                    BinOp::GT => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            val: lhs_int > rhs_int,
+                        },
+                        loc: None,
+                    }),
+                    BinOp::LE => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            val: lhs_int <= rhs_int,
+                        },
+                        loc: None,
+                    }),
+                    BinOp::LT => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            val: lhs_int < rhs_int,
+                        },
+                        loc: None,
+                    }),
+                    BinOp::Add => Some(Expr::Primitive {
+                        val: Value::gen_u64(lhs_int.wrapping_add(*rhs_int)),
+                        loc: None,
+                    }),
+                    BinOp::Subtract => Some(Expr::Primitive {
+                        val: Value::gen_u64(lhs_int.wrapping_sub(*rhs_int)),
+                        loc: None,
+                    }),
+                    BinOp::Multiply => Some(Expr::Primitive {
+                        val: Value::gen_u64(lhs_int.wrapping_mul(*rhs_int)),
+                        loc: None,
+                    }),
+                    BinOp::Divide => {
+                        if *rhs_int == 0 {
+                            err.div_by_zero(self.curr_loc.clone())
+                        }
+                        Some(Expr::Primitive {
+                            val: Value::gen_u64(lhs_int.wrapping_div(*rhs_int)),
+                            loc: None,
+                        })
+                    }
+                    BinOp::Modulo => {
+                        if *rhs_int == 0 {
+                            err.div_by_zero(self.curr_loc.clone())
+                        }
+                        Some(Expr::Primitive {
+                            val: Value::gen_u64(lhs_int % rhs_int),
+                            loc: None,
+                        })
+                    }
+                    BinOp::LShift => Some(Expr::Primitive {
+                        val: Value::gen_u64(lhs_int << rhs_int),
+                        loc: None,
+                    }),
+                    BinOp::RShift => Some(Expr::Primitive {
+                        val: Value::gen_u64(lhs_int >> rhs_int),
+                        loc: None,
+                    }),
+                    BinOp::BitAnd => Some(Expr::Primitive {
+                        val: Value::gen_u64(lhs_int & rhs_int),
+                        loc: None,
+                    }),
+                    BinOp::BitOr => Some(Expr::Primitive {
+                        val: Value::gen_u64(lhs_int | rhs_int),
+                        loc: None,
+                    }),
+                    BinOp::BitXor => Some(Expr::Primitive {
+                        val: Value::gen_u64(lhs_int ^ rhs_int),
+                        loc: None,
+                    }),
+                    _ => None,
+                };
+            }
+        }
+        None
+    }
+
+    fn fold_f32s_binop(
+        &mut self,
+        lhs_val: &Option<f32>,
+        rhs_val: &Option<f32>,
+        op: &BinOp,
+        err: &mut ErrorGen,
+    ) -> Option<Expr> {
+        if let Some(lhs_int) = lhs_val {
+            if let Some(rhs_int) = rhs_val {
+                return match op {
+                    BinOp::EQ => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            val: lhs_int == rhs_int,
+                        },
+                        loc: None,
+                    }),
+                    BinOp::NE => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            val: lhs_int != rhs_int,
+                        },
+                        loc: None,
+                    }),
+                    BinOp::GE => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            val: lhs_int >= rhs_int,
+                        },
+                        loc: None,
+                    }),
+                    BinOp::GT => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            val: lhs_int > rhs_int,
+                        },
+                        loc: None,
+                    }),
+                    BinOp::LE => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            val: lhs_int <= rhs_int,
+                        },
+                        loc: None,
+                    }),
+                    BinOp::LT => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            val: lhs_int < rhs_int,
+                        },
+                        loc: None,
+                    }),
+                    BinOp::Add => Some(Expr::Primitive {
+                        val: Value::gen_f32(lhs_int.add(*rhs_int)),
+                        loc: None,
+                    }),
+                    BinOp::Subtract => Some(Expr::Primitive {
+                        val: Value::gen_f32(lhs_int.sub(*rhs_int)),
+                        loc: None,
+                    }),
+                    BinOp::Multiply => Some(Expr::Primitive {
+                        val: Value::gen_f32(lhs_int.mul(*rhs_int)),
+                        loc: None,
+                    }),
+                    BinOp::Divide => {
+                        if rhs_int.eq(&0f32) {
+                            err.div_by_zero(self.curr_loc.clone())
+                        }
+                        Some(Expr::Primitive {
+                            val: Value::gen_f32(lhs_int.div(*rhs_int)),
+                            loc: None,
+                        })
+                    }
+                    BinOp::Modulo => {
+                        if rhs_int.eq(&0f32) {
+                            err.div_by_zero(self.curr_loc.clone())
+                        }
+                        Some(Expr::Primitive {
+                            val: Value::gen_f32(lhs_int.rem(rhs_int)),
+                            loc: None,
+                        })
+                    }
+                    BinOp::LShift
+                    | BinOp::RShift
+                    | BinOp::BitAnd
+                    | BinOp::BitOr
+                    | BinOp::BitXor => unreachable!(),
+                    _ => None,
+                };
+            }
+        }
+        None
+    }
+
+    fn fold_f64s_binop(
+        &mut self,
+        lhs_val: &Option<f64>,
+        rhs_val: &Option<f64>,
+        op: &BinOp,
+        err: &mut ErrorGen,
+    ) -> Option<Expr> {
+        if let Some(lhs_int) = lhs_val {
+            if let Some(rhs_int) = rhs_val {
+                return match op {
+                    BinOp::EQ => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            val: lhs_int == rhs_int,
+                        },
+                        loc: None,
+                    }),
+                    BinOp::NE => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            val: lhs_int != rhs_int,
+                        },
+                        loc: None,
+                    }),
+                    BinOp::GE => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            val: lhs_int >= rhs_int,
+                        },
+                        loc: None,
+                    }),
+                    BinOp::GT => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            val: lhs_int > rhs_int,
+                        },
+                        loc: None,
+                    }),
+                    BinOp::LE => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            val: lhs_int <= rhs_int,
+                        },
+                        loc: None,
+                    }),
+                    BinOp::LT => Some(Expr::Primitive {
+                        val: Value::Boolean {
+                            val: lhs_int < rhs_int,
+                        },
+                        loc: None,
+                    }),
+                    BinOp::Add => Some(Expr::Primitive {
+                        val: Value::gen_f64(lhs_int.add(*rhs_int)),
+                        loc: None,
+                    }),
+                    BinOp::Subtract => Some(Expr::Primitive {
+                        val: Value::gen_f64(lhs_int.sub(*rhs_int)),
+                        loc: None,
+                    }),
+                    BinOp::Multiply => Some(Expr::Primitive {
+                        val: Value::gen_f64(lhs_int.mul(*rhs_int)),
+                        loc: None,
+                    }),
+                    BinOp::Divide => {
+                        if rhs_int.eq(&0f64) {
+                            err.div_by_zero(self.curr_loc.clone())
+                        }
+                        Some(Expr::Primitive {
+                            val: Value::gen_f64(lhs_int.div(*rhs_int)),
+                            loc: None,
+                        })
+                    }
+                    BinOp::Modulo => {
+                        if rhs_int.eq(&0f64) {
+                            err.div_by_zero(self.curr_loc.clone())
+                        }
+                        Some(Expr::Primitive {
+                            val: Value::gen_f64(lhs_int.rem(rhs_int)),
+                            loc: None,
+                        })
+                    }
+                    BinOp::LShift
+                    | BinOp::RShift
+                    | BinOp::BitAnd
+                    | BinOp::BitOr
+                    | BinOp::BitXor => unreachable!(),
+                    _ => None,
+                };
+            }
+        }
+        None
+    }
+
+    fn fold_numeric_unop(
+        &mut self,
+        expr: &Expr,
+        op: &UnOp,
+        _done_on: &DataType,
+        err: &mut ErrorGen,
+    ) -> Option<Expr> {
+        let val = self.get_i32(expr);
+        if let Some(res) = self.fold_i32_unop(&val, op, err) {
+            return Some(res);
+        }
+        let val = self.get_u32(expr);
+        if let Some(res) = self.fold_u32_unop(&val, op, err) {
+            return Some(res);
+        }
+        let val = self.get_i64(expr);
+        if let Some(res) = self.fold_i64_unop(&val, op, err) {
+            return Some(res);
+        }
+        let val = self.get_u64(expr);
+        if let Some(res) = self.fold_u64_unop(&val, op, err) {
+            return Some(res);
+        }
+        let val = self.get_f32(expr);
+        if let Some(res) = self.fold_f32_unop(&val, op, err) {
+            return Some(res);
+        }
+        let val = self.get_f64(expr);
+        if let Some(res) = self.fold_f64_unop(&val, op, err) {
+            return Some(res);
+        }
+        None
+    }
+
+    fn fold_i32_unop(&mut self, val: &Option<i32>, op: &UnOp, _err: &mut ErrorGen) -> Option<Expr> {
+        if let Some(val) = val {
+            return match op {
+                UnOp::BitwiseNot => Some(Expr::Primitive {
+                    val: Value::gen_i32(!val),
+                    loc: None,
+                }),
+                _ => None,
+            };
+        }
+        None
+    }
+
+    fn fold_u32_unop(&mut self, val: &Option<u32>, op: &UnOp, _err: &mut ErrorGen) -> Option<Expr> {
+        if let Some(val) = val {
+            return match op {
+                UnOp::BitwiseNot => Some(Expr::Primitive {
+                    val: Value::gen_u32(!val),
+                    loc: None,
+                }),
+                _ => None,
+            };
+        }
+        None
+    }
+
+    fn fold_i64_unop(&mut self, val: &Option<i64>, op: &UnOp, _err: &mut ErrorGen) -> Option<Expr> {
+        if let Some(val) = val {
+            return match op {
+                UnOp::BitwiseNot => Some(Expr::Primitive {
+                    val: Value::gen_i64(!val),
+                    loc: None,
+                }),
+                _ => None,
+            };
+        }
+        None
+    }
+
+    fn fold_u64_unop(&mut self, val: &Option<u64>, op: &UnOp, _err: &mut ErrorGen) -> Option<Expr> {
+        if let Some(val) = val {
+            return match op {
+                UnOp::BitwiseNot => Some(Expr::Primitive {
+                    val: Value::gen_u64(!val),
+                    loc: None,
+                }),
+                _ => None,
+            };
+        }
+        None
+    }
+
+    fn fold_f32_unop(&mut self, val: &Option<f32>, op: &UnOp, _err: &mut ErrorGen) -> Option<Expr> {
+        if let Some(_val) = val {
+            return match op {
+                UnOp::BitwiseNot => unreachable!(),
+                _ => None,
+            };
+        }
+        None
+    }
+
+    fn fold_f64_unop(&mut self, val: &Option<f64>, op: &UnOp, _err: &mut ErrorGen) -> Option<Expr> {
+        if let Some(_val) = val {
+            return match op {
+                UnOp::BitwiseNot => unreachable!(),
+                _ => None,
+            };
+        }
+        None
+    }
+
     fn fold_strings(
+        &mut self,
         lhs_val: &Option<String>,
         rhs_val: &Option<String>,
         op: &BinOp,
@@ -413,14 +1235,12 @@ impl ExprFolder {
                 return match op {
                     BinOp::EQ => Some(Expr::Primitive {
                         val: Value::Boolean {
-                            ty: DataType::Boolean,
                             val: lhs_str == rhs_str,
                         },
                         loc: None,
                     }),
                     BinOp::NE => Some(Expr::Primitive {
                         val: Value::Boolean {
-                            ty: DataType::Boolean,
                             val: lhs_str != rhs_str,
                         },
                         loc: None,
@@ -432,7 +1252,8 @@ impl ExprFolder {
         None
     }
 
-    fn fold_ternary(ternary: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
+    fn fold_ternary(&mut self, ternary: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
+        self.curr_loc = ternary.loc().clone();
         match ternary {
             Expr::Ternary {
                 cond,
@@ -441,12 +1262,12 @@ impl ExprFolder {
                 ty,
                 ..
             } => {
-                let cond = ExprFolder::fold_expr(cond, table, err);
-                let conseq = ExprFolder::fold_expr(conseq, table, err);
-                let alt = ExprFolder::fold_expr(alt, table, err);
+                let cond = self.fold_expr_inner(cond, table, err);
+                let conseq = self.fold_expr_inner(conseq, table, err);
+                let alt = self.fold_expr_inner(alt, table, err);
 
                 // check if the condition folds to true/false!
-                let cond_val = ExprFolder::get_single_bool(&cond);
+                let cond_val = self.get_single_bool_inner(&cond);
                 return if let Some(cond_bool) = cond_val {
                     // the condition folds to a primitive bool!
                     if cond_bool {
@@ -474,10 +1295,12 @@ impl ExprFolder {
         ternary.clone()
     }
 
-    fn fold_call(call: &Expr, _table: &SymbolTable) -> Expr {
+    fn fold_call(&mut self, call: &Expr, _table: &SymbolTable) -> Expr {
+        self.curr_loc = call.loc().clone();
         call.clone()
     }
-    fn fold_var_id(var_id: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
+    fn fold_var_id(&mut self, var_id: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
+        self.curr_loc = var_id.loc().clone();
         if let Expr::VarId { name, .. } = &var_id {
             let Some(Var { value, .. }) = table.lookup_var(name, &None, err, false) else {
                 return var_id.clone(); // ignore
@@ -491,7 +1314,13 @@ impl ExprFolder {
         }
         var_id.clone()
     }
-    fn fold_primitive(primitive: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
+    fn fold_primitive(
+        &mut self,
+        primitive: &Expr,
+        table: &SymbolTable,
+        err: &mut ErrorGen,
+    ) -> Expr {
+        self.curr_loc = primitive.loc().clone();
         match primitive {
             Expr::Primitive {
                 val: Value::Tuple { vals, ty },
@@ -500,7 +1329,7 @@ impl ExprFolder {
                 let mut folded_vals = vec![];
 
                 for val in vals.iter() {
-                    folded_vals.push(ExprFolder::fold_expr(val, table, err))
+                    folded_vals.push(self.fold_expr_inner(val, table, err))
                 }
 
                 Expr::Primitive {
@@ -514,7 +1343,8 @@ impl ExprFolder {
             _ => primitive.clone(),
         }
     }
-    pub fn get_single_bool(expr: &Expr) -> Option<bool> {
+    fn get_single_bool_inner(&mut self, expr: &Expr) -> Option<bool> {
+        self.curr_loc = expr.loc().clone();
         match expr {
             Expr::Primitive {
                 val: Value::Boolean { val, .. },
@@ -523,43 +1353,111 @@ impl ExprFolder {
             _ => None,
         }
     }
-    pub fn get_bool(lhs: &Expr, rhs: &Expr) -> (Option<bool>, Option<bool>) {
-        let lhs_val = ExprFolder::get_single_bool(lhs);
-        let rhs_val = ExprFolder::get_single_bool(rhs);
+    fn get_bool(&mut self, lhs: &Expr, rhs: &Expr) -> (Option<bool>, Option<bool>) {
+        self.curr_loc = lhs.loc().clone();
+        let lhs_val = self.get_single_bool_inner(lhs);
+        self.curr_loc = rhs.loc().clone();
+        let rhs_val = self.get_single_bool_inner(rhs);
         (lhs_val, rhs_val)
     }
-    pub fn get_i32(lhs: &Expr, rhs: &Expr) -> (Option<i32>, Option<i32>) {
-        let lhs_val = match lhs {
-            Expr::Primitive {
-                val: Value::I32 { val: lhs_val, .. },
-                ..
-            } => Some(*lhs_val),
-            Expr::Primitive {
-                val: Value::U32 { val: lhs_val, .. },
-                ..
-            } => {
-                // TODO -- check overflow here!
-                Some(*lhs_val as i32)
-            }
-            _ => None,
-        };
-        let rhs_val = match rhs {
-            Expr::Primitive {
-                val: Value::I32 { val: rhs_val, .. },
-                ..
-            } => Some(*rhs_val),
-            Expr::Primitive {
-                val: Value::U32 { val: rhs_val, .. },
-                ..
-            } => {
-                // TODO -- check overflow here!
-                Some(*rhs_val as i32)
-            }
-            _ => None,
-        };
-        (lhs_val, rhs_val)
+    fn get_i32s(&mut self, lhs: &Expr, rhs: &Expr) -> (Option<i32>, Option<i32>) {
+        (self.get_i32(lhs), self.get_i32(rhs))
     }
-    pub fn get_str(lhs: &Expr, rhs: &Expr) -> (Option<String>, Option<String>) {
+    fn get_i32(&mut self, expr: &Expr) -> Option<i32> {
+        match expr {
+            Expr::Primitive {
+                val:
+                    Value::Number {
+                        val: NumLit::I32 { val },
+                        ..
+                    },
+                ..
+            } => Some(*val),
+            _ => None,
+        }
+    }
+    fn get_u32s(&mut self, lhs: &Expr, rhs: &Expr) -> (Option<u32>, Option<u32>) {
+        (self.get_u32(lhs), self.get_u32(rhs))
+    }
+    fn get_u32(&mut self, expr: &Expr) -> Option<u32> {
+        match expr {
+            Expr::Primitive {
+                val:
+                    Value::Number {
+                        val: NumLit::U32 { val },
+                        ..
+                    },
+                ..
+            } => Some(*val),
+            _ => None,
+        }
+    }
+    fn get_i64s(&mut self, lhs: &Expr, rhs: &Expr) -> (Option<i64>, Option<i64>) {
+        (self.get_i64(lhs), self.get_i64(rhs))
+    }
+    fn get_i64(&mut self, expr: &Expr) -> Option<i64> {
+        match expr {
+            Expr::Primitive {
+                val:
+                    Value::Number {
+                        val: NumLit::I64 { val },
+                        ..
+                    },
+                ..
+            } => Some(*val),
+            _ => None,
+        }
+    }
+    fn get_u64s(&mut self, lhs: &Expr, rhs: &Expr) -> (Option<u64>, Option<u64>) {
+        (self.get_u64(lhs), self.get_u64(rhs))
+    }
+    fn get_u64(&mut self, expr: &Expr) -> Option<u64> {
+        match expr {
+            Expr::Primitive {
+                val:
+                    Value::Number {
+                        val: NumLit::U64 { val },
+                        ..
+                    },
+                ..
+            } => Some(*val),
+            _ => None,
+        }
+    }
+    fn get_f32s(&mut self, lhs: &Expr, rhs: &Expr) -> (Option<f32>, Option<f32>) {
+        (self.get_f32(lhs), self.get_f32(rhs))
+    }
+    fn get_f32(&mut self, expr: &Expr) -> Option<f32> {
+        match expr {
+            Expr::Primitive {
+                val:
+                    Value::Number {
+                        val: NumLit::F32 { val },
+                        ..
+                    },
+                ..
+            } => Some(*val),
+            _ => None,
+        }
+    }
+    fn get_f64s(&mut self, lhs: &Expr, rhs: &Expr) -> (Option<f64>, Option<f64>) {
+        (self.get_f64(lhs), self.get_f64(rhs))
+    }
+    fn get_f64(&mut self, expr: &Expr) -> Option<f64> {
+        match expr {
+            Expr::Primitive {
+                val:
+                    Value::Number {
+                        val: NumLit::F64 { val },
+                        ..
+                    },
+                ..
+            } => Some(*val),
+            _ => None,
+        }
+    }
+    fn get_str(&mut self, lhs: &Expr, rhs: &Expr) -> (Option<String>, Option<String>) {
+        self.curr_loc = lhs.loc().clone();
         let lhs_val = match &lhs {
             Expr::Primitive {
                 val: Value::Str { val: lhs_val, .. },
@@ -567,6 +1465,7 @@ impl ExprFolder {
             } => Some(lhs_val.clone()),
             _ => None,
         };
+        self.curr_loc = rhs.loc().clone();
         let rhs_val = match &rhs {
             Expr::Primitive {
                 val: Value::Str { val: rhs_val, .. },

@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use std::env;
-use std::fs::{create_dir_all, File, OpenOptions};
+use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::Path;
 
@@ -65,7 +65,6 @@ fn init_outfile() {
                 Ok(val) => val,
                 Err(_) => DEFAULT_OUTDIR.to_string(),
             };
-            let _ = create_dir_all(outdir.as_str());
 
             let outfile = match env::var("WHAMM_OUTFILE") {
                 Ok(val) => val,
@@ -80,30 +79,36 @@ fn init_outfile() {
             OUTFILE.with(|outfile| {
                 let outfile = &mut *outfile.borrow_mut();
 
-                if !Path::new(&outpath).exists() {
-                    // create the outfile if it doesn't exist
-                    *outfile = match File::create(&outpath) {
-                        Err(why) => panic!("couldn't create {}: {}", outpath, why),
-                        Ok(file) => Some(file),
-                    };
-                } else {
-                    *outfile = Some(OpenOptions::new()
-                        .append(true)
-                        .open(outpath.clone())
-                        .expect(format!("cannot open file at: {}", outpath).as_str()));
+                match Path::new(&outpath).try_exists() {
+                    Ok(exists) => {
+                        if !exists {
+                            // create the outfile if it doesn't exist
+                            *outfile = match File::create(&outpath) {
+                                Err(why) => panic!("couldn't create {}: {}", outpath, why),
+                                Ok(file) => Some(file),
+                            };
+                        } else {
+                            *outfile = Some(OpenOptions::new()
+                                .append(true)
+                                .open(outpath.clone())
+                                .expect(format!("cannot open file at: {}", outpath).as_str()));
+                        }
+                    },
+                    Err(e) => {
+                        println!("Could not open file due to error: {:?}", e);
+                        panic!("exiting...");
+                    }
                 }
             });
         }
     });
 }
 
-#[no_mangle]
-pub fn putc(c: u8) {
+fn print(str: &str) {
     init();
     TO_CONSOLE.with(|to_console| {
         let to_console = to_console.borrow();
         if *to_console {
-            let str = String::from_utf8([c].to_vec()).expect("Our bytes should be valid utf8");
             print!("{str}");
         } else {
             OUTFILE.with(|outfile| {
@@ -112,7 +117,7 @@ pub fn putc(c: u8) {
                 };
 
                 // Write to a file
-                out.write(&[c])
+                out.write(str.as_bytes())
                     .expect("write failed");
             });
         }
@@ -120,23 +125,56 @@ pub fn putc(c: u8) {
 }
 
 #[no_mangle]
-pub fn puti(i: i32) {
-    init();
-    TO_CONSOLE.with(|to_console| {
-        let to_console = to_console.borrow();
-        if *to_console {
-            print!("{i}");
-        } else {
-            OUTFILE.with(|outfile| {
-                let Some(ref mut out) = &mut *outfile.borrow_mut() else {
-                    panic!("No out file has been configured, please report this bug.");
-                };
+pub fn putc(c: u8) {
+    print(&String::from_utf8([c].to_vec()).expect("Our bytes should be valid utf8"));
+}
 
-                // Write to a file
-                out.write(i.to_string().as_bytes())
-                    .expect("write failed");
-            });
-        }
-    });
-    return;
+#[no_mangle]
+pub fn putu8(i: u8) {
+    print(&format!("{i}"));
+}
+
+#[no_mangle]
+pub fn puti8(i: i8) {
+    print(&format!("{i}"));
+}
+
+#[no_mangle]
+pub fn putu16(i: u16) {
+    print(&format!("{i}"));
+}
+
+#[no_mangle]
+pub fn puti16(i: i16) {
+    print(&format!("{i}"));
+}
+
+#[no_mangle]
+pub fn putu32(i: u32) {
+    print(&format!("{i}"));
+}
+
+#[no_mangle]
+pub fn puti32(i: i32) {
+    print(&format!("{i}"));
+}
+
+#[no_mangle]
+pub fn putu64(i: u64) {
+    print(&format!("{i}"));
+}
+
+#[no_mangle]
+pub fn puti64(i: i64) {
+    print(&format!("{i}"));
+}
+
+#[no_mangle]
+pub fn putf32(f: f32) {
+    print(&format!("{:+e}", f));
+}
+
+#[no_mangle]
+pub fn putf64(f: f64) {
+    print(&format!("{:+e}", f));
 }

@@ -8,6 +8,7 @@ use crate::parser::types::{
     BinOp, Block, DataType, Expr, Script, Statement, UnOp, Value, Whamm, WhammVisitor,
 };
 use log::debug;
+use orca_wasm::ir::id::FunctionID;
 use orca_wasm::Module;
 
 #[derive(Default)]
@@ -31,8 +32,12 @@ impl LibPackage for MapLibPackage {
         self.adapter.is_used = is_used;
     }
 
-    fn define_helper_funcs(&mut self, app_wasm: &mut Module, err: &mut ErrorGen) {
-        self.adapter.define_helper_funcs(app_wasm, err);
+    fn define_helper_funcs(
+        &mut self,
+        app_wasm: &mut Module,
+        err: &mut ErrorGen,
+    ) -> Vec<FunctionID> {
+        self.adapter.define_helper_funcs(app_wasm, err)
     }
 }
 impl WhammVisitor<bool> for MapLibPackage {

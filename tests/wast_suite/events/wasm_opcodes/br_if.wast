@@ -106,7 +106,7 @@
 
 ;; --------------------------
 ;; ==== IMMS, body, imm0 ====
-;; WHAMM --> i32 count; wasm:opcode:br_if:before { count = imm0; }
+;; WHAMM --> i32 count; wasm:opcode:br_if:before { count = imm0 as i32; }
 (assert_return (invoke "get_count") (i32.const 2))
 
 ;;;; -------------------------------
@@ -129,7 +129,7 @@
 (assert_return (invoke "get_count") (i32.const 6))
 
 ;; at_target mode
-;; WHAMM --> i32 count; wasm:opcode:br_if:at_target { count = imm0; }
+;; WHAMM --> i32 count; wasm:opcode:br_if:at_target { count = imm0 as i32; }
 (assert_return (invoke "get_count") (i32.const 2))
 ;; WHAMM --> i32 count; wasm:opcode:br_if:at_target / imm0 == 0 / { count++; }
 (assert_return (invoke "get_count") (i32.const 4)) ;; predicate == true (hit 1x)
@@ -145,10 +145,10 @@
 (assert_return (invoke "get_count") (i32.const 4))
 (assert_return (invoke "get_global_var0") (i32.const 0))
 (assert_return (invoke "get_global_var1") (i32.const 2))
-;; WHAMM --> i32 count; wasm:opcode:br_if:alt { count = imm0; }
+;; WHAMM --> i32 count; wasm:opcode:br_if:alt { count = imm0 as i32; }
 (assert_return (invoke "get_count") (i32.const 2))
 (assert_return (invoke "get_global_var0") (i32.const 0))
-;; TODO -- if empty alt body, remove original!
+;;;; TODO -- if empty alt body, remove original!
 ;;;; WHAMM --> i32 count; wasm:opcode:br_if:alt / imm0 == 0 / {}
 ;;(assert_return (invoke "get_count") (i32.const 1))
 ;;(assert_return (invoke "get_global_var0") (i32.const 0))

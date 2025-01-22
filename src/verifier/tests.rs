@@ -41,7 +41,7 @@ wasm::call:alt /
         }
         wasm::call:alt {
             dummy_fn();
-        }   
+        }
     "#,
     r#"
         i32 i;
@@ -62,7 +62,7 @@ wasm::call:alt /
         }
         wasm::call:alt {
             dummy_fn();
-        }   
+        }
     "#,
     r#"
         bool a = strcmp((1, 2), "bookings");
@@ -99,17 +99,71 @@ wasm::call:alt /
     "#,
     // numerics
     "wasm:opcode:call:alt { i32 num = 0; }",
-    // todo -- https://github.com/ejrgilbert/whamm/issues/141
-    // "wasm:opcode:call:alt { i64 num = 0; }",
-    // r#"
-    //     i32 count;
-    //     wasm::i64_const:before / imm0 == 9223372036854775807 / {
-    //         count++;
-    //     }
-    // "#,
+    "wasm:opcode:call:alt { i64 num = 0; }",
+    r#"
+        i32 count;
+        wasm::i64_const:before / imm0 == 9223372036854775807 / {
+            count++;
+        }
+    "#,
 ];
 
 const TYPE_ERROR_SCRIPTS: &[&str] = &[
+    // binary operations
+    "wasm:opcode:call:alt {
+        i32 i = 1 << (1, 2, 3);
+    }",
+    "wasm:opcode:call:alt {
+        i32 i = 1 >> \"blah\";
+    }",
+    "wasm:opcode:call:alt {
+        i32 i = 1 ^ (1, 2, 3);
+    }",
+    "wasm:opcode:call:alt {
+        i32 i = 1 & (1, 2, 3);
+    }",
+    "wasm:opcode:call:alt {
+        i32 i = 1 | (1, 2, 3);
+    }",
+    "wasm:opcode:call:alt {
+        f32 v = 1e1;
+        f32 i = v << 1;
+    }",
+    "wasm:opcode:call:alt {
+        f32 v = 1e1;
+        f32 i = v >> 1;
+    }",
+    "wasm:opcode:call:alt {
+        f32 v = 1e1;
+        f32 i = v & 1;
+    }",
+    "wasm:opcode:call:alt {
+        f32 v = 1e1;
+        f32 i = v | 1;
+    }",
+    "wasm:opcode:call:alt {
+        f32 v = ~ 1e1;
+    }",
+    "wasm:opcode:call:alt {
+        f64 v = 1e1;
+        f64 i = v << 1;
+    }",
+    "wasm:opcode:call:alt {
+        f64 v = 1e1;
+        f64 i = v >> 1;
+    }",
+    "wasm:opcode:call:alt {
+        f64 v = 1e1;
+        f64 i = v & 1;
+    }",
+    "wasm:opcode:call:alt {
+        f64 v = 1e1;
+        f64 i = v | 1;
+    }",
+    "wasm:opcode:call:alt {
+        f64 v = ~ 1e1;
+    }",
+    "wasm:opcode:call:alt / (1 + 3) / { i32 i; }",
     // predicate
     // note that this will have cascading type check errors
     // might want to make type check errors fatal so that we can stop early
@@ -525,8 +579,8 @@ pub fn test_recursive_calls() {
             return a;
         }
         wasm::call:alt {
-            i32 a = 0;
-            i32 b = make5(a);
+            u32 a = 0;
+            i32 b = make5(a as i32);
         }
     "#;
     let mut ast = tests::get_ast(script, &mut err);
@@ -541,11 +595,11 @@ pub fn testing_map() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
-        wasm:opcode:call:after{
+    wasm:opcode:call:after {
         map<(i32, i32, i32), i32> my_map;
         (i32, i32, i32) b = (1, 2, 3);
         my_map[b] = 2;
-        i32 a = my_map[b];
+        i32 c = my_map[b];
     }
     "#;
 

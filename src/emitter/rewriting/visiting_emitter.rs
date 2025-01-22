@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::utils::{
-    block_type_to_wasm, emit_expr, emit_stmt, print_report_all, whamm_type_to_wasm_global,
+    block_type_to_wasm, emit_expr, emit_stmt, print_report_all, whamm_type_to_wasm_global, EmitCtx,
 };
 use crate::emitter::{configure_flush_routines, Emitter, InjectStrategy};
 use crate::generator::folding::ExprFolder;
@@ -15,8 +15,9 @@ use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::report_vars::ReportVars;
 use crate::parser;
 use crate::parser::rules::UNKNOWN_IMMS;
-use crate::parser::types::{Block, DataType, Definition, Expr, RulePart, Statement, Value};
+use crate::parser::types::{Block, DataType, Definition, Expr, NumLit, RulePart, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
+use itertools::Itertools;
 use orca_wasm::ir::id::{FunctionID, LocalID, TypeID};
 use orca_wasm::ir::module::Module;
 use orca_wasm::ir::types::BlockType as OrcaBlockType;
@@ -39,7 +40,7 @@ pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub(crate) report_vars: &'g mut ReportVars,
     pub(crate) unshared_var_handler: &'g mut UnsharedVarHandler,
     instr_created_args: Vec<(String, usize)>,
-    pub curr_num_unshared: i32,
+    pub curr_unshared: HashMap<DataType, i32>,
 }
 
 impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
@@ -65,7 +66,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             report_vars,
             unshared_var_handler,
             instr_created_args: vec![],
-            curr_num_unshared: 0,
+            curr_unshared: HashMap::default(),
         };
 
         a
@@ -157,7 +158,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 loc: None,
             };
             let mut block: Vec<Statement> = match val {
-                Some(Value::U32 { val, .. }) => {
+                Some(Value::Number {
+                    val: NumLit::U8 { val },
+                    ..
+                }) => {
                     // create a declaration
                     let decl = Statement::Decl {
                         ty: DataType::U32,
@@ -168,17 +172,101 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     let assign = Statement::Assign {
                         var_id: var_id.clone(),
                         expr: Expr::Primitive {
-                            val: Value::U32 {
-                                ty: DataType::U32,
-                                val: *val,
-                            },
+                            val: Value::gen_u8(*val),
                             loc: None,
                         },
                         loc: None,
                     };
                     vec![decl, assign]
                 }
-                Some(Value::I32 { val, .. }) => {
+                Some(Value::Number {
+                    val: NumLit::I8 { val },
+                    ..
+                }) => {
+                    // create a declaration
+                    let decl = Statement::Decl {
+                        ty: DataType::U32,
+                        var_id: var_id.clone(),
+                        loc: None,
+                    };
+                    // create an assignment
+                    let assign = Statement::Assign {
+                        var_id: var_id.clone(),
+                        expr: Expr::Primitive {
+                            val: Value::gen_i8(*val),
+                            loc: None,
+                        },
+                        loc: None,
+                    };
+                    vec![decl, assign]
+                }
+                Some(Value::Number {
+                    val: NumLit::U16 { val },
+                    ..
+                }) => {
+                    // create a declaration
+                    let decl = Statement::Decl {
+                        ty: DataType::U32,
+                        var_id: var_id.clone(),
+                        loc: None,
+                    };
+                    // create an assignment
+                    let assign = Statement::Assign {
+                        var_id: var_id.clone(),
+                        expr: Expr::Primitive {
+                            val: Value::gen_u16(*val),
+                            loc: None,
+                        },
+                        loc: None,
+                    };
+                    vec![decl, assign]
+                }
+                Some(Value::Number {
+                    val: NumLit::I16 { val },
+                    ..
+                }) => {
+                    // create a declaration
+                    let decl = Statement::Decl {
+                        ty: DataType::U32,
+                        var_id: var_id.clone(),
+                        loc: None,
+                    };
+                    // create an assignment
+                    let assign = Statement::Assign {
+                        var_id: var_id.clone(),
+                        expr: Expr::Primitive {
+                            val: Value::gen_i16(*val),
+                            loc: None,
+                        },
+                        loc: None,
+                    };
+                    vec![decl, assign]
+                }
+                Some(Value::Number {
+                    val: NumLit::U32 { val },
+                    ..
+                }) => {
+                    // create a declaration
+                    let decl = Statement::Decl {
+                        ty: DataType::U32,
+                        var_id: var_id.clone(),
+                        loc: None,
+                    };
+                    // create an assignment
+                    let assign = Statement::Assign {
+                        var_id: var_id.clone(),
+                        expr: Expr::Primitive {
+                            val: Value::gen_u32(*val),
+                            loc: None,
+                        },
+                        loc: None,
+                    };
+                    vec![decl, assign]
+                }
+                Some(Value::Number {
+                    val: NumLit::I32 { val },
+                    ..
+                }) => {
                     // create a declaration
                     let decl = Statement::Decl {
                         ty: DataType::I32,
@@ -189,17 +277,17 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     let assign = Statement::Assign {
                         var_id: var_id.clone(),
                         expr: Expr::Primitive {
-                            val: Value::I32 {
-                                ty: DataType::I32,
-                                val: *val,
-                            },
+                            val: Value::gen_i32(*val),
                             loc: None,
                         },
                         loc: None,
                     };
                     vec![decl, assign]
                 }
-                Some(Value::F32 { val, .. }) => {
+                Some(Value::Number {
+                    val: NumLit::F32 { val },
+                    ..
+                }) => {
                     // create a declaration
                     let decl = Statement::Decl {
                         ty: DataType::F32,
@@ -210,17 +298,17 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     let assign = Statement::Assign {
                         var_id: var_id.clone(),
                         expr: Expr::Primitive {
-                            val: Value::F32 {
-                                ty: DataType::F32,
-                                val: *val,
-                            },
+                            val: Value::gen_f32(*val),
                             loc: None,
                         },
                         loc: None,
                     };
                     vec![decl, assign]
                 }
-                Some(Value::U64 { val, .. }) => {
+                Some(Value::Number {
+                    val: NumLit::U64 { val },
+                    ..
+                }) => {
                     // create a declaration
                     let decl = Statement::Decl {
                         ty: DataType::U64,
@@ -231,17 +319,17 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     let assign = Statement::Assign {
                         var_id: var_id.clone(),
                         expr: Expr::Primitive {
-                            val: Value::U64 {
-                                ty: DataType::U64,
-                                val: *val,
-                            },
+                            val: Value::gen_u64(*val),
                             loc: None,
                         },
                         loc: None,
                     };
                     vec![decl, assign]
                 }
-                Some(Value::I64 { val, .. }) => {
+                Some(Value::Number {
+                    val: NumLit::I64 { val },
+                    ..
+                }) => {
                     // create a declaration
                     let decl = Statement::Decl {
                         ty: DataType::I64,
@@ -252,17 +340,17 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     let assign = Statement::Assign {
                         var_id: var_id.clone(),
                         expr: Expr::Primitive {
-                            val: Value::I64 {
-                                ty: DataType::I64,
-                                val: *val,
-                            },
+                            val: Value::gen_i64(*val),
                             loc: None,
                         },
                         loc: None,
                     };
                     vec![decl, assign]
                 }
-                Some(Value::F64 { val, .. }) => {
+                Some(Value::Number {
+                    val: NumLit::F64 { val },
+                    ..
+                }) => {
                     // create a declaration
                     let decl = Statement::Decl {
                         ty: DataType::F64,
@@ -273,10 +361,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     let assign = Statement::Assign {
                         var_id: var_id.clone(),
                         expr: Expr::Primitive {
-                            val: Value::F64 {
-                                ty: DataType::F64,
-                                val: *val,
-                            },
+                            val: Value::gen_f64(*val),
                             loc: None,
                         },
                         loc: None,
@@ -294,10 +379,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     let assign = Statement::Assign {
                         var_id: var_id.clone(),
                         expr: Expr::Primitive {
-                            val: Value::Boolean {
-                                ty: DataType::Boolean,
-                                val: *val,
-                            },
+                            val: Value::Boolean { val: *val },
                             loc: None,
                         },
                         loc: None,
@@ -315,10 +397,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     let assign = Statement::Assign {
                         var_id: var_id.clone(),
                         expr: Expr::Primitive {
-                            val: Value::Str {
-                                ty: DataType::Str,
-                                val: val.clone(),
-                            },
+                            val: Value::Str { val: val.clone() },
                             loc: None,
                         },
                         loc: None,
@@ -346,30 +425,24 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     };
                     vec![decl, assign]
                 }
-                Some(Value::U32U32Map { val, ty }) => {
+                Some(Value::U32U32Map { val: map_val }) => {
                     // create a declaration
                     let decl = Statement::Decl {
-                        ty: ty.clone(),
+                        ty: val.as_ref().unwrap().ty(),
                         var_id: var_id.clone(),
                         loc: None,
                     };
                     // create assignments
                     let mut stmts = vec![decl];
-                    for (key, val) in val.iter() {
+                    for (key, val) in map_val.iter() {
                         stmts.push(Statement::SetMap {
                             map: var_id.clone(),
                             key: Expr::Primitive {
-                                val: Value::U32 {
-                                    ty: DataType::U32,
-                                    val: *key,
-                                },
+                                val: Value::gen_u32(*key),
                                 loc: None,
                             },
                             val: Expr::Primitive {
-                                val: Value::U32 {
-                                    ty: DataType::U32,
-                                    val: *val,
-                                },
+                                val: Value::gen_u32(*val),
                                 loc: None,
                             },
                             loc: None,
@@ -386,13 +459,15 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     stmt,
                     self.strategy,
                     &mut self.app_iter,
-                    self.table,
-                    self.mem_allocator,
-                    self.map_lib_adapter,
-                    self.report_vars,
-                    self.unshared_var_handler,
-                    UNEXPECTED_ERR_MSG,
-                    err,
+                    &mut EmitCtx::new(
+                        self.table,
+                        self.mem_allocator,
+                        self.map_lib_adapter,
+                        self.report_vars,
+                        self.unshared_var_handler,
+                        UNEXPECTED_ERR_MSG,
+                        err,
+                    ),
                 );
             }
         }
@@ -674,7 +749,11 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         // Assume the correct args since we've gone through typechecking at this point!
         let func_id = match args.iter().next().unwrap() {
             Expr::Primitive {
-                val: Value::I32 { val, .. },
+                val:
+                    Value::Number {
+                        val: NumLit::I32 { val },
+                        ..
+                    },
                 ..
             } => *val,
             _ => return false,
@@ -744,22 +823,32 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
 impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
     fn emit_body(&mut self, curr_instr_args: &[Arg], body: &mut Block, err: &mut ErrorGen) -> bool {
         let mut is_success = true;
-        for _ in 0..self.curr_num_unshared {
-            let (global_id, ..) = whamm_type_to_wasm_global(self.app_iter.module, &DataType::I32);
-            self.unshared_var_handler
-                .available_i32_gids
-                .push(*global_id);
+
+        // Create the required globals for this probe
+        // Sort by datatype to make generation deterministic!
+        let sorted_unshared = self.curr_unshared.iter().sorted_by_key(|(ty, _)| ty.id());
+        for (ty, num) in sorted_unshared.into_iter() {
+            for _ in 0..*num {
+                let (global_id, ..) = whamm_type_to_wasm_global(self.app_iter.module, ty);
+                self.unshared_var_handler.add_available_gid(*global_id, ty);
+            }
         }
+
         for stmt in body.stmts.iter_mut() {
             is_success &= self.emit_stmt(curr_instr_args, stmt, err);
         }
         //now emit the call to print the changes to the report vars if needed
         print_report_all(
             &mut self.app_iter,
-            self.table,
-            self.report_vars,
-            self.unshared_var_handler,
-            err,
+            &mut EmitCtx::new(
+                self.table,
+                self.mem_allocator,
+                self.map_lib_adapter,
+                self.report_vars,
+                self.unshared_var_handler,
+                UNEXPECTED_ERR_MSG,
+                err,
+            ),
         );
         is_success
     }
@@ -799,13 +888,15 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
             stmt,
             self.strategy,
             &mut self.app_iter,
-            self.table,
-            self.mem_allocator,
-            self.map_lib_adapter,
-            self.report_vars,
-            self.unshared_var_handler,
-            UNEXPECTED_ERR_MSG,
-            err,
+            &mut EmitCtx::new(
+                self.table,
+                self.mem_allocator,
+                self.map_lib_adapter,
+                self.report_vars,
+                self.unshared_var_handler,
+                UNEXPECTED_ERR_MSG,
+                err,
+            ),
         )
     }
 
@@ -814,13 +905,15 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
             expr,
             self.strategy,
             &mut self.app_iter,
-            self.table,
-            self.mem_allocator,
-            self.map_lib_adapter,
-            self.report_vars,
-            self.unshared_var_handler,
-            UNEXPECTED_ERR_MSG,
-            err,
+            &mut EmitCtx::new(
+                self.table,
+                self.mem_allocator,
+                self.map_lib_adapter,
+                self.report_vars,
+                self.unshared_var_handler,
+                UNEXPECTED_ERR_MSG,
+                err,
+            ),
         )
     }
 }

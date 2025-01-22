@@ -1,7 +1,7 @@
 use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::rewriting::rules::Arg;
-use crate::emitter::utils::{emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global};
+use crate::emitter::utils::{emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global, EmitCtx};
 use crate::emitter::{configure_flush_routines, Emitter, InjectStrategy};
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
@@ -508,7 +508,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 //now save off the global variable metadata
                 if report_mode {
                     self.report_vars
-                        .put_global_metadata(*global_id, name.clone(), err);
+                        .put_global_metadata(*global_id, name.clone(), ty, err);
                 }
                 Some(self.emit_global_getter(&global_id, name, global_ty))
             }
@@ -706,13 +706,15 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
                 body,
                 self.strategy,
                 emitting_func,
-                self.table,
-                self.mem_allocator,
-                self.map_lib_adapter,
-                self.report_vars,
-                self.unshared_var_handler,
-                UNEXPECTED_ERR_MSG,
-                err,
+                &mut EmitCtx::new(
+                    self.table,
+                    self.mem_allocator,
+                    self.map_lib_adapter,
+                    self.report_vars,
+                    self.unshared_var_handler,
+                    UNEXPECTED_ERR_MSG,
+                    err,
+                ),
             )
         } else {
             false
@@ -730,13 +732,15 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
                 stmt,
                 self.strategy,
                 emitting_func,
-                self.table,
-                self.mem_allocator,
-                self.map_lib_adapter,
-                self.report_vars,
-                self.unshared_var_handler,
-                UNEXPECTED_ERR_MSG,
-                err,
+                &mut EmitCtx::new(
+                    self.table,
+                    self.mem_allocator,
+                    self.map_lib_adapter,
+                    self.report_vars,
+                    self.unshared_var_handler,
+                    UNEXPECTED_ERR_MSG,
+                    err,
+                ),
             )
         } else {
             false
@@ -749,13 +753,15 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
                 expr,
                 self.strategy,
                 emitting_func,
-                self.table,
-                self.mem_allocator,
-                self.map_lib_adapter,
-                self.report_vars,
-                self.unshared_var_handler,
-                UNEXPECTED_ERR_MSG,
-                err,
+                &mut EmitCtx::new(
+                    self.table,
+                    self.mem_allocator,
+                    self.map_lib_adapter,
+                    self.report_vars,
+                    self.unshared_var_handler,
+                    UNEXPECTED_ERR_MSG,
+                    err,
+                ),
             )
         } else {
             false

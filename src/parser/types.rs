@@ -2,7 +2,7 @@
 
 use pest::error::LineColLocation;
 use std::collections::HashMap;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 use termcolor::{Buffer, ColorChoice, WriteColor};
 
@@ -11,6 +11,7 @@ use crate::common::terminal::{green, grey_italics, long_line, magenta, white, ye
 use crate::parser::rules::{
     print_provider_docs, provider_factory, Event, Package, Probe, Provider, WhammProvider,
 };
+use orca_wasm::ir::types::DataType as OrcaType;
 use pest::pratt_parser::PrattParser;
 use pest_derive::Parser;
 use termcolor::BufferWriter;
@@ -25,17 +26,23 @@ lazy_static::lazy_static! {
         use Rule::*;
 
         // Precedence is defined lowest to highest
+        // Follows: https://en.cppreference.com/w/c/language/operator_precedence
         PrattParser::new()
             .op(Op::infix(and, Left) | Op::infix(or, Left)) // LOGOP
+            .op(Op::infix(binary_or, Left)) // bitwise OR
+            .op(Op::infix(binary_xor, Left)) // bitwise XOR
+            .op(Op::infix(binary_and, Left)) // bitwise AND
             .op(Op::infix(eq, Left)                         // RELOP
                 | Op::infix(ne, Left)
                 | Op::infix(ge, Left)
                 | Op::infix(gt, Left)
                 | Op::infix(le, Left)
                 | Op::infix(lt, Left)
-            ).op(Op::infix(add, Left) | Op::infix(subtract, Left)) // SUMOP
+            ).op(Op::infix(lshift, Left) | Op::infix(rshift, Left)) // Bitwise left shift and right shift
+            .op(Op::infix(add, Left) | Op::infix(subtract, Left)) // SUMOP
             .op(Op::infix(multiply, Left) | Op::infix(divide, Left) | Op::infix(modulo, Left)) // MULOP
-            .op(Op::prefix(neg))
+            .op(Op::prefix(neg) | Op::prefix(binary_not)) // Logical NOT and bitwise NOT
+            .op(Op::postfix(cast))
     };
 }
 
@@ -85,6 +92,10 @@ impl Location {
 
 #[derive(Clone, Debug, Eq)]
 pub enum DataType {
+    U8,
+    I8,
+    U16,
+    I16,
     U32,
     I32,
     F32,
@@ -101,52 +112,40 @@ pub enum DataType {
         key_ty: Box<DataType>,
         val_ty: Box<DataType>,
     },
+    Unknown,
     AssumeGood,
 }
 impl Hash for DataType {
     fn hash<H: Hasher>(&self, state: &mut H) {
         // use any distinct number as an enum variant identifier
         match self {
-            DataType::U32 => {
-                state.write_u8(1);
-            }
-            DataType::I32 => {
-                state.write_u8(2);
-            }
-            DataType::F32 => {
-                state.write_u8(3);
-            }
-            DataType::U64 => {
-                state.write_u8(4);
-            }
-            DataType::I64 => {
-                state.write_u8(5);
-            }
-            DataType::F64 => {
-                state.write_u8(6);
-            }
-            DataType::Boolean => {
-                state.write_u8(7);
-            }
-            DataType::Null => {
-                state.write_u8(8);
-            }
-            DataType::Str => {
-                state.write_u8(9);
+            DataType::U8
+            | DataType::I8
+            | DataType::U16
+            | DataType::I16
+            | DataType::U32
+            | DataType::I32
+            | DataType::F32
+            | DataType::U64
+            | DataType::I64
+            | DataType::F64
+            | DataType::Boolean
+            | DataType::Null
+            | DataType::Str
+            | DataType::AssumeGood
+            | DataType::Unknown => {
+                state.write_u8(self.id() as u8);
             }
             DataType::Tuple { ty_info } => {
                 for ty in ty_info {
-                    state.write_u8(10);
+                    state.write_u8(self.id() as u8);
                     ty.hash(state);
                 }
             }
             DataType::Map { key_ty, val_ty } => {
-                state.write_u8(11);
+                state.write_u8(self.id() as u8);
                 key_ty.hash(state);
                 val_ty.hash(state);
-            }
-            DataType::AssumeGood => {
-                state.write_u8(12);
             }
         }
     }
@@ -154,11 +153,20 @@ impl Hash for DataType {
 impl PartialEq for DataType {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (DataType::U32, DataType::U32)
+            (DataType::U8, DataType::U8)
+            | (DataType::I8, DataType::I8)
+            | (DataType::U16, DataType::U16)
+            | (DataType::I16, DataType::I16)
+            | (DataType::U32, DataType::U32)
             | (DataType::I32, DataType::I32)
+            | (DataType::U64, DataType::U64)
+            | (DataType::I64, DataType::I64)
+            | (DataType::F32, DataType::F32)
+            | (DataType::F64, DataType::F64)
             | (DataType::Boolean, DataType::Boolean)
             | (DataType::Null, DataType::Null)
             | (DataType::Str, DataType::Str)
+            | (DataType::Unknown, DataType::Unknown)
             | (_, DataType::AssumeGood)
             | (DataType::AssumeGood, _) => true,
             (DataType::Tuple { ty_info: ty_info0 }, DataType::Tuple { ty_info: ty_info1 }) => {
@@ -182,25 +190,192 @@ impl PartialEq for DataType {
         }
     }
 }
+impl Display for DataType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DataType::U8 => write!(f, "u8"),
+            DataType::I8 => write!(f, "i8"),
+            DataType::U16 => write!(f, "u16"),
+            DataType::I16 => write!(f, "i16"),
+            DataType::U32 => write!(f, "u32"),
+            DataType::I32 => write!(f, "i32"),
+            DataType::F32 => write!(f, "f32"),
+            DataType::U64 => write!(f, "u64"),
+            DataType::I64 => write!(f, "i64"),
+            DataType::F64 => write!(f, "f64"),
+            DataType::Boolean => write!(f, "bool"),
+            DataType::Null => write!(f, "null"),
+            DataType::Str => write!(f, "str"),
+            DataType::Tuple { ty_info } => {
+                let mut s = "".to_string();
+                s += "(";
+                s += &ty_info
+                    .iter()
+                    .map(|ty| ty.to_string())
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                s += ")";
+                write!(f, "{s}")
+            }
+            DataType::Map { key_ty, val_ty, .. } => {
+                write!(f, "map<{}, {}>", key_ty, val_ty)
+            }
+            DataType::AssumeGood => write!(f, "assume_good"),
+            DataType::Unknown => write!(f, "unknown"),
+        }
+    }
+}
 impl DataType {
+    pub fn is_numeric(&self) -> bool {
+        matches!(
+            self,
+            DataType::U8
+                | DataType::I8
+                | DataType::U16
+                | DataType::I16
+                | DataType::U32
+                | DataType::I32
+                | DataType::U64
+                | DataType::I64
+                | DataType::F32
+                | DataType::F64
+        )
+    }
+    pub fn is_compatible_with(&self, other: &DataType) -> bool {
+        match self {
+            DataType::U8
+            | DataType::I8
+            | DataType::U16
+            | DataType::I16
+            | DataType::U32
+            | DataType::I32
+            | DataType::Boolean => other.as_i32_in_wasm(),
+            DataType::U64 | DataType::I64 => other.as_i64_in_wasm(),
+            DataType::F32
+            | DataType::F64
+            | DataType::Null
+            | DataType::Str
+            | DataType::AssumeGood
+            | DataType::Unknown
+            | DataType::Tuple { .. }
+            | DataType::Map { .. } => *other == *self,
+        }
+    }
+    fn as_i32_in_wasm(&self) -> bool {
+        self.to_wasm_type() == vec![OrcaType::I32]
+    }
+    fn as_i64_in_wasm(&self) -> bool {
+        self.to_wasm_type() == vec![OrcaType::I64]
+    }
+    pub fn to_wasm_type(&self) -> Vec<OrcaType> {
+        match self {
+            DataType::U8
+            | DataType::I8
+            | DataType::U16
+            | DataType::I16
+            | DataType::I32
+            | DataType::U32
+            | DataType::Boolean => vec![OrcaType::I32],
+            DataType::F32 => vec![OrcaType::F32],
+            DataType::I64 | DataType::U64 => vec![OrcaType::I64],
+            DataType::F64 => vec![OrcaType::F64],
+            // the ID used to track this var in the lib
+            DataType::Map { .. } => vec![OrcaType::I32],
+            DataType::Null => unimplemented!(),
+            DataType::Str => vec![OrcaType::I32, OrcaType::I32],
+            DataType::Tuple { .. } => unimplemented!(),
+            DataType::Unknown => unimplemented!(),
+            DataType::AssumeGood => unimplemented!(),
+        }
+    }
+    pub fn from_wasm_type(ty: &OrcaType) -> Self {
+        match ty {
+            OrcaType::I32 => DataType::I32,
+            OrcaType::I64 => DataType::I64,
+            OrcaType::F32 => DataType::F32,
+            OrcaType::F64 => DataType::F64,
+            OrcaType::FuncRef
+            | OrcaType::FuncRefNull
+            | OrcaType::Cont
+            | OrcaType::NoCont
+            | OrcaType::ExternRef
+            | OrcaType::ExternRefNull
+            | OrcaType::Any
+            | OrcaType::AnyNull
+            | OrcaType::None
+            | OrcaType::NoExtern
+            | OrcaType::NoFunc
+            | OrcaType::Eq
+            | OrcaType::EqNull
+            | OrcaType::Struct
+            | OrcaType::StructNull
+            | OrcaType::Array
+            | OrcaType::ArrayNull
+            | OrcaType::I31
+            | OrcaType::I31Null
+            | OrcaType::Exn
+            | OrcaType::NoExn
+            | OrcaType::Module { .. }
+            | OrcaType::RecGroup(_)
+            | OrcaType::CoreTypeId(_)
+            | OrcaType::V128 => unimplemented!(),
+        }
+    }
+    pub fn can_implicitly_cast(&self) -> bool {
+        match self {
+            DataType::U8
+            | DataType::I8
+            | DataType::U16
+            | DataType::I16
+            | DataType::U32
+            | DataType::I32
+            | DataType::F32
+            | DataType::U64
+            | DataType::I64
+            | DataType::F64
+            | DataType::Unknown => true,
+            DataType::Tuple { ty_info } => {
+                // check for numeric types
+                for ty in ty_info.iter() {
+                    if ty.can_implicitly_cast() {
+                        return true;
+                    }
+                }
+                false
+            }
+            DataType::Boolean
+            | DataType::Null
+            | DataType::Str
+            // | DataType::Tuple { .. }
+            | DataType::Map { .. }
+            | DataType::AssumeGood => false,
+        }
+    }
     pub fn id(&self) -> i32 {
         match self {
-            DataType::U32 => 1,
-            DataType::I32 => 2,
-            DataType::F32 => 3,
-            DataType::U64 => 4,
-            DataType::I64 => 5,
-            DataType::F64 => 6,
-            DataType::Boolean => 7,
-            DataType::Null => 8,
-            DataType::Str => 9,
-            DataType::Tuple { .. } => 10,
-            DataType::Map { .. } => 11,
-            DataType::AssumeGood => 12,
+            DataType::U8 => 0,
+            DataType::I8 => 1,
+            DataType::U16 => 2,
+            DataType::I16 => 3,
+            DataType::U32 => 4,
+            DataType::I32 => 5,
+            DataType::F32 => 6,
+            DataType::U64 => 7,
+            DataType::I64 => 8,
+            DataType::F64 => 9,
+            DataType::Boolean => 10,
+            DataType::Null => 11,
+            DataType::Str => 12,
+            DataType::Tuple { .. } => 13,
+            DataType::Map { .. } => 14,
+            DataType::AssumeGood => 15,
+            DataType::Unknown => 16,
         }
     }
     pub fn num_bytes(&self) -> Option<usize> {
         match self {
+            DataType::U8 | DataType::I8 => Some(1),
+            DataType::U16 | DataType::I16 => Some(2),
             DataType::U32 |
             DataType::I32 |
             DataType::F32 |
@@ -219,7 +394,8 @@ impl DataType {
             }
             DataType::Str |
             DataType::Null |
-            DataType::AssumeGood => {
+            DataType::AssumeGood |
+            DataType::Unknown => {
                 // TODO -- is this okay for AssumeGood?
                 // size should be determined respective to the context!
                 None
@@ -229,6 +405,18 @@ impl DataType {
 
     pub fn print(&self, buffer: &mut Buffer) {
         match self {
+            DataType::U8 => {
+                yellow(true, "u8".to_string(), buffer);
+            }
+            DataType::I8 => {
+                yellow(true, "i8".to_string(), buffer);
+            }
+            DataType::U16 => {
+                yellow(true, "u16".to_string(), buffer);
+            }
+            DataType::I16 => {
+                yellow(true, "i16".to_string(), buffer);
+            }
             DataType::U32 => {
                 yellow(true, "u32".to_string(), buffer);
             }
@@ -278,8 +466,414 @@ impl DataType {
                 white(true, ">".to_string(), buffer);
             }
             DataType::AssumeGood => {
+                yellow(true, "assume_good, not type checked".to_string(), buffer);
+            }
+            DataType::Unknown => {
                 yellow(true, "unknown, not type checked".to_string(), buffer);
             }
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum NumLit {
+    I8 { val: i8 },
+    U8 { val: u8 },
+    I16 { val: i16 },
+    U16 { val: u16 },
+    I32 { val: i32 },
+    U32 { val: u32 },
+    I64 { val: i64 },
+    U64 { val: u64 },
+    F32 { val: f32 },
+    F64 { val: f64 },
+}
+impl NumLit {
+    fn implicit_cast(&mut self, target: &DataType) -> Result<(), String> {
+        match target {
+            DataType::U8 => self.as_u8(),
+            DataType::I8 => self.as_i8(),
+            DataType::U16 => self.as_u16(),
+            DataType::I16 => self.as_i16(),
+            DataType::U32 => self.as_u32(),
+            DataType::I32 => self.as_i32(),
+            DataType::U64 => self.as_u64(),
+            DataType::I64 => self.as_i64(),
+            DataType::F32 => self.as_f32(),
+            DataType::F64 => self.as_f64(),
+            _ => Err(format!("{} to {}", self.ty(), target)),
+        }
+    }
+    pub fn as_u8(&mut self) -> Result<(), String> {
+        let new = match self {
+            NumLit::I8 { val } => *val as u8,
+            NumLit::U8 { val } => *val,
+            NumLit::I16 { val } => (*val & 0xFF) as u8,
+            NumLit::U16 { val } => (*val & 0xFF) as u8,
+            NumLit::I32 { val } => (*val & 0xFF) as u8,
+            NumLit::U32 { val } => (*val & 0xFF) as u8,
+            NumLit::I64 { val } => (*val & 0xFF) as u8,
+            NumLit::U64 { val } => (*val & 0xFF) as u8,
+            NumLit::F32 { val } => val.trunc() as u8,
+            NumLit::F64 { val } => val.trunc() as u8,
+        };
+        *self = Self::u8(new);
+        Ok(())
+    }
+    pub fn as_i8(&mut self) -> Result<(), String> {
+        let new = match self {
+            NumLit::I8 { val } => *val,
+            NumLit::U8 { val } => *val as i8,
+            NumLit::I16 { val } => (*val & 0xFF) as i8,
+            NumLit::U16 { val } => (*val & 0xFF) as i8,
+            NumLit::I32 { val } => (*val & 0xFF) as i8,
+            NumLit::U32 { val } => (*val & 0xFF) as i8,
+            NumLit::I64 { val } => (*val & 0xFF) as i8,
+            NumLit::U64 { val } => (*val & 0xFF) as i8,
+            NumLit::F32 { val } => val.trunc() as i8,
+            NumLit::F64 { val } => val.trunc() as i8,
+        };
+        *self = Self::i8(new);
+        Ok(())
+    }
+    pub fn as_u16(&mut self) -> Result<(), String> {
+        let new = match self {
+            NumLit::I8 { val } => *val as u16,
+            NumLit::U8 { val } => *val as u16,
+            NumLit::I16 { val } => *val as u16,
+            NumLit::U16 { val } => *val,
+            NumLit::I32 { val } => (*val & 0xFFFF) as u16,
+            NumLit::U32 { val } => (*val & 0xFFFF) as u16,
+            NumLit::I64 { val } => (*val & 0xFFFF) as u16,
+            NumLit::U64 { val } => (*val & 0xFFFF) as u16,
+            NumLit::F32 { val } => val.trunc() as u16,
+            NumLit::F64 { val } => val.trunc() as u16,
+        };
+        *self = Self::u16(new);
+        Ok(())
+    }
+    pub fn as_i16(&mut self) -> Result<(), String> {
+        let new = match self {
+            NumLit::I8 { val } => *val as i16,
+            NumLit::U8 { val } => *val as i16,
+            NumLit::I16 { val } => *val,
+            NumLit::U16 { val } => *val as i16,
+            NumLit::I32 { val } => (*val & 0xFFFF) as i16,
+            NumLit::U32 { val } => (*val & 0xFFFF) as i16,
+            NumLit::I64 { val } => (*val & 0xFFFF) as i16,
+            NumLit::U64 { val } => (*val & 0xFFFF) as i16,
+            NumLit::F32 { val } => val.trunc() as i16,
+            NumLit::F64 { val } => val.trunc() as i16,
+        };
+        *self = Self::i16(new);
+        Ok(())
+    }
+    pub fn as_u32(&mut self) -> Result<(), String> {
+        let new = match self {
+            NumLit::I8 { val } => *val as u32,
+            NumLit::U8 { val } => *val as u32,
+            NumLit::I16 { val } => *val as u32,
+            NumLit::U16 { val } => *val as u32,
+            NumLit::I32 { val } => {
+                // always fits
+                *val as u32
+            }
+            NumLit::U32 { .. } => return Ok(()),
+            NumLit::I64 { val } => {
+                if *val < u32::MIN as i64 || *val > u32::MAX as i64 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as u32
+            }
+            NumLit::U64 { val } => {
+                if *val < u32::MIN as u64 || *val > u32::MAX as u64 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as u32
+            }
+            NumLit::F32 { val } => {
+                if *val < u32::MIN as f32 || *val > u32::MAX as f32 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as u32
+            }
+            NumLit::F64 { val } => {
+                if *val < u32::MIN as f64 || *val > u32::MAX as f64 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as u32
+            }
+        };
+        *self = Self::u32(new);
+        Ok(())
+    }
+    pub fn as_i32(&mut self) -> Result<(), String> {
+        let new = match self {
+            NumLit::I8 { val } => *val as i32,
+            NumLit::U8 { val } => *val as i32,
+            NumLit::I16 { val } => *val as i32,
+            NumLit::U16 { val } => *val as i32,
+            NumLit::I32 { .. } => return Ok(()),
+            NumLit::U32 { val } => {
+                if *val > i32::MAX as u32 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as i32
+            }
+            NumLit::I64 { val } => {
+                if *val < i32::MIN as i64 || *val > i32::MAX as i64 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as i32
+            }
+            NumLit::U64 { val } => {
+                if *val > i32::MAX as u64 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as i32
+            }
+            NumLit::F32 { val } => {
+                if *val < i32::MIN as f32 || *val > i32::MAX as f32 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as i32
+            }
+            NumLit::F64 { val } => {
+                if *val < i32::MIN as f64 || *val > i32::MAX as f64 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as i32
+            }
+        };
+        *self = Self::i32(new);
+        Ok(())
+    }
+    pub fn as_u64(&mut self) -> Result<(), String> {
+        let new = match self {
+            NumLit::I8 { val } => *val as u64,
+            NumLit::U8 { val } => *val as u64,
+            NumLit::I16 { val } => *val as u64,
+            NumLit::U16 { val } => *val as u64,
+            NumLit::I32 { val } => {
+                // always fits
+                *val as u64
+            }
+            NumLit::U32 { val } => {
+                // always fits
+                *val as u64
+            }
+            NumLit::I64 { val } => {
+                // always fits
+                *val as u64
+            }
+            NumLit::U64 { .. } => return Ok(()),
+            Self::F32 { val } => {
+                if *val < u64::MIN as f32 || *val > u64::MAX as f32 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as u64
+            }
+            Self::F64 { val } => {
+                if *val < u64::MIN as f64 || *val > u64::MAX as f64 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as u64
+            }
+        };
+        *self = Self::u64(new);
+        Ok(())
+    }
+    pub fn as_i64(&mut self) -> Result<(), String> {
+        let new = match self {
+            NumLit::I8 { val } => *val as i64,
+            NumLit::U8 { val } => *val as i64,
+            NumLit::I16 { val } => *val as i64,
+            NumLit::U16 { val } => *val as i64,
+            NumLit::I32 { val } => {
+                // always fits
+                *val as i64
+            }
+            NumLit::U32 { val } => {
+                // always fits
+                *val as i64
+            }
+            NumLit::I64 { .. } => return Ok(()),
+            NumLit::U64 { val } => {
+                if *val > i64::MAX as u64 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as i64
+            }
+            NumLit::F32 { val } => {
+                if *val < i64::MIN as f32 || *val > i64::MAX as f32 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as i64
+            }
+            NumLit::F64 { val } => {
+                if *val < i64::MIN as f64 || *val > i64::MAX as f64 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as i64
+            }
+        };
+        *self = Self::i64(new);
+        Ok(())
+    }
+    pub fn as_f32(&mut self) -> Result<(), String> {
+        let new = match self {
+            NumLit::I8 { val } => *val as f32,
+            NumLit::U8 { val } => *val as f32,
+            NumLit::I16 { val } => *val as f32,
+            NumLit::U16 { val } => *val as f32,
+            NumLit::I32 { val } => {
+                if *val < f32::MIN as i32 || *val > f32::MAX as i32 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as f32
+            }
+            NumLit::U32 { val } => {
+                if *val < f32::MIN as u32 || *val > f32::MAX as u32 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as f32
+            }
+            NumLit::I64 { val } => {
+                if *val < f32::MIN as i64 || *val > f32::MAX as i64 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as f32
+            }
+            NumLit::U64 { val } => {
+                if *val < f32::MIN as u64 || *val > f32::MAX as u64 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as f32
+            }
+            NumLit::F32 { .. } => return Ok(()),
+            NumLit::F64 { val } => {
+                if *val < f32::MIN as f64 || *val > f32::MAX as f64 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as f32
+            }
+        };
+        *self = Self::f32(new);
+        Ok(())
+    }
+    pub fn as_f64(&mut self) -> Result<(), String> {
+        let new = match self {
+            NumLit::I8 { val } => *val as f64,
+            NumLit::U8 { val } => *val as f64,
+            NumLit::I16 { val } => *val as f64,
+            NumLit::U16 { val } => *val as f64,
+            NumLit::I32 { val } => {
+                if *val < f64::MIN as i32 || *val > f64::MAX as i32 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as f64
+            }
+            NumLit::U32 { val } => {
+                if *val < f64::MIN as u32 || *val > f64::MAX as u32 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as f64
+            }
+            NumLit::I64 { val } => {
+                if *val < f64::MIN as i64 || *val > f64::MAX as i64 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as f64
+            }
+            NumLit::U64 { val } => {
+                if *val < f64::MIN as u64 || *val > f64::MAX as u64 {
+                    return Err("out of min/max range".to_string());
+                }
+                *val as f64
+            }
+            Self::F32 { val } => {
+                // always fits
+                *val as f64
+            }
+            Self::F64 { .. } => return Ok(()),
+        };
+        *self = Self::f64(new);
+        Ok(())
+    }
+    pub fn is_true_ish(&self) -> bool {
+        match self {
+            NumLit::I8 { val } => *val != 0,
+            NumLit::U8 { val } => *val != 0,
+            NumLit::I16 { val } => *val != 0,
+            NumLit::U16 { val } => *val != 0,
+            NumLit::I32 { val } => *val != 0,
+            NumLit::U32 { val } => *val != 0,
+            NumLit::I64 { val } => *val != 0,
+            NumLit::U64 { val } => *val != 0,
+            NumLit::F32 { val } => *val != 0f32,
+            NumLit::F64 { val } => *val != 0f64,
+        }
+    }
+    pub fn i8(val: i8) -> Self {
+        Self::I8 { val }
+    }
+    pub fn u8(val: u8) -> Self {
+        Self::U8 { val }
+    }
+    pub fn i16(val: i16) -> Self {
+        Self::I16 { val }
+    }
+    pub fn u16(val: u16) -> Self {
+        Self::U16 { val }
+    }
+    pub fn i32(val: i32) -> Self {
+        Self::I32 { val }
+    }
+    pub fn u32(val: u32) -> Self {
+        Self::U32 { val }
+    }
+    pub fn i64(val: i64) -> Self {
+        Self::I64 { val }
+    }
+    pub fn u64(val: u64) -> Self {
+        Self::U64 { val }
+    }
+    pub fn f32(val: f32) -> Self {
+        Self::F32 { val }
+    }
+    pub fn f64(val: f64) -> Self {
+        Self::F64 { val }
+    }
+    pub fn ty(&self) -> DataType {
+        match self {
+            NumLit::I8 { .. } => DataType::I8,
+            NumLit::U8 { .. } => DataType::U8,
+            NumLit::I16 { .. } => DataType::I16,
+            NumLit::U16 { .. } => DataType::U16,
+            NumLit::I32 { .. } => DataType::I32,
+            NumLit::U32 { .. } => DataType::U32,
+            NumLit::I64 { .. } => DataType::I64,
+            NumLit::U64 { .. } => DataType::U64,
+            NumLit::F32 { .. } => DataType::F32,
+            NumLit::F64 { .. } => DataType::F64,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum NumFmt {
+    Bin,
+    Hex,
+    Dec,
+    NA, // not applicable (created by compiler)
+}
+impl NumFmt {
+    pub fn base(&self) -> u32 {
+        match self {
+            Self::Bin => 2,
+            Self::Hex => 16,
+            Self::Dec => 10,
+            Self::NA => u32::MAX,
         }
     }
 }
@@ -287,36 +881,16 @@ impl DataType {
 // Values
 #[derive(Clone, Debug)]
 pub enum Value {
-    U32 {
+    Number {
+        val: NumLit,
         ty: DataType,
-        val: u32,
-    },
-    I32 {
-        ty: DataType,
-        val: i32,
-    },
-    F32 {
-        ty: DataType,
-        val: f32,
-    },
-    U64 {
-        ty: DataType,
-        val: u64,
-    },
-    I64 {
-        ty: DataType,
-        val: i64,
-    },
-    F64 {
-        ty: DataType,
-        val: f64,
+        token: String,
+        fmt: NumFmt,
     },
     Boolean {
-        ty: DataType,
         val: bool,
     },
     Str {
-        ty: DataType,
         val: String,
     },
     Tuple {
@@ -324,9 +898,162 @@ pub enum Value {
         vals: Vec<Expr>,
     },
     U32U32Map {
-        ty: DataType,
         val: Box<HashMap<u32, u32>>,
     },
+}
+impl Value {
+    pub fn gen_u8(val: u8) -> Self {
+        Self::gen_num(NumLit::u8(val), DataType::U8)
+    }
+    pub fn gen_i8(val: i8) -> Self {
+        Self::gen_num(NumLit::i8(val), DataType::I8)
+    }
+    pub fn gen_u16(val: u16) -> Self {
+        Self::gen_num(NumLit::u16(val), DataType::U16)
+    }
+    pub fn gen_i16(val: i16) -> Self {
+        Self::gen_num(NumLit::i16(val), DataType::I16)
+    }
+    pub fn gen_u32(val: u32) -> Self {
+        Self::gen_num(NumLit::u32(val), DataType::U32)
+    }
+    pub fn gen_i32(val: i32) -> Self {
+        Self::gen_num(NumLit::i32(val), DataType::I32)
+    }
+    pub fn gen_u64(val: u64) -> Self {
+        Self::gen_num(NumLit::u64(val), DataType::U64)
+    }
+    pub fn gen_i64(val: i64) -> Self {
+        Self::gen_num(NumLit::i64(val), DataType::I64)
+    }
+    pub fn gen_f32(val: f32) -> Self {
+        Self::gen_num(NumLit::f32(val), DataType::F32)
+    }
+    pub fn gen_f64(val: f64) -> Self {
+        Self::gen_num(NumLit::f64(val), DataType::F64)
+    }
+    fn gen_num(val: NumLit, ty: DataType) -> Self {
+        // generated by the compiler
+        Self::Number {
+            val,
+            ty,
+            token: "".to_string(),
+            fmt: NumFmt::NA,
+        }
+    }
+    pub fn ty(&self) -> DataType {
+        match self {
+            Value::Number { ty, .. } => ty.clone(),
+            Value::Boolean { .. } => DataType::Boolean,
+            Value::Str { .. } => DataType::Str,
+            Value::Tuple { ty, .. } => ty.clone(),
+            Value::U32U32Map { .. } => DataType::Map {
+                key_ty: Box::new(DataType::U32),
+                val_ty: Box::new(DataType::U32),
+            },
+        }
+    }
+    pub fn implicit_cast(&mut self, target: &DataType) -> Result<(), String> {
+        match self {
+            Value::Number {
+                val, token, fmt, ..
+            } => {
+                let new_val = match val.implicit_cast(target) {
+                    Ok(_) => val.to_owned(),
+                    Err(msg) => return Err(msg),
+                };
+
+                *self = Value::Number {
+                    val: new_val,
+                    ty: target.clone(),
+                    token: token.to_owned(),
+                    fmt: fmt.to_owned(),
+                };
+                Ok(())
+            }
+            Value::Tuple { vals, ty } => {
+                // constraints on the target data type
+                if let DataType::Tuple { ty_info } = target {
+                    if vals.len() != ty_info.len() {
+                        return Err(format!("{ty} to {target}"));
+                    }
+
+                    let mut success = false;
+                    let mut msg = "".to_string();
+                    for (i, val) in vals.iter_mut().enumerate() {
+                        match val.internal_implicit_cast(ty_info.get(i).unwrap()) {
+                            Ok(()) => success = true, // do nothing
+                            Err(e) => msg = e,
+                        }
+                    }
+                    if !success {
+                        Err(msg)
+                    } else {
+                        Ok(())
+                    }
+                } else {
+                    Err(format!("{ty} to {target}"))
+                }
+            }
+            _ => Err("non-numeric values".to_string()),
+        }
+    }
+    pub fn check_explicit_cast(&mut self, target: &DataType) -> Result<(), String> {
+        self.explicit_cast(target, false)
+    }
+    pub fn do_explicit_cast(&mut self, target: &DataType) -> Result<(), String> {
+        self.explicit_cast(target, true)
+    }
+    fn explicit_cast(&mut self, target: &DataType, perform_cast: bool) -> Result<(), String> {
+        if matches!(target, DataType::Boolean) {
+            // first make the value represented as an i32
+            match self.implicit_cast(&DataType::I32) {
+                Ok(_) => {}
+                Err(e) => return Err(e),
+            }
+        }
+        match self {
+            Value::Number { val, .. } => {
+                if target.can_implicitly_cast() {
+                    // can just go ahead and do the implicit cast whether
+                    // perform_cast is true...it's just a primitive...
+                    // which is a local cast operation by nature.
+                    self.implicit_cast(target)
+                } else if matches!(target, DataType::Boolean) {
+                    if perform_cast {
+                        *self = Self::Boolean {
+                            val: val.is_true_ish(),
+                        };
+                    }
+                    Ok(())
+                } else {
+                    Err(format!("{} to {}", self.ty(), target))
+                }
+            }
+            Value::Boolean { val } => {
+                let num_rep = if *val { 1 } else { 0 };
+                if !perform_cast {
+                    return Ok(());
+                }
+                *self = match target {
+                    DataType::U8 | DataType::I8 | DataType::U16 | DataType::I16 | DataType::U32 => {
+                        Value::gen_num(NumLit::u32(num_rep), target.clone())
+                    }
+                    DataType::I32 => Value::gen_num(NumLit::i32(num_rep as i32), target.clone()),
+                    DataType::U64 => Value::gen_num(NumLit::u64(num_rep as u64), target.clone()),
+                    DataType::I64 => Value::gen_num(NumLit::i64(num_rep as i64), target.clone()),
+                    DataType::F32 => Value::gen_num(NumLit::f32(num_rep as f32), target.clone()),
+                    DataType::F64 => Value::gen_num(NumLit::f64(num_rep as f64), target.clone()),
+                    _ => return Err(format!("{} to {}", self.ty(), target)),
+                };
+                Ok(())
+            }
+            Value::Tuple { .. } => {
+                todo!()
+            }
+            _ => Err("non-numeric values".to_string()),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default)]
@@ -407,9 +1134,11 @@ impl Statement {
     pub fn dummy() -> Self {
         Self::Expr {
             expr: Expr::Primitive {
-                val: Value::I32 {
-                    ty: DataType::I32,
-                    val: 0,
+                val: Value::Number {
+                    val: NumLit::u32(0),
+                    ty: DataType::U32,
+                    token: "0".to_string(),
+                    fmt: NumFmt::Dec,
                 },
                 loc: None,
             },
@@ -424,6 +1153,8 @@ pub enum Expr {
         // Type is based on the outermost `op`
         op: UnOp,
         expr: Box<Expr>,
+
+        done_on: DataType, // The type of data that this unary operation is performed on (populated by type checker)
         loc: Option<Location>,
     },
     Ternary {
@@ -438,6 +1169,8 @@ pub enum Expr {
         lhs: Box<Expr>,
         op: BinOp,
         rhs: Box<Expr>,
+
+        done_on: DataType, // The type of data that this binary operation is performed on (populated by type checker)
         loc: Option<Location>,
     },
     Call {
@@ -463,6 +1196,46 @@ pub enum Expr {
     },
 }
 impl Expr {
+    pub fn one(line_col: LineColLocation) -> Self {
+        Expr::Primitive {
+            val: Value::Number {
+                val: NumLit::u32(1),
+                ty: DataType::U32,
+                token: "1".to_string(),
+                fmt: NumFmt::Dec,
+            },
+            loc: Some(Location {
+                line_col,
+                path: None,
+            }),
+        }
+    }
+    pub fn implicit_cast(&mut self, target: &DataType) -> Result<(), (String, bool)> {
+        match self.internal_implicit_cast(target) {
+            Err(msg) => Err((
+                format!("CastError: Cannot implicitly cast {msg}. Please add an explicit cast."),
+                false,
+            )),
+            _ => Ok(()),
+        }
+    }
+    fn internal_implicit_cast(&mut self, target: &DataType) -> Result<(), String> {
+        match self {
+            Self::Primitive { val: value, .. } => match value.implicit_cast(target) {
+                Ok(()) => Ok(()),
+                Err(res) => Err(res),
+            },
+            Self::Ternary { conseq, alt, .. } => match conseq.internal_implicit_cast(target) {
+                Ok(()) => match alt.internal_implicit_cast(target) {
+                    Ok(()) => Ok(()),
+                    Err(res) => Err(res),
+                },
+                Err(res) => Err(res),
+            },
+            _ => Err("expression".to_string()),
+        }
+    }
+
     pub fn loc(&self) -> &Option<Location> {
         match self {
             Expr::UnOp { loc, .. }
@@ -765,12 +1538,7 @@ impl ProbeRule {
         );
         if let Some(package_patt) = &self.package {
             white(true, format!(":{}", &package_patt.name), buffer);
-            if let Some(event_patt) = &self.event {
-                white(true, format!(":{}", &event_patt.name), buffer);
-                if let Some(mode_patt) = &self.mode {
-                    white(true, format!(":{}", &mode_patt.name), buffer);
-                }
-            }
+            self.print_event(buffer);
         }
         white(true, "\n".to_string(), buffer);
         grey_italics(true, "matches the following rules:\n\n".to_string(), buffer);
@@ -787,18 +1555,21 @@ impl ProbeRule {
             self.package.as_ref().unwrap().name.to_string(),
             buffer,
         );
-        if let Some(event_patt) = &self.event {
-            white(true, format!(":{}", &event_patt.name), buffer);
-            if let Some(mode_patt) = &self.mode {
-                white(true, format!(":{}", &mode_patt.name), buffer);
-            }
-        }
+        self.print_event(buffer);
         white(true, "\n".to_string(), buffer);
         grey_italics(
             true,
             "matches the following packages:\n\n".to_string(),
             buffer,
         );
+    }
+    fn print_event(&self, buffer: &mut Buffer) {
+        if let Some(event_patt) = &self.event {
+            white(true, format!(":{}", &event_patt.name), buffer);
+            if let Some(mode_patt) = &self.mode {
+                white(true, format!(":{}", &mode_patt.name), buffer);
+            }
+        }
     }
 
     pub fn print_bold_event(&self, buffer: &mut Buffer) {
@@ -1172,7 +1943,9 @@ impl ProvidedFunction {
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum UnOp {
+    Cast { target: DataType },
     Not,
+    BitwiseNot,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -1197,6 +1970,13 @@ pub enum BinOp {
     Multiply,
     Divide,
     Modulo,
+
+    // Bitwise operators
+    LShift,
+    RShift,
+    BitAnd,
+    BitOr,
+    BitXor,
 }
 
 // =================

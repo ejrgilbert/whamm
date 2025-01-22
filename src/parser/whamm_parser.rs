@@ -1,13 +1,14 @@
 use crate::common::error::{ErrorGen, WhammError};
 use crate::parser::types;
 use crate::parser::types::{
-    BinOp, Block, DataType, Definition, Expr, FnId, Location, ProbeRule, Rule, RulePart, Script,
-    Statement, UnOp, Value, Whamm, WhammParser, PRATT_PARSER,
+    BinOp, Block, DataType, Definition, Expr, FnId, Location, NumFmt, NumLit, ProbeRule, Rule,
+    RulePart, Script, Statement, UnOp, Value, Whamm, WhammParser, PRATT_PARSER,
 };
 use log::trace;
 use pest::error::{Error, LineColLocation};
 use pest::iterators::{Pair, Pairs};
 use pest::Parser;
+use std::str::FromStr;
 
 const UNEXPECTED_ERR_MSG: &str =
     "WhammParser: Looks like you've found a bug...please report this behavior! Exiting now...";
@@ -277,7 +278,7 @@ pub fn handle_fn_def(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, e
         Some(pair) => {
             if !matches!(pair.as_rule(), Rule::block) {
                 next = pairs.next();
-                type_from_rule(pair, err)
+                type_from_rule_handler(pair, err)
             } else {
                 DataType::Tuple { ty_info: vec![] }
             }
@@ -423,7 +424,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
 fn handle_decl(pair: &mut Pairs<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     let type_rule = pair.next().unwrap();
     let type_line_col = LineColLocation::from(type_rule.as_span());
-    let ty = type_from_rule(type_rule, err);
+    let ty = type_from_rule_handler(type_rule, err);
 
     let var_id_rule = pair.next().unwrap();
     let var_id_line_col = LineColLocation::from(var_id_rule.as_span());
@@ -490,16 +491,7 @@ fn handle_function_call_outer(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<State
 fn handle_incrementor(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     vec![handle_custom_binop(
         BinOp::Add,
-        Expr::Primitive {
-            val: Value::I32 {
-                ty: DataType::I32,
-                val: 1,
-            },
-            loc: Some(Location {
-                line_col: LineColLocation::from(pair.as_span()),
-                path: None,
-            }),
-        },
+        Expr::one(LineColLocation::from(pair.as_span())),
         pair,
         err,
     )]
@@ -508,16 +500,7 @@ fn handle_incrementor(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
 fn handle_decrementor(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     vec![handle_custom_binop(
         BinOp::Subtract,
-        Expr::Primitive {
-            val: Value::I32 {
-                ty: DataType::I32,
-                val: 1,
-            },
-            loc: Some(Location {
-                line_col: LineColLocation::from(pair.as_span()),
-                path: None,
-            }),
-        },
+        Expr::one(LineColLocation::from(pair.as_span())),
         pair,
         err,
     )]
@@ -565,6 +548,8 @@ fn handle_custom_binop(op: BinOp, rhs: Expr, pair: Pair<Rule>, err: &mut ErrorGe
         lhs: Box::new(binop_lhs),
         op,
         rhs: Box::new(rhs),
+
+        done_on: DataType::Unknown,
         loc: Some(Location {
             line_col: full_loc.clone(),
             path: None,
@@ -907,7 +892,7 @@ fn handle_special_decl(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
 fn handle_param(mut pairs: Pairs<Rule>, err: &mut ErrorGen) -> Option<(Expr, DataType)> {
     if let Some(param_rule) = pairs.next() {
         // process the type
-        let ty = type_from_rule(param_rule, err);
+        let ty = type_from_rule_handler(param_rule, err);
         // process the name
         let id = handle_id(pairs.next().unwrap());
         Some((id, ty))
@@ -1051,27 +1036,23 @@ fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                 Ok(rhs) => {
                     let op = match op.as_rule() {
                         Rule::neg => UnOp::Not,
+                        Rule::binary_not => UnOp::BitwiseNot,
                         rule => {
                             return Err(vec![ErrorGen::get_parse_error(
                                 true,
                                 Some(UNEXPECTED_ERR_MSG.to_string()),
                                 Some(LineColLocation::from(op.as_span())),
-                                vec![Rule::prefix],
+                                vec![Rule::neg],
                                 vec![rule],
                             )]);
                         }
                     };
-
-                    let loc = if let Some(rhs_loc) = rhs.loc() {
-                        let rhs_line_col = rhs_loc.line_col.clone();
-                        Some(Location::from(&rhs_line_col, &rhs_line_col, None))
-                    } else {
-                        None
-                    };
+                    let loc = rhs.loc().clone();
 
                     Ok(Expr::UnOp {
                         op,
                         expr: Box::new(rhs),
+                        done_on: DataType::Unknown,
                         loc,
                     })
                 }
@@ -1102,6 +1083,14 @@ fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                         Rule::multiply => BinOp::Multiply,
                         Rule::divide => BinOp::Divide,
                         Rule::modulo => BinOp::Modulo,
+
+                        // Bitwise Operators
+                        Rule::lshift => BinOp::LShift,
+                        Rule::rshift => BinOp::RShift,
+                        Rule::binary_and => BinOp::BitAnd,
+                        Rule::binary_or => BinOp::BitOr,
+                        Rule::binary_xor => BinOp::BitXor,
+
                         rule => {
                             return Err(vec![ErrorGen::get_parse_error(
                                 true,
@@ -1121,6 +1110,11 @@ fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                                     Rule::multiply,
                                     Rule::divide,
                                     Rule::modulo,
+                                    Rule::lshift,
+                                    Rule::rshift,
+                                    Rule::binary_and,
+                                    Rule::binary_or,
+                                    Rule::binary_xor,
                                 ],
                                 vec![rule],
                             )]);
@@ -1139,6 +1133,7 @@ fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                         lhs: Box::new(lhs),
                         op,
                         rhs: Box::new(rhs),
+                        done_on: DataType::Unknown,
                         loc,
                     })
                 }
@@ -1155,6 +1150,40 @@ fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                 }
             };
         })
+        .map_postfix(|lhs, op| -> Result<Expr, Vec<WhammError>> {
+            return match lhs {
+                Ok(lhs) => {
+                    let op_rule = op.as_rule();
+                    let op_span = op.as_span();
+                    let target = match type_from_rule(op.into_inner().next().unwrap()) {
+                        Ok(ty) => ty,
+                        Err(e) => return Err(e),
+                    };
+
+                    let op = match op_rule {
+                        Rule::cast => UnOp::Cast { target },
+                        rule => {
+                            return Err(vec![ErrorGen::get_parse_error(
+                                true,
+                                Some(UNEXPECTED_ERR_MSG.to_string()),
+                                Some(LineColLocation::from(op_span)),
+                                vec![Rule::cast],
+                                vec![rule],
+                            )]);
+                        }
+                    };
+                    let loc = lhs.loc().clone();
+
+                    Ok(Expr::UnOp {
+                        op,
+                        expr: Box::new(lhs),
+                        done_on: DataType::Unknown,
+                        loc,
+                    })
+                }
+                Err(errors) => Err(errors),
+            };
+        })
         .parse(pairs)
 }
 
@@ -1164,7 +1193,7 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
         Rule::ID => Ok(handle_id(pair)),
         Rule::tuple => handle_tuple(pair),
         Rule::INT => handle_int(pair),
-        Rule::DEC => handle_dec(pair),
+        Rule::FLOAT => handle_float(pair),
         Rule::BOOL => handle_bool(pair),
         Rule::STRING => handle_string(pair),
         Rule::get_map => handle_map_get(pair),
@@ -1286,90 +1315,45 @@ fn probe_rule_part_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> RulePart {
 }
 
 // TYPES
+fn type_from_rule_handler(pair: Pair<Rule>, err: &mut ErrorGen) -> DataType {
+    match type_from_rule(pair) {
+        Ok(ty) => ty,
+        Err(errs) => {
+            err.add_errors(errs);
+            DataType::Unknown
+        }
+    }
+}
 
-fn type_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> DataType {
+fn type_from_rule(pair: Pair<Rule>) -> Result<DataType, Vec<WhammError>> {
     trace!("Entering type_from_rule");
-    // TYPE = _{ TY_I32 | TY_BOOL | TY_STRING | TY_TUPLE | TY_MAP }
     return match pair.as_rule() {
-        Rule::TY_U32 => DataType::U32,
-        Rule::TY_I32 => DataType::I32,
-        Rule::TY_F32 => {
-            err.parse_error(
-                true,
-                Some("f32 not supported yet, see Issue #29: https://github.com/ejrgilbert/whamm/issues/141".to_string()),
-                Some(LineColLocation::from(pair.as_span())),
-                vec![
-                    Rule::TY_I32,
-                    Rule::TY_BOOL,
-                    Rule::TY_STRING,
-                    Rule::TY_TUPLE,
-                    Rule::TY_MAP,
-                ],
-                vec![pair.as_rule()],
-            );
-            DataType::F32
-        }
-        Rule::TY_U64 => {
-            err.parse_error(
-                true,
-                Some("u64 not supported yet, see Issue #29: https://github.com/ejrgilbert/whamm/issues/141".to_string()),
-                Some(LineColLocation::from(pair.as_span())),
-                vec![
-                    Rule::TY_I32,
-                    Rule::TY_BOOL,
-                    Rule::TY_STRING,
-                    Rule::TY_TUPLE,
-                    Rule::TY_MAP,
-                ],
-                vec![pair.as_rule()],
-            );
-            DataType::U64
-        }
-        Rule::TY_I64 => {
-            err.parse_error(
-                true,
-                Some("i64 not supported yet, see Issue #29: https://github.com/ejrgilbert/whamm/issues/141".to_string()),
-                Some(LineColLocation::from(pair.as_span())),
-                vec![
-                    Rule::TY_I32,
-                    Rule::TY_BOOL,
-                    Rule::TY_STRING,
-                    Rule::TY_TUPLE,
-                    Rule::TY_MAP,
-                ],
-                vec![pair.as_rule()],
-            );
-            DataType::I64
-        }
-        Rule::TY_F64 => {
-            err.parse_error(
-                true,
-                Some("f64 not supported yet, see Issue #29: https://github.com/ejrgilbert/whamm/issues/141".to_string()),
-                Some(LineColLocation::from(pair.as_span())),
-                vec![
-                    Rule::TY_I32,
-                    Rule::TY_BOOL,
-                    Rule::TY_STRING,
-                    Rule::TY_TUPLE,
-                    Rule::TY_MAP,
-                ],
-                vec![pair.as_rule()],
-            );
-            DataType::F64
-        }
-        Rule::TY_BOOL => DataType::Boolean,
-        Rule::TY_STRING => DataType::Str,
+        Rule::TY_U8 => Ok(DataType::U8),
+        Rule::TY_I8 => Ok(DataType::I8),
+        Rule::TY_U16 => Ok(DataType::U16),
+        Rule::TY_I16 => Ok(DataType::I16),
+        Rule::TY_U32 => Ok(DataType::U32),
+        Rule::TY_I32 => Ok(DataType::I32),
+        Rule::TY_F32 => Ok(DataType::F32),
+        Rule::TY_U64 => Ok(DataType::U64),
+        Rule::TY_I64 => Ok(DataType::I64),
+        Rule::TY_F64 => Ok(DataType::F64),
+        Rule::TY_BOOL => Ok(DataType::Boolean),
+        Rule::TY_STRING => Ok(DataType::Str),
         Rule::TY_TUPLE => {
             let mut tuple_content_types = vec![];
-            pair.into_inner().for_each(|p| {
-                tuple_content_types.push(Box::new(type_from_rule(p, err)));
-            });
-            return if tuple_content_types.is_empty() {
-                DataType::Tuple { ty_info: vec![] }
-            } else {
-                DataType::Tuple {
-                    ty_info: tuple_content_types,
+            for p in pair.into_inner() {
+                match type_from_rule(p) {
+                    Ok(res) => tuple_content_types.push(Box::new(res)),
+                    Err(e) => return Err(e),
                 }
+            }
+            return if tuple_content_types.is_empty() {
+                Ok(DataType::Tuple { ty_info: vec![] })
+            } else {
+                Ok(DataType::Tuple {
+                    ty_info: tuple_content_types,
+                })
             };
         }
         Rule::TY_MAP => {
@@ -1377,20 +1361,30 @@ fn type_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> DataType {
             let key_ty_rule = pair.next().unwrap();
             let val_ty_rule = pair.next().unwrap();
 
-            let key_ty = type_from_rule(key_ty_rule, err);
-            let val_ty = type_from_rule(val_ty_rule, err);
+            let key_ty = match type_from_rule(key_ty_rule) {
+                Ok(res) => res,
+                Err(e) => return Err(e),
+            };
+            let val_ty = match type_from_rule(val_ty_rule) {
+                Ok(res) => res,
+                Err(e) => return Err(e),
+            };
 
-            return DataType::Map {
+            return Ok(DataType::Map {
                 key_ty: Box::new(key_ty),
                 val_ty: Box::new(val_ty),
-            };
+            });
         }
         rule => {
-            err.parse_error(
+            return Err(vec![ErrorGen::get_parse_error(
                 true,
                 Some(UNEXPECTED_ERR_MSG.to_string()),
                 Some(LineColLocation::from(pair.as_span())),
                 vec![
+                    Rule::TY_U8,
+                    Rule::TY_I8,
+                    Rule::TY_U16,
+                    Rule::TY_I16,
                     Rule::TY_U32,
                     Rule::TY_I32,
                     Rule::TY_F32,
@@ -1403,9 +1397,7 @@ fn type_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> DataType {
                     Rule::TY_MAP,
                 ],
                 vec![rule],
-            );
-            // should have exited above (since it's a fatal error)
-            unreachable!();
+            )]);
         }
     };
 }
@@ -1448,27 +1440,178 @@ fn handle_tuple(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     })
 }
 
-fn handle_int(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
-    let val = pair.as_str().parse::<i32>().unwrap();
-    Ok(Expr::Primitive {
-        val: Value::I32 {
-            ty: DataType::I32,
-            val,
-        },
-        loc: Some(Location {
-            line_col: LineColLocation::from(pair.as_span()),
-            path: None,
+pub fn handle_int(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
+    let pair = pair.into_inner().next().unwrap();
+    // make uppercase and remove all '_'
+    let token = pair.as_str().to_uppercase().replace("_", "");
+    let mut digits = token.len() as i32;
+    let is_neg = if let Some(first) = token.chars().next() {
+        if first == '-' {
+            // remove '-' from digits count
+            digits -= 1;
+            true
+        } else {
+            false
+        }
+    } else {
+        // should always be at least two chars to even make it past pest parsing!
+        unreachable!()
+    };
+
+    let (to_parse, fmt) = match pair.as_rule() {
+        Rule::int_hex => {
+            // remove '0x' from token to parse (required by rust utils)
+            // but still keep '-' if used
+            let delim = "0X";
+            digits -= delim.len() as i32;
+
+            // number of binary digits per hex char
+            digits *= 4;
+            (token.strip_prefix(delim).unwrap().to_string(), NumFmt::Hex)
+        }
+        Rule::int_bin => {
+            // remove '0b' from token to parse (required by rust utils)
+            // but still keep '-' if used
+            let delim = "0B";
+            digits -= delim.len() as i32;
+
+            (token.strip_prefix(delim).unwrap().to_string(), NumFmt::Bin)
+        }
+        Rule::int => {
+            // number of binary digits required to represent is unknown
+            digits = -1;
+            (token.clone(), NumFmt::Dec)
+        }
+        rule => {
+            return Err(vec![ErrorGen::get_parse_error(
+                true,
+                Some(UNEXPECTED_ERR_MSG.to_string()),
+                Some(LineColLocation::from(pair.as_span())),
+                vec![Rule::int_hex, Rule::int_bin, Rule::int],
+                vec![rule],
+            )])
+        }
+    };
+
+    let val = if is_neg || fmt == NumFmt::Bin || fmt == NumFmt::Hex {
+        // By default, always parse hex and binary as signed
+        if digits > 32 {
+            if let Ok(val) = i64::from_str_radix(&to_parse, fmt.base()) {
+                Ok(NumLit::i64(val))
+            } else if fmt == NumFmt::Bin || fmt == NumFmt::Hex {
+                if let Ok(val) = u64::from_str_radix(&to_parse, fmt.base()) {
+                    // convert and allow wrapping
+                    Ok(NumLit::i64(val as i64))
+                } else {
+                    Err("i32 OR u32")
+                }
+            } else {
+                Err("i64")
+            }
+        } else if digits >= 0 {
+            if let Ok(val) = i32::from_str_radix(&to_parse, fmt.base()) {
+                Ok(NumLit::i32(val))
+            } else if fmt == NumFmt::Bin || fmt == NumFmt::Hex {
+                if let Ok(val) = u32::from_str_radix(&to_parse, fmt.base()) {
+                    // convert and allow wrapping
+                    Ok(NumLit::i32(val as i32))
+                } else {
+                    Err("i32 OR u32")
+                }
+            } else {
+                Err("i32")
+            }
+        } else {
+            // num digits required is unknown, figure it out!
+            if let Ok(val) = i32::from_str_radix(&to_parse, fmt.base()) {
+                Ok(NumLit::i32(val))
+            } else if let Ok(val) = i64::from_str_radix(&to_parse, fmt.base()) {
+                Ok(NumLit::i64(val))
+            } else {
+                Err("i32 OR i64")
+            }
+        }
+    } else if digits >= 32 {
+        if let Ok(val) = u64::from_str_radix(&to_parse, fmt.base()) {
+            Ok(NumLit::u64(val))
+        } else {
+            Err("u64")
+        }
+    } else if digits >= 0 {
+        if let Ok(val) = u32::from_str_radix(&to_parse, fmt.base()) {
+            Ok(NumLit::u32(val))
+        } else {
+            Err("u32")
+        }
+    } else {
+        // num digits required is unknown, figure it out!
+        if let Ok(val) = u32::from_str_radix(&to_parse, fmt.base()) {
+            Ok(NumLit::u32(val))
+        } else if let Ok(val) = u64::from_str_radix(&to_parse, fmt.base()) {
+            Ok(NumLit::u64(val))
+        } else {
+            Err("u32 OR u64")
+        }
+    };
+
+    match val {
+        Ok(val) => Ok(Expr::Primitive {
+            val: Value::Number {
+                val,
+                ty: DataType::U32,
+                token: token.to_string(),
+                fmt,
+            },
+            loc: Some(Location {
+                line_col: LineColLocation::from(pair.as_span()),
+                path: None,
+            }),
         }),
-    })
+        Err(ty) => Err(vec![ErrorGen::get_parse_error(
+            true,
+            Some(format!("Failed to parse value into {ty}: {token}")),
+            Some(LineColLocation::from(pair.as_span())),
+            vec![],
+            vec![],
+        )]),
+    }
 }
 
-fn handle_dec(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
-    let val = pair.as_str().parse::<f32>().unwrap();
+pub fn handle_float(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
+    let pair = pair.into_inner().next().unwrap();
+    // make lowercase and remove all '_'
+    let token = pair.as_str().to_lowercase().replace("_", "");
+
+    // num digits required is unknown, figure it out!
+    let (val, ty) = if let Ok(val) = f32::from_str(&token) {
+        let mut res = (NumLit::f32(val), DataType::F32);
+        if val.is_infinite() && !token.contains("inf") {
+            // try to parse as f64
+            if let Ok(new_val) = f64::from_str(&token) {
+                if !new_val.is_infinite() {
+                    res = (NumLit::f64(new_val), DataType::F64)
+                }
+            }
+        }
+        res
+    } else if let Ok(val) = f64::from_str(&token) {
+        (NumLit::f64(val), DataType::F64)
+    } else {
+        return Err(vec![ErrorGen::get_parse_error(
+            true,
+            Some(format!("Failed to parse value into f32 OR f64: {token}")),
+            Some(LineColLocation::from(pair.as_span())),
+            vec![],
+            vec![],
+        )]);
+    };
 
     Ok(Expr::Primitive {
-        val: Value::F32 {
-            ty: DataType::F32,
+        val: Value::Number {
             val,
+            ty,
+            token: token.to_string(),
+            fmt: NumFmt::Dec,
         },
         loc: Some(Location {
             line_col: LineColLocation::from(pair.as_span()),
@@ -1481,10 +1624,7 @@ fn handle_bool(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     let val = pair.as_str().parse::<bool>().unwrap();
 
     Ok(Expr::Primitive {
-        val: Value::Boolean {
-            ty: DataType::Boolean,
-            val,
-        },
+        val: Value::Boolean { val },
         loc: Some(Location {
             line_col: LineColLocation::from(pair.as_span()),
             path: None,
@@ -1493,7 +1633,7 @@ fn handle_bool(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
 }
 
 fn handle_string(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
-    let mut val: String = pair.as_str().parse().unwrap();
+    let mut val: String = pair.as_str().to_string();
     if val.starts_with('\"') {
         val = val
             .strip_prefix('\"')
@@ -1508,10 +1648,7 @@ fn handle_string(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     }
 
     Ok(Expr::Primitive {
-        val: Value::Str {
-            ty: DataType::Str,
-            val,
-        },
+        val: Value::Str { val },
         loc: Some(Location {
             line_col: LineColLocation::from(pair.as_span()),
             path: None,
@@ -1547,5 +1684,3 @@ fn handle_map_get(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
         }),
     })
 }
-
-// STATEMENTS

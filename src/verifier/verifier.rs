@@ -11,6 +11,22 @@ use std::vec;
 const UNEXPECTED_ERR_MSG: &str =
     "TypeChecker: Looks like you've found a bug...please report this behavior! Exiting now...";
 
+pub fn type_check(ast: &mut Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> bool {
+    let mut type_checker = TypeChecker {
+        table: st,
+        err,
+        in_script_global: false,
+        in_function: false,
+        curr_loc: None,
+        outer_cast_fixes_assign: false,
+        assign_ty: None,
+        tuple_index: 0,
+    };
+    type_checker.visit_whamm(ast);
+    // note that parser errors might propagate here
+    !err.has_errors
+}
+
 pub fn build_symbol_table(ast: &mut Whamm, err: &mut ErrorGen) -> SymbolTable {
     let mut visitor = SymbolTableBuilder {
         table: SymbolTable::new(),
@@ -102,6 +118,12 @@ struct TypeChecker<'a> {
     err: &'a mut ErrorGen,
     in_script_global: bool,
     in_function: bool,
+
+    // bookkeeping for casting
+    curr_loc: Option<Location>,
+    outer_cast_fixes_assign: bool,
+    assign_ty: Option<DataType>,
+    tuple_index: usize,
 }
 
 impl TypeChecker<'_> {
@@ -332,20 +354,31 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 let lhs_loc = var_id.loc().clone().unwrap();
                 let rhs_loc = expr.loc().clone().unwrap();
                 let lhs_ty_op = self.visit_expr(var_id);
+
+                if let Some(lhs_ty) = &lhs_ty_op {
+                    if let Expr::UnOp {
+                        op: UnOp::Cast { target },
+                        ..
+                    } = expr
+                    {
+                        self.outer_cast_fixes_assign = lhs_ty == target;
+                    }
+                }
+                self.assign_ty = lhs_ty_op.clone();
                 let rhs_ty_op = self.visit_expr(expr);
 
-                // TODO -- conversion between numbers here?
-                if let (Some(lhs_ty), Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {
+                let res = if let (Some(lhs_ty), Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {
                     if lhs_ty == rhs_ty {
                         None
-                    } else if (lhs_ty == DataType::U32 || lhs_ty == DataType::I32)
-                        && (rhs_ty == DataType::I32 || rhs_ty == DataType::U32)
-                    {
-                        // TODO -- make this typechecking actually verify that the values won't overflow!
-                        let loc = Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
-                        self.err.add_typecheck_warn(format!("Comparisons between U32/I32 values, possible overflow issue! \
-                                Future versions of whamm will verify this compatibility.\n lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty), Some(loc.line_col));
-                        None
+                    } else if rhs_ty.can_implicitly_cast() && lhs_ty.can_implicitly_cast() {
+                        match expr.implicit_cast(&lhs_ty) {
+                            Ok(_) => None,
+                            Err((msg, fatal)) => {
+                                self.err
+                                    .type_check_error(fatal, msg, &Some(rhs_loc.line_col));
+                                None
+                            }
+                        }
                     } else {
                         // using a struct in parser to merge two locations
                         let loc = Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
@@ -365,7 +398,10 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         &Some(loc.line_col),
                     );
                     None
-                }
+                };
+                self.outer_cast_fixes_assign = false;
+                self.assign_ty = None;
+                res
             }
             Statement::UnsharedDecl { decl, .. } => self.visit_stmt(decl),
             Statement::Expr { expr, .. } => {
@@ -490,18 +526,26 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         {
                             //ensure that the key_ty matches and the val_ty matches
                             if key_ty != *map_key_ty {
-                                self.err.type_check_error(
-                                    false,
-                                    format! {"Type Mismatch, key:{:?}, map_key:{:?}", key_ty, map_key_ty},
-                                    &loc.clone().map(|l| l.line_col),
+                                let key_loc = key.loc().clone().unwrap();
+                                attempt_implicit_cast(
+                                    key,
+                                    &map_key_ty,
+                                    &key_ty,
+                                    key_loc,
+                                    "key",
+                                    self.err,
                                 );
                                 return None;
                             }
                             if val_ty != *map_val_ty {
-                                self.err.type_check_error(
-                                    false,
-                                    format! {"Type Mismatch, val:{:?}, map_val:{:?}", val_ty, map_val_ty},
-                                    &loc.clone().map(|l| l.line_col),
+                                let val_loc = val.loc().clone().unwrap();
+                                attempt_implicit_cast(
+                                    val,
+                                    &map_val_ty,
+                                    &val_ty,
+                                    val_loc,
+                                    "val",
+                                    self.err,
                                 );
                                 return None;
                             }
@@ -524,8 +568,17 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
 
     fn visit_expr(&mut self, expr: &mut Expr) -> Option<DataType> {
         match expr {
-            Expr::Primitive { val, .. } => self.visit_value(val),
-            Expr::BinOp { lhs, rhs, op, .. } => {
+            Expr::Primitive { val, loc } => {
+                self.curr_loc = loc.clone();
+                self.visit_value(val)
+            }
+            Expr::BinOp {
+                lhs,
+                rhs,
+                op,
+                done_on,
+                ..
+            } => {
                 let lhs_loc = lhs.loc().clone().unwrap();
                 let rhs_loc = match rhs.loc().clone() {
                     Some(loc) => loc,
@@ -534,96 +587,288 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 let lhs_ty_op = self.visit_expr(lhs);
                 let rhs_ty_op = self.visit_expr(rhs);
                 if let (Some(lhs_ty), Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {
+                    *done_on = lhs_ty.clone();
                     match op {
                         BinOp::Add
                         | BinOp::Subtract
                         | BinOp::Multiply
                         | BinOp::Divide
                         | BinOp::Modulo => {
-                            if lhs_ty == DataType::I32 && rhs_ty == DataType::I32 {
-                                Some(DataType::I32)
-                            } else if (lhs_ty == DataType::U32 || lhs_ty == DataType::I32)
-                                && (rhs_ty == DataType::I32 || rhs_ty == DataType::U32)
-                            {
-                                // TODO -- make this typechecking actually verify that the values won't overflow!
-                                let loc =
-                                    Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
-                                self.err.add_typecheck_warn(format!("Comparisons between U32/I32 values, possible overflow issue! \
-                                Future versions of whamm will verify this compatibility.\n lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty), Some(loc.line_col));
-                                Some(DataType::I32)
+                            if matches!(lhs_ty, DataType::AssumeGood) {
+                                return Some(rhs_ty);
+                            } else if matches!(rhs_ty, DataType::AssumeGood) {
+                                return Some(lhs_ty);
+                            }
+
+                            if !self.outer_cast_fixes_assign {
+                                if let Some(exp_ty) = &self.assign_ty {
+                                    if *exp_ty == lhs_ty {
+                                        if lhs_ty == rhs_ty {
+                                            return Some(lhs_ty);
+                                        } else {
+                                            let loc = Location::from(
+                                                &lhs_loc.line_col,
+                                                &rhs_loc.line_col,
+                                                None,
+                                            );
+                                            if attempt_implicit_cast(
+                                                rhs, exp_ty, &rhs_ty, loc, "value", self.err,
+                                            ) {
+                                                return Some(exp_ty.clone());
+                                            }
+                                        }
+                                    } else {
+                                        let loc = Location::from(
+                                            &lhs_loc.line_col,
+                                            &rhs_loc.line_col,
+                                            None,
+                                        );
+                                        if attempt_implicit_cast(
+                                            lhs, exp_ty, &lhs_ty, loc, "value", self.err,
+                                        ) {
+                                            return Some(exp_ty.clone());
+                                        }
+                                    }
+                                }
+                            } else if lhs_ty == rhs_ty {
+                                return Some(lhs_ty);
                             } else {
                                 let loc =
                                     Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
-                                self.err.type_check_error(
-                                    false,
-                                    format! {"Type Mismatch, lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty},
-                                    &Some(loc.line_col),
-                                );
-                                Some(DataType::AssumeGood)
+                                if attempt_implicit_cast(
+                                    rhs, &lhs_ty, &rhs_ty, loc, "value", self.err,
+                                ) {
+                                    return Some(lhs_ty);
+                                }
                             }
+                            Some(DataType::AssumeGood)
                         }
                         BinOp::And | BinOp::Or => {
+                            if matches!(lhs_ty, DataType::AssumeGood)
+                                || matches!(rhs_ty, DataType::AssumeGood)
+                            {
+                                return Some(DataType::Boolean);
+                            }
                             if lhs_ty == DataType::Boolean && rhs_ty == DataType::Boolean {
                                 Some(DataType::Boolean)
                             } else {
                                 self.err.type_check_error(
                                     false,
                                     "Different types for lhs and rhs".to_owned(),
-                                    &None,
+                                    &Some(
+                                        Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None)
+                                            .line_col,
+                                    ),
                                 );
                                 Some(DataType::AssumeGood)
                             }
                         }
-
                         BinOp::EQ | BinOp::NE => {
+                            if matches!(lhs_ty, DataType::AssumeGood)
+                                || matches!(rhs_ty, DataType::AssumeGood)
+                            {
+                                return Some(DataType::Boolean);
+                            }
                             if lhs_ty == rhs_ty {
                                 Some(DataType::Boolean)
-                            } else if (lhs_ty == DataType::U32 || lhs_ty == DataType::I32)
-                                && (rhs_ty == DataType::I32 || rhs_ty == DataType::U32)
-                            {
-                                // TODO -- make this typechecking actually verify that the values won't overflow!
-                                let loc =
-                                    Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
-                                self.err.add_typecheck_warn(format!("Comparisons between U32/I32 values, possible overflow issue! \
-                                Future versions of whamm will verify this compatibility.\n lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty), Some(loc.line_col));
-                                Some(DataType::Boolean)
                             } else {
-                                // using a struct in parser to merge two locations
                                 let loc =
                                     Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
-                                self.err.type_check_error(
-                                    false,
-                                    format! {"Type Mismatch, lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty},
-                                    &Some(loc.line_col),
-                                );
-
-                                Some(DataType::AssumeGood)
+                                if attempt_implicit_cast(
+                                    rhs, &lhs_ty, &rhs_ty, loc, "value", self.err,
+                                ) {
+                                    Some(DataType::Boolean)
+                                } else {
+                                    Some(DataType::AssumeGood)
+                                }
                             }
                         }
                         BinOp::GT | BinOp::LT | BinOp::GE | BinOp::LE => {
-                            if lhs_ty == DataType::I32 && rhs_ty == DataType::I32 {
-                                Some(DataType::Boolean)
-                            } else if (lhs_ty == DataType::U32 || lhs_ty == DataType::I32)
-                                && (rhs_ty == DataType::I32 || rhs_ty == DataType::U32)
+                            if matches!(lhs_ty, DataType::AssumeGood)
+                                || matches!(rhs_ty, DataType::AssumeGood)
                             {
-                                // TODO -- make this typechecking actually verify that the values won't overflow!
-                                let loc =
-                                    Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
-                                self.err.add_typecheck_warn(format!("Comparisons between U32/I32 values, possible overflow issue! \
-                                Future versions of whamm will verify this compatibility.\n lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty), Some(loc.line_col));
+                                return Some(DataType::Boolean);
+                            }
+                            if lhs_ty == rhs_ty && lhs_ty.can_implicitly_cast() {
                                 Some(DataType::Boolean)
                             } else {
-                                // using a struct in parser to merge two locations
+                                let loc =
+                                    Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
+                                if attempt_implicit_cast(
+                                    rhs, &lhs_ty, &rhs_ty, loc, "value", self.err,
+                                ) {
+                                    Some(DataType::Boolean)
+                                } else {
+                                    Some(DataType::AssumeGood)
+                                }
+                            }
+                        }
+                        BinOp::LShift => {
+                            if matches!(lhs_ty, DataType::F32 | DataType::F64) {
                                 let loc =
                                     Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
                                 self.err.type_check_error(
                                     false,
-                                    format! {"Type Mismatch, lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty},
+                                    format!("Left shift operation not allowed on type: {}", lhs_ty),
                                     &Some(loc.line_col),
                                 );
-
-                                Some(DataType::AssumeGood)
+                                return Some(DataType::AssumeGood);
+                            } else if matches!(lhs_ty, DataType::AssumeGood) {
+                                return Some(DataType::AssumeGood);
+                            } else if matches!(rhs_ty, DataType::AssumeGood) {
+                                return Some(lhs_ty);
                             }
+
+                            if lhs_ty.is_numeric() {
+                                if lhs_ty == rhs_ty {
+                                    return Some(lhs_ty);
+                                } else {
+                                    let loc =
+                                        Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
+                                    if attempt_implicit_cast(
+                                        rhs, &lhs_ty, &rhs_ty, loc, "value", self.err,
+                                    ) {
+                                        return Some(lhs_ty);
+                                    }
+                                }
+                            }
+                            Some(DataType::AssumeGood)
+                        }
+                        BinOp::RShift => {
+                            if matches!(lhs_ty, DataType::F32 | DataType::F64) {
+                                let loc =
+                                    Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
+                                self.err.type_check_error(
+                                    false,
+                                    format!(
+                                        "Right shift operation not allowed on type: {}",
+                                        lhs_ty
+                                    ),
+                                    &Some(loc.line_col),
+                                );
+                                return Some(DataType::AssumeGood);
+                            } else if matches!(lhs_ty, DataType::AssumeGood) {
+                                return Some(DataType::AssumeGood);
+                            } else if matches!(rhs_ty, DataType::AssumeGood) {
+                                return Some(lhs_ty);
+                            }
+
+                            if lhs_ty.is_numeric() {
+                                if lhs_ty == rhs_ty {
+                                    return Some(lhs_ty);
+                                } else {
+                                    let loc =
+                                        Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
+                                    if attempt_implicit_cast(
+                                        rhs, &lhs_ty, &rhs_ty, loc, "value", self.err,
+                                    ) {
+                                        return Some(lhs_ty);
+                                    }
+                                }
+                            }
+                            Some(DataType::AssumeGood)
+                        }
+                        BinOp::BitAnd => {
+                            if matches!(lhs_ty, DataType::F32 | DataType::F64) {
+                                let loc =
+                                    Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
+                                self.err.type_check_error(
+                                    false,
+                                    format!(
+                                        "The bitwise AND operation not allowed on type: {}",
+                                        lhs_ty
+                                    ),
+                                    &Some(loc.line_col),
+                                );
+                                return Some(DataType::AssumeGood);
+                            } else if matches!(lhs_ty, DataType::AssumeGood) {
+                                return Some(DataType::AssumeGood);
+                            } else if matches!(rhs_ty, DataType::AssumeGood) {
+                                return Some(lhs_ty);
+                            }
+
+                            if lhs_ty.is_numeric() {
+                                if lhs_ty == rhs_ty {
+                                    return Some(lhs_ty);
+                                } else {
+                                    let loc =
+                                        Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
+                                    if attempt_implicit_cast(
+                                        rhs, &lhs_ty, &rhs_ty, loc, "value", self.err,
+                                    ) {
+                                        return Some(lhs_ty);
+                                    }
+                                }
+                            }
+                            Some(DataType::AssumeGood)
+                        }
+                        BinOp::BitOr => {
+                            if matches!(lhs_ty, DataType::F32 | DataType::F64) {
+                                let loc =
+                                    Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
+                                self.err.type_check_error(
+                                    false,
+                                    format!(
+                                        "The bitwise OR operation not allowed on type: {}",
+                                        lhs_ty
+                                    ),
+                                    &Some(loc.line_col),
+                                );
+                                return Some(DataType::AssumeGood);
+                            } else if matches!(lhs_ty, DataType::AssumeGood) {
+                                return Some(DataType::AssumeGood);
+                            } else if matches!(rhs_ty, DataType::AssumeGood) {
+                                return Some(lhs_ty);
+                            }
+
+                            if lhs_ty.is_numeric() {
+                                if lhs_ty == rhs_ty {
+                                    return Some(lhs_ty);
+                                } else {
+                                    let loc =
+                                        Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
+                                    if attempt_implicit_cast(
+                                        rhs, &lhs_ty, &rhs_ty, loc, "value", self.err,
+                                    ) {
+                                        return Some(lhs_ty);
+                                    }
+                                }
+                            }
+                            Some(DataType::AssumeGood)
+                        }
+                        BinOp::BitXor => {
+                            if matches!(lhs_ty, DataType::F32 | DataType::F64) {
+                                let loc =
+                                    Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
+                                self.err.type_check_error(
+                                    false,
+                                    format!(
+                                        "The bitwise XOR operation not allowed on type: {}",
+                                        lhs_ty
+                                    ),
+                                    &Some(loc.line_col),
+                                );
+                                return Some(DataType::AssumeGood);
+                            } else if matches!(lhs_ty, DataType::AssumeGood) {
+                                return Some(DataType::AssumeGood);
+                            } else if matches!(rhs_ty, DataType::AssumeGood) {
+                                return Some(lhs_ty);
+                            }
+
+                            if lhs_ty.is_numeric() {
+                                if lhs_ty == rhs_ty {
+                                    return Some(lhs_ty);
+                                } else {
+                                    let loc =
+                                        Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
+                                    if attempt_implicit_cast(
+                                        rhs, &lhs_ty, &rhs_ty, loc, "value", self.err,
+                                    ) {
+                                        return Some(lhs_ty);
+                                    }
+                                }
+                            }
+                            Some(DataType::AssumeGood)
                         }
                     }
                 } else {
@@ -638,8 +883,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 }
             }
             Expr::VarId { name, loc, .. } => {
-                // TODO: may have a more principled way to handle this (with SymbolTable)
-                // if name is prefixed with arg, report error
+                // TODO: fix this with type declarations for argN
                 if name.starts_with("arg") && name[3..].parse::<u32>().is_ok() {
                     return Some(DataType::AssumeGood);
                 }
@@ -680,10 +924,22 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
 
                 Some(DataType::AssumeGood)
             }
-            Expr::UnOp { op, expr, loc } => {
-                let expr_ty_op = self.visit_expr(expr);
+            Expr::UnOp {
+                op,
+                expr: inner_expr,
+                done_on,
+                loc,
+            } => {
+                let expr_ty_op = self.visit_expr(inner_expr);
                 if let Some(expr_ty) = expr_ty_op {
                     match op {
+                        UnOp::Cast { target } => {
+                            // If the inner expression's type is the same as the cast,
+                            // we can remove the cast from the AST!
+                            let t = target.clone();
+                            *done_on = expr_ty.clone();
+                            Some(t)
+                        }
                         UnOp::Not => {
                             if expr_ty == DataType::Boolean {
                                 Some(DataType::Boolean)
@@ -695,6 +951,27 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 );
                                 Some(DataType::AssumeGood)
                             }
+                        }
+                        UnOp::BitwiseNot => {
+                            *done_on = expr_ty.clone();
+                            if matches!(expr_ty, DataType::F32 | DataType::F64) {
+                                self.err.type_check_error(
+                                    false,
+                                    format!(
+                                        "The bitwise NOT operation not allowed on type: {}",
+                                        expr_ty
+                                    ),
+                                    &loc.clone().map(|l| l.line_col),
+                                );
+                                return Some(DataType::AssumeGood);
+                            } else if matches!(expr_ty, DataType::AssumeGood) {
+                                return Some(DataType::AssumeGood);
+                            }
+
+                            if expr_ty.is_numeric() {
+                                return Some(expr_ty);
+                            }
+                            Some(DataType::AssumeGood)
                         }
                     }
                 } else {
@@ -780,13 +1057,28 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         {
                             match (expected, actual) {
                                 (Some(expected), Some(actual)) => {
-                                    // if actual is a tuple, it's not structural equality
+                                    // if actual is a tuple, it's not structurally equal
                                     if expected != actual {
-                                        self.err.type_check_error(
-                                            false,
-                                            format! {"Expected type {:?} for the {} param, got {:?}", expected, i+1, actual},
-                                            &Some(args.get(i).as_ref().unwrap().loc().clone().unwrap().line_col),
-                                        );
+                                        let arg = args.get_mut(i).unwrap();
+                                        let arg_loc = arg.loc().clone().unwrap();
+                                        if expected.can_implicitly_cast()
+                                            && actual.can_implicitly_cast()
+                                        {
+                                            // try to implicitly do a cast here
+                                            if let Err((msg, fatal)) = arg.implicit_cast(expected) {
+                                                self.err.type_check_error(
+                                                    fatal,
+                                                    msg,
+                                                    &Some(arg_loc.line_col),
+                                                )
+                                            }
+                                        } else {
+                                            self.err.type_check_error(
+                                                false,
+                                                format! {"Expected type {:?} param {}, got {:?}", expected, i, actual},
+                                                &Some(arg_loc.line_col)
+                                            );
+                                        }
                                     }
                                 }
                                 _ => {
@@ -841,11 +1133,26 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         {
                             //ensure that the key_ty matches and the val_ty matches
                             if key_ty != *map_key_ty {
-                                self.err.type_check_error(
-                                    false,
-                                    format! {"Type Mismatch, key:{:?}, map_key:{:?}", key_ty, map_key_ty},
-                                    &loc.clone().map(|l| l.line_col),
-                                );
+                                let key_loc = key.loc().clone().unwrap();
+                                if key_ty.can_implicitly_cast() && map_key_ty.can_implicitly_cast()
+                                {
+                                    // try to implicitly do a cast here
+                                    if let Err((msg, fatal)) =
+                                        key.implicit_cast(map_key_ty.as_ref())
+                                    {
+                                        self.err.type_check_error(
+                                            fatal,
+                                            msg,
+                                            &Some(key_loc.line_col),
+                                        )
+                                    }
+                                } else {
+                                    self.err.type_check_error(
+                                        false,
+                                        format! {"Type Mismatch, expected key type: {:?}, actual key type:{:?}", map_key_ty, key_ty},
+                                        &Some(key_loc.line_col),
+                                    );
+                                }
                                 return Some(DataType::AssumeGood);
                             }
                             Some(*val_ty)
@@ -869,6 +1176,8 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 ty,
                 ..
             } => {
+                let saved_exp_ty = self.assign_ty.to_owned();
+                self.assign_ty = None;
                 let cond_ty = self.visit_expr(cond);
                 //have to clone before the "if let" block
                 let cond_ty_clone = cond_ty.clone();
@@ -886,6 +1195,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     }
                 }
 
+                self.assign_ty = saved_exp_ty;
                 let conseq_ty = self.visit_expr(conseq);
                 let alt_ty = self.visit_expr(alt);
 
@@ -944,54 +1254,119 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
 
     fn visit_value(&mut self, val: &mut Value) -> Option<DataType> {
         match val {
-            Value::U32 { .. } => Some(DataType::U32),
-            Value::I32 { .. } => Some(DataType::I32),
-            Value::F32 { .. } => Some(DataType::F32),
-            Value::U64 { .. } => Some(DataType::U64),
-            Value::I64 { .. } => Some(DataType::I64),
-            Value::F64 { .. } => Some(DataType::F64),
+            Value::Number { .. } | Value::Boolean { .. } => {
+                if !self.outer_cast_fixes_assign {
+                    if let Some(exp_ty) = &self.assign_ty {
+                        let exp_ty = if let DataType::Tuple { ty_info } = exp_ty {
+                            if let Some(ty) = ty_info.get(self.tuple_index) {
+                                &**ty
+                            } else {
+                                let loc = self.curr_loc.as_ref().map(|loc| loc.line_col.clone());
+                                self.err.type_check_error(
+                                    false,
+                                    format!(
+                                        "TypeError: Tuple value at this location exceeded the expected tuple length of: {}.",
+                                        ty_info.len()
+                                    ),
+                                    &loc,
+                                );
+                                return Some(DataType::AssumeGood);
+                            }
+                        } else {
+                            exp_ty
+                        };
+
+                        let val_ty = val.ty();
+                        if *exp_ty == val_ty {
+                            return Some(val_ty);
+                        } else if exp_ty.can_implicitly_cast() && val_ty.can_implicitly_cast() {
+                            match val.implicit_cast(exp_ty) {
+                                Ok(_) => return Some(val.ty()),
+                                Err(msg) => {
+                                    let loc =
+                                        self.curr_loc.as_ref().map(|loc| loc.line_col.clone());
+                                    self.err.type_check_error(false, format!("CastError: Cannot implicitly cast {msg}. Please add an explicit cast."),
+                                                              &loc);
+                                    return Some(DataType::AssumeGood);
+                                }
+                            }
+                        } else {
+                            return Some(DataType::Unknown);
+                        }
+                    }
+                }
+                Some(val.ty())
+            }
             Value::Str { .. } => Some(DataType::Str),
-            Value::Boolean { .. } => Some(DataType::Boolean),
-            Value::Tuple { ty: _, vals } => {
+            Value::U32U32Map { .. } => Some(DataType::Map {
+                key_ty: Box::new(DataType::U32),
+                val_ty: Box::new(DataType::U32),
+            }),
+            Value::Tuple { ty, vals } => {
                 // this ty does not contain the DataType in ty_info
                 // Whamm parser doesn't give the ty_info for Tuples
                 let tys = vals
                     .iter_mut()
-                    .map(|val| self.visit_expr(val))
+                    .enumerate()
+                    .map(|(index, val)| {
+                        self.tuple_index = index;
+                        self.visit_expr(val)
+                    })
                     .collect::<Vec<_>>();
 
                 // assume these expressions (actually just values) all parse
                 // and have Some type
                 let mut all_tys: Vec<Box<DataType>> = Vec::new();
-                for ty in tys {
+                for (idx, ty) in tys.iter().enumerate() {
                     match ty {
-                        Some(ty) => all_tys.push(Box::new(ty)),
-                        _ => self.err.unexpected_error(
-                            true,
-                            Some(format!(
-                                "{} ALL types should be set for a tuple value.",
-                                UNEXPECTED_ERR_MSG
-                            )),
-                            // This provides some imprecise info about the location of the error
-                            Some(vals.iter().next().unwrap().loc().clone().unwrap().line_col),
-                        ),
+                        Some(ty) => all_tys.push(Box::new(ty.to_owned())),
+                        _ => {
+                            let loc = if let Some(val) = vals.get(idx) {
+                                val.loc().as_ref().map(|loc| loc.line_col.clone())
+                            } else {
+                                None
+                            };
+                            self.err.unexpected_error(
+                                true,
+                                Some(format!(
+                                    "{} ALL types should be set for a tuple value.",
+                                    UNEXPECTED_ERR_MSG
+                                )),
+                                loc,
+                            )
+                        }
                     }
                 }
-                Some(DataType::Tuple { ty_info: all_tys })
+                let tuple_ty = DataType::Tuple { ty_info: all_tys };
+                *ty = tuple_ty.clone();
+                Some(tuple_ty)
             }
-            Value::U32U32Map { ty, .. } => Some(ty.clone()),
         }
     }
 }
 
-pub fn type_check(ast: &mut Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> bool {
-    let mut type_checker = TypeChecker {
-        table: st,
-        err,
-        in_script_global: false,
-        in_function: false,
-    };
-    type_checker.visit_whamm(ast);
-    // note that parser errors might propagate here
-    !err.has_errors
+fn attempt_implicit_cast(
+    to_cast: &mut Expr,
+    exp_ty: &DataType,
+    actual_ty: &DataType,
+    loc: Location,
+    name_in_err: &str,
+    err: &mut ErrorGen,
+) -> bool {
+    if exp_ty.can_implicitly_cast() && actual_ty.can_implicitly_cast() {
+        // try to implicitly do a cast here
+        return if let Err((msg, fatal)) = to_cast.implicit_cast(exp_ty) {
+            err.type_check_error(fatal, msg, &Some(loc.line_col));
+            false
+        } else {
+            true
+        };
+    } else {
+        err.type_check_error(
+            false,
+            format! {"Type Mismatch, expected {name_in_err} type: {:?}, actual {name_in_err} type: {:?}", exp_ty, actual_ty},
+            &Some(loc.line_col),
+        );
+    }
+    false
 }

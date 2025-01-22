@@ -49,6 +49,10 @@ PROBE_RULE = ${
 // ---- Types ----
 // ===============
 
+TY_U8 = @{ "u8" }
+TY_I8 = @{ "i8" }
+TY_U16 = @{ "u16" }
+TY_I16 = @{ "i16" }
 TY_U32 = @{ "u32" }
 TY_I32 = @{ "i32" }
 TY_F32 = @{ "f32" }
@@ -63,7 +67,25 @@ TY_TUPLE = { "(" ~ ")"| "(" ~ TYPE ~ ( "," ~ TYPE )* ~ ")" }
 // first TYPE is the type of the key, second TYPE is the type of the value
 TY_MAP = { "map<" ~ TYPE ~ "," ~ TYPE ~ ">" }
 
-TYPE = _{ TY_U32 | TY_I32 | TY_F32 | TY_U64 | TY_I64 | TY_F64 | TY_BOOL | TY_STRING | TY_TUPLE | TY_MAP }
+TYPE = _{
+    TYPE_PRIMITIVE |
+    TY_TUPLE |
+    TY_MAP
+}
+TYPE_PRIMITIVE = _{
+    TY_U8 |
+    TY_I8 |
+    TY_U16 |
+    TY_I16 |
+    TY_U32 |
+    TY_I32 |
+    TY_F32 |
+    TY_U64 |
+    TY_I64 |
+    TY_F64 |
+    TY_BOOL |
+    TY_STRING
+}
 
 // ====================
 // ---- Statements ----
@@ -79,7 +101,7 @@ block = { "{" ~ (if_stmt | statement)* ~ "}" }
 ret = { "return" ~ expr ? }
 
 // calls
-arg = { tuple | expr | val | ternary }
+arg = { tuple | expr | val | ternary } // todo -- tuple and val are redundant
 fn_call = { ID ~ "(" ~ ( arg )? ~ ( "," ~ arg )* ~ ")" }
 
 // unop
@@ -101,23 +123,37 @@ decl_init = { (special_decl | decl) ~ "=" ~ (ternary | expr) }
 
 ternary = { expr ~ "?" ~ expr ~ ":" ~ expr }
 
-expr = { prefix? ~ operand ~ (BINOP ~ prefix? ~ operand)* }
+expr = { operand ~ (BINOP ~ operand)* }
 
-prefix = _{ UNOP }
-UNOP = _{ neg }
+prefix = _{ neg | binary_not }
     neg = { "!" }
+    binary_not = { "~" }
+postfix = _{ cast }
+    cast = { "as" ~ TYPE_PRIMITIVE }
 
-val = _{ BOOL | get_map | ID | INT | DEC | STRING | tuple }
-operand = _{ fn_call | "(" ~ expr ~ ")" | val }
+val = _{ BOOL | get_map | ID | FLOAT | INT | STRING | tuple }
+operand = _{ prefix? ~ ( fn_call | "(" ~ expr ~ ")" | val ) ~ postfix? }
 
 tuple = { "(" ~ ")" | "(" ~ (val) ~ ( "," ~ val )* ~ ")" }
 
 
-BINOP = _{ LOGOP | RELOP | SUMOP | MULOP }
+BINOP = _{ SHIFTOP | LOGOP | BITOP | RELOP | SUMOP | MULOP }
+
+    // Binary operators
+    lshift = { "<<" }
+    rshift = { ">>" }
+    SHIFTOP = _{ lshift | rshift }
+
     // Logical operators
     and = { "&&" }
     or = { "||" }
     LOGOP = _{ and | or }
+
+    // Bitwise operators
+    binary_and = { "&" }
+    binary_or = { "|" }
+    binary_xor = { "^" }
+    BITOP = _{ binary_and | binary_or | binary_xor }
 
     // Relational operators
     eq = { "==" }
@@ -143,19 +179,30 @@ BINOP = _{ LOGOP | RELOP | SUMOP | MULOP }
 // ---- Terminals ----
 // ===================
 
-// TODO -- make sure that the binary/octal/hexadecimal formats are parsed correctly
-INT = @{
-    "0x" ~ ASCII_HEX_DIGIT+ // Hexadecimal digit
-    | "0b" ~ ASCII_BIN_DIGIT+ // Binary digit
-    | "0" ~ ASCII_OCT_DIGIT+ // Octal digit
-    | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT+ // Multiple digit, base 10
-    | ASCII_DIGIT // Single digit, base 10 (account for having just '0')
-    | "-" ~ ASCII_NONZERO_DIGIT ~ ASCII_DIGIT* //negative anything but 0
+INT = {
+    int_hex
+    | int_bin
+//     | int_oct
+    | int
 }
+    int_hex = @{ ^"0x" ~ ASCII_HEX_DIGIT+ } // Hexadecimal digit
+    int_bin = @{ ^"0b" ~ ASCII_BIN_DIGIT+ } // Binary digit
+//     int_oct = @{ "-"? ~ "0" ~ ASCII_OCT_DIGIT+ }  // Octal digit
+    int = @{
+        "-"? ~ ASCII_NONZERO_DIGIT ~ ("_" | ASCII_DIGIT)* ~ ASCII_DIGIT*  // Multiple digit, base 10 AND negative anything but 0
+        | ASCII_DIGIT                              // Single digit, base 10 (account for having just '0')
+    }
 
-DEC = @{
-    ASCII_NONZERO_DIGIT ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT*
+FLOAT = {
+    float
 }
+    float = @{
+        "-"? ~ ^"inf" |
+        "-"? ~ ^"infinity" |
+        "-"? ~ ^"NaN" |
+        "-"? ~ ASCII_DIGIT+ ~ ("_" | ASCII_DIGIT)* ~ "."? ~ ASCII_DIGIT* ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+ ) |
+        "-"? ~ ASCII_DIGIT+ ~ ("_" | ASCII_DIGIT)* ~ "." ~ ASCII_DIGIT*
+    }
 
 BOOL = @{
     "true"
@@ -167,6 +214,7 @@ STRING = @{ "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
 // ===========================
 // ---- Reserved Keywords ----
 // ===========================
+// TODO -- may not need this after adding argN type assertions
 
 instr_arg = { "arg" ~ ASCII_DIGIT+ }
 

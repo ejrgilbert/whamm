@@ -109,9 +109,9 @@
 
 ;; --------------------------
 ;; ==== IMMS, body, imm0 ====
-;; WHAMM --> i32 count; wasm:opcode:br:before { count = imm0; }
+;; WHAMM --> i32 count; wasm:opcode:br:before { count = imm0 as i32; }
 (assert_return (invoke "get_count") (i32.const 1))
-;; WHAMM --> i32 count; wasm:opcode:br:alt { count = imm0; }
+;; WHAMM --> i32 count; wasm:opcode:br:alt { count = imm0 as i32; }
 (assert_return (invoke "get_count") (i32.const 1))
 (assert_return (invoke "get_global_var0") (i32.const 0))
 
@@ -120,7 +120,7 @@
 (assert_return (invoke "get_count") (i32.const 0)) ;; never reached (immediately following a br)
 
 ;; at_target mode
-;; WHAMM --> i32 count; wasm:opcode:br:at_target { count = imm0; }
+;; WHAMM --> i32 count; wasm:opcode:br:at_target { count = imm0 as i32; }
 (assert_return (invoke "get_count") (i32.const 1))
 ;; WHAMM --> i32 count; wasm:opcode:br:at_target / imm0 == 0 / { count++; }
 (assert_return (invoke "get_count") (i32.const 1)) ;; predicate == true (hit 1x)

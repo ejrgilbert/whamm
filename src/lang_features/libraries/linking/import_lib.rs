@@ -25,7 +25,8 @@ pub fn link_core_lib(
     core_wasm_path: &str,
     packages: &mut [&mut dyn LibPackage],
     err: &mut ErrorGen,
-) {
+) -> Vec<FunctionID> {
+    let mut injected_funcs = vec![];
     for package in packages.iter_mut() {
         package.visit_whamm(ast);
         package.set_adapter_usage(package.is_used());
@@ -33,15 +34,16 @@ pub fn link_core_lib(
             // Read core library Wasm into Orca module
             let buff = std::fs::read(core_wasm_path).unwrap();
             let core_lib = Module::parse(&buff, false).unwrap();
-            import_lib(
+            injected_funcs.extend(import_lib(
                 app_wasm,
                 WHAMM_CORE_LIB_NAME.to_string(),
                 &core_lib,
                 *package,
                 err,
-            );
+            ));
         }
     }
+    injected_funcs
 }
 
 pub fn link_user_lib(
@@ -60,7 +62,7 @@ fn import_lib(
     lib_wasm: &Module,
     package: &mut dyn LibPackage,
     err: &mut ErrorGen,
-) {
+) -> Vec<FunctionID> {
     trace!("Enter import_lib");
 
     // should only import the EXPORTED contents of the lib_wasm
@@ -95,9 +97,10 @@ fn import_lib(
     }
 
     // enable the library to define in-module helper functions
-    package.define_helper_funcs(app_wasm, err);
+    let injected_funcs = package.define_helper_funcs(app_wasm, err);
 
     trace!("Exit import_lib");
+    injected_funcs
 }
 
 pub fn import_func(

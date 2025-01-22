@@ -1678,7 +1678,7 @@ pub fn get_call_globals() -> HashMap<String, ProvidedGlobal> {
             UNKNOWN_ARGS.to_string(),
             "The argument to the call at the specific index, e.g. [0:9]+.\
                 Keep in mind, the number of arguments to a call changes based on the targeted function.".to_string(),
-            DataType::AssumeGood,
+            DataType::Unknown,
             false
         )
     );

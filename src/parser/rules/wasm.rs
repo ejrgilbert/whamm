@@ -263,7 +263,7 @@ macro_rules! define_opcode {
                         ProvidedGlobal::new(
                             name.to_string(),
                             format!("The argument to the opcode at index {}.", i),
-                            DataType::AssumeGood,
+                            DataType::Unknown,
                             false,
                         ),
                     );
