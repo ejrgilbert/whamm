@@ -205,4 +205,42 @@ wasm:opcode:call:before {
     xor_test14 = v_i64 ^ 0xF;
     report i64 xor_test15;
     xor_test15 = (NEG as i64) ^ 0xF;
+
+    // --- ~
+
+    report u8 bwise_not_test0;
+    bwise_not_test0 = ~ v_u8;
+    report u8 bwise_not_test1;
+    bwise_not_test1 = ~ (NEG as u8);
+    report i8 bwise_not_test2;
+    bwise_not_test2 = ~ v_i8;
+    report i8 bwise_not_test3;
+    bwise_not_test3 = ~ NEG;
+
+    report u16 bwise_not_test4;
+    bwise_not_test4 = ~ v_u16;
+    report u16 bwise_not_test5;
+    bwise_not_test5 = ~ (NEG as u16);
+    report i16 bwise_not_test6;
+    bwise_not_test6 = ~ v_i16;
+    report i16 bwise_not_test7;
+    bwise_not_test7 = ~ (NEG as i16);
+
+    report u32 bwise_not_test8;
+    bwise_not_test8 = ~ v_u32;
+    report u32 bwise_not_test9;
+    bwise_not_test9 = ~ (NEG as u32);
+    report i32 bwise_not_test10;
+    bwise_not_test10 = ~ v_i32;
+    report i32 bwise_not_test11;
+    bwise_not_test11 = ~ (NEG as i32);
+
+    report u64 bwise_not_test12;
+    bwise_not_test12 = ~ v_u64;
+    report u64 bwise_not_test13;
+    bwise_not_test13 = ~ (NEG as u64);
+    report i64 bwise_not_test14;
+    bwise_not_test14 = ~ v_i64;
+    report i64 bwise_not_test15;
+    bwise_not_test15 = ~ (NEG as i64);
 }

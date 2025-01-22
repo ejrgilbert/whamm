@@ -151,7 +151,7 @@ impl ExprFolder {
                     if let Some(res) = self.fold_bools(&lhs_val, &rhs_val, op) {
                         return res;
                     }
-                    if let Some(res) = self.fold_numerics(&lhs, &rhs, op, done_on, err) {
+                    if let Some(res) = self.fold_numeric_binop(&lhs, &rhs, op, done_on, err) {
                         return res;
                     }
                     let (lhs_val, rhs_val) = self.get_str(&lhs, &rhs);
@@ -177,7 +177,7 @@ impl ExprFolder {
                     if let Some(res) = self.fold_bools(&lhs_val, &rhs_val, op) {
                         return res;
                     }
-                    if let Some(res) = self.fold_numerics(&lhs, &rhs, op, done_on, err) {
+                    if let Some(res) = self.fold_numeric_binop(&lhs, &rhs, op, done_on, err) {
                         return res;
                     }
                     let (lhs_val, rhs_val) = self.get_str(&lhs, &rhs);
@@ -217,7 +217,7 @@ impl ExprFolder {
                 | BinOp::BitAnd
                 | BinOp::BitOr
                 | BinOp::BitXor => {
-                    if let Some(res) = self.fold_numerics(&lhs, &rhs, op, done_on, err) {
+                    if let Some(res) = self.fold_numeric_binop(&lhs, &rhs, op, done_on, err) {
                         return res;
                     }
                 }
@@ -273,9 +273,6 @@ impl ExprFolder {
 
     // similar to the logic of fold_binop
     fn fold_unop(&mut self, unop: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
-        // if let Expr::UnOp{ op: UnOp::Cast { target }, done_on, .. } = unop {
-        //     println!("FOLD: from {} to {}", done_on, target);
-        // }
         self.curr_loc = unop.loc().clone();
         if let Expr::UnOp {
             op, expr, done_on, ..
@@ -323,15 +320,26 @@ impl ExprFolder {
                             loc: None,
                         }
                     } else {
-                        Expr::UnOp {
+                        return Expr::UnOp {
                             op: UnOp::Not,
+                            expr: Box::new(expr),
+                            done_on: done_on.clone(),
+                            loc: None,
+                        };
+                    }
+                }
+                UnOp::BitwiseNot => {
+                    if let Some(res) = self.fold_numeric_unop(&expr, op, done_on, err) {
+                        res
+                    } else {
+                        Expr::UnOp {
+                            op: UnOp::BitwiseNot,
                             expr: Box::new(expr),
                             done_on: done_on.clone(),
                             loc: None,
                         }
                     }
                 }
-                UnOp::BitwiseNot => unimplemented!(),
             };
         }
 
@@ -366,7 +374,7 @@ impl ExprFolder {
         None
     }
 
-    fn fold_numerics(
+    fn fold_numeric_binop(
         &mut self,
         lhs: &Expr,
         rhs: &Expr,
@@ -375,33 +383,33 @@ impl ExprFolder {
         err: &mut ErrorGen,
     ) -> Option<Expr> {
         let (lhs_val, rhs_val) = self.get_i32s(lhs, rhs);
-        if let Some(res) = self.fold_i32s(&lhs_val, &rhs_val, op, err) {
+        if let Some(res) = self.fold_i32s_binop(&lhs_val, &rhs_val, op, err) {
             return Some(res);
         }
         let (lhs_val, rhs_val) = self.get_u32s(lhs, rhs);
-        if let Some(res) = self.fold_u32s(&lhs_val, &rhs_val, op, done_on, err) {
+        if let Some(res) = self.fold_u32s_binop(&lhs_val, &rhs_val, op, done_on, err) {
             return Some(res);
         }
         let (lhs_val, rhs_val) = self.get_i64s(lhs, rhs);
-        if let Some(res) = self.fold_i64s(&lhs_val, &rhs_val, op, err) {
+        if let Some(res) = self.fold_i64s_binop(&lhs_val, &rhs_val, op, err) {
             return Some(res);
         }
         let (lhs_val, rhs_val) = self.get_u64s(lhs, rhs);
-        if let Some(res) = self.fold_u64s(&lhs_val, &rhs_val, op, err) {
+        if let Some(res) = self.fold_u64s_binop(&lhs_val, &rhs_val, op, err) {
             return Some(res);
         }
         let (lhs_val, rhs_val) = self.get_f32s(lhs, rhs);
-        if let Some(res) = self.fold_f32s(&lhs_val, &rhs_val, op, err) {
+        if let Some(res) = self.fold_f32s_binop(&lhs_val, &rhs_val, op, err) {
             return Some(res);
         }
         let (lhs_val, rhs_val) = self.get_f64s(lhs, rhs);
-        if let Some(res) = self.fold_f64s(&lhs_val, &rhs_val, op, err) {
+        if let Some(res) = self.fold_f64s_binop(&lhs_val, &rhs_val, op, err) {
             return Some(res);
         }
         None
     }
 
-    fn fold_i32s(
+    fn fold_i32s_binop(
         &mut self,
         lhs_val: &Option<i32>,
         rhs_val: &Option<i32>,
@@ -503,7 +511,7 @@ impl ExprFolder {
         }
         None
     }
-    fn fold_u32s(
+    fn fold_u32s_binop(
         &mut self,
         lhs_val: &Option<u32>,
         rhs_val: &Option<u32>,
@@ -729,7 +737,7 @@ impl ExprFolder {
         None
     }
 
-    fn fold_i64s(
+    fn fold_i64s_binop(
         &mut self,
         lhs_val: &Option<i64>,
         rhs_val: &Option<i64>,
@@ -831,7 +839,7 @@ impl ExprFolder {
         }
         None
     }
-    fn fold_u64s(
+    fn fold_u64s_binop(
         &mut self,
         lhs_val: &Option<u64>,
         rhs_val: &Option<u64>,
@@ -934,7 +942,7 @@ impl ExprFolder {
         None
     }
 
-    fn fold_f32s(
+    fn fold_f32s_binop(
         &mut self,
         lhs_val: &Option<f32>,
         rhs_val: &Option<f32>,
@@ -1010,11 +1018,11 @@ impl ExprFolder {
                             loc: None,
                         })
                     }
-                    BinOp::LShift => unimplemented!(),
-                    BinOp::RShift => unimplemented!(),
-                    BinOp::BitAnd => unimplemented!(),
-                    BinOp::BitOr => unimplemented!(),
-                    BinOp::BitXor => unimplemented!(),
+                    BinOp::LShift
+                    | BinOp::RShift
+                    | BinOp::BitAnd
+                    | BinOp::BitOr
+                    | BinOp::BitXor => unreachable!(),
                     _ => None,
                 };
             }
@@ -1022,7 +1030,7 @@ impl ExprFolder {
         None
     }
 
-    fn fold_f64s(
+    fn fold_f64s_binop(
         &mut self,
         lhs_val: &Option<f64>,
         rhs_val: &Option<f64>,
@@ -1098,14 +1106,120 @@ impl ExprFolder {
                             loc: None,
                         })
                     }
-                    BinOp::LShift => unimplemented!(),
-                    BinOp::RShift => unimplemented!(),
-                    BinOp::BitAnd => unimplemented!(),
-                    BinOp::BitOr => unimplemented!(),
-                    BinOp::BitXor => unimplemented!(),
+                    BinOp::LShift
+                    | BinOp::RShift
+                    | BinOp::BitAnd
+                    | BinOp::BitOr
+                    | BinOp::BitXor => unreachable!(),
                     _ => None,
                 };
             }
+        }
+        None
+    }
+
+    fn fold_numeric_unop(
+        &mut self,
+        expr: &Expr,
+        op: &UnOp,
+        _done_on: &DataType,
+        err: &mut ErrorGen,
+    ) -> Option<Expr> {
+        let val = self.get_i32(expr);
+        if let Some(res) = self.fold_i32_unop(&val, op, err) {
+            return Some(res);
+        }
+        let val = self.get_u32(expr);
+        if let Some(res) = self.fold_u32_unop(&val, op, err) {
+            return Some(res);
+        }
+        let val = self.get_i64(expr);
+        if let Some(res) = self.fold_i64_unop(&val, op, err) {
+            return Some(res);
+        }
+        let val = self.get_u64(expr);
+        if let Some(res) = self.fold_u64_unop(&val, op, err) {
+            return Some(res);
+        }
+        let val = self.get_f32(expr);
+        if let Some(res) = self.fold_f32_unop(&val, op, err) {
+            return Some(res);
+        }
+        let val = self.get_f64(expr);
+        if let Some(res) = self.fold_f64_unop(&val, op, err) {
+            return Some(res);
+        }
+        None
+    }
+
+    fn fold_i32_unop(&mut self, val: &Option<i32>, op: &UnOp, _err: &mut ErrorGen) -> Option<Expr> {
+        if let Some(val) = val {
+            return match op {
+                UnOp::BitwiseNot => Some(Expr::Primitive {
+                    val: Value::gen_i32(!val),
+                    loc: None,
+                }),
+                _ => None,
+            };
+        }
+        None
+    }
+
+    fn fold_u32_unop(&mut self, val: &Option<u32>, op: &UnOp, _err: &mut ErrorGen) -> Option<Expr> {
+        if let Some(val) = val {
+            return match op {
+                UnOp::BitwiseNot => Some(Expr::Primitive {
+                    val: Value::gen_u32(!val),
+                    loc: None,
+                }),
+                _ => None,
+            };
+        }
+        None
+    }
+
+    fn fold_i64_unop(&mut self, val: &Option<i64>, op: &UnOp, _err: &mut ErrorGen) -> Option<Expr> {
+        if let Some(val) = val {
+            return match op {
+                UnOp::BitwiseNot => Some(Expr::Primitive {
+                    val: Value::gen_i64(!val),
+                    loc: None,
+                }),
+                _ => None,
+            };
+        }
+        None
+    }
+
+    fn fold_u64_unop(&mut self, val: &Option<u64>, op: &UnOp, _err: &mut ErrorGen) -> Option<Expr> {
+        if let Some(val) = val {
+            return match op {
+                UnOp::BitwiseNot => Some(Expr::Primitive {
+                    val: Value::gen_u64(!val),
+                    loc: None,
+                }),
+                _ => None,
+            };
+        }
+        None
+    }
+
+    fn fold_f32_unop(&mut self, val: &Option<f32>, op: &UnOp, _err: &mut ErrorGen) -> Option<Expr> {
+        if let Some(_val) = val {
+            return match op {
+                UnOp::BitwiseNot => unreachable!(),
+                _ => None,
+            };
+        }
+        None
+    }
+
+    fn fold_f64_unop(&mut self, val: &Option<f64>, op: &UnOp, _err: &mut ErrorGen) -> Option<Expr> {
+        if let Some(_val) = val {
+            return match op {
+                UnOp::BitwiseNot => unreachable!(),
+                _ => None,
+            };
         }
         None
     }

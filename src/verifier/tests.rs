@@ -125,7 +125,44 @@ const TYPE_ERROR_SCRIPTS: &[&str] = &[
     "wasm:opcode:call:alt {
         i32 i = 1 | (1, 2, 3);
     }",
-    "wasm:opcode:call:alt / i < 1 < 2 / { }",
+    "wasm:opcode:call:alt {
+        f32 v = 1e1;
+        f32 i = v << 1;
+    }",
+    "wasm:opcode:call:alt {
+        f32 v = 1e1;
+        f32 i = v >> 1;
+    }",
+    "wasm:opcode:call:alt {
+        f32 v = 1e1;
+        f32 i = v & 1;
+    }",
+    "wasm:opcode:call:alt {
+        f32 v = 1e1;
+        f32 i = v | 1;
+    }",
+    "wasm:opcode:call:alt {
+        f32 v = ~ 1e1;
+    }",
+    "wasm:opcode:call:alt {
+        f64 v = 1e1;
+        f64 i = v << 1;
+    }",
+    "wasm:opcode:call:alt {
+        f64 v = 1e1;
+        f64 i = v >> 1;
+    }",
+    "wasm:opcode:call:alt {
+        f64 v = 1e1;
+        f64 i = v & 1;
+    }",
+    "wasm:opcode:call:alt {
+        f64 v = 1e1;
+        f64 i = v | 1;
+    }",
+    "wasm:opcode:call:alt {
+        f64 v = ~ 1e1;
+    }",
     "wasm:opcode:call:alt / (1 + 3) / { i32 i; }",
     // predicate
     // note that this will have cascading type check errors
@@ -559,11 +596,10 @@ pub fn testing_map() {
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
     wasm:opcode:call:after {
-        i32 b = 1;
-        // map<(i32, i32, i32), i32> my_map;
-        // (i32, i32, i32) b = (1, 2, 3);
-        // my_map[b] = 2;
-        // i32 a = my_map[b];
+        map<(i32, i32, i32), i32> my_map;
+        (i32, i32, i32) b = (1, 2, 3);
+        my_map[b] = 2;
+        i32 c = my_map[b];
     }
     "#;
 

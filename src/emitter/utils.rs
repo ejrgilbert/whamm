@@ -780,12 +780,12 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                     injector.i64_and();
                     injector.f64_reinterpret_i64()
                 }
-                DataType::Null
-                | DataType::Str
-                | DataType::Tuple { .. }
-                | DataType::Map { .. }
-                | DataType::AssumeGood
-                | DataType::Unknown => unimplemented!(),
+                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                    unimplemented!("We do not support logical AND for {done_on}")
+                }
+                DataType::AssumeGood | DataType::Unknown => {
+                    unreachable!("Attempted logical AND for {done_on}")
+                }
             };
         }
         BinOp::Or => {
@@ -808,12 +808,12 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                     injector.i64_or();
                     injector.f64_reinterpret_i64()
                 }
-                DataType::Null
-                | DataType::Str
-                | DataType::Tuple { .. }
-                | DataType::Map { .. }
-                | DataType::AssumeGood
-                | DataType::Unknown => unimplemented!(),
+                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                    unimplemented!("We do not support logical OR for {done_on}")
+                }
+                DataType::AssumeGood | DataType::Unknown => {
+                    unreachable!("Attempted logical OR for {done_on}")
+                }
             };
         }
         BinOp::EQ => {
@@ -832,13 +832,10 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                     // TODO -- fix after type bounds are implemented
                     injector.i32_eq()
                 }
-                DataType::Null
-                | DataType::Str
-                | DataType::Tuple { .. }
-                | DataType::Map { .. }
-                | DataType::Unknown => {
-                    unimplemented!()
+                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                    unimplemented!("We do not support equal for {done_on}")
                 }
+                DataType::Unknown => unreachable!("Attempted equal for {done_on}"),
             };
         }
         BinOp::NE => {
@@ -857,13 +854,10 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                     // TODO -- fix after type bounds are implemented
                     injector.i32_ne()
                 }
-                DataType::Null
-                | DataType::Str
-                | DataType::Tuple { .. }
-                | DataType::Map { .. }
-                | DataType::Unknown => {
-                    unimplemented!()
+                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                    unimplemented!("We do not support not equal for {done_on}")
                 }
+                DataType::Unknown => unreachable!("Attempted not equal for {done_on}"),
             };
         }
         BinOp::GE => {
@@ -883,12 +877,11 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                     // TODO -- fix after type bounds are implemented
                     injector.i32_gte_signed()
                 }
-                DataType::Null
-                | DataType::Str
-                | DataType::Tuple { .. }
-                | DataType::Map { .. }
-                | DataType::Unknown => {
-                    unimplemented!()
+                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                    unimplemented!("We do not support greater than or equal to for {done_on}")
+                }
+                DataType::Unknown => {
+                    unreachable!("Attempted greater than or equal to for {done_on}")
                 }
             };
         }
@@ -909,13 +902,10 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                     // TODO -- fix after type bounds are implemented
                     injector.i32_gt_signed()
                 }
-                DataType::Null
-                | DataType::Str
-                | DataType::Tuple { .. }
-                | DataType::Map { .. }
-                | DataType::Unknown => {
-                    unimplemented!()
+                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                    unimplemented!("We do not support greater than for {done_on}")
                 }
+                DataType::Unknown => unreachable!("Attempted greater than for {done_on}"),
             };
         }
         BinOp::LE => {
@@ -935,13 +925,10 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                     // TODO -- fix after type bounds are implemented
                     injector.i32_lte_signed()
                 }
-                DataType::Null
-                | DataType::Str
-                | DataType::Tuple { .. }
-                | DataType::Map { .. }
-                | DataType::Unknown => {
-                    unimplemented!()
+                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                    unimplemented!("We do not support less than or equal to for {done_on}")
                 }
+                DataType::Unknown => unreachable!("Attempted less then or equal to for {done_on}"),
             };
         }
         BinOp::LT => {
@@ -961,13 +948,10 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                     // TODO -- fix after type bounds are implemented
                     injector.i32_lt_signed()
                 }
-                DataType::Null
-                | DataType::Str
-                | DataType::Tuple { .. }
-                | DataType::Map { .. }
-                | DataType::Unknown => {
-                    unimplemented!()
+                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                    unimplemented!("We do not support less than for {done_on}")
                 }
+                DataType::Unknown => unreachable!("Attempted less than for {done_on}"),
             };
         }
         BinOp::Add => {
@@ -1010,13 +994,10 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                     // TODO -- fix after type bounds are implemented
                     injector.i32_add()
                 }
-                DataType::Null
-                | DataType::Str
-                | DataType::Tuple { .. }
-                | DataType::Map { .. }
-                | DataType::Unknown => {
-                    unimplemented!()
+                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                    unimplemented!("We do not support addition for {done_on}")
                 }
+                DataType::Unknown => unreachable!("Attempted addition for {done_on}"),
             };
         }
         BinOp::Subtract => {
@@ -1059,13 +1040,10 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                     // TODO -- fix after type bounds are implemented
                     injector.i32_sub()
                 }
-                DataType::Null
-                | DataType::Str
-                | DataType::Tuple { .. }
-                | DataType::Map { .. }
-                | DataType::Unknown => {
-                    unimplemented!()
+                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                    unimplemented!("We do not support subtract for {done_on}")
                 }
+                DataType::Unknown => unreachable!("Attempted subtract for {done_on}"),
             };
         }
         BinOp::Multiply => {
@@ -1108,13 +1086,10 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                     // TODO -- fix after type bounds are implemented
                     injector.i32_mul()
                 }
-                DataType::Null
-                | DataType::Str
-                | DataType::Tuple { .. }
-                | DataType::Map { .. }
-                | DataType::Unknown => {
-                    unimplemented!()
+                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                    unimplemented!("We do not support multiply for {done_on}")
                 }
+                DataType::Unknown => unreachable!("Attempted multiply for {done_on}"),
             };
         }
         BinOp::Divide => {
@@ -1158,13 +1133,10 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                     // TODO -- fix after type bounds are implemented
                     injector.i32_div_signed()
                 }
-                DataType::Null
-                | DataType::Str
-                | DataType::Tuple { .. }
-                | DataType::Map { .. }
-                | DataType::Unknown => {
-                    unimplemented!()
+                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                    unimplemented!("We do not support divide for {done_on}")
                 }
+                DataType::Unknown => unreachable!("Attempted divide for {done_on}"),
             };
         }
         BinOp::Modulo => {
@@ -1268,13 +1240,10 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                     // TODO -- fix after type bounds are implemented
                     injector.i32_rem_signed()
                 }
-                DataType::Null
-                | DataType::Str
-                | DataType::Tuple { .. }
-                | DataType::Map { .. }
-                | DataType::Unknown => {
-                    unimplemented!()
+                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                    unimplemented!("We do not support modulo for {done_on}")
                 }
+                DataType::Unknown => unreachable!("Attempted modulo for {done_on}"),
             };
         }
         BinOp::LShift => {
@@ -1311,9 +1280,8 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                     }
                 }
                 DataType::U64 | DataType::I64 => injector.i64_shl(),
-                DataType::F32
-                | DataType::F64
-                | DataType::Null
+                DataType::F32 | DataType::F64 => unreachable!(),
+                DataType::Null
                 | DataType::Str
                 | DataType::Tuple { .. }
                 | DataType::Map { .. }
@@ -1331,16 +1299,12 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::I8 | DataType::I16 | DataType::I32 => injector.i32_shr_signed(),
                 DataType::U64 => injector.i64_shr_unsigned(),
                 DataType::I64 => injector.i64_shr_signed(),
-                DataType::F32
-                | DataType::F64
-                | DataType::Null
-                | DataType::Str
-                | DataType::Tuple { .. }
-                | DataType::Map { .. }
-                | DataType::Unknown => {
-                    unimplemented!()
+                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                    unimplemented!("We do not support right shift for {done_on}")
                 }
-                DataType::AssumeGood => unreachable!(),
+                DataType::F32 | DataType::F64 | DataType::AssumeGood | DataType::Unknown => {
+                    unreachable!("Attempted right shift for {done_on}")
+                }
             };
         }
         BinOp::BitAnd => {
@@ -1353,16 +1317,12 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 | DataType::I32
                 | DataType::Boolean => injector.i32_and(),
                 DataType::U64 | DataType::I64 => injector.i64_and(),
-                DataType::F32
-                | DataType::F64
-                | DataType::Null
-                | DataType::Str
-                | DataType::Tuple { .. }
-                | DataType::Map { .. }
-                | DataType::Unknown => {
-                    unimplemented!()
+                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                    unimplemented!("We do not support bitwise AND for {done_on}")
                 }
-                DataType::AssumeGood => unreachable!(),
+                DataType::F32 | DataType::F64 | DataType::AssumeGood | DataType::Unknown => {
+                    unreachable!("Attempted bitwise AND for {done_on}")
+                }
             };
         }
         BinOp::BitOr => {
@@ -1375,16 +1335,12 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 | DataType::I32
                 | DataType::Boolean => injector.i32_or(),
                 DataType::U64 | DataType::I64 => injector.i64_or(),
-                DataType::F32
-                | DataType::F64
-                | DataType::Null
-                | DataType::Str
-                | DataType::Tuple { .. }
-                | DataType::Map { .. }
-                | DataType::Unknown => {
-                    unimplemented!()
+                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                    unimplemented!("We do not support bitwise OR for {done_on}")
                 }
-                DataType::AssumeGood => unreachable!(),
+                DataType::F32 | DataType::F64 | DataType::AssumeGood | DataType::Unknown => {
+                    unreachable!("Attempted bitwise OR for {done_on}")
+                }
             };
         }
         BinOp::BitXor => {
@@ -1397,16 +1353,13 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 | DataType::I32
                 | DataType::Boolean => injector.i32_xor(),
                 DataType::U64 | DataType::I64 => injector.i64_xor(),
-                DataType::F32
-                | DataType::F64
-                | DataType::Null
-                | DataType::Str
-                | DataType::Tuple { .. }
-                | DataType::Map { .. }
-                | DataType::Unknown => {
-                    unimplemented!()
+                DataType::F32 | DataType::F64 => unreachable!(),
+                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                    unimplemented!("We do not support bitwise XOR for {done_on}")
                 }
-                DataType::AssumeGood => unreachable!(),
+                DataType::AssumeGood | DataType::Unknown => {
+                    unreachable!("Attempted bitwise XOR for {done_on}")
+                }
             };
         }
     }
@@ -1414,9 +1367,6 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
 }
 
 fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T) -> bool {
-    // if let UnOp::Cast {target} = op {
-    //     println!("EMIT: from {} to {}", done_on, target);
-    // }
     match op {
         UnOp::Cast { target } => {
             match (done_on, target) {
@@ -1811,14 +1761,51 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
                 injector.f64_const(0f64);
                 injector.f64_eq();
             }
-            DataType::Null
-            | DataType::Str
-            | DataType::Tuple { .. }
-            | DataType::Map { .. }
-            | DataType::AssumeGood
-            | DataType::Unknown => unimplemented!(),
+            DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                unimplemented!("We do not support NOT for {done_on}")
+            }
+            DataType::AssumeGood | DataType::Unknown => unreachable!("Attempted NOT for {done_on}"),
         },
-        UnOp::BitwiseNot => unimplemented!(),
+        UnOp::BitwiseNot => {
+            match done_on {
+                DataType::U8 | DataType::U16 => {
+                    // i32.xor(x, -1)
+                    injector.i32_const(-1);
+                    injector.i32_xor();
+
+                    // should clear out upper bits afterward (since unsigned)!
+                    match done_on {
+                        DataType::U8 => {
+                            injector.i32_const(0xFF);
+                            injector.i32_and()
+                        }
+                        DataType::U16 => {
+                            injector.i32_const(0xFFFF);
+                            injector.i32_and()
+                        }
+                        _ => injector,
+                    }
+                }
+                DataType::Boolean
+                | DataType::U32
+                | DataType::I8
+                | DataType::I16
+                | DataType::I32 => {
+                    injector.i32_const(-1);
+                    injector.i32_xor()
+                }
+                DataType::U64 | DataType::I64 => {
+                    injector.i64_const(-1);
+                    injector.i64_xor()
+                }
+                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                    unimplemented!("We do not support bitwise NOT for {done_on}")
+                }
+                DataType::F32 | DataType::F64 | DataType::AssumeGood | DataType::Unknown => {
+                    unreachable!("Attempted bitwise NOT for {done_on}")
+                }
+            };
+        }
     }
     true
 }

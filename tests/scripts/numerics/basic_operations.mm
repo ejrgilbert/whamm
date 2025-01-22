@@ -188,4 +188,42 @@ wasm:opcode:call:before {
     xor_test14 = 1 ^ 0xF;
     report i64 xor_test15;
     xor_test15 = -1 ^ 0xF;
+
+    // --- ~
+
+    report u8 bwise_not_test0;
+    bwise_not_test0 = ~ 1;
+    report u8 bwise_not_test1;
+    bwise_not_test1 = ~ -1;
+    report i8 bwise_not_test2;
+    bwise_not_test2 = ~ 1;
+    report i8 bwise_not_test3;
+    bwise_not_test3 = ~ -1;
+
+    report u16 bwise_not_test4;
+    bwise_not_test4 = ~ 1;
+    report u16 bwise_not_test5;
+    bwise_not_test5 = ~ -1;
+    report i16 bwise_not_test6;
+    bwise_not_test6 = ~ 1;
+    report i16 bwise_not_test7;
+    bwise_not_test7 = ~ -1;
+
+    report u32 bwise_not_test8;
+    bwise_not_test8 = ~ 1;
+    report u32 bwise_not_test9;
+    bwise_not_test9 = ~ -1;
+    report i32 bwise_not_test10;
+    bwise_not_test10 = ~ 1;
+    report i32 bwise_not_test11;
+    bwise_not_test11 = ~ -1;
+
+    report u64 bwise_not_test12;
+    bwise_not_test12 = ~ 1;
+    report u64 bwise_not_test13;
+    bwise_not_test13 = ~ -1;
+    report i64 bwise_not_test14;
+    bwise_not_test14 = ~ 1;
+    report i64 bwise_not_test15;
+    bwise_not_test15 = ~ -1;
 }
