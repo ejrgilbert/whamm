@@ -138,7 +138,7 @@ fn run_wast_test(inter: &String, args: &[String], wast_file_name: &String) -> Ou
         .expect("failed to execute process")
 }
 
-const INT_PATH: &str = "./output/tests/interpreters";
+const INT_PATH: &str = "./output/tests/engines";
 const WIZENG_SPEC_INT: &str = "wizard-spectest";
 const WASM_REF_INT: &str = "wasm";
 fn get_available_interpreters() -> Vec<(String, Vec<String>)> {

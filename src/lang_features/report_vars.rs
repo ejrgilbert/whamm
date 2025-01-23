@@ -10,6 +10,7 @@ use orca_wasm::{Instructions, Module, Opcode};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 use std::hash::Hash;
+use log::info;
 use wasmparser::MemArg;
 
 pub const NULL_PTR: u32 = 0;
@@ -116,14 +117,14 @@ impl ReportVars {
         if self.all_metadata.is_empty() {
             return;
         }
-        println!("Metadata:");
+        let mut info = "Metadata:\n".to_string();
 
         // Collect and sort variable_metadata by key
         let mut sorted_variable_metadata: Vec<_> = self.variable_metadata.iter().collect();
         sorted_variable_metadata.sort_by_key(|&(key, _)| key);
 
         for (key, value) in sorted_variable_metadata {
-            println!("GID: {} -> {:?}", key, value);
+            info += &format!("GID: {} -> {:?}", key, value);
         }
 
         // Collect and sort map_metadata by key
@@ -131,8 +132,10 @@ impl ReportVars {
         sorted_map_metadata.sort_by_key(|&(key, _)| key);
 
         for (key, value) in sorted_map_metadata {
-            println!("MapID: {} -> {:?}", key, value);
+            info += &format!("MapID: {} -> {:?}", key, value);
         }
+
+        info!("{info}");
     }
     pub fn mutating_map(&mut self, map_id: u32) {
         //check if the map you are changing is in map_metadata -> flush soon if it is
