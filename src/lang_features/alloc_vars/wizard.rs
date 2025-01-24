@@ -124,11 +124,14 @@ impl UnsharedVarHandler {
             } in unshared_to_alloc.iter()
             {
                 println!("Allocating var of type: {ty}");
+                let prev_offset = curr_offset;
+
                 if *is_report {
                     // Emit the `report` var header (linked list)
                     curr_offset += emitter.report_vars.alloc_report_var_header(
                         ty,
                         emitter.mem_allocator.curr_mem_offset as u32,
+                        curr_offset,
                         emitter.mem_allocator.mem_id,
                         emitter.mem_allocator.mem_tracker_global,
                         &mut alloc,
@@ -164,6 +167,22 @@ impl UnsharedVarHandler {
                 );
 
                 curr_offset += ty.num_bytes().unwrap() as u32;
+
+                if *is_report {
+                    // now that we know the amount of memory we just used, update the next_addr ptr
+                    // in the linked list
+                    let var_mem_usage = curr_offset - prev_offset;
+                    emitter.report_vars.update_next_addr_ptr(
+                        ty,
+                        var_mem_usage,
+                        curr_offset,
+                        emitter.mem_allocator.curr_mem_offset as u32,
+                        emitter.mem_allocator.mem_id,
+                        emitter.mem_allocator.mem_tracker_global,
+                        &mut alloc,
+                        emitter.app_wasm,
+                    );
+                }
             }
 
             // update the memory allocator global to account for all the added data

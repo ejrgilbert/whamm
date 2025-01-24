@@ -442,11 +442,6 @@ impl ReportVars {
 
         flush_fn.loop_stmt(BlockType::Empty);
 
-        // todo: next_addr is offset!
-        // alloc_func.u32_const(curr_addr)
-        //     .global_get(GlobalID(last_var_gid))
-        //     .i32_sub();
-
         #[rustfmt::skip]
         // save the next_addr
         flush_fn
@@ -528,6 +523,7 @@ impl ReportVars {
         &mut self,
         data_type: &DataType,
         curr_addr: u32,
+        var_offset: u32,
         mem_id: u32,
         mem_tracker_global: GlobalID,
         alloc_func: &mut FunctionBuilder,
@@ -567,16 +563,43 @@ impl ReportVars {
             tracker.first_var = Some(*gid);
         }
 
+        // TODO -- may be able to just skip this
         // put header in memory at curr_addr, value is: NULL_PTR
         alloc_func.global_get(mem_tracker_global); // (where to store)
         alloc_func.u32_const(NULL_PTR); // (what to store)
         alloc_func.i32_store(MemArg {
             align: 0,
             max_align: 0,
-            offset: 0,
+            offset: var_offset as u64,
             memory: mem_id,
         });
         used_bytes += size_of_val(&NULL_PTR);
+
+        used_bytes as u32
+    }
+
+    pub fn update_next_addr_ptr(
+        &mut self,
+        data_type: &DataType,
+        curr_var_mem_usage: u32,
+        total_mem_usage: u32,
+        mem_ptr_addr: u32,
+        mem_id: u32,
+        mem_tracker_global: GlobalID,
+        alloc_func: &mut FunctionBuilder,
+        wasm: &mut Module,
+    ) {
+        println!("curr_var_mem_usage: {curr_var_mem_usage}");
+
+        let tracker = self
+            .alloc_tracker
+            .entry(data_type.clone())
+            .or_insert(ReportAllocTracker {
+                // data_type: data_type.clone(),
+                // flush_func: None,
+                first_var: None,
+                last_var: None,
+            });
 
         if let Some(last_var_gid) = tracker.last_var {
             // ONLY RUN THIS IF THERE ARE MULTIPLE REPORT VARS IN THE SCRIPT
@@ -591,15 +614,19 @@ impl ReportVars {
             alloc_func.global_get(GlobalID(last_var_gid));
 
             // (what to store)
+            // (mem_tracker_global - last_var_gid) + (total_mem_used_for_this_probe - usage_for_this_var)
             alloc_func
                 .global_get(mem_tracker_global)
                 .global_get(GlobalID(last_var_gid))
-                .i32_sub();
+                .i32_sub()
+                .u32_const(total_mem_usage - curr_var_mem_usage)
+                .i32_add();
 
             alloc_func.i32_store(MemArg {
                 align: 0,
                 max_align: 0,
-                offset: used_bytes as u64,
+                // offset: used_bytes as u64,
+                offset: 0,
                 memory: mem_id,
             });
 
@@ -608,18 +635,18 @@ impl ReportVars {
 
             // update the last_var global to point to the current location
             alloc_func.global_get(mem_tracker_global)
+                .u32_const(total_mem_usage - curr_var_mem_usage)
+                .i32_add()
                 .global_set(GlobalID(last_var_gid));
         } else {
             let gid = wasm.add_global(
-                InitExpr::new(vec![Instructions::Value(Value::I32(curr_addr as i32))]),
+                InitExpr::new(vec![Instructions::Value(Value::I32(mem_ptr_addr as i32))]),
                 OrcaType::I32,
-                false,
+                true,
                 false,
             );
             tracker.last_var = Some(*gid);
         }
-
-        used_bytes as u32
     }
 }
 
