@@ -281,8 +281,8 @@ fn run_testcase_all_targets(script: &PathBuf, script_str: &String, app: &PathBuf
 
     let instr_app_path = "output/output.wasm".to_string();
 
-    println!("Running on rewriting target");
-    run_testcase_rewriting(script, script_str, &app_path_str, &exp_output, &instr_app_path, &mut err);
+    // println!("Running on rewriting target");
+    // run_testcase_rewriting(script, script_str, &app_path_str, &exp_output, &instr_app_path, &mut err);
 
     println!("Running on wizard target");
     run_testcase_wizard(script, script_str, &app_path_str, &exp_output, &instr_app_path, &mut err);

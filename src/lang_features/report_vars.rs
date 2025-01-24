@@ -9,7 +9,7 @@ use orca_wasm::opcode::MacroOpcode;
 use orca_wasm::{Instructions, Module, Opcode};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
-use std::hash::Hash;
+use std::hash::{DefaultHasher, Hash, Hasher};
 use log::info;
 use wasmparser::MemArg;
 
@@ -239,7 +239,7 @@ impl ReportVars {
         // handles all but 'value(s)' since this is common between all variable types
         let dt = LocalID(0); // use to figure out which 'type' to print
         let addr = LocalID(1);
-        let mut flush_fn = FunctionBuilder::new(&[OrcaType::I32, OrcaType::I32], &[OrcaType::I32]);
+        let mut flush_fn = FunctionBuilder::new(&[OrcaType::I64, OrcaType::I32], &[OrcaType::I32]);
 
         let curr_addr = flush_fn.add_local(OrcaType::I32);
 
@@ -266,6 +266,8 @@ impl ReportVars {
             .local_get(curr_addr)
             .i32_load(mem_arg)
             .local_set(fid);
+
+        // TODO -- use offset in load instead of updating the curr_addr every time
 
         // update memory pointer
         flush_fn
@@ -337,29 +339,43 @@ impl ReportVars {
             .i32_add()
             .local_set(curr_addr);
 
-        // print 'type'
-        // TODO -- replace with br_table
-        flush_fn
-            .local_get(dt)
-            .i32_const(2) // see DataType::hash()
-            .i32_eq()
-            .if_stmt(BlockType::Empty);
-        io_adapter.puts("i32, ".to_string(), &mut flush_fn, err);
-
-        // TODO -- handle 'type' for non-i32 values
-        flush_fn.else_stmt().unreachable().end();
-
-        // print 'id_type'
-        io_adapter.puts(format!("{id_type}, "), &mut flush_fn, err);
-
         // print 'id'
         flush_fn.local_get(addr);
         io_adapter.call_puti32(&mut flush_fn, err);
+
+        // print 'id_type'
+        io_adapter.puts(format!(", {id_type}, "), &mut flush_fn, err);
 
         // print 'name'
         flush_fn.local_get(name_ptr).local_get(name_len);
         io_adapter.call_puts(&mut flush_fn, err);
         io_adapter.puts(", ".to_string(), &mut flush_fn, err);
+
+        // print 'whamm_type'
+        let mut s = DefaultHasher::new();
+        DataType::I32.hash(&mut s);
+        let i32_hash = s.finish();
+        // TODO -- replace with br_table
+        let i32_ty = DataType::I32;
+        flush_fn
+            .local_get(dt)
+            .i64_const(i32_hash as i64) // see DataType::hash()
+            .i64_eq()
+            .if_stmt(BlockType::Empty);
+        io_adapter.puts(format!("{i32_ty}, "), &mut flush_fn, err);
+
+        // print 'wasm_type'
+        let i32_wasm_tys = i32_ty.to_wasm_type();
+        let i32_wasm_ty = if i32_wasm_tys.len() > 1 {
+            // todo support tuples, strings, etc.
+            unimplemented!()
+        } else {
+            i32_wasm_tys.first().unwrap()
+        };
+        io_adapter.puts(format!("{i32_wasm_ty}, "), &mut flush_fn, err);
+
+        // TODO -- handle 'type' for non-i32 values
+        flush_fn.else_stmt().unreachable().end();
 
         // print 'script_id'
         io_adapter.puts("script".to_string(), &mut flush_fn, err);
@@ -408,8 +424,8 @@ impl ReportVars {
             memory: mem_id,
         };
 
-        // ==================== REPORT CSV FLUSH ========================
-        // type, id_type, id, name, script_id, fid:pc, probe_id, value(s)
+        // ============================= REPORT CSV FLUSH ================================
+        // id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)
 
         // handles the 'value(s)' output
         let dt = DataType::I32;
@@ -442,7 +458,7 @@ impl ReportVars {
             // otherwise calculate the actual next address:
             //    next_addr = curr_addr + next_addr_offset
             .u32_const(NULL_PTR)
-            .i32_eq()
+            .i32_ne()
             .if_stmt(BlockType::Empty)
                 .local_get(curr_addr)
                 .local_get(next_addr)
@@ -458,8 +474,11 @@ impl ReportVars {
             .local_set(curr_addr);
 
         // use return of flush_metadata_func to know where value(s) starts!
+        let mut s = DefaultHasher::new();
+        dt.hash(&mut s);
+        let dt_hash = s.finish();
         flush_fn
-            .i32_const(dt.id())
+            .i64_const(dt_hash as i64)
             .local_get(curr_addr)
             .call(FunctionID(flush_metadata_fid))
             .local_tee(curr_addr);
@@ -510,6 +529,7 @@ impl ReportVars {
         data_type: &DataType,
         curr_addr: u32,
         mem_id: u32,
+        mem_tracker_global: GlobalID,
         alloc_func: &mut FunctionBuilder,
         wasm: &mut Module,
     ) -> u32 {
@@ -548,7 +568,7 @@ impl ReportVars {
         }
 
         // put header in memory at curr_addr, value is: NULL_PTR
-        alloc_func.u32_const(curr_addr); // (where to store)
+        alloc_func.global_get(mem_tracker_global); // (where to store)
         alloc_func.u32_const(NULL_PTR); // (what to store)
         alloc_func.i32_store(MemArg {
             align: 0,
@@ -559,6 +579,8 @@ impl ReportVars {
         used_bytes += size_of_val(&NULL_PTR);
 
         if let Some(last_var_gid) = tracker.last_var {
+            // ONLY RUN THIS IF THERE ARE MULTIPLE REPORT VARS IN THE SCRIPT
+
             // When a new variable is allocated in memory, the global containing the memory address
             // of the most-recently allocated variable of that type is used to update the next pointer
             // to the difference between the previous and the current memory address (to find the offset).
@@ -570,16 +592,23 @@ impl ReportVars {
 
             // (what to store)
             alloc_func
-                .u32_const(curr_addr)
+                .global_get(mem_tracker_global)
                 .global_get(GlobalID(last_var_gid))
                 .i32_sub();
 
             alloc_func.i32_store(MemArg {
                 align: 0,
                 max_align: 0,
-                offset: 0,
+                offset: used_bytes as u64,
                 memory: mem_id,
             });
+
+            // this memory has already been allocated previously!
+            // no need to update `used_bytes`
+
+            // update the last_var global to point to the current location
+            alloc_func.global_get(mem_tracker_global)
+                .global_set(GlobalID(last_var_gid));
         } else {
             let gid = wasm.add_global(
                 InitExpr::new(vec![Instructions::Value(Value::I32(curr_addr as i32))]),

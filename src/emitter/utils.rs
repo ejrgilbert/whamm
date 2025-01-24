@@ -309,6 +309,9 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 }
             }
 
+            // memory offset goes BEFORE the value to store
+            possibly_emit_memaddr_calc_offset(var_id, injector, ctx);
+
             if !emit_expr(expr, strategy, injector, ctx) {
                 return false;
             }
@@ -433,6 +436,45 @@ pub fn block_type_to_wasm(block: &Block) -> BlockType {
     }
 }
 
+fn possibly_emit_memaddr_calc_offset<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    var_id: &mut Expr,
+    injector: &mut T,
+    ctx: &mut EmitCtx,
+) -> bool {
+    if let Expr::VarId { name, .. } = var_id {
+        let Some(Record::Var { addr, loc, .. }) = ctx.table.lookup_var_mut(name, &None, ctx.err)
+        else {
+            ctx.err
+                .unexpected_error(true, Some("unexpected type".to_string()), None);
+            return false;
+        };
+
+        // this will be different based on if this is a global or local var
+        match addr {
+            Some(VarAddr::Global { addr }) => {
+                ctx.report_vars.mutating_var(*addr);
+                injector.global_set(GlobalID(*addr));
+            }
+            Some(VarAddr::MemLoc {
+                     var_offset, ..
+                 }) => {
+                ctx.mem_allocator.calc_offset(
+                    *var_offset,
+                    ctx.table,
+                    injector,
+                    ctx.err,
+                );
+            }
+            _ => {} // will handle later
+        }
+        true
+    } else {
+        ctx.err
+            .unexpected_error(true, Some(format!("{} Expected VarId.", ctx.err_msg)), None);
+        false
+    }
+}
+
 fn emit_set<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     var_id: &mut Expr,
     injector: &mut T,
@@ -455,15 +497,12 @@ fn emit_set<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             Some(VarAddr::MemLoc {
                 mem_id,
                 ty,
-                var_offset,
+                ..
             }) => {
                 ctx.mem_allocator.set_in_mem(
                     *mem_id,
-                    &DataType::from_wasm_type(ty),
-                    *var_offset,
-                    ctx.table,
-                    injector,
-                    ctx.err,
+                    &ty.clone(),
+                    injector
                 );
             }
             Some(VarAddr::Local { addr }) => {
@@ -715,7 +754,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 }) => {
                     ctx.mem_allocator.get_from_mem(
                         *mem_id,
-                        &DataType::from_wasm_type(ty),
+                        &ty.clone(),
                         *var_offset,
                         ctx.table,
                         injector,

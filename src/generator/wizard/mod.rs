@@ -266,7 +266,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
                 .exports
                 .add_export_func(match_rule, fid);
         } else {
-            // ignore
+            unreachable!()
         }
     }
 

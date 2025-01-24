@@ -123,12 +123,14 @@ impl UnsharedVarHandler {
                 report_metadata,
             } in unshared_to_alloc.iter()
             {
+                println!("Allocating var of type: {ty}");
                 if *is_report {
                     // Emit the `report` var header (linked list)
                     curr_offset += emitter.report_vars.alloc_report_var_header(
                         ty,
                         emitter.mem_allocator.curr_mem_offset as u32,
                         emitter.mem_allocator.mem_id,
+                        emitter.mem_allocator.mem_tracker_global,
                         &mut alloc,
                         emitter.app_wasm,
                     );
@@ -142,15 +144,9 @@ impl UnsharedVarHandler {
                     self.store_var_header(&mut alloc, curr_offset, report_metadata, emitter, err);
 
                 // allocate the space for the datatype value
-                let orca_ty = ty.to_wasm_type();
                 let var_addr = VarAddr::MemLoc {
                     mem_id: emitter.mem_allocator.mem_id,
-                    ty: if orca_ty.len() == 1 {
-                        *orca_ty.first().unwrap()
-                    } else {
-                        // support tuples/strings/etc.
-                        todo!()
-                    },
+                    ty: ty.clone(),
                     var_offset: curr_offset,
                 };
 
@@ -160,7 +156,7 @@ impl UnsharedVarHandler {
                         ty: ty.clone(),
                         name: name.clone(),
                         value: None,
-                        def: Definition::CompilerDynamic,
+                        def: Definition::User,
                         is_report_var: *is_report, // TODO -- should this be false to keep from 'flush' logic to be called throughout compilation?
                         addr: Some(var_addr),
                         loc: None,
@@ -176,6 +172,7 @@ impl UnsharedVarHandler {
                 .update_mem_tracker(curr_offset, &mut alloc);
 
             // return the base memory offset where this function's var block starts
+            // return the location where the value will be stored in memory!
             alloc.local_get(orig_offset.id);
 
             let alloc_id = alloc.finish_module(emitter.app_wasm);
@@ -203,12 +200,12 @@ impl UnsharedVarHandler {
         bytes_used +=
             emitter
                 .mem_allocator
-                .emit_store_from_local(curr_offset, fid.id, &fid.ty, func);
+                .emit_store_from_local(curr_offset + bytes_used, fid.id, &fid.ty, func);
 
         // store pc
         bytes_used += emitter
             .mem_allocator
-            .emit_store_from_local(curr_offset, pc.id, &pc.ty, func);
+            .emit_store_from_local(curr_offset + bytes_used, pc.id, &pc.ty, func);
 
         bytes_used
     }

@@ -35,7 +35,7 @@ impl MemoryAllocator {
     // ==== Get / Set ====
     // ===================
 
-    fn calc_offset<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub(crate) fn calc_offset<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         &self,
         var_offset: u32,
         table: &SymbolTable,
@@ -134,13 +134,8 @@ impl MemoryAllocator {
         &self,
         mem_id: u32,
         ty: &DataType,
-        var_offset: u32,
-        table: &SymbolTable,
-        injector: &mut T,
-        err: &mut ErrorGen,
+        injector: &mut T
     ) {
-        self.calc_offset(var_offset, table, injector, err);
-
         // perform the correct store based on the type of data at this memory location
         match ty {
             DataType::U8 | DataType::I8 => injector.i32_store8(MemArg {
@@ -331,6 +326,14 @@ impl MemoryAllocator {
                 }
             }
         }
+    }
+
+    pub(crate) fn update_memory_global_ptr(&mut self, wasm: &mut Module) {
+        // use this function to account for the statically-used memory
+        wasm.mod_global_init_expr(
+            self.mem_tracker_global,
+            InitExpr::new(vec![Instructions::Value(OrcaValue::I32(self.curr_mem_offset as i32))])
+        )
     }
 }
 

@@ -22,10 +22,11 @@ use crate::verifier::types::SymbolTable;
 use crate::verifier::verifier::{build_symbol_table, type_check};
 use log::{error, info};
 use orca_wasm::ir::id::{FunctionID, GlobalID};
-use orca_wasm::Module;
+use orca_wasm::{Instructions, Module};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::exit;
+use orca_wasm::ir::types::{InitExpr, Value as OrcaValue};
 use wasmparser::MemoryType;
 
 /// create output path if it doesn't exist
@@ -280,6 +281,9 @@ fn run_instr_wizard(
         unshared_var_handler: &mut wizard_unshared_var_handler,
     };
     gen.run(wiz_ast, used_funcs, used_report_dts, used_strings);
+
+    // Update the memory tracker global to point to the start of free memory
+    mem_allocator.update_memory_global_ptr(target_wasm);
 }
 
 fn run_instr_rewrite(
@@ -345,6 +349,9 @@ fn run_instr_rewrite(
             target_wasm.delete_global(GlobalID(*gid));
         }
     }
+
+    // Update the memory tracker global to point to the start of free memory
+    mem_allocator.update_memory_global_ptr(target_wasm);
 }
 
 fn get_memory_allocator(target_wasm: &mut Module, create_new_mem: bool) -> MemoryAllocator {
