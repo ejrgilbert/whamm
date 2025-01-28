@@ -4,7 +4,7 @@
 // -
 
 wasm:opcode:call:before { // fid of "calc"
-    report unshared i32 count;
+    report unshared var count: i32;
 //    if (arg0 == 1 || arg1 == 1) {
 //        count++;
 //    }

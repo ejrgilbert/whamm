@@ -9,7 +9,7 @@
  * need to access top-of-stack, locals, program counter
  * need a handle to the function ("func")
 */
-report map<(u32, u32, i32), i32> count;
+report var count: map<(u32, u32, i32), i32>;
 
 wasm::br:before {
   // count stores an array of counters
@@ -17,7 +17,7 @@ wasm::br:before {
 }
 
 wasm::br_if:before {
-  i32 index;
+  var index: i32;
   // "arg0" is defined as the top-of-stack
   index = arg0 != 0 ? 1 : 0;
   // count stores an array of counters
@@ -27,7 +27,7 @@ wasm::br_if:before {
 wasm:::br_table {
   // "num_targets" is the number of targets of a br_table
   // "tos" is defined as the top-of-stack
-  int index = tos >= num_targets ? num_targets : tos;
+  var index: i32 = tos >= num_targets ? num_targets : tos;
   // count stores an array of counters
   count[probe_func, pc, index]++;
 }
@@ -35,7 +35,7 @@ wasm:::br_table {
 // matches br_on_null
 wasm:::br_on_null {
   // tos is defined as the top-of-stack
-  int index = tos == null ? 1 : 0;
+  var index: i32 = tos == null ? 1 : 0;
   // count stores an array of counters
   count[probe_func, pc, index]++;
 }
@@ -43,7 +43,7 @@ wasm:::br_on_null {
 // matches br_on_null
 wasm:::br_on_non_null {
   // tos is defined as the top-of-stack
-  int index = tos != null ? 1 : 0;
+  var index: i32 = tos != null ? 1 : 0;
   // count stores an array of counters
   count[probe_func, pc, index]++;
 }

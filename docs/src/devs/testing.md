@@ -82,7 +82,7 @@ Below is an example `.wast` test using imports:
     (memory (;0;) 1)
  )
  
-;; WHAMM --> i32 count; wasm:opcode:call:alt / arg0 == 0 / { count = 5; return 1; }
+;; WHAMM --> var count: i32; wasm:opcode:call:alt / arg0 == 0 / { count = 5; return 1; }
 (assert_return (invoke "get_global_var") (i32.const 1)) ;; alt, so global should be return value
 (assert_return (invoke "get_count") (i32.const 5))
 ```

@@ -55,40 +55,40 @@
 
 ;; ----------------------------------------------
 ;; ==== GLOBALS, predicate, `target_fn_type` ====
-;; WHAMM --> i32 count; wasm:opcode:call:before / target_fn_type == "import" / { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:call:before / target_fn_type == "import" / { count++; }
 (assert_return (invoke "get_count") (i32.const 1)) ;; predicate is 'true'
-;; WHAMM --> i32 count; wasm:opcode:call:before / target_fn_type == "local" / { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:call:before / target_fn_type == "local" / { count++; }
 (assert_return (invoke "get_count") (i32.const 0)) ;; predicate is 'false'
 
 ;; -------------------------------------------------
 ;; ==== GLOBALS, predicate, `target_imp_module` ====
-;; WHAMM --> i32 count; wasm:opcode:call:before / target_imp_module == "test" / { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:call:before / target_imp_module == "test" / { count++; }
 (assert_return (invoke "get_count") (i32.const 1)) ;; predicate is 'true'
-;; WHAMM --> i32 count; wasm:opcode:call:before / target_imp_module == "wrong" / { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:call:before / target_imp_module == "wrong" / { count++; }
 (assert_return (invoke "get_count") (i32.const 0)) ;; predicate is 'false'
 
 ;; -----------------------------------------------
 ;; ==== GLOBALS, predicate, `target_fn_name` ====
-;; WHAMM --> i32 count; wasm:opcode:call:before / target_fn_name == "wrong" / { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:call:before / target_fn_name == "wrong" / { count++; }
 (assert_return (invoke "get_count") (i32.const 0)) ;; predicate is 'false'
-;; WHAMM --> i32 count; wasm:opcode:call:before / target_fn_name == "dummy_five_params" / { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:call:before / target_fn_name == "dummy_five_params" / { count++; }
 (assert_return (invoke "get_count") (i32.const 1)) ;; predicate is 'true'
 
 ;; -----------------------------------------
 ;; ==== GLOBALS, body, `target_fn_type` ====
-;; WHAMM --> i32 count; wasm:opcode:call:before { count = target_fn_type == "import" ? 1 : 0; }
+;; WHAMM --> var count: i32; wasm:opcode:call:before { count = target_fn_type == "import" ? 1 : 0; }
 (assert_return (invoke "get_count") (i32.const 1)) ;; condition is 'true'
-;; WHAMM --> i32 count; wasm:opcode:call:before { count = target_fn_type == "local" ? 1 : 0; }
+;; WHAMM --> var count: i32; wasm:opcode:call:before { count = target_fn_type == "local" ? 1 : 0; }
 (assert_return (invoke "get_count") (i32.const 0)) ;; predicate is 'false'
 
 ;; --------------------------------------------
 ;; ==== GLOBALS, body, `target_imp_module` ====
-;; WHAMM --> i32 count; wasm:opcode:call:before { count = target_imp_module == "test" ? 1 : 0; }
+;; WHAMM --> var count: i32; wasm:opcode:call:before { count = target_imp_module == "test" ? 1 : 0; }
 (assert_return (invoke "get_count") (i32.const 1)) ;; condition is 'true'
 
 ;; ------------------------------------------
 ;; ==== GLOBALS, body, `target_fn_name` ====
-;; WHAMM --> i32 count; wasm:opcode:call:before { count = target_fn_name == "wrong" ? 1 : 0; }
+;; WHAMM --> var count: i32; wasm:opcode:call:before { count = target_fn_name == "wrong" ? 1 : 0; }
 (assert_return (invoke "get_count") (i32.const 0)) ;; predicate is 'false'
-;; WHAMM --> i32 count; wasm:opcode:call:before { count = target_fn_name == "dummy_five_params" ? 1 : 0; }
+;; WHAMM --> var count: i32; wasm:opcode:call:before { count = target_fn_name == "dummy_five_params" ? 1 : 0; }
 (assert_return (invoke "get_count") (i32.const 1)) ;; predicate is 'true'

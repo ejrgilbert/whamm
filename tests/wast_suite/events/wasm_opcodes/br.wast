@@ -84,7 +84,7 @@
 
 ;; ----------------------
 ;; ==== unpredicated ====
-;; WHAMM --> i32 count; wasm:opcode:br:before { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:br:before { count++; }
 (assert_return (invoke "get_count") (i32.const 3)) ;; matches two br's (hit 3x)
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
@@ -93,34 +93,34 @@
 
 ;; -------------------------------
 ;; ==== IMMS, predicate, imm0 ====
-;; WHAMM --> i32 count; wasm:opcode:br:before / imm0 == 4 / { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:br:before / imm0 == 4 / { count++; }
 (assert_return (invoke "get_count") (i32.const 0)) ;; predicate == false
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
-;; WHAMM --> i32 count; wasm:opcode:br:before / imm0 == 1 / { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:br:before / imm0 == 1 / { count++; }
 (assert_return (invoke "get_count") (i32.const 2)) ;; predicate == true (hit 3x)
-;; WHAMM --> i32 count; wasm:opcode:br:before / imm0 == 0 / { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:br:before / imm0 == 0 / { count++; }
 (assert_return (invoke "get_count") (i32.const 1)) ;; predicate == true (hit 1x)
-;; WHAMM --> i32 count; wasm:opcode:br:alt / imm0 == 0 / { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:br:alt / imm0 == 0 / { count++; }
 (assert_return (invoke "get_count") (i32.const 1))
 (assert_return (invoke "get_global_var0") (i32.const 0))
 
 ;; --------------------------
 ;; ==== IMMS, body, imm0 ====
-;; WHAMM --> i32 count; wasm:opcode:br:before { count = imm0 as i32; }
+;; WHAMM --> var count: i32; wasm:opcode:br:before { count = imm0 as i32; }
 (assert_return (invoke "get_count") (i32.const 1))
-;; WHAMM --> i32 count; wasm:opcode:br:alt { count = imm0 as i32; }
+;; WHAMM --> var count: i32; wasm:opcode:br:alt { count = imm0 as i32; }
 (assert_return (invoke "get_count") (i32.const 1))
 (assert_return (invoke "get_global_var0") (i32.const 0))
 
 ;; after mode
-;; WHAMM --> i32 count; wasm:opcode:br:after { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:br:after { count++; }
 (assert_return (invoke "get_count") (i32.const 0)) ;; never reached (immediately following a br)
 
 ;; at_target mode
-;; WHAMM --> i32 count; wasm:opcode:br:at_target { count = imm0 as i32; }
+;; WHAMM --> var count: i32; wasm:opcode:br:at_target { count = imm0 as i32; }
 (assert_return (invoke "get_count") (i32.const 1))
-;; WHAMM --> i32 count; wasm:opcode:br:at_target / imm0 == 0 / { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:br:at_target / imm0 == 0 / { count++; }
 (assert_return (invoke "get_count") (i32.const 1)) ;; predicate == true (hit 1x)

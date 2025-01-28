@@ -22,10 +22,11 @@ use crate::verifier::types::SymbolTable;
 use crate::verifier::verifier::{build_symbol_table, type_check};
 use log::{error, info};
 use orca_wasm::ir::id::{FunctionID, GlobalID};
-use orca_wasm::Module;
+use orca_wasm::{Instructions, Module};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::exit;
+use orca_wasm::ir::types::{DataType as OrcaType, InitExpr, Value as OrcaValue};
 use wasmparser::MemoryType;
 
 /// create output path if it doesn't exist
@@ -370,12 +371,20 @@ fn get_memory_allocator(target_wasm: &mut Module, create_new_mem: bool) -> Memor
         0
     };
 
+    // todo -- only add if needed!
+    let mem_tracker_global = target_wasm.add_global(
+        InitExpr::new(vec![Instructions::Value(OrcaValue::I32(0))]),
+        OrcaType::I32,
+        true,
+        false,
+    );
+
     MemoryAllocator {
         mem_id,
         curr_mem_offset: 0,
         required_initial_mem_size: 0,
         emitted_strings: HashMap::new(),
-        mem_tracker_global: GlobalID(0),
+        mem_tracker_global,
         used_mem_checker_fid: None,
     }
 }

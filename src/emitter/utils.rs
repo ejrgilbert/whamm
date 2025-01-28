@@ -451,10 +451,6 @@ fn possibly_emit_memaddr_calc_offset<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLo
 
         // this will be different based on if this is a global or local var
         match addr {
-            Some(VarAddr::Global { addr }) => {
-                ctx.report_vars.mutating_var(*addr);
-                injector.global_set(GlobalID(*addr));
-            }
             Some(VarAddr::MemLoc {
                      var_offset, ..
                  }) => {

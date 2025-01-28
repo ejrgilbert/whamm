@@ -15,7 +15,7 @@ wasm:opcode:call:before {
     // (a single count tied to the wasm:opcode:call event in the program)
     // This variable will not be reinitialized each time this probe's body is executed,
     // rather, it will be the value it was the last time it ran!
-    shared i32 count;
+    shared var count: i32;
     count++;
     
     // This variable will be reinitialized to 0 each time this probe's body is executed

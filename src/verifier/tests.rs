@@ -30,9 +30,9 @@ wasm::call:alt /
 }
     "#,
     r#"
-        bool a;
-        i32 b;
-        nested_fn(i32 a) -> i32 {
+        var a: bool;
+        var b: i32;
+        nested_fn(a: i32) -> i32 {
             return a;
         }
         dummy_fn() {
@@ -44,7 +44,7 @@ wasm::call:alt /
         }
     "#,
     r#"
-        i32 i;
+        var i: i32;
         wasm:opcode:call:before /
             target_fn_name == "add"
         /{
@@ -52,9 +52,9 @@ wasm::call:alt /
         }
     "#,
     r#"
-        bool a;
-        i32 b;
-        nested_fn(i32 a) -> i32 {
+        var a: bool;
+        var b: i32;
+        nested_fn(a: i32) -> i32 {
             return a;
         }
         dummy_fn() {
@@ -65,43 +65,43 @@ wasm::call:alt /
         }
     "#,
     r#"
-        bool a = strcmp((1, 2), "bookings");
+        var a: bool = strcmp((1, 2), "bookings");
         wasm::call:alt {
             a = strcmp((1, 2), "bookings");
         }
     "#,
     r#"
-        my_fn(i32 a) -> i32 {
+        my_fn(a: i32) -> i32 {
             return a;
         }
-        i32 a = 5;
+        var a: i32 = 5;
         wasm::call:alt {
-            i32 b = my_fn(a);
+            var b: i32 = my_fn(a);
         }
     "#,
     r#"
-        map<i32, i32> count;
+        var count: map<i32, i32>;
         my_fn() -> i32 {
             count[0] = 1;
             return count[0];
         }
         wasm::call:alt {
             count[1] = count[3];
-            i32 a = my_fn();
+            var a: i32 = my_fn();
         }
     "#,
     r#"
-        report i32 a;
+        report var a: i32;
         wasm::br:before {
             a = 1;
-            report bool b;
+            report var b: bool;
         }
     "#,
     // numerics
-    "wasm:opcode:call:alt { i32 num = 0; }",
-    "wasm:opcode:call:alt { i64 num = 0; }",
+    "wasm:opcode:call:alt { var num: i32 = 0; }",
+    "wasm:opcode:call:alt { var num: i64 = 0; }",
     r#"
-        i32 count;
+        var count: i32;
         wasm::i64_const:before / imm0 == 9223372036854775807 / {
             count++;
         }
@@ -111,59 +111,59 @@ wasm::call:alt /
 const TYPE_ERROR_SCRIPTS: &[&str] = &[
     // binary operations
     "wasm:opcode:call:alt {
-        i32 i = 1 << (1, 2, 3);
+        var i: i32 = 1 << (1, 2, 3);
     }",
     "wasm:opcode:call:alt {
-        i32 i = 1 >> \"blah\";
+        var i: i32 = 1 >> \"blah\";
     }",
     "wasm:opcode:call:alt {
-        i32 i = 1 ^ (1, 2, 3);
+        var i: i32 = 1 ^ (1, 2, 3);
     }",
     "wasm:opcode:call:alt {
-        i32 i = 1 & (1, 2, 3);
+        var i: i32 = 1 & (1, 2, 3);
     }",
     "wasm:opcode:call:alt {
-        i32 i = 1 | (1, 2, 3);
+        var i: i32 = 1 | (1, 2, 3);
     }",
     "wasm:opcode:call:alt {
-        f32 v = 1e1;
-        f32 i = v << 1;
+        var v: f32 = 1e1;
+        var i: f32 = v << 1;
     }",
     "wasm:opcode:call:alt {
-        f32 v = 1e1;
-        f32 i = v >> 1;
+        var v: f32 = 1e1;
+        var i: f32 = v >> 1;
     }",
     "wasm:opcode:call:alt {
-        f32 v = 1e1;
-        f32 i = v & 1;
+        var v: f32 = 1e1;
+        var i: f32 = v & 1;
     }",
     "wasm:opcode:call:alt {
-        f32 v = 1e1;
-        f32 i = v | 1;
+        var v: f32 = 1e1;
+        var i: f32 = v | 1;
     }",
     "wasm:opcode:call:alt {
-        f32 v = ~ 1e1;
+        var v: f32 = ~ 1e1;
     }",
     "wasm:opcode:call:alt {
-        f64 v = 1e1;
-        f64 i = v << 1;
+        var v: f64 = 1e1;
+        var i: f64 = v << 1;
     }",
     "wasm:opcode:call:alt {
-        f64 v = 1e1;
-        f64 i = v >> 1;
+        var v: f64 = 1e1;
+        var i: f64 = v >> 1;
     }",
     "wasm:opcode:call:alt {
-        f64 v = 1e1;
-        f64 i = v & 1;
+        var v: f64 = 1e1;
+        var i: f64 = v & 1;
     }",
     "wasm:opcode:call:alt {
-        f64 v = 1e1;
-        f64 i = v | 1;
+        var v: f64 = 1e1;
+        var i: f64 = v | 1;
     }",
     "wasm:opcode:call:alt {
-        f64 v = ~ 1e1;
+        var v: f64 = ~ 1e1;
     }",
-    "wasm:opcode:call:alt / (1 + 3) / { i32 i; }",
+    "wasm:opcode:call:alt / (1 + 3) / { var i: i32; }",
     // predicate
     // note that this will have cascading type check errors
     // might want to make type check errors fatal so that we can stop early
@@ -187,14 +187,14 @@ wasm::call:alt {
     "#,
     // global declaration
     r#"
-i32 x;
+var x: i32;
 wasm::call:alt {
     x = "str";
 }
     "#,
     // tuple
     r#"
-(i32, i32) x;
+var x: (i32, i32);
 wasm::call:alt {
     x = (1, 2, 3);
 }
@@ -202,20 +202,20 @@ wasm::call:alt {
     // local declaration
     r#"
 wasm::call:alt {
-    i32 x;
+    var x: i32;
     x = "str";
 }
     "#,
     // Ternary (TODO: We do not emit code for ternary yet)
     r#"
-i32 i;
+var i: i32;
 wasm::call:alt {
     i = 1 ? 2 : 3;
 }
     "#,
     r#"
-bool i;
-i32 a;
+var i: bool;
+var a: i32;
 wasm:opcode:br:before {
     a = i ? 1 : true;
 }
@@ -242,7 +242,7 @@ wasm::call:alt /
     "#,
     // only allow arg0-9 to be unknown type
     r#"
-i32 u;
+var u: i32;
 wasm::call:alt {
     u = argasdf;
 }
@@ -271,12 +271,12 @@ wasm::call:alt /
 }
     "#,
     r#"
-        bool a;
-        i32 b;
+        var a: bool;
+        var b: i32;
         strcmp(){
             a = false;
         }
-        nested_fn(i32 a) -> i32 {
+        nested_fn(a: i32) -> i32 {
             return a;
         }
         dummy_fn() {
@@ -288,12 +288,12 @@ wasm::call:alt /
         }
     "#,
     r#"
-        bool a;
-        i32 b;
-        nested_fn(i32 a) -> i32 {
+        var a: bool;
+        var b: i32;
+        nested_fn(a: i32) -> i32 {
             return a;
         }
-        nested_fn(i32 a) -> i32 {
+        nested_fn(a: i32) -> i32 {
             return a;
         }
         dummy_fn() {
@@ -305,7 +305,7 @@ wasm::call:alt /
         }
     "#,
     r#"
-        i32 a;
+        var a: i32;
         nested_fn() -> bool {
             return "hi";
             return 1;
@@ -318,7 +318,7 @@ wasm::call:alt /
         }
     "#,
     r#"
-    my_fn(i32 a) -> i32 {
+    my_fn(a: i32) -> i32 {
         if(a > 5){
             return 1;
         }
@@ -328,8 +328,8 @@ wasm::call:alt /
         a = 5;
     }
     wasm::call:alt{
-        bool a = true;
-        i32 b = 5;
+        var a: bool = true;
+        var b: i32 = 5;
         if(a){
             b = 6;
         }
@@ -349,9 +349,9 @@ wasm::call:alt /
         }
     "#,
     r#"
-        bool a = true;
+        var a: bool = true;
         if(a) {
-            i32 b = 5;
+            var b: i32 = 5;
         }
         wasm::call:alt {
         }
@@ -360,56 +360,56 @@ wasm::call:alt /
         my_func() -> bool {
             return true;
         }
-        bool a = my_func();
+        var a: bool = my_func();
         wasm::call:alt {
         }
     "#,
     r#"
-        my_fn(i32 a) -> i32 {
+        my_fn(a: i32) -> i32 {
             return a;
         }
         wasm::call:alt {
-            i32 a = 5;
-            i32 a;
-            i32 b = my_fn(a);
+            var a: i32 = 5;
+            var a: i32;
+            var b: i32 = my_fn(a);
         }
     "#,
     r#"
-        my_fn(i32 a) -> i32 {
+        my_fn(a: i32) -> i32 {
             return a;
         }
         wasm::call:alt {
-            i32 a = 5;
-            i32 a;
-            i32 b = my_fn(a);
+            var a: i32 = 5;
+            var a: i32;
+            var b: i32 = my_fn(a);
         }
     "#,
     r#"
-        my_fn(i32 a) -> i32 {
-            bool a;
+        my_fn(a: i32) -> i32 {
+            var a: bool;
             return a;
         }
-        i32 my_fn;
+        var my_fn: i32;
         wasm::call:alt {
-            i32 b = my_fn(a);
-            i32 my_fn;
-            i32 strcmp;
+            var b: i32 = my_fn(a);
+            var my_fn: i32;
+            var strcmp: i32;
         }
     "#,
     r#"
-        map<i32, i32> count;
+        var count: map<i32, i32>;
         my_fn() -> i32 {
             count[0] = false;
             return count[0];
         }
         wasm::call:alt {
             count[1] = count[3];
-            i32 a = my_fn();
+            var a: i32 = my_fn();
             count[2] = a == count[1];
         }
     "#,
     r#"
-    map<map<i32, i32>, map<i32, i32>> count;
+    var count: map<map<i32, i32>, map<i32, i32>>;
 
         wasm::call:alt {
 
@@ -417,25 +417,25 @@ wasm::call:alt /
     "#,
     r#"
         wasm::call:alt {
-            (i32, map<i32, i32>) a;
+            var a: (i32, map<i32, i32>);
         }
     "#,
     r#"
         wasm::call:alt {
-            (i32, map<i32, i32>) a;
-            map<i32, i32> b;
+            var a: (i32, map<i32, i32>);
+            var b: map<i32, i32>;
             if((1, b) == a){
             }
         }
     "#,
     r#"
-        report i32 a;
+        report var a: i32;
         my_fn() {
-            report i32 c;
+            report var c: i32;
         }
         wasm::br:before {
             a = 1;
-            report bool b;
+            report var b: bool;
         }
     "#,
 ];
@@ -518,7 +518,7 @@ pub fn test_template() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
-        bool a;
+        var a: bool;
         wasm::call:alt {
         }
     "#;
@@ -547,17 +547,17 @@ pub fn expect_fatal_error() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
-        my_fn(i32 a) -> i32 {
-            bool a;
+        my_fn(a: i32) -> i32 {
+            var a: bool;
             return a;
         }
-        i32 my_fn;
-        i32 a;
-        i32 wasm;
+        var my_fn: i32;
+        var a: i32;
+        var wasm: i32;
         wasm::call:alt {
-            i32 b = my_fn(a);
-            i32 my_fn;
-            i32 strcmp;
+            var b: i32 = my_fn(a);
+            var my_fn: i32;
+            var strcmp: i32;
         }
     "#;
     let mut ast = tests::get_ast(script, &mut err);
@@ -572,15 +572,15 @@ pub fn test_recursive_calls() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
-        make5(i32 a) -> i32 {
+        make5(a: i32) -> i32 {
             if(a<5){
                 return make5(a+1);
             }
             return a;
         }
         wasm::call:alt {
-            u32 a = 0;
-            i32 b = make5(a as i32);
+            var a: u32 = 0;
+            var b: i32 = make5(a as i32);
         }
     "#;
     let mut ast = tests::get_ast(script, &mut err);
@@ -596,10 +596,10 @@ pub fn testing_map() {
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
     wasm:opcode:call:after {
-        map<(i32, i32, i32), i32> my_map;
-        (i32, i32, i32) b = (1, 2, 3);
+        var my_map: map<(i32, i32, i32), i32>;
+        var b: (i32, i32, i32) = (1, 2, 3);
         my_map[b] = 2;
-        i32 c = my_map[b];
+        var c: i32 = my_map[b];
     }
     "#;
 
@@ -615,10 +615,10 @@ pub fn test_report_decl() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
-        i32 a;
+        var a: i32;
         wasm::br:before {
             a = 1;
-            report bool b;
+            report var b: bool;
         }"#;
     let mut ast = tests::get_ast(script, &mut err);
     let mut table = verifier::build_symbol_table(&mut ast, &mut err);
@@ -637,7 +637,7 @@ pub fn test_report_decl() {
 //
 //     let script = r#"
 //         BEGIN {
-//             i32 a;
+//             var a: i32;
 //         }
 //     "#;
 //     info!("Typechecking: {}", script);
