@@ -13,7 +13,8 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use log::info;
 use wasmparser::MemArg;
 
-pub const NULL_PTR: u32 = 0;
+pub const NULL_PTR_IN_MEM: i32 = -1;
+pub const NULL_PTR_IN_GLOBAL: i32 = -1;
 
 pub struct ReportVars {
     //MapID -> Metadata
@@ -207,8 +208,44 @@ impl ReportVars {
         // iterate through all the data type flush functions and emit calls
         for dt in self.alloc_tracker.keys() {
             match dt {
+                DataType::U8 => {
+                    let fid = self.emit_flush_u8_fn(io_adapter, mem_id, wasm, err);
+                    func.call(FunctionID(fid));
+                }
+                DataType::I8 => {
+                    let fid = self.emit_flush_i8_fn(io_adapter, mem_id, wasm, err);
+                    func.call(FunctionID(fid));
+                }
+                DataType::U16 => {
+                    let fid = self.emit_flush_u16_fn(io_adapter, mem_id, wasm, err);
+                    func.call(FunctionID(fid));
+                }
+                DataType::I16 => {
+                    let fid = self.emit_flush_i16_fn(io_adapter, mem_id, wasm, err);
+                    func.call(FunctionID(fid));
+                }
+                DataType::U32 => {
+                    let fid = self.emit_flush_u32_fn(io_adapter, mem_id, wasm, err);
+                    func.call(FunctionID(fid));
+                }
                 DataType::I32 => {
                     let fid = self.emit_flush_i32_fn(io_adapter, mem_id, wasm, err);
+                    func.call(FunctionID(fid));
+                }
+                DataType::U64 => {
+                    let fid = self.emit_flush_u64_fn(io_adapter, mem_id, wasm, err);
+                    func.call(FunctionID(fid));
+                }
+                DataType::I64 => {
+                    let fid = self.emit_flush_i64_fn(io_adapter, mem_id, wasm, err);
+                    func.call(FunctionID(fid));
+                }
+                DataType::F32 => {
+                    let fid = self.emit_flush_f32_fn(io_adapter, mem_id, wasm, err);
+                    func.call(FunctionID(fid));
+                }
+                DataType::F64 => {
+                    let fid = self.emit_flush_f64_fn(io_adapter, mem_id, wasm, err);
                     func.call(FunctionID(fid));
                 }
                 _ => {
@@ -351,31 +388,111 @@ impl ReportVars {
         io_adapter.call_puts(&mut flush_fn, err);
         io_adapter.puts(", ".to_string(), &mut flush_fn, err);
 
-        // print 'whamm_type'
-        let mut s = DefaultHasher::new();
-        DataType::I32.hash(&mut s);
-        let i32_hash = s.finish();
-        // TODO -- replace with br_table
-        let i32_ty = DataType::I32;
-        flush_fn
-            .local_get(dt)
-            .i64_const(i32_hash as i64) // see DataType::hash()
-            .i64_eq()
-            .if_stmt(BlockType::Empty);
-        io_adapter.puts(format!("{i32_ty}, "), &mut flush_fn, err);
+        // print 'whamm_type' per supported report variable datatype
+        Self::flush_ty_metadata(
+            &mut flush_fn,
+            DataType::U8,
+            &dt,
+            io_adapter,
+            err
+        );
 
-        // print 'wasm_type'
-        let i32_wasm_tys = i32_ty.to_wasm_type();
-        let i32_wasm_ty = if i32_wasm_tys.len() > 1 {
-            // todo support tuples, strings, etc.
-            unimplemented!()
-        } else {
-            i32_wasm_tys.first().unwrap()
-        };
-        io_adapter.puts(format!("{i32_wasm_ty}, "), &mut flush_fn, err);
+        flush_fn.else_stmt();
+        Self::flush_ty_metadata(
+            &mut flush_fn,
+            DataType::I8,
+            &dt,
+            io_adapter,
+            err
+        );
 
-        // TODO -- handle 'type' for non-i32 values
-        flush_fn.else_stmt().unreachable().end();
+        flush_fn.else_stmt();
+        Self::flush_ty_metadata(
+            &mut flush_fn,
+            DataType::U16,
+            &dt,
+            io_adapter,
+            err
+        );
+
+        flush_fn.else_stmt();
+        Self::flush_ty_metadata(
+            &mut flush_fn,
+            DataType::I16,
+            &dt,
+            io_adapter,
+            err
+        );
+
+        flush_fn.else_stmt();
+        Self::flush_ty_metadata(
+            &mut flush_fn,
+            DataType::U32,
+            &dt,
+            io_adapter,
+            err
+        );
+
+        flush_fn.else_stmt();
+        Self::flush_ty_metadata(
+            &mut flush_fn,
+            DataType::I32,
+            &dt,
+            io_adapter,
+            err
+        );
+
+        flush_fn.else_stmt();
+        Self::flush_ty_metadata(
+            &mut flush_fn,
+            DataType::U64,
+            &dt,
+            io_adapter,
+            err
+        );
+
+        flush_fn.else_stmt();
+        Self::flush_ty_metadata(
+            &mut flush_fn,
+            DataType::I64,
+            &dt,
+            io_adapter,
+            err
+        );
+
+        flush_fn.else_stmt();
+        Self::flush_ty_metadata(
+            &mut flush_fn,
+            DataType::F32,
+            &dt,
+            io_adapter,
+            err
+        );
+
+        flush_fn.else_stmt();
+        Self::flush_ty_metadata(
+            &mut flush_fn,
+            DataType::F64,
+            &dt,
+            io_adapter,
+            err
+        );
+
+        // All other datatypes should dynamically trap
+        // (need to close all if stmts with 'end')
+        #[rustfmt::skip]
+        flush_fn.else_stmt()
+            .unreachable()
+            .end()
+            .end()
+            .end()
+            .end()
+            .end()
+            .end()
+            .end()
+            .end()
+            .end()
+            .end();
 
         // print 'script_id'
         io_adapter.puts("script".to_string(), &mut flush_fn, err);
@@ -403,10 +520,42 @@ impl ReportVars {
         wasm.set_fn_name(flush_fid, "flush_var_metadata".to_string());
         self.flush_tracker.flush_var_metadata_fid = Some(*flush_fid);
     }
+    fn flush_ty_metadata<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        flush_fn: &mut T,
+        dt: DataType,
+        dt_local: &LocalID,
+        io_adapter: &mut IOAdapter,
+        err: &mut ErrorGen
+    ) {
+        let mut s = DefaultHasher::new();
+        dt.hash(&mut s);
+        let hash = s.finish();
+
+        flush_fn.local_get(*dt_local)
+            .i64_const(hash as i64)
+            .i64_eq()
+            .if_stmt(BlockType::Empty);
+        io_adapter.puts(format!("{dt}, "), flush_fn, err);
+        let wasm_tys = dt.to_wasm_type();
+        let wasm_ty = if wasm_tys.len() > 1 {
+            // todo support tuples, strings, etc.
+            unimplemented!()
+        } else {
+            wasm_tys.first().unwrap()
+        };
+        io_adapter.puts(format!("{wasm_ty}, "), flush_fn, err);
+    }
 
     // ==== Flush functions per datatype ====
-    fn emit_flush_i32_fn(
+    fn emit_flush_fn(
         &self,
+        flush_dt: &dyn Fn(
+            &mut FunctionBuilder,
+            &MemArg,
+            &mut IOAdapter,
+            &mut ErrorGen
+        ),
+        dt: DataType,
         io_adapter: &mut IOAdapter,
         mem_id: u32,
         wasm: &mut Module,
@@ -416,19 +565,22 @@ impl ReportVars {
             err.unexpected_error(true, Some("Should have the flush variable metadata function ID, but it's not been generated yet.".to_string()), None);
             unreachable!()
         };
-        let i32_bytes = 4;
         let mem_arg = MemArg {
             align: 0,
             max_align: 0,
             offset: 0,
             memory: mem_id,
         };
+        let val_bytes = if let Some(num) = dt.num_bytes() {
+            num as i32
+        } else {
+            unimplemented!("We can't support flushing this report variable datatype yet.")
+        };
 
         // ============================= REPORT CSV FLUSH ================================
         // id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)
 
         // handles the 'value(s)' output
-        let dt = DataType::I32;
         let mut flush_fn = FunctionBuilder::new(&[], &[]);
 
         let curr_addr = flush_fn.add_local(OrcaType::I32);
@@ -452,18 +604,18 @@ impl ReportVars {
             // If the next_addr is a NULL_PTR, leave it so...
             // otherwise calculate the actual next address:
             //    next_addr = curr_addr + next_addr_offset
-            .u32_const(NULL_PTR)
+            .i32_const(NULL_PTR_IN_MEM)
             .i32_ne()
             .if_stmt(BlockType::Empty)
-                .local_get(curr_addr)
-                .local_get(next_addr)
-                .i32_add()
-                .local_set(next_addr)
+            .local_get(curr_addr)
+            .local_get(next_addr)
+            .i32_add()
+            .local_set(next_addr)
             .end();
 
         // update memory pointer
         flush_fn
-            .i32_const(i32_bytes)
+            .i32_const(4)
             .local_get(curr_addr)
             .i32_add()
             .local_set(curr_addr);
@@ -479,13 +631,11 @@ impl ReportVars {
             .local_tee(curr_addr);
 
         // print the value(s)
-        flush_fn.i32_load(mem_arg);
-        io_adapter.call_puti32(&mut flush_fn, err);
-        io_adapter.putln(&mut flush_fn, err);
+        flush_dt(&mut flush_fn, &mem_arg, io_adapter, err);
 
         // update memory pointer
         flush_fn
-            .i32_const(i32_bytes)
+            .i32_const(val_bytes)
             .local_get(curr_addr)
             .i32_add()
             .local_set(curr_addr);
@@ -496,20 +646,231 @@ impl ReportVars {
         #[rustfmt::skip]
         flush_fn
             .local_get(next_addr)
-            .u32_const(NULL_PTR)
+            .i32_const(NULL_PTR_IN_MEM)
             .i32_ne()
             .if_stmt(BlockType::Empty)
-                .local_get(next_addr)
-                .local_set(curr_addr)
-                .br(1)
+            .local_get(next_addr)
+            .local_set(curr_addr)
+            .br(1)
             .end();
         // otherwise, fall through to end.
 
         flush_fn.end();
 
         let flush_fid = flush_fn.finish_module(wasm);
-        wasm.set_fn_name(flush_fid, "flush_i32_vars".to_string());
+        wasm.set_fn_name(flush_fid, format!("flush_{}_vars", dt));
+
         *flush_fid
+    }
+
+    fn emit_flush_u8_fn(
+        &self,
+        io_adapter: &mut IOAdapter,
+        mem_id: u32,
+        wasm: &mut Module,
+        err: &mut ErrorGen,
+    ) -> u32 {
+        self.emit_flush_fn(&Self::flush_u8, DataType::U8, io_adapter, mem_id, wasm, err)
+    }
+
+    fn flush_u8(
+        flush_fn: &mut FunctionBuilder,
+        mem_arg: &MemArg,
+        io_adapter: &mut IOAdapter,
+        err: &mut ErrorGen
+    ) {
+        flush_fn.i32_load8_u(*mem_arg);
+        io_adapter.call_putu8(flush_fn, err);
+        io_adapter.putln(flush_fn, err);
+    }
+
+    fn emit_flush_i8_fn(
+        &self,
+        io_adapter: &mut IOAdapter,
+        mem_id: u32,
+        wasm: &mut Module,
+        err: &mut ErrorGen,
+    ) -> u32 {
+        self.emit_flush_fn(&Self::flush_i8, DataType::I8, io_adapter, mem_id, wasm, err)
+    }
+
+    fn flush_i8(
+        flush_fn: &mut FunctionBuilder,
+        mem_arg: &MemArg,
+        io_adapter: &mut IOAdapter,
+        err: &mut ErrorGen
+    ) {
+        flush_fn.i32_load8_s(*mem_arg);
+        io_adapter.call_puti8(flush_fn, err);
+        io_adapter.putln(flush_fn, err);
+    }
+
+    fn emit_flush_u16_fn(
+        &self,
+        io_adapter: &mut IOAdapter,
+        mem_id: u32,
+        wasm: &mut Module,
+        err: &mut ErrorGen,
+    ) -> u32 {
+        self.emit_flush_fn(&Self::flush_u16, DataType::U16, io_adapter, mem_id, wasm, err)
+    }
+
+    fn flush_u16(
+        flush_fn: &mut FunctionBuilder,
+        mem_arg: &MemArg,
+        io_adapter: &mut IOAdapter,
+        err: &mut ErrorGen
+    ) {
+        flush_fn.i32_load16_u(*mem_arg);
+        io_adapter.call_putu16(flush_fn, err);
+        io_adapter.putln(flush_fn, err);
+    }
+
+    fn emit_flush_i16_fn(
+        &self,
+        io_adapter: &mut IOAdapter,
+        mem_id: u32,
+        wasm: &mut Module,
+        err: &mut ErrorGen,
+    ) -> u32 {
+        self.emit_flush_fn(&Self::flush_i16, DataType::I16, io_adapter, mem_id, wasm, err)
+    }
+
+    fn flush_i16(
+        flush_fn: &mut FunctionBuilder,
+        mem_arg: &MemArg,
+        io_adapter: &mut IOAdapter,
+        err: &mut ErrorGen
+    ) {
+        flush_fn.i32_load16_s(*mem_arg);
+        io_adapter.call_puti16(flush_fn, err);
+        io_adapter.putln(flush_fn, err);
+    }
+
+    fn emit_flush_u32_fn(
+        &self,
+        io_adapter: &mut IOAdapter,
+        mem_id: u32,
+        wasm: &mut Module,
+        err: &mut ErrorGen,
+    ) -> u32 {
+        self.emit_flush_fn(&Self::flush_u32, DataType::U32, io_adapter, mem_id, wasm, err)
+    }
+
+    fn flush_u32(
+        flush_fn: &mut FunctionBuilder,
+        mem_arg: &MemArg,
+        io_adapter: &mut IOAdapter,
+        err: &mut ErrorGen
+    ) {
+        flush_fn.i32_load(*mem_arg);
+        io_adapter.call_putu32(flush_fn, err);
+        io_adapter.putln(flush_fn, err);
+    }
+
+    fn emit_flush_i32_fn(
+        &self,
+        io_adapter: &mut IOAdapter,
+        mem_id: u32,
+        wasm: &mut Module,
+        err: &mut ErrorGen,
+    ) -> u32 {
+        self.emit_flush_fn(&Self::flush_i32, DataType::I32, io_adapter, mem_id, wasm, err)
+    }
+
+    fn flush_i32(
+        flush_fn: &mut FunctionBuilder,
+        mem_arg: &MemArg,
+        io_adapter: &mut IOAdapter,
+        err: &mut ErrorGen
+    ) {
+        flush_fn.i32_load(*mem_arg);
+        io_adapter.call_puti32(flush_fn, err);
+        io_adapter.putln(flush_fn, err);
+    }
+
+    fn emit_flush_u64_fn(
+        &self,
+        io_adapter: &mut IOAdapter,
+        mem_id: u32,
+        wasm: &mut Module,
+        err: &mut ErrorGen,
+    ) -> u32 {
+        self.emit_flush_fn(&Self::flush_u64, DataType::U64, io_adapter, mem_id, wasm, err)
+    }
+
+    fn flush_u64(
+        flush_fn: &mut FunctionBuilder,
+        mem_arg: &MemArg,
+        io_adapter: &mut IOAdapter,
+        err: &mut ErrorGen
+    ) {
+        flush_fn.i64_load(*mem_arg);
+        io_adapter.call_putu64(flush_fn, err);
+        io_adapter.putln(flush_fn, err);
+    }
+
+    fn emit_flush_i64_fn(
+        &self,
+        io_adapter: &mut IOAdapter,
+        mem_id: u32,
+        wasm: &mut Module,
+        err: &mut ErrorGen,
+    ) -> u32 {
+        self.emit_flush_fn(&Self::flush_i64, DataType::I64, io_adapter, mem_id, wasm, err)
+    }
+
+    fn flush_i64(
+        flush_fn: &mut FunctionBuilder,
+        mem_arg: &MemArg,
+        io_adapter: &mut IOAdapter,
+        err: &mut ErrorGen
+    ) {
+        flush_fn.i64_load(*mem_arg);
+        io_adapter.call_puti64(flush_fn, err);
+        io_adapter.putln(flush_fn, err);
+    }
+
+    fn emit_flush_f32_fn(
+        &self,
+        io_adapter: &mut IOAdapter,
+        mem_id: u32,
+        wasm: &mut Module,
+        err: &mut ErrorGen,
+    ) -> u32 {
+        self.emit_flush_fn(&Self::flush_f32, DataType::F32, io_adapter, mem_id, wasm, err)
+    }
+
+    fn flush_f32(
+        flush_fn: &mut FunctionBuilder,
+        mem_arg: &MemArg,
+        io_adapter: &mut IOAdapter,
+        err: &mut ErrorGen
+    ) {
+        flush_fn.f32_load(*mem_arg);
+        io_adapter.call_putf32(flush_fn, err);
+        io_adapter.putln(flush_fn, err);
+    }
+
+    fn emit_flush_f64_fn(
+        &self,
+        io_adapter: &mut IOAdapter,
+        mem_id: u32,
+        wasm: &mut Module,
+        err: &mut ErrorGen,
+    ) -> u32 {
+        self.emit_flush_fn(&Self::flush_f64, DataType::F64, io_adapter, mem_id, wasm, err)
+    }
+
+    fn flush_f64(
+        flush_fn: &mut FunctionBuilder,
+        mem_arg: &MemArg,
+        io_adapter: &mut IOAdapter,
+        err: &mut ErrorGen
+    ) {
+        flush_fn.f64_load(*mem_arg);
+        io_adapter.call_putf64(flush_fn, err);
+        io_adapter.putln(flush_fn, err);
     }
 
     pub fn report_var_header_bytes() -> u32 {
@@ -551,29 +912,45 @@ impl ReportVars {
                 last_var: None,
             });
 
-        if tracker.first_var.is_none() {
+        let first_var = if let Some(first_var) = tracker.first_var {
+            GlobalID(first_var)
+        } else {
             // On the first allocation for a datatype, the global that points to the first memory
             // location is updated to point to the memory address.
             let gid = wasm.add_global(
-                InitExpr::new(vec![Instructions::Value(Value::I32(curr_addr as i32))]),
+                InitExpr::new(vec![Instructions::Value(Value::I32(NULL_PTR_IN_GLOBAL))]),
                 OrcaType::I32,
-                false,
+                true,
                 false,
             );
             tracker.first_var = Some(*gid);
-        }
+
+            GlobalID(*gid)
+        };
+
+        // if the first_var isn't pointing to anything yet, point it here!
+        #[rustfmt::skip]
+        alloc_func.global_get(first_var)
+            .i32_const(NULL_PTR_IN_GLOBAL)
+            .i32_eq()
+            .if_stmt(BlockType::Empty)
+                .global_get(mem_tracker_global)
+                .u32_const(var_offset)
+                .i32_add()
+                .global_set(first_var)
+            .end();
 
         // TODO -- may be able to just skip this
         // put header in memory at curr_addr, value is: NULL_PTR
         alloc_func.global_get(mem_tracker_global); // (where to store)
-        alloc_func.u32_const(NULL_PTR); // (what to store)
+        alloc_func.i32_const(NULL_PTR_IN_GLOBAL); // (what to store)
         alloc_func.i32_store(MemArg {
             align: 0,
             max_align: 0,
             offset: var_offset as u64,
             memory: mem_id,
         });
-        used_bytes += size_of_val(&NULL_PTR);
+        used_bytes += size_of_val(&NULL_PTR_IN_GLOBAL);
 
         used_bytes as u32
     }
@@ -640,12 +1017,25 @@ impl ReportVars {
                 .global_set(GlobalID(last_var_gid));
         } else {
             let gid = wasm.add_global(
-                InitExpr::new(vec![Instructions::Value(Value::I32(mem_ptr_addr as i32))]),
+                InitExpr::new(vec![Instructions::Value(Value::I32(NULL_PTR_IN_GLOBAL))]),
                 OrcaType::I32,
                 true,
                 false,
             );
             tracker.last_var = Some(*gid);
+            let last_var = GlobalID(*gid);
+
+            // if the last_var isn't pointing to anything yet, point it here!
+            #[rustfmt::skip]
+            alloc_func.global_get(last_var)
+                .i32_const(NULL_PTR_IN_GLOBAL)
+                .i32_eq()
+                .if_stmt(BlockType::Empty)
+                    .global_get(mem_tracker_global)
+                    .u32_const(total_mem_usage - curr_var_mem_usage)
+                    .i32_add()
+                    .global_set(last_var)
+                .end();
         }
     }
 }
@@ -821,3 +1211,5 @@ struct ReportAllocTracker {
 struct FlushTracker {
     flush_var_metadata_fid: Option<u32>,
 }
+
+

@@ -140,6 +140,9 @@ impl IOAdapter {
     ) {
         // s -> [u8] (no need for data segment!)
         // iterate over and call putc
+        // TODO -- import the core_lib memory, save old memory values
+        //      write data to print to core_lib memory, call puts(addr, len)
+        //      write saved values back to memory region
         let data = s.as_bytes();
         for c in data.iter() {
             self.putc(*c, func, err);

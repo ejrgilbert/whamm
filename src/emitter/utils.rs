@@ -442,7 +442,7 @@ fn possibly_emit_memaddr_calc_offset<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLo
     ctx: &mut EmitCtx,
 ) -> bool {
     if let Expr::VarId { name, .. } = var_id {
-        let Some(Record::Var { addr, loc, .. }) = ctx.table.lookup_var_mut(name, &None, ctx.err)
+        let Some(Record::Var { addr, .. }) = ctx.table.lookup_var_mut(name, &None, ctx.err)
         else {
             ctx.err
                 .unexpected_error(true, Some("unexpected type".to_string()), None);
