@@ -9,7 +9,7 @@
  * need to access top-of-stack, locals, program counter
  * need a handle to the function ("func")
 */
-report i32 global_value;
+report var global_value;
 
 wasm::br:before / fname == "calc" || fname == "print_x" / {
     report unshared i32 taken;

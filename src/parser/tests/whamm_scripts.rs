@@ -12,36 +12,36 @@ use log::{debug, error, info, warn};
 const VALID_SCRIPTS: &[&str] = &[
     // casts
     r#"
-u8 i;
+var i: u8;
 
 BEGIN {
-    u32 j = i as u32;
+    var j: u32 = i as u32;
 }
     "#,
     r#"
-u8 i;
+var i: u8;
 
 BEGIN {
-    bool b = true;
-    u32 j = b ? i as u32 : 1 as u32;
+    var b: bool = true;
+    var j: u32 = b ? i as u32 : 1 as u32;
 }
     "#,
     // all numeric types
     r#"
-u8 i;
-i8 i;
-u16 i;
-i16 i;
-u32 i;
-i32 i;
-f32 i;
-u64 i;
-i64 i;
-f64 i;
-bool i;
-str i;
-(i32, i32) i;
-map<i32, i32> i;
+var i: u8;
+var i: i8;
+var i: u16;
+var i: i16;
+var i: u32;
+var i: i32;
+var i: u64;
+var i: i64;
+var i: f32;
+var i: f64;
+var i: bool;
+var i: str;
+var i: (i32, i32);
+var i: map<i32, i32>;
 
 BEGIN { }
     "#,
@@ -102,21 +102,21 @@ wasm::call:alt /
     r#"wasm:::alt / (i == "1") && (b == "2") / { i = 0; }"#,
     // globals
     r#"
-map<i32, i32> count;
+var count: map<i32, i32>;
 BEGIN { }
     "#,
     r#"
-map<i32, i32> count;
+var count: map<i32, i32>;
 count = 0;
 BEGIN { }
     "#,
     //function stuff
     r#"
-    fn_name(i32 param) -> i32{}
+    fn_name(param: i32) -> i32{}
     BEGIN { }
     "#,
     r#"
-    fn_name(i32 param0, i32 param1) -> i32{}
+    fn_name(param0: i32, param1: i32) -> i32{}
     BEGIN { }
     "#,
     r#"
@@ -134,7 +134,7 @@ BEGIN { }
         "#,
     r#"
     wasm:opcode:br:before {
-        i32 i;
+        var i: i32;
         return i;
     }
     "#,
@@ -144,20 +144,20 @@ BEGIN { }
     }
     "#,
     r#"
-    add_vars(i32 a, i32 b) -> i32{
+    add_vars(a: i32, b: i32) -> i32{
         a++;
         b--;
         return a + b;
     }
     wasm:opcode:br:before {
-        i32 a;
-        i32 b;
-        i32 c;
+        var a: i32;
+        var b: i32;
+        var c: i32;
         c = add_vars(a, b);
     }
     "#,
     r#"
-    do_nothing(i32 a, i32 b){
+    do_nothing(a: i32, b: i32){
 
     }
     BEGIN { }
@@ -174,7 +174,7 @@ BEGIN { }
     // Statements (either assignment or function call)
     r#"
     wasm:opcode:br:before {
-        i32 return123;
+        var return123: i32;
     }
     "#,
     r#"
@@ -213,44 +213,44 @@ wasm:opcode:br:before {
     "#,
     // report variables
     r#"
-        i32 a;
-        report i32 c;
+        var a: i32;
+        report var c: i32;
         wasm::br:before {
             a = 1;
-            report bool b;
+            report var b: bool;
         }
     "#,
     // TODO -- uncomment when we've supported special_decl_init
     // r#"
-    //     i32 a;
-    //     report i32 c;
+    //     var a: i32;
+    //     report var c: i32;
     //     wasm::br:before {
     //         a = 1;
-    //         report bool b = true;
+    //         report var b: bool = true;
     //     }
     // "#,
     // unshared variables
     r#"
-        i32 a;
-        unshared i32 c;
+        var a: i32;
+        unshared var c: i32;
         wasm::br:before {
             a = 1;
-            unshared bool b;
+            unshared var b: bool;
         }
     "#,
     // TODO -- uncomment when we've supported special_decl_init
     // r#"
-    //     i32 a;
-    //     unshared i32 c;
+    //     var a: i32;
+    //     unshared var c: i32;
     //     wasm::br:before {
     //         a = 1;
-    //         unshared bool b = true;
+    //         unshared var b: bool = true;
     //     }
     // "#,
     // special variables
     r#"
-        unshared report i32 c;
-        report unshared i32 c;
+        unshared report var c: i32;
+        report unshared var c: i32;
         wasm::br:before {}
     "#,
     // Comments
@@ -283,7 +283,7 @@ wasm:opcode:br:before {
     // If/else stmts
     r#"
         wasm::call:alt{
-            bool a = true;
+            var a: bool = true;
             if(a){
                 i = 0;
             } else {
@@ -299,7 +299,7 @@ wasm:opcode:br:before {
     "#,
     //maps
     r#"
-        map<i32, i32> count;
+        var count: map<i32, i32>;
         my_fn() -> i32{
             count[0] = 0;
             return count[0];
@@ -309,32 +309,32 @@ wasm:opcode:br:before {
         }
     "#,
     r#"
-        map<i32, i32> count;
+        var count: map<i32, i32>;
         BEGIN {
             count[1] = 1+1;
         }
     "#,
     // valid "variants" of reserved keywords
-    "wasm:opcode:call:alt { i32 arg; }",
+    "wasm:opcode:call:alt { var arg: i32; }",
     "wasm:opcode:call:alt { arg = 1; }",
     "wasm:opcode:call:alt { arg0 = 1; }",
     //using tuples
     r#"
-        (i32, i32) sample = (1, 2);
+        var sample: (i32, i32) = (1, 2);
         dummy_fn() {
             a = strcmp(sample, "bookings");
             strcmp((arg0, arg1), "bookings");
         }
-        i32 i;
+        var i: i32;
         i = 5;
-        i32 j = 5;
+        var j: i32 = 5;
         BEGIN{
             strcmp((arg0, arg1), "bookings");
         }
     "#,
     // numerics
-    "wasm:opcode:call:alt { u32 num = 0; }",
-    "wasm:opcode:call:alt { i32 num = 0; }",
+    "wasm:opcode:call:alt { var num: u32 = 0; }",
+    "wasm:opcode:call:alt { var num: i32 = 0; }",
     // trigger available modes per event
     "wasm:opcode:*:before {}",
     "wasm:opcode:br*:before {}",
@@ -407,7 +407,7 @@ core::br:before / i == 1 / { i = 0; }  // SHOULD FAIL HERE
 const INVALID_SCRIPTS: &[&str] = &[
     // globals
     r#"
-map<i32, i32> count;
+var count: map<i32, i32>;
     "#,
     // Variations of PROBE_RULE
     "wasm:opcode:call:alt: { }",
@@ -421,12 +421,12 @@ map<i32, i32> count;
     "wasm:opcode:call:alt / i == 1 / { i; }",
     r#"
     wasm:opcode:br:before {
-        i32 return;
+        var return: i32;
     }
     "#,
     r#"
     wasm:opcode:br:before {
-        i32 if;
+        var if: i32;
     }
     "#,
     // bad incrementor
@@ -471,16 +471,16 @@ map<i32, i32> count;
     "#,
     r#"
         wasm::call:alt{
-            bool a = true;
+            var a: bool = true;
             elif(a){};
         }
     // reserved keywords
-    "wasm:opcode:call:alt { i32 arg0; }",
+    "wasm:opcode:call:alt { var arg0: i32; }",
     r#"
-map<i32, i32> arg0;
+var arg0: map<i32, i32>;
     "#,
     r#"
-        map<i32> count;
+        var count: map<i32>;
         my_fn() -> i32{
             count[0] = 0;
             return count[0];
@@ -490,7 +490,7 @@ map<i32, i32> arg0;
         }
     "#,
     r#"
-        map<i32, i32> count;
+        var count: map<i32, i32>;
         my_fn() -> i32{
             count[0] = 0;
             return count[0];
@@ -501,36 +501,36 @@ map<i32, i32> arg0;
     "#,
     // use report multiple times
     r#"
-        i32 a;
-        report unshared report i32 c;
+        var a: i32;
+        report unshared report var c: i32;
         wasm::br:before {
             a = 1;
-            report bool b;
+            report var b: bool;
         }
     "#,
     r#"
-        i32 a;
-        report i32 c;
+        var a: i32;
+        report var c: i32;
         wasm::br:before {
             a = 1;
-            report unshared report bool b;
+            report unshared report var b: bool;
         }
     "#,
     // use unshared multiple times
     r#"
-        i32 a;
-        unshared report unshared i32 c;
+        var a: i32;
+        unshared report unshared var c: i32;
         wasm::br:before {
             a = 1;
-            unshared bool b;
+            unshared b: bool;
         }
     "#,
     r#"
-        i32 a;
-        unshared i32 c;
+        var a: i32;
+        unshared var ci32;
         wasm::br:before {
             a = 1;
-            unshared report unshared bool b;
+            unshared report unshared var b: bool;
         }
     "#,
 ];
@@ -764,7 +764,7 @@ fn test_global_stmts() {
             strcmp((arg0, arg1), "bookings");
         }
         wasm::call:alt{
-            (i32, i32) a = (arg0, arg1);
+            var a: (i32, i32) = (arg0, arg1);
             strcmp((arg0, arg1), "bookings");
         }
     "#;
@@ -798,14 +798,14 @@ pub fn testing_global_def() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
-        (i32, i32) sample = (1, 2);
+        var sample: (i32, i32) = (1, 2);
         dummy_fn() {
             a = strcmp(sample, "bookings");
             strcmp((arg0, arg1), "bookings");
         }
-        i32 i;
+        var i: i32;
         i = 5;
-        i32 j = 5;
+        var j: i32 = 5;
         BEGIN{
             strcmp((i, j), "bookings");
         }
@@ -818,14 +818,14 @@ pub fn testing_map() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
-        map<i32, map<i32, i32>> count;
+        var count: map<i32, map<i32, i32>>;
         my_fn() -> i32 {
-            map<i32, i32> a;
+            var a: map<i32, i32>;
             count[0] = a;
             return a[0];
         }
         wasm::call:alt {
-            i32 a = my_fn();
+            var a: i32 = my_fn();
         }
     "#;
 
@@ -836,7 +836,7 @@ pub fn testing_tuple_map() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
-        map<(i32, i32, i32), i32> count;
+        var count: map<(i32, i32, i32), i32>;
         wasm::br|br_if:before {
           // count stores an array of counters
           count[(fid, pc, index)]++;
@@ -850,11 +850,11 @@ pub fn test_report_decl() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
-        i32 a;
-        report i32 c;
+        var a: i32;
+        report var c: i32;
         wasm::br:before {
             a = 1;
-            report bool b;
+            report var b: bool;
         }
     "#;
     assert!(is_valid_script(script, &mut err));

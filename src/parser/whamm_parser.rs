@@ -422,12 +422,12 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
 }
 
 fn handle_decl(pair: &mut Pairs<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
+    let var_id_rule = pair.next().unwrap();
+    let var_id_line_col = LineColLocation::from(var_id_rule.as_span());
+
     let type_rule = pair.next().unwrap();
     let type_line_col = LineColLocation::from(type_rule.as_span());
     let ty = type_from_rule_handler(type_rule, err);
-
-    let var_id_rule = pair.next().unwrap();
-    let var_id_line_col = LineColLocation::from(var_id_rule.as_span());
 
     trace!("Exiting declaration");
     vec![Statement::Decl {
@@ -630,7 +630,7 @@ fn handle_decl_init(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     let decls = match decl_pair.as_rule() {
         Rule::special_decl => {
             // handle_special_decl(decl_pair, err)
-            unimplemented!("Declaring a special variable and initializing is not currently supported (e.g. `report i32 i = 0;`).");
+            unimplemented!("Declaring a special variable and initializing is not currently supported (e.g. `report var i = 0;`).");
         }
         Rule::decl => handle_decl(&mut decl_pair.into_inner(), err),
         rule => {
@@ -890,11 +890,11 @@ fn handle_special_decl(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
 // EXPRESSIONS
 
 fn handle_param(mut pairs: Pairs<Rule>, err: &mut ErrorGen) -> Option<(Expr, DataType)> {
-    if let Some(param_rule) = pairs.next() {
-        // process the type
-        let ty = type_from_rule_handler(param_rule, err);
+    if let Some(id_rule) = pairs.next() {
         // process the name
-        let id = handle_id(pairs.next().unwrap());
+        let id = handle_id(id_rule);
+        // process the type
+        let ty = type_from_rule_handler(pairs.next().unwrap(), err);
         Some((id, ty))
     } else {
         None

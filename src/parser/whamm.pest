@@ -12,7 +12,7 @@ predicate = { "/" ~ expr ~ "/" }
 
 //making the decision not to support "void" functions -- can change later
 fn_def = { ID ~ "(" ~ (( param ) ~ ("," ~ param )*) ? ~ ")" ~ ("->" ~ TYPE) ? ~ block }
-param = { TYPE ~ ID }
+param = { ID ~ ":" ~ TYPE }
 // =====================
 // ---- Identifiers ----
 // =====================
@@ -114,7 +114,7 @@ UNSHARED = @{ "unshared" }
 var_decorators = { ( REPORT | UNSHARED )+ }
 special_decl = { var_decorators ~ decl }
 assignment = { (get_map | ID) ~ "=" ~ (ternary | expr) }
-decl = { TYPE ~ !RESERVED_KEYWORDS ~ ID }
+decl = { "var" ~ !RESERVED_KEYWORDS ~ ID ~ ":" ~ TYPE  }
 decl_init = { (special_decl | decl) ~ "=" ~ (ternary | expr) }
 
 // =====================

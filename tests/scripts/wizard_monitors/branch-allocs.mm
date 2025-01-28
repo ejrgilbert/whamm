@@ -11,15 +11,15 @@
 */
 
 wasm::br:before {
-  unshared i32 taken;
+  unshared var taken: i32;
   // branch always taken for `br`
   // count stores an array of counters
   taken++;
 }
 
 wasm::br_if:before {
-  unshared i32 taken;
-  unshared i32 not_taken;
+  unshared var taken: i32;
+  unshared var not_taken: i32;
 
   // which branch was taken?
   if (arg0 != 0) {
@@ -30,9 +30,9 @@ wasm::br_if:before {
 }
 
 wasm::br_table:before {
-  unshared map<i32, i32> taken_branches;
+  unshared var taken_branches: map<i32, i32> ;
   // which branch was taken?
-  i32 index;
+  var index: i32;
   index = arg0 < (num_targets - 1) ? targets[arg0] as i32 : default_target as i32;
 
   // count stores an array of counters

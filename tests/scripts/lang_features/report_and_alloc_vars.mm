@@ -1,6 +1,6 @@
 wasm:opcode:call:before {
-    unshared i32 count;
-    report i32 rep_count;
+    unshared var count: i32;
+    report var rep_count;
 
     count++;
 
