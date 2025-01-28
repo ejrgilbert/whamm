@@ -123,7 +123,7 @@ impl UnsharedVarHandler {
                 report_metadata,
             } in unshared_to_alloc.iter()
             {
-                println!("Allocating var of type: {ty}");
+                // println!("Allocating var of type: {ty}");
                 let prev_offset = curr_offset;
 
                 if *is_report {

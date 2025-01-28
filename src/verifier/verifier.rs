@@ -7,6 +7,7 @@ use crate::parser::types::{
 use crate::verifier::builder_visitor::SymbolTableBuilder;
 use crate::verifier::types::{line_col_from_loc, Record, SymbolTable};
 use std::vec;
+use crate::parser::types::Definition::CompilerDynamic;
 
 const UNEXPECTED_ERR_MSG: &str =
     "TypeChecker: Looks like you've found a bug...please report this behavior! Exiting now...";
@@ -220,6 +221,51 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
 
     fn visit_event(&mut self, event: &mut dyn Event) -> Option<DataType> {
         let _ = self.table.enter_named_scope(&event.name());
+
+        for (var, ty_bound) in event.ty_info().iter() {
+            if let Expr::VarId { name, loc, .. } = var {
+                if let Some(id) = self.table.lookup(name) {
+                    if let Some(rec) = self.table.get_record_mut(id) {
+                        if let Record::Var { ty, def, loc, .. } = rec {
+                            if !matches!(def, CompilerDynamic) {
+                                self.err.type_check_error(
+                                    false,
+                                    "Type bounds should only be done for dynamically defined compiler variables (e.g. argN, localN)".to_owned(),
+                                    &loc.clone().map(|l| l.line_col),
+                                );
+                            }
+                            *ty = ty_bound.clone();
+                        } else {
+                            // unexpected record type
+                            self.err.unexpected_error(
+                                true,
+                                Some(format!("{UNEXPECTED_ERR_MSG} Expected Var type")),
+                                loc.clone().map(|l| l.line_col),
+                            )
+                        }
+                    }
+                } else {
+                    let _ = self.table.put(
+                        name.clone(),
+                        Record::Var {
+                            ty: ty_bound.clone(),
+                            name: name.clone(),
+                            value: None,
+                            def: CompilerDynamic,
+                            is_report_var: false,
+                            addr: None,
+                            loc: loc.clone(),
+                        },
+                    );
+                }
+            } else {
+                self.err.type_check_error(
+                    false,
+                    format!("{UNEXPECTED_ERR_MSG} Expected VarId type"),
+                    &None,
+                );
+            }
+        }
 
         event.probes_mut().iter_mut().for_each(|(_, probe)| {
             probe.iter_mut().for_each(|probe| {
@@ -884,14 +930,15 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
             }
             Expr::VarId { name, loc, .. } => {
                 // TODO: fix this with type declarations for argN
-                if name.starts_with("arg") && name[3..].parse::<u32>().is_ok() {
-                    return Some(DataType::AssumeGood);
-                }
+                // if name.starts_with("arg") && name[3..].parse::<u32>().is_ok() {
+                //     return Some(DataType::AssumeGood);
+                // }
 
                 // get type from symbol table
                 if let Some(id) = self.table.lookup(name) {
                     if let Some(rec) = self.table.get_record(id) {
                         if let Record::Var { ty, .. } = rec {
+                            // println!("{name}: {ty}");
                             return Some(ty.clone());
                         } else {
                             // unexpected record type
@@ -916,11 +963,19 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         }
                     }
                 }
-                self.err.type_check_error(
-                    false,
-                    format! {"`{}` not found in symbol table", name},
-                    &loc.clone().map(|l| l.line_col),
-                );
+                if name.starts_with("arg") || name.starts_with("local"){
+                    self.err.type_check_error(
+                        false,
+                        format! {"Please add type bound for `{}`", name},
+                        &loc.clone().map(|l| l.line_col),
+                    );
+                } else {
+                    self.err.type_check_error(
+                        false,
+                        format! {"`{}` not found in symbol table", name},
+                        &loc.clone().map(|l| l.line_col),
+                    );
+                }
 
                 Some(DataType::AssumeGood)
             }
@@ -1145,6 +1200,8 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                             msg,
                                             &Some(key_loc.line_col),
                                         )
+                                    } else {
+                                        return Some(*val_ty);
                                     }
                                 } else {
                                     self.err.type_check_error(
@@ -1155,6 +1212,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 }
                                 return Some(DataType::AssumeGood);
                             }
+                            println!("map_val_ty: {}", val_ty);
                             Some(*val_ty)
                         } else if matches!(map_ty, DataType::AssumeGood) {
                             return Some(DataType::AssumeGood);

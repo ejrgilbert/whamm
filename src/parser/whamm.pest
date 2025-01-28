@@ -11,7 +11,8 @@ probe_def = { PROBE_RULE ~ PUSH(predicate?) ~ block }
 predicate = { "/" ~ expr ~ "/" }
 
 //making the decision not to support "void" functions -- can change later
-fn_def = { ID ~ "(" ~ (( param ) ~ ("," ~ param )*) ? ~ ")" ~ ("->" ~ TYPE) ? ~ block }
+fn_def = { "fn" ~ ID ~ "(" ~ param_list? ~ ")" ~ ("->" ~ TYPE) ? ~ block }
+param_list = _{ (( param ) ~ ("," ~ param )*) }
 param = { ID ~ ":" ~ TYPE }
 // =====================
 // ---- Identifiers ----
@@ -30,6 +31,9 @@ PROBE_ID = @{
     | "["
     | "]")+
 }
+
+EVENT_TY_INFO = { "(" ~ param_list ~ ")" }
+
 //disallowed IDs should have the full list of reserved names like return
 get_map = { ID ~ "[" ~ expr ~ "]"}
 
@@ -37,11 +41,8 @@ DISALLOWED_ID = _{ "return" | "if" | "while" | "else" | "map" }
 ID = @{ (!DISALLOWED_ID ~ (ASCII_ALPHA | "_")+ ~ ( ASCII_DIGIT | (ASCII_ALPHA | "_")+ )*) |
         (DISALLOWED_ID ~ (ASCII_ALPHA | "_" | ASCII_DIGIT)+)
 }
-// TODO -- I think we only want the one that has all three colons, or a single PROBE_ID
-PROBE_RULE = ${
-    PROBE_ID? ~ ":" ~ PROBE_ID? ~ ":" ~ PROBE_ID? ~ ":" ~ PROBE_ID?
-    | PROBE_ID? ~ ":" ~ PROBE_ID? ~ ":" ~ PROBE_ID?
-    | PROBE_ID? ~ ":" ~ PROBE_ID?
+PROBE_RULE = {
+    PROBE_ID? ~ ":" ~ PROBE_ID? ~ ":" ~ PROBE_ID? ~ EVENT_TY_INFO? ~ ":" ~ PROBE_ID?
     | PROBE_ID
 }
 

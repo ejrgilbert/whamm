@@ -10,6 +10,13 @@ use glob::{glob, glob_with};
 use log::{debug, error, info, warn};
 
 const VALID_SCRIPTS: &[&str] = &[
+    // type bounding
+    r#"
+wasm:opcode:call(arg0: i32):before {}
+wasm:opcode:local_set(arg3: i64):before {}
+wasm:opcode:call(local5: f32):before {}
+wasm:opcode:call(local5: f32, arg0: u8):before {}
+    "#,
     // casts
     r#"
 var i: u8;
@@ -70,7 +77,7 @@ wasm:opcode:br:before {
     "wasm:opcode::alt { }",
     // Predicates
     "wasm:opcode:br:before / i / { }",
-    r#"wasm:opcode:br:before / "i" <= 1 / { }"#, // TODO make invalid in type checking
+    r#"wasm:opcode:br:before / "i" <= 1 / { }"#,
     "wasm:opcode:br:before / i54 < r77 / { }",
     "wasm:opcode:br:before / i54 < r77 / { }",
     "wasm:opcode:br:before / i != 7 / { }",
@@ -112,21 +119,21 @@ BEGIN { }
     "#,
     //function stuff
     r#"
-    fn_name(param: i32) -> i32{}
+    fn fn_name(param: i32) -> i32{}
     BEGIN { }
     "#,
     r#"
-    fn_name(param0: i32, param1: i32) -> i32{}
+    fn fn_name(param0: i32, param1: i32) -> i32{}
     BEGIN { }
     "#,
     r#"
-    fn_name() -> i32{
+    fn fn_name() -> i32{
         i = 0;
     }
     BEGIN { }
         "#,
     r#"
-    fn_name() -> i32{
+    fn fn_name() -> i32{
         i = 0;
         i++;
     }
@@ -144,7 +151,7 @@ BEGIN { }
     }
     "#,
     r#"
-    add_vars(a: i32, b: i32) -> i32{
+    fn add_vars(a: i32, b: i32) -> i32{
         a++;
         b--;
         return a + b;
@@ -157,16 +164,16 @@ BEGIN { }
     }
     "#,
     r#"
-    do_nothing(a: i32, b: i32){
+    fn do_nothing(a: i32, b: i32){
 
     }
     BEGIN { }
     "#,
     r#"
-    nested_fn() -> i32 {
+    fn nested_fn() -> i32 {
         return 5;
     }
-    outter_fn() -> i32 {
+    fn outter_fn() -> i32 {
         return nested_fn() + 1;
     }
     BEGIN {}
@@ -300,7 +307,7 @@ wasm:opcode:br:before {
     //maps
     r#"
         var count: map<i32, i32>;
-        my_fn() -> i32{
+        fn my_fn() -> i32{
             count[0] = 0;
             return count[0];
         }
@@ -321,7 +328,7 @@ wasm:opcode:br:before {
     //using tuples
     r#"
         var sample: (i32, i32) = (1, 2);
-        dummy_fn() {
+        fn dummy_fn() {
             a = strcmp(sample, "bookings");
             strcmp((arg0, arg1), "bookings");
         }
@@ -440,12 +447,12 @@ var count: map<i32, i32>;
         "#,
     // bad fn definitions
     r#"
-    fn_name() -> i32{
+    fn fn_name() -> i32{
     wasm:opcode:br:before {
     }
         "#,
     r#"
-    fn_name(, arg0) -> i32{}
+    fn fn_name(, arg0) -> i32{}
     wasm:opcode:br:before {
     }
         "#,
@@ -481,7 +488,7 @@ var arg0: map<i32, i32>;
     "#,
     r#"
         var count: map<i32>;
-        my_fn() -> i32{
+        fn my_fn() -> i32{
             count[0] = 0;
             return count[0];
         }
@@ -491,7 +498,7 @@ var arg0: map<i32, i32>;
     "#,
     r#"
         var count: map<i32, i32>;
-        my_fn() -> i32{
+        fn my_fn() -> i32{
             count[0] = 0;
             return count[0];
         }
@@ -653,7 +660,7 @@ pub fn test_parse_invalid_scripts() {
 pub fn test_whamm_with_asserts() {
     setup_logger();
     let script = r#"
-my_func() -> i32 {
+fn my_func() -> i32 {
     return 5;
     return 5;
     return 5;
@@ -741,7 +748,7 @@ pub fn testing_strcmp() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
-        dummy_fn() {
+        fn dummy_fn() {
             a = strcmp((arg0, arg1), "bookings");
             strcmp((arg0, arg1), "bookings");
         }
@@ -759,7 +766,7 @@ fn test_global_stmts() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
-        dummy_fn() {
+        fn dummy_fn() {
             a = strcmp((arg0, arg1), "bookings");
             strcmp((arg0, arg1), "bookings");
         }
@@ -776,7 +783,7 @@ pub fn testing_block() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
-        dummy_fn() {
+        fn dummy_fn() {
             a = strcmp((arg0, arg1), "bookings");
             strcmp((arg0, arg1), "bookings");
         }
@@ -799,7 +806,7 @@ pub fn testing_global_def() {
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
         var sample: (i32, i32) = (1, 2);
-        dummy_fn() {
+        fn dummy_fn() {
             a = strcmp(sample, "bookings");
             strcmp((arg0, arg1), "bookings");
         }
@@ -819,7 +826,7 @@ pub fn testing_map() {
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
         var count: map<i32, map<i32, i32>>;
-        my_fn() -> i32 {
+        fn my_fn() -> i32 {
             var a: map<i32, i32>;
             count[0] = a;
             return a[0];

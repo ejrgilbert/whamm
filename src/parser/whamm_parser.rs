@@ -1224,57 +1224,73 @@ fn probe_rule_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeRule {
         };
 
         return ProbeRule {
-            provider: Some(RulePart {
-                name: "core".to_string(),
-                loc: loc.clone(),
-            }),
-            package: Some(RulePart {
-                name: "*".to_string(),
-                loc: loc.clone(),
-            }),
-            event: Some(RulePart {
-                name: "*".to_string(),
-                loc: loc.clone(),
-            }),
-            mode: Some(RulePart {
-                name: rule_as_str.to_string(),
-                loc,
-            }),
+            provider: Some(RulePart::new("core".to_string(), loc.clone())),
+            package: Some(RulePart::new("*".to_string(), loc.clone())),
+            event: Some(RulePart::new("*".to_string(), loc.clone())),
+            mode: Some(RulePart::new(rule_as_str.to_string(), loc)),
         };
     }
 
-    let str_parts = rule_as_str.split(':');
+    let simplified = if let Some((prefix, postfix)) = rule_as_str.split_once("(") {
+        let (_, after) = postfix.split_once(")").unwrap();
+        format!("{prefix}{after}")
+    } else {
+        rule_as_str.to_string()
+    };
+
+    let str_parts = simplified.split(':').into_iter();
 
     let mut probe_rule = ProbeRule::new();
     let mut contents: Vec<String> = vec![];
+    let mut next = parts.next();
     for s in str_parts {
-        if s.is_empty() {
-            probe_rule.add_rule_def(RulePart {
-                name: "*".to_string(),
-                loc: None,
-            });
+        if s.trim().is_empty() {
+            probe_rule.add_rule_def(RulePart::new("*".to_string(), None));
             contents.push("*".to_string());
             continue;
         }
-        let next = parts.next();
 
-        match next {
+        let mut rule_part = match next {
             Some(part) => match part.as_rule() {
                 Rule::PROBE_ID => {
-                    let n = probe_rule_part_from_rule(part, err);
-                    probe_rule.add_rule_def(n);
+                    next = parts.next();
+                    probe_rule_part_from_rule(part.clone(), err)
                 }
                 _ => {
-                    probe_rule.add_rule_def(RulePart {
-                        name: "*".to_string(),
-                        loc: None,
-                    });
+                    next = parts.next();
+                    RulePart::new("*".to_string(), None)
                 }
             },
             None => {
                 break;
             }
         };
+
+
+        // check if there is type info associated with this probe part
+        if let Some(n) = next.clone() {
+            if matches!(n.as_rule(), Rule::EVENT_TY_INFO) {
+                let mut param_pairs = n.into_inner();
+
+                let mut params = vec![];
+                let mut next_param = param_pairs.next();
+                while let Some(n) = &next_param {
+                    if matches!(n.as_rule(), Rule::param) {
+                        if let Some(param) = handle_param(n.clone().into_inner(), err) {
+                            params.push(param)
+                        }
+                        next_param = param_pairs.next();
+                    } else {
+                        break;
+                    }
+                }
+
+                // let params = handle_params(&mut parts, err);
+                next = parts.next();
+                rule_part.ty_info = params;
+            }
+        }
+        probe_rule.add_rule_def(rule_part);
     }
     trace!("Exiting probe_rule_from_rule");
 
@@ -1288,13 +1304,10 @@ fn probe_rule_part_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> RulePart {
             let name: String = pair.as_str().parse().unwrap();
             let id_line_col = LineColLocation::from(pair.as_span());
 
-            let part = RulePart {
-                name,
-                loc: Some(Location {
-                    line_col: id_line_col,
-                    path: None,
-                }),
-            };
+            let part = RulePart::new(name, Some(Location {
+                line_col: id_line_col,
+                path: None,
+            }));
             trace!("Exiting PROBE_ID");
 
             trace!("Exiting probe_rule_part_from_rule");

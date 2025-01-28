@@ -863,14 +863,14 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::U64 | DataType::I64 => injector.i64_eq(),
                 DataType::F32 => injector.f32_eq(),
                 DataType::F64 => injector.f64_eq(),
-                DataType::AssumeGood => {
-                    // TODO -- fix after type bounds are implemented
-                    injector.i32_eq()
-                }
+                //  => {
+                //     // TODO -- fix after type bounds are implemented
+                //     injector.i32_eq()
+                // }
                 DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
                     unimplemented!("We do not support equal for {done_on}")
                 }
-                DataType::Unknown => unreachable!("Attempted equal for {done_on}"),
+                DataType::AssumeGood | DataType::Unknown => unreachable!("Attempted equal for {done_on}"),
             };
         }
         BinOp::NE => {
@@ -885,14 +885,14 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::U64 | DataType::I64 => injector.i64_ne(),
                 DataType::F32 => injector.f32_ne(),
                 DataType::F64 => injector.f64_ne(),
-                DataType::AssumeGood => {
-                    // TODO -- fix after type bounds are implemented
-                    injector.i32_ne()
-                }
+                // DataType::AssumeGood => {
+                //     // TODO -- fix after type bounds are implemented
+                //     injector.i32_ne()
+                // }
                 DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
                     unimplemented!("We do not support not equal for {done_on}")
                 }
-                DataType::Unknown => unreachable!("Attempted not equal for {done_on}"),
+                DataType::AssumeGood | DataType::Unknown => unreachable!("Attempted not equal for {done_on}"),
             };
         }
         BinOp::GE => {
@@ -908,14 +908,14 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::I64 => injector.i64_gte_signed(),
                 DataType::F32 => injector.f32_ge(),
                 DataType::F64 => injector.f64_ge(),
-                DataType::AssumeGood => {
-                    // TODO -- fix after type bounds are implemented
-                    injector.i32_gte_signed()
-                }
+                // DataType::AssumeGood => {
+                //     // TODO -- fix after type bounds are implemented
+                //     injector.i32_gte_signed()
+                // }
                 DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
                     unimplemented!("We do not support greater than or equal to for {done_on}")
                 }
-                DataType::Unknown => {
+                DataType::AssumeGood | DataType::Unknown => {
                     unreachable!("Attempted greater than or equal to for {done_on}")
                 }
             };
@@ -933,14 +933,14 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::I64 => injector.i64_gt_signed(),
                 DataType::F32 => injector.f32_gt(),
                 DataType::F64 => injector.f64_gt(),
-                DataType::AssumeGood => {
-                    // TODO -- fix after type bounds are implemented
-                    injector.i32_gt_signed()
-                }
+                //  => {
+                //     // TODO -- fix after type bounds are implemented
+                //     injector.i32_gt_signed()
+                // }
                 DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
                     unimplemented!("We do not support greater than for {done_on}")
                 }
-                DataType::Unknown => unreachable!("Attempted greater than for {done_on}"),
+                DataType::AssumeGood | DataType::Unknown => unreachable!("Attempted greater than for {done_on}"),
             };
         }
         BinOp::LE => {
@@ -956,14 +956,14 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::I64 => injector.i64_lte_signed(),
                 DataType::F32 => injector.f32_le(),
                 DataType::F64 => injector.f64_le(),
-                DataType::AssumeGood => {
-                    // TODO -- fix after type bounds are implemented
-                    injector.i32_lte_signed()
-                }
+                // DataType::AssumeGood => {
+                //     // TODO -- fix after type bounds are implemented
+                //     injector.i32_lte_signed()
+                // }
                 DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
                     unimplemented!("We do not support less than or equal to for {done_on}")
                 }
-                DataType::Unknown => unreachable!("Attempted less then or equal to for {done_on}"),
+                DataType::AssumeGood | DataType::Unknown => unreachable!("Attempted less then or equal to for {done_on}"),
             };
         }
         BinOp::LT => {
@@ -979,14 +979,14 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::I64 => injector.i64_lt_signed(),
                 DataType::F32 => injector.f32_lt(),
                 DataType::F64 => injector.f64_lt(),
-                DataType::AssumeGood => {
-                    // TODO -- fix after type bounds are implemented
-                    injector.i32_lt_signed()
-                }
+                // DataType::AssumeGood => {
+                //     // TODO -- fix after type bounds are implemented
+                //     injector.i32_lt_signed()
+                // }
                 DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
                     unimplemented!("We do not support less than for {done_on}")
                 }
-                DataType::Unknown => unreachable!("Attempted less than for {done_on}"),
+                DataType::AssumeGood | DataType::Unknown => unreachable!("Attempted less than for {done_on}"),
             };
         }
         BinOp::Add => {
@@ -1025,14 +1025,14 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::U64 | DataType::I64 => injector.i64_add(),
                 DataType::F32 => injector.f32_add(),
                 DataType::F64 => injector.f64_add(),
-                DataType::AssumeGood => {
-                    // TODO -- fix after type bounds are implemented
-                    injector.i32_add()
-                }
+                // DataType::AssumeGood => {
+                //     // TODO -- fix after type bounds are implemented
+                //     injector.i32_add()
+                // }
                 DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
                     unimplemented!("We do not support addition for {done_on}")
                 }
-                DataType::Unknown => unreachable!("Attempted addition for {done_on}"),
+                DataType::AssumeGood | DataType::Unknown => unreachable!("Attempted addition for {done_on}"),
             };
         }
         BinOp::Subtract => {
@@ -1071,14 +1071,14 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::U64 | DataType::I64 => injector.i64_sub(),
                 DataType::F32 => injector.f32_sub(),
                 DataType::F64 => injector.f64_sub(),
-                DataType::AssumeGood => {
-                    // TODO -- fix after type bounds are implemented
-                    injector.i32_sub()
-                }
+                // DataType::AssumeGood => {
+                //     // TODO -- fix after type bounds are implemented
+                //     injector.i32_sub()
+                // }
                 DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
                     unimplemented!("We do not support subtract for {done_on}")
                 }
-                DataType::Unknown => unreachable!("Attempted subtract for {done_on}"),
+                DataType::AssumeGood | DataType::Unknown => unreachable!("Attempted subtract for {done_on}"),
             };
         }
         BinOp::Multiply => {
@@ -1117,14 +1117,14 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::U64 | DataType::I64 => injector.i64_mul(),
                 DataType::F32 => injector.f32_mul(),
                 DataType::F64 => injector.f64_mul(),
-                DataType::AssumeGood => {
-                    // TODO -- fix after type bounds are implemented
-                    injector.i32_mul()
-                }
+                // DataType::AssumeGood => {
+                //     // TODO -- fix after type bounds are implemented
+                //     injector.i32_mul()
+                // }
                 DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
                     unimplemented!("We do not support multiply for {done_on}")
                 }
-                DataType::Unknown => unreachable!("Attempted multiply for {done_on}"),
+                DataType::AssumeGood | DataType::Unknown => unreachable!("Attempted multiply for {done_on}"),
             };
         }
         BinOp::Divide => {
@@ -1164,14 +1164,14 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::I64 => injector.i64_div_signed(),
                 DataType::F32 => injector.f32_div(),
                 DataType::F64 => injector.f64_div(),
-                DataType::AssumeGood => {
-                    // TODO -- fix after type bounds are implemented
-                    injector.i32_div_signed()
-                }
+                // DataType::AssumeGood => {
+                //     // TODO -- fix after type bounds are implemented
+                //     injector.i32_div_signed()
+                // }
                 DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
                     unimplemented!("We do not support divide for {done_on}")
                 }
-                DataType::Unknown => unreachable!("Attempted divide for {done_on}"),
+                DataType::AssumeGood | DataType::Unknown => unreachable!("Attempted divide for {done_on}"),
             };
         }
         BinOp::Modulo => {
@@ -1271,14 +1271,14 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                         .local_get(a)
                         .f64_copysign()
                 }
-                DataType::AssumeGood => {
-                    // TODO -- fix after type bounds are implemented
-                    injector.i32_rem_signed()
-                }
+                // DataType::AssumeGood => {
+                //     // TODO -- fix after type bounds are implemented
+                //     injector.i32_rem_signed()
+                // }
                 DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
                     unimplemented!("We do not support modulo for {done_on}")
                 }
-                DataType::Unknown => unreachable!("Attempted modulo for {done_on}"),
+                DataType::AssumeGood | DataType::Unknown => unreachable!("Attempted modulo for {done_on}"),
             };
         }
         BinOp::LShift => {

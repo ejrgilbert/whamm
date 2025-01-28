@@ -883,7 +883,7 @@ impl ReportVars {
     pub fn alloc_report_var_header(
         &mut self,
         data_type: &DataType,
-        curr_addr: u32,
+        _curr_addr: u32,
         var_offset: u32,
         mem_id: u32,
         mem_tracker_global: GlobalID,
@@ -960,13 +960,13 @@ impl ReportVars {
         data_type: &DataType,
         curr_var_mem_usage: u32,
         total_mem_usage: u32,
-        mem_ptr_addr: u32,
+        _mem_ptr_addr: u32,
         mem_id: u32,
         mem_tracker_global: GlobalID,
         alloc_func: &mut FunctionBuilder,
         wasm: &mut Module,
     ) {
-        println!("curr_var_mem_usage: {curr_var_mem_usage}");
+        // println!("curr_var_mem_usage: {curr_var_mem_usage}");
 
         let tracker = self
             .alloc_tracker

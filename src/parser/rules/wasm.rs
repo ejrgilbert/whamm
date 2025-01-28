@@ -1,8 +1,5 @@
 use crate::for_each_opcode;
-use crate::parser::rules::{
-    event_factory, get_br_table_globals, get_call_fns, get_call_globals, Event, EventInfo,
-    FromStrWithLoc, NameOptions, Package, PackageInfo, Probe, WhammModeKind,
-};
+use crate::parser::rules::{event_factory, get_br_table_globals, get_call_fns, get_call_globals, Event, EventInfo, FromStrWithLoc, NameOptions, Package, PackageInfo, Probe, WhammModeKind, UNKNOWN_ARGS};
 use crate::parser::types::{
     Block, DataType, Expr, Location, ProbeRule, ProvidedFunction, ProvidedGlobal,
 };
@@ -33,7 +30,7 @@ impl NameOptions for WasmPackage {
     }
 }
 impl FromStrWithLoc for WasmPackage {
-    fn from_str(name: &str, loc: Option<Location>) -> Self {
+    fn from_str(name: &str, _ty_info: Vec<(Expr, DataType)>, loc: Option<Location>) -> Self {
         match name {
             "opcode" => Self::opcode(loc),
             _ => panic!("unsupported WasmPackage: {name}"),
@@ -169,7 +166,7 @@ impl Package for WasmPackage {
 }
 
 macro_rules! define_opcode {
-    ($($op:ident, $name:ident, $num_args:expr, $imms:expr, $globals:expr, $fns:expr, $supported_modes:expr, $req_map:expr, $docs:expr)*) => {
+    ($($op:ident, $name:ident, $args:expr, $imms:expr, $globals:expr, $fns:expr, $supported_modes:expr, $req_map:expr, $docs:expr)*) => {
         /// Instructions as defined [here].
         ///
         /// [here]: https://webassembly.github.io/spec/core/binary/instructions.html
@@ -177,7 +174,7 @@ macro_rules! define_opcode {
         pub enum OpcodeEventKind {
             $(
                 $op {
-                    num_args: u32,
+                    args: Option<Vec<DataType>>,
                     // XXX: Possible issue: ALL counts must be know-able, or NONE
                     // vec![(type, count)], where count = -1, means unknown number
                     imms: Vec<(DataType, i32)>
@@ -196,11 +193,11 @@ macro_rules! define_opcode {
                         /// isn't necessarily consistent based on just which opcode
                         /// we're at.
                         /// (Sometimes a specific opcode's arg0 is i32, sometimes it's not)
-            fn get_num_args(&self) -> &u32 {
+            fn get_args(&self) -> &Option<Vec<DataType>> {
                 match self {
                     $(
-                        Self::$op {num_args, ..}
-                    )|* => &num_args,
+                        Self::$op {args, ..}
+                    )|* => &args,
                 }
             }
 
@@ -217,7 +214,7 @@ macro_rules! define_opcode {
             $(
             pub fn $name() -> Self {
                 Self::$op {
-                    num_args: $num_args,
+                    args: $args,
                     imms: $imms
                 }
             }
@@ -235,9 +232,9 @@ macro_rules! define_opcode {
             }
         }
         impl FromStrWithLoc for OpcodeEvent {
-            fn from_str(name: &str, loc: Option<Location>) -> Self {
+            fn from_str(name: &str, ty_info: Vec<(Expr, DataType)>, loc: Option<Location>) -> Self {
                 match name {
-                    $(stringify!($name) => Self::$name(loc),)*
+                    $(stringify!($name) => Self::$name(ty_info, loc),)*
                      _ => panic!("unsupported OpcodeEvent: {name}"),
                 }
             }
@@ -249,23 +246,36 @@ macro_rules! define_opcode {
 
             fn init_globals(kind: &OpcodeEventKind) -> HashMap<String, ProvidedGlobal> {
                 let mut globals = HashMap::new();
-                Self::gen_args(&mut globals, *kind.get_num_args());
+                Self::gen_args(&mut globals, kind.get_args());
                 Self::gen_immediates(&mut globals, kind.get_imms());
 
                 globals
             }
 
-            fn gen_args(globals: &mut HashMap<String, ProvidedGlobal>, args: u32) {
-                for i in 0..args {
-                    let name = format!("arg{}", i);
+            fn gen_args(globals: &mut HashMap<String, ProvidedGlobal>, args: &Option<Vec<DataType>>) {
+                if let Some(args) = args {
+                    for (i, arg_ty) in args.iter().enumerate() {
+                        let name = format!("arg{}", i);
+                        globals.insert(
+                            name.clone(),
+                            ProvidedGlobal::new(
+                                name.to_string(),
+                                format!("The argument to the opcode at index {}.", i),
+                                arg_ty.clone(),
+                                false,
+                            ),
+                        );
+                    }
+                } else {
                     globals.insert(
-                        name.clone(),
+                        UNKNOWN_ARGS.to_string(),
                         ProvidedGlobal::new(
-                            name.to_string(),
-                            format!("The argument to the opcode at index {}.", i),
+                            UNKNOWN_ARGS.to_string(),
+                            "The argument to the call at the specific index, e.g. [0:9]+.\
+                                Keep in mind, the number of arguments to a call changes based on the targeted function.".to_string(),
                             DataType::Unknown,
-                            false,
-                        ),
+                            false
+                        )
                     );
                 }
             }
@@ -308,7 +318,7 @@ macro_rules! define_opcode {
             // ======================
 
             $(
-            fn $name(loc: Option<Location>) -> Self {
+            fn $name(ty_info: Vec<(Expr, DataType)>, loc: Option<Location>) -> Self {
                 let kind = OpcodeEventKind::$name();
                 let mut globals = Self::init_globals(&kind);
                 // todo -- add configured globals
@@ -321,6 +331,7 @@ macro_rules! define_opcode {
                         fns: $fns,
                         globals,
                         requires_map_lib: $req_map,
+                        ty_info,
                         loc,
                         probe_map: HashMap::new()
                     }
@@ -335,6 +346,10 @@ for_each_opcode!(define_opcode);
 impl Event for OpcodeEvent {
     fn name(&self) -> String {
         self.kind.name()
+    }
+
+    fn ty_info(&self) -> &Vec<(Expr, DataType)> {
+        &self.info.ty_info
     }
 
     fn supported_modes(&self) -> &HashMap<String, WhammModeKind> {

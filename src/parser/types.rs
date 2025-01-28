@@ -170,11 +170,15 @@ impl PartialEq for DataType {
             | (_, DataType::AssumeGood)
             | (DataType::AssumeGood, _) => true,
             (DataType::Tuple { ty_info: ty_info0 }, DataType::Tuple { ty_info: ty_info1 }) => {
-                ty_info0.len() == ty_info1.len()
+                // println!("ty_info0: {:?}", ty_info0);
+                // println!("ty_info1: {:?}", ty_info1);
+                let res = ty_info0.len() == ty_info1.len()
                     && ty_info0
                         .iter()
                         .zip(ty_info1.iter())
-                        .all(|(ty0, ty1)| ty0 == ty1)
+                        .all(|(ty0, ty1)| ty0 == ty1);
+                // println!("res: {res}");
+                res
             }
             (
                 DataType::Map {
@@ -983,7 +987,7 @@ impl Value {
                     for (i, val) in vals.iter_mut().enumerate() {
                         match val.internal_implicit_cast(ty_info.get(i).unwrap()) {
                             Ok(()) => success = true, // do nothing
-                            Err(e) => msg = e,
+                            Err(e) => msg = e, // ignore (might be able to cast other indices of the tuple)
                         }
                     }
                     if !success {
@@ -1476,10 +1480,19 @@ impl Whamm {
 }
 
 /// RulePart are the probe ids in a probe rule
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct RulePart {
     pub name: String,
+    pub ty_info: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
     pub loc: Option<Location>,
+}
+impl RulePart {
+    pub(crate) fn new(name: String, loc: Option<Location>) -> Self {
+        let mut rule_part = Self::default();
+        rule_part.name = name;
+        rule_part.loc = loc;
+        rule_part
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1504,12 +1517,28 @@ impl ProbeRule {
         }
     }
     pub fn full_name(&self) -> String {
+        let provider = if let Some(name) = &self.provider {
+            name.name.clone()
+        } else {
+            "<none>".to_string()
+        };
+        let package = if let Some(name) = &self.package {
+            name.name.clone()
+        } else {
+            "<none>".to_string()
+        };
+        let event = if let Some(name) = &self.event {
+            name.name.clone()
+        } else {
+            "<none>".to_string()
+        };
+        let mode = if let Some(name) = &self.mode {
+            name.name.clone()
+        } else {
+            "<none>".to_string()
+        };
         format!(
-            "{}:{}:{}:{}",
-            &self.provider.as_ref().unwrap().name,
-            &self.package.as_ref().unwrap().name,
-            &self.event.as_ref().unwrap().name,
-            &self.mode.as_ref().unwrap().name
+            "{provider}:{package}:{event}:{mode}"
         )
     }
     pub fn add_rule_def(&mut self, part: RulePart) {
@@ -1853,7 +1882,7 @@ impl Script {
                 Err(Box::new(ErrorGen::get_unexpected_error(
                     true,
                     Some(format!(
-                        "{UNEXPECTED_ERR_MSG} Could not find a mode matching pattern!"
+                        "{UNEXPECTED_ERR_MSG} Could not find a mode matching pattern for {}!", probe_rule.full_name()
                     )),
                     None,
                 )))

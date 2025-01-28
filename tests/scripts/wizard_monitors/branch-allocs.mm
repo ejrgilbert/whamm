@@ -33,7 +33,7 @@ wasm::br_table:before {
   unshared var taken_branches: map<i32, i32> ;
   // which branch was taken?
   var index: i32;
-  index = arg0 < (num_targets - 1) ? targets[arg0] as i32 : default_target as i32;
+  index = arg0 < (num_targets - 1) ? targets[arg0 as u32] as i32 : default_target as i32;
 
   // count stores an array of counters
   taken_branches[index]++;

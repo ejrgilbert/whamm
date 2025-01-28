@@ -117,18 +117,9 @@ impl OpcodeEvent {
 
     fn probe_rule(&self) -> ProbeRule {
         ProbeRule {
-            provider: Some(RulePart {
-                name: "wasm".to_string(),
-                loc: None,
-            }),
-            package: Some(RulePart {
-                name: "opcode".to_string(),
-                loc: None,
-            }),
-            event: Some(RulePart {
-                name: self.kind.name(),
-                loc: None,
-            }),
+            provider: Some(RulePart::new("wasm".to_string(), None)),
+            package: Some(RulePart::new("opcode".to_string(), None)),
+            event: Some(RulePart::new(self.kind.name(), None)),
             mode: None,
         }
     }

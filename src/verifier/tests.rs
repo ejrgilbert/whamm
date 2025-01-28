@@ -32,10 +32,10 @@ wasm::call:alt /
     r#"
         var a: bool;
         var b: i32;
-        nested_fn(a: i32) -> i32 {
+        fn nested_fn(a: i32) -> i32 {
             return a;
         }
-        dummy_fn() {
+        fn dummy_fn() {
             b = nested_fn(5);
             a = strcmp((b, 8), "bookings");
         }
@@ -54,10 +54,10 @@ wasm::call:alt /
     r#"
         var a: bool;
         var b: i32;
-        nested_fn(a: i32) -> i32 {
+        fn nested_fn(a: i32) -> i32 {
             return a;
         }
-        dummy_fn() {
+        fn dummy_fn() {
             b = nested_fn();
         }
         wasm::call:alt {
@@ -71,7 +71,7 @@ wasm::call:alt /
         }
     "#,
     r#"
-        my_fn(a: i32) -> i32 {
+        fn my_fn(a: i32) -> i32 {
             return a;
         }
         var a: i32 = 5;
@@ -81,7 +81,7 @@ wasm::call:alt /
     "#,
     r#"
         var count: map<i32, i32>;
-        my_fn() -> i32 {
+        fn my_fn() -> i32 {
             count[0] = 1;
             return count[0];
         }
@@ -273,13 +273,13 @@ wasm::call:alt /
     r#"
         var a: bool;
         var b: i32;
-        strcmp(){
+        fn strcmp(){
             a = false;
         }
-        nested_fn(a: i32) -> i32 {
+        fn nested_fn(a: i32) -> i32 {
             return a;
         }
-        dummy_fn() {
+        fn dummy_fn() {
             b = nested_fn(5);
             a = strcmp((b, 8), "bookings");
         }
@@ -290,13 +290,13 @@ wasm::call:alt /
     r#"
         var a: bool;
         var b: i32;
-        nested_fn(a: i32) -> i32 {
+        fn nested_fn(a: i32) -> i32 {
             return a;
         }
-        nested_fn(a: i32) -> i32 {
+        fn nested_fn(a: i32) -> i32 {
             return a;
         }
-        dummy_fn() {
+        fn dummy_fn() {
             b = nested_fn(5);
             a = strcmp((b, 8), "bookings");
         }
@@ -306,11 +306,11 @@ wasm::call:alt /
     "#,
     r#"
         var a: i32;
-        nested_fn() -> bool {
+        fn nested_fn() -> bool {
             return "hi";
             return 1;
         }
-        dummy_fn() {
+        fn dummy_fn() {
             a = nested_fn();
         }
         wasm::call:alt {
@@ -318,7 +318,7 @@ wasm::call:alt /
         }
     "#,
     r#"
-    my_fn(a: i32) -> i32 {
+    fn my_fn(a: i32) -> i32 {
         if(a > 5){
             return 1;
         }
@@ -343,7 +343,7 @@ wasm::call:alt /
     }
     "#,
     r#"
-        strcmp () {}
+        fn strcmp () {}
         wasm::call:alt {
             strcmp();
         }
@@ -357,7 +357,7 @@ wasm::call:alt /
         }
     "#,
     r#"
-        my_func() -> bool {
+        fn my_func() -> bool {
             return true;
         }
         var a: bool = my_func();
@@ -365,7 +365,7 @@ wasm::call:alt /
         }
     "#,
     r#"
-        my_fn(a: i32) -> i32 {
+        fn my_fn(a: i32) -> i32 {
             return a;
         }
         wasm::call:alt {
@@ -375,7 +375,7 @@ wasm::call:alt /
         }
     "#,
     r#"
-        my_fn(a: i32) -> i32 {
+        fn my_fn(a: i32) -> i32 {
             return a;
         }
         wasm::call:alt {
@@ -385,7 +385,7 @@ wasm::call:alt /
         }
     "#,
     r#"
-        my_fn(a: i32) -> i32 {
+        fn my_fn(a: i32) -> i32 {
             var a: bool;
             return a;
         }
@@ -398,7 +398,7 @@ wasm::call:alt /
     "#,
     r#"
         var count: map<i32, i32>;
-        my_fn() -> i32 {
+        fn my_fn() -> i32 {
             count[0] = false;
             return count[0];
         }
@@ -430,7 +430,7 @@ wasm::call:alt /
     "#,
     r#"
         report var a: i32;
-        my_fn() {
+        fn my_fn() {
             report var c: i32;
         }
         wasm::br:before {
@@ -547,7 +547,7 @@ pub fn expect_fatal_error() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
-        my_fn(a: i32) -> i32 {
+        fn my_fn(a: i32) -> i32 {
             var a: bool;
             return a;
         }
@@ -572,7 +572,7 @@ pub fn test_recursive_calls() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let script = r#"
-        make5(a: i32) -> i32 {
+        fn make5(a: i32) -> i32 {
             if(a<5){
                 return make5(a+1);
             }

@@ -4,7 +4,7 @@ use crate::parser::rules::{
     event_factory, print_mode_docs, Event, EventInfo, FromStr, FromStrWithLoc, Mode, ModeInfo,
     NameOptions, Package, PackageInfo, Probe,
 };
-use crate::parser::types::{Block, Expr, Location, ProbeRule, ProvidedFunction, ProvidedGlobal};
+use crate::parser::types::{Block, DataType, Expr, Location, ProbeRule, ProvidedFunction, ProvidedGlobal};
 use std::collections::HashMap;
 use std::mem::discriminant;
 use termcolor::Buffer;
@@ -32,7 +32,7 @@ impl NameOptions for CorePackage {
     }
 }
 impl FromStrWithLoc for CorePackage {
-    fn from_str(name: &str, loc: Option<Location>) -> Self {
+    fn from_str(name: &str, _ty_info: Vec<(Expr, DataType)>, loc: Option<Location>) -> Self {
         match name {
             "default" => Self::default(loc),
             _ => panic!("unsupported CorePackage: {name}"),
@@ -173,7 +173,7 @@ impl NameOptions for CoreEvent {
     }
 }
 impl FromStrWithLoc for CoreEvent {
-    fn from_str(name: &str, loc: Option<Location>) -> Self {
+    fn from_str(name: &str, _ty_info: Vec<(Expr, DataType)>, loc: Option<Location>) -> Self {
         match name {
             "default" => Self::default(loc),
             _ => panic!("unsupported CoreEvent: {name}"),
@@ -197,6 +197,7 @@ impl CoreEvent {
                 fns: vec![],
                 globals: HashMap::new(),
                 requires_map_lib: false,
+                ty_info: vec![],
                 loc: None,
                 probe_map: HashMap::new(),
             },
@@ -206,6 +207,10 @@ impl CoreEvent {
 impl Event for CoreEvent {
     fn name(&self) -> String {
         self.kind.name()
+    }
+
+    fn ty_info(&self) -> &Vec<(Expr, DataType)> {
+        &self.info.ty_info
     }
 
     fn loc(&self) -> &Option<Location> {
@@ -362,9 +367,9 @@ macro_rules! define_mode {
         }
     }
     impl FromStrWithLoc for WhammMode {
-        fn from_str(name: &str, loc: Option<Location>) -> Self {
+        fn from_str(name: &str, ty_info: Vec<(Expr, DataType)>, loc: Option<Location>) -> Self {
             match name {
-                $(stringify!($name) => Self::$name(loc),)*
+                $(stringify!($name) => Self::$name(ty_info, loc),)*
                  _ => panic!("unsupported WhammMode: {name}"),
             }
         }
@@ -375,7 +380,7 @@ macro_rules! define_mode {
         // ======================
 
         $(
-        fn $name(loc: Option<Location>) -> Self {
+        fn $name(_ty_info: Vec<(Expr, DataType)>, loc: Option<Location>) -> Self {
             Self {
                 kind: WhammModeKind::$mode,
                 info: ModeInfo {
