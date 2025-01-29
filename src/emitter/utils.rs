@@ -449,7 +449,7 @@ fn possibly_emit_memaddr_calc_offset<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLo
         };
 
         // this will be different based on if this is a global or local var
-        if let Some(VarAddr::MemLoc { var_offset, ..}) = addr {
+        if let Some(VarAddr::MemLoc { var_offset, .. }) = addr {
             ctx.mem_allocator
                 .calc_offset(*var_offset, ctx.table, injector, ctx.err);
         }

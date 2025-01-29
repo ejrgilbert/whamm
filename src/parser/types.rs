@@ -1487,7 +1487,7 @@ impl RulePart {
         Self {
             name,
             loc,
-            ty_info: vec![]
+            ty_info: vec![],
         }
     }
 }

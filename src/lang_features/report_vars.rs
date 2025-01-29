@@ -209,10 +209,7 @@ impl ReportVars {
 
         // iterate through all the data type flush functions and emit calls
         // sort these by the datatype to make the flush deterministic!
-        let sorted_keys = self
-            .alloc_tracker
-            .keys()
-            .sorted_by_key(|ty| ty.id());
+        let sorted_keys = self.alloc_tracker.keys().sorted_by_key(|ty| ty.id());
         for dt in sorted_keys.into_iter() {
             match dt {
                 DataType::U8 => {
