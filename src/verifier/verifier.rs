@@ -1212,7 +1212,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 }
                                 return Some(DataType::AssumeGood);
                             }
-                            println!("map_val_ty: {}", val_ty);
                             Some(*val_ty)
                         } else if matches!(map_ty, DataType::AssumeGood) {
                             return Some(DataType::AssumeGood);

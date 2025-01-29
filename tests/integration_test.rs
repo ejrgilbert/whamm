@@ -1,6 +1,6 @@
 mod common;
 
-use crate::common::{run_basic_instrumentation, run_whamm_bin};
+use crate::common::{run_basic_instrumentation, run_whamm_bin, wat2wasm_on_dir};
 use log::error;
 use orca_wasm::Module;
 use std::fs;
@@ -131,6 +131,8 @@ fn instrument_with_wizard_monitors() {
     let processed_scripts = common::setup_wizard_monitors();
     assert!(!processed_scripts.is_empty());
     err.fatal_report("Integration Test");
+
+    build_whamm_core_lib();
     for (script_path, script_text) in processed_scripts {
         run_script(
             &script_text,
@@ -156,6 +158,9 @@ fn instrument_with_numerics_scripts() {
     common::setup_logger();
     let processed_scripts = common::setup_numerics_monitors();
     assert!(!processed_scripts.is_empty());
+
+    build_whamm_core_lib();
+    wat2wasm_on_dir("tests/apps/handwritten");
 
     struct TestCase {
         script: PathBuf,
@@ -249,6 +254,26 @@ fn instrument_with_numerics_scripts() {
     }
 }
 
+fn build_whamm_core_lib() {
+    // Build the whamm_core library
+    let res = Command::new("cargo")
+        .arg("build")
+        .arg("--target")
+        .arg("wasm32-wasip1")
+        .arg("--release")
+        .current_dir("whamm_core")
+        .output()
+        .expect("failed to execute process");
+    if !res.status.success() {
+        println!(
+            "[ERROR] 'whamm_core' build project failed:\n{}\n{}",
+            String::from_utf8(res.stdout).unwrap(),
+            String::from_utf8(res.stderr).unwrap()
+        );
+    }
+    assert!(res.status.success());
+}
+
 fn run_script(
     script_text: &String,
     script_path: &PathBuf,
@@ -302,8 +327,8 @@ fn run_testcase_rewriting(
         .output()
         .expect("failed to run wasmtime-runner");
     if !res.status.success() {
-        error!(
-            "Failed to run wasmtime-runner:\n{}\n{}",
+        println!(
+            "[ERROR] Failed to run wasmtime-runner:\n{}\n{}",
             String::from_utf8(res.stdout).unwrap(),
             String::from_utf8(res.stderr).unwrap()
         );
@@ -338,14 +363,13 @@ fn run_testcase_wizard(
     let wizeng_path = "output/tests/engines/wizeng";
     let res = Command::new(wizeng_path)
         .arg("--env=TO_CONSOLE=true")
-        .arg("--dir=output/whamm_core")
         .arg(format!("--monitors={}+{}", instr_app_path, whamm_core_lib_path))
         .arg(app_path_str)
         .output()
         .expect(&format!("Failed to run wizard command, please make sure the wizeng executable is available at the path: {}", wizeng_path));
     if !res.status.success() {
-        error!(
-            "Failed to run wizard monitor:\n{}\n{}",
+        println!(
+            "[ERROR] Failed to run wizard monitor:\n{}\n{}",
             String::from_utf8(res.stdout).unwrap(),
             String::from_utf8(res.stderr).unwrap()
         );

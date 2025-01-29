@@ -16,6 +16,9 @@ pub fn setup_logger() {
 }
 
 const TEST_RSC_DIR: &str = "tests/scripts/";
+const WAT_PATTERN: &str = "*.wat";
+const DOT_WAT: &str = ".wat";
+const DOT_WASM: &str = ".wasm";
 const MM_PATTERN: &str = "*.mm";
 const TODO: &str = "*.TODO";
 
@@ -84,6 +87,23 @@ pub fn run_basic_instrumentation(
     wat2wasm_on_file(original_wat_path, original_wasm_path);
     run_whamm_bin(original_wasm_path, monitor_path, instrumented_wasm_path);
     wasm2wat_on_file(instrumented_wasm_path);
+}
+
+pub fn wat2wasm_on_dir(dir: &str) {
+    let mut wat_files = vec![];
+    for path in glob(&(dir.to_owned() + "/" + &*WAT_PATTERN.to_owned()))
+        .expect("Failed to read glob pattern")
+    {
+        let file_name = path.as_ref().unwrap();
+        wat_files.push(file_name.clone());
+    }
+
+    for file in wat_files.iter() {
+        let filename = file.to_str().unwrap();
+        if let Some(stripped_name) = filename.strip_suffix(DOT_WAT) {
+            wat2wasm_on_file(filename, &(stripped_name.to_owned() + DOT_WASM))
+        }
+    }
 }
 
 pub fn wat2wasm_on_file(original_wat_path: &str, original_wasm_path: &str) {
