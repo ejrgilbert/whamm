@@ -85,7 +85,7 @@
 ;; TODO!
 ;;;; ----------------------
 ;;;; ==== unpredicated ====
-;;;; WHAMM --> i32 count; wasm:opcode:i64_const:before { count++; }
+;;;; WHAMM --> var count: i32; wasm:opcode:i64_const:before { count++; }
 ;;(assert_return (invoke "get_count") (i64.const 18))
 ;;;; @passes_uninstr
 ;;(assert_return (invoke "get_global_var0") (i64.const 0)) ;; sanity check

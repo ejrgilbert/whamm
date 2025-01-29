@@ -1,7 +1,7 @@
 use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::rewriting::rules::Arg;
-use crate::emitter::utils::{emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global};
+use crate::emitter::utils::{emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global, EmitCtx};
 use crate::emitter::{configure_flush_routines, Emitter, InjectStrategy};
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
@@ -13,10 +13,12 @@ use log::debug;
 use orca_wasm::ir::function::FunctionBuilder;
 use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
 use orca_wasm::ir::module::Module;
-use orca_wasm::ir::types::{BlockType as OrcaBlockType, DataType as OrcaType, Value as OrcaValue};
+use orca_wasm::ir::types::{
+    BlockType as OrcaBlockType, DataType as OrcaType, InitExpr, Value as OrcaValue,
+};
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::{Instrumenter, MacroOpcode, Opcode};
-use orca_wasm::{InitExpr, Location};
+use orca_wasm::{Instructions, Location};
 
 const UNEXPECTED_ERR_MSG: &str =
     "ModuleEmitter: Looks like you've found a bug...please report this behavior!";
@@ -89,7 +91,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         // setup mem tracker global
         if create_tracker_global {
             self.mem_allocator.mem_tracker_global = self.app_wasm.add_global(
-                InitExpr::Value(OrcaValue::I32(0)),
+                InitExpr::new(vec![Instructions::Value(OrcaValue::I32(0))]),
                 OrcaType::I32,
                 true,
                 false,
@@ -136,6 +138,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         params: &[OrcaType],
         results: &[OrcaType],
         block: &mut Block,
+        export: bool,
         err: &mut ErrorGen,
     ) -> Option<u32> {
         let func = FunctionBuilder::new(params, results);
@@ -157,7 +160,14 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         if let Some(func) = self.emitting_func.take() {
             let fid = func.finish_module(self.app_wasm);
             if let Some(name) = name {
-                self.app_wasm.set_fn_name(fid, name);
+                self.app_wasm.set_fn_name(fid, name.clone());
+                if export {
+                    self.app_wasm.exports.add_export_func(name, *fid);
+                }
+            } else if export {
+                self.app_wasm
+                    .exports
+                    .add_export_func(format!("${}", *fid), *fid);
             }
             Some(*fid)
         } else {
@@ -184,6 +194,34 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 None,
             ));
             None
+        }
+    }
+
+    pub(crate) fn emit_end_fn(
+        &mut self,
+        flush_reports: bool,
+        io_adapter: &mut IOAdapter,
+        err: &mut ErrorGen,
+    ) {
+        if flush_reports {
+            // (ONLY DO THIS IF THERE ARE REPORT VARIABLES)
+            let mut on_exit = FunctionBuilder::new(&[], &[]);
+
+            // call the report_vars to emit calls to all report var flushers
+            self.report_vars.emit_flush_logic(
+                &mut on_exit,
+                io_adapter,
+                self.mem_allocator.mem_id,
+                self.app_wasm,
+                err,
+            );
+
+            let on_exit_id = on_exit.finish_module(self.app_wasm);
+            self.app_wasm.set_fn_name(on_exit_id, "on_exit".to_string());
+
+            self.app_wasm
+                .exports
+                .add_export_func("wasm:exit".to_string(), *on_exit_id);
         }
     }
 
@@ -306,7 +344,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         // TODO -- move this into the MapAdapter
         //make a global bool for whether to run the instr_init fn
         self.map_lib_adapter.init_bool_location = *self.app_wasm.add_global(
-            InitExpr::Value(OrcaValue::I32(1)),
+            InitExpr::new(vec![Instructions::Value(OrcaValue::I32(1))]),
             OrcaType::I32,
             true,
             false,
@@ -470,7 +508,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 //now save off the global variable metadata
                 if report_mode {
                     self.report_vars
-                        .put_global_metadata(*global_id, name.clone(), err);
+                        .put_global_metadata(*global_id, name.clone(), ty, err);
                 }
                 Some(self.emit_global_getter(&global_id, name, global_ty))
             }
@@ -668,13 +706,15 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
                 body,
                 self.strategy,
                 emitting_func,
-                self.table,
-                self.mem_allocator,
-                self.map_lib_adapter,
-                self.report_vars,
-                self.unshared_var_handler,
-                UNEXPECTED_ERR_MSG,
-                err,
+                &mut EmitCtx::new(
+                    self.table,
+                    self.mem_allocator,
+                    self.map_lib_adapter,
+                    self.report_vars,
+                    self.unshared_var_handler,
+                    UNEXPECTED_ERR_MSG,
+                    err,
+                ),
             )
         } else {
             false
@@ -692,13 +732,15 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
                 stmt,
                 self.strategy,
                 emitting_func,
-                self.table,
-                self.mem_allocator,
-                self.map_lib_adapter,
-                self.report_vars,
-                self.unshared_var_handler,
-                UNEXPECTED_ERR_MSG,
-                err,
+                &mut EmitCtx::new(
+                    self.table,
+                    self.mem_allocator,
+                    self.map_lib_adapter,
+                    self.report_vars,
+                    self.unshared_var_handler,
+                    UNEXPECTED_ERR_MSG,
+                    err,
+                ),
             )
         } else {
             false
@@ -711,13 +753,15 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
                 expr,
                 self.strategy,
                 emitting_func,
-                self.table,
-                self.mem_allocator,
-                self.map_lib_adapter,
-                self.report_vars,
-                self.unshared_var_handler,
-                UNEXPECTED_ERR_MSG,
-                err,
+                &mut EmitCtx::new(
+                    self.table,
+                    self.mem_allocator,
+                    self.map_lib_adapter,
+                    self.report_vars,
+                    self.unshared_var_handler,
+                    UNEXPECTED_ERR_MSG,
+                    err,
+                ),
             )
         } else {
             false

@@ -1,7 +1,6 @@
 use crate::common::error::ErrorGen;
 use crate::lang_features::libraries::core::WHAMM_CORE_LIB_NAME;
 use crate::parser::types::{DataType, Definition, FnId, Location, ProbeRule, Value};
-use orca_wasm::ir::types::DataType as OrcaType;
 use pest::error::LineColLocation;
 use std::collections::HashMap;
 use std::fmt;
@@ -613,7 +612,7 @@ pub enum Record {
         scripts: Vec<usize>,
     },
     Script {
-        name: String,
+        id: u8,
         fns: Vec<usize>,
         globals: Vec<usize>,
         providers: Vec<usize>,
@@ -703,7 +702,10 @@ pub enum VarAddr {
         // The ID of the memory that the var is stored in
         mem_id: u32,
         // The type of the data at this memory location
-        ty: OrcaType,
+        // using whamm DataType rather than wasm type here
+        // this enables us to store things like U8 in a single
+        // byte instead of using an i32!
+        ty: DataType,
         // The offset within a function's variable block...
         // This should be added to a base offset value to find
         // the true memory offset for this variable.

@@ -3,11 +3,12 @@ use crate::emitter::rewriting::rules::wasm::{OpcodeEvent, WasmPackage};
 use crate::generator::rewriting::simple_ast::{SimpleAstProbes, SimpleProbe};
 use crate::parser::rules::core::WhammModeKind;
 use crate::parser::rules::{FromStr, WhammProviderKind};
-use crate::parser::types::{DataType, RulePart, Value};
+use crate::parser::types::{RulePart, Value};
 use orca_wasm::ir::module::Module;
 use orca_wasm::ir::types::DataType as OrcaType;
 use orca_wasm::Location;
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
 use wasmparser::Operator;
 
 mod core;
@@ -116,6 +117,31 @@ pub struct ProbeRule {
     pub package: Option<RulePart>,
     pub event: Option<RulePart>,
     pub mode: Option<WhammModeKind>,
+}
+impl Display for ProbeRule {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let curr_provider = match &self.provider {
+            Some(provider) => provider.name.clone(),
+            None => "".to_string(),
+        };
+        let curr_package = match &self.package {
+            Some(package) => package.name.clone(),
+            None => "".to_string(),
+        };
+        let curr_event = match &self.event {
+            Some(event) => event.name.clone(),
+            None => "".to_string(),
+        };
+        let curr_mode = match &self.mode {
+            Some(mode) => mode.name().clone(),
+            None => "".to_string(),
+        };
+        write!(
+            f,
+            "{}:{}:{}:{}",
+            curr_provider, curr_package, curr_event, curr_mode
+        )
+    }
 }
 
 #[derive(Default, Debug)]
@@ -262,21 +288,13 @@ impl Provider for WhammProvider {
                 // if *fid == 30 {
                 //     println!("we're here!!")
                 // }
-                loc_info.static_data.insert(
-                    "fid".to_string(),
-                    Some(Value::U32 {
-                        ty: DataType::U32,
-                        val: *fid,
-                    }),
-                );
+                loc_info
+                    .static_data
+                    .insert("fid".to_string(), Some(Value::gen_u32(*fid)));
 
-                loc_info.static_data.insert(
-                    "fname".to_string(),
-                    Some(Value::Str {
-                        ty: DataType::Str,
-                        val: fname.clone(),
-                    }),
-                );
+                loc_info
+                    .static_data
+                    .insert("fname".to_string(), Some(Value::Str { val: fname.clone() }));
 
                 // Don't think we need this right now...
                 // loc_info.static_data.insert(
@@ -287,13 +305,9 @@ impl Provider for WhammProvider {
                 //     }),
                 // );
 
-                loc_info.static_data.insert(
-                    "pc".to_string(),
-                    Some(Value::U32 {
-                        ty: DataType::U32,
-                        val: pc as u32,
-                    }),
-                );
+                loc_info
+                    .static_data
+                    .insert("pc".to_string(), Some(Value::gen_u32(pc as u32)));
             }
             WhammProviderKind::Core => {
                 // nothing to add

@@ -62,25 +62,25 @@
     (start $start)
 )
 
-;; WHAMM --> i32 count; wasm:opcode:unreachable:alt { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:unreachable:alt { count++; }
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var") (i32.const 2))
 (assert_return (invoke "get_count") (i32.const 3))
 
 ;; TODO with targeting (fid), see Issue#106
-;;;; WHAMM --> i32 count; wasm:opcode:unreachable:alt /fid == 1/ { count++; } wasm:opcode:unreachable:alt /fid == 2/ { count = count + 2; }
+;;;; WHAMM --> var count: i32; wasm:opcode:unreachable:alt /fid == 1/ { count++; } wasm:opcode:unreachable:alt /fid == 2/ { count = count + 2; }
 ;;;; @passes_uninstr
 ;;(assert_return (invoke "get_global_var") (i32.const 2))
 ;;(assert_return (invoke "get_count") (i32.const 4))
 
 ;; TODO with targeting (pc), see Issue#106
-;;;; WHAMM --> i32 count; wasm:opcode:unreachable:alt /pc == 4/ { count++; } wasm:opcode:unreachable:alt /pc == 5/ { count = count + 2; }
+;;;; WHAMM --> var count: i32; wasm:opcode:unreachable:alt /pc == 4/ { count++; } wasm:opcode:unreachable:alt /pc == 5/ { count = count + 2; }
 ;;;; @passes_uninstr
 ;;(assert_return (invoke "get_global_var") (i32.const 2))
 ;;(assert_return (invoke "get_count") (i32.const 4))
 
 ;; TODO with targeting (fid/pc), see Issue#106
-;;;; WHAMM --> i32 count; wasm:opcode:unreachable:alt /fid == 1 && pc == 4/ { count++; } wasm:opcode:unreachable:alt /fid == 2 && pc == 5/ { count = count + 2; }
+;;;; WHAMM --> var count: i32; wasm:opcode:unreachable:alt /fid == 1 && pc == 4/ { count++; } wasm:opcode:unreachable:alt /fid == 2 && pc == 5/ { count = count + 2; }
 ;;;; @passes_uninstr
 ;;(assert_return (invoke "get_global_var") (i32.const 2))
 ;;(assert_return (invoke "get_count") (i32.const 4))

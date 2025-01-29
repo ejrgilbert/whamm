@@ -35,12 +35,12 @@
     (memory (;0;) 1)
 )
 
-;; WHAMM --> i32 count; wasm:opcode:call:before / target_fn_name == "dummy_five_params" / { if(true) { count = 3; } else { count = 4; } }
+;; WHAMM --> var count: i32; wasm:opcode:call:before / target_fn_name == "dummy_five_params" / { if(true) { count = 3; } else { count = 4; } }
 (assert_return (invoke "get_count") (i32.const 3))
-;; WHAMM --> i32 count; wasm:opcode:call:before / target_fn_name == "dummy_five_params" / { if(false) { count = 3; } else { count = 4; } }
+;; WHAMM --> var count: i32; wasm:opcode:call:before / target_fn_name == "dummy_five_params" / { if(false) { count = 3; } else { count = 4; } }
 (assert_return (invoke "get_count") (i32.const 4))
 
-;; WHAMM --> i32 count; wasm:opcode:call:before / target_fn_name == "dummy_five_params" / { i32 a; if(a == 0) { count = 3; } else { count = 4; } }
+;; WHAMM --> var count: i32; wasm:opcode:call:before / target_fn_name == "dummy_five_params" / { var a: i32; if(a == 0) { count = 3; } else { count = 4; } }
 (assert_return (invoke "get_count") (i32.const 3))
-;; WHAMM --> i32 count; wasm:opcode:call:before / target_fn_name == "dummy_five_params" / { i32 a; if(a != 0) { count = 3; } else { count = 4; } }
+;; WHAMM --> var count: i32; wasm:opcode:call:before / target_fn_name == "dummy_five_params" / { var a: i32; if(a != 0) { count = 3; } else { count = 4; } }
 (assert_return (invoke "get_count") (i32.const 4))

@@ -13,7 +13,7 @@ Currently, this will be done _on each write_ to at least one of the `report` var
 
 For example:
 ```
-report i32 count;
+report var count;
 wasm:opcode:call:before {
     // count the number of times the `call` opcode was used during the application's dynamic execution.
     // (a single global count)

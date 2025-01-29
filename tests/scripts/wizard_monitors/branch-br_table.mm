@@ -10,7 +10,7 @@
  * need a handle to the function ("func")
 */
 
-report map<(u32, u32, i32), i32> count;
+report var count: map<(u32, u32, i32), i32>;
 
 wasm::br:before {
   // branch always taken for `br`
@@ -20,7 +20,7 @@ wasm::br:before {
 
 wasm::br_if:before {
   // which branch was taken?
-  i32 index;
+  var index: i32;
   index = arg0 != 0 ? 1 : 0;
 
   // count stores an array of counters
@@ -29,8 +29,8 @@ wasm::br_if:before {
 
 wasm::br_table:before {
   // which branch was taken?
-  i32 index;
-  index = arg0 < (num_targets - 1) ? targets[arg0] : default_target;
+  var index: i32;
+  index = arg0 < (num_targets - 1) ? targets[arg0 as u32] as i32 : default_target as i32;
 
   // count stores an array of counters
   count[(fid, pc, index)]++;

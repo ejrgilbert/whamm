@@ -1,5 +1,6 @@
 pub mod io_adapter;
 
+use crate::common::error::ErrorGen;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::{LibAdapter, LibPackage};
 use crate::parser::rules::{Event, Package, Probe, Provider};
@@ -7,6 +8,8 @@ use crate::parser::types::{
     BinOp, Block, DataType, Expr, Script, Statement, UnOp, Value, Whamm, WhammVisitor,
 };
 use log::debug;
+use orca_wasm::ir::id::FunctionID;
+use orca_wasm::Module;
 
 #[derive(Default)]
 pub struct IOPackage {
@@ -27,6 +30,13 @@ impl LibPackage for IOPackage {
     }
     fn set_adapter_usage(&mut self, is_used: bool) {
         self.adapter.is_used = is_used;
+    }
+    fn define_helper_funcs(
+        &mut self,
+        app_wasm: &mut Module,
+        err: &mut ErrorGen,
+    ) -> Vec<FunctionID> {
+        self.adapter.define_helper_funcs(app_wasm, err)
     }
 }
 impl WhammVisitor<bool> for IOPackage {

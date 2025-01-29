@@ -13,7 +13,7 @@ wasm:opcode:call:before {
     // (as many counts as there are `call` opcodes in the program)
     // This variable will not be reinitialized each time this probe's body is executed,
     // rather, it will be the value it was the last time it ran!
-    unshared i32 count;
+    unshared var count: i32;
     count++;
     
     // This variable will be reinitialized to 0 each time this probe's body is executed

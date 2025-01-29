@@ -83,7 +83,7 @@ impl WhammVisitor<String> for AsStrVisitor {
         s += &format!("Scripts:{}", NL);
         self.increase_indent();
         for script in whamm.scripts.iter() {
-            s += &format!("{} `{}`:{}", self.get_indent(), script.name, NL);
+            s += &format!("{} `script{}`:{}", self.get_indent(), script.id, NL);
             self.increase_indent();
             s += &self.visit_script(script).to_string();
             self.decrease_indent();
@@ -484,10 +484,10 @@ impl WhammVisitor<String> for AsStrVisitor {
 
     fn visit_unop(&mut self, op: &UnOp) -> String {
         match op {
-            UnOp::Not => "!",
+            UnOp::Cast { target } => format!("as {target}"),
+            UnOp::Not => "!".to_string(),
+            UnOp::BitwiseNot => "~".to_string(),
         }
-        .parse()
-        .unwrap()
     }
 
     fn visit_binop(&mut self, op: &BinOp) -> String {
@@ -505,79 +505,28 @@ impl WhammVisitor<String> for AsStrVisitor {
             BinOp::Multiply => "*",
             BinOp::Divide => "/",
             BinOp::Modulo => "%",
+            BinOp::LShift => "<<",
+            BinOp::RShift => ">>",
+            BinOp::BitAnd => "&",
+            BinOp::BitOr => "|",
+            BinOp::BitXor => "^",
         }
         .parse()
         .unwrap()
     }
 
     fn visit_datatype(&mut self, datatype: &DataType) -> String {
-        match datatype {
-            DataType::U32 => "u32".to_string(),
-            DataType::I32 => "i32".to_string(),
-            DataType::F32 => "f32".to_string(),
-            DataType::U64 => "u64".to_string(),
-            DataType::I64 => "i64".to_string(),
-            DataType::F64 => "f64".to_string(),
-            DataType::Boolean => "bool".to_string(),
-            DataType::Null => "null".to_string(),
-            DataType::Str => "str".to_string(),
-            DataType::Tuple { ty_info } => {
-                let mut s = "".to_string();
-                s += "(";
-                s += &ty_info
-                    .iter()
-                    .map(|ty| self.visit_datatype(ty))
-                    .collect::<Vec<String>>()
-                    .join(", ");
-                s += ")";
-                s
-            }
-            DataType::Map { key_ty, val_ty, .. } => format!(
-                "map<{}, {}>",
-                self.visit_datatype(key_ty),
-                self.visit_datatype(val_ty)
-            ),
-            DataType::AssumeGood => "unknown".to_string(),
-        }
+        datatype.to_string()
     }
 
     fn visit_value(&mut self, value: &Value) -> String {
         match value {
-            Value::Boolean { ty: _ty, val } => {
+            Value::Boolean { val } => {
                 let mut s = "".to_string();
                 s += &format!("{}", val);
                 s
             }
-            Value::U32 { val, .. } => {
-                let mut s = "".to_string();
-                s += &format!("{}", val);
-                s
-            }
-            Value::I32 { val, .. } => {
-                let mut s = "".to_string();
-                s += &format!("{}", val);
-                s
-            }
-            Value::F32 { val, .. } => {
-                let mut s = "".to_string();
-                s += &format!("{}", val);
-                s
-            }
-            Value::U64 { val, .. } => {
-                let mut s = "".to_string();
-                s += &format!("{}", val);
-                s
-            }
-            Value::I64 { val, .. } => {
-                let mut s = "".to_string();
-                s += &format!("{}", val);
-                s
-            }
-            Value::F64 { val, .. } => {
-                let mut s = "".to_string();
-                s += &format!("{}", val);
-                s
-            }
+            Value::Number { token, .. } => token.clone(),
             Value::Str { val, .. } => {
                 let mut s = "".to_string();
                 s += &format!("\"{}\"", val);
@@ -595,10 +544,10 @@ impl WhammVisitor<String> for AsStrVisitor {
                 s += ")";
                 s
             }
-            Value::U32U32Map { ty, val } => {
+            Value::U32U32Map { val } => {
                 let mut s = "".to_string();
 
-                s += &format!("{} ", self.visit_datatype(ty));
+                s += &format!("{} ", self.visit_datatype(&value.ty()));
                 s += "[";
                 s += &val
                     .iter()

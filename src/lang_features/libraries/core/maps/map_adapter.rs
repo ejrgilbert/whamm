@@ -33,6 +33,13 @@ impl LibAdapter for MapLibAdapter {
     fn get_funcs_mut(&mut self) -> &mut HashMap<String, u32> {
         &mut self.funcs
     }
+    fn define_helper_funcs(
+        &mut self,
+        app_wasm: &mut Module,
+        err: &mut ErrorGen,
+    ) -> Vec<FunctionID> {
+        self.emit_helper_funcs(app_wasm, err)
+    }
 }
 impl MapLibAdapter {
     pub fn new() -> Self {
@@ -75,6 +82,15 @@ impl MapLibAdapter {
             map_count: 0,
             init_bool_location: 0,
         }
+    }
+
+    pub fn emit_helper_funcs(
+        &mut self,
+        _app_wasm: &mut Module,
+        _err: &mut ErrorGen,
+    ) -> Vec<FunctionID> {
+        // (nothing to do)
+        vec![]
     }
 
     pub fn map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
@@ -184,7 +200,7 @@ impl MapLibAdapter {
             );
         };
 
-        let metadata = Metadata::new(name.clone(), &report_vars.curr_location);
+        let metadata = Metadata::new(name.clone(), DataType::I32, &report_vars.curr_location);
         report_vars.map_metadata.insert(map_id, metadata.clone());
         if !report_vars.all_metadata.insert(metadata) {
             err.unexpected_error(

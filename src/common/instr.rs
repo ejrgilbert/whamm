@@ -21,8 +21,9 @@ use crate::parser::whamm_parser::parse_script;
 use crate::verifier::types::SymbolTable;
 use crate::verifier::verifier::{build_symbol_table, type_check};
 use log::{error, info};
-use orca_wasm::ir::id::GlobalID;
-use orca_wasm::Module;
+use orca_wasm::ir::id::{FunctionID, GlobalID};
+use orca_wasm::ir::types::{DataType as OrcaType, InitExpr, Value as OrcaValue};
+use orca_wasm::{Instructions, Module};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::exit;
@@ -168,7 +169,7 @@ pub fn run(
     let mut map_package = MapLibPackage::default();
     let mut io_package = IOPackage::default();
     let mut core_packages: Vec<&mut dyn LibPackage> = vec![&mut map_package, &mut io_package];
-    crate::lang_features::libraries::actions::link_core_lib(
+    let mut injected_funcs = crate::lang_features::libraries::actions::link_core_lib(
         &config.library_strategy,
         &whamm,
         target_wasm,
@@ -208,6 +209,7 @@ pub fn run(
             &mut map_lib_adapter,
             &mut report_vars,
             &mut unshared_var_handler,
+            &mut injected_funcs,
             &mut err,
         );
     }
@@ -254,9 +256,12 @@ fn run_instr_wizard(
     metadata_collector.visit_whamm(whamm);
     let wiz_ast = metadata_collector.wizard_ast;
     let used_funcs = metadata_collector.used_provided_fns;
+    let used_report_dts = metadata_collector.used_report_var_dts;
     let used_strings = metadata_collector.strings_to_emit;
 
     let mut injected_funcs = vec![];
+    let mut wizard_unshared_var_handler =
+        crate::lang_features::alloc_vars::wizard::UnsharedVarHandler::default();
     let mut gen = crate::generator::wizard::WizardGenerator {
         emitter: ModuleEmitter::new(
             InjectStrategy::Wizard,
@@ -272,9 +277,13 @@ fn run_instr_wizard(
         err,
         injected_funcs: &mut injected_funcs,
         config,
-        curr_script_id: "".to_string(),
+        curr_script_id: u8::MAX,
+        unshared_var_handler: &mut wizard_unshared_var_handler,
     };
-    gen.run(wiz_ast, used_funcs, used_strings);
+    gen.run(wiz_ast, used_funcs, used_report_dts, used_strings);
+
+    // Update the memory tracker global to point to the start of free memory
+    mem_allocator.update_memory_global_ptr(target_wasm);
 }
 
 fn run_instr_rewrite(
@@ -286,12 +295,12 @@ fn run_instr_rewrite(
     map_lib_adapter: &mut MapLibAdapter,
     report_vars: &mut ReportVars,
     unshared_var_handler: &mut UnsharedVarHandler,
+    injected_funcs: &mut Vec<FunctionID>,
     err: &mut ErrorGen,
 ) {
     let mut mem_allocator = get_memory_allocator(target_wasm, true);
 
     // Phase 0 of instrumentation (emit globals and provided fns)
-    let mut injected_funcs = vec![];
     let mut init = InitGenerator {
         emitter: ModuleEmitter::new(
             InjectStrategy::Rewriting,
@@ -304,7 +313,7 @@ fn run_instr_rewrite(
         ),
         context_name: "".to_string(),
         err,
-        injected_funcs: &mut injected_funcs,
+        injected_funcs,
     };
     init.run(whamm);
     // If there were any errors encountered, report and exit!
@@ -317,7 +326,7 @@ fn run_instr_rewrite(
         VisitingEmitter::new(
             InjectStrategy::Rewriting,
             target_wasm,
-            &injected_funcs,
+            injected_funcs,
             symbol_table,
             &mut mem_allocator,
             map_lib_adapter,
@@ -333,11 +342,16 @@ fn run_instr_rewrite(
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
 
-    for gid in unshared_var_handler.available_i32_gids.iter() {
+    for (ty, list) in unshared_var_handler.available_gids.iter() {
         //should be 0, but good for cleanup
-        err.add_compiler_warn(format!("Unused i32 GID: {}", gid));
-        target_wasm.delete_global(GlobalID(*gid));
+        for gid in list.iter() {
+            err.add_compiler_warn(format!("Unused {ty} GID: {}", gid));
+            target_wasm.delete_global(GlobalID(*gid));
+        }
     }
+
+    // Update the memory tracker global to point to the start of free memory
+    mem_allocator.update_memory_global_ptr(target_wasm);
 }
 
 fn get_memory_allocator(target_wasm: &mut Module, create_new_mem: bool) -> MemoryAllocator {
@@ -357,12 +371,21 @@ fn get_memory_allocator(target_wasm: &mut Module, create_new_mem: bool) -> Memor
         0
     };
 
+    // todo -- only add if needed!
+    let mem_tracker_global = target_wasm.add_global(
+        InitExpr::new(vec![Instructions::Value(OrcaValue::I32(0))]),
+        OrcaType::I32,
+        true,
+        false,
+    );
+
     MemoryAllocator {
         mem_id,
         curr_mem_offset: 0,
         required_initial_mem_size: 0,
         emitted_strings: HashMap::new(),
-        mem_tracker_global: GlobalID(0),
+        mem_tracker_global,
+        used_mem_checker_fid: None,
     }
 }
 

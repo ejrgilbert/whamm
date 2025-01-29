@@ -28,6 +28,8 @@ The supported interpreters are:
 1. the Wizard engine interpreter. https://github.com/titzer/wizard-engine/tree/master
 2. the Wasm reference interpreter. https://github.com/WebAssembly/spec/tree/main/interpreter
 
+The Wizard Engine execution script must also be configured, located at: https://github.com/titzer/wizard-engine/tree/master
+
 **How to build the [Wizard GH project]() to acquire these binaries:**
 1. [Install OCaml](https://opam.ocaml.org/doc/Install.html)
 2. Download [`progress`](https://github.com/titzer/progress) and ensure the `progress` binary is on your `PATH`
@@ -49,8 +51,11 @@ The supported interpreters are:
    ```
 
 The interpreter binaries must be runnable using the following commands (this can be done by placing symbolic links to the respective binaries):
-1. For Wizard: `./output/tests/interpreters/wizard-spectest`
-2. For Wasm-Ref: `./output/tests/interpreters/wasm`
+1. For Wizard: `./output/tests/engines/wizard-spectest`
+2. For Wasm-Ref: `./output/tests/engines/wasm`
+
+The Wizard binary must be runnable using the following command (this can be done by placing symbolic links to the respective binaries):
+1. For `wizeng`: `./output/tests/engines/wizeng`
 
 To run tests:
 ```shell
@@ -63,7 +68,10 @@ cargo test -- --nocapture # With stdout tracing
 
 To run project (there are example Scripts in `tests/scripts` folder):
 ```shell
+# Bytecode rewriting target
 cargo run -- instr --app <path_to_app_wasm> --script <path_to_script> <path_for_compiled_output>
+# Wizard engine target
+cargo run -- instr --script <path_to_script> <path_for_compiled_output> --wizard
 ```
 
 To specify log level:
@@ -100,7 +108,7 @@ levels of granularity, everything being provided by what proceeds it. If we were
 event-specific options, this property would no longer hold.
 
 Currently available:
-- `wasm:bytecode`
+- `wasm:opcode`
 
 To be added:
 - `thread` operation events

@@ -14,8 +14,8 @@ failure = "0.1.5"
 glob = "0.3.1"
 lazy_static = "1.4.0"
 #orca-wasm = { path = "../orca" }
-orca-wasm = "0.1.4"
-wasmparser = "0.217.0"
+orca-wasm = "0.5.0"
+wasmparser = "0.219.1"
 
 # Logging
 env_logger = "0.10.2"
@@ -33,6 +33,7 @@ clap_complete = "4.5.2"
 # wabt
 wabt = "0.10.0"
 wat = "1.214.0"
+itertools = "0.14.0"
 
 [build-dependencies]
 clap = { version = "4.5.4", features = ["derive", "cargo", "env"] }

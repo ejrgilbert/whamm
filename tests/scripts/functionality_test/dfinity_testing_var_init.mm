@@ -3,7 +3,7 @@ wasm:bytecode:call:after /
     target_imp_module == "ic0" &&
     target_fn_name == "call_perform"
 / {
-    i32 i;
+    var i: i32;
     i = 0;
     i++;
 }

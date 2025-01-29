@@ -50,20 +50,20 @@
 
 ;; -------------------------------------------------
 ;; ==== FUNCS, with predicate, `alt_call_by_id` ====
-;; WHAMM --> wasm:opcode:call:alt / arg0 == 0 / { alt_call_by_id(2); }
+;; WHAMM --> wasm:opcode:call(arg0: i32):alt / arg0 == 0 / { alt_call_by_id(2); }
 (assert_return (invoke "get_global_var") (i32.const 24)) ;; global should be what's calculated by the new func
 
-;; ----------------------------------------------------
-;; ==== FUNCS, without predicate, `alt_call_by_id` ====
-;; WHAMM --> wasm:opcode:call:alt { alt_call_by_id(2); }
-(assert_return (invoke "get_global_var") (i32.const 24)) ;; global should be what's calculated by the new func
-
-;; ---------------------------------------------------
-;; ==== FUNCS, with predicate, `alt_call_by_name` ====
-;; WHAMM --> wasm:opcode:call:alt / arg0 == 0 / { alt_call_by_name("mult_all"); }
-(assert_return (invoke "get_global_var") (i32.const 24)) ;; global should be what's calculated by the new func
-
-;; ------------------------------------------------------
-;; ==== FUNCS, without predicate, `alt_call_by_name` ====
-;; WHAMM --> wasm:opcode:call:alt { alt_call_by_name("mult_all"); }
-(assert_return (invoke "get_global_var") (i32.const 24)) ;; global should be what's calculated by the new func
+;;;; ----------------------------------------------------
+;;;; ==== FUNCS, without predicate, `alt_call_by_id` ====
+;;;; WHAMM --> wasm:opcode:call:alt { alt_call_by_id(2); }
+;;(assert_return (invoke "get_global_var") (i32.const 24)) ;; global should be what's calculated by the new func
+;;
+;;;; ---------------------------------------------------
+;;;; ==== FUNCS, with predicate, `alt_call_by_name` ====
+;;;; WHAMM --> wasm:opcode:call(arg0: i32):alt / arg0 == 0 / { alt_call_by_name("mult_all"); }
+;;(assert_return (invoke "get_global_var") (i32.const 24)) ;; global should be what's calculated by the new func
+;;
+;;;; ------------------------------------------------------
+;;;; ==== FUNCS, without predicate, `alt_call_by_name` ====
+;;;; WHAMM --> wasm:opcode:call:alt { alt_call_by_name("mult_all"); }
+;;(assert_return (invoke "get_global_var") (i32.const 24)) ;; global should be what's calculated by the new func

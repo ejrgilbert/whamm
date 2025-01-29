@@ -8,7 +8,7 @@ use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
-const CORE_WASM_PATH: &str = "./core_lib/target/wasm32-wasip1/release/core_lib.wasm";
+const CORE_WASM_PATH: &str = "./whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
 const TEST_DEBUG_DIR: &str = "output/tests/debug_me/";
 const OUTPUT_DIR: &str = "output/tests/wast_suite";
 const OUTPUT_WHAMMED_WAST: &str = "output/tests/wast_suite/should_pass";
@@ -138,7 +138,7 @@ fn run_wast_test(inter: &String, args: &[String], wast_file_name: &String) -> Ou
         .expect("failed to execute process")
 }
 
-const INT_PATH: &str = "./output/tests/interpreters";
+const INT_PATH: &str = "./output/tests/engines";
 const WIZENG_SPEC_INT: &str = "wizard-spectest";
 const WASM_REF_INT: &str = "wasm";
 fn get_available_interpreters() -> Vec<(String, Vec<String>)> {

@@ -1,18 +1,18 @@
-report i32 blah;
+report var blah;
 report map<i32, i32> m0;
 // wasm:opcode:call:before /
 //     target_fn_name == "bar"
 // /
 wasm:opcode:call:before
  {
-    unshared i32 count;
-    report i32 rep_count;
+    unshared var count: i32;
+    report var rep_count;
 
     count++;
 //     if(strcmp((0, 1), "lsdjflaksjdf")) {
-//         report i32 c;
+//         report var c;
 //     }
-// //     report i32 a;
+// //     report var a;
 // //     report map<i32, i32> m;
 // //     a = 5;
 //     m0[1] = 2;
@@ -28,6 +28,6 @@ wasm:opcode:call:before
 // /
 // wasm:opcode:call:after
 //  {
-//     report i32 b;
+//     report var b;
 //     b = 3;
 // }
