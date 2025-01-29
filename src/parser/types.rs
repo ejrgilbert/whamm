@@ -1410,17 +1410,13 @@ pub type ProvidedProbes = HashMap<
     ),
 >;
 
+#[derive(Default)]
 pub struct Whamm {
     pub provided_probes: ProvidedProbes,
     pub fns: Vec<ProvidedFunction>,               // Comp-provided
     pub globals: HashMap<String, ProvidedGlobal>, // Comp-provided
 
     pub scripts: Vec<Script>,
-}
-impl Default for Whamm {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 impl Whamm {
     pub fn new() -> Self {
@@ -1488,24 +1484,20 @@ pub struct RulePart {
 }
 impl RulePart {
     pub(crate) fn new(name: String, loc: Option<Location>) -> Self {
-        let mut rule_part = Self::default();
-        rule_part.name = name;
-        rule_part.loc = loc;
-        rule_part
+        Self {
+            name,
+            loc,
+            ty_info: vec![]
+        }
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct ProbeRule {
     pub provider: Option<RulePart>,
     pub package: Option<RulePart>,
     pub event: Option<RulePart>,
     pub mode: Option<RulePart>,
-}
-impl Default for ProbeRule {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 impl ProbeRule {
     pub fn new() -> Self {
@@ -1537,9 +1529,7 @@ impl ProbeRule {
         } else {
             "<none>".to_string()
         };
-        format!(
-            "{provider}:{package}:{event}:{mode}"
-        )
+        format!("{provider}:{package}:{event}:{mode}")
     }
     pub fn add_rule_def(&mut self, part: RulePart) {
         if self.provider.is_none() {
@@ -1647,6 +1637,7 @@ impl ProbeRule {
     }
 }
 
+#[derive(Default)]
 pub struct Script {
     pub id: u8,
     /// The rules of the probes that have been used in the Script.
@@ -1654,11 +1645,6 @@ pub struct Script {
     pub fns: Vec<Fn>,                     // User-provided
     pub globals: HashMap<String, Global>, // User-provided, should be VarId
     pub global_stmts: Vec<Statement>,
-}
-impl Default for Script {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 impl Script {
     pub fn new() -> Self {
@@ -1882,7 +1868,8 @@ impl Script {
                 Err(Box::new(ErrorGen::get_unexpected_error(
                     true,
                     Some(format!(
-                        "{UNEXPECTED_ERR_MSG} Could not find a mode matching pattern for {}!", probe_rule.full_name()
+                        "{UNEXPECTED_ERR_MSG} Could not find a mode matching pattern for {}!",
+                        probe_rule.full_name()
                     )),
                     None,
                 )))

@@ -45,8 +45,8 @@ wasm:opcode:call:before {
     // setup
     var v8: i8 = 1;
     var v16: i16 = 1;
-    var v32: i16 = 1;
-    var v64: i16 = 1;
+    var v32: i32 = 1;
+    var v64: i64 = 1;
 
     // TEST: ==
     report var eq_test0: bool;
@@ -67,9 +67,9 @@ wasm:opcode:call:before {
     report var eq_test7: bool;
     eq_test7 = v16 == (v64 as i16);
 
-    report var eq_test8: bool;;
+    report var eq_test8: bool;
     eq_test8 = v32 == (v8 as i32);
-    report var eq_test9: bool;;
+    report var eq_test9: bool;
     eq_test9 = v32 == (v16 as i32);
     report var eq_test10: bool;
     eq_test10 = v32 == v32;
@@ -95,7 +95,7 @@ wasm:opcode:call:before {
     eq_test19 = 1 as i64 == 0;
 
     // TEST: !=
-    report var eq_test0: bool;
+    report var ne_test0: bool;
     ne_test0 = v8 != v8;
     report var ne_test1: bool;
     ne_test1 = v8 != (v16 as i8);

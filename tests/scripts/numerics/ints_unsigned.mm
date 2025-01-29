@@ -62,9 +62,9 @@ wasm:opcode:call:before {
     report var eq_test7: bool;
     eq_test7 = v16 == (v64 as u16);
 
-    report var eq_test8: bool;;
+    report var eq_test8: bool;
     eq_test8 = v32 == (v8 as u32);
-    report var eq_test9: bool;;
+    report var eq_test9: bool;
     eq_test9 = v32 == (v16 as u32);
     report var eq_test10: bool;
     eq_test10 = v32 == v32;
@@ -90,7 +90,7 @@ wasm:opcode:call:before {
     eq_test19 = 1 as u64 == 0;
     
     // TEST: !=
-    report var eq_test0: bool;
+    report var ne_test0: bool;
     ne_test0 = v8 != v8;
     report var ne_test1: bool;
     ne_test1 = v8 != (v16 as u8);

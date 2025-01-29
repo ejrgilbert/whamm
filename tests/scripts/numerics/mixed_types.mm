@@ -67,7 +67,7 @@ wasm:opcode:call:before {
 
     // TEST: !=
 
-    report var eq_test0: bool;
+    report var ne_test0: bool;
     ne_test0 = v_u8 != (v_f64 as u8);
     report var ne_test1: bool;
     ne_test1 = v_u16 != (v_f32 as u16);

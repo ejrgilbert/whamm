@@ -1,4 +1,4 @@
-wasm:opcode:call:before {
+wasm:opcode:call(arg0: u8, arg1: i8, arg2: u16, arg3: i16, arg4: u32, arg5: i32, arg6: u64, arg7: i64, arg8: f32, arg9: f64):before {
     // Call target, parameters are used as type values (all are set to '1'):
     // (u8, i8, u16, i16, u32, i32, u64, i64, f32, f64)
 
@@ -70,7 +70,7 @@ wasm:opcode:call:before {
 
     // TEST: !=
 
-    report var eq_test0: bool;
+    report var ne_test0: bool;
     ne_test0 = v_u8 != (v_f64 as u8);
     report var ne_test1: bool;
     ne_test1 = v_u16 != (v_f32 as u16);
@@ -196,7 +196,7 @@ wasm:opcode:call:before {
     // TEST: extension
     report var ext_test0: i16;
     ext_test0 = ((NEG) as i16);
-    report var ext_test1: i8;
+    report var ext_test1: i16;
     ext_test1 = ((NEG as i8) as i16);
 
     report var ext_test2: u16;

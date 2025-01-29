@@ -1,4 +1,4 @@
-wasm:opcode:call:before {
+wasm:opcode:call(arg0: u8, arg1: i8, arg2: u16, arg3: i16, arg4: u32, arg5: i32, arg6: u64, arg7: i64, arg8: f32, arg9: f64):before {
     // Call target, parameters are used as type values (all are set to '1'):
     // (u8, i8, u16, i16, u32, i32, u64, i64, f32, f64)
     
@@ -8,10 +8,10 @@ wasm:opcode:call:before {
     var v_i16: i16 = arg3;
     var v_u32: u32 = arg4;
     var v_i32: i32 = arg5;
-//     var v_u64: u64 = arg6;
-//     var v_i64: i64 = arg7;
-//     var v_f32: f32 = arg8;
-//     var v_f64: f64 = arg9;
+    var v_u64: u64 = arg6;
+    var v_i64: i64 = arg7;
+    var v_f32: f32 = arg8;
+    var v_f64: f64 = arg9;
 
     var TWO: u8 = v_u8 + v_u8;
     var NEG: i8 = 0 - v_i8;
@@ -46,14 +46,14 @@ wasm:opcode:call:before {
     report var shl_test11: i32;
     shl_test11 = (NEG as i32) << (TWO as i32);
 
-//     report var shl_test12: u64;
-//     shl_test12 = v_u64 << (TWO as u64);
-//     report var shl_test13: u64;
-//     shl_test13 = (NEG as u64) << (TWO as u64);
-//     report var shl_test14: i64;
-//     shl_test14 = v_i64 << (TWO as i64);
-//     report var shl_test15: i64;
-//     shl_test15 = (NEG as i64) << (TWO as i64);
+    report var shl_test12: u64;
+    shl_test12 = v_u64 << (TWO as u64);
+    report var shl_test13: u64;
+    shl_test13 = (NEG as u64) << (TWO as u64);
+    report var shl_test14: i64;
+    shl_test14 = v_i64 << (TWO as i64);
+    report var shl_test15: i64;
+    shl_test15 = (NEG as i64) << (TWO as i64);
 
     // --- >>
     report var shr_test0: u8;
@@ -83,14 +83,14 @@ wasm:opcode:call:before {
     report var shr_test11: i32;
     shr_test11 = (NEG as i32) >> (TWO as i32);
 
-//     report var shr_test12: u64;
-//     shr_test12 = v_u64 >> (TWO as u64);
-//     report var shr_test13: u64;
-//     shr_test13 = (NEG as u64) >> (TWO as u64);
-//     report var shr_test14: i64;
-//     shr_test14 = v_i64 >> (TWO as i64);
-//     report var shr_test15: i64;
-//     shr_test15 = (NEG as i64) >> (TWO as i64);
+    report var shr_test12: u64;
+    shr_test12 = v_u64 >> (TWO as u64);
+    report var shr_test13: u64;
+    shr_test13 = (NEG as u64) >> (TWO as u64);
+    report var shr_test14: i64;
+    shr_test14 = v_i64 >> (TWO as i64);
+    report var shr_test15: i64;
+    shr_test15 = (NEG as i64) >> (TWO as i64);
 
     // --- &
 
@@ -121,14 +121,14 @@ wasm:opcode:call:before {
     report var and_test11: i32;
     and_test11 = (NEG as i32) & v_i32;
 
-//     report var and_test12: u64;
-//     and_test12 = v_u64 & v_u64;
-//     report var and_test13: u64;
-//     and_test13 = (NEG as u64) & v_u64;
-//     report var and_test14: i64;
-//     and_test14 = v_i64 & v_i64;
-//     report var and_test15: i64;
-//     and_test15 = (NEG as i64) & v_i64;
+    report var and_test12: u64;
+    and_test12 = v_u64 & v_u64;
+    report var and_test13: u64;
+    and_test13 = (NEG as u64) & v_u64;
+    report var and_test14: i64;
+    and_test14 = v_i64 & v_i64;
+    report var and_test15: i64;
+    and_test15 = (NEG as i64) & v_i64;
 
     // --- |
 
@@ -159,14 +159,14 @@ wasm:opcode:call:before {
     report var or_test11: i32;
     or_test11 = (NEG as i32) | 0xF;
 
-//     report var or_test12: u64;
-//     or_test12 = v_u64 | 0xF;
-//     report var or_test13: u64;
-//     or_test13 = (NEG as u64) | 0xF;
-//     report var or_test14: i64;
-//     or_test14 = v_i64 | 0xF;
-//     report var or_test15: i64;
-//     or_test15 = (NEG as i64) | 0xF;
+    report var or_test12: u64;
+    or_test12 = v_u64 | 0xF;
+    report var or_test13: u64;
+    or_test13 = (NEG as u64) | 0xF;
+    report var or_test14: i64;
+    or_test14 = v_i64 | 0xF;
+    report var or_test15: i64;
+    or_test15 = (NEG as i64) | 0xF;
 
     // --- ^
 
@@ -197,14 +197,14 @@ wasm:opcode:call:before {
     report var xor_test11: i32;
     xor_test11 = (NEG as i32) ^ 0xF;
 
-//     report var xor_test12: u64;
-//     xor_test12 = v_u64 ^ 0xF;
-//     report var xor_test13: u64;
-//     xor_test13 = (NEG as u64) ^ 0xF;
-//     report var xor_test14: i64;
-//     xor_test14 = v_i64 ^ 0xF;
-//     report var xor_test15: i64;
-//     xor_test15 = (NEG as i64) ^ 0xF;
+    report var xor_test12: u64;
+    xor_test12 = v_u64 ^ 0xF;
+    report var xor_test13: u64;
+    xor_test13 = (NEG as u64) ^ 0xF;
+    report var xor_test14: i64;
+    xor_test14 = v_i64 ^ 0xF;
+    report var xor_test15: i64;
+    xor_test15 = (NEG as i64) ^ 0xF;
 
     // --- ~
 
@@ -235,12 +235,12 @@ wasm:opcode:call:before {
     report var bwise_not_test11: i32;
     bwise_not_test11 = ~ (NEG as i32);
 
-//     report var bwise_not_test12: u64;
-//     bwise_not_test12 = ~ v_u64;
-//     report var bwise_not_test13: u64;
-//     bwise_not_test13 = ~ (NEG as u64);
-//     report var bwise_not_test14: i64;
-//     bwise_not_test14 = ~ v_i64;
-//     report var bwise_not_test15: i64;
-//     bwise_not_test15 = ~ (NEG as i64);
+    report var bwise_not_test12: u64;
+    bwise_not_test12 = ~ v_u64;
+    report var bwise_not_test13: u64;
+    bwise_not_test13 = ~ (NEG as u64);
+    report var bwise_not_test14: i64;
+    bwise_not_test14 = ~ v_i64;
+    report var bwise_not_test15: i64;
+    bwise_not_test15 = ~ (NEG as i64);
 }

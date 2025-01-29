@@ -134,7 +134,7 @@ impl MemoryAllocator {
         &self,
         mem_id: u32,
         ty: &DataType,
-        injector: &mut T
+        injector: &mut T,
     ) {
         // perform the correct store based on the type of data at this memory location
         match ty {
@@ -332,7 +332,9 @@ impl MemoryAllocator {
         // use this function to account for the statically-used memory
         wasm.mod_global_init_expr(
             self.mem_tracker_global,
-            InitExpr::new(vec![Instructions::Value(OrcaValue::I32(self.curr_mem_offset as i32))])
+            InitExpr::new(vec![Instructions::Value(OrcaValue::I32(
+                self.curr_mem_offset as i32,
+            ))]),
         )
     }
 }

@@ -4,7 +4,9 @@ use crate::parser::rules::{
     event_factory, print_mode_docs, Event, EventInfo, FromStr, FromStrWithLoc, Mode, ModeInfo,
     NameOptions, Package, PackageInfo, Probe,
 };
-use crate::parser::types::{Block, DataType, Expr, Location, ProbeRule, ProvidedFunction, ProvidedGlobal};
+use crate::parser::types::{
+    Block, DataType, Expr, Location, ProbeRule, ProvidedFunction, ProvidedGlobal,
+};
 use std::collections::HashMap;
 use std::mem::discriminant;
 use termcolor::Buffer;

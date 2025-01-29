@@ -109,8 +109,8 @@ impl<'a, 'b, 'c> WizardProbeMetadataCollector<'a, 'b, 'c> {
     }
     fn handle_special(&mut self, name: &str, prefix: &str) -> bool {
         if name.starts_with(prefix) && name[prefix.len()..].parse::<u32>().is_ok() {
-            // TODO -- this assumes we'll always use I32
-            self.push_metadata(name, &DataType::I32);
+            let (_, ty, _) = get_def(name, self.table, self.err);
+            self.push_metadata(name, &ty);
             true
         } else {
             false

@@ -29,7 +29,14 @@ fn instrument_dfinity_with_fault_injection() {
     assert!(!processed_scripts.is_empty());
     err.fatal_report("Integration Test");
     for (script_path, script_text) in processed_scripts {
-        run_script(&script_text, &script_path, APP_WASM_PATH, None, false, &mut err);
+        run_script(
+            &script_text,
+            &script_path,
+            APP_WASM_PATH,
+            None,
+            false,
+            &mut err,
+        );
     }
 }
 
@@ -125,7 +132,14 @@ fn instrument_with_wizard_monitors() {
     assert!(!processed_scripts.is_empty());
     err.fatal_report("Integration Test");
     for (script_path, script_text) in processed_scripts {
-        run_script(&script_text, &script_path, APP_WASM_PATH, None, false, &mut err);
+        run_script(
+            &script_text,
+            &script_path,
+            APP_WASM_PATH,
+            None,
+            false,
+            &mut err,
+        );
     }
 }
 
@@ -149,20 +163,64 @@ fn instrument_with_numerics_scripts() {
         app: PathBuf,
         exp: PathBuf,
     }
-    let mut testcases = vec![];
+
+    let mut rewriting_tests = vec![];
+    let mut wizard_tests = vec![];
     for (script_path, script_str) in processed_scripts.iter() {
         let fname = script_path.file_name().unwrap().to_str().unwrap();
         let path = script_path.parent().unwrap();
 
         let app = path.join("app").join(format!("{}.app", fname));
-        let exp = path.join("expected").join(format!("{}.exp", fname));
+        let rewriting_exp = path
+            .join("expected")
+            .join("rewriting")
+            .join(format!("{}.exp", fname));
+        let wizard_exp = path
+            .join("expected")
+            .join("wizard")
+            .join(format!("{}.exp", fname));
 
-        testcases.push(TestCase {
+        rewriting_tests.push(TestCase {
+            script: script_path.clone(),
+            script_str: script_str.clone(),
+            app: app.clone(),
+            exp: rewriting_exp,
+        });
+        wizard_tests.push(TestCase {
             script: script_path.clone(),
             script_str: script_str.clone(),
             app,
-            exp,
-        })
+            exp: wizard_exp,
+        });
+    }
+
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    err.fatal_report("Integration Test");
+    let instr_app_path = "output/output.wasm".to_string();
+
+    for TestCase {
+        script,
+        script_str,
+        app,
+        exp,
+    } in rewriting_tests.iter()
+    {
+        println!(
+            "[REWRITE] Running test case with monitor at the following path: {:#?}",
+            script
+        );
+        let app_path_str =
+            fs::read_to_string(app).unwrap_or_else(|_| panic!("Unable to read file at {:?}", app));
+        let exp_output =
+            fs::read_to_string(exp).unwrap_or_else(|_| panic!("Unable to read file at {:?}", exp));
+        run_testcase_rewriting(
+            script,
+            script_str,
+            &app_path_str,
+            &exp_output,
+            &instr_app_path,
+            &mut err,
+        );
     }
 
     for TestCase {
@@ -170,9 +228,24 @@ fn instrument_with_numerics_scripts() {
         script_str,
         app,
         exp,
-    } in testcases.iter() {
-        println!("Running test case with monitor at the following path: {:#?}", script);
-        run_testcase_all_targets(script, script_str, app, exp);
+    } in wizard_tests.iter()
+    {
+        println!(
+            "[WIZARD] Running test case with monitor at the following path: {:#?}",
+            script
+        );
+        let app_path_str =
+            fs::read_to_string(app).unwrap_or_else(|_| panic!("Unable to read file at {:?}", app));
+        let exp_output =
+            fs::read_to_string(exp).unwrap_or_else(|_| panic!("Unable to read file at {:?}", exp));
+        run_testcase_wizard(
+            script,
+            script_str,
+            &app_path_str,
+            &exp_output,
+            &instr_app_path,
+            &mut err,
+        );
     }
 }
 
@@ -203,7 +276,14 @@ fn run_script(
     err.fatal_report("Integration Test");
 }
 
-fn run_testcase_rewriting(script: &PathBuf, script_str: &String, app_path_str: &str, exp_output: &String, instr_app_path: &String, err: &mut ErrorGen) {
+fn run_testcase_rewriting(
+    script: &PathBuf,
+    script_str: &String,
+    app_path_str: &str,
+    exp_output: &String,
+    instr_app_path: &String,
+    err: &mut ErrorGen,
+) {
     // run the script on configured application
     run_script(
         &script_str,
@@ -223,10 +303,10 @@ fn run_testcase_rewriting(script: &PathBuf, script_str: &String, app_path_str: &
         .expect("failed to run wasmtime-runner");
     if !res.status.success() {
         error!(
-                "Failed to run wasmtime-runner:\n{}\n{}",
-                String::from_utf8(res.stdout).unwrap(),
-                String::from_utf8(res.stderr).unwrap()
-            );
+            "Failed to run wasmtime-runner:\n{}\n{}",
+            String::from_utf8(res.stdout).unwrap(),
+            String::from_utf8(res.stderr).unwrap()
+        );
         assert!(false);
     } else {
         // make sure the output is as expected
@@ -235,7 +315,14 @@ fn run_testcase_rewriting(script: &PathBuf, script_str: &String, app_path_str: &
     }
 }
 
-fn run_testcase_wizard(script: &PathBuf, script_str: &String, app_path_str: &str, exp_output: &String, instr_app_path: &String, err: &mut ErrorGen) {
+fn run_testcase_wizard(
+    script: &PathBuf,
+    script_str: &String,
+    app_path_str: &str,
+    exp_output: &String,
+    instr_app_path: &String,
+    err: &mut ErrorGen,
+) {
     // run the script on configured application
     run_script(
         &script_str,
@@ -258,32 +345,14 @@ fn run_testcase_wizard(script: &PathBuf, script_str: &String, app_path_str: &str
         .expect(&format!("Failed to run wizard command, please make sure the wizeng executable is available at the path: {}", wizeng_path));
     if !res.status.success() {
         error!(
-                "Failed to run wizard monitor:\n{}\n{}",
-                String::from_utf8(res.stdout).unwrap(),
-                String::from_utf8(res.stderr).unwrap()
-            );
+            "Failed to run wizard monitor:\n{}\n{}",
+            String::from_utf8(res.stdout).unwrap(),
+            String::from_utf8(res.stderr).unwrap()
+        );
         assert!(false);
     } else {
         // make sure the output is as expected
         let stdout = String::from_utf8(res.stdout).unwrap();
         assert_eq!(stdout.trim(), exp_output.trim());
     }
-}
-
-fn run_testcase_all_targets(script: &PathBuf, script_str: &String, app: &PathBuf, exp: &PathBuf, ) {
-    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-    err.fatal_report("Integration Test");
-
-    let app_path_str =
-        fs::read_to_string(app).unwrap_or_else(|_| panic!("Unable to read file at {:?}", app));
-    let exp_output =
-        fs::read_to_string(exp).unwrap_or_else(|_| panic!("Unable to read file at {:?}", exp));
-
-    let instr_app_path = "output/output.wasm".to_string();
-
-    // println!("Running on rewriting target");
-    // run_testcase_rewriting(script, script_str, &app_path_str, &exp_output, &instr_app_path, &mut err);
-
-    println!("Running on wizard target");
-    run_testcase_wizard(script, script_str, &app_path_str, &exp_output, &instr_app_path, &mut err);
 }

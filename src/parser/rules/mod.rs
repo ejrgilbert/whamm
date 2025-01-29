@@ -298,7 +298,9 @@ fn package_factory<P: Package + NameOptions + FromStrWithLoc + 'static>(
     printing_info: bool,
 ) -> (bool, bool, bool) {
     if let Some(RulePart {
-        name: package_patt, ty_info, ..
+        name: package_patt,
+        ty_info,
+        ..
     }) = &probe_rule.package
     {
         let matches = get_matches(P::get_name_options(), package_patt);
@@ -474,7 +476,9 @@ fn event_factory<E: Event + NameOptions + FromStrWithLoc + 'static>(
     printing_info: bool,
 ) -> (bool, bool) {
     if let Some(RulePart {
-        name: event_patt, ty_info, ..
+        name: event_patt,
+        ty_info,
+        ..
     }) = &probe_rule.event
     {
         let matches = get_matches(E::get_name_options(), event_patt);
@@ -487,9 +491,11 @@ fn event_factory<E: Event + NameOptions + FromStrWithLoc + 'static>(
         for m in matches {
             matched_events = true;
             let already_has = curr_events.contains_key(&m.clone());
-            let event = curr_events
-                .entry(m.clone())
-                .or_insert(Box::new(E::from_str(&m, ty_info.to_owned(), loc.clone())));
+            let event = curr_events.entry(m.clone()).or_insert(Box::new(E::from_str(
+                &m,
+                ty_info.to_owned(),
+                loc.clone(),
+            )));
 
             let found_match_for_mode =
                 if let Some(RulePart { loc: mode_loc, .. }) = &probe_rule.mode {
@@ -574,7 +580,9 @@ fn mode_factory<M: Mode + NameOptions + FromStrWithLoc>(
     loc: Option<Location>,
 ) -> Vec<Box<M>> {
     if let Some(RulePart {
-        name: mode_patt, ty_info, ..
+        name: mode_patt,
+        ty_info,
+        ..
     }) = &probe_rule.mode
     {
         let mut name_options = vec![];

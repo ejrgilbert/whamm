@@ -112,7 +112,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 provider: probe_rule.provider.clone(),
                 package: probe_rule.package.clone(),
                 event: probe_rule.event.clone(),
-                mode: Some(RulePart::new(probe_rule.mode.as_ref().unwrap().name(), None)),
+                mode: Some(RulePart::new(
+                    probe_rule.mode.as_ref().unwrap().name(),
+                    None,
+                )),
             },
         )
     }

@@ -1,6 +1,9 @@
+#![allow(clippy::too_many_arguments)]
 use crate::common::error::ErrorGen;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::parser::types::DataType;
+use itertools::Itertools;
+use log::info;
 use orca_wasm::ir::function::FunctionBuilder;
 use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
 use orca_wasm::ir::types::{BlockType, DataType as OrcaType, InitExpr, Value};
@@ -10,7 +13,6 @@ use orca_wasm::{Instructions, Module, Opcode};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use log::info;
 use wasmparser::MemArg;
 
 pub const NULL_PTR_IN_MEM: i32 = -1;
@@ -206,7 +208,12 @@ impl ReportVars {
         self.emit_flush_var_metadata_fn(io_adapter, mem_id, wasm, err);
 
         // iterate through all the data type flush functions and emit calls
-        for dt in self.alloc_tracker.keys() {
+        // sort these by the datatype to make the flush deterministic!
+        let sorted_keys = self
+            .alloc_tracker
+            .keys()
+            .sorted_by_key(|ty| ty.id());
+        for dt in sorted_keys.into_iter() {
             match dt {
                 DataType::U8 => {
                     let fid = self.emit_flush_u8_fn(io_adapter, mem_id, wasm, err);
@@ -248,8 +255,12 @@ impl ReportVars {
                     let fid = self.emit_flush_f64_fn(io_adapter, mem_id, wasm, err);
                     func.call(FunctionID(fid));
                 }
-                _ => {
-                    unimplemented!()
+                DataType::Boolean => {
+                    let fid = self.emit_flush_bool_fn(io_adapter, mem_id, wasm, err);
+                    func.call(FunctionID(fid));
+                }
+                dt => {
+                    unimplemented!("Flushing {dt} is not supported yet.")
                 }
             }
         }
@@ -389,100 +400,44 @@ impl ReportVars {
         io_adapter.puts(", ".to_string(), &mut flush_fn, err);
 
         // print 'whamm_type' per supported report variable datatype
-        Self::flush_ty_metadata(
-            &mut flush_fn,
-            DataType::U8,
-            &dt,
-            io_adapter,
-            err
-        );
+        Self::flush_ty_metadata(&mut flush_fn, DataType::U8, &dt, io_adapter, err);
 
         flush_fn.else_stmt();
-        Self::flush_ty_metadata(
-            &mut flush_fn,
-            DataType::I8,
-            &dt,
-            io_adapter,
-            err
-        );
+        Self::flush_ty_metadata(&mut flush_fn, DataType::I8, &dt, io_adapter, err);
 
         flush_fn.else_stmt();
-        Self::flush_ty_metadata(
-            &mut flush_fn,
-            DataType::U16,
-            &dt,
-            io_adapter,
-            err
-        );
+        Self::flush_ty_metadata(&mut flush_fn, DataType::U16, &dt, io_adapter, err);
 
         flush_fn.else_stmt();
-        Self::flush_ty_metadata(
-            &mut flush_fn,
-            DataType::I16,
-            &dt,
-            io_adapter,
-            err
-        );
+        Self::flush_ty_metadata(&mut flush_fn, DataType::I16, &dt, io_adapter, err);
 
         flush_fn.else_stmt();
-        Self::flush_ty_metadata(
-            &mut flush_fn,
-            DataType::U32,
-            &dt,
-            io_adapter,
-            err
-        );
+        Self::flush_ty_metadata(&mut flush_fn, DataType::U32, &dt, io_adapter, err);
 
         flush_fn.else_stmt();
-        Self::flush_ty_metadata(
-            &mut flush_fn,
-            DataType::I32,
-            &dt,
-            io_adapter,
-            err
-        );
+        Self::flush_ty_metadata(&mut flush_fn, DataType::I32, &dt, io_adapter, err);
 
         flush_fn.else_stmt();
-        Self::flush_ty_metadata(
-            &mut flush_fn,
-            DataType::U64,
-            &dt,
-            io_adapter,
-            err
-        );
+        Self::flush_ty_metadata(&mut flush_fn, DataType::U64, &dt, io_adapter, err);
 
         flush_fn.else_stmt();
-        Self::flush_ty_metadata(
-            &mut flush_fn,
-            DataType::I64,
-            &dt,
-            io_adapter,
-            err
-        );
+        Self::flush_ty_metadata(&mut flush_fn, DataType::I64, &dt, io_adapter, err);
 
         flush_fn.else_stmt();
-        Self::flush_ty_metadata(
-            &mut flush_fn,
-            DataType::F32,
-            &dt,
-            io_adapter,
-            err
-        );
+        Self::flush_ty_metadata(&mut flush_fn, DataType::F32, &dt, io_adapter, err);
 
         flush_fn.else_stmt();
-        Self::flush_ty_metadata(
-            &mut flush_fn,
-            DataType::F64,
-            &dt,
-            io_adapter,
-            err
-        );
+        Self::flush_ty_metadata(&mut flush_fn, DataType::F64, &dt, io_adapter, err);
+
+        flush_fn.else_stmt();
+        Self::flush_ty_metadata(&mut flush_fn, DataType::Boolean, &dt, io_adapter, err);
 
         // All other datatypes should dynamically trap
         // (need to close all if stmts with 'end')
         #[rustfmt::skip]
         flush_fn.else_stmt()
             .unreachable()
+            .end()
             .end()
             .end()
             .end()
@@ -525,13 +480,14 @@ impl ReportVars {
         dt: DataType,
         dt_local: &LocalID,
         io_adapter: &mut IOAdapter,
-        err: &mut ErrorGen
+        err: &mut ErrorGen,
     ) {
         let mut s = DefaultHasher::new();
         dt.hash(&mut s);
         let hash = s.finish();
 
-        flush_fn.local_get(*dt_local)
+        flush_fn
+            .local_get(*dt_local)
             .i64_const(hash as i64)
             .i64_eq()
             .if_stmt(BlockType::Empty);
@@ -549,12 +505,7 @@ impl ReportVars {
     // ==== Flush functions per datatype ====
     fn emit_flush_fn(
         &self,
-        flush_dt: &dyn Fn(
-            &mut FunctionBuilder,
-            &MemArg,
-            &mut IOAdapter,
-            &mut ErrorGen
-        ),
+        flush_dt: &dyn Fn(&mut FunctionBuilder, &MemArg, &mut IOAdapter, &mut ErrorGen),
         dt: DataType,
         io_adapter: &mut IOAdapter,
         mem_id: u32,
@@ -677,7 +628,7 @@ impl ReportVars {
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        err: &mut ErrorGen
+        err: &mut ErrorGen,
     ) {
         flush_fn.i32_load8_u(*mem_arg);
         io_adapter.call_putu8(flush_fn, err);
@@ -698,7 +649,7 @@ impl ReportVars {
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        err: &mut ErrorGen
+        err: &mut ErrorGen,
     ) {
         flush_fn.i32_load8_s(*mem_arg);
         io_adapter.call_puti8(flush_fn, err);
@@ -712,14 +663,21 @@ impl ReportVars {
         wasm: &mut Module,
         err: &mut ErrorGen,
     ) -> u32 {
-        self.emit_flush_fn(&Self::flush_u16, DataType::U16, io_adapter, mem_id, wasm, err)
+        self.emit_flush_fn(
+            &Self::flush_u16,
+            DataType::U16,
+            io_adapter,
+            mem_id,
+            wasm,
+            err,
+        )
     }
 
     fn flush_u16(
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        err: &mut ErrorGen
+        err: &mut ErrorGen,
     ) {
         flush_fn.i32_load16_u(*mem_arg);
         io_adapter.call_putu16(flush_fn, err);
@@ -733,14 +691,21 @@ impl ReportVars {
         wasm: &mut Module,
         err: &mut ErrorGen,
     ) -> u32 {
-        self.emit_flush_fn(&Self::flush_i16, DataType::I16, io_adapter, mem_id, wasm, err)
+        self.emit_flush_fn(
+            &Self::flush_i16,
+            DataType::I16,
+            io_adapter,
+            mem_id,
+            wasm,
+            err,
+        )
     }
 
     fn flush_i16(
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        err: &mut ErrorGen
+        err: &mut ErrorGen,
     ) {
         flush_fn.i32_load16_s(*mem_arg);
         io_adapter.call_puti16(flush_fn, err);
@@ -754,18 +719,42 @@ impl ReportVars {
         wasm: &mut Module,
         err: &mut ErrorGen,
     ) -> u32 {
-        self.emit_flush_fn(&Self::flush_u32, DataType::U32, io_adapter, mem_id, wasm, err)
+        self.emit_flush_fn(
+            &Self::flush_u32,
+            DataType::U32,
+            io_adapter,
+            mem_id,
+            wasm,
+            err,
+        )
     }
 
     fn flush_u32(
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        err: &mut ErrorGen
+        err: &mut ErrorGen,
     ) {
         flush_fn.i32_load(*mem_arg);
         io_adapter.call_putu32(flush_fn, err);
         io_adapter.putln(flush_fn, err);
+    }
+
+    fn emit_flush_bool_fn(
+        &self,
+        io_adapter: &mut IOAdapter,
+        mem_id: u32,
+        wasm: &mut Module,
+        err: &mut ErrorGen,
+    ) -> u32 {
+        self.emit_flush_fn(
+            &Self::flush_i32,
+            DataType::Boolean,
+            io_adapter,
+            mem_id,
+            wasm,
+            err,
+        )
     }
 
     fn emit_flush_i32_fn(
@@ -775,14 +764,21 @@ impl ReportVars {
         wasm: &mut Module,
         err: &mut ErrorGen,
     ) -> u32 {
-        self.emit_flush_fn(&Self::flush_i32, DataType::I32, io_adapter, mem_id, wasm, err)
+        self.emit_flush_fn(
+            &Self::flush_i32,
+            DataType::I32,
+            io_adapter,
+            mem_id,
+            wasm,
+            err,
+        )
     }
 
     fn flush_i32(
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        err: &mut ErrorGen
+        err: &mut ErrorGen,
     ) {
         flush_fn.i32_load(*mem_arg);
         io_adapter.call_puti32(flush_fn, err);
@@ -796,14 +792,21 @@ impl ReportVars {
         wasm: &mut Module,
         err: &mut ErrorGen,
     ) -> u32 {
-        self.emit_flush_fn(&Self::flush_u64, DataType::U64, io_adapter, mem_id, wasm, err)
+        self.emit_flush_fn(
+            &Self::flush_u64,
+            DataType::U64,
+            io_adapter,
+            mem_id,
+            wasm,
+            err,
+        )
     }
 
     fn flush_u64(
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        err: &mut ErrorGen
+        err: &mut ErrorGen,
     ) {
         flush_fn.i64_load(*mem_arg);
         io_adapter.call_putu64(flush_fn, err);
@@ -817,14 +820,21 @@ impl ReportVars {
         wasm: &mut Module,
         err: &mut ErrorGen,
     ) -> u32 {
-        self.emit_flush_fn(&Self::flush_i64, DataType::I64, io_adapter, mem_id, wasm, err)
+        self.emit_flush_fn(
+            &Self::flush_i64,
+            DataType::I64,
+            io_adapter,
+            mem_id,
+            wasm,
+            err,
+        )
     }
 
     fn flush_i64(
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        err: &mut ErrorGen
+        err: &mut ErrorGen,
     ) {
         flush_fn.i64_load(*mem_arg);
         io_adapter.call_puti64(flush_fn, err);
@@ -838,14 +848,21 @@ impl ReportVars {
         wasm: &mut Module,
         err: &mut ErrorGen,
     ) -> u32 {
-        self.emit_flush_fn(&Self::flush_f32, DataType::F32, io_adapter, mem_id, wasm, err)
+        self.emit_flush_fn(
+            &Self::flush_f32,
+            DataType::F32,
+            io_adapter,
+            mem_id,
+            wasm,
+            err,
+        )
     }
 
     fn flush_f32(
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        err: &mut ErrorGen
+        err: &mut ErrorGen,
     ) {
         flush_fn.f32_load(*mem_arg);
         io_adapter.call_putf32(flush_fn, err);
@@ -859,14 +876,21 @@ impl ReportVars {
         wasm: &mut Module,
         err: &mut ErrorGen,
     ) -> u32 {
-        self.emit_flush_fn(&Self::flush_f64, DataType::F64, io_adapter, mem_id, wasm, err)
+        self.emit_flush_fn(
+            &Self::flush_f64,
+            DataType::F64,
+            io_adapter,
+            mem_id,
+            wasm,
+            err,
+        )
     }
 
     fn flush_f64(
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        err: &mut ErrorGen
+        err: &mut ErrorGen,
     ) {
         flush_fn.f64_load(*mem_arg);
         io_adapter.call_putf64(flush_fn, err);
@@ -1011,7 +1035,8 @@ impl ReportVars {
             // no need to update `used_bytes`
 
             // update the last_var global to point to the current location
-            alloc_func.global_get(mem_tracker_global)
+            alloc_func
+                .global_get(mem_tracker_global)
                 .u32_const(total_mem_usage - curr_var_mem_usage)
                 .i32_add()
                 .global_set(GlobalID(last_var_gid));
@@ -1211,5 +1236,3 @@ struct ReportAllocTracker {
 struct FlushTracker {
     flush_var_metadata_fid: Option<u32>,
 }
-
-

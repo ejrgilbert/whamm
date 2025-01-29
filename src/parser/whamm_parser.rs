@@ -1238,7 +1238,7 @@ fn probe_rule_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeRule {
         rule_as_str.to_string()
     };
 
-    let str_parts = simplified.split(':').into_iter();
+    let str_parts = simplified.split(':');
 
     let mut probe_rule = ProbeRule::new();
     let mut contents: Vec<String> = vec![];
@@ -1265,7 +1265,6 @@ fn probe_rule_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeRule {
                 break;
             }
         };
-
 
         // check if there is type info associated with this probe part
         if let Some(n) = next.clone() {
@@ -1304,10 +1303,13 @@ fn probe_rule_part_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> RulePart {
             let name: String = pair.as_str().parse().unwrap();
             let id_line_col = LineColLocation::from(pair.as_span());
 
-            let part = RulePart::new(name, Some(Location {
-                line_col: id_line_col,
-                path: None,
-            }));
+            let part = RulePart::new(
+                name,
+                Some(Location {
+                    line_col: id_line_col,
+                    path: None,
+                }),
+            );
             trace!("Exiting PROBE_ID");
 
             trace!("Exiting probe_rule_part_from_rule");

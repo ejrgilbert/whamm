@@ -216,15 +216,20 @@ impl UnsharedVarHandler {
         let mut bytes_used = 0;
 
         // store fid
-        bytes_used +=
-            emitter
-                .mem_allocator
-                .emit_store_from_local(curr_offset + bytes_used, fid.id, &fid.ty, func);
+        bytes_used += emitter.mem_allocator.emit_store_from_local(
+            curr_offset + bytes_used,
+            fid.id,
+            &fid.ty,
+            func,
+        );
 
         // store pc
-        bytes_used += emitter
-            .mem_allocator
-            .emit_store_from_local(curr_offset + bytes_used, pc.id, &pc.ty, func);
+        bytes_used += emitter.mem_allocator.emit_store_from_local(
+            curr_offset + bytes_used,
+            pc.id,
+            &pc.ty,
+            func,
+        );
 
         bytes_used
     }

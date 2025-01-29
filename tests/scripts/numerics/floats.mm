@@ -3,10 +3,10 @@ wasm:opcode:call:before {
 
     // --- logical operators ---
     // setup
-    f32 t_32 = 1;
-    f32 f_32 = 0;
-    f64 t_64 = 1;
-    f64 f_64 = 0;
+    var t_32: f32 = 1;
+    var f_32: f32 = 0;
+    var t_64: f64 = 1;
+    var f_64: f64 = 0;
 
     // TEST: and
     report var and_test0: bool;

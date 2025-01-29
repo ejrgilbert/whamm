@@ -1,4 +1,4 @@
-wasm:opcode:call:before {
+wasm:opcode:call(arg1: i8, arg3: i16, arg5: i32, arg7: i64):before {
     // Call target, parameters are used as type values (all are set to '1'):
     // (u8, i8, u16, i16, u32, i32, u64, i64, f32, f64)
 
@@ -65,9 +65,9 @@ wasm:opcode:call:before {
     report var eq_test7: bool;
     eq_test7 = v16 == (v64 as i16);
 
-    report var eq_test8: bool;;
+    report var eq_test8: bool;
     eq_test8 = v32 == (v8 as i32);
-    report var eq_test9: bool;;
+    report var eq_test9: bool;
     eq_test9 = v32 == (v16 as i32);
     report var eq_test10: bool;
     eq_test10 = v32 == v32;
@@ -93,7 +93,7 @@ wasm:opcode:call:before {
     eq_test19 = v32 as i64 == 0;
 
     // TEST: !=
-    report var eq_test0: bool;
+    report var ne_test0: bool;
     ne_test0 = v8 != v8;
     report var ne_test1: bool;
     ne_test1 = v8 != (v16 as i8);
@@ -394,11 +394,11 @@ wasm:opcode:call:before {
     // TEST: -
     report var sub_test0: i8;
     sub_test0 = v8 - v8;
-    report var sub_test1;
+    report var sub_test1: i8;
     sub_test1 = v8 - (v16 as i8);
-    report var sub_test2;
+    report var sub_test2: i8;
     sub_test2 = v8 - (v32 as i8);
-    report var sub_test3;
+    report var sub_test3: i8;
     sub_test3 = v8 - (v64 as i8);
 
     report var sub_test4: i16;
@@ -501,8 +501,9 @@ wasm:opcode:call:before {
     report var mul_test23: i64;
     mul_test23 = I64_MIN * v32 as i64;
 
-    i32 TWO = (v32 + v32): i8;
-    report var mul_test24;
+    var TWO: i32 = (v32 + v32);
+
+    report var mul_test24: i8;
     mul_test24 = I8_MIN * TWO as i8;
     report var mul_test25: i16;
     mul_test25 = I16_MIN * TWO as i16;
@@ -524,7 +525,7 @@ wasm:opcode:call:before {
     mul_test32 = I8_MAX * TWO as i8;
     report var mul_test33: i16;
     mul_test33 = I16_MAX * TWO as i16;
-    report var mul_test34;
+    report var mul_test34: i32;
     mul_test34 = I32_MAX * TWO;
     report var mul_test35: i64;
     mul_test35 = I64_MAX * TWO as i64;

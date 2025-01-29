@@ -1,4 +1,4 @@
-wasm:opcode:call:before {
+wasm:opcode:call(arg8: f32, arg9: f64):before {
     // Call target, parameters are used as type values (all are set to '1'):
     // (u8, i8, u16, i16, u32, i32, u64, i64, f32, f64)
 
@@ -47,7 +47,7 @@ wasm:opcode:call:before {
 
     // TEST: !=
 
-    report var eq_test0: bool;
+    report var ne_test0: bool;
     ne_test0 = v32 != v32;
     report var ne_test1: bool;
     ne_test1 = v32 != (v64 as f32);

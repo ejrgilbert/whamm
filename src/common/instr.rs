@@ -22,11 +22,11 @@ use crate::verifier::types::SymbolTable;
 use crate::verifier::verifier::{build_symbol_table, type_check};
 use log::{error, info};
 use orca_wasm::ir::id::{FunctionID, GlobalID};
+use orca_wasm::ir::types::{DataType as OrcaType, InitExpr, Value as OrcaValue};
 use orca_wasm::{Instructions, Module};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::exit;
-use orca_wasm::ir::types::{DataType as OrcaType, InitExpr, Value as OrcaValue};
 use wasmparser::MemoryType;
 
 /// create output path if it doesn't exist

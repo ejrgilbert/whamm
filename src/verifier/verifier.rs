@@ -1,5 +1,6 @@
 use crate::common::error::ErrorGen;
 use crate::parser::rules::{Event, Package, Probe, Provider, UNKNOWN_IMMS};
+use crate::parser::types::Definition::CompilerDynamic;
 use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Fn, Location, Script, Statement, UnOp, Value, Whamm,
     WhammVisitorMut,
@@ -7,7 +8,6 @@ use crate::parser::types::{
 use crate::verifier::builder_visitor::SymbolTableBuilder;
 use crate::verifier::types::{line_col_from_loc, Record, SymbolTable};
 use std::vec;
-use crate::parser::types::Definition::CompilerDynamic;
 
 const UNEXPECTED_ERR_MSG: &str =
     "TypeChecker: Looks like you've found a bug...please report this behavior! Exiting now...";
@@ -963,7 +963,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         }
                     }
                 }
-                if name.starts_with("arg") || name.starts_with("local"){
+                if name.starts_with("arg") || name.starts_with("local") {
                     self.err.type_check_error(
                         false,
                         format! {"Please add type bound for `{}`", name},
