@@ -28,11 +28,14 @@ fn instrument_dfinity_with_fault_injection() {
     let processed_scripts = common::setup_fault_injection("dfinity");
     assert!(!processed_scripts.is_empty());
     err.fatal_report("Integration Test");
+    let wasm = fs::read(APP_WASM_PATH).unwrap();
+
     for (script_path, script_text) in processed_scripts {
+        let mut module_to_instrument = Module::parse(&wasm, false).unwrap();
         run_script(
             &script_text,
             &script_path,
-            APP_WASM_PATH,
+            &mut module_to_instrument,
             None,
             false,
             &mut err,
@@ -133,11 +136,13 @@ fn instrument_with_wizard_monitors() {
     err.fatal_report("Integration Test");
 
     build_whamm_core_lib();
+    let wasm = fs::read(APP_WASM_PATH).unwrap();
     for (script_path, script_text) in processed_scripts {
+        let mut module_to_instrument = Module::parse(&wasm, false).unwrap();
         run_script(
             &script_text,
             &script_path,
-            APP_WASM_PATH,
+            &mut module_to_instrument,
             None,
             false,
             &mut err,
@@ -277,16 +282,14 @@ fn build_whamm_core_lib() {
 fn run_script(
     script_text: &String,
     script_path: &PathBuf,
-    app_wasm_path: &str,
+    target_wasm: &mut Module,
     output_path: Option<String>,
     target_wizard: bool,
     err: &mut ErrorGen,
 ) {
-    let wasm = fs::read(app_wasm_path).unwrap();
-    let mut module_to_instrument = Module::parse(&wasm, false).unwrap();
     let _ = whamm::common::instr::run(
         CORE_WASM_PATH,
-        &mut module_to_instrument,
+        target_wasm,
         &script_text,
         &format!("{:?}", script_path.clone().as_path()),
         output_path,
@@ -310,10 +313,12 @@ fn run_testcase_rewriting(
     err: &mut ErrorGen,
 ) {
     // run the script on configured application
+    let wasm = fs::read(app_path_str).unwrap();
+    let mut module_to_instrument = Module::parse(&wasm, false).unwrap();
     run_script(
         &script_str,
         &script,
-        &app_path_str,
+        &mut module_to_instrument,
         Some(instr_app_path.clone()),
         false,
         err,
@@ -349,10 +354,11 @@ fn run_testcase_wizard(
     err: &mut ErrorGen,
 ) {
     // run the script on configured application
+    let mut module_to_instrument = Module::default();
     run_script(
         &script_str,
         &script,
-        &app_path_str,
+        &mut module_to_instrument,
         Some(instr_app_path.clone()),
         true,
         err,
