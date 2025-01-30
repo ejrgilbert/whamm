@@ -164,16 +164,18 @@ pub fn run(
 
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
+    let mut mem_allocator = get_memory_allocator(target_wasm, true);
 
     // Merge in the core library IF NEEDED
     let mut map_package = MapLibPackage::default();
-    let mut io_package = IOPackage::default();
+    let mut io_package = IOPackage::new(*mem_allocator.mem_tracker_global);
     let mut core_packages: Vec<&mut dyn LibPackage> = vec![&mut map_package, &mut io_package];
     let mut injected_funcs = crate::lang_features::libraries::actions::link_core_lib(
         &config.library_strategy,
         &whamm,
         target_wasm,
         core_wasm_path,
+        &mut mem_allocator,
         &mut core_packages,
         &mut err,
     );
@@ -191,6 +193,7 @@ pub fn run(
             // simple_ast,
             target_wasm,
             &mut symbol_table,
+            mem_allocator,
             &mut io_adapter,
             &mut map_lib_adapter,
             &mut report_vars,
@@ -205,6 +208,7 @@ pub fn run(
             simple_ast,
             target_wasm,
             &mut symbol_table,
+            mem_allocator,
             &mut io_adapter,
             &mut map_lib_adapter,
             &mut report_vars,
@@ -241,6 +245,7 @@ fn run_instr_wizard(
     // simple_ast: SimpleAST,
     target_wasm: &mut Module,
     symbol_table: &mut SymbolTable,
+    mut mem_allocator: MemoryAllocator,
     io_adapter: &mut IOAdapter,
     map_lib_adapter: &mut MapLibAdapter,
     report_vars: &mut ReportVars,
@@ -248,8 +253,6 @@ fn run_instr_wizard(
     err: &mut ErrorGen,
     config: &Config,
 ) {
-    let mut mem_allocator = get_memory_allocator(target_wasm, true);
-
     // Collect the metadata for the AST and transform to different representation
     // specifically used for targeting Wizard during compilation.
     let mut metadata_collector = WizardProbeMetadataCollector::new(symbol_table, err, config);
@@ -291,6 +294,7 @@ fn run_instr_rewrite(
     simple_ast: SimpleAST,
     target_wasm: &mut Module,
     symbol_table: &mut SymbolTable,
+    mut mem_allocator: MemoryAllocator,
     io_adapter: &mut IOAdapter,
     map_lib_adapter: &mut MapLibAdapter,
     report_vars: &mut ReportVars,
@@ -298,8 +302,6 @@ fn run_instr_rewrite(
     injected_funcs: &mut Vec<FunctionID>,
     err: &mut ErrorGen,
 ) {
-    let mut mem_allocator = get_memory_allocator(target_wasm, true);
-
     // Phase 0 of instrumentation (emit globals and provided fns)
     let mut init = InitGenerator {
         emitter: ModuleEmitter::new(

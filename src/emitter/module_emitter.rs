@@ -6,7 +6,7 @@ use crate::emitter::{configure_flush_routines, Emitter, InjectStrategy};
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
-use crate::lang_features::report_vars::ReportVars;
+use crate::lang_features::report_vars::{Metadata, ReportVars};
 use crate::parser::types::{Block, DataType, Definition, Expr, Fn, FnId, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use log::debug;
@@ -77,7 +77,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     // ==== BASE MODULE SETUP LOGIC ====
     // =================================
 
-    pub fn setup_module(&mut self, create_tracker_global: bool, err: &mut ErrorGen) {
+    pub fn setup_module(&mut self, err: &mut ErrorGen) {
         // setup maps
         if self.map_lib_adapter.is_used {
             self.create_instr_init(err);
@@ -87,16 +87,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
 
         // setup report globals
         self.create_print_global_meta(err);
-
-        // setup mem tracker global
-        if create_tracker_global {
-            self.mem_allocator.mem_tracker_global = self.app_wasm.add_global(
-                InitExpr::new(vec![Instructions::Value(OrcaValue::I32(0))]),
-                OrcaType::I32,
-                true,
-                false,
-            );
-        }
     }
 
     // ===========================
@@ -204,13 +194,21 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         err: &mut ErrorGen,
     ) {
         if flush_reports {
+            // prepare the CSV header data segment
+            let (header_addr, header_len) =
+                Metadata::setup_csv_header(self.app_wasm, self.mem_allocator);
+            self.report_vars
+                .setup_flush_data_segments(self.app_wasm, self.mem_allocator);
+
             // (ONLY DO THIS IF THERE ARE REPORT VARIABLES)
             let mut on_exit = FunctionBuilder::new(&[], &[]);
 
             // call the report_vars to emit calls to all report var flushers
             self.report_vars.emit_flush_logic(
                 &mut on_exit,
+                self.mem_allocator,
                 io_adapter,
+                (header_addr, header_len),
                 self.mem_allocator.mem_id,
                 self.app_wasm,
                 err,
@@ -279,7 +277,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     align: 0,
                     max_align: 0,
                     offset: 0,
-                    memory: 0 // app memory!
+                    memory: self.mem_allocator.mem_id // app memory!
                 }
             )
             .local_set(str0_char)
@@ -688,6 +686,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             self.table,
             self.report_vars,
             self.map_lib_adapter,
+            self.mem_allocator,
             io_adapter,
             UNEXPECTED_ERR_MSG,
             err,

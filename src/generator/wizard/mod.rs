@@ -40,7 +40,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     ) {
         // Reset the symbol table in the emitter just in case
         self.emitter.reset_table();
-        self.emitter.setup_module(true, self.err);
+        self.emitter.setup_module(self.err);
         self.emit_needed_funcs(used_provided_funcs);
         self.emit_strings(strings_to_emit);
         self.visit_ast(ast);

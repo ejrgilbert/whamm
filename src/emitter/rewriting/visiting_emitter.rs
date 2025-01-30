@@ -814,6 +814,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             self.table,
             self.report_vars,
             self.map_lib_adapter,
+            self.mem_allocator,
             self.io_adapter,
             UNEXPECTED_ERR_MSG,
             err,

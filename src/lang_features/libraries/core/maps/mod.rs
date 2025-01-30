@@ -20,6 +20,15 @@ impl LibPackage for MapLibPackage {
     fn is_used(&self) -> bool {
         self.is_used
     }
+    fn import_memory(&self) -> bool {
+        false
+    }
+    fn set_lib_mem_id(&mut self, _mem_id: i32) {
+        // nothing to do
+    }
+    fn set_app_mem_id(&mut self, _mem_id: i32) {
+        // nothing to do
+    }
 
     fn get_fn_names(&self) -> Vec<String> {
         self.adapter.get_fn_names()

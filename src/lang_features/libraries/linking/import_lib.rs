@@ -1,10 +1,13 @@
 use crate::common::error::ErrorGen;
-use crate::lang_features::libraries::core::{LibPackage, WHAMM_CORE_LIB_NAME};
+use crate::emitter::memory_allocator::MemoryAllocator;
+use crate::lang_features::libraries::core::{
+    LibPackage, WHAMM_CORE_LIB_MEM_NAME, WHAMM_CORE_LIB_NAME,
+};
 use crate::parser::types::Whamm;
 use log::trace;
 use orca_wasm::ir::id::FunctionID;
 use orca_wasm::{DataType, Module};
-use wasmparser::ExternalKind;
+use wasmparser::{ExternalKind, MemoryType};
 
 /// Some documentation on why it's difficult to only import the *used* functions.
 ///
@@ -23,6 +26,7 @@ pub fn link_core_lib(
     ast: &Whamm,
     app_wasm: &mut Module,
     core_wasm_path: &str,
+    mem_allocator: &mut MemoryAllocator,
     packages: &mut [&mut dyn LibPackage],
     err: &mut ErrorGen,
 ) -> Vec<FunctionID> {
@@ -34,6 +38,14 @@ pub fn link_core_lib(
             // Read core library Wasm into Orca module
             let buff = std::fs::read(core_wasm_path).unwrap();
             let core_lib = Module::parse(&buff, false).unwrap();
+            if package.import_memory() {
+                let mem_id = import_lib_memory(app_wasm, WHAMM_CORE_LIB_NAME.to_string());
+                let app_mem_id = mem_id + 1;
+                package.set_lib_mem_id(mem_id);
+                package.set_app_mem_id(app_mem_id);
+
+                mem_allocator.mem_id = app_mem_id as u32;
+            }
             injected_funcs.extend(import_lib(
                 app_wasm,
                 WHAMM_CORE_LIB_NAME.to_string(),
@@ -54,6 +66,19 @@ pub fn link_user_lib(
 ) {
     // should only import ALL EXPORTED contents of the lib_wasm
     unimplemented!("Have not added support for user libraries...yet!")
+}
+
+fn import_lib_memory(app_wasm: &mut Module, lib_name: String) -> i32 {
+    trace!("Enter import_lib_memory");
+    let mem_id = import_memory(
+        lib_name.as_str(),
+        WHAMM_CORE_LIB_MEM_NAME,
+        "lib_mem",
+        app_wasm,
+    );
+
+    trace!("Exit import_lib");
+    mem_id as i32
 }
 
 fn import_lib(
@@ -101,6 +126,23 @@ fn import_lib(
 
     trace!("Exit import_lib");
     injected_funcs
+}
+
+fn import_memory(module_name: &str, mem_name: &str, use_name: &str, app_wasm: &mut Module) -> u32 {
+    let (mem_id, imp_id) = app_wasm.add_import_memory(
+        module_name.to_string(),
+        mem_name.to_string(),
+        MemoryType {
+            memory64: false,
+            shared: false,
+            initial: 0,
+            maximum: None,
+            page_size_log2: None,
+        },
+    );
+    app_wasm.imports.set_name(use_name.to_string(), imp_id);
+
+    *mem_id
 }
 
 pub fn import_func(

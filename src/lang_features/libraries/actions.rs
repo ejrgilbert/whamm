@@ -1,5 +1,6 @@
 use crate::common::error::ErrorGen;
 use crate::common::instr::LibraryLinkStrategy;
+use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::lang_features::libraries::core::LibPackage;
 use crate::parser::types::Whamm;
 use orca_wasm::ir::id::FunctionID;
@@ -10,6 +11,7 @@ pub fn link_core_lib(
     ast: &Whamm,
     app_wasm: &mut Module,
     core_wasm_path: &str,
+    mem_allocator: &mut MemoryAllocator,
     packages: &mut [&mut dyn LibPackage],
     err: &mut ErrorGen,
 ) -> Vec<FunctionID> {
@@ -19,6 +21,7 @@ pub fn link_core_lib(
                 ast,
                 app_wasm,
                 core_wasm_path,
+                mem_allocator,
                 packages,
                 err,
             )

@@ -1,5 +1,6 @@
 #![allow(clippy::too_many_arguments)]
 use crate::common::error::ErrorGen;
+use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::parser::types::DataType;
 use itertools::Itertools;
@@ -166,10 +167,51 @@ impl ReportVars {
     // =========================
 
     // ==== Call flush functions at program exit ====
+    pub fn setup_flush_data_segments(
+        &mut self,
+        wasm: &mut Module,
+        memory_allocator: &mut MemoryAllocator,
+    ) {
+        // this needs to be a separate function to not have multiple
+        // mutable references to the Wasm module at once.
+        let id_type = "memaddr".to_string();
+
+        memory_allocator.emit_string(wasm, &mut format!(", {id_type}, "));
+        memory_allocator.emit_string(wasm, &mut ", ".to_string());
+        memory_allocator.emit_string(wasm, &mut ":".to_string());
+        memory_allocator.emit_string(wasm, &mut "script".to_string());
+
+        let supported_dts = vec![
+            DataType::U8,
+            DataType::I8,
+            DataType::U16,
+            DataType::I16,
+            DataType::U32,
+            DataType::I32,
+            DataType::U64,
+            DataType::I64,
+            DataType::F32,
+            DataType::F64,
+            DataType::Boolean,
+        ];
+        for dt in supported_dts.iter() {
+            memory_allocator.emit_string(wasm, &mut format!("{dt}, "));
+            let wasm_tys = dt.to_wasm_type();
+            let wasm_ty = if wasm_tys.len() > 1 {
+                // todo support tuples, strings, etc.
+                unimplemented!()
+            } else {
+                wasm_tys.first().unwrap()
+            };
+            memory_allocator.emit_string(wasm, &mut format!("{wasm_ty}, "));
+        }
+    }
     pub fn emit_flush_logic(
         &mut self,
         func: &mut FunctionBuilder,
+        mem_allocator: &MemoryAllocator,
         io_adapter: &mut IOAdapter,
+        header_info: (u32, u32),
         mem_id: u32,
         wasm: &mut Module,
         err: &mut ErrorGen,
@@ -192,20 +234,21 @@ impl ReportVars {
         // The ReportVars struct needs to have fields to keep track of the emitted globals per DT
         // (to be used in the $alloc methods)!
 
-        Metadata::print_csv_header(func, io_adapter, err);
-        self.call_dt_flushers(func, io_adapter, mem_id, wasm, err);
+        io_adapter.putsln(header_info.0, header_info.1, func, err);
+        self.call_dt_flushers(func, mem_allocator, io_adapter, mem_id, wasm, err);
     }
 
     fn call_dt_flushers(
         &mut self,
         func: &mut FunctionBuilder,
+        mem_allocator: &MemoryAllocator,
         io_adapter: &mut IOAdapter,
         mem_id: u32,
         wasm: &mut Module,
         err: &mut ErrorGen,
     ) {
         // Make sure the metadata flusher func exists
-        self.emit_flush_var_metadata_fn(io_adapter, mem_id, wasm, err);
+        self.emit_flush_var_metadata_fn(mem_allocator, io_adapter, mem_id, wasm, err);
 
         // iterate through all the data type flush functions and emit calls
         // sort these by the datatype to make the flush deterministic!
@@ -264,6 +307,7 @@ impl ReportVars {
     }
     fn emit_flush_var_metadata_fn(
         &mut self,
+        mem_allocator: &MemoryAllocator,
         io_adapter: &mut IOAdapter,
         mem_id: u32,
         wasm: &mut Module,
@@ -389,45 +433,124 @@ impl ReportVars {
         io_adapter.call_puti32(&mut flush_fn, err);
 
         // print 'id_type'
-        io_adapter.puts(format!(", {id_type}, "), &mut flush_fn, err);
+        let (addr, len) = mem_allocator.lookup_emitted_string(&format!(", {id_type}, "), err);
+        io_adapter.puts(addr, len, &mut flush_fn, err);
 
         // print 'name'
         flush_fn.local_get(name_ptr).local_get(name_len);
-        io_adapter.call_puts(&mut flush_fn, err);
-        io_adapter.puts(", ".to_string(), &mut flush_fn, err);
+        io_adapter.call_intrusive_puts(&mut flush_fn, err);
+        let (addr, len) = mem_allocator.lookup_emitted_string(&", ".to_string(), err);
+        io_adapter.puts(addr, len, &mut flush_fn, err);
 
         // print 'whamm_type' per supported report variable datatype
-        Self::flush_ty_metadata(&mut flush_fn, DataType::U8, &dt, io_adapter, err);
+        Self::flush_ty_metadata(
+            &mut flush_fn,
+            DataType::U8,
+            &dt,
+            mem_allocator,
+            io_adapter,
+            err,
+        );
 
         flush_fn.else_stmt();
-        Self::flush_ty_metadata(&mut flush_fn, DataType::I8, &dt, io_adapter, err);
+        Self::flush_ty_metadata(
+            &mut flush_fn,
+            DataType::I8,
+            &dt,
+            mem_allocator,
+            io_adapter,
+            err,
+        );
 
         flush_fn.else_stmt();
-        Self::flush_ty_metadata(&mut flush_fn, DataType::U16, &dt, io_adapter, err);
+        Self::flush_ty_metadata(
+            &mut flush_fn,
+            DataType::U16,
+            &dt,
+            mem_allocator,
+            io_adapter,
+            err,
+        );
 
         flush_fn.else_stmt();
-        Self::flush_ty_metadata(&mut flush_fn, DataType::I16, &dt, io_adapter, err);
+        Self::flush_ty_metadata(
+            &mut flush_fn,
+            DataType::I16,
+            &dt,
+            mem_allocator,
+            io_adapter,
+            err,
+        );
 
         flush_fn.else_stmt();
-        Self::flush_ty_metadata(&mut flush_fn, DataType::U32, &dt, io_adapter, err);
+        Self::flush_ty_metadata(
+            &mut flush_fn,
+            DataType::U32,
+            &dt,
+            mem_allocator,
+            io_adapter,
+            err,
+        );
 
         flush_fn.else_stmt();
-        Self::flush_ty_metadata(&mut flush_fn, DataType::I32, &dt, io_adapter, err);
+        Self::flush_ty_metadata(
+            &mut flush_fn,
+            DataType::I32,
+            &dt,
+            mem_allocator,
+            io_adapter,
+            err,
+        );
 
         flush_fn.else_stmt();
-        Self::flush_ty_metadata(&mut flush_fn, DataType::U64, &dt, io_adapter, err);
+        Self::flush_ty_metadata(
+            &mut flush_fn,
+            DataType::U64,
+            &dt,
+            mem_allocator,
+            io_adapter,
+            err,
+        );
 
         flush_fn.else_stmt();
-        Self::flush_ty_metadata(&mut flush_fn, DataType::I64, &dt, io_adapter, err);
+        Self::flush_ty_metadata(
+            &mut flush_fn,
+            DataType::I64,
+            &dt,
+            mem_allocator,
+            io_adapter,
+            err,
+        );
 
         flush_fn.else_stmt();
-        Self::flush_ty_metadata(&mut flush_fn, DataType::F32, &dt, io_adapter, err);
+        Self::flush_ty_metadata(
+            &mut flush_fn,
+            DataType::F32,
+            &dt,
+            mem_allocator,
+            io_adapter,
+            err,
+        );
 
         flush_fn.else_stmt();
-        Self::flush_ty_metadata(&mut flush_fn, DataType::F64, &dt, io_adapter, err);
+        Self::flush_ty_metadata(
+            &mut flush_fn,
+            DataType::F64,
+            &dt,
+            mem_allocator,
+            io_adapter,
+            err,
+        );
 
         flush_fn.else_stmt();
-        Self::flush_ty_metadata(&mut flush_fn, DataType::Boolean, &dt, io_adapter, err);
+        Self::flush_ty_metadata(
+            &mut flush_fn,
+            DataType::Boolean,
+            &dt,
+            mem_allocator,
+            io_adapter,
+            err,
+        );
 
         // All other datatypes should dynamically trap
         // (need to close all if stmts with 'end')
@@ -447,23 +570,28 @@ impl ReportVars {
             .end();
 
         // print 'script_id'
-        io_adapter.puts("script".to_string(), &mut flush_fn, err);
+        let (addr, len) = mem_allocator.lookup_emitted_string(&"script".to_string(), err);
+        io_adapter.puts(addr, len, &mut flush_fn, err);
         flush_fn.local_get(script_id);
         io_adapter.call_puti32(&mut flush_fn, err);
-        io_adapter.puts(", ".to_string(), &mut flush_fn, err);
+        let (addr, len) = mem_allocator.lookup_emitted_string(&", ".to_string(), err);
+        io_adapter.puts(addr, len, &mut flush_fn, err);
 
         // print 'fid:pc'
         flush_fn.local_get(fid);
         io_adapter.call_puti32(&mut flush_fn, err);
-        io_adapter.puts(":".to_string(), &mut flush_fn, err);
+        let (addr, len) = mem_allocator.lookup_emitted_string(&":".to_string(), err);
+        io_adapter.puts(addr, len, &mut flush_fn, err);
         flush_fn.local_get(pc);
         io_adapter.call_puti32(&mut flush_fn, err);
-        io_adapter.puts(", ".to_string(), &mut flush_fn, err);
+        let (addr, len) = mem_allocator.lookup_emitted_string(&", ".to_string(), err);
+        io_adapter.puts(addr, len, &mut flush_fn, err);
 
         // print 'probe_id'
         flush_fn.local_get(probe_id_ptr).local_get(probe_id_len);
-        io_adapter.call_puts(&mut flush_fn, err);
-        io_adapter.puts(", ".to_string(), &mut flush_fn, err);
+        io_adapter.call_safe_puts(&mut flush_fn, err);
+        let (addr, len) = mem_allocator.lookup_emitted_string(&", ".to_string(), err);
+        io_adapter.puts(addr, len, &mut flush_fn, err);
 
         // return the pointer to the next place in memory (should point to value(s))
         flush_fn.local_get(curr_addr);
@@ -476,6 +604,7 @@ impl ReportVars {
         flush_fn: &mut T,
         dt: DataType,
         dt_local: &LocalID,
+        mem_allocator: &MemoryAllocator,
         io_adapter: &mut IOAdapter,
         err: &mut ErrorGen,
     ) {
@@ -488,7 +617,8 @@ impl ReportVars {
             .i64_const(hash as i64)
             .i64_eq()
             .if_stmt(BlockType::Empty);
-        io_adapter.puts(format!("{dt}, "), flush_fn, err);
+        let (addr, len) = mem_allocator.lookup_emitted_string(&format!("{dt}, "), err);
+        io_adapter.puts(addr, len, flush_fn, err);
         let wasm_tys = dt.to_wasm_type();
         let wasm_ty = if wasm_tys.len() > 1 {
             // todo support tuples, strings, etc.
@@ -496,7 +626,8 @@ impl ReportVars {
         } else {
             wasm_tys.first().unwrap()
         };
-        io_adapter.puts(format!("{wasm_ty}, "), flush_fn, err);
+        let (addr, len) = mem_allocator.lookup_emitted_string(&format!("{wasm_ty}, "), err);
+        io_adapter.puts(addr, len, flush_fn, err);
     }
 
     // ==== Flush functions per datatype ====
@@ -1142,16 +1273,15 @@ impl Metadata {
             Self::Local { wasm_ty, .. } | Self::Global { wasm_ty, .. } => *wasm_ty,
         }
     }
-    pub fn print_csv_header<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
-        func: &mut T,
-        io_adapter: &mut IOAdapter,
-        err: &mut ErrorGen,
-    ) {
-        let header = r#"
+    pub fn setup_csv_header(wasm: &mut Module, mem_allocator: &mut MemoryAllocator) -> (u32, u32) {
+        let mut header = r#"
 ============================= REPORT CSV FLUSH ================================
 id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)"#
             .to_string();
-        io_adapter.putsln(header, func, err);
+        mem_allocator.emit_string(wasm, &mut header);
+        let addr = mem_allocator.emitted_strings.get(&header).unwrap();
+
+        (addr.mem_offset as u32, addr.len as u32)
     }
     pub fn to_csv(&self) -> String {
         let (name, whamm_ty, wasm_ty, script_id, bytecode_loc, probe_id) = match self {

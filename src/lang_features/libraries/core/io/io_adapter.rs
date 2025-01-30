@@ -1,12 +1,14 @@
 use crate::common::error::ErrorGen;
 use crate::lang_features::libraries::core::LibAdapter;
 use orca_wasm::ir::function::FunctionBuilder;
-use orca_wasm::ir::id::{FunctionID, LocalID};
+use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
 use orca_wasm::ir::types::{BlockType, DataType as OrcaType};
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::MacroOpcode;
 use orca_wasm::{Module, Opcode};
 use std::collections::HashMap;
+
+// FROM LIB
 
 pub const PUTS: &str = "puts";
 pub const PUTC: &str = "putc";
@@ -21,11 +23,22 @@ pub const PUTI64: &str = "puti64";
 pub const PUTF32: &str = "putf32";
 pub const PUTF64: &str = "putf64";
 
+// HELPER FUNCTIONS
+
+pub const INTRUSIVE_PUTS: &str = "intrusive_puts";
+pub const SAFE_PUTS: &str = "safe_puts";
+
+pub const INTRUSIVE_PUTS_MAX: u32 = 100;
+
 // //this is the code that knows which functions to call in lib.rs based on what is in the AST -> will be in emitter folder eventually
 pub struct IOAdapter {
     pub is_used: bool,
     // func_name -> fid
     funcs: HashMap<String, u32>,
+
+    pub(crate) app_mem: i32,
+    pub(crate) lib_mem: i32,
+    mem_tracker_global: u32,
 }
 impl LibAdapter for IOAdapter {
     fn get_funcs(&self) -> &HashMap<String, u32> {
@@ -42,13 +55,8 @@ impl LibAdapter for IOAdapter {
         self.emit_helper_funcs(app_wasm, err)
     }
 }
-impl Default for IOAdapter {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 impl IOAdapter {
-    pub fn new() -> Self {
+    pub fn new(mem_tracker_global: u32) -> Self {
         let funcs = HashMap::from([
             (PUTC.to_string(), 0),
             (PUTU8.to_string(), 0),
@@ -67,13 +75,19 @@ impl IOAdapter {
         IOAdapter {
             is_used: false,
             funcs,
+            app_mem: -1,
+            lib_mem: -1,
+            mem_tracker_global,
         }
     }
 
     fn emit_helper_funcs(&mut self, app_wasm: &mut Module, err: &mut ErrorGen) -> Vec<FunctionID> {
-        vec![self.emit_puts(app_wasm, err)]
+        vec![
+            self.emit_safe_puts(app_wasm, err),
+            self.emit_intrusive_puts(app_wasm, err),
+        ]
     }
-    fn emit_puts(&mut self, app_wasm: &mut Module, err: &mut ErrorGen) -> FunctionID {
+    fn emit_safe_puts(&mut self, app_wasm: &mut Module, err: &mut ErrorGen) -> FunctionID {
         let start_addr = LocalID(0);
         let len = LocalID(1);
         let mut puts = FunctionBuilder::new(&[OrcaType::I32, OrcaType::I32], &[]);
@@ -99,7 +113,7 @@ impl IOAdapter {
                     align: 0,
                     max_align: 0,
                     offset: 0,
-                    memory: 0 // app memory!
+                    memory: self.app_mem as u32
                 }
             );
 
@@ -114,39 +128,182 @@ impl IOAdapter {
             .end();
 
         let puts_fid = puts.finish_module(app_wasm);
-        app_wasm.set_fn_name(puts_fid, "puts".to_string());
-        self.add_fid(PUTS, *puts_fid);
+        app_wasm.set_fn_name(puts_fid, SAFE_PUTS.to_string());
+        self.add_fid(SAFE_PUTS, *puts_fid);
+
+        puts_fid
+    }
+    fn emit_intrusive_puts(&mut self, app_wasm: &mut Module, err: &mut ErrorGen) -> FunctionID {
+        let str_addr = LocalID(0);
+        let len = LocalID(1);
+        let mut puts = FunctionBuilder::new(&[OrcaType::I32, OrcaType::I32], &[]);
+
+        let i = puts.add_local(OrcaType::I32);
+        let tmp = puts.add_local(OrcaType::I32);
+
+        let my_mem = wasmparser::MemArg {
+            align: 0,
+            max_align: 0,
+            offset: 0,
+            memory: self.app_mem as u32,
+        };
+        let lib_mem = wasmparser::MemArg {
+            align: 0,
+            max_align: 0,
+            offset: 0,
+            memory: self.lib_mem as u32,
+        };
+        let mem_tracker = GlobalID(self.mem_tracker_global);
+
+        #[rustfmt::skip]
+        puts.loop_stmt(BlockType::Empty)
+            // save old data
+            .local_get(str_addr)
+            .local_get(i)
+            .i32_add()         // mem pointer
+            .i32_load8_u(lib_mem) // load old char
+            .local_set(tmp)
+
+            .global_get(mem_tracker)
+            .local_get(i)
+            .i32_add()
+            .local_get(tmp)
+            .i32_store8(my_mem) // store old char
+
+            // write new data
+            .local_get(str_addr)
+            .local_get(i)
+            .i32_add()
+            .i32_load8_u(my_mem) // load new char
+            .local_set(tmp)
+            .local_get(str_addr)
+            .local_get(i)
+            .i32_add()
+            .local_get(tmp)
+            .i32_store8(lib_mem) // store new char
+
+
+            // update i
+            .i32_const(1)
+            .local_get(i)
+            .i32_add()
+            .local_set(i)
+
+            // continue loop if we're still less than the length of the string
+            .local_get(i)
+            .local_get(len)
+            .i32_lt_signed()
+            .br_if(0)
+        .end();
+
+        puts.local_get(str_addr).local_get(len);
+
+        self.call_puts(&mut puts, err);
+
+        // write back old data
+        puts.i32_const(0)
+            .local_set(i)
+            .loop_stmt(BlockType::Empty)
+            // load old data
+            .global_get(mem_tracker)
+            .local_get(i)
+            .i32_add() // mem pointer
+            .i32_load8_u(my_mem)
+            .local_set(tmp)
+            // write back old data
+            .local_get(str_addr)
+            .local_get(i)
+            .i32_add()
+            .local_get(tmp)
+            .i32_store8(lib_mem) // store old char
+            // update i
+            .i32_const(1)
+            .local_get(i)
+            .i32_add()
+            .local_set(i)
+            // continue loop if we're still less than the length of the string
+            .local_get(i)
+            .local_get(len)
+            .i32_lt_signed()
+            .br_if(0)
+            .end();
+
+        let puts_fid = puts.finish_module(app_wasm);
+        app_wasm.set_fn_name(puts_fid, INTRUSIVE_PUTS.to_string());
+        self.add_fid(INTRUSIVE_PUTS, *puts_fid);
 
         puts_fid
     }
 
-    pub fn putsln<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub fn puts<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         &mut self,
-        s: String,
+        start_addr: u32,
+        len: u32,
         func: &mut T,
         err: &mut ErrorGen,
     ) {
-        // s -> [u8] (no need for data segment!)
-        // iterate over and call putc
-        self.puts(s, func, err);
+        if len < INTRUSIVE_PUTS_MAX {
+            self.intrusive_puts(start_addr, len, func, err);
+        } else {
+            self.safe_puts(start_addr, len, func, err);
+        }
+    }
+
+    pub fn putsln<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        start_addr: u32,
+        len: u32,
+        func: &mut T,
+        err: &mut ErrorGen,
+    ) {
+        self.puts(start_addr, len, func, err);
         self.putln(func, err);
     }
 
-    pub fn puts<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub fn putln<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         &mut self,
-        s: String,
         func: &mut T,
         err: &mut ErrorGen,
     ) {
-        // s -> [u8] (no need for data segment!)
-        // iterate over and call putc
-        // TODO -- import the core_lib memory, save old memory values
-        //      write data to print to core_lib memory, call puts(addr, len)
-        //      write saved values back to memory region
-        let data = s.as_bytes();
-        for c in data.iter() {
-            self.putc(*c, func, err);
-        }
+        self.putc(b'\n', func, err)
+    }
+
+    fn safe_puts<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        start_addr: u32,
+        len: u32,
+        func: &mut T,
+        err: &mut ErrorGen,
+    ) {
+        func.u32_const(start_addr).u32_const(len);
+        self.call_safe_puts(func, err);
+    }
+
+    fn intrusive_puts<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        start_addr: u32,
+        len: u32,
+        func: &mut T,
+        err: &mut ErrorGen,
+    ) {
+        func.u32_const(start_addr).u32_const(len);
+        self.call_intrusive_puts(func, err);
+    }
+
+    pub(crate) fn call_safe_puts<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        func: &mut T,
+        err: &mut ErrorGen,
+    ) {
+        self.call(SAFE_PUTS, func, err);
+    }
+
+    pub(crate) fn call_intrusive_puts<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        func: &mut T,
+        err: &mut ErrorGen,
+    ) {
+        self.call(INTRUSIVE_PUTS, func, err);
     }
 
     pub fn call_puts<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
@@ -155,14 +312,6 @@ impl IOAdapter {
         err: &mut ErrorGen,
     ) {
         self.call(PUTS, func, err);
-    }
-
-    pub fn putln<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
-        &mut self,
-        func: &mut T,
-        err: &mut ErrorGen,
-    ) {
-        self.puts("\n".to_string(), func, err)
     }
 
     pub fn call_putu8<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
