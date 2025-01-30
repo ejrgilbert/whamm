@@ -10,7 +10,9 @@ use crate::generator::GeneratingVisitor;
 use crate::lang_features::alloc_vars::wizard::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::report_vars::{BytecodeLoc, LocationData};
-use crate::parser::types::{Block, DataType, Definition, FnId, Statement, Value, WhammVisitorMut};
+use crate::parser::types::{
+    Block, DataType, Definition, Expr, FnId, Statement, Value, WhammVisitorMut,
+};
 use crate::verifier::types::{Record, VarAddr};
 use log::trace;
 use orca_wasm::ir::id::{FunctionID, LocalID};
@@ -127,6 +129,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         // the base memory offset for this function's var block
         alloc_base: Option<LocalID>,
         param_reqs: &[(String, DataType)],
+        dynamic_pred: Option<&mut Expr>,
         results: &[OrcaType],
         body: &mut Block,
         export: bool,
@@ -180,9 +183,15 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
             );
         }
 
-        let fid = self
-            .emitter
-            .emit_special_fn(None, &params, results, body, export, self.err);
+        let fid = self.emitter.emit_special_fn(
+            None,
+            &params,
+            dynamic_pred,
+            results,
+            body,
+            export,
+            self.err,
+        );
 
         (fid, param_str.to_string())
     }
@@ -212,24 +221,32 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     fn visit_wiz_probe(&mut self, probe: &mut WizardProbe) {
         self.set_curr_loc(self.create_curr_loc(probe));
 
-        let (pred_fid, pred_param_str) = if let Some(pred) = &mut probe.predicate {
-            let mut block = Block {
-                stmts: vec![Statement::Expr {
-                    expr: pred.clone(),
+        let (pred_fid, pred_param_str, dynamic_pred) = if let Some(pred) = &mut probe.predicate {
+            if probe.metadata.pred_is_dynamic {
+                // dynamic analysis of the predicate will go here!
+                // See: https://github.com/ejrgilbert/whamm/issues/163
+                (None, "".to_string(), Some(pred))
+            } else {
+                let mut block = Block {
+                    stmts: vec![Statement::Expr {
+                        expr: pred.clone(),
+                        loc: None,
+                    }],
+                    return_ty: None,
                     loc: None,
-                }],
-                return_ty: None,
-                loc: None,
-            };
-            self.emit_special_func(
-                None,
-                &probe.metadata.pred_args,
-                &[OrcaType::I32],
-                &mut block,
-                true,
-            )
+                };
+                let (fid, str) = self.emit_special_func(
+                    None,
+                    &probe.metadata.pred_args,
+                    None,
+                    &[OrcaType::I32],
+                    &mut block,
+                    true,
+                );
+                (fid, str, None)
+            }
         } else {
-            (None, "".to_string())
+            (None, "".to_string(), None)
         };
 
         // create the probe's $alloc method
@@ -246,7 +263,14 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
             } else {
                 None
             };
-            self.emit_special_func(alloc_local, &probe.metadata.body_args, &[], body, false)
+            self.emit_special_func(
+                alloc_local,
+                &probe.metadata.body_args,
+                dynamic_pred,
+                &[],
+                body,
+                false,
+            )
         } else {
             (None, "".to_string())
         };

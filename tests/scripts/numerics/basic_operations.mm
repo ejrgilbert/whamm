@@ -1,4 +1,6 @@
-wasm:opcode:call:before {
+wasm:opcode:call:before /
+    imm0 == 0
+/ {
     // ==== binary operations ====
     
     // --- <<

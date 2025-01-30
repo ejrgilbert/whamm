@@ -64,8 +64,9 @@ impl WizardProbe {
 
 #[derive(Clone, Default)]
 pub struct Metadata {
+    pub pred_is_dynamic: bool,
     pub pred_args: Vec<(String, DataType)>,
-    pub body_args: Vec<(String, DataType)>, // TODO pub num_reports: i32, // needed for `$alloc`
+    pub body_args: Vec<(String, DataType)>,
 }
 impl Metadata {
     pub fn push_pred_req(&mut self, var_name: String, var_type: DataType) {
