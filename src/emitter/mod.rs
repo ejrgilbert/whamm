@@ -1,3 +1,4 @@
+#![allow(clippy::too_many_arguments)]
 pub mod memory_allocator;
 pub mod module_emitter;
 pub mod rewriting;
@@ -6,6 +7,7 @@ pub mod tests;
 pub mod utils;
 
 use crate::common::error::ErrorGen;
+use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::rewriting::rules::Arg;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
@@ -44,6 +46,7 @@ pub fn configure_flush_routines(
     table: &mut SymbolTable,
     report_vars: &mut ReportVars,
     map_lib_adapter: &mut MapLibAdapter,
+    mem_allocator: &mut MemoryAllocator,
     io_adapter: &mut IOAdapter,
     err_msg: &str,
     err: &mut ErrorGen,
@@ -53,18 +56,44 @@ pub fn configure_flush_routines(
     }
 
     //convert the metadata into strings, add those to the data section, then use those to populate the maps
-    let var_meta: HashMap<u32, (DataType, String)> = report_vars
+    let var_meta: HashMap<u32, (DataType, (u32, u32))> = report_vars
         .variable_metadata
         .iter()
-        .map(|(key, (_, value))| (*key, (value.get_whamm_ty(), value.to_csv())))
+        .map(|(key, (_, value))| {
+            let mut s = format!("{key}, {}, ", value.to_csv());
+            mem_allocator.emit_string(wasm, &mut s);
+            let addr = mem_allocator.emitted_strings.get(&s).unwrap();
+
+            (
+                *key,
+                (
+                    value.get_whamm_ty(),
+                    (addr.mem_offset as u32, addr.len as u32),
+                ),
+            )
+        })
         .collect();
-    let map_meta: HashMap<u32, String> = report_vars
+    let map_meta: HashMap<u32, (u32, u32)> = report_vars
         .map_metadata
         .iter()
-        .map(|(key, value)| (*key, value.to_csv()))
+        .map(|(key, value)| {
+            let mut s = format!("map, map_id, {key}, {}, ", value.to_csv());
+            mem_allocator.emit_string(wasm, &mut s);
+            let addr = mem_allocator.emitted_strings.get(&s).unwrap();
+
+            (*key, (addr.mem_offset as u32, addr.len as u32))
+        })
         .collect();
 
-    setup_print_global_meta(&var_meta, wasm, table, io_adapter, err_msg, err);
+    setup_print_global_meta(
+        &var_meta,
+        wasm,
+        table,
+        mem_allocator,
+        io_adapter,
+        err_msg,
+        err,
+    );
     if map_lib_adapter.is_used {
         setup_print_map_meta(
             &map_meta,
@@ -80,9 +109,10 @@ pub fn configure_flush_routines(
 
 /// set up the print_global_meta function for insertions
 fn setup_print_global_meta(
-    var_meta_str: &HashMap<u32, (DataType, String)>,
+    var_meta_str: &HashMap<u32, (DataType, (u32, u32))>,
     wasm: &mut Module,
     table: &mut SymbolTable,
+    mem_allocator: &mut MemoryAllocator,
     io_adapter: &mut IOAdapter,
     err_msg: &str,
     err: &mut ErrorGen,
@@ -97,6 +127,9 @@ fn setup_print_global_meta(
         return false;
     };
     let print_global_meta_id = FunctionID(print_global_meta_id);
+
+    // prepare the CSV header data segment
+    let (header_addr, header_len) = Metadata::setup_csv_header(wasm, mem_allocator);
 
     let mut print_global_meta = match wasm.functions.get_fn_modifier(print_global_meta_id) {
         Some(func) => func,
@@ -114,13 +147,12 @@ fn setup_print_global_meta(
     };
 
     // output the header data segment
-    Metadata::print_csv_header(&mut print_global_meta, io_adapter, err);
+    io_adapter.putsln(header_addr, header_len, &mut print_global_meta, err);
 
     // for each of the report globals, emit the printing logic
     let sorted_metadata = var_meta_str.iter().sorted_by_key(|data| data.0);
-
-    for (key, (whamm_ty, val)) in sorted_metadata.into_iter() {
-        io_adapter.puts(format!("{key}, {val}, "), &mut print_global_meta, err);
+    for (key, (whamm_ty, (str_addr, str_len))) in sorted_metadata.into_iter() {
+        io_adapter.puts(*str_addr, *str_len, &mut print_global_meta, err);
 
         // get the value of this report global
         print_global_meta.global_get(GlobalID(*key));
@@ -147,7 +179,7 @@ fn setup_print_global_meta(
 }
 
 fn setup_print_map_meta(
-    map_meta_str: &HashMap<u32, String>,
+    map_meta_str: &HashMap<u32, (u32, u32)>,
     wasm: &mut Module,
     table: &mut SymbolTable,
     io_adapter: &mut IOAdapter,
@@ -183,12 +215,9 @@ fn setup_print_map_meta(
     };
 
     // for each of the report maps, emit the printing logic
-    for (key, val) in map_meta_str.iter().sorted() {
-        io_adapter.puts(
-            format!("map, map_id, {key}, {val}, "),
-            &mut print_map_meta,
-            err,
-        );
+    let sorted_metadata = map_meta_str.iter().sorted_by_key(|data| data.0);
+    for (key, (str_addr, str_len)) in sorted_metadata.into_iter() {
+        io_adapter.puts(*str_addr, *str_len, &mut print_map_meta, err);
 
         // print the value(s) of this map
         map_lib_adapter.print_map(*key, &mut print_map_meta, err);

@@ -3,6 +3,7 @@ use std::env;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::Path;
+use std::slice;
 
 // ===============
 // == CONSTANTS ==
@@ -127,6 +128,15 @@ fn print(str: &str) {
 #[no_mangle]
 pub fn putc(c: u8) {
     print(&String::from_utf8([c].to_vec()).expect("Our bytes should be valid utf8"));
+}
+
+#[no_mangle]
+pub unsafe fn puts(start: i32, len: i32) {
+    let ptr: *const u8 = start as *const u8;
+    let s: &[u8] = unsafe { slice::from_raw_parts(ptr, usize::try_from(len).unwrap()) };
+
+    let s = String::from_utf8(s.to_vec()).expect("Our bytes should be valid utf8");
+    print(s.as_str());
 }
 
 #[no_mangle]

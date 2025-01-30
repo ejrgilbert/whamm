@@ -11,14 +11,31 @@ use log::debug;
 use orca_wasm::ir::id::FunctionID;
 use orca_wasm::Module;
 
-#[derive(Default)]
 pub struct IOPackage {
     is_used: bool,
     pub adapter: IOAdapter,
 }
+impl IOPackage {
+    pub fn new(mem_tracker_global: u32) -> Self {
+        Self {
+            is_used: false,
+            adapter: IOAdapter::new(mem_tracker_global),
+        }
+    }
+}
+
 impl LibPackage for IOPackage {
     fn is_used(&self) -> bool {
         self.is_used
+    }
+    fn import_memory(&self) -> bool {
+        true
+    }
+    fn set_lib_mem_id(&mut self, mem_id: i32) {
+        self.adapter.lib_mem = mem_id;
+    }
+    fn set_app_mem_id(&mut self, mem_id: i32) {
+        self.adapter.app_mem = mem_id;
     }
 
     fn get_fn_names(&self) -> Vec<String> {

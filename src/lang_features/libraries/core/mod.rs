@@ -8,12 +8,16 @@ use orca_wasm::Module;
 use std::collections::HashMap;
 
 pub const WHAMM_CORE_LIB_NAME: &str = "whamm_core";
+pub const WHAMM_CORE_LIB_MEM_NAME: &str = "memory";
 const UNEXPECTED_ERR_MSG: &str =
     "Adapter: Looks like you've found a bug...please report this behavior! Exiting now...";
 
 // A lib package needs to be able to visit the AST and determine if it's needed (should be linked)
 pub trait LibPackage: WhammVisitor<bool> {
     fn is_used(&self) -> bool;
+    fn import_memory(&self) -> bool;
+    fn set_lib_mem_id(&mut self, mem_id: i32);
+    fn set_app_mem_id(&mut self, mem_id: i32);
     fn get_fn_names(&self) -> Vec<String>;
     fn add_fid_to_adapter(&mut self, fname: &str, fid: u32);
     fn set_adapter_usage(&mut self, is_used: bool);

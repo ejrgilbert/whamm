@@ -14,6 +14,9 @@ use wasmparser::MemArg;
 pub const WASM_PAGE_SIZE: u32 = 65_536;
 pub const VAR_BLOCK_BASE_VAR: &str = "var_block_base_offset";
 
+const UNEXPECTED_ERR_MSG: &str =
+    "MemoryAllocator: Looks like you've found a bug...please report this behavior! Exiting now...";
+
 pub struct MemoryAllocator {
     pub mem_id: u32,
     pub curr_mem_offset: usize,
@@ -313,6 +316,20 @@ impl MemoryAllocator {
         // update curr_mem_offset to account for new data
         self.curr_mem_offset += val.len();
         true
+    }
+    pub fn lookup_emitted_string(&self, s: &String, err: &mut ErrorGen) -> (u32, u32) {
+        if let Some(str_addr) = self.emitted_strings.get(s) {
+            (str_addr.mem_offset as u32, str_addr.len as u32)
+        } else {
+            err.unexpected_error(
+                true,
+                Some(format!(
+                    "{UNEXPECTED_ERR_MSG} Data segment not available for string: \"{s}\"",
+                )),
+                None,
+            );
+            unreachable!()
+        }
     }
 
     pub(crate) fn memory_grow(&mut self, wasm: &mut Module) {
