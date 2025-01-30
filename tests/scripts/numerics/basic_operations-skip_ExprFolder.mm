@@ -1,4 +1,6 @@
-wasm:opcode:call(arg0: u8, arg1: i8, arg2: u16, arg3: i16, arg4: u32, arg5: i32, arg6: u64, arg7: i64, arg8: f32, arg9: f64):before {
+wasm:opcode:call(arg0: u8, arg1: i8, arg2: u16, arg3: i16, arg4: u32, arg5: i32, arg6: u64, arg7: i64, arg8: f32, arg9: f64):before /
+    arg0 == 1
+/ {
     // Call target, parameters are used as type values (all are set to '1'):
     // (u8, i8, u16, i16, u32, i32, u64, i64, f32, f64)
     

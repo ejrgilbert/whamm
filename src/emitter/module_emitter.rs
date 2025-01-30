@@ -126,6 +126,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         &mut self,
         name: Option<String>,
         params: &[OrcaType],
+        dynamic_pred: Option<&mut Expr>,
         results: &[OrcaType],
         block: &mut Block,
         export: bool,
@@ -134,7 +135,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         let func = FunctionBuilder::new(params, results);
         self.emitting_func = Some(func);
 
-        // TODO(unshared) -- load unshared vars (check me)
         if self.map_lib_adapter.is_used {
             let fid = self.map_lib_adapter.get_map_init_fid(self.app_wasm, err);
             if let Some(func) = &mut self.emitting_func {
@@ -142,10 +142,23 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             };
         }
 
+        if let Some(dynamic_pred) = dynamic_pred {
+            // overwrite the body by wrapping it with the predicate conditional!
+            *block = Block {
+                stmts: vec![Statement::If {
+                    cond: dynamic_pred.clone(),
+                    conseq: block.clone(),
+                    alt: Block::default(),
+                    loc: None,
+                }],
+                return_ty: None,
+                loc: None,
+            };
+        }
+
         // emit the function body
         self.emit_body(&[], block, err);
 
-        // TODO(unshared) -- save unshared vars (check me)
         // emit the function
         if let Some(func) = self.emitting_func.take() {
             let fid = func.finish_module(self.app_wasm);

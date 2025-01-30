@@ -85,6 +85,13 @@ impl<'a, 'b, 'c> WizardProbeMetadataCollector<'a, 'b, 'c> {
     fn append_curr_rule(&mut self, val: String) {
         self.curr_rule += &val;
     }
+
+    fn mark_expr_as_dynamic(&mut self) {
+        // we only care about predicate expressions that are dynamic
+        if matches!(self.visiting, Visiting::Predicate) {
+            self.curr_probe.metadata.pred_is_dynamic = true;
+        }
+    }
     fn push_metadata(&mut self, name: &str, ty: &DataType) {
         match self.visiting {
             Visiting::Predicate => {
@@ -386,6 +393,11 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
                 }
             }
             Expr::VarId { name, .. } => {
+                let (def, ty, ..) = get_def(name, self.table, self.err);
+                if matches!(def, Definition::CompilerDynamic | Definition::User) {
+                    self.mark_expr_as_dynamic();
+                }
+
                 // handle argN special case
                 if self.handle_special(name, "arg") {
                     return;
@@ -397,7 +409,6 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
                 }
 
                 // check if provided, remember in metadata!
-                let (def, ty, ..) = get_def(name, self.table, self.err);
                 self.check_strcmp = matches!(ty, DataType::Str);
 
                 if def.is_comp_provided() {
