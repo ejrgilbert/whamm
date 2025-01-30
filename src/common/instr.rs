@@ -134,15 +134,22 @@ pub fn run_with_path(
         }
     };
 
-    run(
+    let wasm_result = run(
         core_wasm_path,
         &mut target_wasm,
         &whamm_script,
         &script_path,
-        Some(output_wasm_path),
         max_errors,
         config,
     );
+
+    try_path(&output_wasm_path);
+    if let Err(e) = std::fs::write(&output_wasm_path, wasm_result) {
+        unreachable!(
+            "Failed to dump instrumented wasm to {} from error: {}",
+            &output_wasm_path, e
+        )
+    }
 }
 
 pub fn run(
@@ -150,7 +157,6 @@ pub fn run(
     target_wasm: &mut Module,
     whamm_script: &String,
     script_path: &str,
-    output_wasm_path: Option<String>,
     max_errors: i32,
     config: Config,
 ) -> Vec<u8> {
@@ -219,20 +225,6 @@ pub fn run(
     }
     // for debugging
     report_vars.print_metadata();
-
-    if let Some(output_wasm_path) = output_wasm_path {
-        try_path(&output_wasm_path);
-        if let Err(e) = target_wasm.emit_wasm(&output_wasm_path) {
-            err.add_error(ErrorGen::get_unexpected_error(
-                true,
-                Some(format!(
-                    "Failed to dump instrumented wasm to {} from error: {}",
-                    &output_wasm_path, e
-                )),
-                None,
-            ))
-        }
-    }
 
     // If there were any errors encountered, report and exit!
     err.check_has_errors();

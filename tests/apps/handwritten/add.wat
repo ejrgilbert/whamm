@@ -5,5 +5,8 @@
   (func (;1;) (type 0)
     call 0
     call 0
-    call 0)
-  (memory (;0;) 1))
+    call 0
+  )
+  (start 1)
+  (memory (;0;) 1)
+)

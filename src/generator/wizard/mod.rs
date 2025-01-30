@@ -5,6 +5,7 @@ use crate::common::error::ErrorGen;
 use crate::common::instr::Config;
 use crate::emitter::memory_allocator::VAR_BLOCK_BASE_VAR;
 use crate::emitter::module_emitter::ModuleEmitter;
+use crate::emitter::InjectStrategy;
 use crate::generator::wizard::ast::{UnsharedVar, WizardProbe, WizardScript};
 use crate::generator::GeneratingVisitor;
 use crate::lang_features::alloc_vars::wizard::UnsharedVarHandler;
@@ -50,8 +51,6 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
 
         // set the value of curr_mem_offset Wasm global to mem_allocator.curr_mem_offset
         self.emitter.configure_mem_tracker_global(self.err);
-        self.emitter
-            .configure_flush_routines(self.io_adapter, self.err);
         self.emit_end_func(!used_report_dts.is_empty());
     }
 
@@ -88,8 +87,12 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 
     fn emit_end_func(&mut self, flush_reports: bool) {
-        self.emitter
-            .emit_end_fn(flush_reports, self.io_adapter, self.err);
+        self.emitter.emit_end_fn(
+            InjectStrategy::Wizard,
+            flush_reports,
+            Some(self.io_adapter),
+            self.err,
+        );
     }
 
     // Visit the AST

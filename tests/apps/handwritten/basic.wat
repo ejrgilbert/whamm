@@ -30,5 +30,17 @@
         i32.const -1
     )
 
+    (func $instr_redirect_to_fault_injector (type 1)
+        i32.const 0
+        drop
+    )
+
+    (func $main (export "main")
+        call $should_not_instrument
+        call $should
+        call $inject_synchronous_fault
+        drop
+    )
+
     (memory (export "memory") 1)
 )

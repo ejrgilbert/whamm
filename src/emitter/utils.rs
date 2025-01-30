@@ -287,12 +287,8 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             // Save off primitives to symbol table
             // TODO -- this is only necessary for `new_target_fn_name`, remove after deprecating!
             if let (Expr::VarId { name, .. }, Expr::Primitive { val, .. }) = (&var_id, &expr) {
-                let Some(Record::Var {
-                    value,
-                    def,
-                    is_report_var,
-                    ..
-                }) = ctx.table.lookup_var_mut(name, &None, ctx.err)
+                let Some(Record::Var { value, def, .. }) =
+                    ctx.table.lookup_var_mut(name, &None, ctx.err)
                 else {
                     ctx.err
                         .unexpected_error(true, Some("unexpected type".to_string()), None);
@@ -302,10 +298,6 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 *value = Some(val.clone());
                 if def.is_comp_provided() {
                     return true;
-                }
-                if *is_report_var {
-                    //you changed a report variable: need to turn dirty bool to true and then print somewhere
-                    ctx.report_vars.flush_soon = true;
                 }
             }
 
@@ -350,7 +342,6 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         let Some((map_id, key_ty, val_ty)) = get_map_info(name, ctx) else {
             return false;
         };
-        ctx.report_vars.mutating_map(map_id);
 
         injector.u32_const(map_id);
         emit_expr(key, strategy, injector, ctx);
@@ -477,14 +468,12 @@ fn emit_set<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         // this will be different based on if this is a global or local var
         match addr {
             Some(VarAddr::Global { addr }) => {
-                ctx.report_vars.mutating_var(*addr);
                 injector.global_set(GlobalID(*addr));
             }
             Some(VarAddr::MemLoc { mem_id, ty, .. }) => {
                 ctx.mem_allocator.set_in_mem(*mem_id, &ty.clone(), injector);
             }
             Some(VarAddr::Local { addr }) => {
-                ctx.report_vars.mutating_var(*addr);
                 injector.local_set(LocalID(*addr));
             }
             Some(VarAddr::MapId { .. }) => {
@@ -2034,9 +2023,6 @@ fn get_map_info(name: &mut str, ctx: &mut EmitCtx) -> Option<(u32, DataType, Dat
     }
 }
 pub fn print_report_all<'a, T: Opcode<'a> + AddLocal>(injector: &mut T, ctx: &mut EmitCtx) {
-    if !ctx.report_vars.flush_soon {
-        return;
-    }
     let Some(Record::Fn {
         addr: Some(fid), ..
     }) = ctx.table.lookup_fn("print_global_meta", true, ctx.err)
@@ -2055,5 +2041,4 @@ pub fn print_report_all<'a, T: Opcode<'a> + AddLocal>(injector: &mut T, ctx: &mu
         return;
     };
     injector.call(FunctionID(*fid));
-    ctx.report_vars.performed_flush();
 }

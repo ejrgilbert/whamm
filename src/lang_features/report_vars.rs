@@ -26,7 +26,6 @@ pub struct ReportVars {
     pub variable_metadata: HashMap<u32, (OrcaType, Metadata)>,
     pub all_metadata: HashSet<Metadata>,
     pub curr_location: LocationData,
-    pub flush_soon: bool,
 
     // $alloc tracking for Wizard
     flush_tracker: FlushTracker,
@@ -47,7 +46,6 @@ impl ReportVars {
             variable_metadata: HashMap::new(),
             all_metadata: HashSet::new(),
             curr_location: LocationData::Global { script_id: u8::MAX },
-            flush_soon: false,
             alloc_tracker: HashMap::default(),
             flush_tracker: FlushTracker {
                 flush_var_metadata_fid: None,
@@ -140,21 +138,6 @@ impl ReportVars {
         }
 
         info!("{info}");
-    }
-    pub fn mutating_map(&mut self, map_id: u32) {
-        //check if the map you are changing is in map_metadata -> flush soon if it is
-        if self.map_metadata.contains_key(&map_id) {
-            self.flush_soon = true;
-        }
-    }
-    pub fn mutating_var(&mut self, var_id: u32) {
-        //check if the var you are changing is in variable_metadata -> flush soon if it is
-        if self.variable_metadata.contains_key(&var_id) {
-            self.flush_soon = true;
-        }
-    }
-    pub fn performed_flush(&mut self) {
-        self.flush_soon = false;
     }
 }
 

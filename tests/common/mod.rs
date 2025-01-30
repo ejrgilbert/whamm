@@ -107,19 +107,20 @@ pub fn wat2wasm_on_dir(dir: &str) {
 }
 
 pub fn wat2wasm_on_file(original_wat_path: &str, original_wasm_path: &str) {
-    // if you want to change the wat file
-    // (calling wat2wasm from a child process doesn't work
-    //  since somehow the executable can't write to the file system directly)
-    let file_data = fs::read(original_wat_path).unwrap();
-    debug!("Running wat2wasm on file: {original_wat_path}");
-    let wasm_data = match wat2wasm(file_data) {
-        Err(e) => {
-            panic!("wat2wasm failed with error: {}", e)
-        }
-        Ok(data) => data,
-    };
-
-    fs::write(original_wasm_path, wasm_data).unwrap();
+    let res = Command::new("wasm-tools")
+        .arg("parse")
+        .arg(original_wat_path)
+        .arg("-o")
+        .arg(original_wasm_path)
+        .output()
+        .expect("failed to execute process");
+    if !res.status.success() {
+        error!(
+            "'wasm-tools parse' failed:\n{}\n{}",
+            String::from_utf8(res.stdout).unwrap(),
+            String::from_utf8(res.stderr).unwrap()
+        );
+    }
 }
 
 pub fn setup_fault_injection(variation: &str) -> Vec<(PathBuf, String)> {

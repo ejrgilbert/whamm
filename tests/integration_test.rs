@@ -10,7 +10,8 @@ use whamm::common::error::ErrorGen;
 use whamm::common::instr::{Config, LibraryLinkStrategy};
 use whamm::wast::test_harness::wasm2wat_on_file;
 
-const APP_WASM_PATH: &str = "tests/apps/dfinity/users.wasm";
+// const APP_WASM_PATH: &str = "tests/apps/dfinity/users.wasm";
+const APP_WASM_PATH: &str = "tests/apps/handwritten/basic.wasm";
 const CORE_WASM_PATH: &str = "./whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
 
 #[test]
@@ -28,6 +29,9 @@ fn instrument_dfinity_with_fault_injection() {
     let processed_scripts = common::setup_fault_injection("dfinity");
     assert!(!processed_scripts.is_empty());
     err.fatal_report("Integration Test");
+
+    // TODO -- this isn't using a dfinity module anymore...
+    //    since dfinity modules don't have a start or main function, we can't observe wasm:exit...
     let wasm = fs::read(APP_WASM_PATH).unwrap();
 
     for (script_path, script_text) in processed_scripts {
@@ -279,6 +283,13 @@ fn build_whamm_core_lib() {
     assert!(res.status.success());
 }
 
+/// create output path if it doesn't exist
+pub(crate) fn try_path(path: &String) {
+    if !PathBuf::from(path).exists() {
+        fs::create_dir_all(PathBuf::from(path).parent().unwrap()).unwrap();
+    }
+}
+
 fn run_script(
     script_text: &String,
     script_path: &PathBuf,
@@ -287,12 +298,12 @@ fn run_script(
     target_wizard: bool,
     err: &mut ErrorGen,
 ) {
-    let _ = whamm::common::instr::run(
+    let script_path_str = script_path.to_str().unwrap().replace("\"", "");
+    let wasm_result = whamm::common::instr::run(
         CORE_WASM_PATH,
         target_wasm,
         &script_text,
-        &format!("{:?}", script_path.clone().as_path()),
-        output_path,
+        &script_path_str,
         0,
         Config {
             wizard: target_wizard,
@@ -301,6 +312,15 @@ fn run_script(
             library_strategy: LibraryLinkStrategy::Imported,
         },
     );
+    if let Some(path) = output_path {
+        try_path(&path);
+        if let Err(e) = std::fs::write(&path, wasm_result) {
+            unreachable!(
+                "Failed to dump instrumented wasm to {} from error: {}",
+                &path, e
+            )
+        }
+    }
     err.fatal_report("Integration Test");
 }
 

@@ -4,5 +4,8 @@
   (func (;0;) (type 0))
   (func (;1;) (type 0)
     i32.const 0
-    drop)
-  (memory (;0;) 1))
+    drop
+  )
+  (start 1)
+  (memory (;0;) 1)
+)
