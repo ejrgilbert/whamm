@@ -2,7 +2,7 @@ use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::rewriting::rules::Arg;
 use crate::emitter::utils::{
-    emit_body, emit_expr, emit_stmt, print_report_all, whamm_type_to_wasm_global, EmitCtx,
+    emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global, EmitCtx,
 };
 use crate::emitter::{Emitter, InjectStrategy};
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
@@ -204,85 +204,38 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
 
     pub(crate) fn emit_end_fn(
         &mut self,
-        target: InjectStrategy,
         flush_reports: bool,
         io_adapter: Option<&mut IOAdapter>,
         err: &mut ErrorGen,
     ) {
-        match target {
-            InjectStrategy::Rewriting => {
-                // create the function to call at the end
-                // TODO -- this can be cleaned up to use the wizard logic instead!
-                let mut on_exit = FunctionBuilder::new(&[], &[]);
+        if flush_reports {
+            // (ONLY DO THIS IF THERE ARE REPORT VARIABLES)
 
-                //now emit the call to print the changes to the report vars if needed
-                print_report_all(
-                    &mut on_exit,
-                    &mut EmitCtx::new(
-                        self.table,
-                        self.mem_allocator,
-                        self.map_lib_adapter,
-                        self.report_vars,
-                        self.unshared_var_handler,
-                        UNEXPECTED_ERR_MSG,
-                        err,
-                    ),
-                );
+            // prepare the CSV header data segment
+            let (header_addr, header_len) =
+                Metadata::setup_csv_header(self.app_wasm, self.mem_allocator);
+            self.report_vars
+                .setup_flush_data_segments(self.app_wasm, self.mem_allocator);
 
-                let on_exit_id = on_exit.finish_module(self.app_wasm);
-                self.app_wasm.set_fn_name(on_exit_id, "on_exit".to_string());
+            let mut on_exit = FunctionBuilder::new(&[], &[]);
 
-                // now find where the "exit" is in the bytecode
-                // exit of export "main"
-                // OR if that doesn't exist, the end of the "start" function
-                let fid = if let Some(main_fid) =
-                    self.app_wasm.exports.get_func_by_name("main".to_string())
-                {
-                    main_fid
-                } else if let Some(start_fid) = self.app_wasm.start {
-                    start_fid
-                } else {
-                    // neither exists, unsure how to support this...this would be a library instead of an application I guess?
-                    // Maybe the answer is to expose query functions that can give a status update of the `report` vars?
-                    unimplemented!("Your target Wasm has no main or start function...we do not support report variables in this scenario.")
-                };
-                let mut main = self.app_wasm.functions.get_fn_modifier(fid).unwrap();
+            // call the report_vars to emit calls to all report var flushers
+            self.report_vars.emit_flush_logic(
+                &mut on_exit,
+                self.mem_allocator,
+                io_adapter.unwrap(),
+                (header_addr, header_len),
+                self.mem_allocator.mem_id,
+                self.app_wasm,
+                err,
+            );
 
-                main.func_exit();
-                main.call(on_exit_id);
-                // main.finish_instr();
-            }
-            InjectStrategy::Wizard => {
-                if flush_reports {
-                    // (ONLY DO THIS IF THERE ARE REPORT VARIABLES)
+            let on_exit_id = on_exit.finish_module(self.app_wasm);
+            self.app_wasm.set_fn_name(on_exit_id, "on_exit".to_string());
 
-                    // prepare the CSV header data segment
-                    let (header_addr, header_len) =
-                        Metadata::setup_csv_header(self.app_wasm, self.mem_allocator);
-                    self.report_vars
-                        .setup_flush_data_segments(self.app_wasm, self.mem_allocator);
-
-                    let mut on_exit = FunctionBuilder::new(&[], &[]);
-
-                    // call the report_vars to emit calls to all report var flushers
-                    self.report_vars.emit_flush_logic(
-                        &mut on_exit,
-                        self.mem_allocator,
-                        io_adapter.unwrap(),
-                        (header_addr, header_len),
-                        self.mem_allocator.mem_id,
-                        self.app_wasm,
-                        err,
-                    );
-
-                    let on_exit_id = on_exit.finish_module(self.app_wasm);
-                    self.app_wasm.set_fn_name(on_exit_id, "on_exit".to_string());
-
-                    self.app_wasm
-                        .exports
-                        .add_export_func("wasm:exit".to_string(), *on_exit_id);
-                }
-            }
+            self.app_wasm
+                .exports
+                .add_export_func("wasm:exit".to_string(), *on_exit_id);
         }
     }
 
@@ -742,19 +695,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         init_fn.u32_const(self.mem_allocator.curr_mem_offset as u32);
         init_fn.global_set(self.mem_allocator.mem_tracker_global);
     }
-
-    // pub fn configure_flush_routines(&mut self, io_adapter: &mut IOAdapter, err: &mut ErrorGen) {
-    //     configure_flush_routines(
-    //         self.app_wasm,
-    //         self.table,
-    //         self.report_vars,
-    //         self.map_lib_adapter,
-    //         self.mem_allocator,
-    //         io_adapter,
-    //         UNEXPECTED_ERR_MSG,
-    //         err,
-    //     );
-    // }
 }
 impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
     fn emit_body(

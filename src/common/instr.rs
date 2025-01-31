@@ -351,15 +351,13 @@ fn run_instr_rewrite(
 fn get_memory_allocator(target_wasm: &mut Module, create_new_mem: bool) -> MemoryAllocator {
     // Create the memory tracker + the map and metadata tracker
     let mem_id = if create_new_mem {
-        let id = target_wasm.memories.len() as u32;
-        target_wasm.memories.push(MemoryType {
+        *target_wasm.add_local_memory(MemoryType {
             memory64: false,
             shared: false,
             initial: 1,
             maximum: None,
             page_size_log2: None,
-        });
-        id
+        })
     } else {
         // memory ID is just zero
         0

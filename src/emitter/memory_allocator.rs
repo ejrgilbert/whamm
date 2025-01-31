@@ -2,7 +2,7 @@ use crate::common::error::ErrorGen;
 use crate::parser::types::DataType;
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca_wasm::ir::function::FunctionBuilder;
-use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
+use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID, MemoryID};
 use orca_wasm::ir::types::DataType as OrcaType;
 use orca_wasm::ir::types::{BlockType, InitExpr, Value as OrcaValue};
 use orca_wasm::module_builder::AddLocal;
@@ -337,9 +337,9 @@ impl MemoryAllocator {
 
         // TODO -- this doesn't actually increase the required_initial_mem_size at any point
         if !self.emitted_strings.is_empty() {
-            if let Some(mem) = wasm.memories.get_mut(0) {
-                if mem.initial < self.required_initial_mem_size {
-                    mem.initial = self.required_initial_mem_size;
+            if let Some(mem) = wasm.memories.get_mut(MemoryID(self.mem_id)) {
+                if mem.ty.initial < self.required_initial_mem_size {
+                    mem.ty.initial = self.required_initial_mem_size;
                 }
             }
         }

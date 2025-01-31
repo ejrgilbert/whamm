@@ -39,12 +39,9 @@ pub fn link_core_lib(
             let buff = std::fs::read(core_wasm_path).unwrap();
             let core_lib = Module::parse(&buff, false).unwrap();
             if package.import_memory() {
-                let mem_id = import_lib_memory(app_wasm, WHAMM_CORE_LIB_NAME.to_string());
-                let app_mem_id = mem_id + 1;
-                package.set_lib_mem_id(mem_id);
-                package.set_app_mem_id(app_mem_id);
-
-                mem_allocator.mem_id = app_mem_id as u32;
+                let lib_mem_id = import_lib_memory(app_wasm, WHAMM_CORE_LIB_NAME.to_string());
+                package.set_lib_mem_id(lib_mem_id);
+                package.set_app_mem_id(mem_allocator.mem_id as i32);
             }
             injected_funcs.extend(import_lib(
                 app_wasm,

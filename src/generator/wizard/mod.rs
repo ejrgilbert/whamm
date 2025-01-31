@@ -5,7 +5,6 @@ use crate::common::error::ErrorGen;
 use crate::common::instr::Config;
 use crate::emitter::memory_allocator::VAR_BLOCK_BASE_VAR;
 use crate::emitter::module_emitter::ModuleEmitter;
-use crate::emitter::InjectStrategy;
 use crate::generator::wizard::ast::{UnsharedVar, WizardProbe, WizardScript};
 use crate::generator::GeneratingVisitor;
 use crate::lang_features::alloc_vars::wizard::UnsharedVarHandler;
@@ -88,7 +87,6 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
 
     fn emit_end_func(&mut self, flush_reports: bool) {
         self.emitter.emit_end_fn(
-            InjectStrategy::Wizard,
             flush_reports,
             Some(self.io_adapter),
             self.err,

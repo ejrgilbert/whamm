@@ -180,13 +180,13 @@ impl ReportVars {
         for dt in supported_dts.iter() {
             memory_allocator.emit_string(wasm, &mut format!("{dt}, "));
             let wasm_tys = dt.to_wasm_type();
-            let wasm_ty = if wasm_tys.len() > 1 {
+            let wasm_ty_str = if wasm_tys.len() > 1 {
                 // todo support tuples, strings, etc.
                 unimplemented!()
             } else {
-                wasm_tys.first().unwrap()
+                get_wasm_ty_str(wasm_tys.first().unwrap())
             };
-            memory_allocator.emit_string(wasm, &mut format!("{wasm_ty}, "));
+            memory_allocator.emit_string(wasm, &mut format!("{wasm_ty_str}, "));
         }
     }
     pub fn emit_flush_logic(
@@ -607,7 +607,7 @@ impl ReportVars {
             // todo support tuples, strings, etc.
             unimplemented!()
         } else {
-            wasm_tys.first().unwrap()
+            get_wasm_ty_str(wasm_tys.first().unwrap())
         };
         let (addr, len) = mem_allocator.lookup_emitted_string(&format!("{wasm_ty}, "), err);
         io_adapter.puts(addr, len, flush_fn, err);
@@ -1291,7 +1291,7 @@ id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)"
             } => (
                 name.as_str(),
                 whamm_ty.to_string(),
-                wasm_ty.to_string(),
+                get_wasm_ty_str(wasm_ty),
                 *script_id,
                 &*bytecode_loc.to_string(),
                 probe_id.as_str(),
@@ -1345,4 +1345,42 @@ struct ReportAllocTracker {
 }
 struct FlushTracker {
     flush_var_metadata_fid: Option<u32>,
+}
+
+fn get_wasm_ty_str(wasm_ty: &OrcaType) -> String {
+    let s = match wasm_ty {
+        OrcaType::I8 => "i8",
+        OrcaType::I16 => "i16",
+        OrcaType::I32 => "i32",
+        OrcaType::I64 => "i64",
+        OrcaType::F32 => "f32",
+        OrcaType::F64 => "f64",
+        OrcaType::V128 => "v128",
+        OrcaType::FuncRef => "funcref",
+        OrcaType::FuncRefNull => "funcref_null",
+        OrcaType::ExternRef => "externref",
+        OrcaType::ExternRefNull => "externref_null",
+        OrcaType::Any => "any",
+        OrcaType::AnyNull => "any_null",
+        OrcaType::None => "none",
+        OrcaType::NoExtern => "noextern",
+        OrcaType::NoFunc => "nofunc",
+        OrcaType::Eq => "eq",
+        OrcaType::EqNull => "eq_null",
+        OrcaType::Struct => "struct",
+        OrcaType::StructNull => "struct_null",
+        OrcaType::Array => "array",
+        OrcaType::ArrayNull => "array_null",
+        OrcaType::I31 => "i31",
+        OrcaType::I31Null => "i31_null",
+        OrcaType::Exn => "exn",
+        OrcaType::NoExn => "noexn",
+        OrcaType::Module { .. } => "module",
+        OrcaType::RecGroup(_) => "recgroup",
+        OrcaType::CoreTypeId(_) => "core_type_id",
+        OrcaType::Cont => "cont",
+        OrcaType::NoCont => "nocont",
+    };
+
+    s.to_string()
 }

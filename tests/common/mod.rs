@@ -3,8 +3,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use glob::{glob, glob_with};
-use log::{debug, error, warn};
-use wabt::wat2wasm;
+use log::{error, warn};
 use whamm::wast::test_harness::wasm2wat_on_file;
 
 // ====================
@@ -155,9 +154,19 @@ pub fn setup_replay() -> Vec<(PathBuf, String)> {
 
 pub fn setup_numerics_monitors() -> Vec<(PathBuf, String)> {
     setup_logger();
-    let scripts = get_test_scripts("numerics");
+    let scripts = get_test_scripts("core_suite/numerics");
     if scripts.is_empty() {
         warn!("No test scripts found for `numerics` test.");
+    }
+
+    scripts
+}
+
+pub fn setup_branch_monitors() -> Vec<(PathBuf, String)> {
+    setup_logger();
+    let scripts = get_test_scripts("core_suite/branch-monitor");
+    if scripts.is_empty() {
+        warn!("No test scripts found for `report_vars` test.");
     }
 
     scripts

@@ -294,6 +294,8 @@ impl DataType {
     }
     pub fn from_wasm_type(ty: &OrcaType) -> Self {
         match ty {
+            OrcaType::I8 => DataType::I8,
+            OrcaType::I16 => DataType::I16,
             OrcaType::I32 => DataType::I32,
             OrcaType::I64 => DataType::I64,
             OrcaType::F32 => DataType::F32,
