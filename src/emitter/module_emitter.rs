@@ -1,9 +1,7 @@
 use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::rewriting::rules::Arg;
-use crate::emitter::utils::{
-    emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global, EmitCtx,
-};
+use crate::emitter::utils::{emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global, EmitCtx};
 use crate::emitter::{Emitter, InjectStrategy};
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;

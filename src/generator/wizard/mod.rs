@@ -86,11 +86,8 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 
     fn emit_end_func(&mut self, flush_reports: bool) {
-        self.emitter.emit_end_fn(
-            flush_reports,
-            self.io_adapter,
-            self.err,
-        );
+        self.emitter
+            .emit_end_fn(flush_reports, self.io_adapter, self.err);
     }
 
     // Visit the AST
