@@ -9,18 +9,17 @@
  * need to access top-of-stack, locals, program counter
  * need a handle to the function ("func")
 */
-report var global_value;
 
 wasm::br:before / fname == "calc" || fname == "print_x" / {
-    report unshared i32 taken;
+    report unshared var taken: i32;
     // branch always taken for `br`
     // count stores an array of counters
     taken++;
 }
 
 wasm::br_if:before / fname == "calc" || fname == "print_x" / {
-    report unshared i32 taken;
-    report unshared i32 not_taken;
+    report unshared var taken: i32;
+    report unshared var not_taken: i32;
 
     // which branch was taken?
     if (arg0 != 0) {

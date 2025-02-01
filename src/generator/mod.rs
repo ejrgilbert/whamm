@@ -242,7 +242,7 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
         // do not inject globals into Wasm that are used/defined by the compiler
         // because they are statically-defined and folded away
 
-        // TODO -- this is where wizard implementation starts diverting
+        // (this is where wizard implementation starts diverting)
         // 1. visit the BEFORE probes
         self.visit_before_probes(event);
         // 2. visit the ALT probes

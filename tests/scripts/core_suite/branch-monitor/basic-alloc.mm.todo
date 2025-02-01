@@ -1,0 +1,10 @@
+// TODO -- support pulling fname on Wizard target!
+wasm:opcode:call:before /
+    imm0 == 31 ||
+    imm0 == 32
+/ {
+    report var count: u32;
+    if (arg0 == 1 || arg1 == 1) {
+       count++;
+    }
+}

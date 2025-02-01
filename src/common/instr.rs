@@ -134,15 +134,22 @@ pub fn run_with_path(
         }
     };
 
-    run(
+    let wasm_result = run(
         core_wasm_path,
         &mut target_wasm,
         &whamm_script,
         &script_path,
-        Some(output_wasm_path),
         max_errors,
         config,
     );
+
+    try_path(&output_wasm_path);
+    if let Err(e) = std::fs::write(&output_wasm_path, wasm_result) {
+        unreachable!(
+            "Failed to dump instrumented wasm to {} from error: {}",
+            &output_wasm_path, e
+        )
+    }
 }
 
 pub fn run(
@@ -150,7 +157,6 @@ pub fn run(
     target_wasm: &mut Module,
     whamm_script: &String,
     script_path: &str,
-    output_wasm_path: Option<String>,
     max_errors: i32,
     config: Config,
 ) -> Vec<u8> {
@@ -219,20 +225,6 @@ pub fn run(
     }
     // for debugging
     report_vars.print_metadata();
-
-    if let Some(output_wasm_path) = output_wasm_path {
-        try_path(&output_wasm_path);
-        if let Err(e) = target_wasm.emit_wasm(&output_wasm_path) {
-            err.add_error(ErrorGen::get_unexpected_error(
-                true,
-                Some(format!(
-                    "Failed to dump instrumented wasm to {} from error: {}",
-                    &output_wasm_path, e
-                )),
-                None,
-            ))
-        }
-    }
 
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
@@ -359,15 +351,13 @@ fn run_instr_rewrite(
 fn get_memory_allocator(target_wasm: &mut Module, create_new_mem: bool) -> MemoryAllocator {
     // Create the memory tracker + the map and metadata tracker
     let mem_id = if create_new_mem {
-        let id = target_wasm.memories.len() as u32;
-        target_wasm.memories.push(MemoryType {
+        *target_wasm.add_local_memory(MemoryType {
             memory64: false,
             shared: false,
             initial: 1,
             maximum: None,
             page_size_log2: None,
-        });
-        id
+        })
     } else {
         // memory ID is just zero
         0

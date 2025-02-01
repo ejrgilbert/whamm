@@ -223,13 +223,12 @@ fn generate_instrumented_bin_wast(
             "{TEST_DEBUG_DIR}/{}.wasm",
             wast_path.file_name().unwrap().to_str().unwrap()
         );
-        try_path(&debug_file_path);
+        let wast_path_str = wast_path.to_str().unwrap().replace("\"", "");
         let instrumented_module_wasm = run(
             CORE_WASM_PATH,
             &mut module_to_instrument,
             &test_case.whamm_script,
-            &format!("{:?}", wast_path),
-            Some(debug_file_path.clone()),
+            &wast_path_str,
             0,
             Config {
                 wizard: false,
@@ -238,6 +237,14 @@ fn generate_instrumented_bin_wast(
                 library_strategy: LibraryLinkStrategy::Imported,
             },
         );
+
+        try_path(&debug_file_path);
+        if let Err(e) = std::fs::write(&debug_file_path, instrumented_module_wasm.clone()) {
+            unreachable!(
+                "Failed to dump instrumented wasm to {} from error: {}",
+                &debug_file_path, e
+            )
+        }
         wasm2wat_on_file(debug_file_path.as_str());
 
         // create the wast

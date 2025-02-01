@@ -2,7 +2,7 @@ use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::rewriting::rules::Arg;
 use crate::emitter::utils::{emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global, EmitCtx};
-use crate::emitter::{configure_flush_routines, Emitter, InjectStrategy};
+use crate::emitter::{Emitter, InjectStrategy};
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
@@ -207,13 +207,14 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         err: &mut ErrorGen,
     ) {
         if flush_reports {
+            // (ONLY DO THIS IF THERE ARE REPORT VARIABLES)
+
             // prepare the CSV header data segment
             let (header_addr, header_len) =
                 Metadata::setup_csv_header(self.app_wasm, self.mem_allocator);
             self.report_vars
                 .setup_flush_data_segments(self.app_wasm, self.mem_allocator);
 
-            // (ONLY DO THIS IF THERE ARE REPORT VARIABLES)
             let mut on_exit = FunctionBuilder::new(&[], &[]);
 
             // call the report_vars to emit calls to all report var flushers
@@ -691,19 +692,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
 
         init_fn.u32_const(self.mem_allocator.curr_mem_offset as u32);
         init_fn.global_set(self.mem_allocator.mem_tracker_global);
-    }
-
-    pub fn configure_flush_routines(&mut self, io_adapter: &mut IOAdapter, err: &mut ErrorGen) {
-        configure_flush_routines(
-            self.app_wasm,
-            self.table,
-            self.report_vars,
-            self.map_lib_adapter,
-            self.mem_allocator,
-            io_adapter,
-            UNEXPECTED_ERR_MSG,
-            err,
-        );
     }
 }
 impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {

@@ -50,8 +50,6 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
 
         // set the value of curr_mem_offset Wasm global to mem_allocator.curr_mem_offset
         self.emitter.configure_mem_tracker_global(self.err);
-        self.emitter
-            .configure_flush_routines(self.io_adapter, self.err);
         self.emit_end_func(!used_report_dts.is_empty());
     }
 
