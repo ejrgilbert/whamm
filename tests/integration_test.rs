@@ -29,6 +29,7 @@ fn instrument_dfinity_with_fault_injection() {
     let processed_scripts = common::setup_fault_injection("dfinity");
     assert!(!processed_scripts.is_empty());
     err.fatal_report("Integration Test");
+    wat2wasm_on_dir("tests/apps/core_suite/handwritten");
 
     // TODO -- this isn't using a dfinity module anymore...
     //    since dfinity modules don't have a start or main function, we can't observe wasm:exit...
@@ -140,6 +141,7 @@ fn instrument_with_wizard_monitors() {
     err.fatal_report("Integration Test");
 
     build_whamm_core_lib();
+    wat2wasm_on_dir("tests/apps/core_suite/handwritten");
     let wasm = fs::read(APP_WASM_PATH).unwrap();
     for (script_path, script_text) in processed_scripts {
         let mut module_to_instrument = Module::parse(&wasm, false).unwrap();
