@@ -205,7 +205,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub(crate) fn emit_end_fn(
         &mut self,
         flush_reports: bool,
-        io_adapter: Option<&mut IOAdapter>,
+        io_adapter: &mut IOAdapter,
         err: &mut ErrorGen,
     ) {
         if flush_reports {
@@ -223,7 +223,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             self.report_vars.emit_flush_logic(
                 &mut on_exit,
                 self.mem_allocator,
-                io_adapter.unwrap(),
+                io_adapter,
                 (header_addr, header_len),
                 self.mem_allocator.mem_id,
                 self.app_wasm,
