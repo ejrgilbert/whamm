@@ -15,7 +15,7 @@ glob = "0.3.1"
 lazy_static = "1.4.0"
 itertools = "0.14.0"
 #orca-wasm = { path = "../orca" }
-orca-wasm = "0.8.0"
+orca-wasm = "0.9.0"
 wasmparser = "0.224.0"
 
 # Logging
