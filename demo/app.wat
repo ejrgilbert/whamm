@@ -1,7 +1,11 @@
 (module
     (import "wizeng" "puts" (func $puts (param i32 i32)))
     (func $main (export "main")
-        (call $call_target (i32.const 0))
+        (local i32)
+        (local.set 0 (call $call_target (i32.const 0)))
+        (block
+            (br_if 1 (local.get 0))
+        )
     )
     (func $call_target (param i32) (result i32)
         (block
@@ -9,16 +13,18 @@
             call $foo
         )
         call $bar
+        (local.get 0)
     )
     (func $foo
-        (call $puts (i32.const 0) (i32.const 3))
+        (call $puts (i32.const 0) (i32.const 4))
         br 0
     )
     (func $bar
-        (call $puts (i32.const 3) (i32.const 3))
+        (call $puts (i32.const 4) (i32.const 4))
         br 0
     )
     (memory 1)
-    (data (;0;) (i32.const 0) "foo")
-    (data (;1;) (i32.const 3) "bar")
+    (export "memory" (memory 0))
+    (data (;0;) (i32.const 0) "foo\n")
+    (data (;1;) (i32.const 4) "bar\n")
 )

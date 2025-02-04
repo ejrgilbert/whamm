@@ -57,6 +57,9 @@ pub struct InstrArgs {
     /// The path to the Script containing the instrumentation Probe definitions.
     #[arg(short, long, value_parser)]
     pub script: String,
+    /// The path to the core Whamm library Wasm module.
+    #[arg(short, long, value_parser)]
+    pub core_lib: String,
     /// The path that the instrumented version of the Wasm app should be output to.
     #[arg(short, long, value_parser, default_value = "./output/output.wasm")]
     pub output_path: String,
