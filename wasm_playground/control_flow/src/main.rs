@@ -31,5 +31,4 @@ fn main() {
     println!("\n==== PRINT_X ====");
     print_x("hello world!", times as u32)
 
-    // TODO -- add switch for br_table!
 }

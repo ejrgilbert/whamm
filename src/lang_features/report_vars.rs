@@ -1332,12 +1332,6 @@ impl BytecodeLoc {
 }
 
 struct ReportAllocTracker {
-    // TODO -- may not need these
-    // // The data type that this instance tracks allocation of
-    // data_type: DataType,
-    // // The ID of the flush function for this DataType
-    // flush_func: Option<u32>,
-
     // global that points to the memory location of the first allocated report variable of this type
     first_var: Option<u32>,
     // global that points to the most-recently allocated report variable of this type
