@@ -421,7 +421,7 @@ impl ReportVars {
 
         // print 'name'
         flush_fn.local_get(name_ptr).local_get(name_len);
-        io_adapter.call_intrusive_puts(&mut flush_fn, err);
+        io_adapter.call_puts_internal(&mut flush_fn, err);
         let (addr, len) = mem_allocator.lookup_emitted_string(&", ".to_string(), err);
         io_adapter.puts(addr, len, &mut flush_fn, err);
 
@@ -572,7 +572,7 @@ impl ReportVars {
 
         // print 'probe_id'
         flush_fn.local_get(probe_id_ptr).local_get(probe_id_len);
-        io_adapter.call_safe_puts(&mut flush_fn, err);
+        io_adapter.call_puts_internal(&mut flush_fn, err);
         let (addr, len) = mem_allocator.lookup_emitted_string(&", ".to_string(), err);
         io_adapter.puts(addr, len, &mut flush_fn, err);
 
