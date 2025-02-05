@@ -809,63 +809,67 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             .inject_map_init(&mut self.app_iter, fid);
     }
 
-    pub fn configure_flush_routines(&mut self, err: &mut ErrorGen) {
+    pub fn configure_flush_routines(&mut self, has_reports: bool, err: &mut ErrorGen) {
         // create the function to call at the end
         // TODO -- this can be cleaned up to use the wizard logic instead!
-        let mut on_exit = FunctionBuilder::new(&[], &[]);
 
-        //now emit the call to print the changes to the report vars if needed
-        print_report_all(
-            &mut on_exit,
-            &mut EmitCtx::new(
+        // only do this is there are report variables
+        if has_reports {
+            let mut on_exit = FunctionBuilder::new(&[], &[]);
+
+            //now emit the call to print the changes to the report vars if needed
+            print_report_all(
+                &mut on_exit,
+                &mut EmitCtx::new(
+                    self.table,
+                    self.mem_allocator,
+                    self.map_lib_adapter,
+                    self.report_vars,
+                    self.unshared_var_handler,
+                    UNEXPECTED_ERR_MSG,
+                    err,
+                ),
+            );
+
+            let on_exit_id = on_exit.finish_module(self.app_iter.module);
+            self.app_iter
+                .module
+                .set_fn_name(on_exit_id, "on_exit".to_string());
+
+            // now find where the "exit" is in the bytecode
+            // exit of export "main"
+            // OR if that doesn't exist, the end of the "start" function
+            let fid = if let Some(main_fid) = self
+                .app_iter
+                .module
+                .exports
+                .get_func_by_name("main".to_string())
+            {
+                main_fid
+            } else if let Some(start_fid) = self.app_iter.module.start {
+                start_fid
+            } else {
+                // neither exists, unsure how to support this...this would be a library instead of an application I guess?
+                // Maybe the answer is to expose query functions that can give a status update of the `report` vars?
+                unimplemented!("Your target Wasm has no main or start function...we do not support report variables in this scenario.")
+            };
+            let mut main = self.app_iter.module.functions.get_fn_modifier(fid).unwrap();
+
+            main.func_exit();
+            main.call(on_exit_id);
+            main.finish_instr();
+
+            configure_flush_routines(
+                self.app_iter.module,
                 self.table,
-                self.mem_allocator,
-                self.map_lib_adapter,
                 self.report_vars,
-                self.unshared_var_handler,
+                self.map_lib_adapter,
+                self.mem_allocator,
+                self.io_adapter,
                 UNEXPECTED_ERR_MSG,
                 err,
-            ),
-        );
-
-        let on_exit_id = on_exit.finish_module(self.app_iter.module);
-        self.app_iter
-            .module
-            .set_fn_name(on_exit_id, "on_exit".to_string());
-
-        // now find where the "exit" is in the bytecode
-        // exit of export "main"
-        // OR if that doesn't exist, the end of the "start" function
-        let fid = if let Some(main_fid) = self
-            .app_iter
-            .module
-            .exports
-            .get_func_by_name("main".to_string())
-        {
-            main_fid
-        } else if let Some(start_fid) = self.app_iter.module.start {
-            start_fid
-        } else {
-            // neither exists, unsure how to support this...this would be a library instead of an application I guess?
-            // Maybe the answer is to expose query functions that can give a status update of the `report` vars?
-            unimplemented!("Your target Wasm has no main or start function...we do not support report variables in this scenario.")
-        };
-        let mut main = self.app_iter.module.functions.get_fn_modifier(fid).unwrap();
-
-        main.func_exit();
-        main.call(on_exit_id);
-        main.finish_instr();
-
-        configure_flush_routines(
-            self.app_iter.module,
-            self.table,
-            self.report_vars,
-            self.map_lib_adapter,
-            self.mem_allocator,
-            self.io_adapter,
-            UNEXPECTED_ERR_MSG,
-            err,
-        );
+            );
+        }
     }
 }
 impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {

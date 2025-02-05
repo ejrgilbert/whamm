@@ -165,7 +165,7 @@ pub fn run(
 
     // Process the script
     let mut whamm = get_script_ast(whamm_script, &mut err);
-    let mut symbol_table = get_symbol_table(&mut whamm, &mut err);
+    let (mut symbol_table, has_reports) = get_symbol_table(&mut whamm, &mut err);
     err.check_too_many();
 
     // If there were any errors encountered, report and exit!
@@ -214,6 +214,7 @@ pub fn run(
             simple_ast,
             target_wasm,
             &mut symbol_table,
+            has_reports,
             mem_allocator,
             &mut io_adapter,
             &mut map_lib_adapter,
@@ -286,6 +287,7 @@ fn run_instr_rewrite(
     simple_ast: SimpleAST,
     target_wasm: &mut Module,
     symbol_table: &mut SymbolTable,
+    has_reports: bool,
     mut mem_allocator: MemoryAllocator,
     io_adapter: &mut IOAdapter,
     map_lib_adapter: &mut MapLibAdapter,
@@ -330,6 +332,7 @@ fn run_instr_rewrite(
         ),
         simple_ast,
         err,
+        has_reports
     );
     instr.run();
 
@@ -381,18 +384,21 @@ fn get_memory_allocator(target_wasm: &mut Module, create_new_mem: bool) -> Memor
     }
 }
 
-fn get_symbol_table(ast: &mut Whamm, err: &mut ErrorGen) -> SymbolTable {
+fn get_symbol_table(ast: &mut Whamm, err: &mut ErrorGen) -> (SymbolTable, bool) {
     let mut st = build_symbol_table(ast, err);
     err.check_too_many();
-    verify_ast(ast, &mut st, err);
-    st
+    let has_reports = verify_ast(ast, &mut st, err);
+    (st, has_reports)
 }
 
-fn verify_ast(ast: &mut Whamm, st: &mut SymbolTable, err: &mut ErrorGen) {
-    if !type_check(ast, st, err) {
+fn verify_ast(ast: &mut Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> bool {
+    let (passed, has_reports) = type_check(ast, st, err);
+    if !passed {
         error!("AST failed verification!");
     }
     err.check_too_many();
+
+    has_reports
 }
 
 fn get_script_ast(script: &String, err: &mut ErrorGen) -> Whamm {

@@ -54,12 +54,16 @@ pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> {
     curr_probe_mode: WhammModeKind,
     /// The current probe's body and predicate
     curr_probe: Option<(Option<Block>, Option<Expr>)>,
+
+    /// Whether there are reports to flush at the end of execution
+    has_reports: bool
 }
 impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> {
     pub fn new(
         emitter: VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g>,
         ast: SimpleAST,
         err: &'h mut ErrorGen,
+        has_reports: bool
     ) -> Self {
         Self {
             emitter,
@@ -68,6 +72,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
             curr_instr_args: vec![],
             curr_probe_mode: WhammModeKind::Begin,
             curr_probe: None,
+            has_reports
         }
     }
 
@@ -340,7 +345,7 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_> {
         }
     }
     fn after_run(&mut self) -> bool {
-        self.emitter.configure_flush_routines(self.err);
+        self.emitter.configure_flush_routines(self.has_reports, self.err);
         true
     }
 }

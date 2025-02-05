@@ -10,7 +10,6 @@ use whamm::common::error::ErrorGen;
 use whamm::common::instr::{Config, LibraryLinkStrategy};
 use whamm::wast::test_harness::wasm2wat_on_file;
 
-// const APP_WASM_PATH: &str = "tests/apps/dfinity/users.wasm";
 const APP_WASM_PATH: &str = "tests/apps/core_suite/handwritten/basic.wasm";
 const CORE_WASM_PATH: &str = "./whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
 
@@ -31,9 +30,8 @@ fn instrument_dfinity_with_fault_injection() {
     err.fatal_report("Integration Test");
     wat2wasm_on_dir("tests/apps/core_suite/handwritten");
 
-    // TODO -- this isn't using a dfinity module anymore...
-    //    since dfinity modules don't have a start or main function, we can't observe wasm:exit...
-    let wasm = fs::read(APP_WASM_PATH).unwrap();
+    let wasm_path = "tests/apps/dfinity/users.wasm";
+    let wasm = fs::read(wasm_path).unwrap();
 
     for (script_path, script_text) in processed_scripts {
         let mut module_to_instrument = Module::parse(&wasm, false).unwrap();
