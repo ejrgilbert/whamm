@@ -166,7 +166,17 @@ pub fn setup_branch_monitors() -> Vec<(PathBuf, String)> {
     setup_logger();
     let scripts = get_test_scripts("core_suite/branch-monitor");
     if scripts.is_empty() {
-        warn!("No test scripts found for `report_vars` test.");
+        warn!("No test scripts found for `branch-monitor` test.");
+    }
+
+    scripts
+}
+
+pub fn setup_calls_monitors() -> Vec<(PathBuf, String)> {
+    setup_logger();
+    let scripts = get_test_scripts("core_suite/calls-monitor");
+    if scripts.is_empty() {
+        warn!("No test scripts found for `calls-monitor` test.");
     }
 
     scripts

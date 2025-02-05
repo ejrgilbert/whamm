@@ -1,41 +1,36 @@
 // TODO -- cannot flush global report variables yet on Wizard target
 // TODO -- support pulling fname on Wizard target!
-// TODO -- support flushing map types on Wizard target
+report map<(u32, u32, i32), i32> count;
 
 wasm::br:before /
-    imm0 == 31 ||
-    imm0 == 32
+    fname == "calc" ||
+    fname == "print_x"
 / {
   // branch always taken for `br`
-  report unshared i32 taken;
-  taken++;
+  // count stores an array of counters
+  count[(fid, pc, 1)]++;
 }
 
 wasm::br_if:before /
-   imm0 == 31 ||
-   imm0 == 32
+    fid == 31 ||        // calc
+    fid == 32           // print_x
 / {
-  report unshared i32 taken;
-  report unshared i32 not_taken;
-
   // which branch was taken?
-  if (arg0 != 0) {
-    taken++;
-  } else {
-    not_taken++;
-  }
+  i32 index;
+  index = arg0 != 0 ? 1 : 0;
+
+  // count stores an array of counters
+  count[(fid, pc, index)]++;
 }
 
 wasm::br_table:before /
-    imm0 == 31 ||
-    imm0 == 32
+    fname == "calc" ||
+    fname == "print_x"
 / {
-  report unshared map<i32, i32> taken_branches;
-
   // which branch was taken?
   i32 index;
   index = arg0 < (num_targets - 1) ? targets[arg0] : default_target;
 
   // count stores an array of counters
-  taken_branches[index]++;
+  count[(fid, pc, index)]++;
 }

@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::env;
 use wasi_common::sync::{Dir, WasiCtxBuilder};
 use wasmtime::*;
 
@@ -29,7 +30,11 @@ fn main() -> Result<()> {
     // Instantiate our module with the imports we've created, and run it.
     let core_lib_wasm = Module::from_file(&engine, CORE_LIB_MODULE)?;
     linker.module(&mut store, CORE_LIB_NAME, &core_lib_wasm)?;
-    let app_wasm = Module::from_file(&engine, WASM_MODULE)?;
+    let wasm_module = match env::var("WASM_MODULE") {
+        Ok(val) => val,
+        Err(_) => WASM_MODULE.to_string(),
+    };
+    let app_wasm = Module::from_file(&engine, wasm_module)?;
     linker.module(&mut store, "", &app_wasm)?;
     linker
         .get_default(&mut store, "")?

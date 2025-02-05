@@ -66,21 +66,20 @@ pub struct SimpleProbe {
     pub predicate: Option<Expr>,
     pub body: Option<Block>,
     pub num_unshared: HashMap<DataType, i32>,
-    pub probe_number: i32,
+    pub probe_number: u32,
 }
 impl SimpleProbe {
     fn new(
         script_id: u8,
         probe: &dyn Probe,
-        num_unshared: HashMap<DataType, i32>,
-        probe_number: i32,
+        num_unshared: HashMap<DataType, i32>
     ) -> Self {
         Self {
             script_id,
             predicate: probe.predicate().to_owned(),
             body: probe.body().to_owned(),
             num_unshared,
-            probe_number,
+            probe_number: probe.id(),
         }
     }
 }
@@ -113,8 +112,7 @@ pub fn build_simple_ast(ast: &Whamm, err: &mut ErrorGen) -> SimpleAST {
         curr_provider_name: "".to_string(),
         curr_package_name: "".to_string(),
         curr_event_name: "".to_string(),
-        curr_unshared: HashMap::default(),
-        probe_count: 0,
+        curr_unshared: HashMap::default()
     };
     visitor.visit_whamm(ast);
 
@@ -129,8 +127,7 @@ pub struct SimpleASTBuilder<'a, 'b> {
     curr_provider_name: String,
     curr_package_name: String,
     curr_event_name: String,
-    curr_unshared: HashMap<DataType, i32>,
-    probe_count: i32,
+    curr_unshared: HashMap<DataType, i32>
 }
 impl SimpleASTBuilder<'_, '_> {
     // =======
@@ -178,21 +175,17 @@ impl SimpleASTBuilder<'_, '_> {
                         probes.push(SimpleProbe::new(
                             self.script_id,
                             probe,
-                            num_unshared,
-                            self.probe_count,
+                            num_unshared
                         ));
-                        self.probe_count += 1;
                     } else {
                         event.insert(
                             probe.mode(),
                             vec![SimpleProbe::new(
                                 self.script_id,
                                 probe,
-                                num_unshared,
-                                self.probe_count,
+                                num_unshared
                             )],
                         );
-                        self.probe_count += 1;
                     }
                 }
             }

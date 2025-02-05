@@ -1,18 +1,17 @@
 // TODO -- support pulling fname on Wizard target!
 
 wasm::br:before /
-    imm0 == 31 ||
-    imm0 == 32
+    fname == "calc" ||
+    fname == "print_x"
 / {
     report unshared var taken: i32;
     // branch always taken for `br`
-    // count stores an array of counters
     taken++;
 }
 
 wasm::br_if:before /
-   imm0 == 31 ||
-   imm0 == 32
+    fid == 38 ||        // calc
+    fid == 39           // print_x
 / {
     report unshared var taken: i32;
     report unshared var not_taken: i32;
