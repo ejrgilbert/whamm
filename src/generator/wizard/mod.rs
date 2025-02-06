@@ -126,7 +126,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         &mut self,
         // the base memory offset for this function's var block
         alloc_base: Option<LocalID>,
-        param_reqs: &[(String, DataType)],
+        param_reqs: &HashSet<(String, DataType)>,
         dynamic_pred: Option<&mut Expr>,
         results: &[OrcaType],
         body: &mut Block,

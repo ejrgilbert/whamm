@@ -1,6 +1,6 @@
 use crate::lang_features::report_vars::Metadata as ReportMetadata;
 use crate::parser::types::{Block, DataType, Expr, Global, Statement};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 
 #[derive(Clone, Default)]
@@ -65,14 +65,15 @@ impl WizardProbe {
 #[derive(Clone, Default)]
 pub struct Metadata {
     pub pred_is_dynamic: bool,
-    pub pred_args: Vec<(String, DataType)>,
-    pub body_args: Vec<(String, DataType)>,
+    // These are hashsets to avoid requesting duplicate data
+    pub pred_args: HashSet<(String, DataType)>,
+    pub body_args: HashSet<(String, DataType)>,
 }
 impl Metadata {
     pub fn push_pred_req(&mut self, var_name: String, var_type: DataType) {
-        self.pred_args.push((var_name, var_type))
+        self.pred_args.insert((var_name, var_type));
     }
     pub fn push_body_req(&mut self, var_name: String, var_type: DataType) {
-        self.body_args.push((var_name, var_type))
+        self.body_args.insert((var_name, var_type));
     }
 }
