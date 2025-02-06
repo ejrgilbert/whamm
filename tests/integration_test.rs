@@ -52,7 +52,7 @@ fn instrument_handwritten_wasm_call() {
     let original_wat_path = "tests/apps/core_suite/handwritten/add.wat";
     let original_wasm_path = "tests/apps/core_suite/handwritten/add.wasm";
     let monitor_path = "tests/scripts/instr.mm";
-    let instrumented_wasm_path = "output/integration-handwritten_add.wasm";
+    let instrumented_wasm_path = "output/tests/integration-handwritten_add.wasm";
 
     run_basic_instrumentation(
         original_wat_path,
@@ -68,7 +68,7 @@ fn instrument_no_matches() {
     let original_wat_path = "tests/apps/core_suite/handwritten/no_matched_events.wat";
     let original_wasm_path = "tests/apps/core_suite/handwritten/no_matched_events.wasm";
     let monitor_path = "tests/scripts/instr.mm";
-    let instrumented_wasm_path = "output/integration-no_matched_events.wasm";
+    let instrumented_wasm_path = "output/tests/integration-no_matched_events.wasm";
 
     run_basic_instrumentation(
         original_wat_path,
@@ -116,7 +116,7 @@ fn instrument_control_flow() {
 
     let monitor_path = "tests/scripts/instr.mm";
     let original_wasm_path = "wasm_playground/control_flow/target/wasm32-wasip1/debug/cf.wasm";
-    let instrumented_wasm_path = "output/integration-control_flow.wasm";
+    let instrumented_wasm_path = "output/tests/integration-control_flow.wasm";
 
     run_whamm_bin(original_wasm_path, monitor_path, instrumented_wasm_path);
     wasm2wat_on_file(instrumented_wasm_path);
@@ -244,7 +244,7 @@ fn run_core_suite(
 
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     err.fatal_report("Integration Test");
-    let outdir = format!("output/{suite_name}");
+    let outdir = format!("output/tests/{suite_name}");
     try_path(&outdir);
     let instr_app_path = format!("{outdir}/output.wasm");
 

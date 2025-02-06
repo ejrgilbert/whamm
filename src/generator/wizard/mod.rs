@@ -48,8 +48,6 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         self.visit_ast(ast);
         self.emitter.memory_grow(); // account for emitted strings in memory
 
-        // set the value of curr_mem_offset Wasm global to mem_allocator.curr_mem_offset
-        self.emitter.configure_mem_tracker_global(self.err);
         self.emit_end_func(!used_report_dts.is_empty());
     }
 
