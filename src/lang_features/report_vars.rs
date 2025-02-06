@@ -851,23 +851,6 @@ impl ReportVars {
         io_adapter.putln(flush_fn, err);
     }
 
-    fn emit_flush_bool_fn(
-        &self,
-        io_adapter: &mut IOAdapter,
-        mem_id: u32,
-        wasm: &mut Module,
-        err: &mut ErrorGen,
-    ) -> u32 {
-        self.emit_flush_fn(
-            &Self::flush_i32,
-            DataType::Boolean,
-            io_adapter,
-            mem_id,
-            wasm,
-            err,
-        )
-    }
-
     fn emit_flush_i32_fn(
         &self,
         io_adapter: &mut IOAdapter,
@@ -1005,6 +988,34 @@ impl ReportVars {
     ) {
         flush_fn.f64_load(*mem_arg);
         io_adapter.call_putf64(flush_fn, err);
+        io_adapter.putln(flush_fn, err);
+    }
+
+    fn emit_flush_bool_fn(
+        &self,
+        io_adapter: &mut IOAdapter,
+        mem_id: u32,
+        wasm: &mut Module,
+        err: &mut ErrorGen,
+    ) -> u32 {
+        self.emit_flush_fn(
+            &Self::flush_bool,
+            DataType::Boolean,
+            io_adapter,
+            mem_id,
+            wasm,
+            err,
+        )
+    }
+
+    fn flush_bool(
+        flush_fn: &mut FunctionBuilder,
+        mem_arg: &MemArg,
+        io_adapter: &mut IOAdapter,
+        err: &mut ErrorGen,
+    ) {
+        flush_fn.i32_load(*mem_arg);
+        io_adapter.call_putbool(flush_fn, err);
         io_adapter.putln(flush_fn, err);
     }
 

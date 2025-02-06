@@ -24,6 +24,7 @@ pub const PUTU64: &str = "putu64";
 pub const PUTI64: &str = "puti64";
 pub const PUTF32: &str = "putf32";
 pub const PUTF64: &str = "putf64";
+pub const PUTBOOL: &str = "putbool";
 
 // HELPER FUNCTIONS
 
@@ -70,6 +71,7 @@ impl IOAdapter {
             (PUTI64.to_string(), 0),
             (PUTF32.to_string(), 0),
             (PUTF64.to_string(), 0),
+            (PUTBOOL.to_string(), 0),
             (PUTS.to_string(), 0),
         ]);
         //Reserve map 0 for the var metadata map and map 1 for the map metadata map
@@ -367,6 +369,14 @@ impl IOAdapter {
         err: &mut ErrorGen,
     ) {
         self.call(PUTF64, func, err);
+    }
+
+    pub fn call_putbool<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        func: &mut T,
+        err: &mut ErrorGen,
+    ) {
+        self.call(PUTBOOL, func, err);
     }
 
     fn putc<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(

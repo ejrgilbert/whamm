@@ -161,15 +161,14 @@ fn setup_print_global_meta(
             DataType::I8 => io_adapter.call_puti8(&mut print_global_meta, err),
             DataType::U16 => io_adapter.call_putu16(&mut print_global_meta, err),
             DataType::I16 => io_adapter.call_puti16(&mut print_global_meta, err),
-            DataType::I32 | DataType::Boolean => {
-                io_adapter.call_puti32(&mut print_global_meta, err)
-            }
+            DataType::I32 => io_adapter.call_puti32(&mut print_global_meta, err),
             // special case for unsigned integers (so the print is correctly signed)
             DataType::U32 => io_adapter.call_putu32(&mut print_global_meta, err),
             DataType::I64 => io_adapter.call_puti64(&mut print_global_meta, err),
             DataType::U64 => io_adapter.call_putu64(&mut print_global_meta, err),
             DataType::F32 => io_adapter.call_putf32(&mut print_global_meta, err),
             DataType::F64 => io_adapter.call_putf64(&mut print_global_meta, err),
+            DataType::Boolean => io_adapter.call_putbool(&mut print_global_meta, err),
             other => unimplemented!("printing for this type has not been implemented: {}", other),
         }
         io_adapter.putln(&mut print_global_meta, err);

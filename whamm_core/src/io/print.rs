@@ -188,3 +188,12 @@ pub fn putf32(f: f32) {
 pub fn putf64(f: f64) {
     print(&format!("{:+e}", f));
 }
+
+#[no_mangle]
+pub fn putbool(i: i32) {
+    if i != 0 {
+        print("true");
+    } else {
+        print("false");
+    }
+}
