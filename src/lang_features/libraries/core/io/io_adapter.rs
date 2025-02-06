@@ -83,9 +83,7 @@ impl IOAdapter {
     }
 
     fn emit_helper_funcs(&mut self, app_wasm: &mut Module, err: &mut ErrorGen) -> Vec<FunctionID> {
-        vec![
-            self.emit_puts_internal(app_wasm, err),
-        ]
+        vec![self.emit_puts_internal(app_wasm, err)]
     }
     fn emit_puts_internal(&mut self, app_wasm: &mut Module, err: &mut ErrorGen) -> FunctionID {
         let start_addr = LocalID(0);

@@ -1660,7 +1660,7 @@ impl Script {
             fns: vec![],
             globals: HashMap::new(),
             global_stmts: vec![],
-            num_probes: 0
+            num_probes: 0,
         }
     }
 
@@ -1698,7 +1698,15 @@ impl Script {
 
         let mut providers: HashMap<String, Box<dyn Provider>> = HashMap::new();
         let (matched_providers, matched_packages, matched_events, _matched_modes) =
-            provider_factory::<WhammProvider>(&mut providers, &mut self.num_probes, probe_rule, None, None, None, true)?;
+            provider_factory::<WhammProvider>(
+                &mut providers,
+                &mut self.num_probes,
+                probe_rule,
+                None,
+                None,
+                None,
+                true,
+            )?;
 
         // Print the matched provider information
         if matched_providers {

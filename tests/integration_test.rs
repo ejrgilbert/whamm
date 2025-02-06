@@ -202,7 +202,12 @@ struct TestCase {
     exp: PathBuf,
 }
 
-fn run_core_suite(suite_name: &str, processed_scripts: Vec<(PathBuf, String)>, with_br: bool, with_wizard: bool) {
+fn run_core_suite(
+    suite_name: &str,
+    processed_scripts: Vec<(PathBuf, String)>,
+    with_br: bool,
+    with_wizard: bool,
+) {
     build_whamm_core_lib();
     wat2wasm_on_dir("tests/apps/core_suite/rust");
     wat2wasm_on_dir("tests/apps/core_suite/handwritten");
@@ -249,15 +254,16 @@ fn run_core_suite(suite_name: &str, processed_scripts: Vec<(PathBuf, String)>, w
             script_str,
             app,
             exp,
-        } in rewriting_tests.iter() {
+        } in rewriting_tests.iter()
+        {
             println!(
                 "[REWRITE] Running test case with monitor at the following path: {:#?}",
                 script
             );
-            let app_path_str =
-                fs::read_to_string(app).unwrap_or_else(|_| panic!("Unable to read file at {:?}", app));
-            let exp_output =
-                fs::read_to_string(exp).unwrap_or_else(|_| panic!("Unable to read file at {:?}", exp));
+            let app_path_str = fs::read_to_string(app)
+                .unwrap_or_else(|_| panic!("Unable to read file at {:?}", app));
+            let exp_output = fs::read_to_string(exp)
+                .unwrap_or_else(|_| panic!("Unable to read file at {:?}", exp));
             run_testcase_rewriting(
                 script,
                 script_str,
@@ -281,10 +287,10 @@ fn run_core_suite(suite_name: &str, processed_scripts: Vec<(PathBuf, String)>, w
                 "[WIZARD] Running test case with monitor at the following path: {:#?}",
                 script
             );
-            let app_path_str =
-                fs::read_to_string(app).unwrap_or_else(|_| panic!("Unable to read file at {:?}", app));
-            let exp_output =
-                fs::read_to_string(exp).unwrap_or_else(|_| panic!("Unable to read file at {:?}", exp));
+            let app_path_str = fs::read_to_string(app)
+                .unwrap_or_else(|_| panic!("Unable to read file at {:?}", app));
+            let exp_output = fs::read_to_string(exp)
+                .unwrap_or_else(|_| panic!("Unable to read file at {:?}", exp));
             run_testcase_wizard(
                 script,
                 script_str,

@@ -332,7 +332,7 @@ fn run_instr_rewrite(
         ),
         simple_ast,
         err,
-        has_reports
+        has_reports,
     );
     instr.run();
 

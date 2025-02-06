@@ -13,10 +13,7 @@ const UNEXPECTED_ERR_MSG: &str =
     "TypeChecker: Looks like you've found a bug...please report this behavior! Exiting now...";
 
 pub fn type_check(ast: &mut Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> (bool, bool) {
-    let mut type_checker = TypeChecker::new(
-        st,
-        err
-    );
+    let mut type_checker = TypeChecker::new(st, err);
     type_checker.visit_whamm(ast);
     let has_reports = type_checker.has_reports;
 
@@ -125,10 +122,7 @@ struct TypeChecker<'a> {
 }
 
 impl<'a> TypeChecker<'a> {
-    pub fn new(
-        table: &'a mut SymbolTable,
-        err: &'a mut ErrorGen,
-    ) -> Self {
+    pub fn new(table: &'a mut SymbolTable, err: &'a mut ErrorGen) -> Self {
         Self {
             table,
             err,
@@ -462,12 +456,14 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 self.assign_ty = None;
                 res
             }
-            Statement::UnsharedDecl { decl, is_report, .. } => {
+            Statement::UnsharedDecl {
+                decl, is_report, ..
+            } => {
                 if *is_report {
                     self.has_reports = true;
                 }
                 self.visit_stmt(decl)
-            },
+            }
             Statement::Expr { expr, .. } => {
                 self.visit_expr(expr);
                 None
