@@ -22,6 +22,7 @@ Cargo.lock
 tests/apps/**/*.wat
 tests/apps/core_suite/**/*.wasm
 !tests/apps/core_suite/**/*.wat
+demo/**/*.wasm
 output/
 
 # Ignore the wasm playground files

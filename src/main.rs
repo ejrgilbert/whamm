@@ -59,8 +59,13 @@ fn try_main() -> Result<(), failure::Error> {
             if !args.wizard && args.app.is_empty() {
                 panic!("When performing bytecode rewriting (not the wizard target), a path to the target application is required!\nSee `whamm instr --help`")
             }
+            let core_lib_path = if !args.core_lib.is_empty() {
+                args.core_lib
+            } else {
+                CORE_WASM_PATH.to_string()
+            };
             common::instr::run_with_path(
-                CORE_WASM_PATH,
+                &core_lib_path,
                 args.app,
                 args.script,
                 args.output_path,
