@@ -28,7 +28,7 @@ pub const PUTBOOL: &str = "putbool";
 
 // HELPER FUNCTIONS
 
-pub const PUTS_INTERNAL: &str = "safe_puts";
+pub const PUTS_INTERNAL: &str = "puts_internal";
 pub const INTRUSIVE_PUTS: &str = "intrusive_puts";
 pub const INTRUSIVE_PUTS_MAX: u32 = 100;
 
