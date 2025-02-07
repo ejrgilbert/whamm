@@ -1,6 +1,8 @@
 //library functions for maps in Whamm
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
+use itertools::Itertools;
+use log::debug;
 use std::any::Any;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -360,7 +362,11 @@ impl MapOperations for AnyMap {
         match self {
             AnyMap::i32_i32_Map(ref map) => {
                 let mut result = String::new();
-                for (key, value) in map.iter() {
+
+                // sort to make flush deterministic
+                let sorted_map = map.iter().sorted_by_key(|data| data.0);
+
+                for (key, value) in sorted_map.into_iter() {
                     result.push_str(&format!("{}->{};", key, value));
                 }
                 if result.is_empty() {
@@ -372,7 +378,11 @@ impl MapOperations for AnyMap {
             }
             AnyMap::tuple_i32_Map(ref map) => {
                 let mut result = String::new();
-                for (key, value) in map.iter() {
+
+                // sort to make flush deterministic
+                let sorted_map = map.iter().sorted_by_key(|data| data.0);
+
+                for (key, value) in sorted_map.into_iter() {
                     result.push_str(&format!("{}->{};", key.dump_tuple(), value));
                 }
                 if result.is_empty() {
@@ -383,7 +393,7 @@ impl MapOperations for AnyMap {
                 result
             }
             AnyMap::i32_string_Map(ref map) => {
-                println!("DEBUG: dumping i32_string_Map...");
+                debug!("DEBUG: dumping i32_string_Map...");
                 let mut result = String::new();
                 for (key, value) in map.iter() {
                     result.push_str(&format!("{}->{};", key, value));
@@ -400,7 +410,7 @@ impl MapOperations for AnyMap {
     }
 }
 //have to support strings, i32, maps, tuples, and bool - all variations (yet again)
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub enum TupleVariant {
     i32_i32(i32, i32),
     i32_string(i32, String),
@@ -645,7 +655,7 @@ fn string_from_data(offset: u32, length: u32) -> String {
         unsafe { slice::from_raw_parts(callee_ptr, usize::try_from(length).unwrap()) };
     assert_eq!(length as usize, callee_slice.len());
     let str = String::from_utf8(callee_slice.to_vec()).unwrap();
-    println!("Got the following string from memory: {str}");
+    debug!("Got the following string from memory: {str}");
     str
 }
 
@@ -657,7 +667,7 @@ fn string_from_data(offset: u32, length: u32) -> String {
 // CREATE
 #[no_mangle]
 pub fn create_i32_i32(name: i32) {
-    println!("DEBUG: creating i32_i32 map with name '{name}'");
+    debug!("DEBUG: creating i32_i32 map with name '{name}'");
     MY_MAPS
         .lock()
         .unwrap()
@@ -672,7 +682,7 @@ pub fn create_i32_bool(name: i32) {
 }
 #[no_mangle]
 pub fn create_i32_string(name: i32) {
-    println!("DEBUG: creating i32_string map with name '{name}'");
+    debug!("DEBUG: creating i32_string map with name '{name}'");
     MY_MAPS
         .lock()
         .unwrap()
@@ -802,7 +812,7 @@ pub fn create_tuple_map(name: i32) {
 // INSERT
 #[no_mangle]
 pub fn insert_i32_i32(name: i32, key: i32, value: i32) {
-    println!("DEBUG: inserting ({key}, {value}) into map '{name}'");
+    debug!("DEBUG: inserting ({key}, {value}) into map '{name}'");
     if !insert_i32_i32_inner(name, key, value) {
         panic!("Failed to insert into i32_i32 map");
     }
@@ -810,7 +820,7 @@ pub fn insert_i32_i32(name: i32, key: i32, value: i32) {
 #[no_mangle]
 pub fn insert_i32_string(name: i32, key: i32, offset: u32, length: u32) {
     let value = string_from_data(offset, length);
-    println!("DEBUG: inserting ({key}, \"{value}\") into map '{name}'");
+    debug!("DEBUG: inserting ({key}, \"{value}\") into map '{name}'");
     if !insert_i32_string_inner(name, key, value) {
         panic!("Failed to insert into i32_string map");
     }
@@ -824,7 +834,7 @@ pub fn insert_i32i32i32tuple_i32(name: i32, key0: i32, key1: i32, key2: i32, val
 // GET
 #[no_mangle]
 pub fn get_i32_i32(name: i32, key: i32) -> i32 {
-    println!("getting key '{key}' from map '{name}'");
+    debug!("getting key '{key}' from map '{name}'");
     get_i32(name, &key)
 }
 #[no_mangle]

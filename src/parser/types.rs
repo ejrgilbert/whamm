@@ -1647,6 +1647,10 @@ pub struct Script {
     pub fns: Vec<Fn>,                     // User-provided
     pub globals: HashMap<String, Global>, // User-provided, should be VarId
     pub global_stmts: Vec<Statement>,
+
+    // track the number of probes that have been added to this script
+    // (for ID bookkeeping)
+    pub num_probes: u32,
 }
 impl Script {
     pub fn new() -> Self {
@@ -1656,6 +1660,7 @@ impl Script {
             fns: vec![],
             globals: HashMap::new(),
             global_stmts: vec![],
+            num_probes: 0,
         }
     }
 
@@ -1693,7 +1698,15 @@ impl Script {
 
         let mut providers: HashMap<String, Box<dyn Provider>> = HashMap::new();
         let (matched_providers, matched_packages, matched_events, _matched_modes) =
-            provider_factory::<WhammProvider>(&mut providers, probe_rule, None, None, None, true)?;
+            provider_factory::<WhammProvider>(
+                &mut providers,
+                &mut self.num_probes,
+                probe_rule,
+                None,
+                None,
+                None,
+                true,
+            )?;
 
         // Print the matched provider information
         if matched_providers {
@@ -1737,16 +1750,6 @@ impl Script {
         long_line(&mut buffer);
         white(true, "\n\n".to_string(), &mut buffer);
 
-        // // Print the matched mode information
-        // if matched_modes {
-        //     probe_rule.print_bold_mode(&mut buffer);
-        // }
-        // for (.., provider) in providers.iter() {
-        //     provider.print_mode_docs(print_globals, print_functions, &mut tabs, &mut buffer);
-        // }
-        // long_line(&mut buffer);
-        // white(true, "\n\n".to_string(), &mut buffer);
-
         writer
             .print(&buffer)
             .expect("Uh oh, something went wrong while printing to terminal");
@@ -1778,6 +1781,7 @@ impl Script {
             bool,
         ) = provider_factory::<WhammProvider>(
             &mut self.providers,
+            &mut self.num_probes,
             probe_rule,
             None,
             predicate,

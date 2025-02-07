@@ -146,6 +146,7 @@ impl Package for WasmPackage {
 
     fn assign_matching_events(
         &mut self,
+        id: &mut u32,
         probe_rule: &ProbeRule,
         loc: Option<Location>,
         predicate: Option<Expr>,
@@ -158,6 +159,7 @@ impl Package for WasmPackage {
                 ..
             } => event_factory::<OpcodeEvent>(
                 &mut self.info.events,
+                id,
                 probe_rule,
                 loc,
                 predicate,

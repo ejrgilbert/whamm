@@ -48,8 +48,6 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         self.visit_ast(ast);
         self.emitter.memory_grow(); // account for emitted strings in memory
 
-        // set the value of curr_mem_offset Wasm global to mem_allocator.curr_mem_offset
-        self.emitter.configure_mem_tracker_global(self.err);
         self.emit_end_func(!used_report_dts.is_empty());
     }
 
@@ -126,7 +124,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         &mut self,
         // the base memory offset for this function's var block
         alloc_base: Option<LocalID>,
-        param_reqs: &[(String, DataType)],
+        param_reqs: &HashSet<(String, DataType)>,
         dynamic_pred: Option<&mut Expr>,
         results: &[OrcaType],
         body: &mut Block,

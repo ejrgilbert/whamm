@@ -17,7 +17,7 @@ use orca_wasm::ir::types::{
     BlockType as OrcaBlockType, DataType as OrcaType, InitExpr, Value as OrcaValue,
 };
 use orca_wasm::module_builder::AddLocal;
-use orca_wasm::opcode::{Instrumenter, MacroOpcode, Opcode};
+use orca_wasm::opcode::{Instrumenter, Opcode};
 use orca_wasm::{Instructions, Location};
 
 const UNEXPECTED_ERR_MSG: &str =
@@ -663,35 +663,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         err: &mut ErrorGen,
     ) -> Option<FunctionID> {
         self.emit_global_inner(name, ty, val, true, err)
-    }
-
-    pub fn configure_mem_tracker_global(&mut self, err: &mut ErrorGen) {
-        // TODO -- factor out all this dupe logic
-        let init_id = if let Some(fid) = self.app_wasm.functions.get_local_fid_by_name("instr_init")
-        {
-            fid
-        } else {
-            self.create_instr_init(err)
-        };
-
-        let Some(mut init_fn) = self.app_wasm.functions.get_fn_modifier(init_id) else {
-            err.unexpected_error(
-                true,
-                Some(format!(
-                    "{UNEXPECTED_ERR_MSG} \
-                                No instr_init found in the module!"
-                )),
-                None,
-            );
-            return;
-        };
-        init_fn.before_at(Location::Module {
-            func_idx: init_id, // not used
-            instr_idx: 0,
-        });
-
-        init_fn.u32_const(self.mem_allocator.curr_mem_offset as u32);
-        init_fn.global_set(self.mem_allocator.mem_tracker_global);
     }
 }
 impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {

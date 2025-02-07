@@ -10,7 +10,6 @@ use whamm::common::error::ErrorGen;
 use whamm::common::instr::{Config, LibraryLinkStrategy};
 use whamm::wast::test_harness::wasm2wat_on_file;
 
-// const APP_WASM_PATH: &str = "tests/apps/dfinity/users.wasm";
 const APP_WASM_PATH: &str = "tests/apps/core_suite/handwritten/basic.wasm";
 const CORE_WASM_PATH: &str = "./whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
 
@@ -31,9 +30,8 @@ fn instrument_dfinity_with_fault_injection() {
     err.fatal_report("Integration Test");
     wat2wasm_on_dir("tests/apps/core_suite/handwritten");
 
-    // TODO -- this isn't using a dfinity module anymore...
-    //    since dfinity modules don't have a start or main function, we can't observe wasm:exit...
-    let wasm = fs::read(APP_WASM_PATH).unwrap();
+    let wasm_path = "tests/apps/dfinity/users.wasm";
+    let wasm = fs::read(wasm_path).unwrap();
 
     for (script_path, script_text) in processed_scripts {
         let mut module_to_instrument = Module::parse(&wasm, false).unwrap();
@@ -54,7 +52,7 @@ fn instrument_handwritten_wasm_call() {
     let original_wat_path = "tests/apps/core_suite/handwritten/add.wat";
     let original_wasm_path = "tests/apps/core_suite/handwritten/add.wasm";
     let monitor_path = "tests/scripts/instr.mm";
-    let instrumented_wasm_path = "output/integration-handwritten_add.wasm";
+    let instrumented_wasm_path = "output/tests/integration-handwritten_add.wasm";
 
     run_basic_instrumentation(
         original_wat_path,
@@ -70,7 +68,7 @@ fn instrument_no_matches() {
     let original_wat_path = "tests/apps/core_suite/handwritten/no_matched_events.wat";
     let original_wasm_path = "tests/apps/core_suite/handwritten/no_matched_events.wasm";
     let monitor_path = "tests/scripts/instr.mm";
-    let instrumented_wasm_path = "output/integration-no_matched_events.wasm";
+    let instrumented_wasm_path = "output/tests/integration-no_matched_events.wasm";
 
     run_basic_instrumentation(
         original_wat_path,
@@ -118,7 +116,7 @@ fn instrument_control_flow() {
 
     let monitor_path = "tests/scripts/instr.mm";
     let original_wasm_path = "wasm_playground/control_flow/target/wasm32-wasip1/debug/cf.wasm";
-    let instrumented_wasm_path = "output/integration-control_flow.wasm";
+    let instrumented_wasm_path = "output/tests/integration-control_flow.wasm";
 
     run_whamm_bin(original_wasm_path, monitor_path, instrumented_wasm_path);
     wasm2wat_on_file(instrumented_wasm_path);
@@ -170,17 +168,31 @@ fn instrument_with_numerics_scripts() {
     let processed_scripts = common::setup_numerics_monitors();
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite(processed_scripts)
+    run_core_suite("numerics", processed_scripts, true, true)
 }
 
 #[test]
 fn instrument_with_branch_monitor_scripts() {
     common::setup_logger();
     let processed_scripts = common::setup_branch_monitors();
+    assert!(!processed_scripts.is_empty());
 
-    // TODO -- change this when you've fixed report variables on Wizard
-    //    when instrumenting a Rust application!
-    assert_eq!(processed_scripts.len(), 0);
+    // TODO -- fix wizard side
+    //   - pull `fname`
+    //   - flush global report variables
+    run_core_suite("branch-monitor", processed_scripts, true, false)
+}
+
+#[test]
+fn instrument_with_calls_monitor_scripts() {
+    common::setup_logger();
+    let processed_scripts = common::setup_calls_monitors();
+    assert!(!processed_scripts.is_empty());
+
+    // TODO -- fix wizard side
+    //   - pull `fname`
+    //   - flush global report variables
+    run_core_suite("calls-monitor", processed_scripts, true, false)
 }
 
 struct TestCase {
@@ -190,7 +202,12 @@ struct TestCase {
     exp: PathBuf,
 }
 
-fn run_core_suite(processed_scripts: Vec<(PathBuf, String)>) {
+fn run_core_suite(
+    suite_name: &str,
+    processed_scripts: Vec<(PathBuf, String)>,
+    with_br: bool,
+    with_wizard: bool,
+) {
     build_whamm_core_lib();
     wat2wasm_on_dir("tests/apps/core_suite/rust");
     wat2wasm_on_dir("tests/apps/core_suite/handwritten");
@@ -227,56 +244,62 @@ fn run_core_suite(processed_scripts: Vec<(PathBuf, String)>) {
 
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     err.fatal_report("Integration Test");
-    let instr_app_path = "output/output.wasm".to_string();
+    let outdir = format!("output/tests/{suite_name}");
+    try_path(&outdir);
+    let instr_app_path = format!("{outdir}/output.wasm");
 
-    for TestCase {
-        script,
-        script_str,
-        app,
-        exp,
-    } in rewriting_tests.iter()
-    {
-        println!(
-            "[REWRITE] Running test case with monitor at the following path: {:#?}",
-            script
-        );
-        let app_path_str =
-            fs::read_to_string(app).unwrap_or_else(|_| panic!("Unable to read file at {:?}", app));
-        let exp_output =
-            fs::read_to_string(exp).unwrap_or_else(|_| panic!("Unable to read file at {:?}", exp));
-        run_testcase_rewriting(
+    if with_br {
+        for TestCase {
             script,
             script_str,
-            &app_path_str,
-            &exp_output,
-            &instr_app_path,
-            &mut err,
-        );
+            app,
+            exp,
+        } in rewriting_tests.iter()
+        {
+            println!(
+                "[REWRITE] Running test case with monitor at the following path: {:#?}",
+                script
+            );
+            let app_path_str = fs::read_to_string(app)
+                .unwrap_or_else(|_| panic!("Unable to read file at {:?}", app));
+            let exp_output = fs::read_to_string(exp)
+                .unwrap_or_else(|_| panic!("Unable to read file at {:?}", exp));
+            run_testcase_rewriting(
+                script,
+                script_str,
+                &app_path_str,
+                &exp_output,
+                &instr_app_path,
+                &mut err,
+            );
+        }
     }
 
-    for TestCase {
-        script,
-        script_str,
-        app,
-        exp,
-    } in wizard_tests.iter()
-    {
-        println!(
-            "[WIZARD] Running test case with monitor at the following path: {:#?}",
-            script
-        );
-        let app_path_str =
-            fs::read_to_string(app).unwrap_or_else(|_| panic!("Unable to read file at {:?}", app));
-        let exp_output =
-            fs::read_to_string(exp).unwrap_or_else(|_| panic!("Unable to read file at {:?}", exp));
-        run_testcase_wizard(
+    if with_wizard {
+        for TestCase {
             script,
             script_str,
-            &app_path_str,
-            &exp_output,
-            &instr_app_path,
-            &mut err,
-        );
+            app,
+            exp,
+        } in wizard_tests.iter()
+        {
+            println!(
+                "[WIZARD] Running test case with monitor at the following path: {:#?}",
+                script
+            );
+            let app_path_str = fs::read_to_string(app)
+                .unwrap_or_else(|_| panic!("Unable to read file at {:?}", app));
+            let exp_output = fs::read_to_string(exp)
+                .unwrap_or_else(|_| panic!("Unable to read file at {:?}", exp));
+            run_testcase_wizard(
+                script,
+                script_str,
+                &app_path_str,
+                &exp_output,
+                &instr_app_path,
+                &mut err,
+            );
+        }
     }
 }
 
@@ -364,6 +387,7 @@ fn run_testcase_rewriting(
     // run the instrumented application on wasmtime
     let res = Command::new("cargo")
         .env("TO_CONSOLE", "true")
+        .env("WASM_MODULE", format!("../{instr_app_path}"))
         .current_dir("wasmtime-runner")
         .arg("run")
         .output()

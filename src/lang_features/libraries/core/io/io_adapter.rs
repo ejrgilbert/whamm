@@ -1,3 +1,5 @@
+// may use some of this code in the future (intrusive_puts)
+#![allow(dead_code)]
 use crate::common::error::ErrorGen;
 use crate::lang_features::libraries::core::LibAdapter;
 use orca_wasm::ir::function::FunctionBuilder;
@@ -22,12 +24,12 @@ pub const PUTU64: &str = "putu64";
 pub const PUTI64: &str = "puti64";
 pub const PUTF32: &str = "putf32";
 pub const PUTF64: &str = "putf64";
+pub const PUTBOOL: &str = "putbool";
 
 // HELPER FUNCTIONS
 
+pub const PUTS_INTERNAL: &str = "puts_internal";
 pub const INTRUSIVE_PUTS: &str = "intrusive_puts";
-pub const SAFE_PUTS: &str = "safe_puts";
-
 pub const INTRUSIVE_PUTS_MAX: u32 = 100;
 
 // //this is the code that knows which functions to call in lib.rs based on what is in the AST -> will be in emitter folder eventually
@@ -69,6 +71,7 @@ impl IOAdapter {
             (PUTI64.to_string(), 0),
             (PUTF32.to_string(), 0),
             (PUTF64.to_string(), 0),
+            (PUTBOOL.to_string(), 0),
             (PUTS.to_string(), 0),
         ]);
         //Reserve map 0 for the var metadata map and map 1 for the map metadata map
@@ -82,12 +85,9 @@ impl IOAdapter {
     }
 
     fn emit_helper_funcs(&mut self, app_wasm: &mut Module, err: &mut ErrorGen) -> Vec<FunctionID> {
-        vec![
-            self.emit_safe_puts(app_wasm, err),
-            self.emit_intrusive_puts(app_wasm, err),
-        ]
+        vec![self.emit_puts_internal(app_wasm, err)]
     }
-    fn emit_safe_puts(&mut self, app_wasm: &mut Module, err: &mut ErrorGen) -> FunctionID {
+    fn emit_puts_internal(&mut self, app_wasm: &mut Module, err: &mut ErrorGen) -> FunctionID {
         let start_addr = LocalID(0);
         let len = LocalID(1);
         let mut puts = FunctionBuilder::new(&[OrcaType::I32, OrcaType::I32], &[]);
@@ -128,8 +128,8 @@ impl IOAdapter {
             .end();
 
         let puts_fid = puts.finish_module(app_wasm);
-        app_wasm.set_fn_name(puts_fid, SAFE_PUTS.to_string());
-        self.add_fid(SAFE_PUTS, *puts_fid);
+        app_wasm.set_fn_name(puts_fid, PUTS_INTERNAL.to_string());
+        self.add_fid(PUTS_INTERNAL, *puts_fid);
 
         puts_fid
     }
@@ -242,11 +242,7 @@ impl IOAdapter {
         func: &mut T,
         err: &mut ErrorGen,
     ) {
-        if len < INTRUSIVE_PUTS_MAX {
-            self.intrusive_puts(start_addr, len, func, err);
-        } else {
-            self.safe_puts(start_addr, len, func, err);
-        }
+        self.puts_internal(start_addr, len, func, err);
     }
 
     pub fn putsln<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
@@ -268,7 +264,7 @@ impl IOAdapter {
         self.putc(b'\n', func, err)
     }
 
-    fn safe_puts<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    fn puts_internal<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         &mut self,
         start_addr: u32,
         len: u32,
@@ -276,34 +272,15 @@ impl IOAdapter {
         err: &mut ErrorGen,
     ) {
         func.u32_const(start_addr).u32_const(len);
-        self.call_safe_puts(func, err);
+        self.call_puts_internal(func, err);
     }
 
-    fn intrusive_puts<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
-        &mut self,
-        start_addr: u32,
-        len: u32,
-        func: &mut T,
-        err: &mut ErrorGen,
-    ) {
-        func.u32_const(start_addr).u32_const(len);
-        self.call_intrusive_puts(func, err);
-    }
-
-    pub(crate) fn call_safe_puts<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub(crate) fn call_puts_internal<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         &mut self,
         func: &mut T,
         err: &mut ErrorGen,
     ) {
-        self.call(SAFE_PUTS, func, err);
-    }
-
-    pub(crate) fn call_intrusive_puts<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
-        &mut self,
-        func: &mut T,
-        err: &mut ErrorGen,
-    ) {
-        self.call(INTRUSIVE_PUTS, func, err);
+        self.call(PUTS_INTERNAL, func, err);
     }
 
     pub fn call_puts<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
@@ -392,6 +369,14 @@ impl IOAdapter {
         err: &mut ErrorGen,
     ) {
         self.call(PUTF64, func, err);
+    }
+
+    pub fn call_putbool<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        func: &mut T,
+        err: &mut ErrorGen,
+    ) {
+        self.call(PUTBOOL, func, err);
     }
 
     fn putc<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(

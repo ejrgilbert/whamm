@@ -55,6 +55,7 @@ pub trait Provider {
     fn get_provided_globals(&self) -> &HashMap<String, ProvidedGlobal>;
     fn assign_matching_packages(
         &mut self,
+        id: &mut u32,
         probe_rule: &ProbeRule,
         loc: Option<Location>,
         predicate: Option<Expr>,
@@ -69,6 +70,7 @@ pub trait Provider {
 /// 3: bool, whether there were matched modes
 pub fn provider_factory<P: Provider + NameOptions + FromStrWithLoc + 'static>(
     curr_providers: &mut HashMap<String, Box<dyn Provider>>,
+    id: &mut u32,
     probe_rule: &ProbeRule,
     loc: Option<Location>,
     predicate: Option<Expr>,
@@ -111,6 +113,7 @@ pub fn provider_factory<P: Provider + NameOptions + FromStrWithLoc + 'static>(
             }) = &probe_rule.package
             {
                 provider.assign_matching_packages(
+                    id,
                     probe_rule,
                     package_loc.to_owned(),
                     predicate.clone(),
@@ -265,6 +268,7 @@ pub trait Package {
     fn get_provided_globals(&self) -> &HashMap<String, ProvidedGlobal>;
     fn assign_matching_events(
         &mut self,
+        id: &mut u32,
         probe_rule: &ProbeRule,
         loc: Option<Location>,
         predicate: Option<Expr>,
@@ -291,6 +295,7 @@ pub struct PackageInfo {
 /// 3: bool, whether there were matched modes
 fn package_factory<P: Package + NameOptions + FromStrWithLoc + 'static>(
     curr_packages: &mut HashMap<String, Box<dyn Package>>,
+    id: &mut u32,
     probe_rule: &ProbeRule,
     loc: Option<Location>,
     predicate: Option<Expr>,
@@ -321,6 +326,7 @@ fn package_factory<P: Package + NameOptions + FromStrWithLoc + 'static>(
             let (found_match_for_event, found_match_for_mode) =
                 if let Some(RulePart { loc: event_loc, .. }) = &probe_rule.event {
                     package.assign_matching_events(
+                        id,
                         probe_rule,
                         event_loc.to_owned(),
                         predicate.clone(),
@@ -387,6 +393,7 @@ fn print_package_docs(
 // ===============
 
 pub trait Probe {
+    fn id(&self) -> u32;
     fn mode(&self) -> WhammModeKind;
     fn predicate(&self) -> &Option<Expr>;
     fn predicate_mut(&mut self) -> &mut Option<Expr>;
@@ -426,6 +433,7 @@ pub trait Event {
     fn get_provided_globals(&self) -> &HashMap<String, ProvidedGlobal>;
     fn assign_matching_modes(
         &mut self,
+        id: &mut u32,
         probe_rule: &ProbeRule,
         loc: Option<Location>,
         predicate: Option<Expr>,
@@ -439,11 +447,15 @@ pub trait Event {
             matched_modes = true;
             let modes = probes.entry(mode.name()).or_default();
             modes.push(Box::new(WhammProbe::new(
+                *id,
                 *mode,
                 loc.clone(),
                 predicate.clone(),
                 body.clone(),
             )));
+
+            // prep for the next probe to add
+            *id += 1;
         }
         matched_modes
     }
@@ -469,6 +481,7 @@ pub struct EventInfo {
 /// 3: bool, whether there were matched modes
 fn event_factory<E: Event + NameOptions + FromStrWithLoc + 'static>(
     curr_events: &mut HashMap<String, Box<dyn Event>>,
+    id: &mut u32,
     probe_rule: &ProbeRule,
     loc: Option<Location>,
     predicate: Option<Expr>,
@@ -500,6 +513,7 @@ fn event_factory<E: Event + NameOptions + FromStrWithLoc + 'static>(
             let found_match_for_mode =
                 if let Some(RulePart { loc: mode_loc, .. }) = &probe_rule.mode {
                     event.assign_matching_modes(
+                        id,
                         probe_rule,
                         mode_loc.to_owned(),
                         predicate.clone(),
@@ -856,6 +870,7 @@ impl Provider for WhammProvider {
 
     fn assign_matching_packages(
         &mut self,
+        id: &mut u32,
         probe_spec: &ProbeRule,
         loc: Option<Location>,
         predicate: Option<Expr>,
@@ -868,6 +883,7 @@ impl Provider for WhammProvider {
                 ..
             } => package_factory::<CorePackage>(
                 &mut self.info.packages,
+                id,
                 probe_spec,
                 loc,
                 predicate,
@@ -879,6 +895,7 @@ impl Provider for WhammProvider {
                 ..
             } => package_factory::<WasmPackage>(
                 &mut self.info.packages,
+                id,
                 probe_spec,
                 loc,
                 predicate,
@@ -996,7 +1013,7 @@ macro_rules! for_each_opcode {
     End, end, Some(vec![]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes_no_alt(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/end"
     Br, br, Some(vec![]), vec![(DataType::U32, 1)], HashMap::new(), vec![], OpcodeEvent::branching_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
     BrIf, br_if, Some(vec![DataType::I32]), vec![(DataType::U32, 1)], HashMap::new(), vec![], OpcodeEvent::branching_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
-    BrTable, br_table, Some(vec![DataType::I32]), vec![(DataType::U32, -1)], get_br_table_globals(), vec![], OpcodeEvent::branching_modes(), true, "https://musteresel.github.io/posts/2020/01/webassembly-text-br_table-example.html"
+    BrTable, br_table, Some(vec![DataType::U32]), vec![(DataType::U32, -1)], get_br_table_globals(), vec![], OpcodeEvent::branching_modes(), true, "https://musteresel.github.io/posts/2020/01/webassembly-text-br_table-example.html"
     Return, _return, Some(vec![]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/return"
     Call, call, None, vec![(DataType::U32, 1)], get_call_globals(), get_call_fns(), WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call"
     // CallIndirect { type_index: u32, table_index: u32 } => visit_call_indirect TODO
@@ -1676,8 +1693,9 @@ pub fn get_call_globals() -> HashMap<String, ProvidedGlobal> {
         "target_fn_name".to_string(),
         ProvidedGlobal::new(
             "target_fn_name".to_string(),
-            "The name of the imported function. \
-                        To improve performance, pair with `target_fn_type == \"import\"` \
+            "The function name of the call target. \
+                        Local functions get this from the custom section, imports from the import name. \
+                        To improve performance for imports, pair with `target_fn_type == \"import\"` \
                         for faster short-circuiting."
                 .to_string(),
             DataType::Str,

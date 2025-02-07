@@ -421,7 +421,7 @@ impl ReportVars {
 
         // print 'name'
         flush_fn.local_get(name_ptr).local_get(name_len);
-        io_adapter.call_intrusive_puts(&mut flush_fn, err);
+        io_adapter.call_puts_internal(&mut flush_fn, err);
         let (addr, len) = mem_allocator.lookup_emitted_string(&", ".to_string(), err);
         io_adapter.puts(addr, len, &mut flush_fn, err);
 
@@ -572,7 +572,7 @@ impl ReportVars {
 
         // print 'probe_id'
         flush_fn.local_get(probe_id_ptr).local_get(probe_id_len);
-        io_adapter.call_safe_puts(&mut flush_fn, err);
+        io_adapter.call_puts_internal(&mut flush_fn, err);
         let (addr, len) = mem_allocator.lookup_emitted_string(&", ".to_string(), err);
         io_adapter.puts(addr, len, &mut flush_fn, err);
 
@@ -851,23 +851,6 @@ impl ReportVars {
         io_adapter.putln(flush_fn, err);
     }
 
-    fn emit_flush_bool_fn(
-        &self,
-        io_adapter: &mut IOAdapter,
-        mem_id: u32,
-        wasm: &mut Module,
-        err: &mut ErrorGen,
-    ) -> u32 {
-        self.emit_flush_fn(
-            &Self::flush_i32,
-            DataType::Boolean,
-            io_adapter,
-            mem_id,
-            wasm,
-            err,
-        )
-    }
-
     fn emit_flush_i32_fn(
         &self,
         io_adapter: &mut IOAdapter,
@@ -1005,6 +988,34 @@ impl ReportVars {
     ) {
         flush_fn.f64_load(*mem_arg);
         io_adapter.call_putf64(flush_fn, err);
+        io_adapter.putln(flush_fn, err);
+    }
+
+    fn emit_flush_bool_fn(
+        &self,
+        io_adapter: &mut IOAdapter,
+        mem_id: u32,
+        wasm: &mut Module,
+        err: &mut ErrorGen,
+    ) -> u32 {
+        self.emit_flush_fn(
+            &Self::flush_bool,
+            DataType::Boolean,
+            io_adapter,
+            mem_id,
+            wasm,
+            err,
+        )
+    }
+
+    fn flush_bool(
+        flush_fn: &mut FunctionBuilder,
+        mem_arg: &MemArg,
+        io_adapter: &mut IOAdapter,
+        err: &mut ErrorGen,
+    ) {
+        flush_fn.i32_load(*mem_arg);
+        io_adapter.call_putbool(flush_fn, err);
         io_adapter.putln(flush_fn, err);
     }
 
@@ -1266,7 +1277,7 @@ id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)"
 
         (addr.mem_offset as u32, addr.len as u32)
     }
-    pub fn to_csv(&self) -> String {
+    pub fn to_csv(&self, id_ty: &str) -> String {
         let (name, whamm_ty, wasm_ty, script_id, bytecode_loc, probe_id) = match self {
             Metadata::Global {
                 name,
@@ -1276,7 +1287,7 @@ id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)"
             } => (
                 name.as_str(),
                 whamm_ty.to_string(),
-                wasm_ty.to_string(),
+                get_wasm_ty_str(wasm_ty),
                 *script_id,
                 "",
                 "",
@@ -1298,7 +1309,7 @@ id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)"
             ),
         };
         format!(
-            "global_id, {name}, {whamm_ty}, {wasm_ty}, script{script_id}, {}, {probe_id}",
+            "{id_ty}, {name}, {whamm_ty}, {wasm_ty}, script{script_id}, {}, {probe_id}",
             bytecode_loc
         )
     }
@@ -1332,12 +1343,6 @@ impl BytecodeLoc {
 }
 
 struct ReportAllocTracker {
-    // TODO -- may not need these
-    // // The data type that this instance tracks allocation of
-    // data_type: DataType,
-    // // The ID of the flush function for this DataType
-    // flush_func: Option<u32>,
-
     // global that points to the memory location of the first allocated report variable of this type
     first_var: Option<u32>,
     // global that points to the most-recently allocated report variable of this type

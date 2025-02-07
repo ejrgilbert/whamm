@@ -60,7 +60,7 @@ pub fn configure_flush_routines(
         .variable_metadata
         .iter()
         .map(|(key, (_, value))| {
-            let mut s = format!("{key}, {}, ", value.to_csv());
+            let mut s = format!("{key}, {}, ", value.to_csv("global_id"));
             mem_allocator.emit_string(wasm, &mut s);
             let addr = mem_allocator.emitted_strings.get(&s).unwrap();
 
@@ -77,7 +77,7 @@ pub fn configure_flush_routines(
         .map_metadata
         .iter()
         .map(|(key, value)| {
-            let mut s = format!("map, map_id, {key}, {}, ", value.to_csv());
+            let mut s = format!("{key}, {}, ", value.to_csv("map_id"));
             mem_allocator.emit_string(wasm, &mut s);
             let addr = mem_allocator.emitted_strings.get(&s).unwrap();
 
@@ -161,15 +161,14 @@ fn setup_print_global_meta(
             DataType::I8 => io_adapter.call_puti8(&mut print_global_meta, err),
             DataType::U16 => io_adapter.call_putu16(&mut print_global_meta, err),
             DataType::I16 => io_adapter.call_puti16(&mut print_global_meta, err),
-            DataType::I32 | DataType::Boolean => {
-                io_adapter.call_puti32(&mut print_global_meta, err)
-            }
+            DataType::I32 => io_adapter.call_puti32(&mut print_global_meta, err),
             // special case for unsigned integers (so the print is correctly signed)
             DataType::U32 => io_adapter.call_putu32(&mut print_global_meta, err),
             DataType::I64 => io_adapter.call_puti64(&mut print_global_meta, err),
             DataType::U64 => io_adapter.call_putu64(&mut print_global_meta, err),
             DataType::F32 => io_adapter.call_putf32(&mut print_global_meta, err),
             DataType::F64 => io_adapter.call_putf64(&mut print_global_meta, err),
+            DataType::Boolean => io_adapter.call_putbool(&mut print_global_meta, err),
             other => unimplemented!("printing for this type has not been implemented: {}", other),
         }
         io_adapter.putln(&mut print_global_meta, err);

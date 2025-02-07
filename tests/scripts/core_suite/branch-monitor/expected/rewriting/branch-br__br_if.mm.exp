@@ -1,0 +1,59 @@
+==== CALC ====
+calc(9, 0) -> 9
+calc(8, 1) -> 9
+calc(7, 2) -> 9
+calc(6, 3) -> 9
+calc(5, 4) -> 20
+calc(4, 5) -> 20
+calc(3, 6) -> 18
+calc(2, 7) -> 14
+calc(1, 8) -> 8
+calc(0, 9) -> 0
+
+==== PRINT ====
+hi world!
+hi world!
+hi world!
+hi world!
+hi world!
+hi world!
+hi world!
+hi world!
+hi world!
+hi world!
+hello world!
+hello world!
+hello world!
+hello world!
+hello world!
+hello world!
+hello world!
+hello world!
+hello world!
+hello world!
+'sup world!
+'sup world!
+'sup world!
+'sup world!
+'sup world!
+'sup world!
+'sup world!
+'sup world!
+'sup world!
+'sup world!
+
+============================= REPORT CSV FLUSH ================================
+id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)
+3, global_id, taken, i32, i32, script0, 61:35, 1_wasm:opcode:br_if:before, 4
+4, global_id, not_taken, i32, i32, script0, 61:35, 1_wasm:opcode:br_if:before, 6
+5, global_id, taken, i32, i32, script0, 61:75, 1_wasm:opcode:br_if:before, 0
+6, global_id, not_taken, i32, i32, script0, 61:75, 1_wasm:opcode:br_if:before, 6
+7, global_id, taken, i32, i32, script0, 61:76, 0_wasm:opcode:br:before, 6
+8, global_id, taken, i32, i32, script0, 61:103, 1_wasm:opcode:br_if:before, 0
+9, global_id, not_taken, i32, i32, script0, 61:103, 1_wasm:opcode:br_if:before, 4
+10, global_id, taken, i32, i32, script0, 61:104, 0_wasm:opcode:br:before, 4
+11, global_id, taken, i32, i32, script0, 61:109, 0_wasm:opcode:br:before, 6
+12, global_id, taken, i32, i32, script0, 61:120, 0_wasm:opcode:br:before, 4
+13, global_id, taken, i32, i32, script0, 62:67, 1_wasm:opcode:br_if:before, 30
+14, global_id, not_taken, i32, i32, script0, 62:67, 1_wasm:opcode:br_if:before, 3
+15, global_id, taken, i32, i32, script0, 62:172, 0_wasm:opcode:br:before, 30

@@ -124,9 +124,9 @@ impl MapLibAdapter {
         is_local: bool,
         err: &mut ErrorGen,
     ) -> u32 {
-        let map_id = self.map_create(ty, func, err);
+        let map_id = self.map_create(ty.clone(), func, err);
         //create the metadata for the map
-        self.create_map_metadata(map_id, name.clone(), report_vars, is_local, err);
+        self.create_map_metadata(map_id, name.clone(), ty, report_vars, is_local, err);
         map_id
     }
 
@@ -180,6 +180,7 @@ impl MapLibAdapter {
         &mut self,
         map_id: u32,
         name: String,
+        ty: DataType,
         report_vars: &mut ReportVars,
         is_local: bool,
         err: &mut ErrorGen,
@@ -200,7 +201,7 @@ impl MapLibAdapter {
             );
         };
 
-        let metadata = Metadata::new(name.clone(), DataType::I32, &report_vars.curr_location);
+        let metadata = Metadata::new(name.clone(), ty, &report_vars.curr_location);
         report_vars.map_metadata.insert(map_id, metadata.clone());
         if !report_vars.all_metadata.insert(metadata) {
             err.unexpected_error(

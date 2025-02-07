@@ -66,21 +66,16 @@ pub struct SimpleProbe {
     pub predicate: Option<Expr>,
     pub body: Option<Block>,
     pub num_unshared: HashMap<DataType, i32>,
-    pub probe_number: i32,
+    pub probe_number: u32,
 }
 impl SimpleProbe {
-    fn new(
-        script_id: u8,
-        probe: &dyn Probe,
-        num_unshared: HashMap<DataType, i32>,
-        probe_number: i32,
-    ) -> Self {
+    fn new(script_id: u8, probe: &dyn Probe, num_unshared: HashMap<DataType, i32>) -> Self {
         Self {
             script_id,
             predicate: probe.predicate().to_owned(),
             body: probe.body().to_owned(),
             num_unshared,
-            probe_number,
+            probe_number: probe.id(),
         }
     }
 }
@@ -114,7 +109,6 @@ pub fn build_simple_ast(ast: &Whamm, err: &mut ErrorGen) -> SimpleAST {
         curr_package_name: "".to_string(),
         curr_event_name: "".to_string(),
         curr_unshared: HashMap::default(),
-        probe_count: 0,
     };
     visitor.visit_whamm(ast);
 
@@ -130,7 +124,6 @@ pub struct SimpleASTBuilder<'a, 'b> {
     curr_package_name: String,
     curr_event_name: String,
     curr_unshared: HashMap<DataType, i32>,
-    probe_count: i32,
 }
 impl SimpleASTBuilder<'_, '_> {
     // =======
@@ -175,24 +168,12 @@ impl SimpleASTBuilder<'_, '_> {
             if let Some(package) = provider.get_mut(&self.curr_package_name) {
                 if let Some(event) = package.get_mut(&self.curr_event_name) {
                     if let Some(probes) = event.get_mut(&probe.mode()) {
-                        probes.push(SimpleProbe::new(
-                            self.script_id,
-                            probe,
-                            num_unshared,
-                            self.probe_count,
-                        ));
-                        self.probe_count += 1;
+                        probes.push(SimpleProbe::new(self.script_id, probe, num_unshared));
                     } else {
                         event.insert(
                             probe.mode(),
-                            vec![SimpleProbe::new(
-                                self.script_id,
-                                probe,
-                                num_unshared,
-                                self.probe_count,
-                            )],
+                            vec![SimpleProbe::new(self.script_id, probe, num_unshared)],
                         );
-                        self.probe_count += 1;
                     }
                 }
             }

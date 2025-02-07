@@ -160,7 +160,7 @@ impl UnsharedVarHandler {
                         name: name.clone(),
                         value: None,
                         def: Definition::User,
-                        is_report_var: *is_report, // TODO -- should this be false to keep from 'flush' logic to be called throughout compilation?
+                        is_report_var: *is_report,
                         addr: Some(var_addr),
                         loc: None,
                     },

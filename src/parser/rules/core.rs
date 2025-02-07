@@ -130,6 +130,7 @@ impl Package for CorePackage {
 
     fn assign_matching_events(
         &mut self,
+        id: &mut u32,
         probe_rule: &ProbeRule,
         loc: Option<Location>,
         predicate: Option<Expr>,
@@ -142,6 +143,7 @@ impl Package for CorePackage {
                 ..
             } => event_factory::<CoreEvent>(
                 &mut self.info.events,
+                id,
                 probe_rule,
                 loc,
                 predicate,
@@ -423,12 +425,17 @@ impl Mode for WhammMode {
 /// The base definition of a probe for `whamm!`.
 /// This can be customized if desired.
 pub struct WhammProbe {
+    // The ID of the probe (in order of placement in script)
+    pub id: u32,
     pub mode: WhammMode,
     pub loc: Option<Location>,
     pub predicate: Option<Expr>,
     pub body: Option<Block>,
 }
 impl Probe for WhammProbe {
+    fn id(&self) -> u32 {
+        self.id
+    }
     fn mode(&self) -> WhammModeKind {
         self.mode.kind.clone()
     }
@@ -479,12 +486,14 @@ impl Probe for WhammProbe {
 }
 impl WhammProbe {
     pub(crate) fn new(
+        id: u32,
         mode: WhammMode,
         loc: Option<Location>,
         predicate: Option<Expr>,
         body: Option<Block>,
     ) -> Self {
         Self {
+            id,
             mode,
             loc,
             predicate,
