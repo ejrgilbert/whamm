@@ -1277,7 +1277,7 @@ id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)"
 
         (addr.mem_offset as u32, addr.len as u32)
     }
-    pub fn to_csv(&self) -> String {
+    pub fn to_csv(&self, id_ty: &str) -> String {
         let (name, whamm_ty, wasm_ty, script_id, bytecode_loc, probe_id) = match self {
             Metadata::Global {
                 name,
@@ -1287,7 +1287,7 @@ id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)"
             } => (
                 name.as_str(),
                 whamm_ty.to_string(),
-                wasm_ty.to_string(),
+                get_wasm_ty_str(wasm_ty),
                 *script_id,
                 "",
                 "",
@@ -1309,7 +1309,7 @@ id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)"
             ),
         };
         format!(
-            "global_id, {name}, {whamm_ty}, {wasm_ty}, script{script_id}, {}, {probe_id}",
+            "{id_ty}, {name}, {whamm_ty}, {wasm_ty}, script{script_id}, {}, {probe_id}",
             bytecode_loc
         )
     }

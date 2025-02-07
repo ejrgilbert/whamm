@@ -387,9 +387,12 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
         if self.in_script_global {
             match stmt {
                 //allow declarations and assignment
-                Statement::Decl { .. }
-                | Statement::Assign { .. }
-                | Statement::UnsharedDecl { .. } => {}
+                Statement::Decl { .. } | Statement::Assign { .. } => {}
+                Statement::UnsharedDecl { is_report, .. } => {
+                    if *is_report {
+                        self.has_reports = true;
+                    }
+                }
                 _ => {
                     self.err.type_check_error(
                         false,

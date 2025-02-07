@@ -10,9 +10,18 @@ pub fn calc(a: i32, b: i32) -> i32 {
 }
 
 #[no_mangle]
-pub fn print_x(s: &str, x: u32) {
+fn print_x(opt: Opt, x: u32) {
     for _ in 0..x {
-        println!("{s}")
+        println!("{} world!", opt_str(&opt))
+    }
+}
+
+#[no_mangle]
+fn opt_str(opt: &Opt) -> String {
+    match opt {
+        Opt::Hi => "hi".to_string(),
+        Opt::Hello => "hello".to_string(),
+        Opt::Sup => "'sup".to_string()
     }
 }
 
@@ -28,7 +37,14 @@ fn main() {
         println!("calc({a}, {b}) -> {}", calc(a, b));
     }
 
-    println!("\n==== PRINT_X ====");
-    print_x("hello world!", times as u32)
+    println!("\n==== PRINT ====");
+    print_x(Opt::Hi, times as u32);
+    print_x(Opt::Hello, times as u32);
+    print_x(Opt::Sup, times as u32);
+}
 
+enum Opt {
+    Hi,
+    Hello,
+    Sup
 }

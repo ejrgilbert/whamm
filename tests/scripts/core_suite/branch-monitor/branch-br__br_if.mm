@@ -10,8 +10,8 @@ wasm::br:before /
 }
 
 wasm::br_if:before /
-    fid == 38 ||        // calc
-    fid == 39           // print_x
+    fid == 61 ||        // calc
+    fid == 62           // print_x
 / {
     report unshared var taken: i32;
     report unshared var not_taken: i32;

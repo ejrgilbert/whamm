@@ -10,7 +10,17 @@ calc(2, 7) -> 14
 calc(1, 8) -> 8
 calc(0, 9) -> 0
 
-==== PRINT_X ====
+==== PRINT ====
+hi world!
+hi world!
+hi world!
+hi world!
+hi world!
+hi world!
+hi world!
+hi world!
+hi world!
+hi world!
 hello world!
 hello world!
 hello world!
@@ -21,8 +31,20 @@ hello world!
 hello world!
 hello world!
 hello world!
+'sup world!
+'sup world!
+'sup world!
+'sup world!
+'sup world!
+'sup world!
+'sup world!
+'sup world!
+'sup world!
+'sup world!
 
 ============================= REPORT CSV FLUSH ================================
 id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)
-3, global_id, count, u32, i32, script0, 40:253, 0_wasm:opcode:call:before, 1
-4, global_id, count, u32, i32, script0, 40:284, 0_wasm:opcode:call:before, 10
+3, global_id, count, u32, i32, script0, 64:256, 0_wasm:opcode:call:before, 1
+4, global_id, count, u32, i32, script0, 64:269, 0_wasm:opcode:call:before, 1
+5, global_id, count, u32, i32, script0, 64:282, 0_wasm:opcode:call:before, 1
+6, global_id, count, u32, i32, script0, 64:313, 0_wasm:opcode:call:before, 10

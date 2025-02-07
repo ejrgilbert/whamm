@@ -60,7 +60,7 @@ pub fn configure_flush_routines(
         .variable_metadata
         .iter()
         .map(|(key, (_, value))| {
-            let mut s = format!("{key}, {}, ", value.to_csv());
+            let mut s = format!("{key}, {}, ", value.to_csv("global_id"));
             mem_allocator.emit_string(wasm, &mut s);
             let addr = mem_allocator.emitted_strings.get(&s).unwrap();
 
@@ -77,7 +77,7 @@ pub fn configure_flush_routines(
         .map_metadata
         .iter()
         .map(|(key, value)| {
-            let mut s = format!("map, map_id, {key}, {}, ", value.to_csv());
+            let mut s = format!("{key}, {}, ", value.to_csv("map_id"));
             mem_allocator.emit_string(wasm, &mut s);
             let addr = mem_allocator.emitted_strings.get(&s).unwrap();
 
