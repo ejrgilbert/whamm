@@ -333,7 +333,7 @@ fn build_whamm_core_lib() {
         .arg("--target")
         .arg("wasm32-wasip1")
         .arg("--release")
-        .current_dir("/Users/evgilber/git/research/compilers/whamm/whamm_core")
+        .current_dir("whamm_core")
         .output()
         .expect("failed to execute process");
     if !res.status.success() {
