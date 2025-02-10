@@ -306,28 +306,29 @@ fn run_core_suite(
 fn build_whamm_core_lib() {
     // Build the whamm_core library
 
-    let home = match env::var("HOME") {
-        Ok(val) => val,
-        Err(_) => panic!("Could not find HOME environment variable"),
-    };
+    // let home = match env::var("HOME") {
+    //     Ok(val) => val,
+    //     Err(_) => panic!("Could not find HOME environment variable"),
+    // };
 
-    let res = Command::new(format!("{home}/.cargo/bin/rustup"))
-        .arg("target")
-        .arg("add")
-        .arg("wasm32-wasip1")
-        .current_dir("whamm_core")
-        .output()
-        .expect("failed to execute process");
-    if !res.status.success() {
-        println!(
-            "[ERROR] 'rustup target add wasm32-wasip1' failed:\n{}\n{}",
-            String::from_utf8(res.stdout).unwrap(),
-            String::from_utf8(res.stderr).unwrap()
-        );
-    }
-    assert!(res.status.success());
+    // let res = Command::new(format!("{home}/.cargo/bin/rustup"))
+    //     .arg("target")
+    //     .arg("add")
+    //     .arg("wasm32-wasip1")
+    //     .current_dir("whamm_core")
+    //     .output()
+    //     .expect("failed to execute process");
+    // if !res.status.success() {
+    //     println!(
+    //         "[ERROR] 'rustup target add wasm32-wasip1' failed:\n{}\n{}",
+    //         String::from_utf8(res.stdout).unwrap(),
+    //         String::from_utf8(res.stderr).unwrap()
+    //     );
+    // }
+    // assert!(res.status.success());
 
-    let res = Command::new(format!("{home}/.cargo/bin/cargo"))
+    // let res = Command::new(format!("{home}/.cargo/bin/cargo"))
+    let res = Command::new("cargo")
         .arg("build")
         .arg("--target")
         .arg("wasm32-wasip1")
@@ -406,13 +407,14 @@ fn run_testcase_rewriting(
         err,
     );
 
-    let home = match env::var("HOME") {
-        Ok(val) => val,
-        Err(_) => panic!("Could not find HOME environment variable"),
-    };
+    // let home = match env::var("HOME") {
+    //     Ok(val) => val,
+    //     Err(_) => panic!("Could not find HOME environment variable"),
+    // };
 
     // run the instrumented application on wasmtime
-    let res = Command::new(format!("{home}/.cargo/bin/cargo"))
+    // let res = Command::new(format!("{home}/.cargo/bin/cargo"))
+    let res = Command::new("cargo")
         .env("TO_CONSOLE", "true")
         .env("WASM_MODULE", format!("../{instr_app_path}"))
         .current_dir("wasmtime-runner")
