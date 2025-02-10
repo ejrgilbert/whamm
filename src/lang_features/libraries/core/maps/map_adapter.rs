@@ -1,12 +1,14 @@
+#![allow(clippy::too_many_arguments)]
 use crate::common::error::ErrorGen;
 use crate::lang_features::libraries::core::LibAdapter;
-use crate::lang_features::report_vars::{LocationData, Metadata, ReportVars};
+use crate::lang_features::report_vars::{Metadata, ReportVars};
 use crate::parser::types::DataType;
+use crate::verifier::types::VarAddr;
 use orca_wasm::ir::id::{FunctionID, GlobalID};
 use orca_wasm::ir::types::BlockType as OrcaBlockType;
 use orca_wasm::module_builder::AddLocal;
-use orca_wasm::opcode::MacroOpcode;
-use orca_wasm::{Module, Opcode};
+use orca_wasm::opcode::{Instrumenter, MacroOpcode};
+use orca_wasm::{Location, Module, Opcode};
 use std::collections::HashMap;
 
 const UNEXPECTED_ERR_MSG: &str =
@@ -121,12 +123,11 @@ impl MapLibAdapter {
         ty: DataType,
         func: &mut T,
         report_vars: &mut ReportVars,
-        is_local: bool,
         err: &mut ErrorGen,
     ) -> u32 {
         let map_id = self.map_create(ty.clone(), func, err);
         //create the metadata for the map
-        self.create_map_metadata(map_id, name.clone(), ty, report_vars, is_local, err);
+        self.create_map_metadata(map_id, name.clone(), ty, report_vars, err);
         map_id
     }
 
@@ -182,25 +183,8 @@ impl MapLibAdapter {
         name: String,
         ty: DataType,
         report_vars: &mut ReportVars,
-        is_local: bool,
         err: &mut ErrorGen,
     ) {
-        if is_local {
-            if !matches!(report_vars.curr_location, LocationData::Local { .. }) {
-                err.unexpected_error(
-                    true,
-                    Some(format!("Can only emit local maps when in a local function scope in the target application...but we're in the global scope! See map: {}", name)),
-                    None,
-                );
-            }
-        } else if !matches!(report_vars.curr_location, LocationData::Global { .. }) {
-            err.unexpected_error(
-                true,
-                Some(format!("Can only emit global maps when in the global scope of the target application...but we're in a local function scope! See map: {}", name)),
-                None,
-            );
-        };
-
         let metadata = Metadata::new(name.clone(), ty, &report_vars.curr_location);
         report_vars.map_metadata.insert(map_id, metadata.clone());
         if !report_vars.all_metadata.insert(metadata) {
@@ -363,7 +347,44 @@ impl MapLibAdapter {
         }
     }
 
-    pub fn inject_map_init<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub fn emit_map_init(
+        &mut self,
+        name: String,
+        addr: &mut Option<VarAddr>,
+        ty: &mut DataType,
+        is_report: bool,
+        report_vars: &mut ReportVars,
+        app_wasm: &mut Module,
+        err: &mut ErrorGen,
+    ) {
+        //time to set up the map_init fn
+        let init_id = self.get_map_init_fid(app_wasm, err);
+
+        let Some(mut init_fn) = app_wasm.functions.get_fn_modifier(init_id) else {
+            err.unexpected_error(
+                true,
+                Some(format!(
+                    "{UNEXPECTED_ERR_MSG} \
+                                No instr_init found in the module!"
+                )),
+                None,
+            );
+            return;
+        };
+        init_fn.before_at(Location::Module {
+            func_idx: init_id, // not used
+            instr_idx: 0,
+        });
+        let map_id = if is_report {
+            self.map_create_report(name, ty.clone(), &mut init_fn, report_vars, err)
+        } else {
+            self.map_create(ty.clone(), &mut init_fn, err)
+        };
+
+        *addr = Some(VarAddr::MapId { addr: map_id });
+    }
+
+    pub fn inject_map_init_check<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         &mut self,
         func: &mut T,
         map_init_fid: FunctionID,

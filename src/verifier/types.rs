@@ -56,17 +56,6 @@ impl SymbolTable {
         }
     }
 
-    // pub fn reset_children(&mut self) {
-    //     let curr = self.get_curr_scope_mut().unwrap();
-    //     curr.reset();
-    //     let children = curr.children.clone();
-    //
-    //     children.iter().for_each(|child| {
-    //         let child_scope: &mut Scope = self.scopes.get_mut(*child).unwrap();
-    //         child_scope.reset();
-    //     });
-    // }
-
     pub fn enter_named_scope(&mut self, scope_name: &str) -> bool {
         let curr = self.get_curr_scope_mut().unwrap();
         let children = curr.children.clone();
