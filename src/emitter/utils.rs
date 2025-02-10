@@ -91,7 +91,7 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 emit_if_else(cond, conseq, alt, strategy, injector, ctx)
             }
         }
-        Statement::UnsharedDecl { .. } => emit_unshared_decl_stmt(stmt, strategy, injector, ctx),
+        Statement::UnsharedDecl { .. } => emit_unshared_decl_stmt(stmt, strategy, ctx),
         Statement::SetMap { .. } => emit_set_map_stmt(stmt, strategy, injector, ctx),
     }
 }
@@ -200,10 +200,9 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     }
 }
 
-fn emit_unshared_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+fn emit_unshared_decl_stmt(
     stmt: &mut Statement,
     strategy: InjectStrategy,
-    injector: &mut T,
     ctx: &mut EmitCtx,
 ) -> bool {
     // TODO(unshared) (check me)
@@ -239,8 +238,6 @@ fn emit_unshared_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                             ty,
                             *is_report,
                             addr,
-                            injector,
-                            ctx.map_lib_adapter,
                             ctx.report_vars,
                             &ctx.err_msg,
                             ctx.err,

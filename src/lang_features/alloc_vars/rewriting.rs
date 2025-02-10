@@ -1,13 +1,9 @@
 #![allow(clippy::too_many_arguments)]
 
 use crate::common::error::ErrorGen;
-use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::lang_features::report_vars::ReportVars;
 use crate::parser::types::DataType;
 use crate::verifier::types::VarAddr;
-use orca_wasm::module_builder::AddLocal;
-use orca_wasm::opcode::MacroOpcode;
-use orca_wasm::Opcode;
 use std::collections::HashMap;
 
 #[derive(Default)]
@@ -43,32 +39,19 @@ impl UnsharedVarHandler {
         );
         None
     }
-    pub fn allocate_var<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub fn allocate_var(
         &mut self,
         var_name: &str,
         ty: &DataType,
         is_report: bool,
         addr: &mut Option<VarAddr>,
-        injector: &mut T,
-        map_lib_adapter: &mut MapLibAdapter,
         report_vars: &mut ReportVars,
         err_msg: &str,
         err: &mut ErrorGen,
     ) -> bool {
         if let DataType::Map { .. } = ty {
-            let map_id = if is_report {
-                map_lib_adapter.map_create_report(
-                    var_name.to_string(),
-                    ty.clone(),
-                    injector,
-                    report_vars,
-                    true,
-                    err,
-                )
-            } else {
-                map_lib_adapter.map_create(ty.clone(), injector, err)
-            };
-            *addr = Some(VarAddr::MapId { addr: map_id });
+            // should already be handled!
+            // See VisitingEmitter::emit_body
             return true;
         }
         match addr {

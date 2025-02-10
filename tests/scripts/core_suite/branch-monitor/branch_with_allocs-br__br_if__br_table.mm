@@ -36,7 +36,7 @@ wasm::br_table:before /
 
   // which branch was taken?
   var index: u32;
-  index = arg0 < (num_targets - 1) ? targets[arg0] : default_target;
+  index = arg0 <= (num_targets - 1) ? targets[arg0] : default_target;
 
   // count stores an array of counters
   taken_branches[index]++;

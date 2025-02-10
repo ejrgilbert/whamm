@@ -17,8 +17,8 @@ use orca_wasm::ir::types::{
     BlockType as OrcaBlockType, DataType as OrcaType, InitExpr, Value as OrcaValue,
 };
 use orca_wasm::module_builder::AddLocal;
-use orca_wasm::opcode::{Instrumenter, Opcode};
-use orca_wasm::{Instructions, Location};
+use orca_wasm::opcode::Opcode;
+use orca_wasm::Instructions;
 
 const UNEXPECTED_ERR_MSG: &str =
     "ModuleEmitter: Looks like you've found a bug...please report this behavior!";
@@ -138,7 +138,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         if self.map_lib_adapter.is_used {
             let fid = self.map_lib_adapter.get_map_init_fid(self.app_wasm, err);
             if let Some(func) = &mut self.emitting_func {
-                self.map_lib_adapter.inject_map_init(func, fid);
+                self.map_lib_adapter.inject_map_init_check(func, fid);
             };
         }
 
@@ -467,51 +467,15 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         // this is used for user-defined global vars in the script...
         match ty {
             DataType::Map { .. } => {
-                // TODO -- move to MapAdapter
-                //time to set up the map_init fn
-                let Some(init_id) = self.app_wasm.functions.get_local_fid_by_name("instr_init")
-                else {
-                    err.unexpected_error(
-                        true,
-                        Some(format!(
-                            "{UNEXPECTED_ERR_MSG} \
-                                No instr_init found in the module!"
-                        )),
-                        None,
-                    );
-                    return None;
-                };
-
-                let Some(mut init_fn) = self.app_wasm.functions.get_fn_modifier(init_id) else {
-                    err.unexpected_error(
-                        true,
-                        Some(format!(
-                            "{UNEXPECTED_ERR_MSG} \
-                                No instr_init found in the module!"
-                        )),
-                        None,
-                    );
-                    return None;
-                };
-                init_fn.before_at(Location::Module {
-                    func_idx: init_id, // not used
-                    instr_idx: 0,
-                });
-                let map_id = if report_mode {
-                    self.map_lib_adapter.map_create_report(
-                        name,
-                        ty.clone(),
-                        &mut init_fn,
-                        self.report_vars,
-                        false,
-                        err,
-                    )
-                } else {
-                    self.map_lib_adapter
-                        .map_create(ty.clone(), &mut init_fn, err)
-                };
-
-                *addr = Some(VarAddr::MapId { addr: map_id });
+                self.map_lib_adapter.emit_map_init(
+                    name,
+                    addr,
+                    ty,
+                    report_mode,
+                    self.report_vars,
+                    self.app_wasm,
+                    err,
+                );
                 None
             }
             _ => {

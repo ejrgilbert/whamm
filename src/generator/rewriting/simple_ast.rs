@@ -66,15 +66,22 @@ pub struct SimpleProbe {
     pub predicate: Option<Expr>,
     pub body: Option<Block>,
     pub num_unshared: HashMap<DataType, i32>,
+    pub maps_unshared: HashMap<DataType, (String, bool)>,
     pub probe_number: u32,
 }
 impl SimpleProbe {
-    fn new(script_id: u8, probe: &dyn Probe, num_unshared: HashMap<DataType, i32>) -> Self {
+    fn new(
+        script_id: u8,
+        probe: &dyn Probe,
+        num_unshared: HashMap<DataType, i32>,
+        maps_unshared: HashMap<DataType, (String, bool)>,
+    ) -> Self {
         Self {
             script_id,
             predicate: probe.predicate().to_owned(),
             body: probe.body().to_owned(),
             num_unshared,
+            maps_unshared,
             probe_number: probe.id(),
         }
     }
@@ -109,6 +116,7 @@ pub fn build_simple_ast(ast: &Whamm, err: &mut ErrorGen) -> SimpleAST {
         curr_package_name: "".to_string(),
         curr_event_name: "".to_string(),
         curr_unshared: HashMap::default(),
+        maps_unshared: HashMap::default(),
     };
     visitor.visit_whamm(ast);
 
@@ -124,6 +132,7 @@ pub struct SimpleASTBuilder<'a, 'b> {
     curr_package_name: String,
     curr_event_name: String,
     curr_unshared: HashMap<DataType, i32>,
+    maps_unshared: HashMap<DataType, (String, bool)>,
 }
 impl SimpleASTBuilder<'_, '_> {
     // =======
@@ -163,16 +172,31 @@ impl SimpleASTBuilder<'_, '_> {
         self.curr_event_name = event_name;
     }
 
-    fn add_probe_to_ast(&mut self, probe: &dyn Probe, num_unshared: HashMap<DataType, i32>) {
+    fn add_probe_to_ast(
+        &mut self,
+        probe: &dyn Probe,
+        num_unshared: HashMap<DataType, i32>,
+        maps_unshared: HashMap<DataType, (String, bool)>,
+    ) {
         if let Some(provider) = self.ast.probes.get_mut(&self.curr_provider_name) {
             if let Some(package) = provider.get_mut(&self.curr_package_name) {
                 if let Some(event) = package.get_mut(&self.curr_event_name) {
                     if let Some(probes) = event.get_mut(&probe.mode()) {
-                        probes.push(SimpleProbe::new(self.script_id, probe, num_unshared));
+                        probes.push(SimpleProbe::new(
+                            self.script_id,
+                            probe,
+                            num_unshared,
+                            maps_unshared,
+                        ));
                     } else {
                         event.insert(
                             probe.mode(),
-                            vec![SimpleProbe::new(self.script_id, probe, num_unshared)],
+                            vec![SimpleProbe::new(
+                                self.script_id,
+                                probe,
+                                num_unshared,
+                                maps_unshared,
+                            )],
                         );
                     }
                 }
@@ -257,13 +281,17 @@ impl WhammVisitor<()> for SimpleASTBuilder<'_, '_> {
         trace!("Entering: BehaviorTreeBuilder::visit_probe");
         //visit the statements in the probe and check for report_decls
         if probe.body().is_none() {
-            self.add_probe_to_ast(probe.as_ref(), HashMap::default());
+            self.add_probe_to_ast(probe.as_ref(), HashMap::default(), HashMap::default());
             return;
         }
         for stmt in &probe.body().as_ref().unwrap().stmts {
             self.visit_stmt(stmt);
         }
-        self.add_probe_to_ast(probe.as_ref(), self.curr_unshared.to_owned());
+        self.add_probe_to_ast(
+            probe.as_ref(),
+            self.curr_unshared.to_owned(),
+            self.maps_unshared.to_owned(),
+        );
         self.curr_unshared = HashMap::default();
         trace!("Exiting: BehaviorTreeBuilder::visit_probe");
     }
@@ -288,14 +316,26 @@ impl WhammVisitor<()> for SimpleASTBuilder<'_, '_> {
         trace!("Entering: BehaviorTreeBuilder::visit_stmt");
         // for checking for report_decls
         match stmt {
-            Statement::UnsharedDecl { decl, .. } => {
-                if let Statement::Decl { ty, .. } = decl.as_ref() {
-                    self.curr_unshared
-                        .entry(ty.clone())
-                        .and_modify(|count| {
-                            *count += 1;
-                        })
-                        .or_insert(1);
+            Statement::UnsharedDecl {
+                decl, is_report, ..
+            } => {
+                if let Statement::Decl { ty, var_id, .. } = decl.as_ref() {
+                    if matches!(ty, DataType::Map { .. }) {
+                        let Expr::VarId { name, .. } = var_id else {
+                            unreachable!(
+                                "BUG: Expected Decl to have a VarId expression, but it didn't..."
+                            )
+                        };
+                        self.maps_unshared
+                            .insert(ty.clone(), (name.clone(), *is_report));
+                    } else {
+                        self.curr_unshared
+                            .entry(ty.clone())
+                            .and_modify(|count| {
+                                *count += 1;
+                            })
+                            .or_insert(1);
+                    }
                 } else {
                     unreachable!()
                 }

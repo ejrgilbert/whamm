@@ -42,6 +42,7 @@ pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub(crate) unshared_var_handler: &'g mut UnsharedVarHandler,
     instr_created_args: Vec<(String, usize)>,
     pub curr_unshared: HashMap<DataType, i32>,
+    pub maps_unshared: HashMap<DataType, (String, bool)>,
 }
 
 impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
@@ -68,6 +69,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             unshared_var_handler,
             instr_created_args: vec![],
             curr_unshared: HashMap::default(),
+            maps_unshared: HashMap::default(),
         };
 
         a
@@ -806,7 +808,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             .map_lib_adapter
             .get_map_init_fid(self.app_iter.module, err);
         self.map_lib_adapter
-            .inject_map_init(&mut self.app_iter, fid);
+            .inject_map_init_check(&mut self.app_iter, fid);
     }
 
     pub fn configure_flush_routines(&mut self, has_reports: bool, err: &mut ErrorGen) {
@@ -882,8 +884,38 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
         for (ty, num) in sorted_unshared.into_iter() {
             for _ in 0..*num {
                 let (global_id, ..) = whamm_type_to_wasm_global(self.app_iter.module, ty);
-                self.unshared_var_handler.add_available_gid(*global_id, ty);
+
+                if matches!(ty, DataType::Map { .. }) {
+                    unreachable!("Maps should be placed in 'maps_unshared' variable on the probe!")
+                } else {
+                    // if it's not a map, we'll just use this generated GID when
+                    // we need to during the AST visit
+                    self.unshared_var_handler.add_available_gid(*global_id, ty);
+                }
             }
+        }
+
+        let sorted_unshared_maps = self.maps_unshared.iter().sorted_by_key(|(ty, _)| ty.id());
+        for (_, (name, is_report)) in sorted_unshared_maps.into_iter() {
+            let Some(Record::Var {
+                ref mut addr,
+                ref mut ty,
+                ..
+            }) = self.table.lookup_var_mut(name, &None, err)
+            else {
+                err.unexpected_error(true, Some("unexpected type".to_string()), None);
+                return false;
+            };
+
+            self.map_lib_adapter.emit_map_init(
+                name.clone(),
+                addr,
+                ty,
+                *is_report,
+                self.report_vars,
+                self.app_iter.module,
+                err,
+            );
         }
 
         for stmt in body.stmts.iter_mut() {
