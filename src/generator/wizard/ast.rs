@@ -28,7 +28,7 @@ pub struct WizardProbe {
     pub body: Option<Block>,
     pub metadata: Metadata,
     pub unshared_to_alloc: Vec<UnsharedVar>,
-    pub probe_number: i32,
+    pub probe_number: u32,
 }
 impl Display for WizardProbe {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -36,7 +36,7 @@ impl Display for WizardProbe {
     }
 }
 impl WizardProbe {
-    pub(crate) fn new(rule: String, probe_number: i32) -> Self {
+    pub(crate) fn new(rule: String, probe_number: u32) -> Self {
         Self {
             rule,
             predicate: None,

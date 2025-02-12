@@ -282,6 +282,10 @@ impl ReportVars {
                     let fid = self.emit_flush_bool_fn(io_adapter, mem_id, wasm, err);
                     func.call(FunctionID(fid));
                 }
+                DataType::Map { .. } => {
+                    let fid = self.emit_flush_map_fn(io_adapter, mem_id, wasm, err);
+                    func.call(FunctionID(fid));
+                }
                 dt => {
                     unimplemented!("Flushing {dt} is not supported yet.")
                 }
@@ -1019,6 +1023,35 @@ impl ReportVars {
         io_adapter.putln(flush_fn, err);
     }
 
+    fn emit_flush_map_fn(
+        &self,
+        _io_adapter: &mut IOAdapter,
+        _mem_id: u32,
+        _wasm: &mut Module,
+        _err: &mut ErrorGen,
+    ) -> u32 {
+        // self.emit_flush_fn(
+        //     &Self::flush_map,
+        //     DataType::Map,
+        //     io_adapter,
+        //     mem_id,
+        //     wasm,
+        //     err,
+        // )
+        todo!()
+    }
+
+    // fn flush_map(
+    //     flush_fn: &mut FunctionBuilder,
+    //     mem_arg: &MemArg,
+    //     io_adapter: &mut IOAdapter,
+    //     err: &mut ErrorGen,
+    // ) {
+    //     flush_fn.i32_load(*mem_arg);
+    //     io_adapter.call_putbool(flush_fn, err);
+    //     io_adapter.putln(flush_fn, err);
+    // }
+
     pub fn report_var_header_bytes() -> u32 {
         // | next_addr |
         // | i32       |
@@ -1112,56 +1145,16 @@ impl ReportVars {
         alloc_func: &mut FunctionBuilder,
         wasm: &mut Module,
     ) {
-        // println!("curr_var_mem_usage: {curr_var_mem_usage}");
-
         let tracker = self
             .alloc_tracker
             .entry(data_type.clone())
             .or_insert(ReportAllocTracker {
-                // data_type: data_type.clone(),
-                // flush_func: None,
                 first_var: None,
                 last_var: None,
             });
 
-        if let Some(last_var_gid) = tracker.last_var {
-            // ONLY RUN THIS IF THERE ARE MULTIPLE REPORT VARS IN THE SCRIPT
-
-            // When a new variable is allocated in memory, the global containing the memory address
-            // of the most-recently allocated variable of that type is used to update the next pointer
-            // to the difference between the previous and the current memory address (to find the offset).
-            // Then, that global is updated to the current memory address.
-
-            // put header at last_var_addr, value is: (curr_addr - last_var_addr)
-            // (where to store)
-            alloc_func.global_get(GlobalID(last_var_gid));
-
-            // (what to store)
-            // (mem_tracker_global - last_var_gid) + (total_mem_used_for_this_probe - usage_for_this_var)
-            alloc_func
-                .global_get(mem_tracker_global)
-                .global_get(GlobalID(last_var_gid))
-                .i32_sub()
-                .u32_const(total_mem_usage - curr_var_mem_usage)
-                .i32_add();
-
-            alloc_func.i32_store(MemArg {
-                align: 0,
-                max_align: 0,
-                // offset: used_bytes as u64,
-                offset: 0,
-                memory: mem_id,
-            });
-
-            // this memory has already been allocated previously!
-            // no need to update `used_bytes`
-
-            // update the last_var global to point to the current location
-            alloc_func
-                .global_get(mem_tracker_global)
-                .u32_const(total_mem_usage - curr_var_mem_usage)
-                .i32_add()
-                .global_set(GlobalID(last_var_gid));
+        let last_var = if let Some(last_var) = tracker.last_var {
+            GlobalID(last_var)
         } else {
             let gid = wasm.add_global(
                 InitExpr::new(vec![Instructions::Value(Value::I32(NULL_PTR_IN_GLOBAL))]),
@@ -1170,20 +1163,48 @@ impl ReportVars {
                 false,
             );
             tracker.last_var = Some(*gid);
-            let last_var = GlobalID(*gid);
+            GlobalID(*gid)
+        };
 
-            // if the last_var isn't pointing to anything yet, point it here!
-            #[rustfmt::skip]
-            alloc_func.global_get(last_var)
-                .i32_const(NULL_PTR_IN_GLOBAL)
-                .i32_eq()
-                .if_stmt(BlockType::Empty)
-                    .global_get(mem_tracker_global)
-                    .u32_const(total_mem_usage - curr_var_mem_usage)
-                    .i32_add()
-                    .global_set(last_var)
-                .end();
-        }
+        // TODO -- ONLY RUN THIS IF THERE ARE MULTIPLE REPORT VARS IN THE SCRIPT
+
+        // When a new variable is allocated in memory, the global containing the memory address
+        // of the most-recently allocated variable of that type is used to update the next pointer
+        // to the difference between the previous and the current memory address (to find the offset).
+        // Then, that global is updated to the current memory address.
+
+        // check that last_var is NOT a NULLPTR
+        #[rustfmt::skip]
+        alloc_func.global_get(last_var)
+            .i32_const(NULL_PTR_IN_GLOBAL)
+            .i32_eq()
+            .i32_eqz()
+            .if_stmt(BlockType::Empty)
+                // put header at last_var_addr, value is: (curr_addr - last_var_addr)
+                // (where to store)
+                .global_get(last_var)
+                // (what to store)
+                // (mem_tracker_global - last_var_gid) + (total_mem_used_for_this_probe - usage_for_this_var)
+                .global_get(mem_tracker_global)
+                .global_get(last_var)
+                .i32_sub()
+                .u32_const(total_mem_usage - curr_var_mem_usage)
+                .i32_add()
+                .i32_store(MemArg {
+                    align: 0,
+                    max_align: 0,
+                    // offset: used_bytes as u64,
+                    offset: 0,
+                    memory: mem_id,
+                })
+            .end();
+
+        // point `last_var` here!
+        alloc_func
+            .global_get(mem_tracker_global)
+            .u32_const(total_mem_usage - curr_var_mem_usage)
+            .i32_add()
+            .global_set(last_var);
     }
 }
 
@@ -1268,9 +1289,7 @@ impl Metadata {
         }
     }
     pub fn setup_csv_header(wasm: &mut Module, mem_allocator: &mut MemoryAllocator) -> (u32, u32) {
-        let mut header = r#"
-============================= REPORT CSV FLUSH ================================
-id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)"#
+        let mut header = "\n============================= REPORT CSV FLUSH ================================\nid, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)"
             .to_string();
         mem_allocator.emit_string(wasm, &mut header);
         let addr = mem_allocator.emitted_strings.get(&header).unwrap();

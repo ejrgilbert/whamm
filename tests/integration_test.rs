@@ -3,9 +3,9 @@ mod common;
 use crate::common::{run_basic_instrumentation, run_whamm_bin, wat2wasm_on_dir};
 use log::error;
 use orca_wasm::Module;
+use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
-use std::{env, fs};
 use whamm::common::error::ErrorGen;
 use whamm::common::instr::{Config, LibraryLinkStrategy};
 use whamm::wast::test_harness::wasm2wat_on_file;
@@ -171,28 +171,48 @@ fn instrument_with_numerics_scripts() {
     run_core_suite("numerics", processed_scripts, true, true)
 }
 
+// TODO -- merge the branch-monitor tests back together (after works on wizard)
 #[test]
 fn instrument_with_branch_monitor_scripts() {
     common::setup_logger();
     let processed_scripts = common::setup_branch_monitors();
     assert!(!processed_scripts.is_empty());
 
-    // TODO -- fix wizard side
+    // TODO -- fix wizard side (THEN merge with below test)
     //   - pull `fname`
     //   - flush global report variables
-    run_core_suite("branch-monitor", processed_scripts, true, false)
+    //   - enable running on WASI application
+    run_core_suite("branch-monitor", processed_scripts, true, true)
+}
+#[test]
+fn instrument_with_branch_monitor_rewriting_scripts() {
+    common::setup_logger();
+    let processed_scripts = common::setup_branch_monitors_rewrite();
+    assert!(!processed_scripts.is_empty());
+
+    run_core_suite("branch-monitor_rewriting", processed_scripts, true, false)
 }
 
+// TODO -- merge the calls-monitor tests back together (after works on wizard)
 #[test]
 fn instrument_with_calls_monitor_scripts() {
     common::setup_logger();
     let processed_scripts = common::setup_calls_monitors();
     assert!(!processed_scripts.is_empty());
 
-    // TODO -- fix wizard side
+    // TODO -- fix wizard side (THEN merge with below test)
     //   - pull `fname`
     //   - flush global report variables
-    run_core_suite("calls-monitor", processed_scripts, true, false)
+    //   - enable running on WASI application
+    run_core_suite("calls-monitor", processed_scripts, true, true)
+}
+#[test]
+fn instrument_with_calls_monitor_rewriting_scripts() {
+    common::setup_logger();
+    let processed_scripts = common::setup_calls_monitors_rewriting();
+    assert!(!processed_scripts.is_empty());
+
+    run_core_suite("calls-monitor_rewriting", processed_scripts, true, false)
 }
 
 struct TestCase {

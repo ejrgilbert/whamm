@@ -293,6 +293,7 @@ impl WhammVisitor<()> for SimpleASTBuilder<'_, '_> {
             self.maps_unshared.to_owned(),
         );
         self.curr_unshared = HashMap::default();
+        self.maps_unshared = HashMap::default();
         trace!("Exiting: BehaviorTreeBuilder::visit_probe");
     }
 
