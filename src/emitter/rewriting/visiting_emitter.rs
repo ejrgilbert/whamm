@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::utils::{
-    block_type_to_wasm, emit_expr, emit_stmt, print_report_all, whamm_type_to_wasm_global, EmitCtx,
+    block_type_to_wasm, emit_expr, emit_stmt, whamm_type_to_wasm_global, EmitCtx,
 };
 use crate::emitter::{configure_flush_routines, Emitter, InjectStrategy};
 use crate::generator::folding::ExprFolder;
@@ -819,19 +819,17 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         if has_reports {
             let mut on_exit = FunctionBuilder::new(&[], &[]);
 
-            //now emit the call to print the changes to the report vars if needed
-            print_report_all(
-                &mut on_exit,
-                &mut EmitCtx::new(
-                    self.table,
-                    self.mem_allocator,
-                    self.map_lib_adapter,
-                    self.report_vars,
-                    self.unshared_var_handler,
-                    UNEXPECTED_ERR_MSG,
-                    err,
-                ),
+            let var_flush = configure_flush_routines(
+                self.app_iter.module,
+                self.report_vars,
+                self.map_lib_adapter,
+                self.mem_allocator,
+                self.io_adapter,
+                err,
             );
+            if let Some(flush_fid) = var_flush {
+                on_exit.call(FunctionID(flush_fid));
+            }
 
             let on_exit_id = on_exit.finish_module(self.app_iter.module);
             self.app_iter
@@ -860,17 +858,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             main.func_exit();
             main.call(on_exit_id);
             main.finish_instr();
-
-            configure_flush_routines(
-                self.app_iter.module,
-                self.table,
-                self.report_vars,
-                self.map_lib_adapter,
-                self.mem_allocator,
-                self.io_adapter,
-                UNEXPECTED_ERR_MSG,
-                err,
-            );
         }
     }
 }

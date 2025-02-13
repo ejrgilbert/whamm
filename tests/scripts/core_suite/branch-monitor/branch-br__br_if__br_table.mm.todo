@@ -1,4 +1,3 @@
-// TODO -- cannot flush global report variables yet on Wizard target
 // TODO -- support pulling fname on Wizard target!
 // TODO -- support flushing map types on Wizard target
 report var count: map<(u32, u32, u32), i32>;

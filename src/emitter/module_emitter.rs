@@ -7,7 +7,7 @@ use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::lang_features::report_vars::{Metadata, ReportVars};
-use crate::parser::types::{Block, DataType, Definition, Expr, Fn, FnId, Statement, Value};
+use crate::parser::types::{Block, DataType, Definition, Expr, Fn, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use log::debug;
 use orca_wasm::ir::function::FunctionBuilder;
@@ -81,12 +81,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         // setup maps
         if self.map_lib_adapter.is_used {
             self.create_instr_init(err);
-            // setup report maps
-            self.create_print_map_meta(err);
         }
-
-        // setup report globals
-        self.create_print_global_meta(err);
     }
 
     // ===========================
@@ -212,7 +207,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             // prepare the CSV header data segment
             let (header_addr, header_len) =
                 Metadata::setup_csv_header(self.app_wasm, self.mem_allocator);
-            self.report_vars
+            let var_meta = self
+                .report_vars
                 .setup_flush_data_segments(self.app_wasm, self.mem_allocator);
 
             let mut on_exit = FunctionBuilder::new(&[], &[]);
@@ -220,8 +216,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             // call the report_vars to emit calls to all report var flushers
             self.report_vars.emit_flush_logic(
                 &mut on_exit,
+                &var_meta,
                 self.mem_allocator,
                 io_adapter,
+                self.map_lib_adapter,
                 (header_addr, header_len),
                 self.mem_allocator.mem_id,
                 self.app_wasm,
@@ -534,90 +532,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     // =============================
     // ==== EMIT `report` LOGIC ====
     // =============================
-
-    fn create_print_map_meta(&mut self, err: &mut ErrorGen) {
-        // TODO -- move this into the IOAdapter (maybe a ReportVarAdapter?)
-        if self
-            .app_wasm
-            .functions
-            .get_local_fid_by_name("print_map_meta")
-            .is_some()
-        {
-            debug!("print_map_meta function already exists");
-            err.unexpected_error(
-                true,
-                Some(
-                    "print_map_meta function already exists - needs to be created by Whamm"
-                        .to_string(),
-                ),
-                None,
-            );
-            return;
-        }
-
-        debug!("Creating the print_map_meta function");
-        let print_map_meta_fn = FunctionBuilder::new(&[], &[]);
-        let print_map_meta_id = print_map_meta_fn.finish_module(self.app_wasm);
-        self.app_wasm
-            .set_fn_name(print_map_meta_id, "print_map_meta".to_string());
-
-        self.table.put(
-            "print_map_meta".to_string(),
-            Record::Fn {
-                name: FnId {
-                    name: "print_map_meta".to_string(),
-                    loc: None,
-                },
-                params: vec![],
-                ret_ty: DataType::Tuple { ty_info: vec![] },
-                def: Definition::CompilerStatic,
-                addr: Some(*print_map_meta_id),
-                loc: None,
-            },
-        );
-    }
-
-    fn create_print_global_meta(&mut self, err: &mut ErrorGen) {
-        // TODO -- move this into the IOAdapter (maybe a ReportVarAdapter?)
-        if self
-            .app_wasm
-            .functions
-            .get_local_fid_by_name("print_global_meta")
-            .is_some()
-        {
-            debug!("print_global_meta function already exists");
-            err.add_error(ErrorGen::get_unexpected_error(
-                true,
-                Some(
-                    "print_global_meta function already exists - needs to be created by Whamm"
-                        .to_string(),
-                ),
-                None,
-            ));
-            return;
-        }
-
-        debug!("Creating the print_global_meta function");
-        let print_global_meta_fn = FunctionBuilder::new(&[], &[]);
-        let print_global_meta_id = print_global_meta_fn.finish_module(self.app_wasm);
-        self.app_wasm
-            .set_fn_name(print_global_meta_id, "print_global_meta".to_string());
-
-        self.table.put(
-            "print_global_meta".to_string(),
-            Record::Fn {
-                name: FnId {
-                    name: "print_global_meta".to_string(),
-                    loc: None,
-                },
-                params: vec![],
-                ret_ty: DataType::Tuple { ty_info: vec![] },
-                def: Definition::CompilerStatic,
-                addr: Some(*print_global_meta_id),
-                loc: None,
-            },
-        );
-    }
 
     pub fn emit_report_global(
         &mut self,

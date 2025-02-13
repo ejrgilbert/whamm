@@ -90,7 +90,7 @@ impl Location {
     }
 }
 
-#[derive(Clone, Debug, Eq)]
+#[derive(Clone, Debug, Eq, Ord, PartialOrd)]
 pub enum DataType {
     U8,
     I8,

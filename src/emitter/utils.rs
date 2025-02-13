@@ -2000,23 +2000,3 @@ fn get_map_info(name: &mut str, ctx: &mut EmitCtx) -> Option<(VarAddr, DataType,
         None
     }
 }
-pub fn print_report_all<'a, T: Opcode<'a> + AddLocal>(injector: &mut T, ctx: &mut EmitCtx) {
-    let Some(Record::Fn {
-        addr: Some(fid), ..
-    }) = ctx.table.lookup_fn("print_global_meta", true, ctx.err)
-    else {
-        ctx.err
-            .unexpected_error(true, Some("unexpected type".to_string()), None);
-        return;
-    };
-    injector.call(FunctionID(*fid));
-
-    let Some(Record::Fn {
-        addr: Some(fid), ..
-    }) = ctx.table.lookup_fn("print_map_meta", false, ctx.err)
-    else {
-        // maps must not be used in this script, ignore
-        return;
-    };
-    injector.call(FunctionID(*fid));
-}

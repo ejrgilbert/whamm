@@ -148,6 +148,8 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
         trace!("Entering: CodeGenerator::visit_script");
         self.table.enter_named_scope(&script.id.to_string());
 
+        self.visit_stmts(&script.global_stmts);
+
         // visit providers
         script.providers.iter().for_each(|(_name, provider)| {
             self.visit_provider(provider);
@@ -382,11 +384,17 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
                 });
             }
             Expr::Primitive { val, .. } => {
-                if let Value::Str { val, .. } = val {
-                    self.strings_to_emit.push(val.clone());
-                } else {
-                    self.check_strcmp = false;
+                match val {
+                    Value::Str { val, .. } => {
+                        self.strings_to_emit.push(val.clone());
+                        return;
+                    }
+                    Value::Tuple { vals, .. } => vals.iter().for_each(|val| {
+                        self.visit_expr(val);
+                    }),
+                    _ => {} // nothing to do
                 }
+                self.check_strcmp = false;
             }
             Expr::VarId { name, .. } => {
                 let (def, ty, ..) = get_def(name, self.table, self.err);
