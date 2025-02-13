@@ -1,0 +1,112 @@
+==== CALC ====
+calc(9, 0) -> 9
+calc(8, 1) -> 9
+calc(7, 2) -> 9
+calc(6, 3) -> 9
+calc(5, 4) -> 20
+calc(4, 5) -> 20
+calc(3, 6) -> 18
+calc(2, 7) -> 14
+calc(1, 8) -> 8
+calc(0, 9) -> 0
+
+==== PRINT ====
+hi world!
+hi world!
+hi world!
+hi world!
+hi world!
+hi world!
+hi world!
+hi world!
+hi world!
+hi world!
+hello world!
+hello world!
+hello world!
+hello world!
+hello world!
+hello world!
+hello world!
+hello world!
+hello world!
+hello world!
+'sup world!
+'sup world!
+'sup world!
+'sup world!
+'sup world!
+'sup world!
+'sup world!
+'sup world!
+'sup world!
+'sup world!
+
+============================= REPORT CSV FLUSH ================================
+id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)
+3, global_id, taken, i32, i32, script0, 61:35, 1_wasm:opcode:br_if:before, 4
+4, global_id, not_taken, i32, i32, script0, 61:35, 1_wasm:opcode:br_if:before, 6
+5, global_id, taken, i32, i32, script0, 61:75, 1_wasm:opcode:br_if:before, 0
+6, global_id, not_taken, i32, i32, script0, 61:75, 1_wasm:opcode:br_if:before, 6
+7, global_id, taken, i32, i32, script0, 61:76, 0_wasm:opcode:br:before, 6
+8, global_id, taken, i32, i32, script0, 61:103, 1_wasm:opcode:br_if:before, 0
+9, global_id, not_taken, i32, i32, script0, 61:103, 1_wasm:opcode:br_if:before, 4
+10, global_id, taken, i32, i32, script0, 61:104, 0_wasm:opcode:br:before, 4
+11, global_id, taken, i32, i32, script0, 61:109, 0_wasm:opcode:br:before, 6
+12, global_id, taken, i32, i32, script0, 61:120, 0_wasm:opcode:br:before, 4
+13, global_id, taken, i32, i32, script0, 62:67, 1_wasm:opcode:br_if:before, 30
+14, global_id, not_taken, i32, i32, script0, 62:67, 1_wasm:opcode:br_if:before, 3
+15, global_id, taken, i32, i32, script0, 62:172, 0_wasm:opcode:br:before, 30
+
+<wasm func "on_exit"> +6
+  <wasm func "puts_internal"> +39
+    <wasm func "putc.command_export"> +3
+      <wasm func "putc"> +134
+        <wasm func "_ZN3std6thread5local17LocalKey$LT$T$GT$4with17h0545a85d1b8cccedE"> +1525
+          <wasm func "_ZN3std2io5stdio6_print17he6bc31af3dd2af08E"> +241
+            <wasm func "_ZN4core9panicking9panic_fmt17haadcabb094f4c85bE"> +64
+              <wasm func "rust_begin_unwind"> +74
+                <wasm func "_ZN3std10sys_common9backtrace26__rust_end_short_backtrace17hf791a0fba63af5e9E"> +3
+                  <wasm func "_ZN3std9panicking19begin_panic_handler28_$u7b$$u7b$closure$u7d$$u7d$17h2c354a3372fcca00E"> +143
+                    <wasm func "_ZN3std9panicking20rust_panic_with_hook17h8bb4f94cf9e68e20E"> +221
+                      <wasm func "_ZN3std9panicking12default_hook17hbcf624fef09369c9E"> +619
+                        <wasm func "_ZN3std9panicking12default_hook28_$u7b$$u7b$closure$u7d$$u7d$17ha008a0d990bbd146E"> +128
+                          <wasm func "_ZN3std2io5Write9write_fmt17h1a2be6cb2b7b0720E"> +51
+                            <wasm func "_ZN4core3fmt5write17hba111deefd72b232E"> +177
+                              <wasm func "_ZN80_$LT$std..io..Write..write_fmt..Adapter$LT$T$GT$$u20$as$u20$core..fmt..Write$GT$9write_str17h4b7ad54b33b4504bE"> +315
+                                <wasm func "_ZN4core5slice5index26slice_start_index_len_fail17haeb5ba182ffdfa88E"> +113
+                                  <wasm func "_ZN4core9panicking9panic_fmt17haadcabb094f4c85bE"> +64
+                                    <wasm func "rust_begin_unwind"> +74
+                                      <wasm func "_ZN3std10sys_common9backtrace26__rust_end_short_backtrace17hf791a0fba63af5e9E"> +3
+                                        <wasm func "_ZN3std9panicking19begin_panic_handler28_$u7b$$u7b$closure$u7d$$u7d$17h2c354a3372fcca00E"> +143
+                                          <wasm func "_ZN3std9panicking20rust_panic_with_hook17h8bb4f94cf9e68e20E"> +1099
+                                            <wasm func "_ZN3std3sys3pal4wasi7helpers14abort_internal17hbe49783ffef6556eE"> +1
+                                              <wasm func "abort"> +1
+                                                !trap[UNREACHABLE]
+
+
+<wasm func "on_exit"> +6
+  <wasm func "puts_internal"> +39
+    <wasm func "putc.command_export"> +3
+      <wasm func "putc"> +144
+        <wasm func "_ZN3std6thread5local17LocalKey$LT$T$GT$4with17h0545a85d1b8cccedE"> +1525
+          <wasm func "_ZN3std2io5stdio6_print17he6bc31af3dd2af08E"> +241
+            <wasm func "_ZN4core9panicking9panic_fmt17haadcabb094f4c85bE"> +64
+              <wasm func "rust_begin_unwind"> +74
+                <wasm func "_ZN3std10sys_common9backtrace26__rust_end_short_backtrace17hf791a0fba63af5e9E"> +3
+                  <wasm func "_ZN3std9panicking19begin_panic_handler28_$u7b$$u7b$closure$u7d$$u7d$17h2c354a3372fcca00E"> +143
+                    <wasm func "_ZN3std9panicking20rust_panic_with_hook17h8bb4f94cf9e68e20E"> +221
+                      <wasm func "_ZN3std9panicking12default_hook17hbcf624fef09369c9E"> +619
+                        <wasm func "_ZN3std9panicking12default_hook28_$u7b$$u7b$closure$u7d$$u7d$17ha008a0d990bbd146E"> +128
+                          <wasm func "_ZN3std2io5Write9write_fmt17h1a2be6cb2b7b0720E"> +51
+                            <wasm func "_ZN4core3fmt5write17hba111deefd72b232E"> +177
+                              <wasm func "_ZN80_$LT$std..io..Write..write_fmt..Adapter$LT$T$GT$$u20$as$u20$core..fmt..Write$GT$9write_str17h4b7ad54b33b4504bE"> +315
+                                <wasm func "_ZN4core5slice5index26slice_start_index_len_fail17haeb5ba182ffdfa88E"> +113
+                                  <wasm func "_ZN4core9panicking9panic_fmt17haadcabb094f4c85bE"> +64
+                                    <wasm func "rust_begin_unwind"> +74
+                                      <wasm func "_ZN3std10sys_common9backtrace26__rust_end_short_backtrace17hf791a0fba63af5e9E"> +3
+                                        <wasm func "_ZN3std9panicking19begin_panic_handler28_$u7b$$u7b$closure$u7d$$u7d$17h2c354a3372fcca00E"> +143
+                                          <wasm func "_ZN3std9panicking20rust_panic_with_hook17h8bb4f94cf9e68e20E"> +1099
+                                            <wasm func "_ZN3std3sys3pal4wasi7helpers14abort_internal17hbe49783ffef6556eE"> +1
+                                              <wasm func "abort"> +1
+                                                !trap[UNREACHABLE]

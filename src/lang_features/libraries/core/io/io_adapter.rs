@@ -11,7 +11,6 @@ use orca_wasm::{Module, Opcode};
 use std::collections::HashMap;
 
 // FROM LIB
-
 pub const PUTS: &str = "puts";
 pub const PUTC: &str = "putc";
 pub const PUTU8: &str = "putu8";
@@ -93,6 +92,7 @@ impl IOAdapter {
         let mut puts = FunctionBuilder::new(&[OrcaType::I32, OrcaType::I32], &[]);
 
         let i = puts.add_local(OrcaType::I32);
+        let v = puts.add_local(OrcaType::I32);
 
         #[rustfmt::skip]
         puts.loop_stmt(BlockType::Empty)
@@ -116,6 +116,23 @@ impl IOAdapter {
                     memory: self.app_mem as u32
                 }
             );
+
+        // ensure that the loaded u8 is  within the UTF8 range (less than 128)
+        #[rustfmt::skip]
+        puts.local_tee(v)
+            // if less than 0
+            .i32_const(0)
+            .i32_lt_signed()
+            .local_get(v)
+            // or grater than/equal to 128
+            .i32_const(128)
+            .i32_gte_unsigned()
+            .i32_or()
+            .if_stmt(BlockType::Empty)
+                // not within valid UTF8 range
+                .unreachable()
+            .end()
+            .local_get(v);
 
         self.call_putc(&mut puts, err);
 
