@@ -1,5 +1,4 @@
 // TODO -- support pulling fname on Wizard target!
-// TODO -- support maps on Wizard target!
 report var count: map<(u32, u32, u32), i32>;
 
 wasm::br:before /
