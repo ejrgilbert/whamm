@@ -171,23 +171,34 @@ fn instrument_with_numerics_scripts() {
     run_core_suite("numerics", processed_scripts, true, true)
 }
 
+#[cfg(target_arch = "x86_64")]
+#[test]
+fn platform_dependent_wizard_tests() {
+    // These tests can only run on Linux for the Wizard target
+    // (is run at CI time!)
+    common::setup_logger();
+    let processed_scripts = common::setup_tests("core_suite/platform-dependent");
+    assert!(!processed_scripts.is_empty());
+
+    run_core_suite("platform-dependent-wizard", processed_scripts, false, true)
+}
+
 // TODO -- merge the branch-monitor tests back together (after works on wizard)
 #[test]
 fn instrument_with_branch_monitor_scripts() {
     common::setup_logger();
-    let processed_scripts = common::setup_branch_monitors();
+    let processed_scripts = common::setup_tests("core_suite/branch-monitor");
     assert!(!processed_scripts.is_empty());
 
     // TODO -- fix wizard side (THEN merge with below test)
     //   - pull `fname`
     //   - enable running on WASI application
-    //   - support maps
     run_core_suite("branch-monitor", processed_scripts, true, true)
 }
 #[test]
 fn instrument_with_branch_monitor_rewriting_scripts() {
     common::setup_logger();
-    let processed_scripts = common::setup_branch_monitors_rewrite();
+    let processed_scripts = common::setup_tests("core_suite/branch-monitor_rewriting");
     assert!(!processed_scripts.is_empty());
 
     run_core_suite("branch-monitor_rewriting", processed_scripts, true, false)
@@ -197,19 +208,18 @@ fn instrument_with_branch_monitor_rewriting_scripts() {
 #[test]
 fn instrument_with_calls_monitor_scripts() {
     common::setup_logger();
-    let processed_scripts = common::setup_calls_monitors();
+    let processed_scripts = common::setup_tests("core_suite/calls-monitor");
     assert!(!processed_scripts.is_empty());
 
     // TODO -- fix wizard side (THEN merge with below test)
     //   - pull `fname`
     //   - enable running on WASI application
-    //   - support maps
     run_core_suite("calls-monitor", processed_scripts, true, true)
 }
 #[test]
 fn instrument_with_calls_monitor_rewriting_scripts() {
     common::setup_logger();
-    let processed_scripts = common::setup_calls_monitors_rewriting();
+    let processed_scripts = common::setup_tests("core_suite/calls-monitor_rewriting");
     assert!(!processed_scripts.is_empty());
 
     run_core_suite("calls-monitor_rewriting", processed_scripts, true, false)
