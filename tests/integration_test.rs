@@ -180,8 +180,8 @@ fn instrument_with_branch_monitor_scripts() {
 
     // TODO -- fix wizard side (THEN merge with below test)
     //   - pull `fname`
-    //   - flush global report variables
     //   - enable running on WASI application
+    //   - support maps
     run_core_suite("branch-monitor", processed_scripts, true, true)
 }
 #[test]
@@ -202,8 +202,8 @@ fn instrument_with_calls_monitor_scripts() {
 
     // TODO -- fix wizard side (THEN merge with below test)
     //   - pull `fname`
-    //   - flush global report variables
     //   - enable running on WASI application
+    //   - support maps
     run_core_suite("calls-monitor", processed_scripts, true, true)
 }
 #[test]

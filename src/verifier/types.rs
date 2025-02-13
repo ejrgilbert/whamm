@@ -4,6 +4,7 @@ use crate::parser::types::{DataType, Definition, FnId, Location, ProbeRule, Valu
 use pest::error::LineColLocation;
 use std::collections::HashMap;
 use std::fmt;
+use std::fmt::{Display, Formatter};
 
 const UNEXPECTED_ERR_MSG: &str =
     "SymbolTable: Looks like you've found a bug...please report this behavior!";
@@ -674,7 +675,7 @@ impl Record {
     }
 }
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 /// the index of the variables (global/local) in app.wasm
 /// This is the relative index that's dependent on which function/module you're in.
 pub enum VarAddr {
@@ -700,4 +701,26 @@ pub enum VarAddr {
         // the true memory offset for this variable.
         var_offset: u32,
     },
+}
+impl Display for VarAddr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            VarAddr::Local { addr } | VarAddr::Global { addr } | VarAddr::MapId { addr } => {
+                write!(f, "{}", addr)
+            }
+            VarAddr::MemLoc {
+                mem_id, var_offset, ..
+            } => write!(f, "{}@{}", mem_id, var_offset),
+        }
+    }
+}
+impl VarAddr {
+    pub fn ty(&self) -> String {
+        match self {
+            Self::Local { .. } => "local_id".to_string(),
+            Self::Global { .. } => "global_id".to_string(),
+            Self::MapId { .. } => "map_id".to_string(),
+            Self::MemLoc { .. } => "memaddr".to_string(),
+        }
+    }
 }

@@ -1,10 +1,3 @@
 ============================= REPORT CSV FLUSH ================================
 id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)
-287, memaddr, taken, i32, i32, script0, 0:10, 1_wasm:opcode:br_if, 0
-314, memaddr, not_taken, i32, i32, script0, 0:10, 1_wasm:opcode:br_if, 1
-341, memaddr, taken, i32, i32, script0, 0:12, 0_wasm:opcode:br, 1
-368, memaddr, taken, i32, i32, script0, 1:12, 1_wasm:opcode:br_if, 1
-395, memaddr, not_taken, i32, i32, script0, 1:12, 1_wasm:opcode:br_if, 3
-422, memaddr, taken, i32, i32, script0, 1:19, 1_wasm:opcode:br_if, 1
-449, memaddr, not_taken, i32, i32, script0, 1:19, 1_wasm:opcode:br_if, 2
-476, memaddr, taken, i32, i32, script0, 1:21, 0_wasm:opcode:br, 2
+0, map_id, count, map<(u32, u32, u32), i32>, i32, script0, , , (61, 35, 0)->6;(61, 35, 1)->4;(61, 75, 0)->6;(61, 76, 1)->6;(61, 103, 0)->4;(61, 104, 1)->4;(61, 109, 1)->6;(61, 120, 1)->4;(62, 67, 0)->3;(62, 67, 1)->30;(62, 172, 1)->30;(63, 21, 0)->10;(63, 21, 1)->10;(63, 21, 2)->10;(63, 31, 1)->10;(63, 41, 1)->10

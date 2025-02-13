@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 use crate::common::error::ErrorGen;
 use crate::lang_features::libraries::core::LibAdapter;
-use crate::lang_features::report_vars::{Metadata, ReportVars};
+use crate::lang_features::report_vars::ReportVars;
 use crate::parser::types::DataType;
 use crate::verifier::types::VarAddr;
 use orca_wasm::ir::id::{FunctionID, GlobalID};
@@ -127,7 +127,7 @@ impl MapLibAdapter {
     ) -> u32 {
         let map_id = self.map_create(ty.clone(), func, err);
         //create the metadata for the map
-        self.create_map_metadata(map_id, name.clone(), ty, report_vars, err);
+        report_vars.put_map_metadata(map_id, name.clone(), ty, err);
         map_id
     }
 
@@ -175,25 +175,6 @@ impl MapLibAdapter {
         let map_id = self.map_count;
         self.map_count += 1;
         map_id
-    }
-
-    fn create_map_metadata(
-        &mut self,
-        map_id: u32,
-        name: String,
-        ty: DataType,
-        report_vars: &mut ReportVars,
-        err: &mut ErrorGen,
-    ) {
-        let metadata = Metadata::new(name.clone(), ty, &report_vars.curr_location);
-        report_vars.map_metadata.insert(map_id, metadata.clone());
-        if !report_vars.all_metadata.insert(metadata) {
-            err.unexpected_error(
-                true,
-                Some(format!("Duplicate metadata for map with name: {}", name)),
-                None,
-            );
-        };
     }
 
     // -------------------------------------

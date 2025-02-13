@@ -2,7 +2,9 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
+use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::parser::types::DataType;
+use crate::verifier::types::VarAddr;
 use itertools::Itertools;
 use log::info;
 use orca_wasm::ir::function::FunctionBuilder;
@@ -20,10 +22,7 @@ pub const NULL_PTR_IN_MEM: i32 = -1;
 pub const NULL_PTR_IN_GLOBAL: i32 = -1;
 
 pub struct ReportVars {
-    //MapID -> Metadata
-    pub map_metadata: HashMap<u32, Metadata>,
-    //GID -> Metadata
-    pub variable_metadata: HashMap<u32, (OrcaType, Metadata)>,
+    pub variable_metadata: HashMap<VarAddr, (OrcaType, Metadata)>,
     pub all_metadata: HashSet<Metadata>,
     pub curr_location: LocationData,
 
@@ -42,7 +41,6 @@ impl Default for ReportVars {
 impl ReportVars {
     pub fn new() -> Self {
         ReportVars {
-            map_metadata: HashMap::new(),
             variable_metadata: HashMap::new(),
             all_metadata: HashSet::new(),
             curr_location: LocationData::Global { script_id: u8::MAX },
@@ -71,8 +69,10 @@ impl ReportVars {
             return false;
         }
         let metadata = Metadata::new(name.clone(), whamm_ty.clone(), &self.curr_location);
-        self.variable_metadata
-            .insert(gid, (metadata.get_wasm_ty(), metadata.clone()));
+        self.variable_metadata.insert(
+            VarAddr::Global { addr: gid },
+            (metadata.get_wasm_ty(), metadata.clone()),
+        );
         if !self.all_metadata.insert(metadata) {
             err.unexpected_error(
                 true,
@@ -103,8 +103,10 @@ impl ReportVars {
         }
 
         let metadata = Metadata::new(name.clone(), ty, &self.curr_location);
-        self.variable_metadata
-            .insert(gid, (metadata.get_wasm_ty(), metadata.clone()));
+        self.variable_metadata.insert(
+            VarAddr::Global { addr: gid },
+            (metadata.get_wasm_ty(), metadata.clone()),
+        );
         if !self.all_metadata.insert(metadata) {
             err.unexpected_error(
                 true,
@@ -114,6 +116,26 @@ impl ReportVars {
             return false;
         }
         true
+    }
+    pub fn put_map_metadata(
+        &mut self,
+        map_id: u32,
+        name: String,
+        ty: DataType,
+        err: &mut ErrorGen,
+    ) {
+        let metadata = Metadata::new(name.clone(), ty, &self.curr_location);
+        self.variable_metadata.insert(
+            VarAddr::MapId { addr: map_id },
+            (metadata.get_wasm_ty(), metadata.clone()),
+        );
+        if !self.all_metadata.insert(metadata) {
+            err.unexpected_error(
+                true,
+                Some(format!("Duplicate metadata for map with name: {}", name)),
+                None,
+            );
+        };
     }
     pub fn print_metadata(&self) {
         if self.all_metadata.is_empty() {
@@ -126,15 +148,14 @@ impl ReportVars {
         sorted_variable_metadata.sort_by_key(|&(key, _)| key);
 
         for (key, value) in sorted_variable_metadata {
-            info += &format!("GID: {} -> {:?}", key, value);
-        }
-
-        // Collect and sort map_metadata by key
-        let mut sorted_map_metadata: Vec<_> = self.map_metadata.iter().collect();
-        sorted_map_metadata.sort_by_key(|&(key, _)| key);
-
-        for (key, value) in sorted_map_metadata {
-            info += &format!("MapID: {} -> {:?}", key, value);
+            match key {
+                VarAddr::Local { addr } => info += &format!("LocalID: {} -> {:?}", addr, value),
+                VarAddr::Global { addr } => info += &format!("GlobalID: {} -> {:?}", addr, value),
+                VarAddr::MapId { addr } => info += &format!("MapID: {} -> {:?}", addr, value),
+                VarAddr::MemLoc {
+                    mem_id, var_offset, ..
+                } => info += &format!("MemAddr: ({}@{}) -> {:?}", mem_id, var_offset, value),
+            }
         }
 
         info!("{info}");
@@ -154,9 +175,11 @@ impl ReportVars {
         &mut self,
         wasm: &mut Module,
         memory_allocator: &mut MemoryAllocator,
-    ) {
+    ) -> HashMap<VarAddr, (DataType, (u32, u32))> {
         // this needs to be a separate function to not have multiple
         // mutable references to the Wasm module at once.
+
+        // TODO -- may be able to remove dupe code here!
         let id_type = "memaddr".to_string();
 
         memory_allocator.emit_string(wasm, &mut format!(", {id_type}, "));
@@ -188,12 +211,39 @@ impl ReportVars {
             };
             memory_allocator.emit_string(wasm, &mut format!("{wasm_ty_str}, "));
         }
+
+        // global report variable metadata
+        self.get_var_metadata(wasm, memory_allocator)
+    }
+    pub fn get_var_metadata(
+        &mut self,
+        wasm: &mut Module,
+        memory_allocator: &mut MemoryAllocator,
+    ) -> HashMap<VarAddr, (DataType, (u32, u32))> {
+        self.variable_metadata
+            .iter()
+            .map(|(key, (_, value))| {
+                let mut s = format!("{key}, {}, ", value.to_csv(&key.ty()));
+                memory_allocator.emit_string(wasm, &mut s);
+                let addr = memory_allocator.emitted_strings.get(&s).unwrap();
+
+                (
+                    key.clone(),
+                    (
+                        value.get_whamm_ty(),
+                        (addr.mem_offset as u32, addr.len as u32),
+                    ),
+                )
+            })
+            .collect()
     }
     pub fn emit_flush_logic(
         &mut self,
         func: &mut FunctionBuilder,
+        var_meta: &HashMap<VarAddr, (DataType, (u32, u32))>,
         mem_allocator: &MemoryAllocator,
         io_adapter: &mut IOAdapter,
+        map_lib_adapter: &mut MapLibAdapter,
         header_info: (u32, u32),
         mem_id: u32,
         wasm: &mut Module,
@@ -217,8 +267,62 @@ impl ReportVars {
         // The ReportVars struct needs to have fields to keep track of the emitted globals per DT
         // (to be used in the $alloc methods)!
 
+        // print the in-memory variables
+        // TODO -- can I combine this with the other logic instead?
         io_adapter.putsln(header_info.0, header_info.1, func, err);
         self.call_dt_flushers(func, mem_allocator, io_adapter, mem_id, wasm, err);
+
+        // print the global variables
+        self.emit_globals_flush(func, var_meta, io_adapter, map_lib_adapter, err);
+    }
+
+    pub fn emit_globals_flush(
+        &self,
+        func: &mut FunctionBuilder,
+        var_meta_str: &HashMap<VarAddr, (DataType, (u32, u32))>,
+        io_adapter: &mut IOAdapter,
+        map_lib_adapter: &mut MapLibAdapter,
+        err: &mut ErrorGen,
+    ) {
+        // for each of the report globals, emit the printing logic
+        let sorted_metadata = var_meta_str.iter().sorted_by_key(|data| data.0);
+        for (addr, (whamm_ty, (str_addr, str_len))) in sorted_metadata.into_iter() {
+            io_adapter.puts(*str_addr, *str_len, func, err);
+
+            match addr {
+                VarAddr::Local { .. } => panic!("Shouldn't be trying to flush a local variable..."),
+                VarAddr::MemLoc { .. } => {
+                    panic!("Shouldn't be trying to flush a memaddr in this function...")
+                }
+                VarAddr::Global { addr } => {
+                    // get the value of this report global
+                    func.global_get(GlobalID(*addr));
+                    match whamm_ty {
+                        DataType::U8 => io_adapter.call_putu8(func, err),
+                        DataType::I8 => io_adapter.call_puti8(func, err),
+                        DataType::U16 => io_adapter.call_putu16(func, err),
+                        DataType::I16 => io_adapter.call_puti16(func, err),
+                        DataType::I32 => io_adapter.call_puti32(func, err),
+                        // special case for unsigned integers (so the print is correctly signed)
+                        DataType::U32 => io_adapter.call_putu32(func, err),
+                        DataType::I64 => io_adapter.call_puti64(func, err),
+                        DataType::U64 => io_adapter.call_putu64(func, err),
+                        DataType::F32 => io_adapter.call_putf32(func, err),
+                        DataType::F64 => io_adapter.call_putf64(func, err),
+                        DataType::Boolean => io_adapter.call_putbool(func, err),
+                        other => unimplemented!(
+                            "printing for this type has not been implemented: {}",
+                            other
+                        ),
+                    }
+                }
+                VarAddr::MapId { addr } => {
+                    // print the value(s) of this map
+                    map_lib_adapter.print_map(*addr, func, err);
+                }
+            }
+            io_adapter.putln(func, err);
+        }
     }
 
     fn call_dt_flushers(
