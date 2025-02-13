@@ -39,7 +39,6 @@ pub struct WizardProbeMetadataCollector<'a, 'b, 'c> {
     curr_script: WizardScript,
     script_num: u8,
     curr_probe: WizardProbe,
-    probe_count: i32,
 
     err: &'b mut ErrorGen,
     pub config: &'c Config,
@@ -62,7 +61,6 @@ impl<'a, 'b, 'c> WizardProbeMetadataCollector<'a, 'b, 'c> {
             curr_script: WizardScript::default(),
             script_num: 0,
             curr_probe: WizardProbe::default(),
-            probe_count: 0,
             err,
             config,
         }
@@ -197,15 +195,13 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
 
         event.probes().iter().for_each(|(_ty, probes)| {
             probes.iter().for_each(|probe| {
-                self.curr_probe = WizardProbe::new(self.get_curr_rule().clone(), self.probe_count);
+                self.curr_probe = WizardProbe::new(self.get_curr_rule().clone(), probe.id());
                 self.visit_probe(probe);
 
                 // copy over data from original probe
                 self.curr_probe.predicate = probe.predicate().to_owned();
                 self.curr_probe.body = probe.body().to_owned();
                 self.curr_script.probes.push(self.curr_probe.clone());
-
-                self.probe_count += 1;
             });
         });
 

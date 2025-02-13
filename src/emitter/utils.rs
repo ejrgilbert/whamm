@@ -15,6 +15,7 @@ use orca_wasm::ir::types::{BlockType, DataType as OrcaType, InitExpr, Value as O
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::{MacroOpcode, Opcode};
 use orca_wasm::{Instructions, Module};
+use wasmparser::MemArg;
 // ==================================================================
 // ================ Emitter Helper Functions ========================
 // - Necessary to extract common logic between Emitter and InstrumentationVisitor.
@@ -336,11 +337,28 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         ..
     } = stmt
     {
-        let Some((map_id, key_ty, val_ty)) = get_map_info(name, ctx) else {
+        let Some((map_addr, key_ty, val_ty)) = get_map_info(name, ctx) else {
             return false;
         };
 
-        injector.u32_const(map_id);
+        match map_addr {
+            VarAddr::MapId { addr } => injector.u32_const(addr),
+            VarAddr::Local { addr } => injector.local_get(LocalID(addr)),
+            VarAddr::MemLoc {
+                mem_id,
+                ty,
+                var_offset,
+            } => {
+                assert!(matches!(ty, DataType::Map { .. }));
+                injector.i32_load(MemArg {
+                    align: 0,
+                    max_align: 0,
+                    offset: var_offset as u64,
+                    memory: mem_id,
+                })
+            }
+            other => panic!("Did not expect this address type: {:?}", other),
+        };
         emit_expr(key, strategy, injector, ctx);
         emit_expr(val, strategy, injector, ctx);
         ctx.map_lib_adapter
@@ -1908,8 +1926,25 @@ fn emit_map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         let map = &mut (**map);
         if let Expr::VarId { name, .. } = map {
             return match get_map_info(name, ctx) {
-                Some((map_id, key_ty, val_ty)) => {
-                    injector.u32_const(map_id);
+                Some((map_addr, key_ty, val_ty)) => {
+                    match map_addr {
+                        VarAddr::MapId { addr } => injector.u32_const(addr),
+                        VarAddr::Local { addr } => injector.local_get(LocalID(addr)),
+                        VarAddr::MemLoc {
+                            mem_id,
+                            ty,
+                            var_offset,
+                        } => {
+                            assert!(matches!(ty, DataType::Map { .. }));
+                            injector.i32_load(MemArg {
+                                align: 0,
+                                max_align: 0,
+                                offset: var_offset as u64,
+                                memory: mem_id,
+                            })
+                        }
+                        other => panic!("Did not expect this address type: {:?}", other),
+                    };
                     emit_expr(key, strategy, injector, ctx);
                     ctx.map_lib_adapter
                         .map_get(key_ty, val_ty, injector, ctx.err);
@@ -1930,49 +1965,39 @@ fn emit_map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     );
     false
 }
-fn get_map_info(name: &mut str, ctx: &mut EmitCtx) -> Option<(u32, DataType, DataType)> {
+fn get_map_info(name: &mut str, ctx: &mut EmitCtx) -> Option<(VarAddr, DataType, DataType)> {
     let Some(Record::Var { ty, addr, loc, .. }) = ctx.table.lookup_var(name, &None, ctx.err, true)
     else {
         ctx.err
             .unexpected_error(true, Some("unexpected type".to_string()), None);
         return None;
     };
-    match addr {
-        Some(VarAddr::MapId { addr }) => {
-            //save off the map_id for the later set call
-            let map_id = addr;
-            if let DataType::Map {
-                key_ty: k,
-                val_ty: v,
-            } = ty
-            {
-                let key_ty = *k.clone();
-                let val_ty = *v.clone();
-                Some((*map_id, key_ty, val_ty))
-            } else {
-                ctx.err.unexpected_error(
-                    true,
-                    Some(format!(
-                        "Incorrect DataType, expected Map, found: {:?}",
-                        addr.clone()
-                    )),
-                    loc.as_ref()
-                        .map(|Location { line_col, .. }| line_col.clone()),
-                );
-                None
-            }
-        }
-        _ => {
-            ctx.err.unexpected_error(
-                true,
-                Some(format!(
-                    "Incorrect variable record, expected MapId, found: {:?}",
-                    addr
-                )),
-                None,
-            );
-            None
-        }
+
+    if !matches!(
+        addr,
+        Some(VarAddr::MapId { .. }) | Some(VarAddr::Local { .. }) | Some(VarAddr::MemLoc { .. })
+    ) {
+        panic!("We don't support map locations being stored in addresses other than Local or constant MapId --> {}:{:?}", name, addr)
+    }
+    if let DataType::Map {
+        key_ty: k,
+        val_ty: v,
+    } = ty
+    {
+        let key_ty = *k.clone();
+        let val_ty = *v.clone();
+        Some((addr.clone().unwrap(), key_ty, val_ty))
+    } else {
+        ctx.err.unexpected_error(
+            true,
+            Some(format!(
+                "Incorrect DataType, expected Map, found: {:?}",
+                addr.clone()
+            )),
+            loc.as_ref()
+                .map(|Location { line_col, .. }| line_col.clone()),
+        );
+        None
     }
 }
 pub fn print_report_all<'a, T: Opcode<'a> + AddLocal>(injector: &mut T, ctx: &mut EmitCtx) {

@@ -172,11 +172,31 @@ pub fn setup_branch_monitors() -> Vec<(PathBuf, String)> {
     scripts
 }
 
+pub fn setup_branch_monitors_rewrite() -> Vec<(PathBuf, String)> {
+    setup_logger();
+    let scripts = get_test_scripts("core_suite/branch-monitor_rewriting");
+    if scripts.is_empty() {
+        warn!("No test scripts found for `branch-monitor_rewriting` test.");
+    }
+
+    scripts
+}
+
 pub fn setup_calls_monitors() -> Vec<(PathBuf, String)> {
     setup_logger();
     let scripts = get_test_scripts("core_suite/calls-monitor");
     if scripts.is_empty() {
         warn!("No test scripts found for `calls-monitor` test.");
+    }
+
+    scripts
+}
+
+pub fn setup_calls_monitors_rewriting() -> Vec<(PathBuf, String)> {
+    setup_logger();
+    let scripts = get_test_scripts("core_suite/calls-monitor_rewriting");
+    if scripts.is_empty() {
+        warn!("No test scripts found for `calls-monitor_rewriting` test.");
     }
 
     scripts

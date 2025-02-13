@@ -29,7 +29,7 @@ impl LibPackage for IOPackage {
         self.is_used
     }
     fn import_memory(&self) -> bool {
-        true
+        false
     }
     fn set_lib_mem_id(&mut self, mem_id: i32) {
         self.adapter.lib_mem = mem_id;

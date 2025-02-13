@@ -64,7 +64,7 @@ impl SymbolTable {
         let mut new_next = None;
         for (i, child_id) in children.iter().enumerate() {
             if let Some(child_scope) = self.scopes.get_mut(*child_id) {
-                if child_scope.name == *scope_name {
+                if child_scope.name == scope_name {
                     new_curr_scope = Some(*child_id);
                     new_next = Some(i + 1);
                     child_scope.reset();
@@ -674,7 +674,7 @@ impl Record {
     }
 }
 
-#[derive(Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 /// the index of the variables (global/local) in app.wasm
 /// This is the relative index that's dependent on which function/module you're in.
 pub enum VarAddr {
