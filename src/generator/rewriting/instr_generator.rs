@@ -22,7 +22,7 @@ fn get_loc_info<'a>(rule: &'a WhammProvider, emitter: &VisitingEmitter) -> Optio
 }
 
 fn emit_dynamic_compiler_data(
-    data: &HashMap<String, Option<Value>>,
+    data: &HashMap<String, Block>,
     emitter: &mut VisitingEmitter,
     err: &mut ErrorGen,
 ) {
@@ -195,7 +195,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
     }
 }
 impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_> {
-    fn emit_probe(&mut self, dynamic_data: &HashMap<String, Option<Value>>) -> bool {
+    fn emit_probe(&mut self, dynamic_data: &HashMap<String, Block>) -> bool {
         let mut is_success = true;
 
         is_success &= self.save_args();
