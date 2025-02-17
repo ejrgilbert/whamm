@@ -11,7 +11,6 @@ use orca_wasm::{Module, Opcode};
 use std::collections::HashMap;
 
 // FROM LIB
-
 pub const PUTS: &str = "puts";
 pub const PUTC: &str = "putc";
 pub const PUTU8: &str = "putu8";

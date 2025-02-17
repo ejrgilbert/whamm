@@ -71,7 +71,7 @@ jobs:
           which v3c
           
           echo "[INFO] Building 'wizeng'..."
-          git clone https://github.com/titzer/wizard-engine.git
+          git clone --branch bugfix/wasi-state https://github.com/ejrgilbert/wizard-engine.git
           pushd wizard-engine
           make -j
           popd
