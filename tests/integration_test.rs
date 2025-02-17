@@ -201,7 +201,7 @@ fn instrument_with_branch_monitor_rewriting_scripts() {
     let processed_scripts = common::setup_tests("core_suite/branch-monitor_rewriting");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("branch-monitor_rewriting", processed_scripts, false, true)
+    run_core_suite("branch-monitor_rewriting", processed_scripts, true, false)
 }
 
 // TODO -- merge the calls-monitor tests back together (after works on wizard)

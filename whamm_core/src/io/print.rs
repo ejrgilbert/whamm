@@ -125,16 +125,8 @@ fn print(str: &str) {
     });
 }
 
-fn panic(arg: i32) -> i32 {
-    1 / arg
-}
-
 #[no_mangle]
 pub fn putc(c: u8) {
-    let zero = 0;
-    if c >= 128 {
-        println!("{}", panic(zero));
-    }
     print(&String::from_utf8([c].to_vec()).expect("Our bytes should be valid utf8"));
 }
 
