@@ -1,6 +1,6 @@
 use crate::for_each_opcode;
 use crate::parser::rules::{
-    event_factory, get_br_table_globals, get_call_fns, get_unknown_args_globals, get_call_globals, get_memarg_globals, get_struct_globals, Event, EventInfo,
+    event_factory, get_br_table_globals, get_call_fns, get_unknown_args_globals, get_call_globals, get_memarg_globals, get_struct_globals, get_array_globals, Event, EventInfo,
     FromStrWithLoc, NameOptions, Package, PackageInfo, Probe, WhammModeKind, UNKNOWN_ARGS,
 };
 use crate::parser::types::{
