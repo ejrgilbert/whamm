@@ -176,27 +176,27 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::Block { .. } => {
-                if let Operator::Block { .. } = instr {
+                if let Operator::Block { blockty: _ } = instr {
                     loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
             OpcodeEventKind::Loop { .. } => {
-                if let Operator::Loop { .. } = instr {
+                if let Operator::Loop { blockty: _ } = instr {
                     loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
             OpcodeEventKind::If { .. } => {
-                if let Operator::If { .. } = instr {
+                if let Operator::If { blockty: _ } = instr {
                     loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
             OpcodeEventKind::Else { .. } => {
-                if let Operator::Else { .. } = instr {
+                if let Operator::Else = instr {
                     loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
             OpcodeEventKind::TryTable { .. } => {
-                if let Operator::TryTable { .. } = instr {
+                if let Operator::TryTable { try_table: _ } = instr {
                     loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
@@ -209,12 +209,12 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::ThrowRef { .. } => {
-                if let Operator::TryTable { .. } = instr {
+                if let Operator::ThrowRef = instr {
                     loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
             OpcodeEventKind::End { .. } => {
-                if let Operator::End { .. } = instr {
+                if let Operator::End = instr {
                     loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
@@ -265,7 +265,7 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::Return { .. } => {
-                if let Operator::Return { .. } = instr {
+                if let Operator::Return = instr {
                     loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
@@ -317,6 +317,93 @@ impl Event for OpcodeEvent {
                     loc_info
                         .static_data
                         .insert("imm0".to_string(), Some(Value::gen_u32(*fid)));
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::CallIndirect { .. } => {
+                if let Operator::CallIndirect {
+                    type_index,
+                    table_index,
+                } = instr
+                {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*type_index)));
+                    loc_info
+                        .static_data
+                        .insert("imm1".to_string(), Some(Value::gen_u32(*table_index)));
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::ReturnCall { .. } => {
+                if let Operator::ReturnCall {
+                    function_index: fid,
+                } = instr
+                {
+                    let func_info = match app_wasm.functions.get_kind(FunctionID(*fid)) {
+                        FuncKind::Import(ImportedFunction { import_id, .. }) => {
+                            let import = app_wasm.imports.get(*import_id);
+                            FuncInfo {
+                                func_kind: "import".to_string(),
+                                module: import.module.to_string(),
+                                name: import.name.to_string(),
+                            }
+                        }
+                        FuncKind::Local(LocalFunction { func_id, .. }) => FuncInfo {
+                            func_kind: "local".to_string(),
+                            module: match &app_wasm.module_name {
+                                Some(name) => name.clone(),
+                                None => "".to_string(),
+                            },
+                            name: match &app_wasm.functions.get_name(*func_id) {
+                                Some(name) => name.clone(),
+                                None => "".to_string(),
+                            },
+                        },
+                    };
+                    // define static_data
+                    loc_info.static_data.insert(
+                        "target_fn_name".to_string(),
+                        Some(Value::Str {
+                            val: func_info.name.to_string(),
+                        }),
+                    );
+                    loc_info.static_data.insert(
+                        "target_fn_type".to_string(),
+                        Some(Value::Str {
+                            val: func_info.func_kind.to_string(),
+                        }),
+                    );
+                    loc_info.static_data.insert(
+                        "target_imp_module".to_string(),
+                        Some(Value::Str {
+                            val: func_info.module.to_string(),
+                        }),
+                    );
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*fid)));
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::ReturnCallIndirect { .. } => {
+                if let Operator::ReturnCallIndirect {
+                    type_index,
+                    table_index,
+                } = instr
+                {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*type_index)));
+                    loc_info
+                        .static_data
+                        .insert("imm1".to_string(), Some(Value::gen_u32(*table_index)));
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
