@@ -342,20 +342,23 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         };
 
         match map_addr {
-            VarAddr::MapId { addr } => injector.u32_const(addr),
-            VarAddr::Local { addr } => injector.local_get(LocalID(addr)),
+            VarAddr::MapId { addr } => { injector.u32_const(addr); },
+            VarAddr::Local { addr } => { injector.local_get(LocalID(addr)); },
             VarAddr::MemLoc {
                 mem_id,
                 ty,
                 var_offset,
             } => {
                 assert!(matches!(ty, DataType::Map { .. }));
-                injector.i32_load(MemArg {
-                    align: 0,
-                    max_align: 0,
-                    offset: var_offset as u64,
-                    memory: mem_id,
-                })
+                // Get the map_id from memory!
+                ctx.mem_allocator.get_from_mem(
+                    mem_id,
+                    &DataType::I32,
+                    var_offset,
+                    ctx.table,
+                    injector,
+                    ctx.err,
+                );
             }
             other => panic!("Did not expect this address type: {:?}", other),
         };
@@ -1928,20 +1931,23 @@ fn emit_map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             return match get_map_info(name, ctx) {
                 Some((map_addr, key_ty, val_ty)) => {
                     match map_addr {
-                        VarAddr::MapId { addr } => injector.u32_const(addr),
-                        VarAddr::Local { addr } => injector.local_get(LocalID(addr)),
+                        VarAddr::MapId { addr } => { injector.u32_const(addr); },
+                        VarAddr::Local { addr } => { injector.local_get(LocalID(addr)); },
                         VarAddr::MemLoc {
                             mem_id,
                             ty,
                             var_offset,
                         } => {
                             assert!(matches!(ty, DataType::Map { .. }));
-                            injector.i32_load(MemArg {
-                                align: 0,
-                                max_align: 0,
-                                offset: var_offset as u64,
-                                memory: mem_id,
-                            })
+                            // Get the map_id from memory!
+                            ctx.mem_allocator.get_from_mem(
+                                mem_id,
+                                &DataType::I32,
+                                var_offset,
+                                ctx.table,
+                                injector,
+                                ctx.err,
+                            );
                         }
                         other => panic!("Did not expect this address type: {:?}", other),
                     };

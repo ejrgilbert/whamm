@@ -163,7 +163,7 @@ impl MapLibAdapter {
         (map_id, func_name)
     }
 
-    fn call_print_map<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub(crate) fn call_print_map<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         &mut self,
         func: &mut T,
         err: &mut ErrorGen,

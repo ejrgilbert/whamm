@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::rewriting::rules::Arg;
@@ -197,12 +198,14 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
 
     pub(crate) fn emit_end_fn(
         &mut self,
-        flush_reports: bool,
+        used_report_dts: HashSet<DataType>,
         io_adapter: &mut IOAdapter,
         err: &mut ErrorGen,
     ) {
-        if flush_reports {
+        if !used_report_dts.is_empty() {
             // (ONLY DO THIS IF THERE ARE REPORT VARIABLES)
+
+            self.report_vars.all_used_report_dts = used_report_dts;
 
             // prepare the CSV header data segment
             let (header_addr, header_len) =
