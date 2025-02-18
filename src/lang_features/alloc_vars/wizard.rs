@@ -285,6 +285,9 @@ impl UnsharedVarHandler {
             });
         bytes_used += size_of_val(&name_ptr) as u32;
 
+        if *len as u32 > u8::MAX as u32 {
+            err.wizard_error(false, format!("Unable to encode report variable metadata for '{name}', string is too long, must be less than {} characters", u8::MAX), &None)
+        }
         let name_len = *len as u8;
         func.global_get(mem_tracker_global)
             .u32_const(name_len as u32)
@@ -326,6 +329,9 @@ impl UnsharedVarHandler {
             });
         bytes_used += size_of_val(&probe_id_ptr) as u32;
 
+        if *len as u32 > u8::MAX as u32 {
+            err.wizard_error(false, format!("Unable to encode report variable metadata for '{name}', string is too long, must be less than {} characters", u8::MAX), &None)
+        }
         let probe_id_len = *len as u8;
         func.global_get(mem_tracker_global)
             .u32_const(probe_id_len as u32)
