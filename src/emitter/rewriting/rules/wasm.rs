@@ -804,10 +804,9 @@ impl Event for OpcodeEvent {
             }
             OpcodeEventKind::F32Const { .. } => {
                 if let Operator::F32Const { value } = instr {
-                    loc_info.static_data.insert(
-                        "imm0".to_string(),
-                        Some(Value::gen_f32(f32::from(*value))),
-                    );
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_f32(f32::from(*value))));
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -815,10 +814,9 @@ impl Event for OpcodeEvent {
             }
             OpcodeEventKind::F64Const { .. } => {
                 if let Operator::F64Const { value } = instr {
-                    loc_info.static_data.insert(
-                        "imm0".to_string(),
-                        Some(Value::gen_f64(f64::from(*value))),
-                    );
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_f64(f64::from(*value))));
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
