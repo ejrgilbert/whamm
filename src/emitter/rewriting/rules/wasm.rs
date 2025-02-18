@@ -333,7 +333,7 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::TypedSelect { .. } => {
-                if let Operator::TypedSelect {..} = instr {
+                if let Operator::TypedSelect { .. } = instr {
                     loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
@@ -388,7 +388,16 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::I32Load { .. } => {
-                if let Operator::I32Load { memarg: MemArg { align, offset, memory, .. } } = instr {
+                if let Operator::I32Load {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
                     create_memarg_globals(&mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
@@ -396,7 +405,16 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::I64Load { .. } => {
-                if let Operator::I64Load { memarg: MemArg { align, offset, memory, .. } } = instr {
+                if let Operator::I64Load {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
                     create_memarg_globals(&mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
@@ -404,7 +422,16 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::F32Load { .. } => {
-                if let Operator::F32Load { memarg: MemArg { align, offset, memory, .. } } = instr {
+                if let Operator::F32Load {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
                     create_memarg_globals(&mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
@@ -412,7 +439,16 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::I32Load8S { .. } => {
-                if let Operator::I32Load8S { memarg: MemArg { align, offset, memory, .. } } = instr {
+                if let Operator::I32Load8S {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
                     create_memarg_globals(&mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
@@ -420,7 +456,16 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::I32Load8U { .. } => {
-                if let Operator::I32Load8U { memarg: MemArg { align, offset, memory, .. } } = instr {
+                if let Operator::I32Load8U {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
                     create_memarg_globals(&mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
@@ -428,7 +473,16 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::I32Load16S { .. } => {
-                if let Operator::I32Load16S { memarg: MemArg { align, offset, memory, .. } } = instr {
+                if let Operator::I32Load16S {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
                     create_memarg_globals(&mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
@@ -436,7 +490,16 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::I32Load16U { .. } => {
-                if let Operator::I32Load16U { memarg: MemArg { align, offset, memory, .. } } = instr {
+                if let Operator::I32Load16U {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
                     create_memarg_globals(&mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
@@ -444,7 +507,16 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::I64Load8S { .. } => {
-                if let Operator::I64Load8S { memarg: MemArg { align, offset, memory, .. } } = instr {
+                if let Operator::I64Load8S {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
                     create_memarg_globals(&mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
@@ -452,7 +524,16 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::I64Load8U { .. } => {
-                if let Operator::I64Load8U { memarg: MemArg { align, offset, memory, .. } } = instr {
+                if let Operator::I64Load8U {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
                     create_memarg_globals(&mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
@@ -460,7 +541,16 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::I64Load16S { .. } => {
-                if let Operator::I64Load16S { memarg: MemArg { align, offset, memory, .. } } = instr {
+                if let Operator::I64Load16S {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
                     create_memarg_globals(&mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
@@ -468,7 +558,16 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::I64Load16U { .. } => {
-                if let Operator::I64Load16U { memarg: MemArg { align, offset, memory, .. } } = instr {
+                if let Operator::I64Load16U {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
                     create_memarg_globals(&mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
@@ -476,7 +575,16 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::I64Load32S { .. } => {
-                if let Operator::I64Load32S { memarg: MemArg { align, offset, memory, .. } } = instr {
+                if let Operator::I64Load32S {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
                     create_memarg_globals(&mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
@@ -484,7 +592,16 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::I64Load32U { .. } => {
-                if let Operator::I64Load32U { memarg: MemArg { align, offset, memory, .. } } = instr {
+                if let Operator::I64Load32U {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
                     create_memarg_globals(&mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
@@ -492,7 +609,16 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::I32Store { .. } => {
-                if let Operator::I32Store { memarg: MemArg { align, offset, memory, .. } } = instr {
+                if let Operator::I32Store {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
                     create_memarg_globals(&mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
@@ -500,7 +626,16 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::I64Store { .. } => {
-                if let Operator::I64Store { memarg: MemArg { align, offset, memory, .. } } = instr {
+                if let Operator::I64Store {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
                     create_memarg_globals(&mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
@@ -508,7 +643,16 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::F32Store { .. } => {
-                if let Operator::F32Store { memarg: MemArg { align, offset, memory, .. } } = instr {
+                if let Operator::F32Store {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
                     create_memarg_globals(&mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
@@ -516,7 +660,16 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::F64Store { .. } => {
-                if let Operator::F64Store { memarg: MemArg { align, offset, memory, .. } } = instr {
+                if let Operator::F64Store {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
                     create_memarg_globals(&mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
@@ -524,7 +677,16 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::I32Store8 { .. } => {
-                if let Operator::I32Store8 { memarg: MemArg { align, offset, memory, .. } } = instr {
+                if let Operator::I32Store8 {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
                     create_memarg_globals(&mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
@@ -532,7 +694,16 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::I32Store16 { .. } => {
-                if let Operator::I32Store16 { memarg: MemArg { align, offset, memory, .. } } = instr {
+                if let Operator::I32Store16 {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
                     create_memarg_globals(&mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
@@ -540,7 +711,16 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::I64Store8 { .. } => {
-                if let Operator::I64Store8 { memarg: MemArg { align, offset, memory, .. } } = instr {
+                if let Operator::I64Store8 {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
                     create_memarg_globals(&mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
@@ -548,7 +728,16 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::I64Store16 { .. } => {
-                if let Operator::I64Store16 { memarg: MemArg { align, offset, memory, .. } } = instr {
+                if let Operator::I64Store16 {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
                     create_memarg_globals(&mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
@@ -556,14 +745,22 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::I64Store32 { .. } => {
-                if let Operator::I64Store32 { memarg: MemArg { align, offset, memory, .. } } = instr {
+                if let Operator::I64Store32 {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
                     create_memarg_globals(&mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
-
 
             OpcodeEventKind::MemorySize { .. } => {
                 if let Operator::MemorySize { mem } = instr {
@@ -607,9 +804,10 @@ impl Event for OpcodeEvent {
             }
             OpcodeEventKind::F32Const { .. } => {
                 if let Operator::F32Const { value } = instr {
-                    loc_info
-                        .static_data
-                        .insert("imm0".to_string(), Some(Value::gen_f32(f32::from(value.clone()))));
+                    loc_info.static_data.insert(
+                        "imm0".to_string(),
+                        Some(Value::gen_f32(f32::from(*value))),
+                    );
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -617,9 +815,10 @@ impl Event for OpcodeEvent {
             }
             OpcodeEventKind::F64Const { .. } => {
                 if let Operator::F64Const { value } = instr {
-                    loc_info
-                        .static_data
-                        .insert("imm0".to_string(), Some(Value::gen_f64(f64::from(value.clone()))));
+                    loc_info.static_data.insert(
+                        "imm0".to_string(),
+                        Some(Value::gen_f64(f64::from(*value))),
+                    );
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1436,7 +1635,11 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::StructGet { .. } => {
-                if let Operator::StructGet { struct_type_index, field_index } = instr {
+                if let Operator::StructGet {
+                    struct_type_index,
+                    field_index,
+                } = instr
+                {
                     loc_info
                         .static_data
                         .insert("imm0".to_string(), Some(Value::gen_u32(*struct_type_index)));
@@ -1455,7 +1658,11 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::StructGetS { .. } => {
-                if let Operator::StructGetS { struct_type_index, field_index } = instr {
+                if let Operator::StructGetS {
+                    struct_type_index,
+                    field_index,
+                } = instr
+                {
                     loc_info
                         .static_data
                         .insert("imm0".to_string(), Some(Value::gen_u32(*struct_type_index)));
@@ -1474,7 +1681,11 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::StructGetU { .. } => {
-                if let Operator::StructGetU { struct_type_index, field_index } = instr {
+                if let Operator::StructGetU {
+                    struct_type_index,
+                    field_index,
+                } = instr
+                {
                     loc_info
                         .static_data
                         .insert("imm0".to_string(), Some(Value::gen_u32(*struct_type_index)));
@@ -1493,7 +1704,17 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::StructSet { .. } => {
-                if let Operator::StructSet { struct_type_index, field_index } = instr {
+                if let Operator::StructSet {
+                    struct_type_index,
+                    field_index,
+                } = instr
+                {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*struct_type_index)));
+                    loc_info
+                        .static_data
+                        .insert("imm1".to_string(), Some(Value::gen_u32(*field_index)));
                     loc_info
                         .static_data
                         .insert("tid".to_string(), Some(Value::gen_u32(*struct_type_index)));
@@ -1505,121 +1726,1692 @@ impl Event for OpcodeEvent {
                     loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
-            OpcodeEventKind::ArrayNew { .. } => {}
-            OpcodeEventKind::ArrayNewDefault { .. } => {}
-            OpcodeEventKind::ArrayNewFixed { .. } => {}
-            OpcodeEventKind::ArrayNewData { .. } => {}
-            OpcodeEventKind::ArrayNewElem { .. } => {}
-            OpcodeEventKind::ArrayGet { .. } => {}
-            OpcodeEventKind::ArrayGetS { .. } => {}
-            OpcodeEventKind::ArrayGetU { .. } => {}
-            OpcodeEventKind::ArraySet { .. } => {}
-            OpcodeEventKind::ArrayLen { .. } => {}
-            OpcodeEventKind::ArrayFill { .. } => {}
-            OpcodeEventKind::ArrayCopy { .. } => {}
-            OpcodeEventKind::ArrayInitData { .. } => {}
-            OpcodeEventKind::ArrayInitElem { .. } => {}
-            OpcodeEventKind::RefTest { .. } => {}
-            OpcodeEventKind::RefCast { .. } => {}
-            OpcodeEventKind::BrOnCast { .. } => {}
-            OpcodeEventKind::BrOnCastFail { .. } => {}
-            OpcodeEventKind::AnyConvertExtern { .. } => {}
-            OpcodeEventKind::ExternConvertAny { .. } => {}
-            OpcodeEventKind::RefI31 { .. } => {}
-            OpcodeEventKind::I31GetS { .. } => {}
-            OpcodeEventKind::I31GetU { .. } => {}
-            OpcodeEventKind::I32TruncSatF32S { .. } => {}
-            OpcodeEventKind::I32TruncSatF32U { .. } => {}
-            OpcodeEventKind::I32TruncSatF64S { .. } => {}
-            OpcodeEventKind::I32TruncSatF64U { .. } => {}
-            OpcodeEventKind::I64TruncSatF32S { .. } => {}
-            OpcodeEventKind::I64TruncSatF32U { .. } => {}
-            OpcodeEventKind::I64TruncSatF64S { .. } => {}
-            OpcodeEventKind::I64TruncSatF64U { .. } => {}
-            OpcodeEventKind::MemoryInit { .. } => {}
-            OpcodeEventKind::MemoryCopy { .. } => {}
-            OpcodeEventKind::MemoryFill { .. } => {}
-            OpcodeEventKind::DataDrop { .. } => {}
-            OpcodeEventKind::ElemDrop { .. } => {}
-            OpcodeEventKind::TableCopy { .. } => {}
-            OpcodeEventKind::TableInit { .. } => {}
-            OpcodeEventKind::TableFill { .. } => {}
-            OpcodeEventKind::TableGet { .. } => {}
-            OpcodeEventKind::TableSet { .. } => {}
-            OpcodeEventKind::TableGrow { .. } => {}
-            OpcodeEventKind::TableSize { .. } => {}
-            OpcodeEventKind::MemoryAtomicNotify { .. } => {}
-            OpcodeEventKind::MemoryAtomicWait32 { .. } => {}
-            OpcodeEventKind::MemoryAtomicWait64 { .. } => {}
-            OpcodeEventKind::AtomicFence { .. } => {}
-            OpcodeEventKind::I32AtomicLoad { .. } => {}
-            OpcodeEventKind::I64AtomicLoad { .. } => {}
-            OpcodeEventKind::I32AtomicLoad8U { .. } => {}
-            OpcodeEventKind::I32AtomicLoad16U { .. } => {}
-            OpcodeEventKind::I64AtomicLoad8U { .. } => {}
-            OpcodeEventKind::I64AtomicLoad16U { .. } => {}
-            OpcodeEventKind::I64AtomicLoad32U { .. } => {}
-            OpcodeEventKind::I32AtomicStore { .. } => {}
-            OpcodeEventKind::I32AtomicStore8 { .. } => {}
-            OpcodeEventKind::I32AtomicStore16 { .. } => {}
-            OpcodeEventKind::I64AtomicStore { .. } => {}
-            OpcodeEventKind::I64AtomicStore8 { .. } => {}
-            OpcodeEventKind::I64AtomicStore16 { .. } => {}
-            OpcodeEventKind::I64AtomicStore32 { .. } => {}
-            OpcodeEventKind::I32AtomicRmwAdd { .. } => {}
-            OpcodeEventKind::I32AtomicRmw8AddU { .. } => {}
-            OpcodeEventKind::I32AtomicRmw16AddU { .. } => {}
-            OpcodeEventKind::I64AtomicRmwAdd { .. } => {}
-            OpcodeEventKind::I64AtomicRmw8AddU { .. } => {}
-            OpcodeEventKind::I64AtomicRmw16AddU { .. } => {}
-            OpcodeEventKind::I64AtomicRmw32AddU { .. } => {}
-            OpcodeEventKind::I32AtomicRmwSub { .. } => {}
-            OpcodeEventKind::I32AtomicRmw8Sub { .. } => {}
-            OpcodeEventKind::I32AtomicRmw16Sub { .. } => {}
-            OpcodeEventKind::I64AtomicRmwSub { .. } => {}
-            OpcodeEventKind::I64AtomicRmw8SubU { .. } => {}
-            OpcodeEventKind::I64AtomicRmw16SubU { .. } => {}
-            OpcodeEventKind::I64AtomicRmw32SubU { .. } => {}
-            OpcodeEventKind::I32AtomicRmwAnd { .. } => {}
-            OpcodeEventKind::I32AtomicRmw8And { .. } => {}
-            OpcodeEventKind::I32AtomicRmw16And { .. } => {}
-            OpcodeEventKind::I64AtomicRmwAnd { .. } => {}
-            OpcodeEventKind::I64AtomicRmw8AndU { .. } => {}
-            OpcodeEventKind::I64AtomicRmw16AndU { .. } => {}
-            OpcodeEventKind::I64AtomicRmw32AndU { .. } => {}
-            OpcodeEventKind::I32AtomicRmwOr { .. } => {}
-            OpcodeEventKind::I32AtomicRmw8Or { .. } => {}
-            OpcodeEventKind::I32AtomicRmw16Or { .. } => {}
-            OpcodeEventKind::I64AtomicRmwOr { .. } => {}
-            OpcodeEventKind::I64AtomicRmw8OrU { .. } => {}
-            OpcodeEventKind::I64AtomicRmw16OrU { .. } => {}
-            OpcodeEventKind::I64AtomicRmw32OrU { .. } => {}
-            OpcodeEventKind::I32AtomicRmwXor { .. } => {}
-            OpcodeEventKind::I32AtomicRmw8Xor { .. } => {}
-            OpcodeEventKind::I32AtomicRmw16Xor { .. } => {}
-            OpcodeEventKind::I64AtomicRmwXor { .. } => {}
-            OpcodeEventKind::I64AtomicRmw8XorU { .. } => {}
-            OpcodeEventKind::I64AtomicRmw16XorU { .. } => {}
-            OpcodeEventKind::I64AtomicRmw32XorU { .. } => {}
-            OpcodeEventKind::I32AtomicRmwXchg { .. } => {}
-            OpcodeEventKind::I32AtomicRmw8Xchg { .. } => {}
-            OpcodeEventKind::I32AtomicRmw16Xchg { .. } => {}
-            OpcodeEventKind::I64AtomicRmwXchg { .. } => {}
-            OpcodeEventKind::I64AtomicRmw8XchgU { .. } => {}
-            OpcodeEventKind::I64AtomicRmw16XchgU { .. } => {}
-            OpcodeEventKind::I64AtomicRmw32XchgU { .. } => {}
-            OpcodeEventKind::I32AtomicRmwCmpxchg { .. } => {}
-            OpcodeEventKind::I32AtomicRmw8Cmpxchg { .. } => {}
-            OpcodeEventKind::I32AtomicRmw16Cmpxchg { .. } => {}
-            OpcodeEventKind::I64AtomicRmwCmpxchg { .. } => {}
-            OpcodeEventKind::I64AtomicRmw8CmpxchgU { .. } => {}
-            OpcodeEventKind::I64AtomicRmw16CmpxchgU { .. } => {}
-            OpcodeEventKind::I64AtomicRmw32CmpxchgU { .. } => {}
-            OpcodeEventKind::CallRef { .. } => {}
-            OpcodeEventKind::ReturnCallRef { .. } => {}
-            OpcodeEventKind::RefAsNonNull { .. } => {}
-            OpcodeEventKind::BrOnNull { .. } => {}
-            OpcodeEventKind::BrOnNonNull { .. } => {}
+            OpcodeEventKind::ArrayNew { .. } => {
+                if let Operator::ArrayNew { array_type_index } = instr {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*array_type_index)));
+                    loc_info
+                        .static_data
+                        .insert("tid".to_string(), Some(Value::gen_u32(*array_type_index)));
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::ArrayNewDefault { .. } => {
+                if let Operator::ArrayNewDefault { array_type_index } = instr {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*array_type_index)));
+                    loc_info
+                        .static_data
+                        .insert("tid".to_string(), Some(Value::gen_u32(*array_type_index)));
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::ArrayNewFixed { .. } => {
+                if let Operator::ArrayNewFixed {
+                    array_type_index,
+                    array_size,
+                } = instr
+                {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*array_type_index)));
+                    loc_info
+                        .static_data
+                        .insert("tid".to_string(), Some(Value::gen_u32(*array_type_index)));
+                    loc_info
+                        .static_data
+                        .insert("imm1".to_string(), Some(Value::gen_u32(*array_size)));
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::ArrayNewData { .. } => {
+                if let Operator::ArrayNewData {
+                    array_type_index,
+                    array_data_index,
+                } = instr
+                {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*array_type_index)));
+                    loc_info
+                        .static_data
+                        .insert("tid".to_string(), Some(Value::gen_u32(*array_type_index)));
+                    loc_info
+                        .static_data
+                        .insert("imm1".to_string(), Some(Value::gen_u32(*array_data_index)));
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::ArrayNewElem { .. } => {
+                if let Operator::ArrayNewElem {
+                    array_type_index,
+                    array_elem_index,
+                } = instr
+                {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*array_type_index)));
+                    loc_info
+                        .static_data
+                        .insert("tid".to_string(), Some(Value::gen_u32(*array_type_index)));
+                    loc_info
+                        .static_data
+                        .insert("imm1".to_string(), Some(Value::gen_u32(*array_elem_index)));
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::ArrayGet { .. } => {
+                if let Operator::ArrayGet { array_type_index } = instr {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*array_type_index)));
+                    loc_info
+                        .static_data
+                        .insert("tid".to_string(), Some(Value::gen_u32(*array_type_index)));
+                    loc_info.add_dynamic_assign(
+                        "i".to_string(),
+                        DataType::U32,
+                        Expr::VarId {
+                            definition: Definition::CompilerDynamic,
+                            name: "arg0".to_string(),
+                            loc: None,
+                        },
+                    );
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::ArrayGetS { .. } => {
+                if let Operator::ArrayGetS { array_type_index } = instr {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*array_type_index)));
+                    loc_info
+                        .static_data
+                        .insert("tid".to_string(), Some(Value::gen_u32(*array_type_index)));
+                    loc_info.add_dynamic_assign(
+                        "i".to_string(),
+                        DataType::U32,
+                        Expr::VarId {
+                            definition: Definition::CompilerDynamic,
+                            name: "arg0".to_string(),
+                            loc: None,
+                        },
+                    );
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::ArrayGetU { .. } => {
+                if let Operator::ArrayGetU { array_type_index } = instr {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*array_type_index)));
+                    loc_info
+                        .static_data
+                        .insert("tid".to_string(), Some(Value::gen_u32(*array_type_index)));
+                    loc_info.add_dynamic_assign(
+                        "i".to_string(),
+                        DataType::U32,
+                        Expr::VarId {
+                            definition: Definition::CompilerDynamic,
+                            name: "arg0".to_string(),
+                            loc: None,
+                        },
+                    );
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::ArraySet { .. } => {
+                if let Operator::ArraySet { array_type_index } = instr {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*array_type_index)));
+                    loc_info
+                        .static_data
+                        .insert("tid".to_string(), Some(Value::gen_u32(*array_type_index)));
+                    loc_info.add_dynamic_assign(
+                        "i".to_string(),
+                        DataType::U32,
+                        Expr::VarId {
+                            definition: Definition::CompilerDynamic,
+                            name: "arg0".to_string(),
+                            loc: None,
+                        },
+                    );
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::ArrayLen { .. } => {
+                if let Operator::ArrayLen = instr {
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::ArrayFill { .. } => {
+                if let Operator::ArrayFill { array_type_index } = instr {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*array_type_index)));
+                    loc_info
+                        .static_data
+                        .insert("tid".to_string(), Some(Value::gen_u32(*array_type_index)));
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::ArrayCopy { .. } => {
+                if let Operator::ArrayCopy {
+                    array_type_index_dst,
+                    array_type_index_src,
+                } = instr
+                {
+                    loc_info.static_data.insert(
+                        "imm0".to_string(),
+                        Some(Value::gen_u32(*array_type_index_dst)),
+                    );
+                    loc_info.static_data.insert(
+                        "imm1".to_string(),
+                        Some(Value::gen_u32(*array_type_index_src)),
+                    );
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::ArrayInitData { .. } => {
+                if let Operator::ArrayInitData {
+                    array_type_index,
+                    array_data_index,
+                } = instr
+                {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*array_type_index)));
+                    loc_info
+                        .static_data
+                        .insert("tid".to_string(), Some(Value::gen_u32(*array_type_index)));
+                    loc_info
+                        .static_data
+                        .insert("imm1".to_string(), Some(Value::gen_u32(*array_data_index)));
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::ArrayInitElem { .. } => {
+                if let Operator::ArrayInitElem {
+                    array_type_index,
+                    array_elem_index,
+                } = instr
+                {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*array_type_index)));
+                    loc_info
+                        .static_data
+                        .insert("tid".to_string(), Some(Value::gen_u32(*array_type_index)));
+                    loc_info
+                        .static_data
+                        .insert("imm1".to_string(), Some(Value::gen_u32(*array_elem_index)));
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::RefTest { .. } => {
+                if let Operator::RefTestNonNull { hty: _ } | Operator::RefTestNullable { hty: _ } =
+                    instr
+                {
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::RefCast { .. } => {
+                if let Operator::RefCastNonNull { hty: _ } | Operator::RefCastNullable { hty: _ } =
+                    instr
+                {
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::BrOnCast { .. } => {
+                if let Operator::BrOnCast {
+                    relative_depth,
+                    from_ref_type: _,
+                    to_ref_type: _,
+                } = instr
+                {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*relative_depth)));
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::BrOnCastFail { .. } => {
+                if let Operator::BrOnCastFail {
+                    relative_depth,
+                    from_ref_type: _,
+                    to_ref_type: _,
+                } = instr
+                {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*relative_depth)));
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::AnyConvertExtern { .. } => {
+                if let Operator::AnyConvertExtern = instr {
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::ExternConvertAny { .. } => {
+                if let Operator::ExternConvertAny = instr {
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::RefI31 { .. } => {
+                if let Operator::RefI31 = instr {
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I31GetS { .. } => {
+                if let Operator::I31GetS = instr {
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I31GetU { .. } => {
+                if let Operator::I31GetU = instr {
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I32TruncSatF32S { .. } => {
+                if let Operator::I32TruncSatF32S = instr {
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I32TruncSatF32U { .. } => {
+                if let Operator::I32TruncSatF32U = instr {
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I32TruncSatF64S { .. } => {
+                if let Operator::I32TruncSatF64S = instr {
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I32TruncSatF64U { .. } => {
+                if let Operator::I32TruncSatF64U = instr {
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64TruncSatF32S { .. } => {
+                if let Operator::I64TruncSatF32S = instr {
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64TruncSatF32U { .. } => {
+                if let Operator::I64TruncSatF32U = instr {
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64TruncSatF64S { .. } => {
+                if let Operator::I64TruncSatF64S = instr {
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64TruncSatF64U { .. } => {
+                if let Operator::I64TruncSatF64U = instr {
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::MemoryInit { .. } => {
+                if let Operator::MemoryInit { data_index, mem } = instr {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*data_index)));
+                    loc_info
+                        .static_data
+                        .insert("imm1".to_string(), Some(Value::gen_u32(*mem)));
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::MemoryCopy { .. } => {
+                if let Operator::MemoryCopy { dst_mem, src_mem } = instr {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*dst_mem)));
+                    loc_info
+                        .static_data
+                        .insert("imm1".to_string(), Some(Value::gen_u32(*src_mem)));
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::MemoryFill { .. } => {
+                if let Operator::MemoryFill { mem } = instr {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*mem)));
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::DataDrop { .. } => {
+                if let Operator::DataDrop { data_index } = instr {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*data_index)));
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::ElemDrop { .. } => {
+                if let Operator::ElemDrop { elem_index } = instr {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*elem_index)));
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::TableCopy { .. } => {
+                if let Operator::TableCopy {
+                    dst_table,
+                    src_table,
+                } = instr
+                {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*dst_table)));
+                    loc_info
+                        .static_data
+                        .insert("imm1".to_string(), Some(Value::gen_u32(*src_table)));
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::TableInit { .. } => {
+                if let Operator::TableInit { elem_index, table } = instr {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*elem_index)));
+                    loc_info
+                        .static_data
+                        .insert("imm1".to_string(), Some(Value::gen_u32(*table)));
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::TableFill { .. } => {
+                if let Operator::TableFill { table } = instr {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*table)));
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::TableGet { .. } => {
+                if let Operator::TableGet { table } = instr {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*table)));
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::TableSet { .. } => {
+                if let Operator::TableSet { table } = instr {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*table)));
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::TableGrow { .. } => {
+                if let Operator::TableGrow { table } = instr {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*table)));
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::TableSize { .. } => {
+                if let Operator::TableSize { table } = instr {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*table)));
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::MemoryAtomicNotify { .. } => {
+                if let Operator::MemoryAtomicNotify {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::MemoryAtomicWait32 { .. } => {
+                if let Operator::MemoryAtomicWait32 {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::MemoryAtomicWait64 { .. } => {
+                if let Operator::MemoryAtomicWait64 {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::AtomicFence { .. } => {
+                if let Operator::AtomicFence = instr {
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I32AtomicLoad { .. } => {
+                if let Operator::I32AtomicLoad {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicLoad { .. } => {
+                if let Operator::I64AtomicLoad {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I32AtomicLoad8U { .. } => {
+                if let Operator::I32AtomicLoad8U {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I32AtomicLoad16U { .. } => {
+                if let Operator::I32AtomicLoad16U {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicLoad8U { .. } => {
+                if let Operator::I64AtomicLoad8U {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicLoad16U { .. } => {
+                if let Operator::I64AtomicLoad16U {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicLoad32U { .. } => {
+                if let Operator::I64AtomicLoad32U {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I32AtomicStore { .. } => {
+                if let Operator::I32AtomicStore {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I32AtomicStore8 { .. } => {
+                if let Operator::I32AtomicStore8 {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I32AtomicStore16 { .. } => {
+                if let Operator::I32AtomicStore16 {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicStore { .. } => {
+                if let Operator::I64AtomicStore {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicStore8 { .. } => {
+                if let Operator::I64AtomicStore8 {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicStore16 { .. } => {
+                if let Operator::I64AtomicStore16 {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicStore32 { .. } => {
+                if let Operator::I64AtomicStore32 {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I32AtomicRmwAdd { .. } => {
+                if let Operator::I32AtomicRmwAdd {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I32AtomicRmw8AddU { .. } => {
+                if let Operator::I32AtomicRmw8AddU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I32AtomicRmw16AddU { .. } => {
+                if let Operator::I32AtomicRmw16AddU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicRmwAdd { .. } => {
+                if let Operator::I64AtomicRmwAdd {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicRmw8AddU { .. } => {
+                if let Operator::I64AtomicRmw8AddU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicRmw16AddU { .. } => {
+                if let Operator::I64AtomicRmw16AddU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicRmw32AddU { .. } => {
+                if let Operator::I64AtomicRmw32AddU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I32AtomicRmwSub { .. } => {
+                if let Operator::I32AtomicRmwSub {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I32AtomicRmw8SubU { .. } => {
+                if let Operator::I32AtomicRmw8SubU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I32AtomicRmw16SubU { .. } => {
+                if let Operator::I32AtomicRmw16SubU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicRmwSub { .. } => {
+                if let Operator::I64AtomicRmwSub {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicRmw8SubU { .. } => {
+                if let Operator::I64AtomicRmw8SubU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicRmw16SubU { .. } => {
+                if let Operator::I64AtomicRmw16SubU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicRmw32SubU { .. } => {
+                if let Operator::I64AtomicRmw32SubU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I32AtomicRmwAnd { .. } => {
+                if let Operator::I32AtomicRmwAnd {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I32AtomicRmw8AndU { .. } => {
+                if let Operator::I32AtomicRmw8AndU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I32AtomicRmw16AndU { .. } => {
+                if let Operator::I32AtomicRmw16AndU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicRmwAnd { .. } => {
+                if let Operator::I64AtomicRmwAnd {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicRmw8AndU { .. } => {
+                if let Operator::I64AtomicRmw8AndU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicRmw16AndU { .. } => {
+                if let Operator::I64AtomicRmw16AndU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicRmw32AndU { .. } => {
+                if let Operator::I64AtomicRmw32AndU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I32AtomicRmwOr { .. } => {
+                if let Operator::I32AtomicRmwOr {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I32AtomicRmw8OrU { .. } => {
+                if let Operator::I32AtomicRmw8OrU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I32AtomicRmw16OrU { .. } => {
+                if let Operator::I32AtomicRmw16OrU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicRmwOr { .. } => {
+                if let Operator::I64AtomicRmwOr {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicRmw8OrU { .. } => {
+                if let Operator::I64AtomicRmw8OrU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicRmw16OrU { .. } => {
+                if let Operator::I64AtomicRmw16OrU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicRmw32OrU { .. } => {
+                if let Operator::I64AtomicRmw32OrU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I32AtomicRmwXor { .. } => {
+                if let Operator::I32AtomicRmwXor {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I32AtomicRmw8XorU { .. } => {
+                if let Operator::I32AtomicRmw8XorU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I32AtomicRmw16XorU { .. } => {
+                if let Operator::I32AtomicRmw16XorU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicRmwXor { .. } => {
+                if let Operator::I64AtomicRmwXor {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicRmw8XorU { .. } => {
+                if let Operator::I64AtomicRmw8XorU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicRmw16XorU { .. } => {
+                if let Operator::I64AtomicRmw16XorU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicRmw32XorU { .. } => {
+                if let Operator::I64AtomicRmw32XorU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I32AtomicRmwXchg { .. } => {
+                if let Operator::I32AtomicRmwXchg {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I32AtomicRmw8XchgU { .. } => {
+                if let Operator::I32AtomicRmw8XchgU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I32AtomicRmw16XchgU { .. } => {
+                if let Operator::I32AtomicRmw16XchgU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicRmwXchg { .. } => {
+                if let Operator::I64AtomicRmwXchg {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicRmw8XchgU { .. } => {
+                if let Operator::I64AtomicRmw8XchgU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicRmw16XchgU { .. } => {
+                if let Operator::I64AtomicRmw16XchgU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicRmw32XchgU { .. } => {
+                if let Operator::I64AtomicRmw32XchgU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I32AtomicRmwCmpxchg { .. } => {
+                if let Operator::I32AtomicRmwCmpxchg {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I32AtomicRmw8CmpxchgU { .. } => {
+                if let Operator::I32AtomicRmw8CmpxchgU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I32AtomicRmw16CmpxchgU { .. } => {
+                if let Operator::I32AtomicRmw16CmpxchgU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicRmwCmpxchg { .. } => {
+                if let Operator::I64AtomicRmwCmpxchg {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicRmw8CmpxchgU { .. } => {
+                if let Operator::I64AtomicRmw8CmpxchgU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicRmw16CmpxchgU { .. } => {
+                if let Operator::I64AtomicRmw16CmpxchgU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::I64AtomicRmw32CmpxchgU { .. } => {
+                if let Operator::I64AtomicRmw32CmpxchgU {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    create_memarg_globals(&mut loc_info, *align, *offset, *memory);
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::CallRef { .. } => {
+                if let Operator::CallRef { type_index } = instr {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*type_index)));
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::ReturnCallRef { .. } => {
+                if let Operator::ReturnCallRef { type_index } = instr {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*type_index)));
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::RefAsNonNull { .. } => {
+                if let Operator::RefAsNonNull = instr {
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::BrOnNull { .. } => {
+                if let Operator::BrOnNull { relative_depth } = instr {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*relative_depth)));
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::BrOnNonNull { .. } => {
+                if let Operator::BrOnNonNull { relative_depth } = instr {
+                    loc_info
+                        .static_data
+                        .insert("imm0".to_string(), Some(Value::gen_u32(*relative_depth)));
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
         }
 
         if loc_info.has_match() {
@@ -1661,6 +3453,6 @@ fn create_memarg_globals(loc_info: &mut LocInfo, align: u8, offset: u64, memory:
             }),
             done_on: DataType::U32,
             loc: None,
-        }
+        },
     );
 }

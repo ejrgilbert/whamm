@@ -154,7 +154,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         err: &mut ErrorGen,
     ) -> bool {
         let mut is_success = true;
-        for (_, Block {stmts, ..}) in data.iter() {
+        for (_, Block { stmts, .. }) in data.iter() {
             for stmt in stmts.iter() {
                 is_success &= emit_stmt(
                     &mut stmt.clone(),

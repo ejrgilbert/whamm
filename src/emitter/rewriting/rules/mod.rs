@@ -190,90 +190,142 @@ impl<'a> LocInfo<'a> {
         };
         match &val {
             Value::Number {
-                     val: NumLit::U8 { val },
-                     ..
-            } => self.add_dynamic_assign(name, DataType::U32, Expr::Primitive {
-                val: Value::gen_u8(*val),
-                loc: None,
-            }),
-            Value::Number {
-                     val: NumLit::I8 { val },
-                     ..
-            } => self.add_dynamic_assign(name, DataType::U32, Expr::Primitive {
-                val: Value::gen_i8(*val),
-                loc: None,
-            }),
-            Value::Number {
-                     val: NumLit::U16 { val },
-                     ..
-             } => self.add_dynamic_assign(name, DataType::U32, Expr::Primitive {
-                val: Value::gen_u16(*val),
-                loc: None,
-            }),
-            Value::Number {
-                     val: NumLit::I16 { val },
-                     ..
-             } => self.add_dynamic_assign(name, DataType::U32, Expr::Primitive {
-                val: Value::gen_i16(*val),
-                loc: None,
-            }),
-            Value::Number {
-                     val: NumLit::U32 { val },
-                     ..
-             } => self.add_dynamic_assign(name, DataType::U32, Expr::Primitive {
-                val: Value::gen_u32(*val),
-                loc: None,
-            }),
-            Value::Number {
-                     val: NumLit::I32 { val },
-                     ..
-             } => self.add_dynamic_assign(name, DataType::I32, Expr::Primitive {
-                val: Value::gen_i32(*val),
-                loc: None,
-            }),
-            Value::Number {
-                     val: NumLit::F32 { val },
-                     ..
-             } => self.add_dynamic_assign(name, DataType::F32, Expr::Primitive {
-                val: Value::gen_f32(*val),
-                loc: None,
-            }),
-            Value::Number {
-                     val: NumLit::U64 { val },
-                     ..
-             } => self.add_dynamic_assign(name, DataType::U64, Expr::Primitive {
-                val: Value::gen_u64(*val),
-                loc: None,
-            }),
-            Value::Number {
-                     val: NumLit::I64 { val },
-                     ..
-             } => self.add_dynamic_assign(name, DataType::I64, Expr::Primitive {
-                val: Value::gen_i64(*val),
-                loc: None,
-            }),
-            Value::Number {
-                     val: NumLit::F64 { val },
-                     ..
-             } => self.add_dynamic_assign(name, DataType::I64, Expr::Primitive {
-                val: Value::gen_f64(*val),
-                loc: None,
-            }),
-            Value::Boolean { val, .. } => self.add_dynamic_assign(name, DataType::Boolean, Expr::Primitive {
-                val: Value::Boolean { val: *val },
-                loc: None,
-            }),
-            Value::Str { val, .. } => self.add_dynamic_assign(name, DataType::Str, Expr::Primitive {
-                val: Value::Str { val: val.clone() },
-                loc: None,
-            }),
-            Value::Tuple { vals, ty } => self.add_dynamic_assign(name, ty.clone(), Expr::Primitive {
-                val: Value::Tuple {
-                    ty: ty.clone(),
-                    vals: vals.clone(),
+                val: NumLit::U8 { val },
+                ..
+            } => self.add_dynamic_assign(
+                name,
+                DataType::U32,
+                Expr::Primitive {
+                    val: Value::gen_u8(*val),
+                    loc: None,
                 },
-                loc: None,
-            }),
+            ),
+            Value::Number {
+                val: NumLit::I8 { val },
+                ..
+            } => self.add_dynamic_assign(
+                name,
+                DataType::U32,
+                Expr::Primitive {
+                    val: Value::gen_i8(*val),
+                    loc: None,
+                },
+            ),
+            Value::Number {
+                val: NumLit::U16 { val },
+                ..
+            } => self.add_dynamic_assign(
+                name,
+                DataType::U32,
+                Expr::Primitive {
+                    val: Value::gen_u16(*val),
+                    loc: None,
+                },
+            ),
+            Value::Number {
+                val: NumLit::I16 { val },
+                ..
+            } => self.add_dynamic_assign(
+                name,
+                DataType::U32,
+                Expr::Primitive {
+                    val: Value::gen_i16(*val),
+                    loc: None,
+                },
+            ),
+            Value::Number {
+                val: NumLit::U32 { val },
+                ..
+            } => self.add_dynamic_assign(
+                name,
+                DataType::U32,
+                Expr::Primitive {
+                    val: Value::gen_u32(*val),
+                    loc: None,
+                },
+            ),
+            Value::Number {
+                val: NumLit::I32 { val },
+                ..
+            } => self.add_dynamic_assign(
+                name,
+                DataType::I32,
+                Expr::Primitive {
+                    val: Value::gen_i32(*val),
+                    loc: None,
+                },
+            ),
+            Value::Number {
+                val: NumLit::F32 { val },
+                ..
+            } => self.add_dynamic_assign(
+                name,
+                DataType::F32,
+                Expr::Primitive {
+                    val: Value::gen_f32(*val),
+                    loc: None,
+                },
+            ),
+            Value::Number {
+                val: NumLit::U64 { val },
+                ..
+            } => self.add_dynamic_assign(
+                name,
+                DataType::U64,
+                Expr::Primitive {
+                    val: Value::gen_u64(*val),
+                    loc: None,
+                },
+            ),
+            Value::Number {
+                val: NumLit::I64 { val },
+                ..
+            } => self.add_dynamic_assign(
+                name,
+                DataType::I64,
+                Expr::Primitive {
+                    val: Value::gen_i64(*val),
+                    loc: None,
+                },
+            ),
+            Value::Number {
+                val: NumLit::F64 { val },
+                ..
+            } => self.add_dynamic_assign(
+                name,
+                DataType::I64,
+                Expr::Primitive {
+                    val: Value::gen_f64(*val),
+                    loc: None,
+                },
+            ),
+            Value::Boolean { val, .. } => self.add_dynamic_assign(
+                name,
+                DataType::Boolean,
+                Expr::Primitive {
+                    val: Value::Boolean { val: *val },
+                    loc: None,
+                },
+            ),
+            Value::Str { val, .. } => self.add_dynamic_assign(
+                name,
+                DataType::Str,
+                Expr::Primitive {
+                    val: Value::Str { val: val.clone() },
+                    loc: None,
+                },
+            ),
+            Value::Tuple { vals, ty } => self.add_dynamic_assign(
+                name,
+                ty.clone(),
+                Expr::Primitive {
+                    val: Value::Tuple {
+                        ty: ty.clone(),
+                        vals: vals.clone(),
+                    },
+                    loc: None,
+                },
+            ),
             Value::U32U32Map { val: map_val } => {
                 // create a declaration
                 let decl = Statement::Decl {
@@ -297,11 +349,14 @@ impl<'a> LocInfo<'a> {
                         loc: None,
                     });
                 }
-                self.add_dynamic_block(name, Block {
-                    stmts,
-                    return_ty: None,
-                    loc: None
-                });
+                self.add_dynamic_block(
+                    name,
+                    Block {
+                        stmts,
+                        return_ty: None,
+                        loc: None,
+                    },
+                );
             }
         };
     }
@@ -325,11 +380,14 @@ impl<'a> LocInfo<'a> {
             loc: None,
         };
 
-        self.add_dynamic_block(name, Block {
-            stmts: vec![decl, assign],
-            return_ty: None,
-            loc: None
-        });
+        self.add_dynamic_block(
+            name,
+            Block {
+                stmts: vec![decl, assign],
+                return_ty: None,
+                loc: None,
+            },
+        );
     }
     fn add_dynamic_block(&mut self, name: String, block: Block) {
         self.dynamic_data.insert(name, block);
