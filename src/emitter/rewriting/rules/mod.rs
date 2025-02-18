@@ -3,7 +3,7 @@ use crate::emitter::rewriting::rules::wasm::{OpcodeEvent, WasmPackage};
 use crate::generator::rewriting::simple_ast::{SimpleAstProbes, SimpleProbe};
 use crate::parser::rules::core::WhammModeKind;
 use crate::parser::rules::{FromStr, WhammProviderKind};
-use crate::parser::types::{RulePart, Value};
+use crate::parser::types::{Block, DataType, Definition, Expr, NumLit, RulePart, Statement, Value};
 use orca_wasm::ir::module::Module;
 use orca_wasm::ir::types::DataType as OrcaType;
 use orca_wasm::Location;
@@ -148,8 +148,8 @@ impl Display for ProbeRule {
 pub struct LocInfo<'a> {
     /// static information to be saved in symbol table
     pub static_data: HashMap<String, Option<Value>>,
-    /// dynamic information to be emitted at the probe location
-    pub dynamic_data: HashMap<String, Option<Value>>,
+    /// dynamic information to be defined at the probe location
+    pub dynamic_data: HashMap<String, Block>,
     /// dynamic information corresponding to the operands of this location
     pub(crate) args: Vec<Arg>,
     pub num_alt_probes: usize,
@@ -181,6 +181,216 @@ impl<'a> LocInfo<'a> {
                 self.probes.push((rule.clone(), probe));
             });
         })
+    }
+    fn add_dynamic_value(&mut self, name: String, val: Value) {
+        let var_id = Expr::VarId {
+            definition: Definition::CompilerDynamic,
+            name: name.clone(),
+            loc: None,
+        };
+        match &val {
+            Value::Number {
+                val: NumLit::U8 { val },
+                ..
+            } => self.add_dynamic_assign(
+                name,
+                DataType::U32,
+                Expr::Primitive {
+                    val: Value::gen_u8(*val),
+                    loc: None,
+                },
+            ),
+            Value::Number {
+                val: NumLit::I8 { val },
+                ..
+            } => self.add_dynamic_assign(
+                name,
+                DataType::U32,
+                Expr::Primitive {
+                    val: Value::gen_i8(*val),
+                    loc: None,
+                },
+            ),
+            Value::Number {
+                val: NumLit::U16 { val },
+                ..
+            } => self.add_dynamic_assign(
+                name,
+                DataType::U32,
+                Expr::Primitive {
+                    val: Value::gen_u16(*val),
+                    loc: None,
+                },
+            ),
+            Value::Number {
+                val: NumLit::I16 { val },
+                ..
+            } => self.add_dynamic_assign(
+                name,
+                DataType::U32,
+                Expr::Primitive {
+                    val: Value::gen_i16(*val),
+                    loc: None,
+                },
+            ),
+            Value::Number {
+                val: NumLit::U32 { val },
+                ..
+            } => self.add_dynamic_assign(
+                name,
+                DataType::U32,
+                Expr::Primitive {
+                    val: Value::gen_u32(*val),
+                    loc: None,
+                },
+            ),
+            Value::Number {
+                val: NumLit::I32 { val },
+                ..
+            } => self.add_dynamic_assign(
+                name,
+                DataType::I32,
+                Expr::Primitive {
+                    val: Value::gen_i32(*val),
+                    loc: None,
+                },
+            ),
+            Value::Number {
+                val: NumLit::F32 { val },
+                ..
+            } => self.add_dynamic_assign(
+                name,
+                DataType::F32,
+                Expr::Primitive {
+                    val: Value::gen_f32(*val),
+                    loc: None,
+                },
+            ),
+            Value::Number {
+                val: NumLit::U64 { val },
+                ..
+            } => self.add_dynamic_assign(
+                name,
+                DataType::U64,
+                Expr::Primitive {
+                    val: Value::gen_u64(*val),
+                    loc: None,
+                },
+            ),
+            Value::Number {
+                val: NumLit::I64 { val },
+                ..
+            } => self.add_dynamic_assign(
+                name,
+                DataType::I64,
+                Expr::Primitive {
+                    val: Value::gen_i64(*val),
+                    loc: None,
+                },
+            ),
+            Value::Number {
+                val: NumLit::F64 { val },
+                ..
+            } => self.add_dynamic_assign(
+                name,
+                DataType::I64,
+                Expr::Primitive {
+                    val: Value::gen_f64(*val),
+                    loc: None,
+                },
+            ),
+            Value::Boolean { val, .. } => self.add_dynamic_assign(
+                name,
+                DataType::Boolean,
+                Expr::Primitive {
+                    val: Value::Boolean { val: *val },
+                    loc: None,
+                },
+            ),
+            Value::Str { val, .. } => self.add_dynamic_assign(
+                name,
+                DataType::Str,
+                Expr::Primitive {
+                    val: Value::Str { val: val.clone() },
+                    loc: None,
+                },
+            ),
+            Value::Tuple { vals, ty } => self.add_dynamic_assign(
+                name,
+                ty.clone(),
+                Expr::Primitive {
+                    val: Value::Tuple {
+                        ty: ty.clone(),
+                        vals: vals.clone(),
+                    },
+                    loc: None,
+                },
+            ),
+            Value::U32U32Map { val: map_val } => {
+                // create a declaration
+                let decl = Statement::Decl {
+                    ty: val.ty(),
+                    var_id: var_id.clone(),
+                    loc: None,
+                };
+                // create assignments
+                let mut stmts = vec![decl];
+                for (key, val) in map_val.iter() {
+                    stmts.push(Statement::SetMap {
+                        map: var_id.clone(),
+                        key: Expr::Primitive {
+                            val: Value::gen_u32(*key),
+                            loc: None,
+                        },
+                        val: Expr::Primitive {
+                            val: Value::gen_u32(*val),
+                            loc: None,
+                        },
+                        loc: None,
+                    });
+                }
+                self.add_dynamic_block(
+                    name,
+                    Block {
+                        stmts,
+                        return_ty: None,
+                        loc: None,
+                    },
+                );
+            }
+        };
+    }
+    fn add_dynamic_assign(&mut self, name: String, ty: DataType, expr: Expr) {
+        let var_id = Expr::VarId {
+            definition: Definition::CompilerDynamic,
+            name: name.clone(),
+            loc: None,
+        };
+
+        // create a declaration
+        let decl = Statement::Decl {
+            ty,
+            var_id: var_id.clone(),
+            loc: None,
+        };
+        // create an assignment
+        let assign = Statement::Assign {
+            var_id: var_id.clone(),
+            expr,
+            loc: None,
+        };
+
+        self.add_dynamic_block(
+            name,
+            Block {
+                stmts: vec![decl, assign],
+                return_ty: None,
+                loc: None,
+            },
+        );
+    }
+    fn add_dynamic_block(&mut self, name: String, block: Block) {
+        self.dynamic_data.insert(name, block);
     }
     fn append(&mut self, other: &mut Self) {
         // handle static_data

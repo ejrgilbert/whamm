@@ -987,7 +987,7 @@ pub fn matches_globs(s: &str, globs: &[Pattern]) -> bool {
 /// (Sometimes a specific opcode's arg0 is i32, sometimes it's not)
 /// Specify an Option for immediates, Some(vec![]) means we have none, None means we don't know how many there are.
 /// Expected inputs:
-/// IdentifierName, common_name, num_args: Option<Vec<DataType>>, imms: Vec<DataType>, globals: HashMap<String, ProvidedGlobal>, fns: Vec<ProvidedFunction>, supported_modes: Vec<WhammModeKind>, docs: &str
+/// IdentifierName, common_name, num_args: Option<Vec<DataType>>, imms: Vec<DataType>, globals: HashMap<String, ProvidedGlobal>, fns: Vec<ProvidedFunction>, supported_modes: Vec<WhammModeKind>, req_map: bool, docs: &str
 #[macro_export]
 macro_rules! for_each_opcode {
 ($mac:ident) => { $mac! {
@@ -1001,350 +1001,381 @@ macro_rules! for_each_opcode {
     Loop, _loop, Some(vec![]), vec![], HashMap::new(), vec![], OpcodeEvent::block_type_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/loop"
     If, _if, Some(vec![DataType::I32]), vec![], HashMap::new(), vec![], OpcodeEvent::block_type_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"
     Else, _else, Some(vec![]), vec![], HashMap::new(), vec![], OpcodeEvent::block_type_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"
-    // TryTable { try_table: $crate::TryTable } => visit_try_table
-    // Throw { tag_index: u32 } => visit_throw
-    // ThrowRef => visit_throw_ref
-    // // Deprecated old instructions from the exceptions proposal
-    // Try { blockty: $crate::BlockType } => visit_try
-    // Catch { tag_index: u32 } => visit_catch
-    // Rethrow { relative_depth: u32 } => visit_rethrow
-    // Delegate { relative_depth: u32 } => visit_delegate
-    // CatchAll => visit_catch_all
+    // TODO -- support pulling immediates
+    //         TryTable { try_table: $crate::TryTable } => visit_try_table
+    TryTable, try_table, Some(vec![]), vec![], HashMap::new(), vec![], OpcodeEvent::block_type_modes(), false, "https://github.com/WebAssembly/exception-handling/blob/e7c7c313d26f6b0fe8f1bda33cd6ab5e9edd838b/proposals/exception-handling/Exceptions.md#try-blocks"
+    Throw, throw, None, vec![(DataType::U32, 1)], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/exception-handling/blob/e7c7c313d26f6b0fe8f1bda33cd6ab5e9edd838b/proposals/exception-handling/Exceptions.md#throwing-an-exception"
+    // TODO -- support exnref
+    ThrowRef, throw_ref, None, vec![], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/exception-handling/blob/e7c7c313d26f6b0fe8f1bda33cd6ab5e9edd838b/proposals/exception-handling/Exceptions.md#rethrowing-an-exception"
     End, end, Some(vec![]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes_no_alt(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/end"
     Br, br, Some(vec![]), vec![(DataType::U32, 1)], HashMap::new(), vec![], OpcodeEvent::branching_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
     BrIf, br_if, Some(vec![DataType::I32]), vec![(DataType::U32, 1)], HashMap::new(), vec![], OpcodeEvent::branching_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
     BrTable, br_table, Some(vec![DataType::U32]), vec![(DataType::U32, -1)], get_br_table_globals(), vec![], OpcodeEvent::branching_modes(), true, "https://musteresel.github.io/posts/2020/01/webassembly-text-br_table-example.html"
     Return, _return, Some(vec![]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/return"
+
     Call, call, None, vec![(DataType::U32, 1)], get_call_globals(), get_call_fns(), WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call"
-    // CallIndirect { type_index: u32, table_index: u32 } => visit_call_indirect TODO
-    // ReturnCall { function_index: u32 } => visit_return_call TODO
-    // ReturnCallIndirect { type_index: u32, table_index: u32 } => visit_return_call_indirect TODO
-    // Drop => visit_drop
-    // Select => visit_select
-    // TypedSelect { ty: $crate::ValType } => visit_typed_select
+    CallIndirect, call_indirect, None, vec![(DataType::U32, 2)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call"
+    ReturnCall, return_call, None, vec![(DataType::U32, 1)], get_call_globals(), get_call_fns(), WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call"
+    ReturnCallIndirect, return_call_indirect, None, vec![(DataType::U32, 2)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call"
+
+    Drop, drop, None, vec![], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/Drop"
+    Select, select, None, vec![], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/Select"
+    // TODO -- support pulling the type!
+    //         TypedSelect { ty: $crate::ValType } => visit_typed_select
+    TypedSelect, typed_select, None, vec![], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/Select"
     LocalGet, local_get, Some(vec![]), vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_get"
-    LocalSet, local_set, None, vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_set"
-    LocalTee, local_tee, None, vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_tee"
+    LocalSet, local_set, None, vec![(DataType::U32, 1)], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_set"
+    LocalTee, local_tee, None, vec![(DataType::U32, 1)], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_tee"
     GlobalGet, global_get, Some(vec![]), vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Global_get"
-    GlobalSet, global_set, None, vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Global_set"
-    // I32Load { memarg: $crate::MemArg } => visit_i32_load
-    // I64Load { memarg: $crate::MemArg } => visit_i64_load
-    // F32Load { memarg: $crate::MemArg } => visit_f32_load
-    // F64Load { memarg: $crate::MemArg } => visit_f64_load
-    // I32Load8S { memarg: $crate::MemArg } => visit_i32_load8_s
-    // I32Load8U { memarg: $crate::MemArg } => visit_i32_load8_u TODO
-    // I32Load16S { memarg: $crate::MemArg } => visit_i32_load16_s
-    // I32Load16U { memarg: $crate::MemArg } => visit_i32_load16_u
-    // I64Load8S { memarg: $crate::MemArg } => visit_i64_load8_s
-    // I64Load8U { memarg: $crate::MemArg } => visit_i64_load8_u
-    // I64Load16S { memarg: $crate::MemArg } => visit_i64_load16_s
-    // I64Load16U { memarg: $crate::MemArg } => visit_i64_load16_u
-    // I64Load32S { memarg: $crate::MemArg } => visit_i64_load32_s
-    // I64Load32U { memarg: $crate::MemArg } => visit_i64_load32_u
-    // I32Store { memarg: $crate::MemArg } => visit_i32_store
-    // I64Store { memarg: $crate::MemArg } => visit_i64_store
-    // F32Store { memarg: $crate::MemArg } => visit_f32_store
-    // F64Store { memarg: $crate::MemArg } => visit_f64_store
-    // I32Store8 { memarg: $crate::MemArg } => visit_i32_store8
-    // I32Store16 { memarg: $crate::MemArg } => visit_i32_store16
-    // I64Store8 { memarg: $crate::MemArg } => visit_i64_store8
-    // I64Store16 { memarg: $crate::MemArg } => visit_i64_store16
-    // I64Store32 { memarg: $crate::MemArg } => visit_i64_store32
-    // MemorySize { mem: u32 } => visit_memory_size
-    // MemoryGrow { mem: u32 } => visit_memory_grow
-    // I32Const { value: i32 } => visit_i32_const TODO
+    GlobalSet, global_set, None, vec![(DataType::U32, 1)], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Global_set"
+    I32Load, i32_load, Some(vec![DataType::U32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+    I64Load, i64_load, Some(vec![DataType::U32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+    F32Load, f32_load, Some(vec![DataType::U32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+    I32Load8S, i32_load8_s, Some(vec![DataType::U32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+    I32Load8U, i32_load8_u, Some(vec![DataType::U32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+    I32Load16S, i32_load16_s, Some(vec![DataType::U32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+    I32Load16U, i32_load16_u, Some(vec![DataType::U32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+    I64Load8S, i64_load8_s, Some(vec![DataType::U32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+    I64Load8U, i64_load8_u, Some(vec![DataType::U32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+    I64Load16S, i64_load16_s, Some(vec![DataType::U32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+    I64Load16U, i64_load16_u, Some(vec![DataType::U32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+    I64Load32S, i64_load32_s, Some(vec![DataType::U32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+    I64Load32U, i64_load32_u, Some(vec![DataType::U32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+    I32Store, i32_store, Some(vec![DataType::U32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
+    I64Store, i64_store, Some(vec![DataType::U32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
+    F32Store, f32_store, Some(vec![DataType::U32, DataType::F32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
+    F64Store, f64_store, Some(vec![DataType::U32, DataType::F64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
+    I32Store8, i32_store8, Some(vec![DataType::U32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
+    I32Store16, i32_store16, Some(vec![DataType::U32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
+    I64Store8, i64_store8, Some(vec![DataType::U32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
+    I64Store16, i64_store16, Some(vec![DataType::U32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
+    I64Store32, i64_store32, Some(vec![DataType::U32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
+    MemorySize, memory_size, Some(vec![]), vec![(DataType::U32, 1)], vec![], vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Size"
+    MemoryGrow, memory_grow, Some(vec![DataType::U32]), vec![(DataType::U32, 1)], vec![], vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Grow"
     I32Const, i32_const, Some(vec![]), vec![(DataType::I32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Const"
     I64Const, i64_const, Some(vec![]), vec![(DataType::I64, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Const"
-    // I64Const { value: i64 } => visit_i64_const TODO
-    // F32Const { value: $crate::Ieee32 } => visit_f32_const
-    // F64Const { value: $crate::Ieee64 } => visit_f64_const
-    // RefNull { hty: $crate::HeapType } => visit_ref_null
-    // RefIsNull => visit_ref_is_null
-    // RefFunc { function_index: u32 } => visit_ref_func
-    // RefEq => visit_ref_eq
-    // I32Eqz => visit_i32_eqz
-    // I32Eq => visit_i32_eq
-    // I32Ne => visit_i32_ne
-    // I32LtS => visit_i32_lt_s
-    // I32LtU => visit_i32_lt_u
-    // I32GtS => visit_i32_gt_s
-    // I32GtU => visit_i32_gt_u
-    // I32LeS => visit_i32_le_s
-    // I32LeU => visit_i32_le_u
-    // I32GeS => visit_i32_ge_s
-    // I32GeU => visit_i32_ge_u
-    // I64Eqz => visit_i64_eqz
-    // I64Eq => visit_i64_eq
-    // I64Ne => visit_i64_ne
-    // I64LtS => visit_i64_lt_s
-    // I64LtU => visit_i64_lt_u
-    // I64GtS => visit_i64_gt_s
-    // I64GtU => visit_i64_gt_u
-    // I64LeS => visit_i64_le_s
-    // I64LeU => visit_i64_le_u
-    // I64GeS => visit_i64_ge_s
-    // I64GeU => visit_i64_ge_u
-    // F32Eq => visit_f32_eq
-    // F32Ne => visit_f32_ne
-    // F32Lt => visit_f32_lt
-    // F32Gt => visit_f32_gt
-    // F32Le => visit_f32_le
-    // F32Ge => visit_f32_ge
-    // F64Eq => visit_f64_eq
-    // F64Ne => visit_f64_ne
-    // F64Lt => visit_f64_lt
-    // F64Gt => visit_f64_gt
-    // F64Le => visit_f64_le
-    // F64Ge => visit_f64_ge
-    // I32Clz => visit_i32_clz
-    // I32Ctz => visit_i32_ctz
-    // I32Popcnt => visit_i32_popcnt
-    // I32Add => visit_i32_add
-    // I32Sub => visit_i32_sub
-    // I32Mul => visit_i32_mul
-    // I32DivS => visit_i32_div_s
-    // I32DivU => visit_i32_div_u
-    // I32RemS => visit_i32_rem_s
-    // I32RemU => visit_i32_rem_u
-    // I32And => visit_i32_and
-    // I32Or => visit_i32_or
-    // I32Xor => visit_i32_xor
-    // I32Shl => visit_i32_shl
-    // I32ShrS => visit_i32_shr_s
-    // I32ShrU => visit_i32_shr_u
-    // I32Rotl => visit_i32_rotl
-    // I32Rotr => visit_i32_rotr
-    // I64Clz => visit_i64_clz
-    // I64Ctz => visit_i64_ctz
-    // I64Popcnt => visit_i64_popcnt
-    // I64Add => visit_i64_add
-    // I64Sub => visit_i64_sub
-    // I64Mul => visit_i64_mul
-    // I64DivS => visit_i64_div_s
-    // I64DivU => visit_i64_div_u
-    // I64RemS => visit_i64_rem_s
-    // I64RemU => visit_i64_rem_u
-    // I64And => visit_i64_and
-    // I64Or => visit_i64_or
-    // I64Xor => visit_i64_xor
-    // I64Shl => visit_i64_shl
-    // I64ShrS => visit_i64_shr_s
-    // I64ShrU => visit_i64_shr_u
-    // I64Rotl => visit_i64_rotl
-    // I64Rotr => visit_i64_rotr
-    // F32Abs => visit_f32_abs
-    // F32Neg => visit_f32_neg
-    // F32Ceil => visit_f32_ceil
-    // F32Floor => visit_f32_floor
-    // F32Trunc => visit_f32_trunc
-    // F32Nearest => visit_f32_nearest
-    // F32Sqrt => visit_f32_sqrt
-    // F32Add => visit_f32_add
-    // F32Sub => visit_f32_sub
-    // F32Mul => visit_f32_mul
-    // F32Div => visit_f32_div
-    // F32Min => visit_f32_min
-    // F32Max => visit_f32_max
-    // F32Copysign => visit_f32_copysign
-    // F64Abs => visit_f64_abs
-    // F64Neg => visit_f64_neg
-    // F64Ceil => visit_f64_ceil
-    // F64Floor => visit_f64_floor
-    // F64Trunc => visit_f64_trunc
-    // F64Nearest => visit_f64_nearest
-    // F64Sqrt => visit_f64_sqrt
-    // F64Add => visit_f64_add
-    // F64Sub => visit_f64_sub
-    // F64Mul => visit_f64_mul
-    // F64Div => visit_f64_div
-    // F64Min => visit_f64_min
-    // F64Max => visit_f64_max
-    // F64Copysign => visit_f64_copysign
-    // I32WrapI64 => visit_i32_wrap_i64
-    // I32TruncF32S => visit_i32_trunc_f32_s
-    // I32TruncF32U => visit_i32_trunc_f32_u
-    // I32TruncF64S => visit_i32_trunc_f64_s
-    // I32TruncF64U => visit_i32_trunc_f64_u
-    // I64ExtendI32S => visit_i64_extend_i32_s
-    // I64ExtendI32U => visit_i64_extend_i32_u
-    // I64TruncF32S => visit_i64_trunc_f32_s
-    // I64TruncF32U => visit_i64_trunc_f32_u
-    // I64TruncF64S => visit_i64_trunc_f64_s
-    // I64TruncF64U => visit_i64_trunc_f64_u
-    // F32ConvertI32S => visit_f32_convert_i32_s
-    // F32ConvertI32U => visit_f32_convert_i32_u
-    // F32ConvertI64S => visit_f32_convert_i64_s
-    // F32ConvertI64U => visit_f32_convert_i64_u
-    // F32DemoteF64 => visit_f32_demote_f64
-    // F64ConvertI32S => visit_f64_convert_i32_s
-    // F64ConvertI32U => visit_f64_convert_i32_u
-    // F64ConvertI64S => visit_f64_convert_i64_s
-    // F64ConvertI64U => visit_f64_convert_i64_u
-    // F64PromoteF32 => visit_f64_promote_f32
-    // I32ReinterpretF32 => visit_i32_reinterpret_f32
-    // I64ReinterpretF64 => visit_i64_reinterpret_f64
-    // F32ReinterpretI32 => visit_f32_reinterpret_i32
-    // F64ReinterpretI64 => visit_f64_reinterpret_i64
-    // I32Extend8S => visit_i32_extend8_s
-    // I32Extend16S => visit_i32_extend16_s
-    // I64Extend8S => visit_i64_extend8_s
-    // I64Extend16S => visit_i64_extend16_s
-    // I64Extend32S => visit_i64_extend32_s
-    //
-    // // 0xFB prefixed operators
-    // // Garbage Collection
-    // // http://github.com/WebAssembly/gc
-    // StructNew { struct_type_index: u32 } => visit_struct_new
-    // StructNewDefault { struct_type_index: u32 } => visit_struct_new_default
-    // StructGet { struct_type_index: u32, field_index: u32 } => visit_struct_get
-    // StructGetS { struct_type_index: u32, field_index: u32 } => visit_struct_get_s
-    // StructGetU { struct_type_index: u32, field_index: u32 } => visit_struct_get_u
-    // StructSet { struct_type_index: u32, field_index: u32 } => visit_struct_set
-    // ArrayNew { array_type_index: u32 } => visit_array_new
-    // ArrayNewDefault { array_type_index: u32 } => visit_array_new_default
-    // ArrayNewFixed { array_type_index: u32, array_size: u32 } => visit_array_new_fixed
-    // ArrayNewData { array_type_index: u32, array_data_index: u32 } => visit_array_new_data
-    // ArrayNewElem { array_type_index: u32, array_elem_index: u32 } => visit_array_new_elem
-    // ArrayGet { array_type_index: u32 } => visit_array_get
-    // ArrayGetS { array_type_index: u32 } => visit_array_get_s
-    // ArrayGetU { array_type_index: u32 } => visit_array_get_u
-    // ArraySet { array_type_index: u32 } => visit_array_set
-    // ArrayLen => visit_array_len
-    // ArrayFill { array_type_index: u32 } => visit_array_fill
-    // ArrayCopy { array_type_index_dst: u32, array_type_index_src: u32 } => visit_array_copy
-    // ArrayInitData { array_type_index: u32, array_data_index: u32 } => visit_array_init_data
-    // ArrayInitElem { array_type_index: u32, array_elem_index: u32 } => visit_array_init_elem
-    // RefTestNonNull { hty: $crate::HeapType } => visit_ref_test_non_null
-    // RefTestNullable { hty: $crate::HeapType } => visit_ref_test_nullable
-    // RefCastNonNull { hty: $crate::HeapType } => visit_ref_cast_non_null
-    // RefCastNullable { hty: $crate::HeapType } => visit_ref_cast_nullable
-    // BrOnCast { TODO
-    //     relative_depth: u32,
-    //     from_ref_type: $crate::RefType,
-    //     to_ref_type: $crate::RefType
-    // } => visit_br_on_cast
-    // BrOnCastFail { TODO
-    //     relative_depth: u32,
-    //     from_ref_type: $crate::RefType,
-    //     to_ref_type: $crate::RefType
-    // } => visit_br_on_cast_fail
-    // AnyConvertExtern => visit_any_convert_extern
-    // ExternConvertAny => visit_extern_convert_any
-    // RefI31 => visit_ref_i31
-    // I31GetS => visit_i31_get_s
-    // I31GetU => visit_i31_get_u
-    //
-    // // 0xFC operators
-    // // Non-trapping Float-to-int Conversions
-    // // https://github.com/WebAssembly/nontrapping-float-to-int-conversions
-    // I32TruncSatF32S => visit_i32_trunc_sat_f32_s
-    // I32TruncSatF32U => visit_i32_trunc_sat_f32_u
-    // I32TruncSatF64S => visit_i32_trunc_sat_f64_s
-    // I32TruncSatF64U => visit_i32_trunc_sat_f64_u
-    // I64TruncSatF32S => visit_i64_trunc_sat_f32_s
-    // I64TruncSatF32U => visit_i64_trunc_sat_f32_u
-    // I64TruncSatF64S => visit_i64_trunc_sat_f64_s
-    // I64TruncSatF64U => visit_i64_trunc_sat_f64_u
-    //
-    // // 0xFC prefixed operators
-    // // bulk memory operations
-    // // https://github.com/WebAssembly/bulk-memory-operations
-    // MemoryInit { data_index: u32, mem: u32 } => visit_memory_init
-    // DataDrop { data_index: u32 } => visit_data_drop
-    // MemoryCopy { dst_mem: u32, src_mem: u32 } => visit_memory_copy
-    // MemoryFill { mem: u32 } => visit_memory_fill
-    // TableInit { elem_index: u32, table: u32 } => visit_table_init
-    // ElemDrop { elem_index: u32 } => visit_elem_drop
-    // TableCopy { dst_table: u32, src_table: u32 } => visit_table_copy
-    //
-    // // 0xFC prefixed operators
-    // // reference-types
-    // // https://github.com/WebAssembly/reference-types
-    // TableFill { table: u32 } => visit_table_fill
-    // TableGet { table: u32 } => visit_table_get
-    // TableSet { table: u32 } => visit_table_set
-    // TableGrow { table: u32 } => visit_table_grow
-    // TableSize { table: u32 } => visit_table_size
-    //
-    // // OxFC prefixed operators
-    // // memory control (experimental)
-    // // https://github.com/WebAssembly/design/issues/1439
-    // MemoryDiscard { mem: u32 } => visit_memory_discard
-    //
-    // // 0xFE prefixed operators
-    // // threads
-    // // https://github.com/WebAssembly/threads
-    // MemoryAtomicNotify { memarg: $crate::MemArg } => visit_memory_atomic_notify
-    // MemoryAtomicWait32 { memarg: $crate::MemArg } => visit_memory_atomic_wait32
-    // MemoryAtomicWait64 { memarg: $crate::MemArg } => visit_memory_atomic_wait64
-    // AtomicFence => visit_atomic_fence
-    // I32AtomicLoad { memarg: $crate::MemArg } => visit_i32_atomic_load
-    // I64AtomicLoad { memarg: $crate::MemArg } => visit_i64_atomic_load
-    // I32AtomicLoad8U { memarg: $crate::MemArg } => visit_i32_atomic_load8_u
-    // I32AtomicLoad16U { memarg: $crate::MemArg } => visit_i32_atomic_load16_u
-    // I64AtomicLoad8U { memarg: $crate::MemArg } => visit_i64_atomic_load8_u
-    // I64AtomicLoad16U { memarg: $crate::MemArg } => visit_i64_atomic_load16_u
-    // I64AtomicLoad32U { memarg: $crate::MemArg } => visit_i64_atomic_load32_u
-    // I32AtomicStore { memarg: $crate::MemArg } => visit_i32_atomic_store
-    // I64AtomicStore { memarg: $crate::MemArg } => visit_i64_atomic_store
-    // I32AtomicStore8 { memarg: $crate::MemArg } => visit_i32_atomic_store8
-    // I32AtomicStore16 { memarg: $crate::MemArg } => visit_i32_atomic_store16
-    // I64AtomicStore8 { memarg: $crate::MemArg } => visit_i64_atomic_store8
-    // I64AtomicStore16 { memarg: $crate::MemArg } => visit_i64_atomic_store16
-    // I64AtomicStore32 { memarg: $crate::MemArg } => visit_i64_atomic_store32
-    // I32AtomicRmwAdd { memarg: $crate::MemArg } => visit_i32_atomic_rmw_add
-    // I64AtomicRmwAdd { memarg: $crate::MemArg } => visit_i64_atomic_rmw_add
-    // I32AtomicRmw8AddU { memarg: $crate::MemArg } => visit_i32_atomic_rmw8_add_u
-    // I32AtomicRmw16AddU { memarg: $crate::MemArg } => visit_i32_atomic_rmw16_add_u
-    // I64AtomicRmw8AddU { memarg: $crate::MemArg } => visit_i64_atomic_rmw8_add_u
-    // I64AtomicRmw16AddU { memarg: $crate::MemArg } => visit_i64_atomic_rmw16_add_u
-    // I64AtomicRmw32AddU { memarg: $crate::MemArg } => visit_i64_atomic_rmw32_add_u
-    // I32AtomicRmwSub { memarg: $crate::MemArg } => visit_i32_atomic_rmw_sub
-    // I64AtomicRmwSub { memarg: $crate::MemArg } => visit_i64_atomic_rmw_sub
-    // I32AtomicRmw8SubU { memarg: $crate::MemArg } => visit_i32_atomic_rmw8_sub_u
-    // I32AtomicRmw16SubU { memarg: $crate::MemArg } => visit_i32_atomic_rmw16_sub_u
-    // I64AtomicRmw8SubU { memarg: $crate::MemArg } => visit_i64_atomic_rmw8_sub_u
-    // I64AtomicRmw16SubU { memarg: $crate::MemArg } => visit_i64_atomic_rmw16_sub_u
-    // I64AtomicRmw32SubU { memarg: $crate::MemArg } => visit_i64_atomic_rmw32_sub_u
-    // I32AtomicRmwAnd { memarg: $crate::MemArg } => visit_i32_atomic_rmw_and
-    // I64AtomicRmwAnd { memarg: $crate::MemArg } => visit_i64_atomic_rmw_and
-    // I32AtomicRmw8AndU { memarg: $crate::MemArg } => visit_i32_atomic_rmw8_and_u
-    // I32AtomicRmw16AndU { memarg: $crate::MemArg } => visit_i32_atomic_rmw16_and_u
-    // I64AtomicRmw8AndU { memarg: $crate::MemArg } => visit_i64_atomic_rmw8_and_u
-    // I64AtomicRmw16AndU { memarg: $crate::MemArg } => visit_i64_atomic_rmw16_and_u
-    // I64AtomicRmw32AndU { memarg: $crate::MemArg } => visit_i64_atomic_rmw32_and_u
-    // I32AtomicRmwOr { memarg: $crate::MemArg } => visit_i32_atomic_rmw_or
-    // I64AtomicRmwOr { memarg: $crate::MemArg } => visit_i64_atomic_rmw_or
-    // I32AtomicRmw8OrU { memarg: $crate::MemArg } => visit_i32_atomic_rmw8_or_u
-    // I32AtomicRmw16OrU { memarg: $crate::MemArg } => visit_i32_atomic_rmw16_or_u
-    // I64AtomicRmw8OrU { memarg: $crate::MemArg } => visit_i64_atomic_rmw8_or_u
-    // I64AtomicRmw16OrU { memarg: $crate::MemArg } => visit_i64_atomic_rmw16_or_u
-    // I64AtomicRmw32OrU { memarg: $crate::MemArg } => visit_i64_atomic_rmw32_or_u
-    // I32AtomicRmwXor { memarg: $crate::MemArg } => visit_i32_atomic_rmw_xor
-    // I64AtomicRmwXor { memarg: $crate::MemArg } => visit_i64_atomic_rmw_xor
-    // I32AtomicRmw8XorU { memarg: $crate::MemArg } => visit_i32_atomic_rmw8_xor_u
-    // I32AtomicRmw16XorU { memarg: $crate::MemArg } => visit_i32_atomic_rmw16_xor_u
-    // I64AtomicRmw8XorU { memarg: $crate::MemArg } => visit_i64_atomic_rmw8_xor_u
-    // I64AtomicRmw16XorU { memarg: $crate::MemArg } => visit_i64_atomic_rmw16_xor_u
-    // I64AtomicRmw32XorU { memarg: $crate::MemArg } => visit_i64_atomic_rmw32_xor_u
-    // I32AtomicRmwXchg { memarg: $crate::MemArg } => visit_i32_atomic_rmw_xchg
-    // I64AtomicRmwXchg { memarg: $crate::MemArg } => visit_i64_atomic_rmw_xchg
-    // I32AtomicRmw8XchgU { memarg: $crate::MemArg } => visit_i32_atomic_rmw8_xchg_u
-    // I32AtomicRmw16XchgU { memarg: $crate::MemArg } => visit_i32_atomic_rmw16_xchg_u
-    // I64AtomicRmw8XchgU { memarg: $crate::MemArg } => visit_i64_atomic_rmw8_xchg_u
-    // I64AtomicRmw16XchgU { memarg: $crate::MemArg } => visit_i64_atomic_rmw16_xchg_u
-    // I64AtomicRmw32XchgU { memarg: $crate::MemArg } => visit_i64_atomic_rmw32_xchg_u
-    // I32AtomicRmwCmpxchg { memarg: $crate::MemArg } => visit_i32_atomic_rmw_cmpxchg
-    // I64AtomicRmwCmpxchg { memarg: $crate::MemArg } => visit_i64_atomic_rmw_cmpxchg
-    // I32AtomicRmw8CmpxchgU { memarg: $crate::MemArg } => visit_i32_atomic_rmw8_cmpxchg_u
-    // I32AtomicRmw16CmpxchgU { memarg: $crate::MemArg } => visit_i32_atomic_rmw16_cmpxchg_u
-    // I64AtomicRmw8CmpxchgU { memarg: $crate::MemArg } => visit_i64_atomic_rmw8_cmpxchg_u
-    // I64AtomicRmw16CmpxchgU { memarg: $crate::MemArg } => visit_i64_atomic_rmw16_cmpxchg_u
-    // I64AtomicRmw32CmpxchgU { memarg: $crate::MemArg } => visit_i64_atomic_rmw32_cmpxchg_u
-    //
-    // // Also 0xFE prefixed operators
-    // // shared-everything threads
-    // // https://github.com/WebAssembly/shared-everything-threads
+    F32Const, f32_const, Some(vec![]), vec![(DataType::F32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Const"
+    F64Const, f64_const, Some(vec![]), vec![(DataType::F64, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Const"
+    // TODO -- support pulling heaptype
+    //     RefNull { hty: $crate::HeapType } => visit_ref_null
+    RefNull, ref_null, Some(vec![]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+    // TODO -- support argN
+    RefIsNull, ref_is_null, None, vec![], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+    RefFunc, ref_func, Some(vec![]), vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+    RefEq, ref_eq, None, vec![], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+    I32Eqz, i32_eqz, Some(vec![DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Equal"
+    I32Eq, i32_eq, Some(vec![DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Equal"
+    I32Ne, i32_ne, Some(vec![DataType::I32, DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Not_equal"
+    I32LtS, i32_lt_s, Some(vec![DataType::I32, DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_than"
+    I32LtU, i32_lt_u, Some(vec![DataType::I32, DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_than"
+    I32GtS, i32_gt_s, Some(vec![DataType::I32, DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_than"
+    I32GtU, i32_gt_u, Some(vec![DataType::I32, DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_than"
+    I32LeS, i32_le_s, Some(vec![DataType::I32, DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_or_equal"
+    I32LeU, i32_le_u, Some(vec![DataType::I32, DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_or_equal"
+    I32GeS, i32_ge_s, Some(vec![DataType::I32, DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_or_equal"
+    I32GeU, i32_ge_u, Some(vec![DataType::I32, DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_or_equal"
+
+    I64Eqz, i64_eqz, Some(vec![DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Equal"
+    I64Eq, i64_eq, Some(vec![DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Equal"
+    I64Ne, i64_ne, Some(vec![DataType::I64, DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Not_equal"
+    I64LtS, i64_lt_s, Some(vec![DataType::I64, DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_than"
+    I64LtU, i64_lt_u, Some(vec![DataType::I64, DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_than"
+    I64GtS, i64_gt_s, Some(vec![DataType::I64, DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_than"
+    I64GtU, i64_gt_u, Some(vec![DataType::I64, DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_than"
+    I64LeS, i64_le_s, Some(vec![DataType::I64, DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_or_equal"
+    I64LeU, i64_le_u, Some(vec![DataType::I64, DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_or_equal"
+    I64GeS, i64_ge_s, Some(vec![DataType::I64, DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_or_equal"
+    I64GeU, i64_ge_u, Some(vec![DataType::I64, DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_or_equal"
+
+    F32Eq, f32_eq, Some(vec![DataType::F32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Equal"
+    F32Ne, f32_ne, Some(vec![DataType::F32, DataType::F32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Not_equal"
+    F32Lt, f32_lt, Some(vec![DataType::F32, DataType::F32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_than"
+    F32Gt, f32_gt, Some(vec![DataType::F32, DataType::F32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_than"
+    F32Le, f32_le, Some(vec![DataType::F32, DataType::F32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_or_equal"
+    F32Ge, f32_ge, Some(vec![DataType::F32, DataType::F32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_or_equal"
+
+    F64Eq, f64_eq, Some(vec![DataType::F64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Equal"
+    F64Ne, f64_ne, Some(vec![DataType::F64, DataType::F64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Not_equal"
+    F64Lt, f64_lt, Some(vec![DataType::F64, DataType::F64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_than"
+    F64Gt, f64_gt, Some(vec![DataType::F64, DataType::F64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_than"
+    F64Le, f64_le, Some(vec![DataType::F64, DataType::F64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_or_equal"
+    F64Ge, f64_ge, Some(vec![DataType::F64, DataType::F64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_or_equal"
+
+    I32Clz, i32_clz, Some(vec![DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Count_leading_zeros"
+    I32Ctz, i32_ctz, Some(vec![DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Count_trailing_zeros"
+    I32Popcnt, i32_popcnt, Some(vec![DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Population_count"
+    I32Add, i32_add, Some(vec![DataType::I32, DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Addition"
+    I32Sub, i32_sub, Some(vec![DataType::I32, DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Subtraction"
+    I32Mul, i32_mul, Some(vec![DataType::I32, DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Multiplication"
+    I32DivS, i32_div_s, Some(vec![DataType::I32, DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Division"
+    I32DivU, i32_div_u, Some(vec![DataType::I32, DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Division"
+    I32RemS, i32_rem_s, Some(vec![DataType::I32, DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Remainder"
+    I32RemU, i32_rem_u, Some(vec![DataType::I32, DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Remainder"
+    I32And, i32_and, Some(vec![DataType::I32, DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/AND"
+    I32Or, i32_or, Some(vec![DataType::I32, DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/OR"
+    I32Xor, i32_xor, Some(vec![DataType::I32, DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/XOR"
+    I32Shl, i32_shl, Some(vec![DataType::I32, DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Left_shift"
+    I32ShrS, i32_shr_s, Some(vec![DataType::I32, DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Right_shift"
+    I32ShrU, i32_shr_u, Some(vec![DataType::I32, DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Right_shift"
+    I32Rotl, i32_rotl, Some(vec![DataType::I32, DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Left_rotate"
+    I32Rotr, i32_rotr, Some(vec![DataType::I32, DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Right_rotate"
+
+    I64Clz, i64_clz, Some(vec![DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Count_leading_zeros"
+    I64Ctz, i64_ctz, Some(vec![DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Count_trailing_zeros"
+    I64Popcnt, i64_popcnt, Some(vec![DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Population_count"
+    I64Add, i64_add, Some(vec![DataType::I64, DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Addition"
+    I64Sub, i64_sub, Some(vec![DataType::I64, DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Subtraction"
+    I64Mul, i64_mul, Some(vec![DataType::I64, DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Multiplication"
+    I64DivS, i64_div_s, Some(vec![DataType::I64, DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Division"
+    I64DivU, i64_div_u, Some(vec![DataType::I64, DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Division"
+    I64RemS, i64_rem_s, Some(vec![DataType::I64, DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Remainder"
+    I64RemU, i64_rem_u, Some(vec![DataType::I64, DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Remainder"
+    I64And, i64_and, Some(vec![DataType::I64, DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/AND"
+    I64Or, i64_or, Some(vec![DataType::I64, DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/OR"
+    I64Xor, i64_xor, Some(vec![DataType::I64, DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/XOR"
+    I64Shl, i64_shl, Some(vec![DataType::I64, DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Left_shift"
+    I64ShrS, i64_shr_s, Some(vec![DataType::I64, DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Right_shift"
+    I64ShrU, i64_shr_u, Some(vec![DataType::I64, DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Right_shift"
+    I64Rotl, i64_rotl, Some(vec![DataType::I64, DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Left_rotate"
+    I64Rotr, i64_rotr, Some(vec![DataType::I64, DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Right_rotate"
+
+    F32Abs, f32_abs, Some(vec![DataType::F32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Absolute"
+    F32Neg, f32_neg, Some(vec![DataType::F32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Negate"
+    F32Ceil, f32_ceil, Some(vec![DataType::F32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Ceil"
+    F32Floor, f32_floor, Some(vec![DataType::F32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Floor"
+    F32Trunc, f32_trunc, Some(vec![DataType::F32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Truncate_float_to_float"
+    F32Nearest, f32_nearest, Some(vec![DataType::F32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Nearest"
+    F32Sqrt, f32_sqrt, Some(vec![DataType::F32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Square_root"
+    F32Add, f32_add, Some(vec![DataType::F32, DataType::F32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Addition"
+    F32Sub, f32_sub, Some(vec![DataType::F32, DataType::F32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Subtraction"
+    F32Mul, f32_mul, Some(vec![DataType::F32, DataType::F32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Multiplication"
+    F32Div, f32_div, Some(vec![DataType::F32, DataType::F32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Division"
+    F32Min, f32_min, Some(vec![DataType::F32, DataType::F32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Min"
+    F32Max, f32_max, Some(vec![DataType::F32, DataType::F32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Max"
+    F32Copysign, f32_copysign, Some(vec![DataType::F32, DataType::F32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Copy_sign"
+
+    F64Abs, f64_abs, Some(vec![DataType::F64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Absolute"
+    F64Neg, f64_neg, Some(vec![DataType::F64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Negate"
+    F64Ceil, f64_ceil, Some(vec![DataType::F64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Ceil"
+    F64Floor, f64_floor, Some(vec![DataType::F64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Floor"
+    F64Trunc, f64_trunc, Some(vec![DataType::F64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Truncate_float_to_float"
+    F64Nearest, f64_nearest, Some(vec![DataType::F64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Nearest"
+    F64Sqrt, f64_sqrt, Some(vec![DataType::F64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Square_root"
+    F64Add, f64_add, Some(vec![DataType::F64, DataType::F64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Addition"
+    F64Sub, f64_sub, Some(vec![DataType::F64, DataType::F64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Subtraction"
+    F64Mul, f64_mul, Some(vec![DataType::F64, DataType::F64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Multiplication"
+    F64Div, f64_div, Some(vec![DataType::F64, DataType::F64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Division"
+    F64Min, f64_min, Some(vec![DataType::F64, DataType::F64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Min"
+    F64Max, f64_max, Some(vec![DataType::F64, DataType::F64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Max"
+    F64Copysign, f64_copysign, Some(vec![DataType::F64, DataType::F64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Copy_sign"
+
+    I32WrapI64, i32_wrap_i64, Some(vec![DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Wrap"
+    I32TruncF32S, i32_trunc_f32_s, Some(vec![DataType::F32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Truncate_float_to_int"
+    I32TruncF32U, i32_trunc_f32_u, Some(vec![DataType::F32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Truncate_float_to_int"
+    I32TruncF64S, i32_trunc_f64_s, Some(vec![DataType::F64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Truncate_float_to_int"
+    I32TruncF64U, i32_trunc_f64_u, Some(vec![DataType::F64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Truncate_float_to_int"
+
+    I64ExtendI32S, i64_extend_i32_s, Some(vec![DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Extend"
+    I64ExtendI32U, i64_extend_i32_u, Some(vec![DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Extend"
+    I64TruncF32S, i64_trunc_f32_s, Some(vec![DataType::F32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Truncate_float_to_int"
+    I64TruncF32U, i64_trunc_f32_u, Some(vec![DataType::F32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Truncate_float_to_int"
+
+    F32ConvertI32S, f32_convert_i32_s, Some(vec![DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Convert"
+    F32ConvertI32U, f32_convert_i32_u, Some(vec![DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Convert"
+    F32ConvertI64S, f32_convert_i64_s, Some(vec![DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Convert"
+    F32ConvertI64U, f32_convert_i64_u, Some(vec![DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Convert"
+    F32DemoteF64, f32_demote_f64, Some(vec![DataType::F64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Demote"
+
+    F64ConvertI32S, f64_convert_i32_s, Some(vec![DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Convert"
+    F64ConvertI32U, f64_convert_i32_u, Some(vec![DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Convert"
+    F64ConvertI64S, f64_convert_i64_s, Some(vec![DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Convert"
+    F64ConvertI64U, f64_convert_i64_u, Some(vec![DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Convert"
+    F64PromoteF32, f64_promote_f32, Some(vec![DataType::F32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Promote"
+
+    I32ReinterpretF32, i32_reinterpret_f32, Some(vec![DataType::F32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Reinterpret"
+    I64ReinterpretF64, i64_reinterpret_f64, Some(vec![DataType::F64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Reinterpret"
+    F32ReinterpretI32, f32_reinterpret_i32, Some(vec![DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Reinterpret"
+    F64ReinterpretI64, f64_reinterpret_i64, Some(vec![DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Reinterpret"
+
+    I32Extend8S, i32_extend8_s, Some(vec![DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Extend"
+    I32Extend16S, i32_extend16_s, Some(vec![DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Extend"
+    I64Extend8S, i64_extend8_s, Some(vec![DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Extend"
+    I64Extend16S, i64_extend16_s, Some(vec![DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Extend"
+    I64Extend32S, i64_extend32_s, Some(vec![DataType::I64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Extend"
+
+    // 0xFB prefixed operators
+    // Garbage Collection
+    // http://github.com/WebAssembly/gc
+    StructNew, struct_new, None, vec![(DataType::U32, 1)], get_struct_globals(true, false), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    StructNewDefault, struct_new_default, Some(vec![]), vec![(DataType::U32, 1)], get_struct_globals(false, false), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    // TODO -- there's no support for this arg type at the moment
+    StructGet, struct_get, None, vec![(DataType::U32, 2)], get_struct_globals(true, true), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    // TODO -- there's no support for this arg type at the moment
+    StructGetS, struct_get_s, None, vec![(DataType::U32, 2)], get_struct_globals(true, true), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    // TODO -- there's no support for this arg type at the moment
+    StructGetU, struct_get_u, None, vec![(DataType::U32, 2)], get_struct_globals(true, true), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    // TODO -- there's no support for this arg type at the moment
+    StructSet, struct_set, None, vec![(DataType::U32, 2)], get_struct_globals(true, true), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+    ArrayNew, array_new, None, vec![(DataType::U32, 1)], get_array_globals(true, false), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    ArrayNewDefault, array_new_default, Some(vec![DataType::I32]), vec![(DataType::U32, 1)], get_array_globals(true, false), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    ArrayNewFixed, array_new_fixed, None, vec![(DataType::U32, 2)], get_array_globals(true, false), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    ArrayNewData, array_new_data, Some(vec![DataType::I32, DataType::I32]), vec![(DataType::U32, 2)], get_array_globals(true, false), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    ArrayNewElem, array_new_elem, Some(vec![DataType::I32, DataType::I32]), vec![(DataType::U32, 2)], get_array_globals(true, false), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    // TODO -- there's no support for this arg type at the moment
+    ArrayGet, array_get, None, vec![(DataType::U32, 1)], get_array_globals(true, true), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    ArrayGetS, array_get_s, None, vec![(DataType::U32, 1)], get_array_globals(true, true), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    ArrayGetU, array_get_u, None, vec![(DataType::U32, 1)], get_array_globals(true, true), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    ArraySet, array_set, None, vec![(DataType::U32, 1)], get_array_globals(true, true), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    ArrayLen, array_len, None, vec![(DataType::U32, 1)], get_array_globals(true, false), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    ArrayFill, array_fill, None, vec![(DataType::U32, 1)], get_array_globals(true, false), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    ArrayCopy, array_copy, None, vec![(DataType::U32, 2)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    ArrayInitData, array_init_data, None, vec![(DataType::U32, 2)], get_array_globals(true, false), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    ArrayInitElem, array_init_elem, None, vec![(DataType::U32, 2)], get_array_globals(true, false), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+    // TODO -- support immN and argN types
+    // RefTestNonNull, RefTestNullable
+    RefTest, ref_test, None, vec![], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    // TODO -- support immN and argN types
+    // RefCastNonNull, RefCastNullable
+    RefCast, ref_cast, None, vec![], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    // TODO -- support immN and argN types
+    BrOnCast, br_on_cast, None, vec![(DataType::U32, 1), (DataType::Unknown, 2)], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    BrOnCastFail, br_on_cast_fail, None, vec![(DataType::U32, 1), (DataType::Unknown, 2)], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    // TODO -- support argN types
+    AnyConvertExtern, any_convert_extern, None, vec![], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    // TODO -- support argN types
+    ExternConvertAny, extern_convert_any, None, vec![], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    RefI31, ref_i31, Some(vec![DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    // TODO -- support argN types
+    I31GetS, i31_get_s, None, vec![], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    // TODO -- support argN types
+    I31GetU, i31_get_u, None, vec![], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+    // 0xFC operators
+    // Non-trapping Float-to-int Conversions
+    // https://github.com/WebAssembly/nontrapping-float-to-int-conversions
+    I32TruncSatF32S, i32_trunc_sat_f32_s, Some(vec![DataType::F32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://pengowray.github.io/wasm-ops/"
+    I32TruncSatF32U, i32_trunc_sat_f32_u, Some(vec![DataType::F32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://pengowray.github.io/wasm-ops/"
+    I32TruncSatF64S, i32_trunc_sat_f64_s, Some(vec![DataType::F64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://pengowray.github.io/wasm-ops/"
+    I32TruncSatF64U, i32_trunc_sat_f64_u, Some(vec![DataType::F64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://pengowray.github.io/wasm-ops/"
+
+    I64TruncSatF32S, i64_trunc_sat_f32_s, Some(vec![DataType::F32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://pengowray.github.io/wasm-ops/"
+    I64TruncSatF32U, i64_trunc_sat_f32_u, Some(vec![DataType::F32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://pengowray.github.io/wasm-ops/"
+    I64TruncSatF64S, i64_trunc_sat_f64_s, Some(vec![DataType::F64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://pengowray.github.io/wasm-ops/"
+    I64TruncSatF64U, i64_trunc_sat_f64_u, Some(vec![DataType::F64]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://pengowray.github.io/wasm-ops/"
+
+    // 0xFC prefixed operators
+    // bulk memory operations
+    // https://github.com/WebAssembly/bulk-memory-operations
+    MemoryInit, memory_init, Some(vec![]), vec![(DataType::U32, 2)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://pengowray.github.io/wasm-ops/"
+    MemoryCopy, memory_copy, Some(vec![DataType::I32, DataType::I32, DataType::I32]), vec![(DataType::U32, 2)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Copy"
+    MemoryFill, memory_fill, Some(vec![DataType::I32, DataType::I32, DataType::I32]), vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Fill"
+    DataDrop, data_drop, Some(vec![]), vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://pengowray.github.io/wasm-ops/"
+
+    ElemDrop, elem_drop, Some(vec![]), vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://pengowray.github.io/wasm-ops/"
+    TableCopy, table_copy, Some(vec![DataType::I32, DataType::I32, DataType::I32]), vec![(DataType::U32, 2)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+    TableInit, table_init, Some(vec![DataType::I32, DataType::I32, DataType::I32]), vec![(DataType::U32, 2)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+
+    // 0xFC prefixed operators
+    // reference-types
+    // https://github.com/WebAssembly/reference-types
+    TableFill, table_fill, None, vec![(DataType::U32, 1)], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+    TableGet, table_get, Some(vec![DataType::I32]), vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+    TableSet, table_set, None, vec![(DataType::U32, 1)], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+    TableGrow, table_grow, None, vec![(DataType::U32, 1)], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+    TableSize, table_size, Some(vec![]), vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+
+    // 0xFE prefixed operators
+    // threads
+    // https://github.com/WebAssembly/threads
+    MemoryAtomicNotify, memory_atomic_notify, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    MemoryAtomicWait32, memory_atomic_wait32, Some(vec![DataType::I32, DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    MemoryAtomicWait64, memory_atomic_wait64, Some(vec![DataType::I32, DataType::I64, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    AtomicFence, atomic_fence, Some(vec![]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+    I32AtomicLoad, i32_atomic_load, Some(vec![DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicLoad, i64_atomic_load, Some(vec![DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicLoad8U, i32_atomic_load8_u, Some(vec![DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicLoad16U, i32_atomic_load16_u, Some(vec![DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicLoad8U, i64_atomic_load8_u, Some(vec![DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicLoad16U, i64_atomic_load16_u, Some(vec![DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicLoad32U, i64_atomic_load32_u, Some(vec![DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+    I32AtomicStore, i32_atomic_store, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicStore8, i32_atomic_store8, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicStore16, i32_atomic_store16, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicStore, i64_atomic_store, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicStore8, i64_atomic_store8, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicStore16, i64_atomic_store16, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicStore32, i64_atomic_store32, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+    I32AtomicRmwAdd, i32_atomic_rmw_add, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmw8AddU, i32_atomic_rmw8_add_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmw16AddU, i32_atomic_rmw16_add_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmwAdd, i64_atomic_rmw_add, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw8AddU, i64_atomic_rmw8_add_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw16AddU, i64_atomic_rmw16_add_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw32AddU, i64_atomic_rmw32_add_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+    I32AtomicRmwSub, i32_atomic_rmw_sub, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmw8SubU, i32_atomic_rmw8_sub_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmw16SubU, i32_atomic_rmw16_sub_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmwSub, i64_atomic_rmw_sub, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw8SubU, i64_atomic_rmw8_sub_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw16SubU, i64_atomic_rmw16_sub_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw32SubU, i64_atomic_rmw32_sub_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+    I32AtomicRmwAnd, i32_atomic_rmw_and, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmw8AndU, i32_atomic_rmw8_and_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmw16AndU, i32_atomic_rmw16_and_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmwAnd, i64_atomic_rmw_and, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw8AndU, i64_atomic_rmw8_and_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw16AndU, i64_atomic_rmw16_and_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw32AndU, i64_atomic_rmw32_and_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+    I32AtomicRmwOr, i32_atomic_rmw_or, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmw8OrU, i32_atomic_rmw8_or_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmw16OrU, i32_atomic_rmw16_or_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmwOr, i64_atomic_rmw_or, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw8OrU, i64_atomic_rmw8_or_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw16OrU, i64_atomic_rmw16_or_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw32OrU, i64_atomic_rmw32_or_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+    I32AtomicRmwXor, i32_atomic_rmw_xor, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmw8XorU, i32_atomic_rmw8_xor_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmw16XorU, i32_atomic_rmw16_xor_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmwXor, i64_atomic_rmw_xor, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw8XorU, i64_atomic_rmw8_xor_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw16XorU, i64_atomic_rmw16_xor_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw32XorU, i64_atomic_rmw32_xor_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+    I32AtomicRmwXchg, i32_atomic_rmw_xchg, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmw8XchgU, i32_atomic_rmw8_xchg_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmw16XchgU, i32_atomic_rmw16_xchg_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmwXchg, i64_atomic_rmw_xchg, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw8XchgU, i64_atomic_rmw8_xchg_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw16XchgU, i64_atomic_rmw16_xchg_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw32XchgU, i64_atomic_rmw32_xchg_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+    I32AtomicRmwCmpxchg, i32_atomic_rmw_cmpxchg, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmw8CmpxchgU, i32_atomic_rmw8_cmpxchg_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmw16CmpxchgU, i32_atomic_rmw16_cmpxchg_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmwCmpxchg, i64_atomic_rmw_cmpxchg, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw8CmpxchgU, i64_atomic_rmw8_cmpxchg_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw16CmpxchgU, i64_atomic_rmw16_cmpxchg_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw32CmpxchgU, i64_atomic_rmw32_cmpxchg_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+    // Typed Function references
+    CallRef, call_ref, None, vec![(DataType::U32, 1)], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+    ReturnCallRef, return_call_ref, None, vec![(DataType::U32, 1)], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+    RefAsNonNull, ref_as_non_null, None, vec![], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/function-references/Overview.md"
+    BrOnNull, br_on_null, None, vec![], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/function-references/Overview.md"
+    BrOnNonNull, br_on_non_null, None, vec![(DataType::U32, 1)], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/function-references/Overview.md"
+
+    // Also 0xFE prefixed operators
+    // shared-everything threads
+    // https://github.com/WebAssembly/shared-everything-threads
     // GlobalAtomicGet { ordering: $crate::Ordering, global_index: u32 } => visit_global_atomic_get
     // GlobalAtomicSet { ordering: $crate::Ordering, global_index: u32 } => visit_global_atomic_set
     // GlobalAtomicRmwAdd { ordering: $crate::Ordering, global_index: u32 } => visit_global_atomic_rmw_add
@@ -1645,13 +1676,6 @@ macro_rules! for_each_opcode {
     // I16x8RelaxedQ15mulrS => visit_i16x8_relaxed_q15mulr_s
     // I16x8RelaxedDotI8x16I7x16S => visit_i16x8_relaxed_dot_i8x16_i7x16_s
     // I32x4RelaxedDotI8x16I7x16AddS => visit_i32x4_relaxed_dot_i8x16_i7x16_add_s
-    //
-    // // Typed Function references
-    // CallRef { type_index: u32 } => visit_call_ref TODO
-    // ReturnCallRef { type_index: u32 } => visit_return_call_ref TODO
-    // RefAsNonNull => visit_ref_as_non_null
-    // BrOnNull { relative_depth: u32 } => visit_br_on_null TODO
-    // BrOnNonNull { relative_depth: u32 } => visit_br_on_non_null TODO
 }};}
 
 // ============================================
@@ -1702,6 +1726,79 @@ pub fn get_call_globals() -> HashMap<String, ProvidedGlobal> {
             true,
         ),
     );
+    globals.extend(get_unknown_args_globals());
+
+    globals
+}
+
+pub fn get_struct_globals(
+    include_args: bool,
+    include_field: bool,
+) -> HashMap<String, ProvidedGlobal> {
+    let mut globals = HashMap::new();
+    globals.insert(
+        "tid".to_string(),
+        ProvidedGlobal::new(
+            "tid".to_string(),
+            "The type ID of this struct.".to_string(),
+            DataType::U32,
+            true,
+        ),
+    );
+
+    if include_field {
+        globals.insert(
+            "field_idx".to_string(),
+            ProvidedGlobal::new(
+                "field_idx".to_string(),
+                "The index of the struct field being accessed.".to_string(),
+                DataType::U32,
+                true,
+            ),
+        );
+    }
+
+    if include_args {
+        globals.extend(get_unknown_args_globals());
+    }
+
+    globals
+}
+
+pub fn get_array_globals(include_args: bool, include_idx: bool) -> HashMap<String, ProvidedGlobal> {
+    let mut globals = HashMap::new();
+    globals.insert(
+        "tid".to_string(),
+        ProvidedGlobal::new(
+            "tid".to_string(),
+            "The type ID of this array.".to_string(),
+            DataType::U32,
+            true,
+        ),
+    );
+
+    if include_idx {
+        globals.insert(
+            "i".to_string(),
+            ProvidedGlobal::new(
+                "i".to_string(),
+                "The index of the array being accessed.".to_string(),
+                DataType::U32,
+                false,
+            ),
+        );
+    }
+
+    if include_args {
+        globals.extend(get_unknown_args_globals());
+    }
+
+    globals
+}
+
+pub fn get_unknown_args_globals() -> HashMap<String, ProvidedGlobal> {
+    let mut globals = HashMap::new();
+
     globals.insert(
         UNKNOWN_ARGS.to_string(),
         ProvidedGlobal::new(
@@ -1744,6 +1841,49 @@ pub fn get_call_fns() -> Vec<ProvidedFunction> {
         DataType::Tuple { ty_info: vec![] },
         true
     )]
+}
+
+pub fn get_memarg_globals() -> HashMap<String, ProvidedGlobal> {
+    let mut globals = HashMap::new();
+    globals.insert(
+        "align".to_string(),
+        ProvidedGlobal::new(
+            "align".to_string(),
+            "The alignment of the load.".to_string(),
+            DataType::U32,
+            true,
+        ),
+    );
+    globals.insert(
+        "offset".to_string(),
+        ProvidedGlobal::new(
+            "offset".to_string(),
+            "The static offset of the load's target address.".to_string(),
+            DataType::U64,
+            true,
+        ),
+    );
+    globals.insert(
+        "memory".to_string(),
+        ProvidedGlobal::new(
+            "memory".to_string(),
+            "The ID of memory to load from.".to_string(),
+            DataType::U32,
+            true,
+        ),
+    );
+    globals.insert(
+        "effective_addr".to_string(),
+        ProvidedGlobal::new(
+            "effective_addr".to_string(),
+            "The address in memory that will be loaded from, shorthand for: `arg0 + offset`"
+                .to_string(),
+            DataType::U32,
+            false,
+        ),
+    );
+
+    globals
 }
 
 pub fn get_br_table_globals() -> HashMap<String, ProvidedGlobal> {
