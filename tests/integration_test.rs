@@ -183,6 +183,15 @@ fn platform_dependent_wizard_tests() {
     run_core_suite("platform-dependent-wizard", processed_scripts, false, true)
 }
 
+#[test]
+fn instrument_with_paper_eval_branches_scripts() {
+    common::setup_logger();
+    let processed_scripts = common::setup_tests("paper_eval/branches");
+    assert!(!processed_scripts.is_empty());
+
+    run_core_suite("paper_eval-branches", processed_scripts, true, true)
+}
+
 // TODO -- merge the branch-monitor tests back together (after works on wizard)
 #[test]
 fn instrument_with_branch_monitor_scripts() {

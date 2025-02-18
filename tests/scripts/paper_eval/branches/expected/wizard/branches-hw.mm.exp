@@ -1,0 +1,9 @@
+============================= REPORT CSV FLUSH ================================
+id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)
+287, memaddr, taken, i32, i32, script0, 0:10, 0_wasm:opcode:br_if, 0
+314, memaddr, not_taken, i32, i32, script0, 0:10, 0_wasm:opcode:br_if, 1
+368, memaddr, taken, i32, i32, script0, 1:12, 0_wasm:opcode:br_if, 1
+395, memaddr, not_taken, i32, i32, script0, 1:12, 0_wasm:opcode:br_if, 3
+422, memaddr, taken, i32, i32, script0, 1:19, 0_wasm:opcode:br_if, 1
+449, memaddr, not_taken, i32, i32, script0, 1:19, 0_wasm:opcode:br_if, 2
+1, map_id, taken_branches, map<u32, u32>, i32, script0, 2:4, 1_wasm:opcode:br_table:before, 0->1;1->1;2->1
