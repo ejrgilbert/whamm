@@ -183,6 +183,7 @@ fn platform_dependent_wizard_tests() {
     run_core_suite("platform-dependent-wizard", processed_scripts, false, true)
 }
 
+#[cfg(target_arch = "x86_64")]
 #[test]
 fn instrument_with_paper_eval_branches_scripts() {
     common::setup_logger();

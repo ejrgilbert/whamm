@@ -10,11 +10,7 @@ wasm::br_if:before {
   }
 }
 
-wasm::br_table:before /
-    fid == 0 ||
-    fid == 1 ||
-    fid == 2
-/ {
+wasm::br_table:before {
   report unshared var taken_branches: map<u32, u32>;
 
   // which branch was taken?
