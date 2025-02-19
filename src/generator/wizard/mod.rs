@@ -46,7 +46,6 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         self.emit_needed_funcs(used_provided_funcs);
         self.emit_strings(strings_to_emit);
         self.visit_ast(ast);
-        self.emitter.memory_grow(); // account for emitted strings in memory
 
         self.emit_end_func(used_report_dts);
     }

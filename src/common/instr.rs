@@ -224,6 +224,7 @@ pub fn run(
             &mut err,
         );
     }
+
     // for debugging
     report_vars.print_metadata();
 
@@ -278,6 +279,8 @@ fn run_instr_wizard(
     };
     gen.run(wiz_ast, used_funcs, used_report_dts, used_strings);
 
+    // Bump the memory pages to account for used memory
+    mem_allocator.memory_grow(target_wasm);
     // Update the memory tracker global to point to the start of free memory
     mem_allocator.update_memory_global_ptr(target_wasm);
 }
@@ -347,6 +350,8 @@ fn run_instr_rewrite(
         }
     }
 
+    // Bump the memory pages to account for used memory
+    mem_allocator.memory_grow(target_wasm);
     // Update the memory tracker global to point to the start of free memory
     mem_allocator.update_memory_global_ptr(target_wasm);
 }
@@ -377,7 +382,6 @@ fn get_memory_allocator(target_wasm: &mut Module, create_new_mem: bool) -> Memor
     MemoryAllocator {
         mem_id,
         curr_mem_offset: 0,
-        required_initial_mem_size: 0,
         emitted_strings: HashMap::new(),
         mem_tracker_global,
         used_mem_checker_fid: None,

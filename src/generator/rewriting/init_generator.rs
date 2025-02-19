@@ -29,7 +29,6 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
         self.emitter.setup_module(self.err);
         // Generate globals and fns defined by `whamm` (this should modify the app_wasm)
         let is_success = self.visit_whamm(whamm);
-        self.emitter.memory_grow(); // account for emitted strings in memory
 
         is_success
     }

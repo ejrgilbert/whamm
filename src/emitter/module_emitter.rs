@@ -412,10 +412,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         }
     }
 
-    pub(crate) fn memory_grow(&mut self) {
-        self.mem_allocator.memory_grow(self.app_wasm);
-    }
-
     // =============================
     // ==== EMIT `global` LOGIC ====
     // =============================
