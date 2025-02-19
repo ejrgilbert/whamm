@@ -236,6 +236,7 @@ impl MemoryAllocator {
                 .end();
 
             let check_memsize_fid = check_memsize.finish_module(wasm);
+            wasm.set_fn_name(check_memsize_fid, "check_memsize".to_string());
             self.used_mem_checker_fid = Some(*check_memsize_fid);
         }
     }

@@ -1072,12 +1072,13 @@ impl ReportVars {
     fn flush_map(
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
-        _io_adapter: &mut IOAdapter,
+        io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
         err: &mut ErrorGen,
     ) {
         flush_fn.i32_load(*mem_arg);
         map_lib_adapter.call_print_map(flush_fn, err);
+        io_adapter.putln(flush_fn, err);
     }
 
     pub fn report_var_header_bytes() -> u32 {
