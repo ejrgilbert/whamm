@@ -881,7 +881,7 @@ pub fn get_i32i32i32tuple_i32(id: i32, key0: i32, key1: i32, key2: i32) -> i32 {
 pub fn print_map(id: i32) {
     let binding = MY_MAPS.lock().unwrap();
     if let Some(map) = binding.get(&id) {
-        println!("{}", map.dump_map())
+        print!("{}", map.dump_map())
     } else {
         panic!("Could not find map with ID: {}", id)
     }
