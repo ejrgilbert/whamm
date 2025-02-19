@@ -156,6 +156,8 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             };
 
             if let DataType::Map { .. } = ty {
+                // TODO -- this behavior doesn't seem right for wizard
+                //    The map_id would need to be dynamic...not statically known!
                 let map_id = ctx
                     .map_lib_adapter
                     .map_create(ty.clone(), injector, ctx.err);

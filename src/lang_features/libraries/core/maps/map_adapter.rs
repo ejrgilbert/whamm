@@ -47,25 +47,45 @@ impl MapLibAdapter {
     pub fn new() -> Self {
         let funcs = HashMap::from([
             // create map
+            ("create_i32_i32_with_id".to_string(), 0),
             ("create_i32_i32".to_string(), 0),
+            ("create_i32_bool_with_id".to_string(), 0),
             ("create_i32_bool".to_string(), 0),
+            ("create_i32_string_with_id".to_string(), 0),
             ("create_i32_string".to_string(), 0),
+            ("create_i32_tuple_with_id".to_string(), 0),
             ("create_i32_tuple".to_string(), 0),
+            ("create_i32_map_with_id".to_string(), 0),
             ("create_i32_map".to_string(), 0),
+            ("create_string_i32_with_id".to_string(), 0),
             ("create_string_i32".to_string(), 0),
+            ("create_string_bool_with_id".to_string(), 0),
             ("create_string_bool".to_string(), 0),
+            ("create_string_string_with_id".to_string(), 0),
             ("create_string_string".to_string(), 0),
+            ("create_string_tuple_with_id".to_string(), 0),
             ("create_string_tuple".to_string(), 0),
+            ("create_string_map_with_id".to_string(), 0),
             ("create_string_map".to_string(), 0),
+            ("create_bool_i32_with_id".to_string(), 0),
             ("create_bool_i32".to_string(), 0),
+            ("create_bool_bool_with_id".to_string(), 0),
             ("create_bool_bool".to_string(), 0),
+            ("create_bool_string_with_id".to_string(), 0),
             ("create_bool_string".to_string(), 0),
+            ("create_bool_tuple_with_id".to_string(), 0),
             ("create_bool_tuple".to_string(), 0),
+            ("create_bool_map_with_id".to_string(), 0),
             ("create_bool_map".to_string(), 0),
+            ("create_tuple_i32_with_id".to_string(), 0),
             ("create_tuple_i32".to_string(), 0),
+            ("create_tuple_bool_with_id".to_string(), 0),
             ("create_tuple_bool".to_string(), 0),
+            ("create_tuple_string_with_id".to_string(), 0),
             ("create_tuple_string".to_string(), 0),
+            ("create_tuple_tuple_with_id".to_string(), 0),
             ("create_tuple_tuple".to_string(), 0),
+            ("create_tuple_map_with_id".to_string(), 0),
             ("create_tuple_map".to_string(), 0),
             // insert map
             ("insert_i32_i32".to_string(), 0),
@@ -143,6 +163,17 @@ impl MapLibAdapter {
         map_id
     }
 
+    pub fn map_create_dynamic<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        ty: DataType,
+        func: &mut T,
+        err: &mut ErrorGen
+    ) {
+        // This variation of map_create doesn't know the ID statically
+        let func_name = self.create_map_fname_by_map_type(ty, true, err);
+        self.call(func_name.as_str(), func, err);
+    }
+
     pub fn print_map<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         &mut self,
         map_id: u32,
@@ -159,7 +190,7 @@ impl MapLibAdapter {
 
     fn create_map_internal(&mut self, map: DataType, err: &mut ErrorGen) -> (u32, String) {
         let map_id = self.next_map_id();
-        let func_name = self.create_map_fname_by_map_type(map, err);
+        let func_name = self.create_map_fname_by_map_type(map, false, err);
         (map_id, func_name)
     }
 
@@ -221,7 +252,7 @@ impl MapLibAdapter {
     }
 
     //The stuff that actually calls the emitter stuff
-    fn create_map_fname_by_map_type(&mut self, map: DataType, err: &mut ErrorGen) -> String {
+    fn create_map_fname_by_map_type(&mut self, map: DataType, is_dynamic: bool, err: &mut ErrorGen) -> String {
         let DataType::Map {
             key_ty: key,
             val_ty: val,
@@ -231,13 +262,18 @@ impl MapLibAdapter {
             return "invalid".to_string();
         };
 
-        self.map_create_fname(*key, *val, err)
+        self.map_create_fname(*key, *val, is_dynamic, err)
     }
-    fn map_create_fname(&mut self, key: DataType, val: DataType, err: &mut ErrorGen) -> String {
+    fn map_create_fname(&mut self, key: DataType, val: DataType, is_dynamic: bool, err: &mut ErrorGen) -> String {
         let key_name = Self::ty_to_str(true, &key, err);
         let val_name = Self::ty_to_str(true, &val, err);
+        let with_id = if !is_dynamic {
+            "_with_id"
+        } else {
+            ""
+        };
 
-        let fname = format!("create_{key_name}_{val_name}");
+        let fname = format!("create_{key_name}_{val_name}{with_id}");
         if self.funcs.contains_key(&fname) {
             fname
         } else {
