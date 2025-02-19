@@ -1,9 +1,9 @@
 ============================= REPORT CSV FLUSH ================================
 id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)
-273, memaddr, taken, i32, i32, script0, 0:10, 0_wasm:opcode:br_if, 0
-300, memaddr, not_taken, i32, i32, script0, 0:10, 0_wasm:opcode:br_if, 1
-327, memaddr, taken, i32, i32, script0, 1:12, 0_wasm:opcode:br_if, 1
-354, memaddr, not_taken, i32, i32, script0, 1:12, 0_wasm:opcode:br_if, 3
-381, memaddr, taken, i32, i32, script0, 1:19, 0_wasm:opcode:br_if, 1
-408, memaddr, not_taken, i32, i32, script0, 1:19, 0_wasm:opcode:br_if, 2
-435, memaddr, taken_branches, map<u32,u32>, i32, script0, 2:9, 1_wasm:opcode:br_table, 0->1;1->1;2->1
+272, memaddr, taken, i32, i32, script0, 0:10, 0_wasm:opcode:br_if, 0
+299, memaddr, not_taken, i32, i32, script0, 0:10, 0_wasm:opcode:br_if, 1
+326, memaddr, taken, i32, i32, script0, 1:12, 0_wasm:opcode:br_if, 1
+353, memaddr, not_taken, i32, i32, script0, 1:12, 0_wasm:opcode:br_if, 3
+380, memaddr, taken, i32, i32, script0, 1:19, 0_wasm:opcode:br_if, 1
+407, memaddr, not_taken, i32, i32, script0, 1:19, 0_wasm:opcode:br_if, 2
+434, memaddr, taken_branches, map<u32,u32>, i32, script0, 2:9, 1_wasm:opcode:br_table, 0->1;1->1;2->1
