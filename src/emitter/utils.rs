@@ -15,7 +15,7 @@ use orca_wasm::ir::types::{BlockType, DataType as OrcaType, InitExpr, Value as O
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::{MacroOpcode, Opcode};
 use orca_wasm::{Instructions, Module};
-use wasmparser::MemArg;
+
 // ==================================================================
 // ================ Emitter Helper Functions ========================
 // - Necessary to extract common logic between Emitter and InstrumentationVisitor.
