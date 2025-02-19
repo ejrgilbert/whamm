@@ -467,7 +467,7 @@ impl DataType {
                 yellow(true, "map".to_string(), buffer);
                 white(true, "<".to_string(), buffer);
                 key_ty.print(buffer);
-                white(true, ",".to_string(), buffer);
+                white(true, ", ".to_string(), buffer);
                 val_ty.print(buffer);
                 white(true, ">".to_string(), buffer);
             }
