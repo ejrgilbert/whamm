@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::rewriting::rules::Arg;
@@ -20,6 +19,7 @@ use orca_wasm::ir::types::{
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::Opcode;
 use orca_wasm::Instructions;
+use std::collections::HashSet;
 
 const UNEXPECTED_ERR_MSG: &str =
     "ModuleEmitter: Looks like you've found a bug...please report this behavior!";

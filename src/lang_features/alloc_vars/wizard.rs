@@ -212,28 +212,31 @@ impl UnsharedVarHandler {
         ty: &DataType,
         var_addr: &VarAddr,
         emitter: &mut ModuleEmitter,
-        err: &mut ErrorGen
+        err: &mut ErrorGen,
     ) {
-        match ty {
-            DataType::Map { .. } => {
-                let VarAddr::MemLoc {mem_id, var_offset, .. } = var_addr else {
-                    panic!("var_addr should be of type VarAddr::MemLoc, but was: {:?}", var_addr)
-                };
-                func.global_get(emitter.mem_allocator.mem_tracker_global);
-                emitter
-                    .map_lib_adapter
-                    .map_create_dynamic(ty.clone(), func, err);
+        if let DataType::Map { .. } = ty {
+            let VarAddr::MemLoc {
+                mem_id, var_offset, ..
+            } = var_addr
+            else {
+                panic!(
+                    "var_addr should be of type VarAddr::MemLoc, but was: {:?}",
+                    var_addr
+                )
+            };
+            func.global_get(emitter.mem_allocator.mem_tracker_global);
+            emitter
+                .map_lib_adapter
+                .map_create_dynamic(ty.clone(), func, err);
 
-                // the ID is now at ToS
-                // save at allocated map ID memory space
-                func.i32_store(MemArg {
-                    align: 0,
-                    max_align: 0,
-                    offset: *var_offset as u64,
-                    memory: *mem_id
-                });
-            }
-            _ => {} // ignore other datatypes for now
+            // the ID is now at ToS
+            // save at allocated map ID memory space
+            func.i32_store(MemArg {
+                align: 0,
+                max_align: 0,
+                offset: *var_offset as u64,
+                memory: *mem_id,
+            });
         }
     }
 

@@ -262,7 +262,15 @@ impl ReportVars {
         // print the in-memory variables
         // TODO -- can I combine this with the other logic instead?
         io_adapter.putsln(header_info.0, header_info.1, func, err);
-        self.call_dt_flushers(func, mem_allocator, io_adapter, map_lib_adapter, mem_id, wasm, err);
+        self.call_dt_flushers(
+            func,
+            mem_allocator,
+            io_adapter,
+            map_lib_adapter,
+            mem_id,
+            wasm,
+            err,
+        );
 
         // print the global variables
         self.emit_globals_flush(func, var_meta, io_adapter, map_lib_adapter, err);
@@ -344,43 +352,53 @@ impl ReportVars {
                     func.call(FunctionID(fid));
                 }
                 DataType::U16 => {
-                    let fid = self.emit_flush_u16_fn(io_adapter, map_lib_adapter, mem_id, wasm, err);
+                    let fid =
+                        self.emit_flush_u16_fn(io_adapter, map_lib_adapter, mem_id, wasm, err);
                     func.call(FunctionID(fid));
                 }
                 DataType::I16 => {
-                    let fid = self.emit_flush_i16_fn(io_adapter, map_lib_adapter, mem_id, wasm, err);
+                    let fid =
+                        self.emit_flush_i16_fn(io_adapter, map_lib_adapter, mem_id, wasm, err);
                     func.call(FunctionID(fid));
                 }
                 DataType::U32 => {
-                    let fid = self.emit_flush_u32_fn(io_adapter, map_lib_adapter, mem_id, wasm, err);
+                    let fid =
+                        self.emit_flush_u32_fn(io_adapter, map_lib_adapter, mem_id, wasm, err);
                     func.call(FunctionID(fid));
                 }
                 DataType::I32 => {
-                    let fid = self.emit_flush_i32_fn(io_adapter, map_lib_adapter, mem_id, wasm, err);
+                    let fid =
+                        self.emit_flush_i32_fn(io_adapter, map_lib_adapter, mem_id, wasm, err);
                     func.call(FunctionID(fid));
                 }
                 DataType::U64 => {
-                    let fid = self.emit_flush_u64_fn(io_adapter, map_lib_adapter, mem_id, wasm, err);
+                    let fid =
+                        self.emit_flush_u64_fn(io_adapter, map_lib_adapter, mem_id, wasm, err);
                     func.call(FunctionID(fid));
                 }
                 DataType::I64 => {
-                    let fid = self.emit_flush_i64_fn(io_adapter, map_lib_adapter, mem_id, wasm, err);
+                    let fid =
+                        self.emit_flush_i64_fn(io_adapter, map_lib_adapter, mem_id, wasm, err);
                     func.call(FunctionID(fid));
                 }
                 DataType::F32 => {
-                    let fid = self.emit_flush_f32_fn(io_adapter, map_lib_adapter, mem_id, wasm, err);
+                    let fid =
+                        self.emit_flush_f32_fn(io_adapter, map_lib_adapter, mem_id, wasm, err);
                     func.call(FunctionID(fid));
                 }
                 DataType::F64 => {
-                    let fid = self.emit_flush_f64_fn(io_adapter, map_lib_adapter, mem_id, wasm, err);
+                    let fid =
+                        self.emit_flush_f64_fn(io_adapter, map_lib_adapter, mem_id, wasm, err);
                     func.call(FunctionID(fid));
                 }
                 DataType::Boolean => {
-                    let fid = self.emit_flush_bool_fn(io_adapter, map_lib_adapter, mem_id, wasm, err);
+                    let fid =
+                        self.emit_flush_bool_fn(io_adapter, map_lib_adapter, mem_id, wasm, err);
                     func.call(FunctionID(fid));
                 }
                 DataType::Map { .. } => {
-                    let fid = self.emit_flush_map_fn(dt, io_adapter, map_lib_adapter, mem_id, wasm, err);
+                    let fid =
+                        self.emit_flush_map_fn(dt, io_adapter, map_lib_adapter, mem_id, wasm, err);
                     func.call(FunctionID(fid));
                 }
                 dt => {
@@ -527,20 +545,13 @@ impl ReportVars {
         io_adapter.puts(addr, len, &mut flush_fn, err);
 
         // print 'whamm_type' per supported report variable datatype
-        assert!(self.all_used_report_dts.len() > 0);
+        assert!(!self.all_used_report_dts.is_empty());
         let mut first = true;
         for ty in self.all_used_report_dts.iter() {
             if !first {
                 flush_fn.else_stmt();
             }
-            Self::flush_ty_metadata(
-                &mut flush_fn,
-                ty,
-                &dt,
-                mem_allocator,
-                io_adapter,
-                err,
-            );
+            Self::flush_ty_metadata(&mut flush_fn, ty, &dt, mem_allocator, io_adapter, err);
             first = false;
         }
         // All other datatypes should dynamically trap
@@ -614,7 +625,13 @@ impl ReportVars {
     // ==== Flush functions per datatype ====
     fn emit_flush_fn(
         &self,
-        flush_dt: &dyn Fn(&mut FunctionBuilder, &MemArg, &mut IOAdapter, &mut MapLibAdapter, &mut ErrorGen),
+        flush_dt: &dyn Fn(
+            &mut FunctionBuilder,
+            &MemArg,
+            &mut IOAdapter,
+            &mut MapLibAdapter,
+            &mut ErrorGen,
+        ),
         dt: DataType,
         io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
@@ -732,7 +749,15 @@ impl ReportVars {
         wasm: &mut Module,
         err: &mut ErrorGen,
     ) -> u32 {
-        self.emit_flush_fn(&Self::flush_u8, DataType::U8, io_adapter, map_lib_adapter, mem_id, wasm, err)
+        self.emit_flush_fn(
+            &Self::flush_u8,
+            DataType::U8,
+            io_adapter,
+            map_lib_adapter,
+            mem_id,
+            wasm,
+            err,
+        )
     }
 
     fn flush_u8(
@@ -755,7 +780,15 @@ impl ReportVars {
         wasm: &mut Module,
         err: &mut ErrorGen,
     ) -> u32 {
-        self.emit_flush_fn(&Self::flush_i8, DataType::I8, io_adapter, map_lib_adapter, mem_id, wasm, err)
+        self.emit_flush_fn(
+            &Self::flush_i8,
+            DataType::I8,
+            io_adapter,
+            map_lib_adapter,
+            mem_id,
+            wasm,
+            err,
+        )
     }
 
     fn flush_i8(
@@ -1065,7 +1098,7 @@ impl ReportVars {
             map_lib_adapter,
             mem_id,
             wasm,
-            err
+            err,
         )
     }
 

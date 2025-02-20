@@ -1,5 +1,5 @@
 wasm:opcode:call(arg0: i32):before /
-    fid == 3
+    fid == 5
 / {
     report var count: u32;
     if (arg0 == 0) {

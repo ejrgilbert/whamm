@@ -248,7 +248,7 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_> {
         if !self.curr_instr_args.is_empty() {
             // The current instruction has args, save them (before)
             self.emitter.before();
-            self.emitter.save_args(&self.curr_instr_args)
+            self.emitter.save_args(&self.curr_instr_args, self.err)
         } else {
             // If no args, just return true
             true

@@ -103,10 +103,10 @@ fn probe_factory(
 #[derive(Clone, PartialEq, Debug)]
 pub struct Arg {
     pub name: String,
-    pub ty: OrcaType,
+    pub ty: Option<OrcaType>,
 }
 impl Arg {
-    fn new(name: String, ty: OrcaType) -> Self {
+    fn new(name: String, ty: Option<OrcaType>) -> Self {
         Self { name, ty }
     }
 }
@@ -474,27 +474,27 @@ impl WhammProvider {
 impl Provider for WhammProvider {
     fn get_loc_info(&self, app_wasm: &Module, loc: Location, instr: &Operator) -> Option<LocInfo> {
         let mut loc_info = LocInfo::new();
+        let (fid, pc, fname) = match loc {
+            Location::Module {
+                func_idx,
+                instr_idx,
+            }
+            | Location::Component {
+                func_idx,
+                instr_idx,
+                ..
+            } => {
+                let mut fname = String::default();
+                let name = app_wasm.functions.get_name(func_idx).as_ref();
+                if let Some(name) = name {
+                    fname = name.clone();
+                }
+                (func_idx, instr_idx, fname)
+            }
+        };
+
         match self.kind {
             WhammProviderKind::Wasm => {
-                let (fid, pc, fname) = match loc {
-                    Location::Module {
-                        func_idx,
-                        instr_idx,
-                    }
-                    | Location::Component {
-                        func_idx,
-                        instr_idx,
-                        ..
-                    } => {
-                        let mut fname = String::default();
-                        let name = app_wasm.functions.get_name(func_idx).as_ref();
-                        if let Some(name) = name {
-                            fname = name.clone();
-                        }
-                        (func_idx, instr_idx, fname)
-                    }
-                };
-
                 // if *fid == 30 {
                 //     println!("we're here!!")
                 // }
@@ -525,7 +525,7 @@ impl Provider for WhammProvider {
         }
 
         // Make sure we have arg symbol data to save off params in the behavior tree for all cases!
-        loc_info.args = OpcodeEvent::get_ty_info_for_instr(app_wasm, instr).0;
+        loc_info.args = OpcodeEvent::get_ty_info_for_instr(app_wasm, &fid, instr).0;
 
         // Get location info from the rest of the configured rules
         self.packages.iter().for_each(|package| {

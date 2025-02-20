@@ -344,8 +344,12 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         };
 
         match map_addr {
-            VarAddr::MapId { addr } => { injector.u32_const(addr); },
-            VarAddr::Local { addr } => { injector.local_get(LocalID(addr)); },
+            VarAddr::MapId { addr } => {
+                injector.u32_const(addr);
+            }
+            VarAddr::Local { addr } => {
+                injector.local_get(LocalID(addr));
+            }
             VarAddr::MemLoc {
                 mem_id,
                 ty,
@@ -1933,8 +1937,12 @@ fn emit_map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             return match get_map_info(name, ctx) {
                 Some((map_addr, key_ty, val_ty)) => {
                     match map_addr {
-                        VarAddr::MapId { addr } => { injector.u32_const(addr); },
-                        VarAddr::Local { addr } => { injector.local_get(LocalID(addr)); },
+                        VarAddr::MapId { addr } => {
+                            injector.u32_const(addr);
+                        }
+                        VarAddr::Local { addr } => {
+                            injector.local_get(LocalID(addr));
+                        }
                         VarAddr::MemLoc {
                             mem_id,
                             ty,

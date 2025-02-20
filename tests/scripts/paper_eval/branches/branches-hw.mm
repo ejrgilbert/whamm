@@ -1,4 +1,5 @@
-wasm::br_if:before {
+// Matches _if and br_if events
+wasm::*_if:before {
   report unshared var taken: i32;
   report unshared var not_taken: i32;
 
@@ -19,4 +20,16 @@ wasm::br_table:before {
 
   // count stores an array of counters
   taken_branches[index]++;
+}
+
+wasm::select(arg0: i32, arg1: i32, arg2: i32):before {
+  report unshared var selected_first: u32;
+  report unshared var selected_second: u32;
+
+  // which branch was taken?
+  if (arg2 != 0) {
+    selected_first++;
+  } else {
+    selected_second++;
+  }
 }

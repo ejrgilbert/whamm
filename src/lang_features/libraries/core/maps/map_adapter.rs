@@ -167,7 +167,7 @@ impl MapLibAdapter {
         &mut self,
         ty: DataType,
         func: &mut T,
-        err: &mut ErrorGen
+        err: &mut ErrorGen,
     ) {
         // This variation of map_create doesn't know the ID statically
         let func_name = self.create_map_fname_by_map_type(ty, true, err);
@@ -252,7 +252,12 @@ impl MapLibAdapter {
     }
 
     //The stuff that actually calls the emitter stuff
-    fn create_map_fname_by_map_type(&mut self, map: DataType, is_dynamic: bool, err: &mut ErrorGen) -> String {
+    fn create_map_fname_by_map_type(
+        &mut self,
+        map: DataType,
+        is_dynamic: bool,
+        err: &mut ErrorGen,
+    ) -> String {
         let DataType::Map {
             key_ty: key,
             val_ty: val,
@@ -264,14 +269,16 @@ impl MapLibAdapter {
 
         self.map_create_fname(*key, *val, is_dynamic, err)
     }
-    fn map_create_fname(&mut self, key: DataType, val: DataType, is_dynamic: bool, err: &mut ErrorGen) -> String {
+    fn map_create_fname(
+        &mut self,
+        key: DataType,
+        val: DataType,
+        is_dynamic: bool,
+        err: &mut ErrorGen,
+    ) -> String {
         let key_name = Self::ty_to_str(true, &key, err);
         let val_name = Self::ty_to_str(true, &val, err);
-        let with_id = if !is_dynamic {
-            "_with_id"
-        } else {
-            ""
-        };
+        let with_id = if !is_dynamic { "_with_id" } else { "" };
 
         let fname = format!("create_{key_name}_{val_name}{with_id}");
         if self.funcs.contains_key(&fname) {
