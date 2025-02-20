@@ -20,7 +20,6 @@ const UNEXPECTED_ERR_MSG: &str =
 pub struct MemoryAllocator {
     pub mem_id: u32,
     pub curr_mem_offset: usize,
-    pub required_initial_mem_size: u64,
     // Constant pool for strings emitted thus far
     pub emitted_strings: HashMap<String, StringAddr>,
 
@@ -237,6 +236,7 @@ impl MemoryAllocator {
                 .end();
 
             let check_memsize_fid = check_memsize.finish_module(wasm);
+            wasm.set_fn_name(check_memsize_fid, "check_memsize".to_string());
             self.used_mem_checker_fid = Some(*check_memsize_fid);
         }
     }
@@ -334,12 +334,11 @@ impl MemoryAllocator {
 
     pub(crate) fn memory_grow(&mut self, wasm: &mut Module) {
         // If we've allocated any memory, bump the app's memory up to account for that
-
-        // TODO -- this doesn't actually increase the required_initial_mem_size at any point
         if !self.emitted_strings.is_empty() {
             if let Some(mem) = wasm.memories.get_mut(MemoryID(self.mem_id)) {
-                if mem.ty.initial < self.required_initial_mem_size {
-                    mem.ty.initial = self.required_initial_mem_size;
+                let req_pages = ((self.curr_mem_offset as u32 / WASM_PAGE_SIZE) + 1) as u64;
+                if mem.ty.initial < req_pages {
+                    mem.ty.initial = req_pages;
                 }
             }
         }

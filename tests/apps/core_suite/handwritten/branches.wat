@@ -59,6 +59,24 @@
         end
         i32.const 2
     )
+    (func $if_stmt (param i32) (result i32)
+        (if (i32.eq (local.get 0) (i32.const 1))
+            (then
+                ;; they are equal, return '1'
+                i32.const 1
+                return
+            )
+            (else
+                ;; they are not equal, return '0'
+                i32.const 0
+                return
+            )
+        )
+        i32.const 0
+    )
+    (func $select_stmt (param i32) (result i32)
+        (select (i32.const 1) (i32.const 0) (i32.eqz (local.get 0)))
+    )
 
     (func $main (export "main")
         (call $basic_br (i32.const 0))
@@ -84,6 +102,10 @@
         (call $br_table (i32.const 1))
         drop
         (call $br_table (i32.const 2))
+        drop
+        (call $if_stmt (i32.const 0))
+        drop
+        (call $select_stmt (i32.const 0))
         drop
     )
 

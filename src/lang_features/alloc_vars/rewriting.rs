@@ -52,6 +52,7 @@ impl UnsharedVarHandler {
         if let DataType::Map { .. } = ty {
             // should already be handled!
             // See VisitingEmitter::emit_body
+            report_vars.all_used_report_dts.insert(ty.clone());
             return true;
         }
         match addr {

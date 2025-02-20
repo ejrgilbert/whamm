@@ -18,6 +18,7 @@ use crate::parser::rules::UNKNOWN_IMMS;
 use crate::parser::types::{Block, DataType, Definition, Expr, NumLit, RulePart, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use itertools::Itertools;
+use log::warn;
 use orca_wasm::ir::function::FunctionBuilder;
 use orca_wasm::ir::id::{FunctionID, LocalID, TypeID};
 use orca_wasm::ir::module::Module;
@@ -26,6 +27,7 @@ use orca_wasm::iterator::iterator_trait::{IteratingInstrumenter, Iterator as Orc
 use orca_wasm::iterator::module_iterator::ModuleIterator;
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::{Instrumenter, Opcode};
+use orca_wasm::Location;
 use std::iter::Iterator;
 
 const UNEXPECTED_ERR_MSG: &str =
@@ -175,7 +177,9 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         is_success
     }
 
-    pub(crate) fn save_args(&mut self, args: &[Arg]) -> bool {
+    pub(crate) fn save_args(&mut self, args: &[Arg], err: &mut ErrorGen) -> bool {
+        // TODO -- reuse locals!
+
         // No opcodes should have been emitted in the module yet!
         // So, we can just save off the first * items in the stack as the args
         // to the call.
@@ -187,8 +191,29 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                  name: arg_name,
                  ty: arg_ty,
              }| {
+                let ty = if let Some(ty) = arg_ty {
+                    *ty
+                } else {
+                    warn!("The current way that probes with polymorphic argument types is supported for the bytecode rewriting target is incomplete.\
+                           In a future version, we need to have a virtual stack on the side to compute the actual argument type and compare with the \
+                           argument bounds of the probe to see if the location is a map. For now, it may generate invalid instrumented modules!");
+                    let Some(Record::Var {
+                                 ty,
+                                 ..
+                             }) = self.table.lookup_var(arg_name, &None, err, true)
+                    else {
+                        err.unexpected_error(true, Some("unexpected type".to_string()), None);
+                        return;
+                    };
+                    let wasm_ty = if ty.to_wasm_type().len() > 1 {
+                        unimplemented!()
+                    } else {
+                        *ty.to_wasm_type().first().unwrap()
+                    };
+                    wasm_ty
+                };
                 // create local for the param in the module
-                let arg_local_id = self.app_iter.add_local(*arg_ty);
+                let arg_local_id = self.app_iter.add_local(ty);
                 arg_locals.push((arg_name.to_string(), *arg_local_id));
             },
         );
@@ -377,8 +402,13 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         // The consequent and alternate blocks must have the same type...
         // this means that the result of the `if` should be the same as
         // the result of the original instruction!
+        let (curr_loc, _) = self.app_iter.curr_loc();
+        let fid = match curr_loc {
+            Location::Module { func_idx, .. } | Location::Component { func_idx, .. } => func_idx,
+        };
         let orig_ty_id = OpcodeEvent::get_ty_info_for_instr(
             self.app_iter.module,
+            &fid,
             self.app_iter.curr_op().unwrap(),
         )
         .1;

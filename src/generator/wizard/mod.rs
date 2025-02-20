@@ -46,9 +46,8 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         self.emit_needed_funcs(used_provided_funcs);
         self.emit_strings(strings_to_emit);
         self.visit_ast(ast);
-        self.emitter.memory_grow(); // account for emitted strings in memory
 
-        self.emit_end_func(!used_report_dts.is_empty());
+        self.emit_end_func(used_report_dts);
     }
 
     fn emit_strings(&mut self, strings_to_emit: Vec<String>) {
@@ -83,9 +82,9 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         }
     }
 
-    fn emit_end_func(&mut self, flush_reports: bool) {
+    fn emit_end_func(&mut self, used_report_dts: HashSet<DataType>) {
         self.emitter
-            .emit_end_fn(flush_reports, self.io_adapter, self.err);
+            .emit_end_fn(used_report_dts, self.io_adapter, self.err);
     }
 
     // Visit the AST
