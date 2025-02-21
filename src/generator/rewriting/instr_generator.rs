@@ -2,8 +2,9 @@ use crate::common::error::ErrorGen;
 use crate::emitter::rewriting::rules::{provider_factory, Arg, LocInfo, ProbeRule, WhammProvider};
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::Emitter;
+use crate::generator::ast::Probe;
 use crate::generator::folding::ExprFolder;
-use crate::generator::rewriting::simple_ast::{SimpleAST};
+use crate::generator::rewriting::simple_ast::SimpleAST;
 use crate::lang_features::report_vars::{BytecodeLoc, LocationData};
 use crate::parser::rules::core::WhammModeKind;
 use crate::parser::types::{Block, Expr, Value};
@@ -11,7 +12,6 @@ use orca_wasm::iterator::iterator_trait::Iterator;
 use orca_wasm::Location as OrcaLocation;
 use std::collections::HashMap;
 use std::iter::Iterator as StdIter;
-use crate::generator::ast::Probe;
 
 const UNEXPECTED_ERR_MSG: &str =
     "InstrGenerator: Looks like you've found a bug...please report this behavior!";
@@ -55,12 +55,16 @@ pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> {
     curr_probe_mode: WhammModeKind,
     /// The current probe's body and predicate
     curr_probe: Option<(Option<Block>, Option<Expr>)>,
+
+    /// Whether there are reports to flush at the end of execution
+    has_reports: bool,
 }
 impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> {
     pub fn new(
         emitter: VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g>,
         ast: SimpleAST,
         err: &'h mut ErrorGen,
+        has_reports: bool,
     ) -> Self {
         Self {
             emitter,
@@ -68,7 +72,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
             err,
             curr_instr_args: vec![],
             curr_probe_mode: WhammModeKind::Begin,
-            curr_probe: None
+            curr_probe: None,
+            has_reports,
         }
     }
 
@@ -124,6 +129,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
                             .emitter
                             .enter_scope_via_rule(&probe.script_id.to_string(), probe_rule));
 
+                        // TODO -- should use whammparam here!
                         // Initialize the symbol table with the metadata at this program point
                         add_to_table(&loc_info.static_data, &mut self.emitter, self.err);
 
@@ -158,12 +164,13 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
                 }
             });
         }
+        is_success &= self.after_run();
         is_success
     }
     fn set_curr_loc(&mut self, probe_rule: &ProbeRule, probe: &Probe) {
         let curr_script_id = probe.script_id;
         // todo -- this clone is bad
-        // TODO -- refactor to use new probe!
+        self.emitter.curr_unshared = probe.unshared_to_alloc.clone();
         // self.emitter.curr_unshared = probe.num_unshared.clone();
         // self.emitter.maps_unshared = probe.maps_unshared.clone();
         let probe_rule_str = probe_rule.to_string();
@@ -340,5 +347,10 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_> {
         } else {
             false
         }
+    }
+    fn after_run(&mut self) -> bool {
+        self.emitter
+            .configure_flush_routines(self.has_reports, self.err);
+        true
     }
 }

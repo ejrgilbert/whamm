@@ -8,6 +8,7 @@ use crate::emitter::InjectStrategy;
 use crate::generator::metadata_collector::MetadataCollector;
 use crate::generator::rewriting::init_generator::InitGenerator;
 use crate::generator::rewriting::instr_generator::InstrGenerator;
+use crate::generator::rewriting::simple_ast::build_simple_ast;
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::io::IOPackage;
@@ -27,7 +28,6 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::exit;
 use wasmparser::MemoryType;
-use crate::generator::rewriting::simple_ast::build_simple_ast;
 
 /// create output path if it doesn't exist
 pub(crate) fn try_path(path: &String) {
@@ -165,7 +165,7 @@ pub fn run(
 
     // Process the script
     let mut whamm = get_script_ast(whamm_script, &mut err);
-    let mut symbol_table = get_symbol_table(&mut whamm, &mut err);
+    let (mut symbol_table, has_reports) = get_symbol_table(&mut whamm, &mut err);
     err.check_too_many();
 
     // If there were any errors encountered, report and exit!
@@ -209,14 +209,16 @@ pub fn run(
         );
     } else {
         run_instr_rewrite(
+            &mut whamm,
             metadata_collector,
             target_wasm,
+            has_reports,
             &mut mem_allocator,
             &mut io_adapter,
             &mut map_lib_adapter,
             &mut report_vars,
             &mut unshared_var_handler,
-            &mut injected_funcs
+            &mut injected_funcs,
         );
     }
 
@@ -253,7 +255,7 @@ fn run_instr_wizard(
 
     let mut injected_funcs = vec![];
     let mut wizard_unshared_var_handler =
-        crate::lang_features::alloc_vars::wizard::UnsharedVarHandler::default();
+        crate::lang_features::alloc_vars::wizard::UnsharedVarHandler;
     let mut gen = crate::generator::wizard::WizardGenerator {
         emitter: ModuleEmitter::new(
             InjectStrategy::Wizard,
@@ -276,20 +278,22 @@ fn run_instr_wizard(
 }
 
 fn run_instr_rewrite(
+    whamm: &mut Whamm,
     metadata_collector: MetadataCollector,
     target_wasm: &mut Module,
+    has_reports: bool,
     mem_allocator: &mut MemoryAllocator,
     io_adapter: &mut IOAdapter,
     map_lib_adapter: &mut MapLibAdapter,
     report_vars: &mut ReportVars,
     unshared_var_handler: &mut UnsharedVarHandler,
-    injected_funcs: &mut Vec<FunctionID>
+    injected_funcs: &mut Vec<FunctionID>,
 ) {
     let table = metadata_collector.table;
     let err = metadata_collector.err;
-    let mut ast = metadata_collector.ast;
+    let ast = metadata_collector.ast;
     let used_funcs = metadata_collector.used_provided_fns;
-    let used_report_dts = metadata_collector.used_report_var_dts;
+    // let used_report_dts = metadata_collector.used_report_var_dts;
     let used_strings = metadata_collector.strings_to_emit;
 
     // Phase 0 of instrumentation (emit globals and provided fns)
@@ -303,13 +307,11 @@ fn run_instr_rewrite(
             report_vars,
             unshared_var_handler,
         ),
-        io_adapter,
         context_name: "".to_string(),
         err,
         injected_funcs,
-        curr_script_id: u8::MAX
     };
-    init.run(&mut ast, used_funcs, used_report_dts, used_strings);
+    init.run(whamm, used_funcs, used_strings);
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
 
@@ -330,7 +332,8 @@ fn run_instr_rewrite(
             unshared_var_handler,
         ),
         simple_ast,
-        err
+        err,
+        has_reports,
     );
     instr.run();
 
@@ -378,19 +381,21 @@ fn get_memory_allocator(target_wasm: &mut Module, create_new_mem: bool) -> Memor
     }
 }
 
-fn get_symbol_table(ast: &mut Whamm, err: &mut ErrorGen) -> SymbolTable {
+fn get_symbol_table(ast: &mut Whamm, err: &mut ErrorGen) -> (SymbolTable, bool) {
     let mut st = build_symbol_table(ast, err);
     err.check_too_many();
-    verify_ast(ast, &mut st, err);
-    st
+    let has_reports = verify_ast(ast, &mut st, err);
+    (st, has_reports)
 }
 
-fn verify_ast(ast: &mut Whamm, st: &mut SymbolTable, err: &mut ErrorGen) {
-    let passed = type_check(ast, st, err);
+fn verify_ast(ast: &mut Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> bool {
+    let (passed, has_reports) = type_check(ast, st, err);
     if !passed {
         error!("AST failed verification!");
     }
     err.check_too_many();
+
+    has_reports
 }
 
 fn get_script_ast(script: &String, err: &mut ErrorGen) -> Whamm {

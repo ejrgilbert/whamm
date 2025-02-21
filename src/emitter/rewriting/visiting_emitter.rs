@@ -8,7 +8,8 @@ use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::utils::{
     block_type_to_wasm, emit_expr, emit_stmt, whamm_type_to_wasm_global, EmitCtx,
 };
-use crate::emitter::{Emitter, InjectStrategy};
+use crate::emitter::{configure_flush_routines, Emitter, InjectStrategy};
+use crate::generator::ast::UnsharedVar;
 use crate::generator::folding::ExprFolder;
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
@@ -19,6 +20,7 @@ use crate::parser::types::{Block, DataType, Definition, Expr, NumLit, RulePart, 
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use itertools::Itertools;
 use log::warn;
+use orca_wasm::ir::function::FunctionBuilder;
 use orca_wasm::ir::id::{FunctionID, LocalID, TypeID};
 use orca_wasm::ir::module::Module;
 use orca_wasm::ir::types::BlockType as OrcaBlockType;
@@ -42,8 +44,8 @@ pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub(crate) report_vars: &'g mut ReportVars,
     pub(crate) unshared_var_handler: &'g mut UnsharedVarHandler,
     instr_created_args: Vec<(String, usize)>,
-    pub curr_unshared: HashMap<DataType, i32>,
-    pub maps_unshared: HashMap<DataType, (String, bool)>,
+    pub curr_unshared: Vec<UnsharedVar>,
+    // pub maps_unshared: HashMap<DataType, (String, bool)>,
 }
 
 impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
@@ -69,8 +71,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             report_vars,
             unshared_var_handler,
             instr_created_args: vec![],
-            curr_unshared: HashMap::default(),
-            maps_unshared: HashMap::default(),
+            curr_unshared: vec![],
         };
 
         a
@@ -538,98 +539,103 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             .inject_map_init_check(&mut self.app_iter, fid);
     }
 
-    // pub fn configure_flush_routines(&mut self, has_reports: bool, err: &mut ErrorGen) {
-    //     // create the function to call at the end
-    //     // TODO -- this can be cleaned up to use the wizard logic instead!
-    //
-    //     // only do this is there are report variables
-    //     if has_reports {
-    //         let mut on_exit = FunctionBuilder::new(&[], &[]);
-    //
-    //         let var_flush = configure_flush_routines(
-    //             self.app_iter.module,
-    //             self.report_vars,
-    //             self.map_lib_adapter,
-    //             self.mem_allocator,
-    //             self.io_adapter,
-    //             err,
-    //         );
-    //         if let Some(flush_fid) = var_flush {
-    //             on_exit.call(FunctionID(flush_fid));
-    //         }
-    //
-    //         let on_exit_id = on_exit.finish_module(self.app_iter.module);
-    //         self.app_iter
-    //             .module
-    //             .set_fn_name(on_exit_id, "on_exit".to_string());
-    //
-    //         // now find where the "exit" is in the bytecode
-    //         // exit of export "main"
-    //         // OR if that doesn't exist, the end of the "start" function
-    //         let fid = if let Some(main_fid) = self
-    //             .app_iter
-    //             .module
-    //             .exports
-    //             .get_func_by_name("main".to_string())
-    //         {
-    //             main_fid
-    //         } else if let Some(start_fid) = self.app_iter.module.start {
-    //             start_fid
-    //         } else {
-    //             // neither exists, unsure how to support this...this would be a library instead of an application I guess?
-    //             // Maybe the answer is to expose query functions that can give a status update of the `report` vars?
-    //             unimplemented!("Your target Wasm has no main or start function...we do not support report variables in this scenario.")
-    //         };
-    //         let mut main = self.app_iter.module.functions.get_fn_modifier(fid).unwrap();
-    //
-    //         main.func_exit();
-    //         main.call(on_exit_id);
-    //         main.finish_instr();
-    //     }
-    // }
+    pub fn configure_flush_routines(&mut self, has_reports: bool, err: &mut ErrorGen) {
+        // create the function to call at the end
+        // TODO -- this can be cleaned up to use the wizard logic instead!
+
+        // only do this is there are report variables
+        if has_reports {
+            let mut on_exit = FunctionBuilder::new(&[], &[]);
+
+            let var_flush = configure_flush_routines(
+                self.app_iter.module,
+                self.report_vars,
+                self.map_lib_adapter,
+                self.mem_allocator,
+                self.io_adapter,
+                err,
+            );
+            if let Some(flush_fid) = var_flush {
+                on_exit.call(FunctionID(flush_fid));
+            }
+
+            let on_exit_id = on_exit.finish_module(self.app_iter.module);
+            self.app_iter
+                .module
+                .set_fn_name(on_exit_id, "on_exit".to_string());
+
+            // now find where the "exit" is in the bytecode
+            // exit of export "main"
+            // OR if that doesn't exist, the end of the "start" function
+            let fid = if let Some(main_fid) = self
+                .app_iter
+                .module
+                .exports
+                .get_func_by_name("main".to_string())
+            {
+                main_fid
+            } else if let Some(start_fid) = self.app_iter.module.start {
+                start_fid
+            } else {
+                // neither exists, unsure how to support this...this would be a library instead of an application I guess?
+                // Maybe the answer is to expose query functions that can give a status update of the `report` vars?
+                unimplemented!("Your target Wasm has no main or start function...we do not support report variables in this scenario.")
+            };
+            let mut main = self.app_iter.module.functions.get_fn_modifier(fid).unwrap();
+
+            main.func_exit();
+            main.call(on_exit_id);
+            main.finish_instr();
+        }
+    }
 }
 impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
     fn emit_body(&mut self, curr_instr_args: &[Arg], body: &mut Block, err: &mut ErrorGen) -> bool {
         let mut is_success = true;
 
+        // TODO -- this can be removed once we move to calling the generated functions!
         // Create the required globals for this probe
         // Sort by datatype to make generation deterministic!
-        let sorted_unshared = self.curr_unshared.iter().sorted_by_key(|(ty, _)| ty.id());
-        for (ty, num) in sorted_unshared.into_iter() {
-            for _ in 0..*num {
+        // translate unshared vars to the correct format
+        let sorted_unshared = self
+            .curr_unshared
+            .iter()
+            .sorted_by(|a, b| Ord::cmp(&a.ty, &b.ty));
+
+        for UnsharedVar {
+            name,
+            ty,
+            is_report,
+            ..
+        } in sorted_unshared.into_iter()
+        {
+            if matches!(ty, DataType::Map { .. }) {
+                // handle maps
+                let Some(Record::Var {
+                    ref mut addr,
+                    ref mut ty,
+                    ..
+                }) = self.table.lookup_var_mut(name, &None, err)
+                else {
+                    err.unexpected_error(true, Some("unexpected type".to_string()), None);
+                    return false;
+                };
+
+                self.map_lib_adapter.emit_map_init(
+                    name.clone(),
+                    addr,
+                    ty,
+                    *is_report,
+                    self.report_vars,
+                    self.app_iter.module,
+                    err,
+                );
+            } else {
+                // if it's not a map, we'll just use this generated GID when
+                // we need to during the AST visit
                 let (global_id, ..) = whamm_type_to_wasm_global(self.app_iter.module, ty);
-
-                if matches!(ty, DataType::Map { .. }) {
-                    unreachable!("Maps should be placed in 'maps_unshared' variable on the probe!")
-                } else {
-                    // if it's not a map, we'll just use this generated GID when
-                    // we need to during the AST visit
-                    self.unshared_var_handler.add_available_gid(*global_id, ty);
-                }
+                self.unshared_var_handler.add_available_gid(*global_id, ty);
             }
-        }
-
-        let sorted_unshared_maps = self.maps_unshared.iter().sorted_by_key(|(ty, _)| ty.id());
-        for (_, (name, is_report)) in sorted_unshared_maps.into_iter() {
-            let Some(Record::Var {
-                ref mut addr,
-                ref mut ty,
-                ..
-            }) = self.table.lookup_var_mut(name, &None, err)
-            else {
-                err.unexpected_error(true, Some("unexpected type".to_string()), None);
-                return false;
-            };
-
-            self.map_lib_adapter.emit_map_init(
-                name.clone(),
-                addr,
-                ty,
-                *is_report,
-                self.report_vars,
-                self.app_iter.module,
-                err,
-            );
         }
 
         for stmt in body.stmts.iter_mut() {

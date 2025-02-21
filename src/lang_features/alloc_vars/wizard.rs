@@ -16,10 +16,8 @@ use std::collections::HashMap;
 use wasmparser::MemArg;
 
 #[derive(Default)]
-pub struct UnsharedVarHandler {
-    // DT -> fid of handler
-    // pub alloc_type_handlers: HashMap<DataType, u32>
-}
+pub struct UnsharedVarHandler;
+
 impl UnsharedVarHandler {
     pub fn emit_alloc_func(
         &self,

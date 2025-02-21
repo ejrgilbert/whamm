@@ -1,5 +1,6 @@
 use crate::emitter::rewriting::rules::core::CorePackage;
 use crate::emitter::rewriting::rules::wasm::{OpcodeEvent, WasmPackage};
+use crate::generator::ast::Probe;
 use crate::generator::rewriting::simple_ast::SimpleAstProbes;
 use crate::parser::rules::core::WhammModeKind;
 use crate::parser::rules::{FromStr, WhammProviderKind};
@@ -10,7 +11,6 @@ use orca_wasm::Location;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use wasmparser::Operator;
-use crate::generator::ast::Probe;
 
 mod core;
 pub mod wasm;
@@ -165,11 +165,7 @@ impl<'a> LocInfo<'a> {
     fn has_match(&self) -> bool {
         !self.probes.is_empty()
     }
-    fn add_probes(
-        &mut self,
-        base_rule: ProbeRule,
-        probes: &'a HashMap<WhammModeKind, Vec<Probe>>,
-    ) {
+    fn add_probes(&mut self, base_rule: ProbeRule, probes: &'a HashMap<WhammModeKind, Vec<Probe>>) {
         probes.iter().for_each(|(probe_mode, probes)| {
             let mut rule = base_rule.clone();
             rule.mode = Some(probe_mode.clone());
@@ -433,10 +429,7 @@ pub trait Provider {
 pub trait Package {
     /// Pass some location to the provider and get back two types of data:
     fn get_loc_info(&self, app_wasm: &Module, instr: &Operator) -> Option<LocInfo>;
-    fn add_events(
-        &mut self,
-        ast_events: &HashMap<String, HashMap<WhammModeKind, Vec<Probe>>>,
-    );
+    fn add_events(&mut self, ast_events: &HashMap<String, HashMap<WhammModeKind, Vec<Probe>>>);
 }
 pub trait Event {
     /// Pass some location to the provider and get back two types of data:

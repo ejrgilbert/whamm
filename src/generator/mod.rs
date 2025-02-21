@@ -1,13 +1,15 @@
+use crate::common::error::ErrorGen;
+use crate::emitter::module_emitter::ModuleEmitter;
 use crate::lang_features::report_vars::{BytecodeLoc, LocationData};
 use crate::parser::rules::{Event, Package, Probe, Provider};
-use crate::parser::types::{BinOp, Block, DataType, Definition, Expr, Fn, FnId, Global, ProvidedFunction, Script, Statement, UnOp, Value, Whamm, WhammVisitorMut};
+use crate::parser::types::{
+    BinOp, Block, DataType, Definition, Expr, Fn, FnId, Global, ProbeRule, ProvidedFunction,
+    Script, Statement, UnOp, Value, Whamm, WhammVisitorMut,
+};
 use crate::verifier::types::Record;
 use log::{debug, trace, warn};
 use orca_wasm::ir::id::FunctionID;
 use std::collections::{HashMap, HashSet};
-use crate::common::error::ErrorGen;
-use crate::emitter::module_emitter::ModuleEmitter;
-use crate::generator::ast::UnsharedVar;
 
 pub mod folding;
 pub mod rewriting;
@@ -21,27 +23,21 @@ pub mod tests;
 fn create_curr_loc(curr_script_id: u8, probe: &ast::Probe) -> LocationData {
     let probe_id = format!("{}_{}", probe.probe_number, probe.rule);
 
-    // translate unshared vars to the correct format
-    let mut vars = HashMap::default();
-    for UnsharedVar { ty, .. } in probe.unshared_to_alloc.iter() {
-        vars.entry(ty.clone())
-            .and_modify(|count| {
-                *count += 1;
-            })
-            .or_insert(1);
-    }
-
     //set the current location in bytecode and load some new globals for potential report vars
     LocationData::Local {
         script_id: curr_script_id,
         bytecode_loc: BytecodeLoc::new(0, 0), // TODO -- request this from wizard
         probe_id,
         // TODO -- this variable is probably unnecessary?? since we're using $alloc logic now?
-        unshared: vars, //this is still used in the emitter to determine the new globals to emit
+        unshared: probe.unshared_to_alloc.clone(), //this is still used in the emitter to determine the new globals to emit
     }
 }
-fn emit_needed_funcs(funcs: HashSet<(String, String)>, emitter: &mut ModuleEmitter,
-                     injected_funcs: &mut Vec<FunctionID>, err: &mut ErrorGen) {
+fn emit_needed_funcs(
+    funcs: HashSet<(String, String)>,
+    emitter: &mut ModuleEmitter,
+    injected_funcs: &mut Vec<FunctionID>,
+    err: &mut ErrorGen,
+) {
     for (context, fname) in funcs.iter() {
         if let Some(fid) = emitter.emit_provided_fn(
             context,
@@ -92,6 +88,7 @@ pub trait GeneratingVisitor: WhammVisitorMut<bool> {
     }
     fn set_curr_loc(&mut self, loc: LocationData);
     fn enter_named_scope(&mut self, name: &str);
+    fn enter_scope_via_rule(&mut self, script_id: &str, probe_rule: &ProbeRule);
     fn enter_scope(&mut self);
     fn exit_scope(&mut self);
     fn lookup_var_mut(&mut self, name: &str) -> Option<&mut Record>;
@@ -343,11 +340,7 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
         self.enter_scope();
         let mut is_success = true;
         if f.def == Definition::CompilerDynamic {
-            // Only emit the functions that will be used dynamically!
-            let context_name = self.get_context_name();
-            if let Some(res) = self.emit_fn(&context_name.clone(), f) {
-                self.add_injected_func(res);
-            }
+            // skip, already handled
         } else {
             // user provided function, visit the body to ensure
             // String values are added to the Wasm data section!

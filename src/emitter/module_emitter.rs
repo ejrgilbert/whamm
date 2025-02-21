@@ -3,6 +3,7 @@ use crate::emitter::memory_allocator::{MemoryAllocator, VAR_BLOCK_BASE_VAR};
 use crate::emitter::rewriting::rules::Arg;
 use crate::emitter::utils::{emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global, EmitCtx};
 use crate::emitter::{Emitter, InjectStrategy};
+use crate::generator::ast::WhammParams;
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
@@ -20,7 +21,6 @@ use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::Opcode;
 use orca_wasm::Instructions;
 use std::collections::HashSet;
-use crate::generator::ast::WhammParams;
 
 const UNEXPECTED_ERR_MSG: &str =
     "ModuleEmitter: Looks like you've found a bug...please report this behavior!";
@@ -128,7 +128,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         results: &[OrcaType],
         body: &mut Block,
         export: bool,
-        err: &mut ErrorGen
+        err: &mut ErrorGen,
     ) -> (Option<u32>, String) {
         // create the function
         let mut params = vec![];
@@ -182,15 +182,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             );
         }
 
-        let fid = self.emit_special_fn_inner(
-            None,
-            &params,
-            dynamic_pred,
-            results,
-            body,
-            export,
-            err,
-        );
+        let fid =
+            self.emit_special_fn_inner(None, &params, dynamic_pred, results, body, export, err);
 
         (fid, param_str.to_string())
     }

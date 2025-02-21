@@ -2,6 +2,7 @@ use crate::emitter::rewriting::rules::{
     event_factory, probe_factory, Arg, Event, FromStr, LocInfo, Package, ProbeRule,
 };
 use crate::for_each_opcode;
+use crate::generator::ast::Probe;
 use crate::parser::rules::core::WhammModeKind;
 use crate::parser::rules::wasm::{OpcodeEventKind, WasmPackageKind};
 use crate::parser::types::{BinOp, DataType, Definition, Expr, RulePart, Value};
@@ -13,7 +14,6 @@ use orca_wasm::ir::module::Module;
 use orca_wasm::ir::types::DataType as OrcaType;
 use std::collections::HashMap;
 use wasmparser::{GlobalType, MemArg, Operator};
-use crate::generator::ast::Probe;
 
 pub struct WasmPackage {
     kind: WasmPackageKind,
@@ -57,10 +57,7 @@ impl Package for WasmPackage {
             None
         }
     }
-    fn add_events(
-        &mut self,
-        ast_events: &HashMap<String, HashMap<WhammModeKind, Vec<Probe>>>,
-    ) {
+    fn add_events(&mut self, ast_events: &HashMap<String, HashMap<WhammModeKind, Vec<Probe>>>) {
         let events = match self.kind {
             WasmPackageKind::Opcode => event_factory::<OpcodeEvent>(ast_events),
         };

@@ -323,12 +323,7 @@ impl SymbolTable {
                 None
             }
         } else {
-            err.unexpected_error(
-                true,
-                Some(format!("Could not find var for: {}", key)),
-                line_col_from_loc(loc),
-            );
-            None
+            panic!("Could not find var for: {}", key)
         }
     }
     pub fn lookup_var(

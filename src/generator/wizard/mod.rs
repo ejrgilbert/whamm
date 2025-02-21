@@ -6,9 +6,7 @@ use crate::generator::{create_curr_loc, emit_needed_funcs, GeneratingVisitor};
 use crate::lang_features::alloc_vars::wizard::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::report_vars::LocationData;
-use crate::parser::types::{
-    Block, DataType, Statement, Value, WhammVisitorMut,
-};
+use crate::parser::types::{Block, DataType, ProbeRule, Statement, Value, WhammVisitorMut};
 use crate::verifier::types::Record;
 use log::trace;
 use orca_wasm::ir::id::{FunctionID, LocalID};
@@ -39,7 +37,12 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         // Reset the symbol table in the emitter just in case
         self.emitter.reset_table();
         self.emitter.setup_module(self.err);
-        emit_needed_funcs(used_provided_funcs, &mut self.emitter, self.injected_funcs, self.err);
+        emit_needed_funcs(
+            used_provided_funcs,
+            &mut self.emitter,
+            self.injected_funcs,
+            self.err,
+        );
         self.emitter.emit_strings(strings_to_emit, self.err);
         self.visit_ast(ast);
 
@@ -107,7 +110,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
                     &[OrcaType::I32],
                     &mut block,
                     true,
-                    self.err
+                    self.err,
                 );
                 (fid, str, None)
             }
@@ -136,7 +139,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
                 &[],
                 body,
                 false,
-                self.err
+                self.err,
             )
         } else {
             (None, "".to_string())
@@ -232,6 +235,12 @@ impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '
 
     fn enter_named_scope(&mut self, name: &str) {
         self.emitter.table.enter_named_scope(name);
+    }
+
+    fn enter_scope_via_rule(&mut self, script_id: &str, probe_rule: &ProbeRule) {
+        self.emitter
+            .table
+            .enter_scope_via_rule(script_id, probe_rule);
     }
 
     fn enter_scope(&mut self) {

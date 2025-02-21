@@ -489,7 +489,7 @@ wasm::call:alt /
 fn is_valid_script(script: &str, err: &mut ErrorGen) -> bool {
     let mut ast = tests::get_ast(script, err);
     let mut table = verifier::build_symbol_table(&mut ast, err);
-    verifier::type_check(&mut ast, &mut table, err)
+    verifier::type_check(&mut ast, &mut table, err).0
 }
 
 // These tests are mostly making sure errors are reported at the right location

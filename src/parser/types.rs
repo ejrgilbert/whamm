@@ -1501,6 +1501,16 @@ pub struct ProbeRule {
     pub event: Option<RulePart>,
     pub mode: Option<RulePart>,
 }
+impl From<&crate::generator::ast::ProbeRule> for ProbeRule {
+    fn from(value: &crate::generator::ast::ProbeRule) -> Self {
+        Self {
+            provider: Some(value.provider.clone()),
+            package: Some(value.package.clone()),
+            event: Some(value.event.clone()),
+            mode: Some(value.mode.clone()),
+        }
+    }
+}
 impl ProbeRule {
     pub fn new() -> Self {
         Self {

@@ -3,8 +3,8 @@ use crate::parser::types as parser_types;
 use parser_types::Statement;
 use std::collections::HashMap;
 
-use crate::parser::rules::core::WhammModeKind;
 use crate::generator::ast::{Probe, Script};
+use crate::parser::rules::core::WhammModeKind;
 
 /// This is a structure that saves a simplified variation of the activated
 /// probe rules.
@@ -94,7 +94,12 @@ pub struct SimpleAST {
 pub fn build_simple_ast(ast: Vec<Script>) -> SimpleAST {
     let mut simple_ast = SimpleAST::default();
 
-    for Script {global_stmts, probes, ..} in ast.iter() {
+    for Script {
+        global_stmts,
+        probes,
+        ..
+    } in ast.iter()
+    {
         simple_ast.global_stmts.extend(global_stmts.to_owned());
         for probe in probes.iter() {
             add_probe_to_ast(
@@ -103,7 +108,7 @@ pub fn build_simple_ast(ast: Vec<Script>) -> SimpleAST {
                 &probe.rule.package.name,
                 &probe.rule.event.name,
                 &probe.rule.mode.name,
-                probe.to_owned()
+                probe.to_owned(),
             )
         }
     }
@@ -146,7 +151,10 @@ pub fn build_simple_ast(ast: Vec<Script>) -> SimpleAST {
 
 fn add_probe_to_ast(
     ast: &mut SimpleAST,
-    provider_name: &String, package_name: &String, event_name: &String, mode_name: &String,
+    provider_name: &String,
+    package_name: &String,
+    event_name: &String,
+    mode_name: &String,
     probe: Probe,
 ) {
     if let Some(provider) = ast.probes.get_mut(provider_name) {
@@ -156,21 +164,39 @@ fn add_probe_to_ast(
                 if let Some(probes) = event.get_mut(&mode_kind) {
                     probes.push(probe);
                 } else {
-                    event.insert(
-                        mode_kind,
-                        vec![probe],
-                    );
+                    event.insert(mode_kind, vec![probe]);
                 }
             } else {
                 package.insert(event_name.clone(), HashMap::new());
-                add_probe_to_ast(ast, provider_name, package_name, event_name, mode_name, probe);
+                add_probe_to_ast(
+                    ast,
+                    provider_name,
+                    package_name,
+                    event_name,
+                    mode_name,
+                    probe,
+                );
             }
         } else {
             provider.insert(package_name.clone(), HashMap::new());
-            add_probe_to_ast(ast, provider_name, package_name, event_name, mode_name, probe);
+            add_probe_to_ast(
+                ast,
+                provider_name,
+                package_name,
+                event_name,
+                mode_name,
+                probe,
+            );
         }
     } else {
         ast.probes.insert(provider_name.clone(), HashMap::new());
-        add_probe_to_ast(ast, provider_name, package_name, event_name, mode_name, probe);
+        add_probe_to_ast(
+            ast,
+            provider_name,
+            package_name,
+            event_name,
+            mode_name,
+            probe,
+        );
     }
 }

@@ -32,7 +32,7 @@ pub struct Probe {
     pub script_id: u8,
 
     // tracking
-    pub body_fid: Option<u32>
+    pub body_fid: Option<u32>,
 }
 impl Display for Probe {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -49,7 +49,7 @@ impl Probe {
             unshared_to_alloc: Vec::default(),
             probe_number,
             script_id,
-            body_fid: None
+            body_fid: None,
         }
     }
     pub(crate) fn add_unshared(
@@ -94,7 +94,7 @@ impl From<String> for ProbeRule {
                 mode: RulePart::new(parts[3].to_owned(), None),
             }
         } else {
-            panic!("ProbeRule should either have all for subparts, or be missing the probe mode (for wizard)");
+            panic!("ProbeRule should either have all four subparts, or be missing the probe mode (for wizard): {value}");
         }
     }
 }
@@ -103,17 +103,12 @@ impl Display for ProbeRule {
         if self.mode.name.is_empty() {
             f.write_str(&format!(
                 "{}:{}:{}",
-                self.provider.name,
-                self.package.name,
-                self.event.name
+                self.provider.name, self.package.name, self.event.name
             ))
         } else {
             f.write_str(&format!(
                 "{}:{}:{}:{}",
-                self.provider.name,
-                self.package.name,
-                self.event.name,
-                self.mode.name
+                self.provider.name, self.package.name, self.event.name, self.mode.name
             ))
         }
     }
@@ -166,7 +161,7 @@ pub enum WhammParam {
     // br_table
     Targets,
     NumTargets,
-    DefaultTarget
+    DefaultTarget,
 }
 impl WhammParam {
     pub fn new(var_name: String, var_type: DataType) -> Self {
@@ -178,9 +173,16 @@ impl WhammParam {
     pub fn set_ty(&mut self, t: DataType) {
         match self {
             Self::Imm { ty, .. } | Self::Arg { ty, .. } | Self::Local { ty, .. } => *ty = t,
-            Self::Pc | Self::Fid | Self::Fname | Self::AllocOffset |
-            Self::TargetFnType | Self::TargetFnName | Self::TargetImpModule |
-            Self::Targets | Self::NumTargets | Self::DefaultTarget => {
+            Self::Pc
+            | Self::Fid
+            | Self::Fname
+            | Self::AllocOffset
+            | Self::TargetFnType
+            | Self::TargetFnName
+            | Self::TargetImpModule
+            | Self::Targets
+            | Self::NumTargets
+            | Self::DefaultTarget => {
                 assert_eq!(t, self.ty())
             }
         }
@@ -199,7 +201,7 @@ impl WhammParam {
             Self::TargetImpModule => DataType::Str,
             Self::Targets => DataType::Map {
                 key_ty: Box::new(DataType::U32),
-                val_ty: Box::new(DataType::U32)
+                val_ty: Box::new(DataType::U32),
             }, // TODO -- really want to request mapID though...
             Self::NumTargets => DataType::U32,
             Self::DefaultTarget => DataType::U32,

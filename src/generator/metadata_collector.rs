@@ -114,7 +114,10 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
     }
     fn handle_special(&mut self, name: &str, prefix: &str) -> bool {
         if name.starts_with(prefix) && name[prefix.len()..].parse::<u32>().is_ok() {
-            let (_, ty, _) = get_def(name, self.table, self.err);
+            let (def, ty, _) = get_def(name, self.table, self.err);
+            if !self.config.wizard && matches!(def, Definition::CompilerStatic) {
+                return true;
+            }
             self.push_metadata(name, &ty);
             true
         } else {
@@ -201,11 +204,16 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                     // add the mode when not on the wizard target
                     self.append_curr_rule(format!(":{}", probe.mode().name()));
                 }
-                self.curr_probe = Probe::new(self.get_curr_rule().clone(), probe.id(), self.curr_script.id);
+                self.curr_probe = Probe::new(
+                    self.get_curr_rule().clone(),
+                    probe.id(),
+                    self.curr_script.id,
+                );
                 self.visit_probe(probe);
 
                 // copy over data from original probe
                 self.curr_probe.predicate = probe.predicate().to_owned();
+                self.curr_probe.body = probe.body().to_owned();
                 self.curr_probe.body = probe.body().to_owned();
                 self.curr_script.probes.push(self.curr_probe.clone());
             });
@@ -427,7 +435,11 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                 // check if provided, remember in metadata!
                 self.check_strcmp = matches!(ty, DataType::Str);
 
-                if def.is_comp_provided() {
+                if def.is_comp_provided()
+                    && (self.config.wizard || matches!(def, Definition::CompilerDynamic))
+                {
+                    // For Wizard: Request all!
+                    // For B.R.: Only request dynamic data
                     self.push_metadata(name, &ty);
                 }
             }

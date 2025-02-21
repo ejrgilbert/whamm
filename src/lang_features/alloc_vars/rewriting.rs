@@ -19,25 +19,13 @@ impl UnsharedVarHandler {
             })
             .or_insert(vec![gid]);
     }
-    pub fn use_available_gid(
-        &mut self,
-        ty: &DataType,
-        err_msg: &str,
-        err: &mut ErrorGen,
-    ) -> Option<u32> {
+    pub fn use_available_gid(&mut self, ty: &DataType) -> Option<u32> {
         if let Some(list) = self.available_gids.get_mut(ty) {
             if !list.is_empty() {
                 return Some(list.remove(0));
             }
         }
-        err.unexpected_error(
-            true,
-            Some(format!(
-                "{err_msg} No available global {ty}s for unshared vars"
-            )),
-            None,
-        );
-        None
+        panic!("No available global {ty}s for unshared vars");
     }
     pub fn allocate_var(
         &mut self,
@@ -57,7 +45,7 @@ impl UnsharedVarHandler {
         }
         match addr {
             Some(VarAddr::Global { .. }) | None => {
-                if let Some(id) = self.use_available_gid(ty, err_msg, err) {
+                if let Some(id) = self.use_available_gid(ty) {
                     if is_report {
                         report_vars.put_local_metadata(id, var_name.to_string(), ty.clone(), err);
                     }
