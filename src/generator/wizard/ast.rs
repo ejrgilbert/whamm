@@ -66,14 +66,127 @@ impl WizardProbe {
 pub struct Metadata {
     pub pred_is_dynamic: bool,
     // These are hashsets to avoid requesting duplicate data
-    pub pred_args: HashSet<(String, DataType)>,
-    pub body_args: HashSet<(String, DataType)>,
+    pub pred_args: WhammParams,
+    pub body_args: WhammParams,
 }
 impl Metadata {
     pub fn push_pred_req(&mut self, var_name: String, var_type: DataType) {
-        self.pred_args.insert((var_name, var_type));
+        self.pred_args.push(WhammParam::new(var_name, var_type));
     }
     pub fn push_body_req(&mut self, var_name: String, var_type: DataType) {
-        self.body_args.insert((var_name, var_type));
+        self.body_args.push(WhammParam::new(var_name, var_type));
+    }
+}
+
+#[derive(Clone, Default)]
+pub struct WhammParams {
+    pub params: HashSet<WhammParam>,
+    pub req_args: bool
+}
+impl WhammParams {
+    pub fn push(&mut self, param: WhammParam) {
+        if matches!(param, WhammParam::Arg {..}) {
+            self.req_args = true;
+        }
+        self.params.insert(param);
+    }
+}
+#[derive(Clone, Eq, Hash, PartialEq)]
+pub enum WhammParam {
+    Pc,
+    Fid,
+    Imm {
+        n: u32,
+        ty: DataType
+    },
+    Arg {
+        n: u32,
+        ty: DataType
+    },
+    Local {
+        n: u32,
+        ty: DataType
+    },
+    AllocOffset,
+    Targets,
+    NumTargets,
+}
+impl WhammParam {
+    pub fn new(var_name: String, var_type: DataType) -> Self {
+        let mut obj = Self::from(var_name);
+        obj.set_ty(var_type);
+
+        obj
+    }
+    pub fn set_ty(&mut self, t: DataType) {
+        match self {
+            Self::Imm {ty, ..} |
+            Self::Arg {ty, ..} |
+            Self::Local {ty, ..} => *ty = t,
+            Self::Pc |
+            Self::Fid |
+            Self::AllocOffset |
+            Self::Targets |
+            Self::NumTargets => assert_eq!(t, self.ty()),
+        }
+    }
+    pub fn ty(&self) -> DataType {
+        match self {
+            Self::Pc => DataType::U32,
+            Self::Fid => DataType::U32,
+            Self::Imm {ty, ..} => ty.clone(),
+            Self::Arg {ty, ..} => ty.clone(),
+            Self::Local {ty, ..} => ty.clone(),
+            Self::AllocOffset => DataType::U32,
+            Self::Targets => DataType::U32,         // MapID!
+            Self::NumTargets => DataType::U32,
+        }
+    }
+}
+impl From<String> for WhammParam {
+    fn from(value: String) -> Self {
+        match value.as_str() {
+            "pc" => return Self::Pc,
+            "fid" => return Self::Fid,
+            "targets" => return Self::Targets,
+            "num_targets" => return Self::NumTargets,
+            _ => {}
+        }
+
+        // handle immN, argN, localN
+        if let Some(n) = handle_special(&value, "imm".to_string()) {
+            return Self::Imm {n, ty: DataType::Unknown};
+        }
+        if let Some(n) = handle_special(&value, "arg".to_string()) {
+            return Self::Arg {n, ty: DataType::Unknown};
+        }
+        if let Some(n) = handle_special(&value, "local".to_string()) {
+            return Self::Local {n, ty: DataType::Unknown};
+        }
+        fn handle_special(value: &String, prefix: String) -> Option<u32> {
+            if value.starts_with(&prefix) {
+                if let Ok(n) = value[prefix.len()..].parse::<u32>() {
+                    return Some(n)
+                }
+            }
+            None
+        }
+
+        panic!("Invalid WhammParam request: {}", value);
+    }
+}
+impl Display for WhammParam {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Pc => f.write_str("pc"),
+            Self::Fid => f.write_str("fid"),
+            Self::Imm {n, ..} => f.write_str(&format!("imm{n}")),
+            Self::Arg {n, ..} => f.write_str(&format!("arg{n}")),
+            Self::Local {n, ..} => f.write_str(&format!("local{n}")),
+            // TODO -- unsure what to do for the alloc part...
+            Self::AllocOffset => f.write_str("alloc"),
+            Self::Targets => f.write_str("targets"),
+            Self::NumTargets => f.write_str("num_targets"),
+        }
     }
 }

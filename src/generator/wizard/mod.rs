@@ -5,7 +5,7 @@ use crate::common::error::ErrorGen;
 use crate::common::instr::Config;
 use crate::emitter::memory_allocator::VAR_BLOCK_BASE_VAR;
 use crate::emitter::module_emitter::ModuleEmitter;
-use crate::generator::wizard::ast::{UnsharedVar, WizardProbe, WizardScript};
+use crate::generator::wizard::ast::{UnsharedVar, WhammParams, WizardProbe, WizardScript};
 use crate::generator::GeneratingVisitor;
 use crate::lang_features::alloc_vars::wizard::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
@@ -123,7 +123,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         &mut self,
         // the base memory offset for this function's var block
         alloc_base: Option<LocalID>,
-        param_reqs: &HashSet<(String, DataType)>,
+        whamm_params: &WhammParams,
         dynamic_pred: Option<&mut Expr>,
         results: &[OrcaType],
         body: &mut Block,
@@ -152,16 +152,19 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         }
 
         // handle the parameters
-        for (param_name, param_ty) in param_reqs.iter() {
+        for param in whamm_params.params.iter() {
+            let param_name = param.to_string();
+            let param_ty = param.ty();
+
             let local_id = params.len() as u32;
             // handle param list
-            params.extend(param_ty.to_wasm_type());
+            params.extend(param_ty.clone().to_wasm_type());
 
             // handle the param string
             if !param_str.is_empty() {
                 param_str += ", "
             }
-            param_str += param_name;
+            param_str += &param_name;
 
             // add param definition to the symbol table
             self.emitter.table.put(
