@@ -415,6 +415,7 @@ impl SymbolTableBuilder<'_> {
         &mut self,
         ty: DataType,
         name: String,
+        value: Option<Value>,
         definition: Definition,
         is_report_var: bool,
         loc: Option<Location>,
@@ -431,7 +432,7 @@ impl SymbolTableBuilder<'_> {
             Record::Var {
                 ty,
                 name,
-                value: None,
+                value,
                 def: definition,
                 is_report_var,
                 addr: None,
@@ -444,10 +445,11 @@ impl SymbolTableBuilder<'_> {
     }
 
     fn visit_provided_globals(&mut self, globals: &HashMap<String, ProvidedGlobal>) {
-        for (name, ProvidedGlobal { global, .. }) in globals.iter() {
+        for (name, ProvidedGlobal { global, value, .. }) in globals.iter() {
             self.add_global(
                 global.ty.clone(),
                 name.clone(),
+                value.clone(),
                 global.def.clone(),
                 false,
                 None,
@@ -689,6 +691,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
                 self.add_global(
                     ty.clone(),
                     name.clone(),
+                    None,
                     definition.clone(),
                     is_report_var,
                     loc.clone(),

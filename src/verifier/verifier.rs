@@ -945,7 +945,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     Some(DataType::AssumeGood)
                 }
             }
-            Expr::VarId { name, loc, .. } => {
+            Expr::VarId { name, loc, definition } => {
                 // TODO: fix this with type declarations for argN
                 // if name.starts_with("arg") && name[3..].parse::<u32>().is_ok() {
                 //     return Some(DataType::AssumeGood);
@@ -954,7 +954,8 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 // get type from symbol table
                 if let Some(id) = self.table.lookup(name) {
                     if let Some(rec) = self.table.get_record(id) {
-                        if let Record::Var { ty, .. } = rec {
+                        if let Record::Var { ty, def, .. } = rec {
+                            *definition = def.clone();
                             // println!("{name}: {ty}");
                             return Some(ty.clone());
                         } else {

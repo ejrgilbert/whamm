@@ -8,6 +8,7 @@ use crate::generator::GeneratingVisitor;
 use crate::lang_features::report_vars::LocationData;
 use crate::parser::types::{DataType, Fn, Value, Whamm, WhammVisitorMut};
 use orca_wasm::ir::id::FunctionID;
+use crate::verifier::types::Record;
 
 /// Serves as the first phase of instrumenting a module by setting up
 /// the groundwork.
@@ -85,5 +86,8 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
 
     fn exit_scope(&mut self) {
         self.emitter.exit_scope(self.err);
+    }
+    fn lookup_var_mut(&mut self, name: &String) -> Option<&mut Record> {
+        self.emitter.table.lookup_var_mut(name, &None, self.err)
     }
 }

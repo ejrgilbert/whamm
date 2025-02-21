@@ -2,12 +2,13 @@ use crate::for_each_opcode;
 use crate::parser::rules::{
     event_factory, get_array_globals, get_br_table_globals, get_call_fns, get_call_globals,
     get_memarg_globals, get_struct_globals, get_unknown_args_globals, Event, EventInfo,
-    FromStrWithLoc, NameOptions, Package, PackageInfo, Probe, WhammModeKind, UNKNOWN_ARGS,
+    FromStrWithLoc, NameOptions, OpcodeCategory::*, Package, PackageInfo, Probe, WhammModeKind, UNKNOWN_ARGS,
 };
 use crate::parser::types::{
     Block, DataType, Expr, Location, ProbeRule, ProvidedFunction, ProvidedGlobal,
 };
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
 use std::mem::discriminant;
 use termcolor::Buffer;
 
@@ -171,8 +172,52 @@ impl Package for WasmPackage {
     }
 }
 
+pub enum OpcodeCategory {
+    Const,
+    Misc,
+    Control,
+    Local,
+    Global,
+    Table,
+    Load,
+    Store,
+    Memory,
+    Arith,
+    Compare,
+    Convert,
+    Exn,
+    Simd,
+    Ref,
+    Gc,
+    Atomic
+}
+impl Display for OpcodeCategory {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let str = match self {
+            Const => "const",
+            Control => "control",
+            Local => "local",
+            Global => "global",
+            Table => "table",
+            Load => "load",
+            Store => "store",
+            Memory => "memory",
+            Arith => "arith",
+            Compare => "compare",
+            Convert => "convert",
+            Exn => "exn",
+            Simd => "simd",
+            Ref => "ref",
+            Gc => "gc",
+            Atomic => "atomic",
+            Misc => "misc"
+        };
+        f.write_str(str)
+    }
+}
+
 macro_rules! define_opcode {
-    ($($op:ident, $name:ident, $args:expr, $imms:expr, $globals:expr, $fns:expr, $supported_modes:expr, $req_map:expr, $docs:expr)*) => {
+    ($($op:ident, $category:expr, $name:ident, $args:expr, $imms:expr, $globals:expr, $fns:expr, $supported_modes:expr, $req_map:expr, $docs:expr)*) => {
         /// Instructions as defined [here].
         ///
         /// [here]: https://webassembly.github.io/spec/core/binary/instructions.html
@@ -192,6 +237,13 @@ macro_rules! define_opcode {
                 match self {
                     $(
                         Self::$op {..} => stringify!($name).to_string(),
+                    )*
+                }
+            }
+            pub fn category(&self) -> OpcodeCategory {
+                match self {
+                    $(
+                        Self::$op {..} => $category,
                     )*
                 }
             }
@@ -254,6 +306,16 @@ macro_rules! define_opcode {
                 let mut globals = HashMap::new();
                 Self::gen_args(&mut globals, kind.get_args());
                 Self::gen_immediates(&mut globals, kind.get_imms());
+                globals.insert(
+                    "category".to_string(),
+                     ProvidedGlobal::new(
+                         "category".to_string(),
+                         "The category of this opcode.".to_string(),
+                         DataType::Str,
+                         Some(crate::parser::types::Value::Str { val: kind.category().to_string() }),
+                         true,
+                     )
+                );
 
                 globals
             }
@@ -268,6 +330,7 @@ macro_rules! define_opcode {
                                 name.to_string(),
                                 format!("The argument to the opcode at index {}.", i),
                                 arg_ty.clone(),
+                                None,
                                 false,
                             ),
                         );
@@ -280,6 +343,7 @@ macro_rules! define_opcode {
                             "The argument to the call at the specific index, e.g. [0:9]+.\
                                 Keep in mind, the number of arguments to a call changes based on the targeted function.".to_string(),
                             DataType::Unknown,
+                            None,
                             false
                         )
                     );
@@ -298,7 +362,8 @@ macro_rules! define_opcode {
                             name.to_string(),
                             format!("The immediate to the opcode at index {}.", idx),
                             ty.clone(),
-                            true,
+                            None,
+                            true
                         ),
                     );
                 }
