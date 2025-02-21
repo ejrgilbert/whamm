@@ -1,5 +1,5 @@
 use crate::lang_features::report_vars::Metadata as ReportMetadata;
-use crate::parser::types::{Block, DataType, Expr, Global, Statement};
+use crate::parser::types::{Block, DataType, Expr, Global, RulePart, Statement};
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 
@@ -13,7 +13,7 @@ pub struct Script {
     pub probes: Vec<Probe>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct UnsharedVar {
     pub name: String,
     pub ty: DataType,
@@ -21,14 +21,18 @@ pub struct UnsharedVar {
     pub report_metadata: Option<ReportMetadata>,
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Probe {
-    pub rule: String,
+    pub rule: ProbeRule,
     pub predicate: Option<Expr>,
     pub body: Option<Block>,
     pub metadata: Metadata,
     pub unshared_to_alloc: Vec<UnsharedVar>,
     pub probe_number: u32,
+    pub script_id: u8,
+
+    // tracking
+    pub body_fid: Option<u32>
 }
 impl Display for Probe {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -36,14 +40,16 @@ impl Display for Probe {
     }
 }
 impl Probe {
-    pub(crate) fn new(rule: String, probe_number: u32) -> Self {
+    pub(crate) fn new(rule_str: String, probe_number: u32, script_id: u8) -> Self {
         Self {
-            rule,
+            rule: ProbeRule::from(rule_str),
             predicate: None,
             body: None,
             metadata: Metadata::default(),
             unshared_to_alloc: Vec::default(),
             probe_number,
+            script_id,
+            body_fid: None
         }
     }
     pub(crate) fn add_unshared(
@@ -62,7 +68,58 @@ impl Probe {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default)]
+pub struct ProbeRule {
+    pub provider: RulePart,
+    pub package: RulePart,
+    pub event: RulePart,
+    pub mode: RulePart,
+}
+impl From<String> for ProbeRule {
+    fn from(value: String) -> Self {
+        let parts: Vec<&str> = value.split(':').collect();
+
+        if parts.len() == 3 {
+            Self {
+                provider: RulePart::new(parts[0].to_owned(), None),
+                package: RulePart::new(parts[1].to_owned(), None),
+                event: RulePart::new(parts[2].to_owned(), None),
+                mode: RulePart::new("".to_string(), None),
+            }
+        } else if parts.len() == 4 {
+            Self {
+                provider: RulePart::new(parts[0].to_owned(), None),
+                package: RulePart::new(parts[1].to_owned(), None),
+                event: RulePart::new(parts[2].to_owned(), None),
+                mode: RulePart::new(parts[3].to_owned(), None),
+            }
+        } else {
+            panic!("ProbeRule should either have all for subparts, or be missing the probe mode (for wizard)");
+        }
+    }
+}
+impl Display for ProbeRule {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        if self.mode.name.is_empty() {
+            f.write_str(&format!(
+                "{}:{}:{}",
+                self.provider.name,
+                self.package.name,
+                self.event.name
+            ))
+        } else {
+            f.write_str(&format!(
+                "{}:{}:{}:{}",
+                self.provider.name,
+                self.package.name,
+                self.event.name,
+                self.mode.name
+            ))
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default)]
 pub struct Metadata {
     pub pred_is_dynamic: bool,
     // These are hashsets to avoid requesting duplicate data
@@ -78,7 +135,7 @@ impl Metadata {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct WhammParams {
     pub params: HashSet<WhammParam>,
     pub req_args: bool,
@@ -91,16 +148,25 @@ impl WhammParams {
         self.params.insert(param);
     }
 }
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum WhammParam {
     Pc,
     Fid,
+    Fname,
     Imm { n: u32, ty: DataType },
     Arg { n: u32, ty: DataType },
     Local { n: u32, ty: DataType },
     AllocOffset,
+
+    // calls
+    TargetFnType,
+    TargetFnName,
+    TargetImpModule,
+
+    // br_table
     Targets,
     NumTargets,
+    DefaultTarget
 }
 impl WhammParam {
     pub fn new(var_name: String, var_type: DataType) -> Self {
@@ -112,7 +178,9 @@ impl WhammParam {
     pub fn set_ty(&mut self, t: DataType) {
         match self {
             Self::Imm { ty, .. } | Self::Arg { ty, .. } | Self::Local { ty, .. } => *ty = t,
-            Self::Pc | Self::Fid | Self::AllocOffset | Self::Targets | Self::NumTargets => {
+            Self::Pc | Self::Fid | Self::Fname | Self::AllocOffset |
+            Self::TargetFnType | Self::TargetFnName | Self::TargetImpModule |
+            Self::Targets | Self::NumTargets | Self::DefaultTarget => {
                 assert_eq!(t, self.ty())
             }
         }
@@ -121,12 +189,20 @@ impl WhammParam {
         match self {
             Self::Pc => DataType::U32,
             Self::Fid => DataType::U32,
+            Self::Fname => DataType::Str,
             Self::Imm { ty, .. } => ty.clone(),
             Self::Arg { ty, .. } => ty.clone(),
             Self::Local { ty, .. } => ty.clone(),
             Self::AllocOffset => DataType::U32,
-            Self::Targets => DataType::U32, // MapID!
+            Self::TargetFnType => DataType::Str,
+            Self::TargetFnName => DataType::Str,
+            Self::TargetImpModule => DataType::Str,
+            Self::Targets => DataType::Map {
+                key_ty: Box::new(DataType::U32),
+                val_ty: Box::new(DataType::U32)
+            }, // TODO -- really want to request mapID though...
             Self::NumTargets => DataType::U32,
+            Self::DefaultTarget => DataType::U32,
         }
     }
 }
@@ -135,8 +211,13 @@ impl From<String> for WhammParam {
         match value.as_str() {
             "pc" => return Self::Pc,
             "fid" => return Self::Fid,
+            "fname" => return Self::Fname,
+            "target_fn_type" => return Self::TargetFnType,
+            "target_fn_name" => return Self::TargetFnName,
+            "target_imp_module" => return Self::TargetImpModule,
             "targets" => return Self::Targets,
             "num_targets" => return Self::NumTargets,
+            "default_target" => return Self::DefaultTarget,
             _ => {}
         }
 
@@ -176,13 +257,18 @@ impl Display for WhammParam {
         match self {
             Self::Pc => f.write_str("pc"),
             Self::Fid => f.write_str("fid"),
+            Self::Fname => f.write_str("fname"),
             Self::Imm { n, .. } => f.write_str(&format!("imm{n}")),
             Self::Arg { n, .. } => f.write_str(&format!("arg{n}")),
             Self::Local { n, .. } => f.write_str(&format!("local{n}")),
             // TODO -- unsure what to do for the alloc part...
             Self::AllocOffset => f.write_str("alloc"),
+            Self::TargetFnType => f.write_str("target_fn_type"),
+            Self::TargetFnName => f.write_str("target_fn_name"),
+            Self::TargetImpModule => f.write_str("target_imp_module"),
             Self::Targets => f.write_str("targets"),
             Self::NumTargets => f.write_str("num_targets"),
+            Self::DefaultTarget => f.write_str("default_target"),
         }
     }
 }

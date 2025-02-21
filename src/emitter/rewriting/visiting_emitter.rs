@@ -8,7 +8,7 @@ use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::utils::{
     block_type_to_wasm, emit_expr, emit_stmt, whamm_type_to_wasm_global, EmitCtx,
 };
-use crate::emitter::{configure_flush_routines, Emitter, InjectStrategy};
+use crate::emitter::{Emitter, InjectStrategy};
 use crate::generator::folding::ExprFolder;
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
@@ -19,7 +19,6 @@ use crate::parser::types::{Block, DataType, Definition, Expr, NumLit, RulePart, 
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use itertools::Itertools;
 use log::warn;
-use orca_wasm::ir::function::FunctionBuilder;
 use orca_wasm::ir::id::{FunctionID, LocalID, TypeID};
 use orca_wasm::ir::module::Module;
 use orca_wasm::ir::types::BlockType as OrcaBlockType;
@@ -539,55 +538,55 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             .inject_map_init_check(&mut self.app_iter, fid);
     }
 
-    pub fn configure_flush_routines(&mut self, has_reports: bool, err: &mut ErrorGen) {
-        // create the function to call at the end
-        // TODO -- this can be cleaned up to use the wizard logic instead!
-
-        // only do this is there are report variables
-        if has_reports {
-            let mut on_exit = FunctionBuilder::new(&[], &[]);
-
-            let var_flush = configure_flush_routines(
-                self.app_iter.module,
-                self.report_vars,
-                self.map_lib_adapter,
-                self.mem_allocator,
-                self.io_adapter,
-                err,
-            );
-            if let Some(flush_fid) = var_flush {
-                on_exit.call(FunctionID(flush_fid));
-            }
-
-            let on_exit_id = on_exit.finish_module(self.app_iter.module);
-            self.app_iter
-                .module
-                .set_fn_name(on_exit_id, "on_exit".to_string());
-
-            // now find where the "exit" is in the bytecode
-            // exit of export "main"
-            // OR if that doesn't exist, the end of the "start" function
-            let fid = if let Some(main_fid) = self
-                .app_iter
-                .module
-                .exports
-                .get_func_by_name("main".to_string())
-            {
-                main_fid
-            } else if let Some(start_fid) = self.app_iter.module.start {
-                start_fid
-            } else {
-                // neither exists, unsure how to support this...this would be a library instead of an application I guess?
-                // Maybe the answer is to expose query functions that can give a status update of the `report` vars?
-                unimplemented!("Your target Wasm has no main or start function...we do not support report variables in this scenario.")
-            };
-            let mut main = self.app_iter.module.functions.get_fn_modifier(fid).unwrap();
-
-            main.func_exit();
-            main.call(on_exit_id);
-            main.finish_instr();
-        }
-    }
+    // pub fn configure_flush_routines(&mut self, has_reports: bool, err: &mut ErrorGen) {
+    //     // create the function to call at the end
+    //     // TODO -- this can be cleaned up to use the wizard logic instead!
+    //
+    //     // only do this is there are report variables
+    //     if has_reports {
+    //         let mut on_exit = FunctionBuilder::new(&[], &[]);
+    //
+    //         let var_flush = configure_flush_routines(
+    //             self.app_iter.module,
+    //             self.report_vars,
+    //             self.map_lib_adapter,
+    //             self.mem_allocator,
+    //             self.io_adapter,
+    //             err,
+    //         );
+    //         if let Some(flush_fid) = var_flush {
+    //             on_exit.call(FunctionID(flush_fid));
+    //         }
+    //
+    //         let on_exit_id = on_exit.finish_module(self.app_iter.module);
+    //         self.app_iter
+    //             .module
+    //             .set_fn_name(on_exit_id, "on_exit".to_string());
+    //
+    //         // now find where the "exit" is in the bytecode
+    //         // exit of export "main"
+    //         // OR if that doesn't exist, the end of the "start" function
+    //         let fid = if let Some(main_fid) = self
+    //             .app_iter
+    //             .module
+    //             .exports
+    //             .get_func_by_name("main".to_string())
+    //         {
+    //             main_fid
+    //         } else if let Some(start_fid) = self.app_iter.module.start {
+    //             start_fid
+    //         } else {
+    //             // neither exists, unsure how to support this...this would be a library instead of an application I guess?
+    //             // Maybe the answer is to expose query functions that can give a status update of the `report` vars?
+    //             unimplemented!("Your target Wasm has no main or start function...we do not support report variables in this scenario.")
+    //         };
+    //         let mut main = self.app_iter.module.functions.get_fn_modifier(fid).unwrap();
+    //
+    //         main.func_exit();
+    //         main.call(on_exit_id);
+    //         main.finish_instr();
+    //     }
+    // }
 }
 impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
     fn emit_body(&mut self, curr_instr_args: &[Arg], body: &mut Block, err: &mut ErrorGen) -> bool {

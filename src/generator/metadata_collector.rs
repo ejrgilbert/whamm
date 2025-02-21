@@ -197,7 +197,11 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
 
         event.probes().iter().for_each(|(_ty, probes)| {
             probes.iter().for_each(|probe| {
-                self.curr_probe = Probe::new(self.get_curr_rule().clone(), probe.id());
+                if !self.config.wizard {
+                    // add the mode when not on the wizard target
+                    self.append_curr_rule(format!(":{}", probe.mode().name()));
+                }
+                self.curr_probe = Probe::new(self.get_curr_rule().clone(), probe.id(), self.curr_script.id);
                 self.visit_probe(probe);
 
                 // copy over data from original probe
@@ -210,7 +214,12 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
         trace!("Exiting: CodeGenerator::visit_event");
         self.table.exit_scope(self.err);
         let curr_rule = self.get_curr_rule();
-        self.set_curr_rule(curr_rule[..curr_rule.rfind(':').unwrap()].to_string());
+        let mut new_rule = curr_rule[..curr_rule.rfind(':').unwrap()].to_string();
+        if !self.config.wizard {
+            // remove mode too
+            new_rule = new_rule[..new_rule.rfind(':').unwrap()].to_string();
+        }
+        self.set_curr_rule(new_rule);
     }
 
     fn visit_probe(&mut self, probe: &Box<dyn ParserProbe>) {

@@ -12,13 +12,12 @@ use std::vec;
 const UNEXPECTED_ERR_MSG: &str =
     "TypeChecker: Looks like you've found a bug...please report this behavior! Exiting now...";
 
-pub fn type_check(ast: &mut Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> (bool, bool) {
+pub fn type_check(ast: &mut Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> bool {
     let mut type_checker = TypeChecker::new(st, err);
     type_checker.visit_whamm(ast);
-    let has_reports = type_checker.has_reports;
 
     // note that parser errors might propagate here
-    (!err.has_errors, has_reports)
+    !err.has_errors
 }
 
 pub fn build_symbol_table(ast: &mut Whamm, err: &mut ErrorGen) -> SymbolTable {
@@ -112,7 +111,6 @@ struct TypeChecker<'a> {
     err: &'a mut ErrorGen,
     in_script_global: bool,
     in_function: bool,
-    has_reports: bool,
 
     // bookkeeping for casting
     curr_loc: Option<Location>,
@@ -128,7 +126,6 @@ impl<'a> TypeChecker<'a> {
             err,
             in_script_global: false,
             in_function: false,
-            has_reports: false,
             curr_loc: None,
             outer_cast_fixes_assign: false,
             assign_ty: None,
@@ -387,12 +384,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
         if self.in_script_global {
             match stmt {
                 //allow declarations and assignment
-                Statement::Decl { .. } | Statement::Assign { .. } => {}
-                Statement::UnsharedDecl { is_report, .. } => {
-                    if *is_report {
-                        self.has_reports = true;
-                    }
-                }
+                Statement::Decl { .. } | Statement::Assign { .. } | Statement::UnsharedDecl { .. } => {}
                 _ => {
                     self.err.type_check_error(
                         false,
@@ -460,11 +452,8 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 res
             }
             Statement::UnsharedDecl {
-                decl, is_report, ..
+                decl, ..
             } => {
-                if *is_report {
-                    self.has_reports = true;
-                }
                 self.visit_stmt(decl)
             }
             Statement::Expr { expr, .. } => {

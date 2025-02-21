@@ -1,6 +1,6 @@
 use crate::emitter::rewriting::rules::core::CorePackage;
 use crate::emitter::rewriting::rules::wasm::{OpcodeEvent, WasmPackage};
-use crate::generator::rewriting::simple_ast::{SimpleAstProbes, SimpleProbe};
+use crate::generator::rewriting::simple_ast::SimpleAstProbes;
 use crate::parser::rules::core::WhammModeKind;
 use crate::parser::rules::{FromStr, WhammProviderKind};
 use crate::parser::types::{Block, DataType, Definition, Expr, NumLit, RulePart, Statement, Value};
@@ -10,6 +10,7 @@ use orca_wasm::Location;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use wasmparser::Operator;
+use crate::generator::ast::Probe;
 
 mod core;
 pub mod wasm;
@@ -59,7 +60,7 @@ pub fn provider_factory<P: Provider + FromStr>(ast: &SimpleAstProbes) -> Vec<Box
 }
 /// Splits out the logic to add new packages to a provider
 fn package_factory<P: Package + FromStr + 'static>(
-    ast_packages: &HashMap<String, HashMap<String, HashMap<WhammModeKind, Vec<SimpleProbe>>>>,
+    ast_packages: &HashMap<String, HashMap<String, HashMap<WhammModeKind, Vec<Probe>>>>,
 ) -> Vec<Box<dyn Package>> {
     let mut packages: Vec<Box<dyn Package>> = vec![];
     ast_packages.iter().for_each(|(package_name, events)| {
@@ -72,7 +73,7 @@ fn package_factory<P: Package + FromStr + 'static>(
 }
 /// Splits out the logic to add new events to a package
 fn event_factory<E: Event + FromStr + 'static>(
-    ast_events: &HashMap<String, HashMap<WhammModeKind, Vec<SimpleProbe>>>,
+    ast_events: &HashMap<String, HashMap<WhammModeKind, Vec<Probe>>>,
 ) -> Vec<Box<dyn Event>> {
     let mut events: Vec<Box<dyn Event>> = vec![];
     ast_events.iter().for_each(|(event_name, probes)| {
@@ -84,8 +85,8 @@ fn event_factory<E: Event + FromStr + 'static>(
     events
 }
 fn probe_factory(
-    ast_probes: &HashMap<WhammModeKind, Vec<SimpleProbe>>,
-) -> HashMap<WhammModeKind, Vec<SimpleProbe>> {
+    ast_probes: &HashMap<WhammModeKind, Vec<Probe>>,
+) -> HashMap<WhammModeKind, Vec<Probe>> {
     ast_probes
         .iter()
         .map(|(name, probe_list)| {
@@ -155,7 +156,7 @@ pub struct LocInfo<'a> {
     pub num_alt_probes: usize,
     /// the probes that were matched for this instruction
     /// note the Script ID is contained in SimpleProbe
-    pub probes: Vec<(ProbeRule, &'a SimpleProbe)>,
+    pub probes: Vec<(ProbeRule, &'a Probe)>,
 }
 impl<'a> LocInfo<'a> {
     fn new() -> Self {
@@ -167,7 +168,7 @@ impl<'a> LocInfo<'a> {
     fn add_probes(
         &mut self,
         base_rule: ProbeRule,
-        probes: &'a HashMap<WhammModeKind, Vec<SimpleProbe>>,
+        probes: &'a HashMap<WhammModeKind, Vec<Probe>>,
     ) {
         probes.iter().for_each(|(probe_mode, probes)| {
             let mut rule = base_rule.clone();
@@ -426,7 +427,7 @@ pub trait Provider {
     fn get_loc_info(&self, app_wasm: &Module, loc: Location, instr: &Operator) -> Option<LocInfo>;
     fn add_packages(
         &mut self,
-        ast_packages: &HashMap<String, HashMap<String, HashMap<WhammModeKind, Vec<SimpleProbe>>>>,
+        ast_packages: &HashMap<String, HashMap<String, HashMap<WhammModeKind, Vec<Probe>>>>,
     );
 }
 pub trait Package {
@@ -434,13 +435,13 @@ pub trait Package {
     fn get_loc_info(&self, app_wasm: &Module, instr: &Operator) -> Option<LocInfo>;
     fn add_events(
         &mut self,
-        ast_events: &HashMap<String, HashMap<WhammModeKind, Vec<SimpleProbe>>>,
+        ast_events: &HashMap<String, HashMap<WhammModeKind, Vec<Probe>>>,
     );
 }
 pub trait Event {
     /// Pass some location to the provider and get back two types of data:
     fn get_loc_info(&self, app_wasm: &Module, instr: &Operator) -> Option<LocInfo>;
-    fn add_probes(&mut self, ast_probes: &HashMap<WhammModeKind, Vec<SimpleProbe>>);
+    fn add_probes(&mut self, ast_probes: &HashMap<WhammModeKind, Vec<Probe>>);
 }
 
 pub struct WhammProvider {
@@ -542,7 +543,7 @@ impl Provider for WhammProvider {
     }
     fn add_packages(
         &mut self,
-        ast_packages: &HashMap<String, HashMap<String, HashMap<WhammModeKind, Vec<SimpleProbe>>>>,
+        ast_packages: &HashMap<String, HashMap<String, HashMap<WhammModeKind, Vec<Probe>>>>,
     ) {
         let packages = match self.kind {
             WhammProviderKind::Core => package_factory::<CorePackage>(ast_packages),

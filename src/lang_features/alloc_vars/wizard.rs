@@ -22,7 +22,7 @@ pub struct UnsharedVarHandler {
 }
 impl UnsharedVarHandler {
     pub fn emit_alloc_func(
-        &mut self,
+        &self,
         unshared_to_alloc: &mut [UnsharedVar],
         emitter: &mut ModuleEmitter,
         err: &mut ErrorGen,

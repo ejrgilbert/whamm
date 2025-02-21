@@ -2,7 +2,6 @@ use crate::emitter::rewriting::rules::{
     event_factory, probe_factory, Arg, Event, FromStr, LocInfo, Package, ProbeRule,
 };
 use crate::for_each_opcode;
-use crate::generator::rewriting::simple_ast::SimpleProbe;
 use crate::parser::rules::core::WhammModeKind;
 use crate::parser::rules::wasm::{OpcodeEventKind, WasmPackageKind};
 use crate::parser::types::{BinOp, DataType, Definition, Expr, RulePart, Value};
@@ -14,6 +13,7 @@ use orca_wasm::ir::module::Module;
 use orca_wasm::ir::types::DataType as OrcaType;
 use std::collections::HashMap;
 use wasmparser::{GlobalType, MemArg, Operator};
+use crate::generator::ast::Probe;
 
 pub struct WasmPackage {
     kind: WasmPackageKind,
@@ -59,7 +59,7 @@ impl Package for WasmPackage {
     }
     fn add_events(
         &mut self,
-        ast_events: &HashMap<String, HashMap<WhammModeKind, Vec<SimpleProbe>>>,
+        ast_events: &HashMap<String, HashMap<WhammModeKind, Vec<Probe>>>,
     ) {
         let events = match self.kind {
             WasmPackageKind::Opcode => event_factory::<OpcodeEvent>(ast_events),
@@ -79,7 +79,7 @@ pub struct OpcodeEvent {
     kind: OpcodeEventKind,
     // Map from probe_mode_name -> Vec[probes_of_this_mode]
     // Retains ordering of instrumentation units (in order of scripts passed by user)
-    probes: HashMap<WhammModeKind, Vec<SimpleProbe>>,
+    probes: HashMap<WhammModeKind, Vec<Probe>>,
 }
 macro_rules! define_opcode_event {
 ($($op:ident, $category:expr, $name:ident, $num_args:expr, $imms:expr, $globals:expr, $fns:expr, $supported_modes:expr, $req_map:expr, $docs:expr)*) => {
@@ -187,11 +187,17 @@ impl OpcodeEvent {
             }
             Operator::Drop => {
                 // TODO -- how to express an unknown type?
+                //     Lookup in the symbol table! We've placed type bounds in there during verification
+                //     HOWEVER, we will need to keep a virtual stack to check if this match site is in fact
+                //     a match based on the type bounds. (if they don't match up, not a match, don't emit)
                 // e.g. [unknown]
                 (vec![None], None)
             }
             Operator::Select => {
                 // TODO -- how to express an unknown type?
+                //     Lookup in the symbol table! We've placed type bounds in there during verification
+                //     HOWEVER, we will need to keep a virtual stack to check if this match site is in fact
+                //     a match based on the type bounds. (if they don't match up, not a match, don't emit)
                 // e.g. [unknown, unknown, i32]
                 (vec![None, None, Some(OrcaType::I32)], None)
             }
@@ -3883,7 +3889,7 @@ impl Event for OpcodeEvent {
         }
     }
 
-    fn add_probes(&mut self, probes: &HashMap<WhammModeKind, Vec<SimpleProbe>>) {
+    fn add_probes(&mut self, probes: &HashMap<WhammModeKind, Vec<Probe>>) {
         self.probes = probe_factory(probes);
     }
 }

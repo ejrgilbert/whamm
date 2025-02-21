@@ -1,13 +1,13 @@
-use crate::lang_features::report_vars::LocationData;
+use crate::lang_features::report_vars::{BytecodeLoc, LocationData};
 use crate::parser::rules::{Event, Package, Probe, Provider};
-use crate::parser::types::{
-    BinOp, Block, DataType, Definition, Expr, Fn, Global, ProvidedFunction, Script, Statement,
-    UnOp, Value, Whamm, WhammVisitorMut,
-};
+use crate::parser::types::{BinOp, Block, DataType, Definition, Expr, Fn, FnId, Global, ProvidedFunction, Script, Statement, UnOp, Value, Whamm, WhammVisitorMut};
 use crate::verifier::types::Record;
 use log::{debug, trace, warn};
 use orca_wasm::ir::id::FunctionID;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use crate::common::error::ErrorGen;
+use crate::emitter::module_emitter::ModuleEmitter;
+use crate::generator::ast::UnsharedVar;
 
 pub mod folding;
 pub mod rewriting;
@@ -17,6 +17,50 @@ pub mod ast;
 pub mod metadata_collector;
 #[cfg(test)]
 pub mod tests;
+
+fn create_curr_loc(curr_script_id: u8, probe: &ast::Probe) -> LocationData {
+    let probe_id = format!("{}_{}", probe.probe_number, probe.rule);
+
+    // translate unshared vars to the correct format
+    let mut vars = HashMap::default();
+    for UnsharedVar { ty, .. } in probe.unshared_to_alloc.iter() {
+        vars.entry(ty.clone())
+            .and_modify(|count| {
+                *count += 1;
+            })
+            .or_insert(1);
+    }
+
+    //set the current location in bytecode and load some new globals for potential report vars
+    LocationData::Local {
+        script_id: curr_script_id,
+        bytecode_loc: BytecodeLoc::new(0, 0), // TODO -- request this from wizard
+        probe_id,
+        // TODO -- this variable is probably unnecessary?? since we're using $alloc logic now?
+        unshared: vars, //this is still used in the emitter to determine the new globals to emit
+    }
+}
+fn emit_needed_funcs(funcs: HashSet<(String, String)>, emitter: &mut ModuleEmitter,
+                     injected_funcs: &mut Vec<FunctionID>, err: &mut ErrorGen) {
+    for (context, fname) in funcs.iter() {
+        if let Some(fid) = emitter.emit_provided_fn(
+            context,
+            &crate::parser::types::Fn {
+                def: Definition::CompilerDynamic,
+                name: FnId {
+                    name: fname.clone(),
+                    loc: None,
+                },
+                params: vec![],
+                return_ty: DataType::Boolean,
+                body: Default::default(),
+            },
+            err,
+        ) {
+            injected_funcs.push(fid);
+        };
+    }
+}
 
 pub trait GeneratingVisitor: WhammVisitorMut<bool> {
     fn emit_string(&mut self, val: &mut Value) -> bool;

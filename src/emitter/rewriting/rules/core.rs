@@ -4,9 +4,9 @@ use crate::emitter::rewriting::rules::{
 use crate::parser::rules::core::{CoreEventKind, CorePackageKind, WhammModeKind};
 use std::collections::HashMap;
 
-use crate::generator::rewriting::simple_ast::SimpleProbe;
 use orca_wasm::ir::module::Module;
 use wasmparser::Operator;
+use crate::generator::ast::Probe;
 
 pub struct CorePackage {
     kind: CorePackageKind,
@@ -52,7 +52,7 @@ impl Package for CorePackage {
     }
     fn add_events(
         &mut self,
-        ast_events: &HashMap<String, HashMap<WhammModeKind, Vec<SimpleProbe>>>,
+        ast_events: &HashMap<String, HashMap<WhammModeKind, Vec<Probe>>>,
     ) {
         let events = match self.kind {
             CorePackageKind::Default => event_factory::<CoreEvent>(ast_events),
@@ -63,7 +63,7 @@ impl Package for CorePackage {
 
 pub struct CoreEvent {
     kind: CoreEventKind,
-    probes: HashMap<WhammModeKind, Vec<SimpleProbe>>,
+    probes: HashMap<WhammModeKind, Vec<Probe>>,
 }
 impl FromStr for CoreEvent {
     fn from_str(name: &str) -> Self {
@@ -109,7 +109,7 @@ impl Event for CoreEvent {
             None
         }
     }
-    fn add_probes(&mut self, probes: &HashMap<WhammModeKind, Vec<SimpleProbe>>) {
+    fn add_probes(&mut self, probes: &HashMap<WhammModeKind, Vec<Probe>>) {
         self.probes = probe_factory(probes);
     }
 }
