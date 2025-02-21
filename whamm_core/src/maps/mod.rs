@@ -453,152 +453,153 @@ impl TupleVariant {
 //to make a map to/from a map or string they have to boxed
 
 //functions for inserting into a map - use the matching done in the insert function for AnyMap enum
-fn insert_i32_i32_inner(name: i32, key: i32, value: i32) -> bool {
-    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
+fn insert_i32_i32_inner(id: i32, key: i32, value: i32) -> bool {
+    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&id) {
+        return any_map.insert(Box::new(key), Box::new(value));
+    } else {
+        panic!("Could not find map with ID: {}", id);
+    }
+}
+fn insert_i32_string_inner(id: i32, key: i32, value: String) -> bool {
+    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&id) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
-fn insert_i32_string_inner(name: i32, key: i32, value: String) -> bool {
-    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
+fn insert_i32_map_inner(id: i32, key: i32, value: AnyMap) -> bool {
+    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&id) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
-fn insert_i32_map_inner(name: i32, key: i32, value: AnyMap) -> bool {
-    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
+fn insert_i32_tuple_inner(id: i32, key: i32, value: TupleVariant) -> bool {
+    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&id) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
-fn insert_i32_tuple_inner(name: i32, key: i32, value: TupleVariant) -> bool {
-    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
+fn insert_i32_bool_inner(id: i32, key: i32, value: bool) -> bool {
+    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&id) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
-fn insert_i32_bool_inner(name: i32, key: i32, value: bool) -> bool {
-    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
+fn insert_string_i32_inner(id: i32, key: String, value: i32) -> bool {
+    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&id) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
-fn insert_string_i32_inner(name: i32, key: String, value: i32) -> bool {
-    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
+fn insert_string_string_inner(id: i32, key: String, value: String) -> bool {
+    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&id) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
-fn insert_string_string_inner(name: i32, key: String, value: String) -> bool {
-    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
+fn insert_string_map_inner(id: i32, key: String, value: AnyMap) -> bool {
+    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&id) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
-fn insert_string_map_inner(name: i32, key: String, value: AnyMap) -> bool {
-    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
+fn insert_string_tuple_inner(id: i32, key: String, value: TupleVariant) -> bool {
+    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&id) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
-fn insert_string_tuple_inner(name: i32, key: String, value: TupleVariant) -> bool {
-    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
+fn insert_string_bool_inner(id: i32, key: String, value: bool) -> bool {
+    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&id) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
-fn insert_string_bool_inner(name: i32, key: String, value: bool) -> bool {
-    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
+fn insert_tuple_i32_inner(id: i32, key: TupleVariant, value: i32) -> bool {
+    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&id) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
-fn insert_tuple_i32_inner(name: i32, key: TupleVariant, value: i32) -> bool {
-    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
+fn insert_tuple_string_inner(id: i32, key: TupleVariant, value: String) -> bool {
+    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&id) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
-fn insert_tuple_string_inner(name: i32, key: TupleVariant, value: String) -> bool {
-    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
+fn insert_tuple_map_inner(id: i32, key: TupleVariant, value: AnyMap) -> bool {
+    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&id) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
-fn insert_tuple_map_inner(name: i32, key: TupleVariant, value: AnyMap) -> bool {
-    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
+fn insert_tuple_tuple_inner(id: i32, key: TupleVariant, value: TupleVariant) -> bool {
+    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&id) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
-fn insert_tuple_tuple_inner(name: i32, key: TupleVariant, value: TupleVariant) -> bool {
-    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
+fn insert_tuple_bool_inner(id: i32, key: TupleVariant, value: bool) -> bool {
+    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&id) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
-fn insert_tuple_bool_inner(name: i32, key: TupleVariant, value: bool) -> bool {
-    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
+fn insert_bool_i32_inner(id: i32, key: bool, value: i32) -> bool {
+    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&id) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
-fn insert_bool_i32_inner(name: i32, key: bool, value: i32) -> bool {
-    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
+fn insert_bool_string_inner(id: i32, key: bool, value: String) -> bool {
+    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&id) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
-fn insert_bool_string_inner(name: i32, key: bool, value: String) -> bool {
-    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
+fn insert_bool_map_inner(id: i32, key: bool, value: AnyMap) -> bool {
+    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&id) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
-fn insert_bool_map_inner(name: i32, key: bool, value: AnyMap) -> bool {
-    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
+fn insert_bool_tuple_inner(id: i32, key: bool, value: TupleVariant) -> bool {
+    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&id) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
-fn insert_bool_tuple_inner(name: i32, key: bool, value: TupleVariant) -> bool {
-    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
-        return any_map.insert(Box::new(key), Box::new(value));
-    }
-    false
-}
-fn insert_bool_bool_inner(name: i32, key: bool, value: bool) -> bool {
-    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&name) {
+fn insert_bool_bool_inner(id: i32, key: bool, value: bool) -> bool {
+    if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&id) {
         return any_map.insert(Box::new(key), Box::new(value));
     }
     false
 }
 
 //functions for getting from a map
-fn get_i32_optional(name: i32, key: &dyn Any) -> Option<i32> {
-    if let Some(boxed_map) = MY_MAPS.lock().unwrap().get(&name) {
+fn get_i32_optional(id: i32, key: &dyn Any) -> Option<i32> {
+    if let Some(boxed_map) = MY_MAPS.lock().unwrap().get(&id) {
         return boxed_map.get_i32(key);
     }
     None
 }
-fn get_string_optional(name: i32, key: &dyn Any) -> Option<String> {
-    if let Some(boxed_map) = MY_MAPS.lock().unwrap().get(&name) {
+fn get_string_optional(id: i32, key: &dyn Any) -> Option<String> {
+    if let Some(boxed_map) = MY_MAPS.lock().unwrap().get(&id) {
         return boxed_map.get_string(key).map(|value| value.clone());
     }
     None
 }
-fn get_tuple_optional(name: i32, key: &dyn Any) -> Option<Box<TupleVariant>> {
-    if let Some(boxed_map) = MY_MAPS.lock().unwrap().get(&name) {
+fn get_tuple_optional(id: i32, key: &dyn Any) -> Option<Box<TupleVariant>> {
+    if let Some(boxed_map) = MY_MAPS.lock().unwrap().get(&id) {
         return boxed_map.get_tuple(key).map(|value| value.clone());
     }
     None
 }
 fn get_map_mut<'a>(
     my_maps: &'a mut HashMap<i32, AnyMap>,
-    name: i32,
+    id: i32,
     key: &dyn Any,
 ) -> Option<&'a mut AnyMap> {
-    if let Some(boxed_map) = my_maps.get_mut(&name) {
+    if let Some(boxed_map) = my_maps.get_mut(&id) {
         return match boxed_map.get_map_mut(key) {
             Some(value) => Some(value),
             None => None,
@@ -606,44 +607,44 @@ fn get_map_mut<'a>(
     }
     None
 }
-fn get_map_optional(name: i32, key: &dyn Any) -> Option<AnyMap> {
-    if let Some(boxed_map) = MY_MAPS.lock().unwrap().get(&name) {
+fn get_map_optional(id: i32, key: &dyn Any) -> Option<AnyMap> {
+    if let Some(boxed_map) = MY_MAPS.lock().unwrap().get(&id) {
         return boxed_map.get_map(key).map(|value| *value.clone());
     }
     None
 }
-fn get_bool_optional(name: i32, key: &dyn Any) -> Option<bool> {
-    if let Some(boxed_map) = MY_MAPS.lock().unwrap().get(&name) {
+fn get_bool_optional(id: i32, key: &dyn Any) -> Option<bool> {
+    if let Some(boxed_map) = MY_MAPS.lock().unwrap().get(&id) {
         return boxed_map.get_bool(key).map(|value| value);
     }
     None
 }
-fn get_i32(name: i32, key: &dyn Any) -> i32 {
-    match get_i32_optional(name, key) {
+fn get_i32(id: i32, key: &dyn Any) -> i32 {
+    match get_i32_optional(id, key) {
         Some(value) => value,
         None => 0, // return a default value
     }
 }
-fn get_string(name: i32, key: &dyn Any) -> String {
-    match get_string_optional(name, key) {
+fn get_string(id: i32, key: &dyn Any) -> String {
+    match get_string_optional(id, key) {
         Some(value) => value,
         None => panic!("Key not found in map"),
     }
 }
-fn get_tuple(name: i32, key: &dyn Any) -> Box<TupleVariant> {
-    match get_tuple_optional(name, key) {
+fn get_tuple(id: i32, key: &dyn Any) -> Box<TupleVariant> {
+    match get_tuple_optional(id, key) {
         Some(value) => value,
         None => panic!("Key not found in map"),
     }
 }
-fn get_map(name: i32, key: &dyn Any) -> AnyMap {
-    match get_map_optional(name, key) {
+fn get_map(id: i32, key: &dyn Any) -> AnyMap {
+    match get_map_optional(id, key) {
         Some(value) => value,
         None => panic!("Key not found in map"),
     }
 }
-fn get_bool(name: i32, key: &dyn Any) -> bool {
-    match get_bool_optional(name, key) {
+fn get_bool(id: i32, key: &dyn Any) -> bool {
+    match get_bool_optional(id, key) {
         Some(value) => value,
         None => false, // return a default value
     }
@@ -665,192 +666,223 @@ fn string_from_data(offset: u32, length: u32) -> String {
 
 
 // CREATE
-#[no_mangle]
-pub fn create_i32_i32(name: i32) {
-    debug!("DEBUG: creating i32_i32 map with name '{name}'");
-    MY_MAPS
-        .lock()
-        .unwrap()
-        .insert(name, AnyMap::i32_i32_Map(HashMap::new()));
-}
-#[no_mangle]
-pub fn create_i32_bool(name: i32) {
-    MY_MAPS
-        .lock()
-        .unwrap()
-        .insert(name, AnyMap::i32_bool_Map(HashMap::new()));
-}
-#[no_mangle]
-pub fn create_i32_string(name: i32) {
-    debug!("DEBUG: creating i32_string map with name '{name}'");
-    MY_MAPS
-        .lock()
-        .unwrap()
-        .insert(name, AnyMap::i32_string_Map(HashMap::new()));
-}
-#[no_mangle]
-pub fn create_i32_tuple(name: i32) {
-    MY_MAPS
-        .lock()
-        .unwrap()
-        .insert(name, AnyMap::i32_tuple_Map(HashMap::new()));
-}
-#[no_mangle]
-pub fn create_i32_map(name: i32) {
-    MY_MAPS
-        .lock()
-        .unwrap()
-        .insert(name, AnyMap::i32_map_Map(HashMap::new()));
-}
-#[no_mangle]
-pub fn create_string_i32(name: i32) {
-    MY_MAPS
-        .lock()
-        .unwrap()
-        .insert(name, AnyMap::string_i32_Map(HashMap::new()));
-}
-#[no_mangle]
-pub fn create_string_bool(name: i32) {
-    MY_MAPS
-        .lock()
-        .unwrap()
-        .insert(name, AnyMap::string_bool_Map(HashMap::new()));
-}
-#[no_mangle]
-pub fn create_string_string(name: i32) {
-    MY_MAPS
-        .lock()
-        .unwrap()
-        .insert(name, AnyMap::string_string_Map(HashMap::new()));
-}
-#[no_mangle]
-pub fn create_string_tuple(name: i32) {
-    MY_MAPS
-        .lock()
-        .unwrap()
-        .insert(name, AnyMap::string_tuple_Map(HashMap::new()));
-}
-#[no_mangle]
-pub fn create_string_map(name: i32) {
-    MY_MAPS
-        .lock()
-        .unwrap()
-        .insert(name, AnyMap::string_map_Map(HashMap::new()));
-}
-#[no_mangle]
-pub fn create_bool_i32(name: i32) {
-    MY_MAPS
-        .lock()
-        .unwrap()
-        .insert(name, AnyMap::bool_i32_Map(HashMap::new()));
-}
-#[no_mangle]
-pub fn create_bool_bool(name: i32) {
-    MY_MAPS
-        .lock()
-        .unwrap()
-        .insert(name, AnyMap::bool_bool_Map(HashMap::new()));
-}
-#[no_mangle]
-pub fn create_bool_string(name: i32) {
-    MY_MAPS
-        .lock()
-        .unwrap()
-        .insert(name, AnyMap::bool_string_Map(HashMap::new()));
-}
-#[no_mangle]
-pub fn create_bool_tuple(name: i32) {
-    MY_MAPS
-        .lock()
-        .unwrap()
-        .insert(name, AnyMap::bool_tuple_Map(HashMap::new()));
-}
-#[no_mangle]
-pub fn create_bool_map(name: i32) {
-    MY_MAPS
-        .lock()
-        .unwrap()
-        .insert(name, AnyMap::bool_map_Map(HashMap::new()));
-}
-#[no_mangle]
-pub fn create_tuple_i32(name: i32) {
-    MY_MAPS
-        .lock()
-        .unwrap()
-        .insert(name, AnyMap::tuple_i32_Map(HashMap::new()));
-}
-#[no_mangle]
-pub fn create_tuple_bool(name: i32) {
-    MY_MAPS
-        .lock()
-        .unwrap()
-        .insert(name, AnyMap::tuple_bool_Map(HashMap::new()));
-}
-#[no_mangle]
-pub fn create_tuple_string(name: i32) {
-    MY_MAPS
-        .lock()
-        .unwrap()
-        .insert(name, AnyMap::tuple_string_Map(HashMap::new()));
-}
-#[no_mangle]
-pub fn create_tuple_tuple(name: i32) {
-    MY_MAPS
-        .lock()
-        .unwrap()
-        .insert(name, AnyMap::tuple_tuple_Map(HashMap::new()));
-}
-#[no_mangle]
-pub fn create_tuple_map(name: i32) {
-    MY_MAPS
-        .lock()
-        .unwrap()
-        .insert(name, AnyMap::tuple_map_Map(HashMap::new()));
-}
+fn create_map_internal(id: Option<i32>, map: AnyMap) -> i32 {
+    let mut binding = MY_MAPS.lock().unwrap();
+    let id = if let Some(id) = id {
+        id
+    } else {
+        binding.len() as i32
+    };
 
+    binding.insert(id, map);
+    id
+}
+#[no_mangle]
+pub fn create_i32_i32_with_id(id: i32) {
+    create_map_internal(Some(id), AnyMap::i32_i32_Map(HashMap::new()));
+}
+#[no_mangle]
+pub fn create_i32_i32() -> i32 {
+    create_map_internal(None, AnyMap::i32_i32_Map(HashMap::new()))
+}
+#[no_mangle]
+pub fn create_i32_bool_with_id(id: i32) {
+    create_map_internal(Some(id), AnyMap::i32_bool_Map(HashMap::new()));
+}
+#[no_mangle]
+pub fn create_i32_bool() -> i32 {
+    create_map_internal(None, AnyMap::i32_bool_Map(HashMap::new()))
+}
+#[no_mangle]
+pub fn create_i32_string_with_id(id: i32) {
+    create_map_internal(Some(id), AnyMap::i32_string_Map(HashMap::new()));
+}
+#[no_mangle]
+pub fn create_i32_string() -> i32 {
+    create_map_internal(None, AnyMap::i32_string_Map(HashMap::new()))
+}
+#[no_mangle]
+pub fn create_i32_tuple_with_id(id: i32) {
+    create_map_internal(Some(id), AnyMap::i32_tuple_Map(HashMap::new()));
+}
+#[no_mangle]
+pub fn create_i32_tuple() -> i32 {
+    create_map_internal(None, AnyMap::i32_tuple_Map(HashMap::new()))
+}
+#[no_mangle]
+pub fn create_i32_map_with_id(id: i32) {
+    create_map_internal(Some(id), AnyMap::i32_map_Map(HashMap::new()));
+}
+#[no_mangle]
+pub fn create_i32_map() -> i32 {
+    create_map_internal(None, AnyMap::i32_map_Map(HashMap::new()))
+}
+#[no_mangle]
+pub fn create_string_i32_with_id(id: i32) {
+    create_map_internal(Some(id), AnyMap::string_i32_Map(HashMap::new()));
+}
+#[no_mangle]
+pub fn create_string_i32() -> i32 {
+    create_map_internal(None, AnyMap::string_i32_Map(HashMap::new()))
+}
+#[no_mangle]
+pub fn create_string_bool_with_id(id: i32) {
+    create_map_internal(Some(id), AnyMap::string_bool_Map(HashMap::new()));
+}
+#[no_mangle]
+pub fn create_string_bool() -> i32 {
+    create_map_internal(None, AnyMap::string_bool_Map(HashMap::new()))
+}
+#[no_mangle]
+pub fn create_string_string_with_id(id: i32) {
+    create_map_internal(Some(id), AnyMap::string_string_Map(HashMap::new()));
+}
+#[no_mangle]
+pub fn create_string_string() -> i32 {
+    create_map_internal(None, AnyMap::string_string_Map(HashMap::new()))
+}
+#[no_mangle]
+pub fn create_string_tuple_with_id(id: i32) {
+    create_map_internal(Some(id), AnyMap::string_tuple_Map(HashMap::new()));
+}
+#[no_mangle]
+pub fn create_string_tuple() -> i32 {
+    create_map_internal(None, AnyMap::string_tuple_Map(HashMap::new()))
+}
+#[no_mangle]
+pub fn create_string_map_with_id(id: i32) {
+    create_map_internal(Some(id), AnyMap::string_map_Map(HashMap::new()));
+}
+#[no_mangle]
+pub fn create_string_map() -> i32 {
+    create_map_internal(None, AnyMap::string_map_Map(HashMap::new()))
+}
+#[no_mangle]
+pub fn create_bool_i32_with_id(id: i32) {
+    create_map_internal(Some(id), AnyMap::bool_i32_Map(HashMap::new()));
+}
+#[no_mangle]
+pub fn create_bool_i32() -> i32 {
+    create_map_internal(None, AnyMap::bool_i32_Map(HashMap::new()))
+}
+#[no_mangle]
+pub fn create_bool_bool_with_id(id: i32) {
+    create_map_internal(Some(id), AnyMap::bool_bool_Map(HashMap::new()));
+}
+#[no_mangle]
+pub fn create_bool_bool() -> i32 {
+    create_map_internal(None, AnyMap::bool_bool_Map(HashMap::new()))
+}
+#[no_mangle]
+pub fn create_bool_string_with_id(id: i32) {
+    create_map_internal(Some(id), AnyMap::bool_string_Map(HashMap::new()));
+}
+#[no_mangle]
+pub fn create_bool_string() -> i32 {
+    create_map_internal(None, AnyMap::bool_string_Map(HashMap::new()))
+}
+#[no_mangle]
+pub fn create_bool_tuple_with_id(id: i32) {
+    create_map_internal(Some(id), AnyMap::bool_tuple_Map(HashMap::new()));
+}
+#[no_mangle]
+pub fn create_bool_tuple() -> i32 {
+    create_map_internal(None, AnyMap::bool_tuple_Map(HashMap::new()))
+}
+#[no_mangle]
+pub fn create_bool_map_with_id(id: i32) {
+    create_map_internal(Some(id), AnyMap::bool_map_Map(HashMap::new()));
+}
+#[no_mangle]
+pub fn create_bool_map() -> i32 {
+    create_map_internal(None, AnyMap::bool_map_Map(HashMap::new()))
+}
+#[no_mangle]
+pub fn create_tuple_i32_with_id(id: i32) {
+    create_map_internal(Some(id), AnyMap::tuple_i32_Map(HashMap::new()));
+}
+#[no_mangle]
+pub fn create_tuple_i32() -> i32 {
+    create_map_internal(None, AnyMap::tuple_i32_Map(HashMap::new()))
+}
+#[no_mangle]
+pub fn create_tuple_bool_with_id(id: i32) {
+    create_map_internal(Some(id), AnyMap::tuple_bool_Map(HashMap::new()));
+}
+#[no_mangle]
+pub fn create_tuple_bool() -> i32 {
+    create_map_internal(None, AnyMap::tuple_bool_Map(HashMap::new()))
+}
+#[no_mangle]
+pub fn create_tuple_string_with_id(id: i32) {
+    create_map_internal(Some(id), AnyMap::tuple_string_Map(HashMap::new()));
+}
+#[no_mangle]
+pub fn create_tuple_string() -> i32 {
+    create_map_internal(None, AnyMap::tuple_string_Map(HashMap::new()))
+}
+#[no_mangle]
+pub fn create_tuple_tuple_with_id(id: i32) {
+    create_map_internal(Some(id), AnyMap::tuple_tuple_Map(HashMap::new()));
+}
+#[no_mangle]
+pub fn create_tuple_tuple() -> i32 {
+    create_map_internal(None, AnyMap::tuple_tuple_Map(HashMap::new()))
+}
+#[no_mangle]
+pub fn create_tuple_map_with_id(id: i32) {
+    create_map_internal(Some(id), AnyMap::tuple_map_Map(HashMap::new()));
+}
+#[no_mangle]
+pub fn create_tuple_map() -> i32 {
+    create_map_internal(None, AnyMap::tuple_map_Map(HashMap::new()))
+}
 
 // INSERT
 #[no_mangle]
-pub fn insert_i32_i32(name: i32, key: i32, value: i32) {
-    debug!("DEBUG: inserting ({key}, {value}) into map '{name}'");
-    if !insert_i32_i32_inner(name, key, value) {
+pub fn insert_i32_i32(id: i32, key: i32, value: i32) {
+    debug!("DEBUG: inserting ({key}, {value}) into map '{id}'");
+    if !insert_i32_i32_inner(id, key, value) {
         panic!("Failed to insert into i32_i32 map");
     }
 }
 #[no_mangle]
-pub fn insert_i32_string(name: i32, key: i32, offset: u32, length: u32) {
+pub fn insert_i32_string(id: i32, key: i32, offset: u32, length: u32) {
     let value = string_from_data(offset, length);
-    debug!("DEBUG: inserting ({key}, \"{value}\") into map '{name}'");
-    if !insert_i32_string_inner(name, key, value) {
+    debug!("DEBUG: inserting ({key}, \"{value}\") into map '{id}'");
+    if !insert_i32_string_inner(id, key, value) {
         panic!("Failed to insert into i32_string map");
     }
 }
 #[no_mangle]
-pub fn insert_i32i32i32tuple_i32(name: i32, key0: i32, key1: i32, key2: i32, value: i32) {
-    insert_tuple_i32_inner(name, TupleVariant::i32_i32_i32(key0, key1, key2), value);
+pub fn insert_i32i32i32tuple_i32(id: i32, key0: i32, key1: i32, key2: i32, value: i32) {
+    insert_tuple_i32_inner(id, TupleVariant::i32_i32_i32(key0, key1, key2), value);
 }
 
 
 // GET
 #[no_mangle]
-pub fn get_i32_i32(name: i32, key: i32) -> i32 {
-    debug!("getting key '{key}' from map '{name}'");
-    get_i32(name, &key)
+pub fn get_i32_i32(id: i32, key: i32) -> i32 {
+    debug!("getting key '{key}' from map '{id}'");
+    get_i32(id, &key)
 }
 #[no_mangle]
-pub fn get_i32_string(name: i32, key: i32) -> String {
-    get_string(name, &key)
+pub fn get_i32_string(id: i32, key: i32) -> String {
+    get_string(id, &key)
 }
 #[no_mangle]
-pub fn get_i32i32i32tuple_i32(name: i32, key0: i32, key1: i32, key2: i32) -> i32 {
-    get_i32(name, &Box::new(TupleVariant::i32_i32_i32(key0, key1, key2)))
+pub fn get_i32i32i32tuple_i32(id: i32, key0: i32, key1: i32, key2: i32) -> i32 {
+    get_i32(id, &Box::new(TupleVariant::i32_i32_i32(key0, key1, key2)))
 }
 
 
 // PRINT
 #[no_mangle]
-pub fn print_map(map_id: i32) {
+pub fn print_map(id: i32) {
     let binding = MY_MAPS.lock().unwrap();
-    let map = binding.get(&map_id).unwrap();
-    println!("{}", map.dump_map())
+    if let Some(map) = binding.get(&id) {
+        print!("{}", map.dump_map())
+    } else {
+        panic!("Could not find map with ID: {}", id)
+    }
 }

@@ -15,7 +15,7 @@ use orca_wasm::ir::types::{BlockType, DataType as OrcaType, InitExpr, Value as O
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::{MacroOpcode, Opcode};
 use orca_wasm::{Instructions, Module};
-use wasmparser::MemArg;
+
 // ==================================================================
 // ================ Emitter Helper Functions ========================
 // - Necessary to extract common logic between Emitter and InstrumentationVisitor.
@@ -156,6 +156,8 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             };
 
             if let DataType::Map { .. } = ty {
+                // TODO -- this behavior doesn't seem right for wizard
+                //    The map_id would need to be dynamic...not statically known!
                 let map_id = ctx
                     .map_lib_adapter
                     .map_create(ty.clone(), injector, ctx.err);
@@ -342,20 +344,27 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         };
 
         match map_addr {
-            VarAddr::MapId { addr } => injector.u32_const(addr),
-            VarAddr::Local { addr } => injector.local_get(LocalID(addr)),
+            VarAddr::MapId { addr } => {
+                injector.u32_const(addr);
+            }
+            VarAddr::Local { addr } => {
+                injector.local_get(LocalID(addr));
+            }
             VarAddr::MemLoc {
                 mem_id,
                 ty,
                 var_offset,
             } => {
                 assert!(matches!(ty, DataType::Map { .. }));
-                injector.i32_load(MemArg {
-                    align: 0,
-                    max_align: 0,
-                    offset: var_offset as u64,
-                    memory: mem_id,
-                })
+                // Get the map_id from memory!
+                ctx.mem_allocator.get_from_mem(
+                    mem_id,
+                    &DataType::I32,
+                    var_offset,
+                    ctx.table,
+                    injector,
+                    ctx.err,
+                );
             }
             other => panic!("Did not expect this address type: {:?}", other),
         };
@@ -1928,20 +1937,27 @@ fn emit_map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             return match get_map_info(name, ctx) {
                 Some((map_addr, key_ty, val_ty)) => {
                     match map_addr {
-                        VarAddr::MapId { addr } => injector.u32_const(addr),
-                        VarAddr::Local { addr } => injector.local_get(LocalID(addr)),
+                        VarAddr::MapId { addr } => {
+                            injector.u32_const(addr);
+                        }
+                        VarAddr::Local { addr } => {
+                            injector.local_get(LocalID(addr));
+                        }
                         VarAddr::MemLoc {
                             mem_id,
                             ty,
                             var_offset,
                         } => {
                             assert!(matches!(ty, DataType::Map { .. }));
-                            injector.i32_load(MemArg {
-                                align: 0,
-                                max_align: 0,
-                                offset: var_offset as u64,
-                                memory: mem_id,
-                            })
+                            // Get the map_id from memory!
+                            ctx.mem_allocator.get_from_mem(
+                                mem_id,
+                                &DataType::I32,
+                                var_offset,
+                                ctx.table,
+                                injector,
+                                ctx.err,
+                            );
                         }
                         other => panic!("Did not expect this address type: {:?}", other),
                     };

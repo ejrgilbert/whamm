@@ -199,7 +199,7 @@ pub fn run(
             // simple_ast,
             target_wasm,
             &mut symbol_table,
-            mem_allocator,
+            &mut mem_allocator,
             &mut io_adapter,
             &mut map_lib_adapter,
             &mut report_vars,
@@ -215,7 +215,7 @@ pub fn run(
             target_wasm,
             &mut symbol_table,
             has_reports,
-            mem_allocator,
+            &mut mem_allocator,
             &mut io_adapter,
             &mut map_lib_adapter,
             &mut report_vars,
@@ -224,6 +224,12 @@ pub fn run(
             &mut err,
         );
     }
+
+    // Bump the memory pages to account for used memory
+    mem_allocator.memory_grow(target_wasm);
+    // Update the memory tracker global to point to the start of free memory
+    mem_allocator.update_memory_global_ptr(target_wasm);
+
     // for debugging
     report_vars.print_metadata();
 
@@ -238,7 +244,7 @@ fn run_instr_wizard(
     // simple_ast: SimpleAST,
     target_wasm: &mut Module,
     symbol_table: &mut SymbolTable,
-    mut mem_allocator: MemoryAllocator,
+    mem_allocator: &mut MemoryAllocator,
     io_adapter: &mut IOAdapter,
     map_lib_adapter: &mut MapLibAdapter,
     report_vars: &mut ReportVars,
@@ -263,7 +269,7 @@ fn run_instr_wizard(
             InjectStrategy::Wizard,
             target_wasm,
             symbol_table,
-            &mut mem_allocator,
+            mem_allocator,
             map_lib_adapter,
             report_vars,
             unshared_var_handler,
@@ -277,9 +283,6 @@ fn run_instr_wizard(
         unshared_var_handler: &mut wizard_unshared_var_handler,
     };
     gen.run(wiz_ast, used_funcs, used_report_dts, used_strings);
-
-    // Update the memory tracker global to point to the start of free memory
-    mem_allocator.update_memory_global_ptr(target_wasm);
 }
 
 fn run_instr_rewrite(
@@ -288,7 +291,7 @@ fn run_instr_rewrite(
     target_wasm: &mut Module,
     symbol_table: &mut SymbolTable,
     has_reports: bool,
-    mut mem_allocator: MemoryAllocator,
+    mem_allocator: &mut MemoryAllocator,
     io_adapter: &mut IOAdapter,
     map_lib_adapter: &mut MapLibAdapter,
     report_vars: &mut ReportVars,
@@ -302,7 +305,7 @@ fn run_instr_rewrite(
             InjectStrategy::Rewriting,
             target_wasm,
             symbol_table,
-            &mut mem_allocator,
+            mem_allocator,
             map_lib_adapter,
             report_vars,
             unshared_var_handler,
@@ -324,7 +327,7 @@ fn run_instr_rewrite(
             target_wasm,
             injected_funcs,
             symbol_table,
-            &mut mem_allocator,
+            mem_allocator,
             map_lib_adapter,
             io_adapter,
             report_vars,
@@ -346,9 +349,6 @@ fn run_instr_rewrite(
             target_wasm.delete_global(GlobalID(*gid));
         }
     }
-
-    // Update the memory tracker global to point to the start of free memory
-    mem_allocator.update_memory_global_ptr(target_wasm);
 }
 
 fn get_memory_allocator(target_wasm: &mut Module, create_new_mem: bool) -> MemoryAllocator {
@@ -377,7 +377,6 @@ fn get_memory_allocator(target_wasm: &mut Module, create_new_mem: bool) -> Memor
     MemoryAllocator {
         mem_id,
         curr_mem_offset: 0,
-        required_initial_mem_size: 0,
         emitted_strings: HashMap::new(),
         mem_tracker_global,
         used_mem_checker_fid: None,

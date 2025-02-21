@@ -153,6 +153,9 @@ impl UnsharedVarHandler {
                     var_offset: curr_offset,
                 };
 
+                // If the variable is of a type that must be initialized, do it here!
+                self.init_var_object(&mut alloc, ty, &var_addr, emitter, err);
+
                 emitter.table.put(
                     name.clone(),
                     Record::Var {
@@ -200,6 +203,40 @@ impl UnsharedVarHandler {
                 .exports
                 .add_export_func(format!("${}", *alloc_id), *alloc_id);
             (Some(*alloc_id), "fid, pc".to_string())
+        }
+    }
+
+    fn init_var_object(
+        &self,
+        func: &mut FunctionBuilder,
+        ty: &DataType,
+        var_addr: &VarAddr,
+        emitter: &mut ModuleEmitter,
+        err: &mut ErrorGen,
+    ) {
+        if let DataType::Map { .. } = ty {
+            let VarAddr::MemLoc {
+                mem_id, var_offset, ..
+            } = var_addr
+            else {
+                panic!(
+                    "var_addr should be of type VarAddr::MemLoc, but was: {:?}",
+                    var_addr
+                )
+            };
+            func.global_get(emitter.mem_allocator.mem_tracker_global);
+            emitter
+                .map_lib_adapter
+                .map_create_dynamic(ty.clone(), func, err);
+
+            // the ID is now at ToS
+            // save at allocated map ID memory space
+            func.i32_store(MemArg {
+                align: 0,
+                max_align: 0,
+                offset: *var_offset as u64,
+                memory: *mem_id,
+            });
         }
     }
 

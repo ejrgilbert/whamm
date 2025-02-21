@@ -217,12 +217,12 @@ impl Display for DataType {
                     .iter()
                     .map(|ty| ty.to_string())
                     .collect::<Vec<String>>()
-                    .join(", ");
+                    .join(",");
                 s += ")";
                 write!(f, "{s}")
             }
             DataType::Map { key_ty, val_ty, .. } => {
-                write!(f, "map<{}, {}>", key_ty, val_ty)
+                write!(f, "map<{},{}>", key_ty, val_ty)
             }
             DataType::AssumeGood => write!(f, "assume_good"),
             DataType::Unknown => write!(f, "unknown"),
