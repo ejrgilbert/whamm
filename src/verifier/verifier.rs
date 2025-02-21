@@ -945,7 +945,11 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     Some(DataType::AssumeGood)
                 }
             }
-            Expr::VarId { name, loc, definition } => {
+            Expr::VarId {
+                name,
+                loc,
+                definition,
+            } => {
                 // TODO: fix this with type declarations for argN
                 // if name.starts_with("arg") && name[3..].parse::<u32>().is_ok() {
                 //     return Some(DataType::AssumeGood);

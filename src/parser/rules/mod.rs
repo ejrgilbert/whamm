@@ -740,7 +740,7 @@ impl WhammProvider {
                 "The ID of the function the probe is located in (zero-based indexing).".to_string(),
                 DataType::U32,
                 None,
-                true
+                true,
             ),
         );
         globals.insert(

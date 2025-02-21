@@ -2,7 +2,8 @@ use crate::for_each_opcode;
 use crate::parser::rules::{
     event_factory, get_array_globals, get_br_table_globals, get_call_fns, get_call_globals,
     get_memarg_globals, get_struct_globals, get_unknown_args_globals, Event, EventInfo,
-    FromStrWithLoc, NameOptions, OpcodeCategory::*, Package, PackageInfo, Probe, WhammModeKind, UNKNOWN_ARGS,
+    FromStrWithLoc, NameOptions, OpcodeCategory::*, Package, PackageInfo, Probe, WhammModeKind,
+    UNKNOWN_ARGS,
 };
 use crate::parser::types::{
     Block, DataType, Expr, Location, ProbeRule, ProvidedFunction, ProvidedGlobal,
@@ -189,7 +190,7 @@ pub enum OpcodeCategory {
     Simd,
     Ref,
     Gc,
-    Atomic
+    Atomic,
 }
 impl Display for OpcodeCategory {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -210,7 +211,7 @@ impl Display for OpcodeCategory {
             Ref => "ref",
             Gc => "gc",
             Atomic => "atomic",
-            Misc => "misc"
+            Misc => "misc",
         };
         f.write_str(str)
     }

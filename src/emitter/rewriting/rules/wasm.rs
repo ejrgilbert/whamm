@@ -534,11 +534,12 @@ impl Event for OpcodeEvent {
     fn get_loc_info(&self, app_wasm: &Module, instr: &Operator) -> Option<LocInfo> {
         let mut loc_info = LocInfo::new();
         // define the opcode category
-        loc_info
-            .static_data
-            .insert("category".to_string(), Some(Value::Str {
-                val: self.kind.category().to_string()
-            }));
+        loc_info.static_data.insert(
+            "category".to_string(),
+            Some(Value::Str {
+                val: self.kind.category().to_string(),
+            }),
+        );
 
         match self.kind {
             OpcodeEventKind::Unreachable { .. } => {

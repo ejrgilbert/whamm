@@ -1895,10 +1895,16 @@ pub struct ProvidedGlobal {
     pub name: String,
     pub docs: String,
     pub global: Global,
-    pub value: Option<Value>
+    pub value: Option<Value>,
 }
 impl ProvidedGlobal {
-    pub fn new(name: String, docs: String, ty: DataType, value: Option<Value>, is_static: bool) -> Self {
+    pub fn new(
+        name: String,
+        docs: String,
+        ty: DataType,
+        value: Option<Value>,
+        is_static: bool,
+    ) -> Self {
         Self {
             name: name.clone(),
             docs,
@@ -1921,7 +1927,7 @@ impl ProvidedGlobal {
                 },
                 value: None,
             },
-            value
+            value,
         }
     }
 }
