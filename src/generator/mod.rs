@@ -4,6 +4,7 @@ use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Fn, Global, ProvidedFunction, Script, Statement,
     UnOp, Value, Whamm, WhammVisitorMut,
 };
+use crate::verifier::types::Record;
 use log::{debug, trace, warn};
 use orca_wasm::ir::id::FunctionID;
 use std::collections::HashMap;
@@ -47,6 +48,7 @@ pub trait GeneratingVisitor: WhammVisitorMut<bool> {
     fn enter_named_scope(&mut self, name: &str);
     fn enter_scope(&mut self);
     fn exit_scope(&mut self);
+    fn lookup_var_mut(&mut self, name: &str) -> Option<&mut Record>;
     fn visit_stmts(&mut self, stmts: &mut [Statement]) -> bool {
         let mut is_success = true;
         stmts.iter_mut().for_each(|stmt| {
@@ -391,9 +393,41 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
                 is_success
             }
             Expr::Primitive { val, .. } => self.visit_value(val),
-            Expr::VarId { .. } => {
-                // ignore, will not have a string to emit
-                true
+            Expr::VarId {
+                definition, name, ..
+            } => {
+                if matches!(definition, Definition::CompilerStatic) {
+                    // (Hacky to fix the borrow issues with rust)
+                    let mut val = {
+                        if let Some(Record::Var {
+                            value: Some(val), ..
+                        }) = self.lookup_var_mut(name)
+                        {
+                            val.clone()
+                        } else {
+                            // ignore, nothing to emit here
+                            return true;
+                        }
+                    };
+
+                    if let Value::Str { .. } = val {
+                        self.emit_string(&mut val);
+                    }
+
+                    // look back up to overwrite the value!
+                    let Some(Record::Var {
+                        value: Some(old_val),
+                        ..
+                    }) = self.lookup_var_mut(name)
+                    else {
+                        panic!("Unable to find the definition for a static compiler variable!")
+                    };
+                    *old_val = val;
+                    true
+                } else {
+                    // ignore, will not have a string to emit
+                    true
+                }
             }
             Expr::MapGet { map, key, .. } => {
                 let mut is_success = true;

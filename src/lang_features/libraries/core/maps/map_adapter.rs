@@ -90,10 +90,12 @@ impl MapLibAdapter {
             // insert map
             ("insert_i32_i32".to_string(), 0),
             ("insert_i32_string".to_string(), 0),
+            ("insert_string_i32".to_string(), 0),
             ("insert_i32i32i32tuple_i32".to_string(), 0),
             // get from map
             ("get_i32_i32".to_string(), 0),
             ("get_i32_string".to_string(), 0),
+            ("get_string_i32".to_string(), 0),
             ("get_i32i32i32tuple_i32".to_string(), 0),
             // printing maps
             ("print_map".to_string(), 0),
@@ -287,7 +289,7 @@ impl MapLibAdapter {
             err.type_check_error(
                 true,
                 format!(
-                    "MapLibAdapter.map_create_fname: Unsupported map type: {:?} -> {:?}",
+                    "MapLibAdapter.map_create_fname: Unsupported map type: {:?} -> {:?}, need function with name '{fname}'",
                     key, val
                 ),
                 &None,
@@ -306,7 +308,7 @@ impl MapLibAdapter {
             err.type_check_error(
                 true,
                 format!(
-                    "MapLibAdapter.map_insert_fname: Unsupported map type: {:?} -> {:?}",
+                    "MapLibAdapter.map_insert_fname: Unsupported map type: {:?} -> {:?}, need function with name '{fname}'",
                     key, val
                 ),
                 &None,
@@ -325,7 +327,7 @@ impl MapLibAdapter {
             err.type_check_error(
                 true,
                 format!(
-                    "MapLibAdapter.map_get_fname: Unsupported map type: {:?} -> {:?}",
+                    "MapLibAdapter.map_get_fname: Unsupported map type: {:?} -> {:?}, need function with name '{fname}'",
                     key, val
                 ),
                 &None,

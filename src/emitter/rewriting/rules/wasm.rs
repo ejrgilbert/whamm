@@ -82,7 +82,7 @@ pub struct OpcodeEvent {
     probes: HashMap<WhammModeKind, Vec<SimpleProbe>>,
 }
 macro_rules! define_opcode_event {
-($($op:ident, $name:ident, $num_args:expr, $imms:expr, $globals:expr, $fns:expr, $supported_modes:expr, $req_map:expr, $docs:expr)*) => {
+($($op:ident, $category:expr, $name:ident, $num_args:expr, $imms:expr, $globals:expr, $fns:expr, $supported_modes:expr, $req_map:expr, $docs:expr)*) => {
 impl FromStr for OpcodeEvent {
     fn from_str(name: &str) -> Self {
         match name {
@@ -533,6 +533,13 @@ impl OpcodeEvent {
 impl Event for OpcodeEvent {
     fn get_loc_info(&self, app_wasm: &Module, instr: &Operator) -> Option<LocInfo> {
         let mut loc_info = LocInfo::new();
+        // define the opcode category
+        loc_info.static_data.insert(
+            "category".to_string(),
+            Some(Value::Str {
+                val: self.kind.category().to_string(),
+            }),
+        );
 
         match self.kind {
             OpcodeEventKind::Unreachable { .. } => {
