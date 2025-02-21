@@ -5,10 +5,10 @@ use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::module_emitter::ModuleEmitter;
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::InjectStrategy;
+use crate::generator::metadata_collector::MetadataCollector;
 use crate::generator::rewriting::init_generator::InitGenerator;
 use crate::generator::rewriting::instr_generator::InstrGenerator;
 use crate::generator::rewriting::simple_ast::{build_simple_ast, SimpleAST};
-use crate::generator::wizard::metadata_collector::WizardProbeMetadataCollector;
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::io::IOPackage;
@@ -193,19 +193,19 @@ pub fn run(
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
 
+    // Collect the metadata for the AST and transform to different representation
+    // specifically used for targeting Wizard during compilation.
+    let mut metadata_collector = MetadataCollector::new(&mut symbol_table, &mut err, &config);
+    metadata_collector.visit_whamm(&whamm);
     if config.wizard {
         run_instr_wizard(
-            &mut whamm,
-            // simple_ast,
+            metadata_collector,
             target_wasm,
-            &mut symbol_table,
             &mut mem_allocator,
             &mut io_adapter,
             &mut map_lib_adapter,
             &mut report_vars,
             &mut unshared_var_handler,
-            &mut err,
-            &config,
         );
     } else {
         let simple_ast = build_simple_ast(&whamm, &mut err);
@@ -240,23 +240,18 @@ pub fn run(
 }
 
 fn run_instr_wizard(
-    whamm: &mut Whamm,
-    // simple_ast: SimpleAST,
+    metadata_collector: MetadataCollector,
     target_wasm: &mut Module,
-    symbol_table: &mut SymbolTable,
     mem_allocator: &mut MemoryAllocator,
     io_adapter: &mut IOAdapter,
     map_lib_adapter: &mut MapLibAdapter,
     report_vars: &mut ReportVars,
     unshared_var_handler: &mut UnsharedVarHandler,
-    err: &mut ErrorGen,
-    config: &Config,
 ) {
-    // Collect the metadata for the AST and transform to different representation
-    // specifically used for targeting Wizard during compilation.
-    let mut metadata_collector = WizardProbeMetadataCollector::new(symbol_table, err, config);
-    metadata_collector.visit_whamm(whamm);
-    let wiz_ast = metadata_collector.wizard_ast;
+    let table = metadata_collector.table;
+    let err = metadata_collector.err;
+    let config = metadata_collector.config;
+    let wiz_ast = metadata_collector.ast;
     let used_funcs = metadata_collector.used_provided_fns;
     let used_report_dts = metadata_collector.used_report_var_dts;
     let used_strings = metadata_collector.strings_to_emit;
@@ -268,7 +263,7 @@ fn run_instr_wizard(
         emitter: ModuleEmitter::new(
             InjectStrategy::Wizard,
             target_wasm,
-            symbol_table,
+            table,
             mem_allocator,
             map_lib_adapter,
             report_vars,

@@ -1,7 +1,7 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::StringAddr;
 use crate::emitter::module_emitter::ModuleEmitter;
-use crate::generator::wizard::ast::UnsharedVar;
+use crate::generator::ast::UnsharedVar;
 use crate::lang_features::report_vars::Metadata as ReportMetadata;
 use crate::lang_features::report_vars::ReportVars;
 use crate::parser::types::{DataType, Definition};

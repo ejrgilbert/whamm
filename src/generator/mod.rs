@@ -13,6 +13,8 @@ pub mod folding;
 pub mod rewriting;
 pub mod wizard;
 
+pub mod ast;
+pub mod metadata_collector;
 #[cfg(test)]
 pub mod tests;
 

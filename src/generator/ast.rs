@@ -4,13 +4,13 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 
 #[derive(Clone, Default)]
-pub struct WizardScript {
+pub struct Script {
     pub id: u8,
     pub fns: Vec<crate::parser::types::Fn>, // User-provided
     pub globals: HashMap<String, Global>,   // User-provided, should be VarId
     pub global_stmts: Vec<Statement>,
     /// The rules of the probes that have been used in the Script.
-    pub probes: Vec<WizardProbe>,
+    pub probes: Vec<Probe>,
 }
 
 #[derive(Clone)]
@@ -22,7 +22,7 @@ pub struct UnsharedVar {
 }
 
 #[derive(Clone, Default)]
-pub struct WizardProbe {
+pub struct Probe {
     pub rule: String,
     pub predicate: Option<Expr>,
     pub body: Option<Block>,
@@ -30,12 +30,12 @@ pub struct WizardProbe {
     pub unshared_to_alloc: Vec<UnsharedVar>,
     pub probe_number: u32,
 }
-impl Display for WizardProbe {
+impl Display for Probe {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}_{}", self.probe_number, self.rule)
     }
 }
-impl WizardProbe {
+impl Probe {
     pub(crate) fn new(rule: String, probe_number: u32) -> Self {
         Self {
             rule,
@@ -81,11 +81,11 @@ impl Metadata {
 #[derive(Clone, Default)]
 pub struct WhammParams {
     pub params: HashSet<WhammParam>,
-    pub req_args: bool
+    pub req_args: bool,
 }
 impl WhammParams {
     pub fn push(&mut self, param: WhammParam) {
-        if matches!(param, WhammParam::Arg {..}) {
+        if matches!(param, WhammParam::Arg { .. }) {
             self.req_args = true;
         }
         self.params.insert(param);
@@ -95,18 +95,9 @@ impl WhammParams {
 pub enum WhammParam {
     Pc,
     Fid,
-    Imm {
-        n: u32,
-        ty: DataType
-    },
-    Arg {
-        n: u32,
-        ty: DataType
-    },
-    Local {
-        n: u32,
-        ty: DataType
-    },
+    Imm { n: u32, ty: DataType },
+    Arg { n: u32, ty: DataType },
+    Local { n: u32, ty: DataType },
     AllocOffset,
     Targets,
     NumTargets,
@@ -120,25 +111,21 @@ impl WhammParam {
     }
     pub fn set_ty(&mut self, t: DataType) {
         match self {
-            Self::Imm {ty, ..} |
-            Self::Arg {ty, ..} |
-            Self::Local {ty, ..} => *ty = t,
-            Self::Pc |
-            Self::Fid |
-            Self::AllocOffset |
-            Self::Targets |
-            Self::NumTargets => assert_eq!(t, self.ty()),
+            Self::Imm { ty, .. } | Self::Arg { ty, .. } | Self::Local { ty, .. } => *ty = t,
+            Self::Pc | Self::Fid | Self::AllocOffset | Self::Targets | Self::NumTargets => {
+                assert_eq!(t, self.ty())
+            }
         }
     }
     pub fn ty(&self) -> DataType {
         match self {
             Self::Pc => DataType::U32,
             Self::Fid => DataType::U32,
-            Self::Imm {ty, ..} => ty.clone(),
-            Self::Arg {ty, ..} => ty.clone(),
-            Self::Local {ty, ..} => ty.clone(),
+            Self::Imm { ty, .. } => ty.clone(),
+            Self::Arg { ty, .. } => ty.clone(),
+            Self::Local { ty, .. } => ty.clone(),
             Self::AllocOffset => DataType::U32,
-            Self::Targets => DataType::U32,         // MapID!
+            Self::Targets => DataType::U32, // MapID!
             Self::NumTargets => DataType::U32,
         }
     }
@@ -155,18 +142,27 @@ impl From<String> for WhammParam {
 
         // handle immN, argN, localN
         if let Some(n) = handle_special(&value, "imm".to_string()) {
-            return Self::Imm {n, ty: DataType::Unknown};
+            return Self::Imm {
+                n,
+                ty: DataType::Unknown,
+            };
         }
         if let Some(n) = handle_special(&value, "arg".to_string()) {
-            return Self::Arg {n, ty: DataType::Unknown};
+            return Self::Arg {
+                n,
+                ty: DataType::Unknown,
+            };
         }
         if let Some(n) = handle_special(&value, "local".to_string()) {
-            return Self::Local {n, ty: DataType::Unknown};
+            return Self::Local {
+                n,
+                ty: DataType::Unknown,
+            };
         }
-        fn handle_special(value: &String, prefix: String) -> Option<u32> {
+        fn handle_special(value: &str, prefix: String) -> Option<u32> {
             if value.starts_with(&prefix) {
                 if let Ok(n) = value[prefix.len()..].parse::<u32>() {
-                    return Some(n)
+                    return Some(n);
                 }
             }
             None
@@ -180,9 +176,9 @@ impl Display for WhammParam {
         match self {
             Self::Pc => f.write_str("pc"),
             Self::Fid => f.write_str("fid"),
-            Self::Imm {n, ..} => f.write_str(&format!("imm{n}")),
-            Self::Arg {n, ..} => f.write_str(&format!("arg{n}")),
-            Self::Local {n, ..} => f.write_str(&format!("local{n}")),
+            Self::Imm { n, .. } => f.write_str(&format!("imm{n}")),
+            Self::Arg { n, .. } => f.write_str(&format!("arg{n}")),
+            Self::Local { n, .. } => f.write_str(&format!("local{n}")),
             // TODO -- unsure what to do for the alloc part...
             Self::AllocOffset => f.write_str("alloc"),
             Self::Targets => f.write_str("targets"),

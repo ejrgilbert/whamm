@@ -1,11 +1,8 @@
-pub mod ast;
-pub mod metadata_collector;
-
 use crate::common::error::ErrorGen;
 use crate::common::instr::Config;
 use crate::emitter::memory_allocator::VAR_BLOCK_BASE_VAR;
 use crate::emitter::module_emitter::ModuleEmitter;
-use crate::generator::wizard::ast::{UnsharedVar, WhammParams, WizardProbe, WizardScript};
+use crate::generator::ast::{Probe, Script, UnsharedVar, WhammParams};
 use crate::generator::GeneratingVisitor;
 use crate::lang_features::alloc_vars::wizard::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
@@ -35,7 +32,7 @@ pub struct WizardGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l> {
 impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     pub fn run(
         &mut self,
-        ast: Vec<WizardScript>,
+        ast: Vec<Script>,
         used_provided_funcs: HashSet<(String, String)>,
         used_report_dts: HashSet<DataType>,
         strings_to_emit: Vec<String>,
@@ -88,13 +85,13 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 
     // Visit the AST
-    fn visit_ast(&mut self, mut ast: Vec<WizardScript>) {
+    fn visit_ast(&mut self, mut ast: Vec<Script>) {
         for script in ast.iter_mut() {
             self.visit_wiz_script(script);
         }
     }
 
-    fn visit_wiz_script(&mut self, script: &mut WizardScript) {
+    fn visit_wiz_script(&mut self, script: &mut Script) {
         trace!("Entering: CodeGenerator::visit_script");
         self.enter_named_scope(&script.id.to_string());
         self.set_context_name(script.id.to_string());
@@ -194,7 +191,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         (fid, param_str.to_string())
     }
 
-    fn create_curr_loc(&self, probe: &WizardProbe) -> LocationData {
+    fn create_curr_loc(&self, probe: &Probe) -> LocationData {
         let probe_id = format!("{}_{}", probe.probe_number, probe.rule);
 
         // translate wizard unshared vars to the correct format
@@ -216,7 +213,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         }
     }
 
-    fn visit_wiz_probe(&mut self, probe: &mut WizardProbe) {
+    fn visit_wiz_probe(&mut self, probe: &mut Probe) {
         self.set_curr_loc(self.create_curr_loc(probe));
 
         let (pred_fid, pred_param_str, dynamic_pred) = if let Some(pred) = &mut probe.predicate {
