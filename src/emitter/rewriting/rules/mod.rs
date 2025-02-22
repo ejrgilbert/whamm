@@ -1,5 +1,5 @@
 use crate::emitter::rewriting::rules::core::CorePackage;
-use crate::emitter::rewriting::rules::wasm::{OpcodeEvent, WasmPackage};
+use crate::emitter::rewriting::rules::wasm::WasmPackage;
 use crate::generator::ast::Probe;
 use crate::generator::rewriting::simple_ast::SimpleAstProbes;
 use crate::parser::rules::core::WhammModeKind;
@@ -10,6 +10,7 @@ use orca_wasm::ir::types::DataType as OrcaType;
 use orca_wasm::Location;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
+use orca_wasm::ir::id::FunctionID;
 use wasmparser::Operator;
 
 mod core;
@@ -428,12 +429,14 @@ pub trait Provider {
 }
 pub trait Package {
     /// Pass some location to the provider and get back two types of data:
-    fn get_loc_info(&self, app_wasm: &Module, instr: &Operator) -> Option<LocInfo>;
+    fn get_loc_info(&self, app_wasm: &Module,
+                    curr_fid: &FunctionID, instr: &Operator) -> Option<LocInfo>;
     fn add_events(&mut self, ast_events: &HashMap<String, HashMap<WhammModeKind, Vec<Probe>>>);
 }
 pub trait Event {
     /// Pass some location to the provider and get back two types of data:
-    fn get_loc_info(&self, app_wasm: &Module, instr: &Operator) -> Option<LocInfo>;
+    fn get_loc_info(&self, app_wasm: &Module,
+                    fid: &FunctionID, instr: &Operator) -> Option<LocInfo>;
     fn add_probes(&mut self, ast_probes: &HashMap<WhammModeKind, Vec<Probe>>);
 }
 
@@ -519,11 +522,11 @@ impl Provider for WhammProvider {
         }
 
         // Make sure we have arg symbol data to save off params in the behavior tree for all cases!
-        loc_info.args = OpcodeEvent::get_ty_info_for_instr(app_wasm, &fid, instr).0;
+        // loc_info.args = OpcodeEvent::get_ty_info_for_instr(app_wasm, &fid, instr).0;
 
         // Get location info from the rest of the configured rules
         self.packages.iter().for_each(|package| {
-            if let Some(mut other_loc_info) = package.get_loc_info(app_wasm, instr) {
+            if let Some(mut other_loc_info) = package.get_loc_info(app_wasm, &fid, instr) {
                 loc_info.append(&mut other_loc_info);
             }
         });

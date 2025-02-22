@@ -1,5 +1,5 @@
 use crate::lang_features::report_vars::Metadata as ReportMetadata;
-use crate::parser::types::{Block, DataType, Expr, Global, RulePart, Statement};
+use crate::parser::types::{Block, DataType, Definition, Expr, Global, RulePart, Statement};
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 
@@ -162,6 +162,16 @@ pub enum WhammParam {
     Targets,
     NumTargets,
     DefaultTarget,
+
+    // memory
+    Align,
+    Offset,
+    Memory,
+    EffectiveAddress,
+
+    // GC
+    Tid,
+    FieldIdx
 }
 impl WhammParam {
     pub fn new(var_name: String, var_type: DataType) -> Self {
@@ -182,9 +192,38 @@ impl WhammParam {
             | Self::TargetImpModule
             | Self::Targets
             | Self::NumTargets
-            | Self::DefaultTarget => {
+            | Self::DefaultTarget
+            | Self::Align
+            | Self::Offset
+            | Self::Memory
+            | Self::EffectiveAddress
+            | Self::Tid
+            | Self::FieldIdx => {
                 assert_eq!(t, self.ty())
             }
+        }
+    }
+    pub fn def(&self) -> Definition {
+        match self {
+            Self::Pc |
+            Self::Fid |
+            Self::Fname |
+            Self::Imm { .. } |
+            Self::AllocOffset |
+            Self::TargetFnType |
+            Self::TargetFnName |
+            Self::TargetImpModule |
+            Self::NumTargets |
+            Self::DefaultTarget |
+            Self::Align |
+            Self::Offset |
+            Self::Memory
+            | Self::EffectiveAddress
+            | Self::Tid
+            | Self::FieldIdx=> Definition::CompilerStatic,
+            Self::Targets |
+            Self::Arg { .. } |
+            Self::Local { .. } => Definition::CompilerDynamic,
         }
     }
     pub fn ty(&self) -> DataType {
@@ -203,8 +242,14 @@ impl WhammParam {
                 key_ty: Box::new(DataType::U32),
                 val_ty: Box::new(DataType::U32),
             }, // TODO -- really want to request mapID though...
-            Self::NumTargets => DataType::U32,
-            Self::DefaultTarget => DataType::U32,
+            Self::NumTargets
+            | Self::DefaultTarget
+            | Self::Align
+            | Self::Offset
+            | Self::Memory
+            | Self::EffectiveAddress
+            | Self::Tid
+            | Self::FieldIdx => DataType::U32,
         }
     }
 }
@@ -220,6 +265,12 @@ impl From<String> for WhammParam {
             "targets" => return Self::Targets,
             "num_targets" => return Self::NumTargets,
             "default_target" => return Self::DefaultTarget,
+            "align" => return Self::Align,
+            "offset" => return Self::Offset,
+            "memory" => return Self::Memory,
+            "effective_address" => return Self::EffectiveAddress,
+            "tid" => return Self::Tid,
+            "field_idx" => return Self::FieldIdx,
             _ => {}
         }
 
@@ -271,6 +322,12 @@ impl Display for WhammParam {
             Self::Targets => f.write_str("targets"),
             Self::NumTargets => f.write_str("num_targets"),
             Self::DefaultTarget => f.write_str("default_target"),
+            Self::Align => f.write_str("align"),
+            Self::Offset => f.write_str("offset"),
+            Self::Memory => f.write_str("memory"),
+            Self::EffectiveAddress => f.write_str("effective_address"),
+            Self::Tid => f.write_str("tid"),
+            Self::FieldIdx => f.write_str("field_idx"),
         }
     }
 }

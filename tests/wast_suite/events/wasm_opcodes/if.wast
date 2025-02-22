@@ -122,6 +122,7 @@
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var") (i32.const 1)) ;; sanity check
 
+;; TODO -- fix the alt tests below!
 ;; alt mode
 ;; WHAMM --> wasm:opcode:_if:alt /fid == 1 && pc == 1/ { drop_args(); return 0; }
 (assert_return (invoke "get_global_var") (i32.const 0))

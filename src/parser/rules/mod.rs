@@ -1220,21 +1220,21 @@ macro_rules! for_each_opcode {
     // TODO -- there's no support for this arg type at the moment
     StructSet, Gc, struct_set, None, vec![(DataType::U32, 2)], get_struct_globals(true, true), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
-    ArrayNew, Gc, array_new, None, vec![(DataType::U32, 1)], get_array_globals(true, false), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
-    ArrayNewDefault, Gc, array_new_default, Some(vec![DataType::I32]), vec![(DataType::U32, 1)], get_array_globals(true, false), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
-    ArrayNewFixed, Gc, array_new_fixed, None, vec![(DataType::U32, 2)], get_array_globals(true, false), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
-    ArrayNewData, Gc, array_new_data, Some(vec![DataType::I32, DataType::I32]), vec![(DataType::U32, 2)], get_array_globals(true, false), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
-    ArrayNewElem, Gc, array_new_elem, Some(vec![DataType::I32, DataType::I32]), vec![(DataType::U32, 2)], get_array_globals(true, false), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    ArrayNew, Gc, array_new, None, vec![(DataType::U32, 1)], get_array_globals(true), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    ArrayNewDefault, Gc, array_new_default, Some(vec![DataType::I32]), vec![(DataType::U32, 1)], get_array_globals(true), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    ArrayNewFixed, Gc, array_new_fixed, None, vec![(DataType::U32, 2)], get_array_globals(true), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    ArrayNewData, Gc, array_new_data, Some(vec![DataType::I32, DataType::I32]), vec![(DataType::U32, 2)], get_array_globals(true), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    ArrayNewElem, Gc, array_new_elem, Some(vec![DataType::I32, DataType::I32]), vec![(DataType::U32, 2)], get_array_globals(true), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
     // TODO -- there's no support for this arg type at the moment
-    ArrayGet, Gc, array_get, None, vec![(DataType::U32, 1)], get_array_globals(true, true), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
-    ArrayGetS, Gc, array_get_s, None, vec![(DataType::U32, 1)], get_array_globals(true, true), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
-    ArrayGetU, Gc, array_get_u, None, vec![(DataType::U32, 1)], get_array_globals(true, true), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
-    ArraySet, Gc, array_set, None, vec![(DataType::U32, 1)], get_array_globals(true, true), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
-    ArrayLen, Gc, array_len, None, vec![(DataType::U32, 1)], get_array_globals(true, false), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
-    ArrayFill, Gc, array_fill, None, vec![(DataType::U32, 1)], get_array_globals(true, false), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    ArrayGet, Gc, array_get, None, vec![(DataType::U32, 1)], get_array_globals(true), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    ArrayGetS, Gc, array_get_s, None, vec![(DataType::U32, 1)], get_array_globals(true), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    ArrayGetU, Gc, array_get_u, None, vec![(DataType::U32, 1)], get_array_globals(true), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    ArraySet, Gc, array_set, None, vec![(DataType::U32, 1)], get_array_globals(true), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    ArrayLen, Gc, array_len, None, vec![(DataType::U32, 1)], get_array_globals(true), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    ArrayFill, Gc, array_fill, None, vec![(DataType::U32, 1)], get_array_globals(true), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
     ArrayCopy, Gc, array_copy, None, vec![(DataType::U32, 2)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
-    ArrayInitData, Gc, array_init_data, None, vec![(DataType::U32, 2)], get_array_globals(true, false), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
-    ArrayInitElem, Gc, array_init_elem, None, vec![(DataType::U32, 2)], get_array_globals(true, false), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    ArrayInitData, Gc, array_init_data, None, vec![(DataType::U32, 2)], get_array_globals(true), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    ArrayInitElem, Gc, array_init_elem, None, vec![(DataType::U32, 2)], get_array_globals(true), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
     // TODO -- support immN and argN types
     // RefTestNonNull, RefTestNullable
@@ -1773,7 +1773,7 @@ pub fn get_struct_globals(
     globals
 }
 
-pub fn get_array_globals(include_args: bool, include_idx: bool) -> HashMap<String, ProvidedGlobal> {
+pub fn get_array_globals(include_args: bool) -> HashMap<String, ProvidedGlobal> {
     let mut globals = HashMap::new();
     globals.insert(
         "tid".to_string(),
@@ -1785,19 +1785,6 @@ pub fn get_array_globals(include_args: bool, include_idx: bool) -> HashMap<Strin
             true,
         ),
     );
-
-    if include_idx {
-        globals.insert(
-            "i".to_string(),
-            ProvidedGlobal::new(
-                "i".to_string(),
-                "The index of the array being accessed.".to_string(),
-                DataType::U32,
-                None,
-                false,
-            ),
-        );
-    }
 
     if include_args {
         globals.extend(get_unknown_args_globals());
