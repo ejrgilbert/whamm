@@ -156,7 +156,7 @@ pub struct LocInfo<'a> {
     pub(crate) args: Vec<Arg>,
     pub num_alt_probes: usize,
     /// the probes that were matched for this instruction
-    /// note the Script ID is contained in SimpleProbe
+    /// note the Script ID is contained in Probe
     pub probes: Vec<(ProbeRule, &'a Probe)>,
 }
 impl<'a> LocInfo<'a> {
@@ -528,9 +528,6 @@ impl Provider for WhammProvider {
                 // nothing to add
             }
         }
-
-        // Make sure we have arg symbol data to save off params in the behavior tree for all cases!
-        // loc_info.args = OpcodeEvent::get_ty_info_for_instr(app_wasm, &fid, instr).0;
 
         // Get location info from the rest of the configured rules
         self.packages.iter().for_each(|package| {

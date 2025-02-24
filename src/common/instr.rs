@@ -293,7 +293,6 @@ fn run_instr_rewrite(
     let err = metadata_collector.err;
     let ast = metadata_collector.ast;
     let used_funcs = metadata_collector.used_provided_fns;
-    // let used_report_dts = metadata_collector.used_report_var_dts;
     let used_strings = metadata_collector.strings_to_emit;
 
     // Phase 0 of instrumentation (emit globals and provided fns)

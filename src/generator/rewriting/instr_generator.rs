@@ -129,7 +129,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
                             .emitter
                             .enter_scope_via_rule(&probe.script_id.to_string(), probe_rule));
 
-                        // TODO -- should use whammparam here!
                         // Initialize the symbol table with the metadata at this program point
                         add_to_table(&loc_info.static_data, &mut self.emitter, self.err);
 
@@ -171,8 +170,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
         let curr_script_id = probe.script_id;
         // todo -- this clone is bad
         self.emitter.curr_unshared = probe.unshared_to_alloc.clone();
-        // self.emitter.curr_unshared = probe.num_unshared.clone();
-        // self.emitter.maps_unshared = probe.maps_unshared.clone();
         let probe_rule_str = probe_rule.to_string();
         let curr_probe_id = format!("{}_{}", probe.probe_number, probe_rule_str);
         let loc = match self.emitter.app_iter.curr_loc().0 {

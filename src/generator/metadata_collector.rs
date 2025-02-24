@@ -133,9 +133,6 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
     fn handle_special(&mut self, name: &str, prefix: &str) -> bool {
         if name.starts_with(prefix) && name[prefix.len()..].parse::<u32>().is_ok() {
             let (_, ty, _) = get_def(name, self.table, self.err);
-            // if !self.config.wizard && matches!(def, Definition::CompilerStatic) {
-            //     return true;
-            // }
             self.push_metadata(name, &ty);
             true
         } else {
@@ -466,9 +463,7 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                 // check if provided, remember in metadata!
                 self.check_strcmp = matches!(ty, DataType::Str);
 
-                if def.is_comp_provided()
-                // && (self.config.wizard || matches!(def, Definition::CompilerDynamic))
-                {
+                if def.is_comp_provided() {
                     // For Wizard: Request all!
                     // For B.R.: Only request dynamic data
                     self.push_metadata(name, &ty);

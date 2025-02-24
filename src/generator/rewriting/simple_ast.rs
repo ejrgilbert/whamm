@@ -58,32 +58,6 @@ use crate::parser::rules::core::WhammModeKind;
 /// Note: This AST representation will only be used for bytecode rewriting, not when targeting Wizard.
 pub type SimpleAstProbes =
     HashMap<String, HashMap<String, HashMap<String, HashMap<WhammModeKind, Vec<Probe>>>>>;
-// #[derive(Clone, Debug)]
-// pub struct SimpleProbe {
-//     pub script_id: u8,
-//     pub predicate: Option<Expr>,
-//     pub body: Option<Block>,
-//     pub num_unshared: HashMap<DataType, i32>,
-//     pub maps_unshared: HashMap<DataType, (String, bool)>,
-//     pub probe_number: u32,
-// }
-// impl SimpleProbe {
-//     fn new(
-//         script_id: u8,
-//         probe: &dyn ParserProbe,
-//         num_unshared: HashMap<DataType, i32>,
-//         maps_unshared: HashMap<DataType, (String, bool)>,
-//     ) -> Self {
-//         Self {
-//             script_id,
-//             predicate: probe.predicate().to_owned(),
-//             body: probe.body().to_owned(),
-//             num_unshared,
-//             maps_unshared,
-//             probe_number: probe.id(),
-//         }
-//     }
-// }
 
 #[derive(Default)]
 pub struct SimpleAST {
@@ -115,39 +89,6 @@ pub fn build_simple_ast(ast: Vec<Script>) -> SimpleAST {
 
     simple_ast
 }
-
-// fn add_provider_to_ast(&mut self, provider_name: String) {
-//     if !self.ast.probes.contains_key(&provider_name) {
-//         self.ast
-//             .probes
-//             .insert(provider_name.clone(), HashMap::new());
-//     }
-//     self.curr_provider_name = provider_name;
-// }
-//
-// fn add_package_to_ast(&mut self, package_name: String) {
-//     if let Some(provider) = self.ast.probes.get_mut(&self.curr_provider_name) {
-//         if !provider.contains_key(&package_name) {
-//             provider.insert(package_name.clone(), HashMap::new());
-//         }
-//     } else {
-//         unreachable!()
-//     }
-//     self.curr_package_name = package_name;
-// }
-//
-// fn add_event_to_ast(&mut self, event_name: String) {
-//     if let Some(provider) = self.ast.probes.get_mut(&self.curr_provider_name) {
-//         if let Some(package) = provider.get_mut(&self.curr_package_name) {
-//             if !package.contains_key(&event_name) {
-//                 package.insert(event_name.clone(), HashMap::new());
-//             }
-//         }
-//     } else {
-//         unreachable!()
-//     }
-//     self.curr_event_name = event_name;
-// }
 
 fn add_probe_to_ast(
     ast: &mut SimpleAST,

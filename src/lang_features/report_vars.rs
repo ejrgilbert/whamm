@@ -1404,7 +1404,6 @@ pub enum LocationData {
         script_id: u8,
         bytecode_loc: BytecodeLoc,
         probe_id: String,
-        // unshared: Vec<UnsharedVar>,
     },
 }
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

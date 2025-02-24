@@ -45,7 +45,6 @@ pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub(crate) unshared_var_handler: &'g mut UnsharedVarHandler,
     instr_created_args: Vec<(String, usize)>,
     pub curr_unshared: Vec<UnsharedVar>,
-    // pub maps_unshared: HashMap<DataType, (String, bool)>,
 }
 
 impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
