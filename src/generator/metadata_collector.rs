@@ -90,6 +90,26 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
             self.curr_probe.metadata.pred_is_dynamic = true;
         }
     }
+    fn set_req_args(&mut self, req_args: bool) {
+        match self.visiting {
+            Visiting::Predicate => {
+                self.curr_probe
+                    .metadata.pred_args.req_args = req_args;
+            }
+            Visiting::Body => {
+                self.curr_probe
+                    .metadata.body_args.req_args = req_args;
+            }
+            Visiting::None => {
+                // error
+                self.err.unexpected_error(
+                    true,
+                    Some("Expected a set variant of 'Visiting', but found 'None'".to_string()),
+                    None,
+                );
+            }
+        }
+    }
     fn push_metadata(&mut self, name: &str, ty: &DataType) {
         match self.visiting {
             Visiting::Predicate => {
@@ -386,7 +406,7 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                         "".to_string()
                     }
                 };
-                let (Some(Record::Fn { def, ret_ty, .. }), context) =
+                let (Some(Record::Fn { def, ret_ty, req_args, .. }), context) =
                     self.table.lookup_fn_with_context(&fn_name, self.err)
                 else {
                     self.err
@@ -397,6 +417,9 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                 if matches!(def, Definition::CompilerDynamic) {
                     // will need to emit this function!
                     self.used_provided_fns.insert((context, fn_name));
+
+                    // will need to possibly define arguments!
+                    self.set_req_args(*req_args);
                 }
 
                 args.iter().for_each(|arg| {

@@ -495,8 +495,30 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         is_success
     }
 
-    fn handle_drop_args(&mut self, curr_instr_args: &[Arg]) -> bool {
+    fn handle_drop_args(&mut self) -> bool {
         // Generate drops for all args to this opcode!
+
+        let fid = match self.app_iter.curr_loc().0 {
+            Location::Module {
+                func_idx,
+                ..
+            }
+            | Location::Component {
+                func_idx,
+                ..
+            } => {
+                func_idx
+            }
+        };
+
+        // ensure we have the args for this instruction
+        let curr_instr_args = OpcodeEvent::get_ty_info_for_instr(
+            self.app_iter.module,
+            &fid,
+            self.app_iter.curr_op().unwrap(),
+        )
+            .0;
+
         for _arg in curr_instr_args {
             self.app_iter.drop();
         }
@@ -505,7 +527,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
 
     fn handle_special_fn_call(
         &mut self,
-        curr_instr_args: &[Arg],
+        _curr_instr_args: &[Arg],
         target_fn_name: String,
         args: &mut [Expr],
         err: &mut ErrorGen,
@@ -513,7 +535,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         match target_fn_name.as_str() {
             "alt_call_by_name" => self.handle_alt_call_by_name(args, err),
             "alt_call_by_id" => self.handle_alt_call_by_id(args, err),
-            "drop_args" => self.handle_drop_args(curr_instr_args),
+            "drop_args" => self.handle_drop_args(),
             _ => {
                 err.unexpected_error(
                     true,

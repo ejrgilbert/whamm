@@ -126,7 +126,8 @@
 (assert_return (invoke "get_count") (i32.const 0))
 ;; WHAMM --> var count: i32; wasm:opcode:call(arg0: i32):after { count = arg0; }
 (assert_return (invoke "get_count") (i32.const 0))
-;; WHAMM --> var count: i32; wasm:opcode:call:alt { count = 5; return 1; }
+;; WHAMM --> var count: i32; wasm:opcode:call:alt { drop_args(); count = 5; return 1; }
+;; since the script doesn't use an argN in the body, must drop_args to make it validate
 (assert_return (invoke "get_global_var") (i32.const 1)) ;; alt, so global should be return value
 (assert_return (invoke "get_count") (i32.const 5))
 

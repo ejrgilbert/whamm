@@ -32,6 +32,7 @@ pub fn build_symbol_table(ast: &mut Whamm, err: &mut ErrorGen) -> SymbolTable {
         curr_event: None,
         curr_probe: None,
         curr_fn: None,
+        req_args: false
     };
     visitor.visit_whamm(ast);
     visitor.table
@@ -1103,6 +1104,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         addr: _,
                         def,
                         loc,
+                        ..
                     }) = self.table.get_record(id)
                     {
                         //check if in global state and if is_comp_provided is false --> not allowed if both are the case

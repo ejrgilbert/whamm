@@ -1824,6 +1824,7 @@ pub fn get_call_fns() -> Vec<ProvidedFunction> {
             DataType::I32,
         )],
         DataType::Tuple { ty_info: vec![] },
+        true,
         true
     ), ProvidedFunction::new(
         "alt_call_by_name".to_string(),
@@ -1837,6 +1838,7 @@ pub fn get_call_fns() -> Vec<ProvidedFunction> {
             DataType::Str,
         )],
         DataType::Tuple { ty_info: vec![] },
+        true,
         true
     )]
 }

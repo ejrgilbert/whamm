@@ -636,6 +636,10 @@ pub enum Record {
         /// The address of this function post-injection
         addr: Option<u32>,
         loc: Option<Location>,
+
+        /// Bookkeeping for provided functions that need the args defined
+        /// (only tracks this for dynamic provided functions)
+        req_args: bool
     },
     Var {
         ty: DataType,
