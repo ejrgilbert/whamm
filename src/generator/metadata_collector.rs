@@ -1,18 +1,18 @@
 use crate::common::error::ErrorGen;
 use crate::common::instr::Config;
-use crate::generator::wizard::ast::{WizardProbe, WizardScript};
+use crate::generator::ast::{Probe, Script};
 use crate::lang_features::report_vars::{BytecodeLoc, Metadata as ReportMetadata};
-use crate::parser::rules::{Event, Package, Probe, Provider};
+use crate::parser::rules::{Event, Package, Probe as ParserProbe, Provider};
 use crate::parser::types::{
-    BinOp, Block, DataType, Definition, Expr, Location, Script, Statement, UnOp, Value, Whamm,
-    WhammVisitor,
+    BinOp, Block, DataType, Definition, Expr, Location, Script as ParserScript, Statement, UnOp,
+    Value, Whamm, WhammVisitor,
 };
 use crate::verifier::types::{Record, SymbolTable};
 use log::trace;
 use std::collections::HashSet;
 
 const UNEXPECTED_ERR_MSG: &str =
-    "WizardProbeMetadataCollector: Looks like you've found a bug...please report this behavior!";
+    "MetadataCollector: Looks like you've found a bug...please report this behavior!";
 
 enum Visiting {
     Predicate,
@@ -24,9 +24,9 @@ enum Visiting {
 // while emitting. It will collect the required variables to pass to a probe
 // (argN, localN, etc.) and can be extended to compute the memory space that
 // must be allocated per probe (vars_to_alloc).
-pub struct WizardProbeMetadataCollector<'a, 'b, 'c> {
-    table: &'a mut SymbolTable,
-    pub wizard_ast: Vec<WizardScript>,
+pub struct MetadataCollector<'a, 'b, 'c> {
+    pub table: &'a mut SymbolTable,
+    pub ast: Vec<Script>,
 
     // misc. trackers
     pub used_provided_fns: HashSet<(String, String)>,
@@ -36,14 +36,14 @@ pub struct WizardProbeMetadataCollector<'a, 'b, 'c> {
 
     visiting: Visiting,
     curr_rule: String,
-    curr_script: WizardScript,
+    curr_script: Script,
     script_num: u8,
-    curr_probe: WizardProbe,
+    curr_probe: Probe,
 
-    err: &'b mut ErrorGen,
+    pub err: &'b mut ErrorGen,
     pub config: &'c Config,
 }
-impl<'a, 'b, 'c> WizardProbeMetadataCollector<'a, 'b, 'c> {
+impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
     pub(crate) fn new(
         table: &'a mut SymbolTable,
         err: &'b mut ErrorGen,
@@ -51,16 +51,16 @@ impl<'a, 'b, 'c> WizardProbeMetadataCollector<'a, 'b, 'c> {
     ) -> Self {
         Self {
             table,
-            wizard_ast: Vec::default(),
+            ast: Vec::default(),
             used_provided_fns: HashSet::default(),
             used_report_var_dts: HashSet::default(),
             check_strcmp: false,
             strings_to_emit: Vec::default(),
             visiting: Visiting::None,
             curr_rule: "".to_string(),
-            curr_script: WizardScript::default(),
+            curr_script: Script::default(),
             script_num: 0,
-            curr_probe: WizardProbe::default(),
+            curr_probe: Probe::default(),
             err,
             config,
         }
@@ -88,6 +88,24 @@ impl<'a, 'b, 'c> WizardProbeMetadataCollector<'a, 'b, 'c> {
         // we only care about predicate expressions that are dynamic
         if matches!(self.visiting, Visiting::Predicate) {
             self.curr_probe.metadata.pred_is_dynamic = true;
+        }
+    }
+    fn set_req_args(&mut self, req_args: bool) {
+        match self.visiting {
+            Visiting::Predicate => {
+                self.curr_probe.metadata.pred_args.req_args = req_args;
+            }
+            Visiting::Body => {
+                self.curr_probe.metadata.body_args.req_args = req_args;
+            }
+            Visiting::None => {
+                // error
+                self.err.unexpected_error(
+                    true,
+                    Some("Expected a set variant of 'Visiting', but found 'None'".to_string()),
+                    None,
+                );
+            }
         }
     }
     fn push_metadata(&mut self, name: &str, ty: &DataType) {
@@ -122,13 +140,13 @@ impl<'a, 'b, 'c> WizardProbeMetadataCollector<'a, 'b, 'c> {
         }
     }
 }
-impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
+impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
     fn visit_whamm(&mut self, whamm: &Whamm) {
         trace!("Entering: CodeGenerator::visit_whamm");
 
         // visit scripts
         whamm.scripts.iter().for_each(|script| {
-            self.curr_script = WizardScript::default();
+            self.curr_script = Script::default();
             self.visit_script(script);
 
             // copy over state from original script
@@ -136,7 +154,7 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
             self.curr_script.fns = script.fns.to_owned();
             self.curr_script.globals = script.globals.to_owned();
             self.curr_script.global_stmts = script.global_stmts.to_owned();
-            self.wizard_ast.push(self.curr_script.clone());
+            self.ast.push(self.curr_script.clone());
 
             self.script_num += 1;
         });
@@ -144,7 +162,7 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
         trace!("Exiting: CodeGenerator::visit_whamm");
     }
 
-    fn visit_script(&mut self, script: &Script) {
+    fn visit_script(&mut self, script: &ParserScript) {
         trace!("Entering: CodeGenerator::visit_script");
         self.table.enter_named_scope(&script.id.to_string());
 
@@ -197,23 +215,40 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
 
         event.probes().iter().for_each(|(_ty, probes)| {
             probes.iter().for_each(|probe| {
-                self.curr_probe = WizardProbe::new(self.get_curr_rule().clone(), probe.id());
+                if !self.config.wizard {
+                    // add the mode when not on the wizard target
+                    self.append_curr_rule(format!(":{}", probe.mode().name()));
+                }
+                self.curr_probe = Probe::new(
+                    self.get_curr_rule().clone(),
+                    probe.id(),
+                    self.curr_script.id,
+                );
                 self.visit_probe(probe);
 
                 // copy over data from original probe
                 self.curr_probe.predicate = probe.predicate().to_owned();
                 self.curr_probe.body = probe.body().to_owned();
+                self.curr_probe.body = probe.body().to_owned();
                 self.curr_script.probes.push(self.curr_probe.clone());
+
+                if !self.config.wizard {
+                    // remove mode
+                    let curr_rule = self.get_curr_rule();
+                    let new_rule = curr_rule[..curr_rule.rfind(':').unwrap()].to_string();
+                    self.set_curr_rule(new_rule);
+                }
             });
         });
 
         trace!("Exiting: CodeGenerator::visit_event");
         self.table.exit_scope(self.err);
         let curr_rule = self.get_curr_rule();
-        self.set_curr_rule(curr_rule[..curr_rule.rfind(':').unwrap()].to_string());
+        let new_rule = curr_rule[..curr_rule.rfind(':').unwrap()].to_string();
+        self.set_curr_rule(new_rule);
     }
 
-    fn visit_probe(&mut self, probe: &Box<dyn Probe>) {
+    fn visit_probe(&mut self, probe: &Box<dyn ParserProbe>) {
         trace!("Entering: CodeGenerator::visit_probe");
         self.table.enter_named_scope(&probe.mode().name());
         self.append_curr_rule(format!(":{}", probe.mode().name()));
@@ -301,10 +336,13 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
             Statement::Assign { var_id, expr, .. } => {
                 if let Expr::VarId { name, .. } = var_id {
                     let (def, _ty, loc) = get_def(name, self.table, self.err);
-                    if def.is_comp_provided() && !self.config.enable_wizard_alt {
+                    if def.is_comp_provided()
+                        && self.config.wizard
+                        && !self.config.enable_wizard_alt
+                    {
                         self.err.wizard_error(
                             true,
-                            "Assigning to compiler-provided variables is not supported on Wizard"
+                            "Assigning to compiler-provided variables is not supported on Wizard target"
                                 .to_string(),
                             &loc,
                         );
@@ -366,8 +404,15 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
                         "".to_string()
                     }
                 };
-                let (Some(Record::Fn { def, ret_ty, .. }), context) =
-                    self.table.lookup_fn_with_context(&fn_name, self.err)
+                let (
+                    Some(Record::Fn {
+                        def,
+                        ret_ty,
+                        req_args,
+                        ..
+                    }),
+                    context,
+                ) = self.table.lookup_fn_with_context(&fn_name, self.err)
                 else {
                     self.err
                         .unexpected_error(true, Some("unexpected type".to_string()), None);
@@ -377,6 +422,9 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
                 if matches!(def, Definition::CompilerDynamic) {
                     // will need to emit this function!
                     self.used_provided_fns.insert((context, fn_name));
+
+                    // will need to possibly define arguments!
+                    self.set_req_args(*req_args);
                 }
 
                 args.iter().for_each(|arg| {
@@ -416,6 +464,8 @@ impl WhammVisitor<()> for WizardProbeMetadataCollector<'_, '_, '_> {
                 self.check_strcmp = matches!(ty, DataType::Str);
 
                 if def.is_comp_provided() {
+                    // For Wizard: Request all!
+                    // For B.R.: Only request dynamic data
                     self.push_metadata(name, &ty);
                 }
             }

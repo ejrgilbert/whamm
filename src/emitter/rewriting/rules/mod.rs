@@ -1,9 +1,11 @@
 use crate::emitter::rewriting::rules::core::CorePackage;
-use crate::emitter::rewriting::rules::wasm::{OpcodeEvent, WasmPackage};
-use crate::generator::rewriting::simple_ast::{SimpleAstProbes, SimpleProbe};
+use crate::emitter::rewriting::rules::wasm::WasmPackage;
+use crate::generator::ast::Probe;
+use crate::generator::rewriting::simple_ast::SimpleAstProbes;
 use crate::parser::rules::core::WhammModeKind;
 use crate::parser::rules::{FromStr, WhammProviderKind};
 use crate::parser::types::{Block, DataType, Definition, Expr, NumLit, RulePart, Statement, Value};
+use orca_wasm::ir::id::FunctionID;
 use orca_wasm::ir::module::Module;
 use orca_wasm::ir::types::DataType as OrcaType;
 use orca_wasm::Location;
@@ -59,7 +61,7 @@ pub fn provider_factory<P: Provider + FromStr>(ast: &SimpleAstProbes) -> Vec<Box
 }
 /// Splits out the logic to add new packages to a provider
 fn package_factory<P: Package + FromStr + 'static>(
-    ast_packages: &HashMap<String, HashMap<String, HashMap<WhammModeKind, Vec<SimpleProbe>>>>,
+    ast_packages: &HashMap<String, HashMap<String, HashMap<WhammModeKind, Vec<Probe>>>>,
 ) -> Vec<Box<dyn Package>> {
     let mut packages: Vec<Box<dyn Package>> = vec![];
     ast_packages.iter().for_each(|(package_name, events)| {
@@ -72,7 +74,7 @@ fn package_factory<P: Package + FromStr + 'static>(
 }
 /// Splits out the logic to add new events to a package
 fn event_factory<E: Event + FromStr + 'static>(
-    ast_events: &HashMap<String, HashMap<WhammModeKind, Vec<SimpleProbe>>>,
+    ast_events: &HashMap<String, HashMap<WhammModeKind, Vec<Probe>>>,
 ) -> Vec<Box<dyn Event>> {
     let mut events: Vec<Box<dyn Event>> = vec![];
     ast_events.iter().for_each(|(event_name, probes)| {
@@ -84,8 +86,8 @@ fn event_factory<E: Event + FromStr + 'static>(
     events
 }
 fn probe_factory(
-    ast_probes: &HashMap<WhammModeKind, Vec<SimpleProbe>>,
-) -> HashMap<WhammModeKind, Vec<SimpleProbe>> {
+    ast_probes: &HashMap<WhammModeKind, Vec<Probe>>,
+) -> HashMap<WhammModeKind, Vec<Probe>> {
     ast_probes
         .iter()
         .map(|(name, probe_list)| {
@@ -154,8 +156,8 @@ pub struct LocInfo<'a> {
     pub(crate) args: Vec<Arg>,
     pub num_alt_probes: usize,
     /// the probes that were matched for this instruction
-    /// note the Script ID is contained in SimpleProbe
-    pub probes: Vec<(ProbeRule, &'a SimpleProbe)>,
+    /// note the Script ID is contained in Probe
+    pub probes: Vec<(ProbeRule, &'a Probe)>,
 }
 impl<'a> LocInfo<'a> {
     fn new() -> Self {
@@ -164,11 +166,7 @@ impl<'a> LocInfo<'a> {
     fn has_match(&self) -> bool {
         !self.probes.is_empty()
     }
-    fn add_probes(
-        &mut self,
-        base_rule: ProbeRule,
-        probes: &'a HashMap<WhammModeKind, Vec<SimpleProbe>>,
-    ) {
+    fn add_probes(&mut self, base_rule: ProbeRule, probes: &'a HashMap<WhammModeKind, Vec<Probe>>) {
         probes.iter().for_each(|(probe_mode, probes)| {
             let mut rule = base_rule.clone();
             rule.mode = Some(probe_mode.clone());
@@ -426,21 +424,28 @@ pub trait Provider {
     fn get_loc_info(&self, app_wasm: &Module, loc: Location, instr: &Operator) -> Option<LocInfo>;
     fn add_packages(
         &mut self,
-        ast_packages: &HashMap<String, HashMap<String, HashMap<WhammModeKind, Vec<SimpleProbe>>>>,
+        ast_packages: &HashMap<String, HashMap<String, HashMap<WhammModeKind, Vec<Probe>>>>,
     );
 }
 pub trait Package {
     /// Pass some location to the provider and get back two types of data:
-    fn get_loc_info(&self, app_wasm: &Module, instr: &Operator) -> Option<LocInfo>;
-    fn add_events(
-        &mut self,
-        ast_events: &HashMap<String, HashMap<WhammModeKind, Vec<SimpleProbe>>>,
-    );
+    fn get_loc_info(
+        &self,
+        app_wasm: &Module,
+        curr_fid: &FunctionID,
+        instr: &Operator,
+    ) -> Option<LocInfo>;
+    fn add_events(&mut self, ast_events: &HashMap<String, HashMap<WhammModeKind, Vec<Probe>>>);
 }
 pub trait Event {
     /// Pass some location to the provider and get back two types of data:
-    fn get_loc_info(&self, app_wasm: &Module, instr: &Operator) -> Option<LocInfo>;
-    fn add_probes(&mut self, ast_probes: &HashMap<WhammModeKind, Vec<SimpleProbe>>);
+    fn get_loc_info(
+        &self,
+        app_wasm: &Module,
+        fid: &FunctionID,
+        instr: &Operator,
+    ) -> Option<LocInfo>;
+    fn add_probes(&mut self, ast_probes: &HashMap<WhammModeKind, Vec<Probe>>);
 }
 
 pub struct WhammProvider {
@@ -524,12 +529,9 @@ impl Provider for WhammProvider {
             }
         }
 
-        // Make sure we have arg symbol data to save off params in the behavior tree for all cases!
-        loc_info.args = OpcodeEvent::get_ty_info_for_instr(app_wasm, &fid, instr).0;
-
         // Get location info from the rest of the configured rules
         self.packages.iter().for_each(|package| {
-            if let Some(mut other_loc_info) = package.get_loc_info(app_wasm, instr) {
+            if let Some(mut other_loc_info) = package.get_loc_info(app_wasm, &fid, instr) {
                 loc_info.append(&mut other_loc_info);
             }
         });
@@ -542,7 +544,7 @@ impl Provider for WhammProvider {
     }
     fn add_packages(
         &mut self,
-        ast_packages: &HashMap<String, HashMap<String, HashMap<WhammModeKind, Vec<SimpleProbe>>>>,
+        ast_packages: &HashMap<String, HashMap<String, HashMap<WhammModeKind, Vec<Probe>>>>,
     ) {
         let packages = match self.kind {
             WhammProviderKind::Core => package_factory::<CorePackage>(ast_packages),

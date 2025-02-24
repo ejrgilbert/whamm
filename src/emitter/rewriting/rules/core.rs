@@ -1,11 +1,11 @@
 use crate::emitter::rewriting::rules::{
     event_factory, probe_factory, Event, FromStr, LocInfo, Package,
 };
+use crate::generator::ast::Probe;
 use crate::parser::rules::core::{CoreEventKind, CorePackageKind, WhammModeKind};
-use std::collections::HashMap;
-
-use crate::generator::rewriting::simple_ast::SimpleProbe;
+use orca_wasm::ir::id::FunctionID;
 use orca_wasm::ir::module::Module;
+use std::collections::HashMap;
 use wasmparser::Operator;
 
 pub struct CorePackage {
@@ -29,7 +29,12 @@ impl CorePackage {
     }
 }
 impl Package for CorePackage {
-    fn get_loc_info(&self, app_wasm: &Module, instr: &Operator) -> Option<LocInfo> {
+    fn get_loc_info(
+        &self,
+        app_wasm: &Module,
+        fid: &FunctionID,
+        instr: &Operator,
+    ) -> Option<LocInfo> {
         let mut loc_info = LocInfo::new();
         match self.kind {
             CorePackageKind::Default => {
@@ -39,7 +44,7 @@ impl Package for CorePackage {
 
         // Get location info from the rest of the configured rules
         self.events.iter().for_each(|event| {
-            if let Some(mut other_loc_info) = event.get_loc_info(app_wasm, instr) {
+            if let Some(mut other_loc_info) = event.get_loc_info(app_wasm, fid, instr) {
                 loc_info.append(&mut other_loc_info);
             }
         });
@@ -50,10 +55,7 @@ impl Package for CorePackage {
             None
         }
     }
-    fn add_events(
-        &mut self,
-        ast_events: &HashMap<String, HashMap<WhammModeKind, Vec<SimpleProbe>>>,
-    ) {
+    fn add_events(&mut self, ast_events: &HashMap<String, HashMap<WhammModeKind, Vec<Probe>>>) {
         let events = match self.kind {
             CorePackageKind::Default => event_factory::<CoreEvent>(ast_events),
         };
@@ -63,7 +65,7 @@ impl Package for CorePackage {
 
 pub struct CoreEvent {
     kind: CoreEventKind,
-    probes: HashMap<WhammModeKind, Vec<SimpleProbe>>,
+    probes: HashMap<WhammModeKind, Vec<Probe>>,
 }
 impl FromStr for CoreEvent {
     fn from_str(name: &str) -> Self {
@@ -85,7 +87,12 @@ impl CoreEvent {
     }
 }
 impl Event for CoreEvent {
-    fn get_loc_info(&self, _app_wasm: &Module, _instr: &Operator) -> Option<LocInfo> {
+    fn get_loc_info(
+        &self,
+        _app_wasm: &Module,
+        _curr_fid: &FunctionID,
+        _instr: &Operator,
+    ) -> Option<LocInfo> {
         let loc_info = LocInfo::new();
         match self.kind {
             CoreEventKind::Default => {
@@ -109,7 +116,7 @@ impl Event for CoreEvent {
             None
         }
     }
-    fn add_probes(&mut self, probes: &HashMap<WhammModeKind, Vec<SimpleProbe>>) {
+    fn add_probes(&mut self, probes: &HashMap<WhammModeKind, Vec<Probe>>) {
         self.probes = probe_factory(probes);
     }
 }

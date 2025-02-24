@@ -10,4 +10,4 @@ id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)
 11, global_id, not_taken, i32, i32, script0, 3:3, 0_wasm:opcode:_if:before, 1
 12, global_id, selected_first, u32, i32, script0, 4:4, 3_wasm:opcode:select:before, 1
 13, global_id, selected_second, u32, i32, script0, 4:4, 3_wasm:opcode:select:before, 0
-1, map_id, taken_branches, map<u32,u32>, i32, script0, 2:4, 2_wasm:opcode:br_table:before, 0->1;1->1;2->1
+0, map_id, taken_branches, map<u32,u32>, i32, script0, 2:4, 2_wasm:opcode:br_table:before, 0->1;1->1;2->1

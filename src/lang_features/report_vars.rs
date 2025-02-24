@@ -27,7 +27,7 @@ pub struct ReportVars {
     pub all_used_report_dts: HashSet<DataType>,
     pub curr_location: LocationData,
 
-    // $alloc tracking for Wizard
+    // $alloc tracking for in-memory variables
     flush_tracker: FlushTracker,
     alloc_tracker: HashMap<DataType, ReportAllocTracker>,
 }
@@ -1395,7 +1395,7 @@ impl Metadata {
         )
     }
 }
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub enum LocationData {
     Global {
         script_id: u8,
@@ -1404,7 +1404,6 @@ pub enum LocationData {
         script_id: u8,
         bytecode_loc: BytecodeLoc,
         probe_id: String,
-        unshared: HashMap<DataType, i32>,
     },
 }
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

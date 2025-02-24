@@ -5,10 +5,10 @@ use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::module_emitter::ModuleEmitter;
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::InjectStrategy;
+use crate::generator::metadata_collector::MetadataCollector;
 use crate::generator::rewriting::init_generator::InitGenerator;
 use crate::generator::rewriting::instr_generator::InstrGenerator;
-use crate::generator::rewriting::simple_ast::{build_simple_ast, SimpleAST};
-use crate::generator::wizard::metadata_collector::WizardProbeMetadataCollector;
+use crate::generator::rewriting::simple_ast::build_simple_ast;
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::io::IOPackage;
@@ -193,27 +193,25 @@ pub fn run(
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
 
+    // Collect the metadata for the AST and transform to different representation
+    // specifically used for targeting Wizard during compilation.
+    let mut metadata_collector = MetadataCollector::new(&mut symbol_table, &mut err, &config);
+    metadata_collector.visit_whamm(&whamm);
     if config.wizard {
         run_instr_wizard(
-            &mut whamm,
-            // simple_ast,
+            metadata_collector,
             target_wasm,
-            &mut symbol_table,
             &mut mem_allocator,
             &mut io_adapter,
             &mut map_lib_adapter,
             &mut report_vars,
             &mut unshared_var_handler,
-            &mut err,
-            &config,
         );
     } else {
-        let simple_ast = build_simple_ast(&whamm, &mut err);
         run_instr_rewrite(
             &mut whamm,
-            simple_ast,
+            metadata_collector,
             target_wasm,
-            &mut symbol_table,
             has_reports,
             &mut mem_allocator,
             &mut io_adapter,
@@ -221,7 +219,6 @@ pub fn run(
             &mut report_vars,
             &mut unshared_var_handler,
             &mut injected_funcs,
-            &mut err,
         );
     }
 
@@ -240,35 +237,30 @@ pub fn run(
 }
 
 fn run_instr_wizard(
-    whamm: &mut Whamm,
-    // simple_ast: SimpleAST,
+    metadata_collector: MetadataCollector,
     target_wasm: &mut Module,
-    symbol_table: &mut SymbolTable,
     mem_allocator: &mut MemoryAllocator,
     io_adapter: &mut IOAdapter,
     map_lib_adapter: &mut MapLibAdapter,
     report_vars: &mut ReportVars,
     unshared_var_handler: &mut UnsharedVarHandler,
-    err: &mut ErrorGen,
-    config: &Config,
 ) {
-    // Collect the metadata for the AST and transform to different representation
-    // specifically used for targeting Wizard during compilation.
-    let mut metadata_collector = WizardProbeMetadataCollector::new(symbol_table, err, config);
-    metadata_collector.visit_whamm(whamm);
-    let wiz_ast = metadata_collector.wizard_ast;
+    let table = metadata_collector.table;
+    let err = metadata_collector.err;
+    let config = metadata_collector.config;
+    let wiz_ast = metadata_collector.ast;
     let used_funcs = metadata_collector.used_provided_fns;
     let used_report_dts = metadata_collector.used_report_var_dts;
     let used_strings = metadata_collector.strings_to_emit;
 
     let mut injected_funcs = vec![];
     let mut wizard_unshared_var_handler =
-        crate::lang_features::alloc_vars::wizard::UnsharedVarHandler::default();
+        crate::lang_features::alloc_vars::wizard::UnsharedVarHandler;
     let mut gen = crate::generator::wizard::WizardGenerator {
         emitter: ModuleEmitter::new(
             InjectStrategy::Wizard,
             target_wasm,
-            symbol_table,
+            table,
             mem_allocator,
             map_lib_adapter,
             report_vars,
@@ -287,9 +279,8 @@ fn run_instr_wizard(
 
 fn run_instr_rewrite(
     whamm: &mut Whamm,
-    simple_ast: SimpleAST,
+    metadata_collector: MetadataCollector,
     target_wasm: &mut Module,
-    symbol_table: &mut SymbolTable,
     has_reports: bool,
     mem_allocator: &mut MemoryAllocator,
     io_adapter: &mut IOAdapter,
@@ -297,14 +288,19 @@ fn run_instr_rewrite(
     report_vars: &mut ReportVars,
     unshared_var_handler: &mut UnsharedVarHandler,
     injected_funcs: &mut Vec<FunctionID>,
-    err: &mut ErrorGen,
 ) {
+    let table = metadata_collector.table;
+    let err = metadata_collector.err;
+    let ast = metadata_collector.ast;
+    let used_funcs = metadata_collector.used_provided_fns;
+    let used_strings = metadata_collector.strings_to_emit;
+
     // Phase 0 of instrumentation (emit globals and provided fns)
     let mut init = InitGenerator {
         emitter: ModuleEmitter::new(
             InjectStrategy::Rewriting,
             target_wasm,
-            symbol_table,
+            table,
             mem_allocator,
             map_lib_adapter,
             report_vars,
@@ -314,19 +310,20 @@ fn run_instr_rewrite(
         err,
         injected_funcs,
     };
-    init.run(whamm);
+    init.run(whamm, used_funcs, used_strings);
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
 
     // Phase 1 of instrumentation (actually emits the instrumentation code)
     // This structure is necessary since we need to have the fns/globals injected (a single time)
     // and ready to use in every body/predicate.
+    let simple_ast = build_simple_ast(ast);
     let mut instr = InstrGenerator::new(
         VisitingEmitter::new(
             InjectStrategy::Rewriting,
             target_wasm,
             injected_funcs,
-            symbol_table,
+            table,
             mem_allocator,
             map_lib_adapter,
             io_adapter,

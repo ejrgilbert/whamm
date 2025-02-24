@@ -2,8 +2,9 @@ use crate::common::error::ErrorGen;
 use crate::emitter::rewriting::rules::{provider_factory, Arg, LocInfo, ProbeRule, WhammProvider};
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::Emitter;
+use crate::generator::ast::Probe;
 use crate::generator::folding::ExprFolder;
-use crate::generator::rewriting::simple_ast::{SimpleAST, SimpleProbe};
+use crate::generator::rewriting::simple_ast::SimpleAST;
 use crate::lang_features::report_vars::{BytecodeLoc, LocationData};
 use crate::parser::rules::core::WhammModeKind;
 use crate::parser::types::{Block, Expr, Value};
@@ -165,11 +166,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
         is_success &= self.after_run();
         is_success
     }
-    fn set_curr_loc(&mut self, probe_rule: &ProbeRule, probe: &SimpleProbe) {
+    fn set_curr_loc(&mut self, probe_rule: &ProbeRule, probe: &Probe) {
         let curr_script_id = probe.script_id;
         // todo -- this clone is bad
-        self.emitter.curr_unshared = probe.num_unshared.clone();
-        self.emitter.maps_unshared = probe.maps_unshared.clone();
+        self.emitter.curr_unshared = probe.unshared_to_alloc.clone();
         let probe_rule_str = probe_rule.to_string();
         let curr_probe_id = format!("{}_{}", probe.probe_number, probe_rule_str);
         let loc = match self.emitter.app_iter.curr_loc().0 {
@@ -189,8 +189,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
             script_id: curr_script_id,
             bytecode_loc: loc,
             probe_id: curr_probe_id,
-            // todo -- this clone is bad
-            unshared: self.emitter.curr_unshared.clone(), //this is still used in the emitter to determine how many new globals to emit
         };
     }
 }

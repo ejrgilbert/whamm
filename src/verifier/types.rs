@@ -323,12 +323,7 @@ impl SymbolTable {
                 None
             }
         } else {
-            err.unexpected_error(
-                true,
-                Some(format!("Could not find var for: {}", key)),
-                line_col_from_loc(loc),
-            );
-            None
+            panic!("Could not find var for: {}", key)
         }
     }
     pub fn lookup_var(
@@ -641,6 +636,10 @@ pub enum Record {
         /// The address of this function post-injection
         addr: Option<u32>,
         loc: Option<Location>,
+
+        /// Bookkeeping for provided functions that need the args defined
+        /// (only tracks this for dynamic provided functions)
+        req_args: bool,
     },
     Var {
         ty: DataType,

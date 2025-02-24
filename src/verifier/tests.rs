@@ -524,10 +524,9 @@ pub fn test_template() {
     "#;
     let mut ast = tests::get_ast(script, &mut err);
     let mut table = verifier::build_symbol_table(&mut ast, &mut err);
-    let res = verifier::type_check(&mut ast, &mut table, &mut err);
+    verifier::type_check(&mut ast, &mut table, &mut err);
     err.report();
     assert!(!err.has_errors);
-    assert!(res.0);
 }
 #[test]
 pub fn test_expect_fatal() {
@@ -562,10 +561,9 @@ pub fn expect_fatal_error() {
     "#;
     let mut ast = tests::get_ast(script, &mut err);
     let mut table = verifier::build_symbol_table(&mut ast, &mut err);
-    let res = verifier::type_check(&mut ast, &mut table, &mut err);
+    verifier::type_check(&mut ast, &mut table, &mut err);
     err.report();
     assert!(err.has_errors);
-    assert!(!res.0);
 }
 #[test]
 pub fn test_recursive_calls() {
@@ -585,10 +583,9 @@ pub fn test_recursive_calls() {
     "#;
     let mut ast = tests::get_ast(script, &mut err);
     let mut table = verifier::build_symbol_table(&mut ast, &mut err);
-    let res = verifier::type_check(&mut ast, &mut table, &mut err);
+    verifier::type_check(&mut ast, &mut table, &mut err);
     err.report();
     assert!(!err.has_errors);
-    assert!(res.0);
 }
 #[test]
 pub fn testing_map() {
@@ -605,10 +602,9 @@ pub fn testing_map() {
 
     let mut ast = tests::get_ast(script, &mut err);
     let mut table = verifier::build_symbol_table(&mut ast, &mut err);
-    let res = verifier::type_check(&mut ast, &mut table, &mut err);
+    verifier::type_check(&mut ast, &mut table, &mut err);
     err.report();
     assert!(!err.has_errors);
-    assert!(res.0);
 }
 #[test]
 pub fn test_report_decl() {
@@ -622,10 +618,9 @@ pub fn test_report_decl() {
         }"#;
     let mut ast = tests::get_ast(script, &mut err);
     let mut table = verifier::build_symbol_table(&mut ast, &mut err);
-    let res = verifier::type_check(&mut ast, &mut table, &mut err);
+    verifier::type_check(&mut ast, &mut table, &mut err);
     err.report();
     assert!(!err.has_errors);
-    assert!(res.0);
 }
 //TODO: uncomment after BEGIN is working
 

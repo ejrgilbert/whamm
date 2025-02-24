@@ -1459,6 +1459,7 @@ impl Whamm {
             strcmp_params,
             DataType::Boolean,
             false,
+            false,
         );
 
         vec![strcmp]
@@ -1500,6 +1501,16 @@ pub struct ProbeRule {
     pub package: Option<RulePart>,
     pub event: Option<RulePart>,
     pub mode: Option<RulePart>,
+}
+impl From<&crate::generator::ast::ProbeRule> for ProbeRule {
+    fn from(value: &crate::generator::ast::ProbeRule) -> Self {
+        Self {
+            provider: Some(value.provider.clone()),
+            package: Some(value.package.clone()),
+            event: Some(value.event.clone()),
+            mode: Some(value.mode.clone()),
+        }
+    }
 }
 impl ProbeRule {
     pub fn new() -> Self {
@@ -1936,6 +1947,7 @@ pub struct ProvidedFunction {
     pub name: String,
     pub docs: String,
     pub function: Fn,
+    pub req_args: bool,
 }
 impl ProvidedFunction {
     pub fn new(
@@ -1944,6 +1956,7 @@ impl ProvidedFunction {
         params: Vec<(Expr, DataType)>,
         return_ty: DataType,
         is_static: bool,
+        req_args: bool,
     ) -> Self {
         Self {
             name: name.clone(),
@@ -1963,6 +1976,7 @@ impl ProvidedFunction {
                     loc: None,
                 },
             },
+            req_args,
         }
     }
 }

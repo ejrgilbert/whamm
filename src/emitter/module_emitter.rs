@@ -1,8 +1,9 @@
 use crate::common::error::{ErrorGen, WhammError};
-use crate::emitter::memory_allocator::MemoryAllocator;
+use crate::emitter::memory_allocator::{MemoryAllocator, VAR_BLOCK_BASE_VAR};
 use crate::emitter::rewriting::rules::Arg;
 use crate::emitter::utils::{emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global, EmitCtx};
 use crate::emitter::{Emitter, InjectStrategy};
+use crate::generator::ast::WhammParams;
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
@@ -118,7 +119,76 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         unimplemented!();
     }
 
-    pub fn emit_special_fn(
+    pub fn emit_special_func(
+        &mut self,
+        // the base memory offset for this function's var block
+        alloc_base: Option<LocalID>,
+        whamm_params: &WhammParams,
+        dynamic_pred: Option<&mut Expr>,
+        results: &[OrcaType],
+        body: &mut Block,
+        export: bool,
+        err: &mut ErrorGen,
+    ) -> (Option<u32>, String) {
+        // create the function
+        let mut params = vec![];
+        let mut param_str = "".to_string();
+
+        // handle $alloc param (if there are unshared vars)
+        if let Some(alloc) = alloc_base {
+            params.push(OrcaType::I32);
+            // add param definition to the symbol table
+            self.table.put(
+                VAR_BLOCK_BASE_VAR.to_string(),
+                Record::Var {
+                    ty: DataType::I32,
+                    name: VAR_BLOCK_BASE_VAR.to_string(),
+                    value: None,
+                    def: Definition::CompilerStatic,
+                    is_report_var: false,
+                    addr: Some(VarAddr::Local { addr: *alloc }),
+                    loc: None,
+                },
+            );
+        }
+
+        // handle the parameters
+        for param in whamm_params.params.iter() {
+            let param_name = param.to_string();
+            let param_ty = param.ty();
+
+            let local_id = params.len() as u32;
+            // handle param list
+            params.extend(param_ty.clone().to_wasm_type());
+
+            // handle the param string
+            if !param_str.is_empty() {
+                param_str += ", "
+            }
+            param_str += &param_name;
+
+            // add param definition to the symbol table
+            self.table.put(
+                param_name.clone(),
+                Record::Var {
+                    ty: param_ty.clone(),
+                    name: param_name.clone(),
+                    value: None,
+                    def: Definition::CompilerStatic,
+                    is_report_var: false,
+                    addr: Some(VarAddr::Local { addr: local_id }),
+                    loc: None,
+                },
+            );
+        }
+
+        let fid =
+            self.emit_special_fn_inner(None, &params, dynamic_pred, results, body, export, err);
+
+        (fid, param_str.to_string())
+    }
+
+    fn emit_special_fn_inner(
         &mut self,
         name: Option<String>,
         params: &[OrcaType],
@@ -201,7 +271,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         used_report_dts: HashSet<DataType>,
         io_adapter: &mut IOAdapter,
         err: &mut ErrorGen,
-    ) {
+    ) -> Option<FunctionID> {
         if !used_report_dts.is_empty() {
             // (ONLY DO THIS IF THERE ARE REPORT VARIABLES)
 
@@ -235,6 +305,9 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             self.app_wasm
                 .exports
                 .add_export_func("wasm:exit".to_string(), *on_exit_id);
+            Some(on_exit_id)
+        } else {
+            None
         }
     }
 
@@ -390,6 +463,17 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     // ================================
     // ==== EMIT MEMORY DATA LOGIC ====
     // ================================
+
+    pub fn emit_strings(&mut self, strings_to_emit: Vec<String>, err: &mut ErrorGen) {
+        for string in strings_to_emit.iter() {
+            self.emit_string(
+                &mut Value::Str {
+                    val: string.clone(),
+                },
+                err,
+            );
+        }
+    }
 
     pub fn emit_string(&mut self, value: &mut Value, err: &mut ErrorGen) -> bool {
         match value {

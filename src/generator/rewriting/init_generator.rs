@@ -4,11 +4,12 @@
 
 use crate::common::error::ErrorGen;
 use crate::emitter::module_emitter::ModuleEmitter;
-use crate::generator::GeneratingVisitor;
+use crate::generator::{emit_needed_funcs, GeneratingVisitor};
 use crate::lang_features::report_vars::LocationData;
-use crate::parser::types::{DataType, Fn, Value, Whamm, WhammVisitorMut};
+use crate::parser::types::{DataType, Fn, ProbeRule, Value, Whamm, WhammVisitorMut};
 use crate::verifier::types::Record;
 use orca_wasm::ir::id::FunctionID;
+use std::collections::HashSet;
 
 /// Serves as the first phase of instrumenting a module by setting up
 /// the groundwork.
@@ -24,10 +25,22 @@ pub struct InitGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> {
     pub injected_funcs: &'i mut Vec<FunctionID>,
 }
 impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
-    pub fn run(&mut self, whamm: &mut Whamm) -> bool {
+    pub fn run(
+        &mut self,
+        whamm: &mut Whamm,
+        used_provided_funcs: HashSet<(String, String)>,
+        strings_to_emit: Vec<String>,
+    ) -> bool {
         // Reset the symbol table in the emitter just in case
         self.emitter.reset_table();
         self.emitter.setup_module(self.err);
+        emit_needed_funcs(
+            used_provided_funcs,
+            &mut self.emitter,
+            self.injected_funcs,
+            self.err,
+        );
+        self.emitter.emit_strings(strings_to_emit, self.err);
         // Generate globals and fns defined by `whamm` (this should modify the app_wasm)
         self.visit_whamm(whamm)
     }
@@ -78,6 +91,12 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
 
     fn enter_named_scope(&mut self, name: &str) {
         self.emitter.table.enter_named_scope(name);
+    }
+
+    fn enter_scope_via_rule(&mut self, script_id: &str, probe_rule: &ProbeRule) {
+        self.emitter
+            .table
+            .enter_scope_via_rule(script_id, probe_rule);
     }
 
     fn enter_scope(&mut self) {

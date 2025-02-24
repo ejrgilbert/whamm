@@ -1,6 +1,6 @@
 use crate::common::error::ErrorGen;
 use crate::parser::rules::{Event, Package, Probe, Provider, UNKNOWN_IMMS};
-use crate::parser::types::Definition::CompilerDynamic;
+use crate::parser::types::Definition::{CompilerDynamic, CompilerStatic};
 use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Fn, Location, Script, Statement, UnOp, Value, Whamm,
     WhammVisitorMut,
@@ -32,6 +32,7 @@ pub fn build_symbol_table(ast: &mut Whamm, err: &mut ErrorGen) -> SymbolTable {
         curr_event: None,
         curr_probe: None,
         curr_fn: None,
+        req_args: false,
     };
     visitor.visit_whamm(ast);
     visitor.table
@@ -1103,12 +1104,12 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         addr: _,
                         def,
                         loc,
+                        ..
                     }) = self.table.get_record(id)
                     {
                         //check if in global state and if is_comp_provided is false --> not allowed if both are the case
                         if self.in_script_global
-                            && !(*def == Definition::CompilerDynamic
-                                || *def == Definition::CompilerStatic)
+                            && !(*def == CompilerDynamic || *def == CompilerStatic)
                         {
                             self.err.type_check_error(
                                 false,

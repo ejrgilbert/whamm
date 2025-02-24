@@ -717,16 +717,9 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 return false;
             };
             if matches!(def, Definition::CompilerStatic) && addr.is_none() {
-                ctx.err.unexpected_error(
-                    true,
-                    Some(format!(
-                        "{} \
+                panic!("{} \
                     Variable is provided statically by the compiler, it should've been folded by this point: {}", ctx.err_msg,
-                        name
-                    )),
-                    None,
-                );
-                return false;
+                        name);
             }
             // this will be different based on if this is a global or local var
             return match addr {

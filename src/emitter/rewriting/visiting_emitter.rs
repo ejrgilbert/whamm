@@ -9,6 +9,7 @@ use crate::emitter::utils::{
     block_type_to_wasm, emit_expr, emit_stmt, whamm_type_to_wasm_global, EmitCtx,
 };
 use crate::emitter::{configure_flush_routines, Emitter, InjectStrategy};
+use crate::generator::ast::UnsharedVar;
 use crate::generator::folding::ExprFolder;
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
@@ -43,8 +44,7 @@ pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub(crate) report_vars: &'g mut ReportVars,
     pub(crate) unshared_var_handler: &'g mut UnsharedVarHandler,
     instr_created_args: Vec<(String, usize)>,
-    pub curr_unshared: HashMap<DataType, i32>,
-    pub maps_unshared: HashMap<DataType, (String, bool)>,
+    pub curr_unshared: Vec<UnsharedVar>,
 }
 
 impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
@@ -70,8 +70,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             report_vars,
             unshared_var_handler,
             instr_created_args: vec![],
-            curr_unshared: HashMap::default(),
-            maps_unshared: HashMap::default(),
+            curr_unshared: vec![],
         };
 
         a
@@ -495,8 +494,21 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         is_success
     }
 
-    fn handle_drop_args(&mut self, curr_instr_args: &[Arg]) -> bool {
+    fn handle_drop_args(&mut self) -> bool {
         // Generate drops for all args to this opcode!
+
+        let fid = match self.app_iter.curr_loc().0 {
+            Location::Module { func_idx, .. } | Location::Component { func_idx, .. } => func_idx,
+        };
+
+        // ensure we have the args for this instruction
+        let curr_instr_args = OpcodeEvent::get_ty_info_for_instr(
+            self.app_iter.module,
+            &fid,
+            self.app_iter.curr_op().unwrap(),
+        )
+        .0;
+
         for _arg in curr_instr_args {
             self.app_iter.drop();
         }
@@ -505,7 +517,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
 
     fn handle_special_fn_call(
         &mut self,
-        curr_instr_args: &[Arg],
+        _curr_instr_args: &[Arg],
         target_fn_name: String,
         args: &mut [Expr],
         err: &mut ErrorGen,
@@ -513,7 +525,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         match target_fn_name.as_str() {
             "alt_call_by_name" => self.handle_alt_call_by_name(args, err),
             "alt_call_by_id" => self.handle_alt_call_by_id(args, err),
-            "drop_args" => self.handle_drop_args(curr_instr_args),
+            "drop_args" => self.handle_drop_args(),
             _ => {
                 err.unexpected_error(
                     true,
@@ -593,44 +605,49 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
     fn emit_body(&mut self, curr_instr_args: &[Arg], body: &mut Block, err: &mut ErrorGen) -> bool {
         let mut is_success = true;
 
+        // TODO -- this can be removed once we move to calling the generated functions!
         // Create the required globals for this probe
         // Sort by datatype to make generation deterministic!
-        let sorted_unshared = self.curr_unshared.iter().sorted_by_key(|(ty, _)| ty.id());
-        for (ty, num) in sorted_unshared.into_iter() {
-            for _ in 0..*num {
+        // translate unshared vars to the correct format
+        let sorted_unshared = self
+            .curr_unshared
+            .iter()
+            .sorted_by(|a, b| Ord::cmp(&a.ty, &b.ty));
+
+        for UnsharedVar {
+            name,
+            ty,
+            is_report,
+            ..
+        } in sorted_unshared.into_iter()
+        {
+            if matches!(ty, DataType::Map { .. }) {
+                // handle maps
+                let Some(Record::Var {
+                    ref mut addr,
+                    ref mut ty,
+                    ..
+                }) = self.table.lookup_var_mut(name, &None, err)
+                else {
+                    err.unexpected_error(true, Some("unexpected type".to_string()), None);
+                    return false;
+                };
+
+                self.map_lib_adapter.emit_map_init(
+                    name.clone(),
+                    addr,
+                    ty,
+                    *is_report,
+                    self.report_vars,
+                    self.app_iter.module,
+                    err,
+                );
+            } else {
+                // if it's not a map, we'll just use this generated GID when
+                // we need to during the AST visit
                 let (global_id, ..) = whamm_type_to_wasm_global(self.app_iter.module, ty);
-
-                if matches!(ty, DataType::Map { .. }) {
-                    unreachable!("Maps should be placed in 'maps_unshared' variable on the probe!")
-                } else {
-                    // if it's not a map, we'll just use this generated GID when
-                    // we need to during the AST visit
-                    self.unshared_var_handler.add_available_gid(*global_id, ty);
-                }
+                self.unshared_var_handler.add_available_gid(*global_id, ty);
             }
-        }
-
-        let sorted_unshared_maps = self.maps_unshared.iter().sorted_by_key(|(ty, _)| ty.id());
-        for (_, (name, is_report)) in sorted_unshared_maps.into_iter() {
-            let Some(Record::Var {
-                ref mut addr,
-                ref mut ty,
-                ..
-            }) = self.table.lookup_var_mut(name, &None, err)
-            else {
-                err.unexpected_error(true, Some("unexpected type".to_string()), None);
-                return false;
-            };
-
-            self.map_lib_adapter.emit_map_init(
-                name.clone(),
-                addr,
-                ty,
-                *is_report,
-                self.report_vars,
-                self.app_iter.module,
-                err,
-            );
         }
 
         for stmt in body.stmts.iter_mut() {

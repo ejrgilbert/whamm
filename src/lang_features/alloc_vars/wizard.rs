@@ -1,7 +1,7 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::StringAddr;
 use crate::emitter::module_emitter::ModuleEmitter;
-use crate::generator::wizard::ast::UnsharedVar;
+use crate::generator::ast::UnsharedVar;
 use crate::lang_features::report_vars::Metadata as ReportMetadata;
 use crate::lang_features::report_vars::ReportVars;
 use crate::parser::types::{DataType, Definition};
@@ -16,13 +16,11 @@ use std::collections::HashMap;
 use wasmparser::MemArg;
 
 #[derive(Default)]
-pub struct UnsharedVarHandler {
-    // DT -> fid of handler
-    // pub alloc_type_handlers: HashMap<DataType, u32>
-}
+pub struct UnsharedVarHandler;
+
 impl UnsharedVarHandler {
     pub fn emit_alloc_func(
-        &mut self,
+        &self,
         unshared_to_alloc: &mut [UnsharedVar],
         emitter: &mut ModuleEmitter,
         err: &mut ErrorGen,

@@ -2224,21 +2224,21 @@ id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)
 2181, global_id, not_taken, i32, i32, script0, 256:44, 1_wasm:opcode:br_if:before, 0
 2182, global_id, taken, i32, i32, script0, 257:43, 1_wasm:opcode:br_if:before, 0
 2183, global_id, not_taken, i32, i32, script0, 257:43, 1_wasm:opcode:br_if:before, 0
-1, map_id, taken_branches, map<u32,u32>, i32, script0, 63:21, 2_wasm:opcode:br_table:before, 0->10;1->10;2->10
-3, map_id, taken_branches, map<u32,u32>, i32, script0, 116:17, 2_wasm:opcode:br_table:before, Empty map
-5, map_id, taken_branches, map<u32,u32>, i32, script0, 116:184, 2_wasm:opcode:br_table:before, Empty map
-7, map_id, taken_branches, map<u32,u32>, i32, script0, 127:12, 2_wasm:opcode:br_table:before, Empty map
-9, map_id, taken_branches, map<u32,u32>, i32, script0, 129:11, 2_wasm:opcode:br_table:before, 0->1
-11, map_id, taken_branches, map<u32,u32>, i32, script0, 141:41, 2_wasm:opcode:br_table:before, Empty map
-13, map_id, taken_branches, map<u32,u32>, i32, script0, 143:10, 2_wasm:opcode:br_table:before, Empty map
-15, map_id, taken_branches, map<u32,u32>, i32, script0, 148:16, 2_wasm:opcode:br_table:before, Empty map
-17, map_id, taken_branches, map<u32,u32>, i32, script0, 155:100, 2_wasm:opcode:br_table:before, Empty map
-19, map_id, taken_branches, map<u32,u32>, i32, script0, 194:287, 2_wasm:opcode:br_table:before, Empty map
-21, map_id, taken_branches, map<u32,u32>, i32, script0, 216:303, 2_wasm:opcode:br_table:before, Empty map
-23, map_id, taken_branches, map<u32,u32>, i32, script0, 220:185, 2_wasm:opcode:br_table:before, Empty map
-25, map_id, taken_branches, map<u32,u32>, i32, script0, 220:222, 2_wasm:opcode:br_table:before, Empty map
-27, map_id, taken_branches, map<u32,u32>, i32, script0, 222:309, 2_wasm:opcode:br_table:before, Empty map
-29, map_id, taken_branches, map<u32,u32>, i32, script0, 227:93, 2_wasm:opcode:br_table:before, Empty map
-31, map_id, taken_branches, map<u32,u32>, i32, script0, 227:158, 2_wasm:opcode:br_table:before, Empty map
-33, map_id, taken_branches, map<u32,u32>, i32, script0, 227:213, 2_wasm:opcode:br_table:before, Empty map
-35, map_id, taken_branches, map<u32,u32>, i32, script0, 237:24, 2_wasm:opcode:br_table:before, Empty map
+0, map_id, taken_branches, map<u32,u32>, i32, script0, 63:21, 2_wasm:opcode:br_table:before, 0->10;1->10;2->10
+1, map_id, taken_branches, map<u32,u32>, i32, script0, 116:17, 2_wasm:opcode:br_table:before, Empty map
+2, map_id, taken_branches, map<u32,u32>, i32, script0, 116:184, 2_wasm:opcode:br_table:before, Empty map
+3, map_id, taken_branches, map<u32,u32>, i32, script0, 127:12, 2_wasm:opcode:br_table:before, Empty map
+4, map_id, taken_branches, map<u32,u32>, i32, script0, 129:11, 2_wasm:opcode:br_table:before, 0->1
+5, map_id, taken_branches, map<u32,u32>, i32, script0, 141:41, 2_wasm:opcode:br_table:before, Empty map
+6, map_id, taken_branches, map<u32,u32>, i32, script0, 143:10, 2_wasm:opcode:br_table:before, Empty map
+7, map_id, taken_branches, map<u32,u32>, i32, script0, 148:16, 2_wasm:opcode:br_table:before, Empty map
+8, map_id, taken_branches, map<u32,u32>, i32, script0, 155:100, 2_wasm:opcode:br_table:before, Empty map
+9, map_id, taken_branches, map<u32,u32>, i32, script0, 194:287, 2_wasm:opcode:br_table:before, Empty map
+10, map_id, taken_branches, map<u32,u32>, i32, script0, 216:303, 2_wasm:opcode:br_table:before, Empty map
+11, map_id, taken_branches, map<u32,u32>, i32, script0, 220:185, 2_wasm:opcode:br_table:before, Empty map
+12, map_id, taken_branches, map<u32,u32>, i32, script0, 220:222, 2_wasm:opcode:br_table:before, Empty map
+13, map_id, taken_branches, map<u32,u32>, i32, script0, 222:309, 2_wasm:opcode:br_table:before, Empty map
+14, map_id, taken_branches, map<u32,u32>, i32, script0, 227:93, 2_wasm:opcode:br_table:before, Empty map
+15, map_id, taken_branches, map<u32,u32>, i32, script0, 227:158, 2_wasm:opcode:br_table:before, Empty map
+16, map_id, taken_branches, map<u32,u32>, i32, script0, 227:213, 2_wasm:opcode:br_table:before, Empty map
+17, map_id, taken_branches, map<u32,u32>, i32, script0, 237:24, 2_wasm:opcode:br_table:before, Empty map
