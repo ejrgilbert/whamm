@@ -4,17 +4,20 @@ use crate::lang_features::libraries::core::LibAdapter;
 use crate::lang_features::report_vars::ReportVars;
 use crate::parser::types::DataType;
 use crate::verifier::types::VarAddr;
-use orca_wasm::ir::id::{FunctionID, GlobalID};
+use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
 use orca_wasm::ir::types::BlockType as OrcaBlockType;
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::{Instrumenter, MacroOpcode};
 use orca_wasm::{Location, Module, Opcode};
 use std::collections::HashMap;
+use crate::emitter::memory_allocator::MemoryAllocator;
+use orca_wasm::ir::types::DataType as OrcaType;
 
 const UNEXPECTED_ERR_MSG: &str =
     "MapLibAdapter: Looks like you've found a bug...please report this behavior!";
 
 const PRINT_MAP: &str = "print_map";
+pub const MAP_LIB_MEM_OFFSET: u32 = 0;
 
 pub struct MapLibAdapter {
     pub is_used: bool,
@@ -22,6 +25,12 @@ pub struct MapLibAdapter {
     funcs: HashMap<String, u32>,
     map_count: u32,
     pub init_bool_location: u32,
+
+    pub(crate) app_mem: i32,
+    pub(crate) lib_mem: i32,
+
+    pub curr_str_offset: Option<u32>,
+    pub curr_str_len: Option<u32>
 }
 impl Default for MapLibAdapter {
     fn default() -> Self {
@@ -105,6 +114,10 @@ impl MapLibAdapter {
             funcs,
             map_count: 0,
             init_bool_location: 0,
+            app_mem: -1,
+            lib_mem: -1,
+            curr_str_offset: None,
+            curr_str_len: None
         }
     }
 
@@ -122,10 +135,57 @@ impl MapLibAdapter {
         key: DataType,
         val: DataType,
         func: &mut T,
+        mem_allocator: &MemoryAllocator,
         err: &mut ErrorGen,
     ) {
-        let fname = self.map_get_fname(key, val, err);
-        self.call(fname.as_str(), func, err);
+        let fname = self.map_get_fname(&key, &val, err);
+        let src_len = if matches!(key, DataType::Str) {
+            Some(self.handle_string_key_before_call(func, mem_allocator))
+        } else {
+            None
+        };
+
+        self.call(&fname, func, err);
+
+        if matches!(key, DataType::Str) {
+            let Some(src_len) = src_len else {
+                panic!("Expected src_len of String to be set!")
+            };
+            self.handle_string_key_after_call(src_len, func, mem_allocator);
+        }
+    }
+
+    fn handle_string_key_before_call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(&self, func: &mut T, mem_allocator: &MemoryAllocator) -> LocalID {
+        let (Some(curr_str_offset), Some(curr_str_len)) = (self.curr_str_offset, self.curr_str_len) else {
+            panic!("Expected the offset and len to be set for the key String!");
+        };
+
+        let src_offset = func.add_local(OrcaType::I32);
+        let src_len = func.add_local(OrcaType::I32);
+
+        func.u32_const(curr_str_offset)
+            .local_set(src_offset);
+        func.u32_const(curr_str_len)
+            .local_set(src_len);
+
+        mem_allocator.copy_to_mem_and_save(
+            self.app_mem as u32,
+            src_offset,
+            src_len,
+            self.lib_mem as u32,
+            MAP_LIB_MEM_OFFSET,
+            func
+        );
+        src_len
+    }
+
+    fn handle_string_key_after_call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(&self, src_len: LocalID, func: &mut T, mem_allocator: &MemoryAllocator) {
+        mem_allocator.copy_back_saved_mem(
+            src_len,
+            self.lib_mem as u32,
+            MAP_LIB_MEM_OFFSET,
+            func
+        );
     }
 
     pub fn map_insert<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
@@ -133,10 +193,24 @@ impl MapLibAdapter {
         key: DataType,
         val: DataType,
         func: &mut T,
+        mem_allocator: &MemoryAllocator,
         err: &mut ErrorGen,
     ) {
-        let fname = self.map_insert_fname(key, val, err);
-        self.call(fname.as_str(), func, err);
+        let fname = self.map_insert_fname(&key, &val, err);
+        let src_len = if matches!(&key, DataType::Str) {
+            Some(self.handle_string_key_before_call(func, mem_allocator))
+        } else {
+            None
+        };
+
+        self.call(&fname, func, err);
+
+        if matches!(&key, DataType::Str) {
+            let Some(src_len) = src_len else {
+                panic!("Expected src_len of String to be set!")
+            };
+            self.handle_string_key_after_call(src_len, func, mem_allocator);
+        }
     }
 
     pub fn map_create_report<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
@@ -297,7 +371,7 @@ impl MapLibAdapter {
             "invalid".to_string()
         }
     }
-    fn map_insert_fname(&mut self, key: DataType, val: DataType, err: &mut ErrorGen) -> String {
+    fn map_insert_fname(&mut self, key: &DataType, val: &DataType, err: &mut ErrorGen) -> String {
         let key_name = Self::ty_to_str(false, &key, err);
         let val_name = Self::ty_to_str(false, &val, err);
 
@@ -316,7 +390,7 @@ impl MapLibAdapter {
             "invalid".to_string()
         }
     }
-    fn map_get_fname(&mut self, key: DataType, val: DataType, err: &mut ErrorGen) -> String {
+    fn map_get_fname(&mut self, key: &DataType, val: &DataType, err: &mut ErrorGen) -> String {
         let key_name = Self::ty_to_str(false, &key, err);
         let val_name = Self::ty_to_str(false, &val, err);
 

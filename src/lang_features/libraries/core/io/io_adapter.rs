@@ -3,12 +3,13 @@
 use crate::common::error::ErrorGen;
 use crate::lang_features::libraries::core::LibAdapter;
 use orca_wasm::ir::function::FunctionBuilder;
-use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
+use orca_wasm::ir::id::{FunctionID, LocalID};
 use orca_wasm::ir::types::{BlockType, DataType as OrcaType};
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::MacroOpcode;
 use orca_wasm::{Module, Opcode};
 use std::collections::HashMap;
+use crate::emitter::memory_allocator::MemoryAllocator;
 
 // FROM LIB
 pub const PUTS: &str = "puts";
@@ -132,100 +133,29 @@ impl IOAdapter {
 
         puts_fid
     }
-    fn emit_intrusive_puts(&mut self, app_wasm: &mut Module, err: &mut ErrorGen) -> FunctionID {
+    fn emit_intrusive_puts(&mut self, mem_allocator: &mut MemoryAllocator, app_wasm: &mut Module, err: &mut ErrorGen) -> FunctionID {
         let str_addr = LocalID(0);
         let len = LocalID(1);
         let mut puts = FunctionBuilder::new(&[OrcaType::I32, OrcaType::I32], &[]);
 
-        let i = puts.add_local(OrcaType::I32);
-        let tmp = puts.add_local(OrcaType::I32);
-
-        let my_mem = wasmparser::MemArg {
-            align: 0,
-            max_align: 0,
-            offset: 0,
-            memory: self.app_mem as u32,
-        };
-        let lib_mem = wasmparser::MemArg {
-            align: 0,
-            max_align: 0,
-            offset: 0,
-            memory: self.lib_mem as u32,
-        };
-        let mem_tracker = GlobalID(self.mem_tracker_global);
-
-        #[rustfmt::skip]
-        puts.loop_stmt(BlockType::Empty)
-            // save old data
-            .local_get(str_addr)
-            .local_get(i)
-            .i32_add()         // mem pointer
-            .i32_load8_u(lib_mem) // load old char
-            .local_set(tmp)
-
-            .global_get(mem_tracker)
-            .local_get(i)
-            .i32_add()
-            .local_get(tmp)
-            .i32_store8(my_mem) // store old char
-
-            // write new data
-            .local_get(str_addr)
-            .local_get(i)
-            .i32_add()
-            .i32_load8_u(my_mem) // load new char
-            .local_set(tmp)
-            .local_get(str_addr)
-            .local_get(i)
-            .i32_add()
-            .local_get(tmp)
-            .i32_store8(lib_mem) // store new char
-
-
-            // update i
-            .i32_const(1)
-            .local_get(i)
-            .i32_add()
-            .local_set(i)
-
-            // continue loop if we're still less than the length of the string
-            .local_get(i)
-            .local_get(len)
-            .i32_lt_signed()
-            .br_if(0)
-        .end();
+        mem_allocator.copy_to_mem_and_save(
+            self.app_mem as u32,
+            str_addr,
+            len,
+            self.lib_mem as u32,
+            0,
+            &mut puts
+        );
 
         puts.local_get(str_addr).local_get(len);
-
         self.call_puts(&mut puts, err);
 
-        // write back old data
-        puts.i32_const(0)
-            .local_set(i)
-            .loop_stmt(BlockType::Empty)
-            // load old data
-            .global_get(mem_tracker)
-            .local_get(i)
-            .i32_add() // mem pointer
-            .i32_load8_u(my_mem)
-            .local_set(tmp)
-            // write back old data
-            .local_get(str_addr)
-            .local_get(i)
-            .i32_add()
-            .local_get(tmp)
-            .i32_store8(lib_mem) // store old char
-            // update i
-            .i32_const(1)
-            .local_get(i)
-            .i32_add()
-            .local_set(i)
-            // continue loop if we're still less than the length of the string
-            .local_get(i)
-            .local_get(len)
-            .i32_lt_signed()
-            .br_if(0)
-            .end();
+        mem_allocator.copy_back_saved_mem(
+            len,
+            self.lib_mem as u32,
+            0,
+            &mut puts
+        );
 
         let puts_fid = puts.finish_module(app_wasm);
         app_wasm.set_fn_name(puts_fid, INTRUSIVE_PUTS.to_string());

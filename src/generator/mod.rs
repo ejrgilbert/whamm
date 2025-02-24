@@ -10,6 +10,7 @@ use crate::verifier::types::Record;
 use log::{debug, trace, warn};
 use orca_wasm::ir::id::FunctionID;
 use std::collections::{HashMap, HashSet};
+use itertools::Itertools;
 
 pub mod folding;
 pub mod rewriting;
@@ -99,7 +100,8 @@ pub trait GeneratingVisitor: WhammVisitorMut<bool> {
     }
     fn visit_globals(&mut self, globals: &HashMap<String, Global>) -> bool {
         let is_success = true;
-        for (name, global) in globals.iter() {
+        let sorted_globals = globals.iter().sorted_by_key(|data| data.0);
+        for (name, global) in sorted_globals.into_iter() {
             // do not inject globals into Wasm that are used/defined by the compiler
             if global.is_from_user() {
                 if global.report {
