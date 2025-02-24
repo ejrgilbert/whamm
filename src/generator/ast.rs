@@ -152,6 +152,7 @@ pub enum WhammParam {
     Arg { n: u32, ty: DataType },
     Local { n: u32, ty: DataType },
     AllocOffset,
+    Category,
 
     // calls
     TargetFnType,
@@ -187,6 +188,7 @@ impl WhammParam {
             | Self::Fid
             | Self::Fname
             | Self::AllocOffset
+            | Self::Category
             | Self::TargetFnType
             | Self::TargetFnName
             | Self::TargetImpModule
@@ -210,6 +212,7 @@ impl WhammParam {
             | Self::Fname
             | Self::Imm { .. }
             | Self::AllocOffset
+            | Self::Category
             | Self::TargetFnType
             | Self::TargetFnName
             | Self::TargetImpModule
@@ -233,6 +236,7 @@ impl WhammParam {
             Self::Arg { ty, .. } => ty.clone(),
             Self::Local { ty, .. } => ty.clone(),
             Self::AllocOffset => DataType::U32,
+            Self::Category => DataType::Str,
             Self::TargetFnType => DataType::Str,
             Self::TargetFnName => DataType::Str,
             Self::TargetImpModule => DataType::Str,
@@ -257,6 +261,7 @@ impl From<String> for WhammParam {
             "pc" => return Self::Pc,
             "fid" => return Self::Fid,
             "fname" => return Self::Fname,
+            "category" => return Self::Category,
             "target_fn_type" => return Self::TargetFnType,
             "target_fn_name" => return Self::TargetFnName,
             "target_imp_module" => return Self::TargetImpModule,
@@ -314,6 +319,7 @@ impl Display for WhammParam {
             Self::Local { n, .. } => f.write_str(&format!("local{n}")),
             // TODO -- unsure what to do for the alloc part...
             Self::AllocOffset => f.write_str("alloc"),
+            Self::Category => f.write_str("category"),
             Self::TargetFnType => f.write_str("target_fn_type"),
             Self::TargetFnName => f.write_str("target_fn_name"),
             Self::TargetImpModule => f.write_str("target_imp_module"),

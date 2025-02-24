@@ -568,15 +568,6 @@ impl Event for OpcodeEvent {
             loc_info.args = OpcodeEvent::get_ty_info_for_instr(app_wasm, curr_fid, instr).0;
         }
 
-        // TODO -- shouldn't need this right
-        // // define the opcode category
-        // loc_info.static_data.insert(
-        //     "category".to_string(),
-        //     Some(Value::Str {
-        //         val: self.kind.category().to_string(),
-        //     }),
-        // );
-
         match self.kind {
             OpcodeEventKind::Unreachable { .. } => {
                 if let Operator::Unreachable = instr {
