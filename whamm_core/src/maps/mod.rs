@@ -395,7 +395,28 @@ impl MapOperations for AnyMap {
             AnyMap::i32_string_Map(ref map) => {
                 debug!("DEBUG: dumping i32_string_Map...");
                 let mut result = String::new();
-                for (key, value) in map.iter() {
+
+                // sort to make flush deterministic
+                let sorted_map = map.iter().sorted_by_key(|data| data.0);
+
+                for (key, value) in sorted_map.into_iter() {
+                    result.push_str(&format!("{}->{};", key, value));
+                }
+                if result.is_empty() {
+                    result = "Empty map".to_string();
+                } else {
+                    result.pop();
+                }
+                result
+            }
+            AnyMap::string_i32_Map(ref map) => {
+                debug!("DEBUG: dumping string_i32_Map...");
+                let mut result = String::new();
+
+                // sort to make flush deterministic
+                let sorted_map = map.iter().sorted_by_key(|data| data.0);
+
+                for (key, value) in sorted_map.into_iter() {
                     result.push_str(&format!("{}->{};", key, value));
                 }
                 if result.is_empty() {
