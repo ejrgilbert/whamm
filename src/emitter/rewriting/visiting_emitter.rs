@@ -499,16 +499,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         // Generate drops for all args to this opcode!
 
         let fid = match self.app_iter.curr_loc().0 {
-            Location::Module {
-                func_idx,
-                ..
-            }
-            | Location::Component {
-                func_idx,
-                ..
-            } => {
-                func_idx
-            }
+            Location::Module { func_idx, .. } | Location::Component { func_idx, .. } => func_idx,
         };
 
         // ensure we have the args for this instruction
@@ -517,7 +508,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             &fid,
             self.app_iter.curr_op().unwrap(),
         )
-            .0;
+        .0;
 
         for _arg in curr_instr_args {
             self.app_iter.drop();

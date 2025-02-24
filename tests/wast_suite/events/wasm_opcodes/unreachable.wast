@@ -45,7 +45,6 @@
 ;; WHAMM --> var count: i32; wasm:opcode:unreachable:alt { count++; }
 (assert_return (invoke "get_count") (i32.const 1))
 
-;; TODO -- this fails due to probing the same event, fix this!
-;;;; Need to do alt on unreachable so we can actually run the test!
-;;;; WHAMM --> var count: i32; wasm:opcode:unreachable:alt { count = count + 2; } wasm:opcode:unreachable:before { count++; }
-;;(assert_return (invoke "get_count") (i32.const 3))
+;; Need to do alt on unreachable so we can actually run the test!
+;; WHAMM --> var count: i32; wasm:opcode:unreachable:alt { count = count + 2; } wasm:opcode:unreachable:before { count++; }
+(assert_return (invoke "get_count") (i32.const 3))

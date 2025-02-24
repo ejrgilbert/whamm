@@ -639,7 +639,7 @@ pub enum Record {
 
         /// Bookkeeping for provided functions that need the args defined
         /// (only tracks this for dynamic provided functions)
-        req_args: bool
+        req_args: bool,
     },
     Var {
         ty: DataType,

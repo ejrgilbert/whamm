@@ -171,7 +171,7 @@ pub enum WhammParam {
 
     // GC
     Tid,
-    FieldIdx
+    FieldIdx,
 }
 impl WhammParam {
     pub fn new(var_name: String, var_type: DataType) -> Self {
@@ -205,25 +205,23 @@ impl WhammParam {
     }
     pub fn def(&self) -> Definition {
         match self {
-            Self::Pc |
-            Self::Fid |
-            Self::Fname |
-            Self::Imm { .. } |
-            Self::AllocOffset |
-            Self::TargetFnType |
-            Self::TargetFnName |
-            Self::TargetImpModule |
-            Self::NumTargets |
-            Self::DefaultTarget |
-            Self::Align |
-            Self::Offset |
-            Self::Memory
+            Self::Pc
+            | Self::Fid
+            | Self::Fname
+            | Self::Imm { .. }
+            | Self::AllocOffset
+            | Self::TargetFnType
+            | Self::TargetFnName
+            | Self::TargetImpModule
+            | Self::NumTargets
+            | Self::DefaultTarget
+            | Self::Align
+            | Self::Offset
+            | Self::Memory
             | Self::EffectiveAddress
             | Self::Tid
-            | Self::FieldIdx=> Definition::CompilerStatic,
-            Self::Targets |
-            Self::Arg { .. } |
-            Self::Local { .. } => Definition::CompilerDynamic,
+            | Self::FieldIdx => Definition::CompilerStatic,
+            Self::Targets | Self::Arg { .. } | Self::Local { .. } => Definition::CompilerDynamic,
         }
     }
     pub fn ty(&self) -> DataType {

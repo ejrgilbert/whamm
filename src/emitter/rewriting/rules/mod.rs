@@ -5,12 +5,12 @@ use crate::generator::rewriting::simple_ast::SimpleAstProbes;
 use crate::parser::rules::core::WhammModeKind;
 use crate::parser::rules::{FromStr, WhammProviderKind};
 use crate::parser::types::{Block, DataType, Definition, Expr, NumLit, RulePart, Statement, Value};
+use orca_wasm::ir::id::FunctionID;
 use orca_wasm::ir::module::Module;
 use orca_wasm::ir::types::DataType as OrcaType;
 use orca_wasm::Location;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
-use orca_wasm::ir::id::FunctionID;
 use wasmparser::Operator;
 
 mod core;
@@ -429,14 +429,22 @@ pub trait Provider {
 }
 pub trait Package {
     /// Pass some location to the provider and get back two types of data:
-    fn get_loc_info(&self, app_wasm: &Module,
-                    curr_fid: &FunctionID, instr: &Operator) -> Option<LocInfo>;
+    fn get_loc_info(
+        &self,
+        app_wasm: &Module,
+        curr_fid: &FunctionID,
+        instr: &Operator,
+    ) -> Option<LocInfo>;
     fn add_events(&mut self, ast_events: &HashMap<String, HashMap<WhammModeKind, Vec<Probe>>>);
 }
 pub trait Event {
     /// Pass some location to the provider and get back two types of data:
-    fn get_loc_info(&self, app_wasm: &Module,
-                    fid: &FunctionID, instr: &Operator) -> Option<LocInfo>;
+    fn get_loc_info(
+        &self,
+        app_wasm: &Module,
+        fid: &FunctionID,
+        instr: &Operator,
+    ) -> Option<LocInfo>;
     fn add_probes(&mut self, ast_probes: &HashMap<WhammModeKind, Vec<Probe>>);
 }
 

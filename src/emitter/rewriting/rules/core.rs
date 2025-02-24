@@ -1,11 +1,11 @@
 use crate::emitter::rewriting::rules::{
     event_factory, probe_factory, Event, FromStr, LocInfo, Package,
 };
-use crate::parser::rules::core::{CoreEventKind, CorePackageKind, WhammModeKind};
-use std::collections::HashMap;
-use orca_wasm::ir::id::FunctionID;
 use crate::generator::ast::Probe;
+use crate::parser::rules::core::{CoreEventKind, CorePackageKind, WhammModeKind};
+use orca_wasm::ir::id::FunctionID;
 use orca_wasm::ir::module::Module;
+use std::collections::HashMap;
 use wasmparser::Operator;
 
 pub struct CorePackage {
@@ -29,7 +29,12 @@ impl CorePackage {
     }
 }
 impl Package for CorePackage {
-    fn get_loc_info(&self, app_wasm: &Module, fid: &FunctionID, instr: &Operator) -> Option<LocInfo> {
+    fn get_loc_info(
+        &self,
+        app_wasm: &Module,
+        fid: &FunctionID,
+        instr: &Operator,
+    ) -> Option<LocInfo> {
         let mut loc_info = LocInfo::new();
         match self.kind {
             CorePackageKind::Default => {
@@ -82,7 +87,12 @@ impl CoreEvent {
     }
 }
 impl Event for CoreEvent {
-    fn get_loc_info(&self, _app_wasm: &Module, _curr_fid: &FunctionID, _instr: &Operator) -> Option<LocInfo> {
+    fn get_loc_info(
+        &self,
+        _app_wasm: &Module,
+        _curr_fid: &FunctionID,
+        _instr: &Operator,
+    ) -> Option<LocInfo> {
         let loc_info = LocInfo::new();
         match self.kind {
             CoreEventKind::Default => {

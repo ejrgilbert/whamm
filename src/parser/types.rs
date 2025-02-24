@@ -1459,7 +1459,7 @@ impl Whamm {
             strcmp_params,
             DataType::Boolean,
             false,
-            false
+            false,
         );
 
         vec![strcmp]
@@ -1947,7 +1947,7 @@ pub struct ProvidedFunction {
     pub name: String,
     pub docs: String,
     pub function: Fn,
-    pub req_args: bool
+    pub req_args: bool,
 }
 impl ProvidedFunction {
     pub fn new(
@@ -1956,7 +1956,7 @@ impl ProvidedFunction {
         params: Vec<(Expr, DataType)>,
         return_ty: DataType,
         is_static: bool,
-        req_args: bool
+        req_args: bool,
     ) -> Self {
         Self {
             name: name.clone(),
@@ -1976,7 +1976,7 @@ impl ProvidedFunction {
                     loc: None,
                 },
             },
-            req_args
+            req_args,
         }
     }
 }

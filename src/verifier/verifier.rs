@@ -32,7 +32,7 @@ pub fn build_symbol_table(ast: &mut Whamm, err: &mut ErrorGen) -> SymbolTable {
         curr_event: None,
         curr_probe: None,
         curr_fn: None,
-        req_args: false
+        req_args: false,
     };
     visitor.visit_whamm(ast);
     visitor.table

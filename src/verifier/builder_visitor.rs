@@ -24,7 +24,7 @@ pub struct SymbolTableBuilder<'a> {
     pub curr_fn: Option<usize>,     // indexes into this::table::records
 
     // bookkeeping for providedfunctions
-    pub req_args: bool
+    pub req_args: bool,
 }
 impl SymbolTableBuilder<'_> {
     fn add_script(&mut self, script: &Script) {
@@ -320,7 +320,7 @@ impl SymbolTableBuilder<'_> {
             ret_ty: f.return_ty.clone(),
             addr: None,
             loc: f.name.loc.clone(),
-            req_args: self.req_args
+            req_args: self.req_args,
         };
 
         // Add fn to scope
@@ -483,13 +483,14 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         self.curr_whamm = Some(id);
 
         // visit fns
-        whamm
-            .fns
-            .iter_mut()
-            .for_each(|ProvidedFunction { function, req_args, .. }| {
+        whamm.fns.iter_mut().for_each(
+            |ProvidedFunction {
+                 function, req_args, ..
+             }| {
                 self.req_args = *req_args;
                 self.visit_fn(function)
-            });
+            },
+        );
 
         // visit globals
         self.visit_provided_globals(&whamm.globals);

@@ -58,7 +58,7 @@ impl WasmPackage {
                 ty_info: vec![],
             },
             true,
-            true
+            true,
         );
 
         Self {

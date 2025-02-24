@@ -93,12 +93,10 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
     fn set_req_args(&mut self, req_args: bool) {
         match self.visiting {
             Visiting::Predicate => {
-                self.curr_probe
-                    .metadata.pred_args.req_args = req_args;
+                self.curr_probe.metadata.pred_args.req_args = req_args;
             }
             Visiting::Body => {
-                self.curr_probe
-                    .metadata.body_args.req_args = req_args;
+                self.curr_probe.metadata.body_args.req_args = req_args;
             }
             Visiting::None => {
                 // error
@@ -236,17 +234,20 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                 self.curr_probe.body = probe.body().to_owned();
                 self.curr_probe.body = probe.body().to_owned();
                 self.curr_script.probes.push(self.curr_probe.clone());
+
+                if !self.config.wizard {
+                    // remove mode
+                    let curr_rule = self.get_curr_rule();
+                    let new_rule = curr_rule[..curr_rule.rfind(':').unwrap()].to_string();
+                    self.set_curr_rule(new_rule);
+                }
             });
         });
 
         trace!("Exiting: CodeGenerator::visit_event");
         self.table.exit_scope(self.err);
         let curr_rule = self.get_curr_rule();
-        let mut new_rule = curr_rule[..curr_rule.rfind(':').unwrap()].to_string();
-        if !self.config.wizard {
-            // remove mode too
-            new_rule = new_rule[..new_rule.rfind(':').unwrap()].to_string();
-        }
+        let new_rule = curr_rule[..curr_rule.rfind(':').unwrap()].to_string();
         self.set_curr_rule(new_rule);
     }
 
@@ -406,8 +407,15 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                         "".to_string()
                     }
                 };
-                let (Some(Record::Fn { def, ret_ty, req_args, .. }), context) =
-                    self.table.lookup_fn_with_context(&fn_name, self.err)
+                let (
+                    Some(Record::Fn {
+                        def,
+                        ret_ty,
+                        req_args,
+                        ..
+                    }),
+                    context,
+                ) = self.table.lookup_fn_with_context(&fn_name, self.err)
                 else {
                     self.err
                         .unexpected_error(true, Some("unexpected type".to_string()), None);
@@ -459,7 +467,7 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                 self.check_strcmp = matches!(ty, DataType::Str);
 
                 if def.is_comp_provided()
-                    // && (self.config.wizard || matches!(def, Definition::CompilerDynamic))
+                // && (self.config.wizard || matches!(def, Definition::CompilerDynamic))
                 {
                     // For Wizard: Request all!
                     // For B.R.: Only request dynamic data
