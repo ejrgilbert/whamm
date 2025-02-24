@@ -1,6 +1,7 @@
 // may use some of this code in the future (intrusive_puts)
 #![allow(dead_code)]
 use crate::common::error::ErrorGen;
+use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::lang_features::libraries::core::LibAdapter;
 use orca_wasm::ir::function::FunctionBuilder;
 use orca_wasm::ir::id::{FunctionID, LocalID};
@@ -9,7 +10,6 @@ use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::MacroOpcode;
 use orca_wasm::{Module, Opcode};
 use std::collections::HashMap;
-use crate::emitter::memory_allocator::MemoryAllocator;
 
 // FROM LIB
 pub const PUTS: &str = "puts";
@@ -133,7 +133,12 @@ impl IOAdapter {
 
         puts_fid
     }
-    fn emit_intrusive_puts(&mut self, mem_allocator: &mut MemoryAllocator, app_wasm: &mut Module, err: &mut ErrorGen) -> FunctionID {
+    fn emit_intrusive_puts(
+        &mut self,
+        mem_allocator: &mut MemoryAllocator,
+        app_wasm: &mut Module,
+        err: &mut ErrorGen,
+    ) -> FunctionID {
         let str_addr = LocalID(0);
         let len = LocalID(1);
         let mut puts = FunctionBuilder::new(&[OrcaType::I32, OrcaType::I32], &[]);
@@ -144,18 +149,13 @@ impl IOAdapter {
             len,
             self.lib_mem as u32,
             0,
-            &mut puts
+            &mut puts,
         );
 
         puts.local_get(str_addr).local_get(len);
         self.call_puts(&mut puts, err);
 
-        mem_allocator.copy_back_saved_mem(
-            len,
-            self.lib_mem as u32,
-            0,
-            &mut puts
-        );
+        mem_allocator.copy_back_saved_mem(len, self.lib_mem as u32, 0, &mut puts);
 
         let puts_fid = puts.finish_module(app_wasm);
         app_wasm.set_fn_name(puts_fid, INTRUSIVE_PUTS.to_string());

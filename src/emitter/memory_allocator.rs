@@ -192,7 +192,7 @@ impl MemoryAllocator {
         src_len: LocalID,
         dst_mem_id: u32,
         dst_offset: u32,
-        func: &mut T
+        func: &mut T,
     ) {
         let i = func.add_local(OrcaType::I32);
         let tmp = func.add_local(OrcaType::I32);
@@ -201,19 +201,19 @@ impl MemoryAllocator {
             align: 0,
             max_align: 0,
             offset: 0,
-            memory: self.mem_id
+            memory: self.mem_id,
         };
         let src_mem = MemArg {
             align: 0,
             max_align: 0,
             offset: 0,
-            memory: src_mem_id
+            memory: src_mem_id,
         };
         let dst_mem = MemArg {
             align: 0,
             max_align: 0,
             offset: 0,
-            memory: dst_mem_id
+            memory: dst_mem_id,
         };
         let mem_tracker = self.mem_tracker_global;
 
@@ -263,7 +263,7 @@ impl MemoryAllocator {
         src_len: LocalID,
         dst_mem_id: u32,
         dst_offset: u32,
-        func: &mut T
+        func: &mut T,
     ) {
         let i = func.add_local(OrcaType::I32);
         let tmp = func.add_local(OrcaType::I32);
@@ -272,13 +272,13 @@ impl MemoryAllocator {
             align: 0,
             max_align: 0,
             offset: 0,
-            memory: self.mem_id
+            memory: self.mem_id,
         };
         let dst_mem = MemArg {
             align: 0,
             max_align: 0,
             offset: 0,
-            memory: dst_mem_id
+            memory: dst_mem_id,
         };
         let mem_tracker = self.mem_tracker_global;
 
@@ -308,7 +308,7 @@ impl MemoryAllocator {
             .local_get(src_len)
             .i32_lt_signed()
             .br_if(0)
-        .end();
+            .end();
     }
 
     // =====================

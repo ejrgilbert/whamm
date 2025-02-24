@@ -7,10 +7,10 @@ use crate::parser::types::{
     Script, Statement, UnOp, Value, Whamm, WhammVisitorMut,
 };
 use crate::verifier::types::Record;
+use itertools::Itertools;
 use log::{debug, trace, warn};
 use orca_wasm::ir::id::FunctionID;
 use std::collections::{HashMap, HashSet};
-use itertools::Itertools;
 
 pub mod folding;
 pub mod rewriting;

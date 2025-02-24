@@ -4,7 +4,7 @@ use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::InjectStrategy;
 use crate::generator::folding::ExprFolder;
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
-use crate::lang_features::libraries::core::maps::map_adapter::{MAP_LIB_MEM_OFFSET, MapLibAdapter};
+use crate::lang_features::libraries::core::maps::map_adapter::{MapLibAdapter, MAP_LIB_MEM_OFFSET};
 use crate::lang_features::report_vars::ReportVars;
 use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Location, NumLit, Statement, UnOp, Value,
@@ -100,7 +100,7 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             let res = emit_set_map_stmt(stmt, strategy, injector, ctx);
             ctx.in_map_op = false;
             res
-        },
+        }
     }
 }
 
@@ -783,10 +783,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             };
         }
         Expr::Primitive { val, .. } => emit_value(val, strategy, injector, ctx),
-        Expr::MapGet { .. } => {
-            let res = emit_map_get(expr, strategy, injector, ctx);
-            res
-        },
+        Expr::MapGet { .. } => emit_map_get(expr, strategy, injector, ctx),
     }
 }
 
@@ -1884,8 +1881,6 @@ fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             // 2. app_iter
 
             if let Some(str_addr) = ctx.mem_allocator.emitted_strings.get(val) {
-
-
                 if ctx.in_map_op {
                     // If in the context of a map operation, we will likely have to send
                     // this emitted string over to the MapLibrary through interfacing
@@ -1893,7 +1888,6 @@ fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     // to enable this logic.
                     ctx.map_lib_adapter.curr_str_offset = Some(str_addr.mem_offset as u32);
                     ctx.map_lib_adapter.curr_str_len = Some(str_addr.len as u32);
-
 
                     injector.u32_const(MAP_LIB_MEM_OFFSET);
                     injector.u32_const(str_addr.len as u32);
@@ -1984,8 +1978,13 @@ fn emit_map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                         other => panic!("Did not expect this address type: {:?}", other),
                     };
                     emit_expr(key, strategy, injector, ctx);
-                    ctx.map_lib_adapter
-                        .map_get(key_ty, val_ty, injector, ctx.mem_allocator, ctx.err);
+                    ctx.map_lib_adapter.map_get(
+                        key_ty,
+                        val_ty,
+                        injector,
+                        ctx.mem_allocator,
+                        ctx.err,
+                    );
                     true
                 }
                 None => false,
