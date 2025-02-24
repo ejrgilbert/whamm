@@ -28,8 +28,6 @@ fn create_curr_loc(curr_script_id: u8, probe: &ast::Probe) -> LocationData {
         script_id: curr_script_id,
         bytecode_loc: BytecodeLoc::new(0, 0), // TODO -- request this from wizard
         probe_id,
-        // TODO -- this variable is probably unnecessary?? since we're using $alloc logic now?
-        unshared: probe.unshared_to_alloc.clone(), //this is still used in the emitter to determine the new globals to emit
     }
 }
 fn emit_needed_funcs(

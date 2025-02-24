@@ -1,7 +1,6 @@
 #![allow(clippy::too_many_arguments)]
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::MemoryAllocator;
-use crate::generator::ast::UnsharedVar;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::parser::types::DataType;
@@ -1405,7 +1404,7 @@ pub enum LocationData {
         script_id: u8,
         bytecode_loc: BytecodeLoc,
         probe_id: String,
-        unshared: Vec<UnsharedVar>,
+        // unshared: Vec<UnsharedVar>,
     },
 }
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

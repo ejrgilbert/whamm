@@ -192,8 +192,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
             script_id: curr_script_id,
             bytecode_loc: loc,
             probe_id: curr_probe_id,
-            // todo -- this clone is bad
-            unshared: self.emitter.curr_unshared.clone(), //this is still used in the emitter to determine how many new globals to emit
         };
     }
 }
