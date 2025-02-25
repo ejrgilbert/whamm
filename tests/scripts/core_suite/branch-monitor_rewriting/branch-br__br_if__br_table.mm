@@ -14,9 +14,9 @@ wasm::br:before /
 }
 
 wasm::br_if:before /
-    fid == 61 ||        // calc
-    fid == 62 ||        // print_x
-    fid == 63           // opt_str
+    fid == 27 ||        // calc
+    fid == 28 ||        // print_x
+    fid == 29           // opt_str
 / {
   // which branch was taken?
   var index: u32;

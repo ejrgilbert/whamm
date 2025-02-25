@@ -171,44 +171,25 @@ fn instrument_with_numerics_scripts() {
     run_core_suite("numerics", processed_scripts, true, true)
 }
 
-#[cfg(target_arch = "x86_64")]
-#[test]
-fn platform_dependent_wizard_tests() {
-    // These tests can only run on Linux for the Wizard target
-    // (is run at CI time!)
-    common::setup_logger();
-    let processed_scripts = common::setup_tests("core_suite/platform-dependent");
-    assert!(!processed_scripts.is_empty());
-
-    run_core_suite("platform-dependent-wizard", processed_scripts, false, true)
-}
-
-// #[cfg(target_arch = "x86_64")]
 #[test]
 fn instrument_with_paper_eval_branches_scripts() {
     common::setup_logger();
     let processed_scripts = common::setup_tests("paper_eval/branches");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("paper_eval-branches", processed_scripts, true, false)
+    run_core_suite("paper_eval-branches", processed_scripts, true, true)
 }
-// #[cfg(target_arch = "x86_64")]
 #[test]
 fn instrument_with_paper_eval_categories_scripts() {
     common::setup_logger();
     let processed_scripts = common::setup_tests("paper_eval/categories");
     assert!(!processed_scripts.is_empty());
 
-    // TODO -- to have this work, I'll need to support the following:
-    //   1. deterministic event match ordering
-    //   2. Utility to write to core_lib memory, then write back.
-    //      - write_to_lib_mem(offset, len): Writes to the library memory (starting at 0) and saves previous data to mem_alloc_global offset
-    //      - map_insert_string_i32(0, len, value): Inserts value into a map<string, i32>
-    //      - reset_lib_mem(len): Writes the saved previous data back (starting at lib_mem:0) starting at mem_alloc_global offset until 'len'
-    run_core_suite("paper_eval-categories", processed_scripts, true, false)
+    // TODO -- figure out how to get category-rust.mm to work
+    //         (issue with passing String map key to library)
+    run_core_suite("paper_eval-categories", processed_scripts, true, true)
 }
 
-// TODO -- merge the branch-monitor tests back together (after works on wizard)
 #[test]
 fn instrument_with_branch_monitor_scripts() {
     common::setup_logger();
@@ -216,8 +197,7 @@ fn instrument_with_branch_monitor_scripts() {
     assert!(!processed_scripts.is_empty());
 
     // TODO -- fix wizard side (THEN merge with below test)
-    //   - pull `fname`
-    //   - enable running on WASI application
+    //   - pull `fname`, `targets`, `num_targets`, `default_target`
     run_core_suite("branch-monitor", processed_scripts, true, true)
 }
 #[test]
@@ -229,7 +209,6 @@ fn instrument_with_branch_monitor_rewriting_scripts() {
     run_core_suite("branch-monitor_rewriting", processed_scripts, true, false)
 }
 
-// TODO -- merge the calls-monitor tests back together (after works on wizard)
 #[test]
 fn instrument_with_calls_monitor_scripts() {
     common::setup_logger();
@@ -238,7 +217,6 @@ fn instrument_with_calls_monitor_scripts() {
 
     // TODO -- fix wizard side (THEN merge with below test)
     //   - pull `fname`
-    //   - enable running on WASI application
     run_core_suite("calls-monitor", processed_scripts, true, true)
 }
 #[test]

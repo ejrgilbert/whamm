@@ -17,6 +17,7 @@ const UNEXPECTED_ERR_MSG: &str =
     "MapLibAdapter: Looks like you've found a bug...please report this behavior!";
 
 const PRINT_MAP: &str = "print_map";
+// pub const MAP_LIB_MEM_OFFSET: u32 = 1_071_584 + 4_000;
 pub const MAP_LIB_MEM_OFFSET: u32 = 0;
 
 pub struct MapLibAdapter {

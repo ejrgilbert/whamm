@@ -12,9 +12,9 @@ wasm::br:before /
 }
 
 wasm::br_if:before /
-    fid == 61 ||        // calc
-    fid == 62 ||        // print_x
-    fid == 63           // opt_str
+    fid == 27 ||        // calc
+    fid == 28 ||        // print_x
+    fid == 29           // opt_str
 / {
   report unshared var taken: i32;
   report unshared var not_taken: i32;
@@ -28,9 +28,9 @@ wasm::br_if:before /
 }
 
 wasm::br_table:before /
-    fid == 61 ||        // calc
-    fid == 62 ||        // print_x
-    fid == 63           // opt_str
+    fid == 27 ||        // calc
+    fid == 28 ||        // print_x
+    fid == 29           // opt_str
 / {
   report unshared var taken_branches: map<u32, u32>;
 

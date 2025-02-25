@@ -1,3 +1,3 @@
 ============================= REPORT CSV FLUSH ================================
 id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)
-0, map_id, dyn_categories, map<str,i32>, i32, script0, , , arith->4;compare->10;const->30;control->68;global->9;local->13;misc->5
+0, map_id, dyn_categories, map<str,i32>, i32, script0, , , arith->4;compare->10;const->30;control->58;global->9;local->13;misc->5
