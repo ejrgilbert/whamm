@@ -4,7 +4,7 @@ use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::InjectStrategy;
 use crate::generator::folding::ExprFolder;
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
-use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
+use crate::lang_features::libraries::core::maps::map_adapter::{MapLibAdapter, MAP_LIB_MEM_OFFSET};
 use crate::lang_features::report_vars::ReportVars;
 use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Location, NumLit, Statement, UnOp, Value,
@@ -29,6 +29,7 @@ use orca_wasm::{Instructions, Module};
 pub struct EmitCtx<'a, 'b, 'c, 'd, 'e, 'f> {
     table: &'a mut SymbolTable,
     mem_allocator: &'b MemoryAllocator,
+    in_map_op: bool,
     map_lib_adapter: &'c mut MapLibAdapter,
     report_vars: &'d mut ReportVars,
     unshared_var_handler: &'e mut UnsharedVarHandler,
@@ -48,6 +49,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> EmitCtx<'a, 'b, 'c, 'd, 'e, 'f> {
         Self {
             table,
             mem_allocator,
+            in_map_op: false,
             map_lib_adapter,
             report_vars,
             unshared_var_handler,
@@ -93,7 +95,12 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             }
         }
         Statement::UnsharedDecl { .. } => emit_unshared_decl_stmt(stmt, strategy, ctx),
-        Statement::SetMap { .. } => emit_set_map_stmt(stmt, strategy, injector, ctx),
+        Statement::SetMap { .. } => {
+            ctx.in_map_op = true;
+            let res = emit_set_map_stmt(stmt, strategy, injector, ctx);
+            ctx.in_map_op = false;
+            res
+        }
     }
 }
 
@@ -156,12 +163,14 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             };
 
             if let DataType::Map { .. } = ty {
+                ctx.in_map_op = true;
                 // TODO -- this behavior doesn't seem right for wizard
                 //    The map_id would need to be dynamic...not statically known!
                 let map_id = ctx
                     .map_lib_adapter
                     .map_create(ty.clone(), injector, ctx.err);
                 *addr = Some(VarAddr::MapId { addr: map_id });
+                ctx.in_map_op = false;
 
                 return true;
             }
@@ -332,6 +341,7 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     injector: &mut T,
     ctx: &mut EmitCtx,
 ) -> bool {
+    ctx.in_map_op = true;
     if let Statement::SetMap {
         map: Expr::VarId { name, .. },
         key,
@@ -371,8 +381,7 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         emit_expr(key, strategy, injector, ctx);
         emit_expr(val, strategy, injector, ctx);
         ctx.map_lib_adapter
-            .map_insert(key_ty, val_ty, injector, ctx.err);
-        true
+            .map_insert(key_ty, val_ty, injector, ctx.mem_allocator, ctx.err);
     } else {
         ctx.err.unexpected_error(
             false,
@@ -383,8 +392,9 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             )),
             None,
         );
-        false
     }
+    ctx.in_map_op = false;
+    true
 }
 
 // transform a whamm type to default wasm type, used for creating new global
@@ -1871,9 +1881,21 @@ fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             // 2. app_iter
 
             if let Some(str_addr) = ctx.mem_allocator.emitted_strings.get(val) {
-                // emit Wasm instructions for the memory address and string length
-                injector.u32_const(str_addr.mem_offset as u32);
-                injector.u32_const(str_addr.len as u32);
+                if ctx.in_map_op {
+                    // If in the context of a map operation, we will likely have to send
+                    // this emitted string over to the MapLibrary through interfacing
+                    // with its memory. Let's save this string's address in the MapLibAdapter
+                    // to enable this logic.
+                    ctx.map_lib_adapter.curr_str_offset = Some(str_addr.mem_offset as u32);
+                    ctx.map_lib_adapter.curr_str_len = Some(str_addr.len as u32);
+
+                    injector.u32_const(MAP_LIB_MEM_OFFSET);
+                    injector.u32_const(str_addr.len as u32);
+                } else {
+                    // emit Wasm instructions for the memory address and string length
+                    injector.u32_const(str_addr.mem_offset as u32);
+                    injector.u32_const(str_addr.len as u32);
+                }
                 is_success &= true;
             } else {
                 ctx.err.unexpected_error(
@@ -1924,6 +1946,7 @@ fn emit_map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     injector: &mut T,
     ctx: &mut EmitCtx,
 ) -> bool {
+    ctx.in_map_op = true;
     if let Expr::MapGet { map, key, .. } = expr {
         let map = &mut (**map);
         if let Expr::VarId { name, .. } = map {
@@ -1955,8 +1978,13 @@ fn emit_map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                         other => panic!("Did not expect this address type: {:?}", other),
                     };
                     emit_expr(key, strategy, injector, ctx);
-                    ctx.map_lib_adapter
-                        .map_get(key_ty, val_ty, injector, ctx.err);
+                    ctx.map_lib_adapter.map_get(
+                        key_ty,
+                        val_ty,
+                        injector,
+                        ctx.mem_allocator,
+                        ctx.err,
+                    );
                     true
                 }
                 None => false,
@@ -1972,6 +2000,7 @@ fn emit_map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         )),
         None,
     );
+    ctx.in_map_op = false;
     false
 }
 fn get_map_info(name: &mut str, ctx: &mut EmitCtx) -> Option<(VarAddr, DataType, DataType)> {
