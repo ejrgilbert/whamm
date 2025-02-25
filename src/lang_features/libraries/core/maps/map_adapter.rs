@@ -26,7 +26,7 @@ pub struct MapLibAdapter {
     map_count: u32,
     pub init_bool_location: u32,
 
-    pub(crate) app_mem: i32,
+    pub(crate) instr_mem: i32,
     pub(crate) lib_mem: i32,
 
     pub curr_str_offset: Option<u32>,
@@ -114,7 +114,7 @@ impl MapLibAdapter {
             funcs,
             map_count: 0,
             init_bool_location: 0,
-            app_mem: -1,
+            instr_mem: -1,
             lib_mem: -1,
             curr_str_offset: None,
             curr_str_len: None,
@@ -172,7 +172,7 @@ impl MapLibAdapter {
         func.u32_const(curr_str_len).local_set(src_len);
 
         mem_allocator.copy_to_mem_and_save(
-            self.app_mem as u32,
+            self.instr_mem as u32,
             src_offset,
             src_len,
             self.lib_mem as u32,

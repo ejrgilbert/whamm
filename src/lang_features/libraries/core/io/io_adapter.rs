@@ -38,7 +38,7 @@ pub struct IOAdapter {
     // func_name -> fid
     funcs: HashMap<String, u32>,
 
-    pub(crate) app_mem: i32,
+    pub(crate) instr_mem: i32,
     pub(crate) lib_mem: i32,
     mem_tracker_global: u32,
 }
@@ -78,7 +78,7 @@ impl IOAdapter {
         IOAdapter {
             is_used: false,
             funcs,
-            app_mem: -1,
+            instr_mem: -1,
             lib_mem: -1,
             mem_tracker_global,
         }
@@ -113,7 +113,7 @@ impl IOAdapter {
                     align: 0,
                     max_align: 0,
                     offset: 0,
-                    memory: self.app_mem as u32
+                    memory: self.instr_mem as u32
                 }
             );
 
@@ -144,7 +144,7 @@ impl IOAdapter {
         let mut puts = FunctionBuilder::new(&[OrcaType::I32, OrcaType::I32], &[]);
 
         mem_allocator.copy_to_mem_and_save(
-            self.app_mem as u32,
+            self.instr_mem as u32,
             str_addr,
             len,
             self.lib_mem as u32,

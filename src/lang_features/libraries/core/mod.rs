@@ -17,7 +17,7 @@ pub trait LibPackage: WhammVisitor<bool> {
     fn is_used(&self) -> bool;
     fn import_memory(&self) -> bool;
     fn set_lib_mem_id(&mut self, mem_id: i32);
-    fn set_app_mem_id(&mut self, mem_id: i32);
+    fn set_instr_mem_id(&mut self, mem_id: i32);
     fn get_fn_names(&self) -> Vec<String>;
     fn add_fid_to_adapter(&mut self, fname: &str, fid: u32);
     fn set_adapter_usage(&mut self, is_used: bool);

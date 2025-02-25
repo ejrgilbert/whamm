@@ -34,8 +34,8 @@ impl LibPackage for IOPackage {
     fn set_lib_mem_id(&mut self, mem_id: i32) {
         self.adapter.lib_mem = mem_id;
     }
-    fn set_app_mem_id(&mut self, mem_id: i32) {
-        self.adapter.app_mem = mem_id;
+    fn set_instr_mem_id(&mut self, mem_id: i32) {
+        self.adapter.instr_mem = mem_id;
     }
 
     fn get_fn_names(&self) -> Vec<String> {
