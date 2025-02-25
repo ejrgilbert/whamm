@@ -671,10 +671,9 @@ fn get_bool(id: i32, key: &dyn Any) -> bool {
     }
 }
 
-fn string_from_data(offset: u32, length: u32) -> String {
-    let callee_ptr: *const u8 = offset as *const u8;
+fn string_from_data(offset: *const u8, length: usize) -> String {
     let callee_slice: &[u8] =
-        unsafe { slice::from_raw_parts(callee_ptr, usize::try_from(length).unwrap()) };
+        unsafe { slice::from_raw_parts(offset, length) };
     assert_eq!(length as usize, callee_slice.len());
     let str = String::from_utf8(callee_slice.to_vec()).unwrap();
     debug!("Got the following string from memory: {str}");
@@ -868,8 +867,8 @@ pub fn insert_i32_i32(id: i32, key: i32, value: i32) {
     }
 }
 #[no_mangle]
-pub fn insert_i32_string(id: i32, key: i32, offset: u32, length: u32) {
-    let value = string_from_data(offset, length);
+pub fn insert_i32_string(id: i32, key: i32, val_offset: *const u8, val_length: usize) {
+    let value = string_from_data(val_offset, val_length);
     debug!("DEBUG: inserting ({key}, \"{value}\") into map '{id}'");
     if !insert_i32_string_inner(id, key, value) {
         panic!("Failed to insert into i32_string map");
@@ -877,12 +876,7 @@ pub fn insert_i32_string(id: i32, key: i32, offset: u32, length: u32) {
 }
 #[no_mangle]
 pub fn insert_string_i32(id: i32, key_offset: *const u8, key_length: usize, val: i32) {
-    // println!("offset: {key_offset}, len: {key_length}");
-    let callee_slice: &[u8] =
-        unsafe { slice::from_raw_parts(key_offset, key_length) };
-    assert_eq!(key_length as usize, callee_slice.len());
-    let key = String::from_utf8(callee_slice.to_vec()).unwrap();
-
+    let key = string_from_data(key_offset, key_length);
     if !insert_string_i32_inner(id, key, val) {
         panic!("Failed to insert into string_i32 map");
     }
@@ -905,12 +899,7 @@ pub fn get_i32_string(id: i32, key: i32) -> String {
 }
 #[no_mangle]
 pub fn get_string_i32(id: i32, key_offset: *const u8, key_length: usize) -> i32 {
-    // println!("offset: {key_offset}, len: {key_length}");
-    let callee_slice: &[u8] =
-        unsafe { slice::from_raw_parts(key_offset, key_length) };
-    assert_eq!(key_length as usize, callee_slice.len());
-    let key = String::from_utf8(callee_slice.to_vec()).unwrap();
-
+    let key = string_from_data(key_offset, key_length);
     get_i32(id, &key)
 }
 #[no_mangle]
