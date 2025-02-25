@@ -1,4 +1,3 @@
-// TODO -- cannot flush global report variables yet on Wizard target
 // TODO -- support pulling `fname` on Wizard target!
 // TODO -- support pulling br_table `targets` on Wizard target!
 
