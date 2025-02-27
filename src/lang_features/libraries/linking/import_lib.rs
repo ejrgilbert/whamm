@@ -1,5 +1,6 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::MemoryAllocator;
+use crate::generator::ast::Script;
 use crate::lang_features::libraries::core::{
     LibPackage, WHAMM_CORE_LIB_MEM_NAME, WHAMM_CORE_LIB_NAME,
 };
@@ -23,7 +24,7 @@ use wasmparser::{ExternalKind, MemoryType};
 /// So for now, we'll do this, but it can be changed later if I get a better idea.
 
 pub fn link_core_lib(
-    ast: &Whamm,
+    ast: &[Script],
     app_wasm: &mut Module,
     core_wasm_path: &str,
     mem_allocator: &mut MemoryAllocator,
@@ -32,7 +33,7 @@ pub fn link_core_lib(
 ) -> Vec<FunctionID> {
     let mut injected_funcs = vec![];
     for package in packages.iter_mut() {
-        package.visit_whamm(ast);
+        package.visit_ast(ast);
         package.set_adapter_usage(package.is_used());
         if package.is_used() {
             // Read core library Wasm into Orca module

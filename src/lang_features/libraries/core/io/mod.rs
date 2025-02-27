@@ -1,12 +1,10 @@
 pub mod io_adapter;
 
 use crate::common::error::ErrorGen;
+use crate::generator::ast::{AstVisitor, Metadata, Probe, Script, WhammParam};
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::{LibAdapter, LibPackage};
-use crate::parser::rules::{Event, Package, Probe, Provider};
-use crate::parser::types::{
-    BinOp, Block, DataType, Expr, Script, Statement, UnOp, Value, Whamm, WhammVisitor,
-};
+use crate::parser::types::{BinOp, Block, DataType, Expr, Statement, UnOp, Value};
 use log::debug;
 use orca_wasm::ir::id::FunctionID;
 use orca_wasm::Module;
@@ -56,10 +54,10 @@ impl LibPackage for IOPackage {
         self.adapter.define_helper_funcs(app_wasm, err)
     }
 }
-impl WhammVisitor<bool> for IOPackage {
-    fn visit_whamm(&mut self, whamm: &Whamm) -> bool {
+impl AstVisitor<bool> for IOPackage {
+    fn visit_ast(&mut self, ast: &[Script]) -> bool {
         // visit scripts
-        for script in whamm.scripts.iter() {
+        for script in ast.iter() {
             self.is_used |= self.visit_script(script);
             if self.is_used {
                 return true;
@@ -91,46 +89,17 @@ impl WhammVisitor<bool> for IOPackage {
             }
         }
 
-        // visit providers
-        for (_name, provider) in script.providers.iter() {
-            if self.visit_provider(provider) {
+        // visit probes
+        for probe in script.probes.iter() {
+            if self.visit_probe(probe) {
                 return true;
             }
         }
         false
     }
 
-    fn visit_provider(&mut self, provider: &Box<dyn Provider>) -> bool {
-        for package in provider.packages() {
-            if self.visit_package(package) {
-                return true;
-            }
-        }
-        false
-    }
-
-    fn visit_package(&mut self, package: &dyn Package) -> bool {
-        for event in package.events() {
-            if self.visit_event(event) {
-                return true;
-            }
-        }
-        false
-    }
-
-    fn visit_event(&mut self, event: &dyn Event) -> bool {
-        for (_mode, probe_list) in event.probes().iter() {
-            for probe in probe_list {
-                if self.visit_probe(probe) {
-                    return true;
-                }
-            }
-        }
-        false
-    }
-
-    fn visit_probe(&mut self, probe: &Box<dyn Probe>) -> bool {
-        if let Some(body) = &probe.body() {
+    fn visit_probe(&mut self, probe: &Probe) -> bool {
+        if let Some(body) = &probe.body {
             for stmt in body.stmts.iter() {
                 if self.visit_stmt(stmt) {
                     return true;
@@ -138,6 +107,14 @@ impl WhammVisitor<bool> for IOPackage {
             }
         }
         false
+    }
+
+    fn visit_metadata(&mut self, _: &Metadata) -> bool {
+        unreachable!()
+    }
+
+    fn visit_whamm_param(&mut self, _: &WhammParam) -> bool {
+        unreachable!()
     }
 
     fn visit_fn(&mut self, f: &crate::parser::types::Fn) -> bool {

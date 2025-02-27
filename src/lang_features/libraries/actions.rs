@@ -1,6 +1,7 @@
 use crate::common::error::ErrorGen;
 use crate::common::instr::LibraryLinkStrategy;
 use crate::emitter::memory_allocator::MemoryAllocator;
+use crate::generator::ast::Script;
 use crate::lang_features::libraries::core::LibPackage;
 use crate::parser::types::Whamm;
 use orca_wasm::ir::id::FunctionID;
@@ -8,7 +9,7 @@ use orca_wasm::Module;
 
 pub fn link_core_lib(
     method: &LibraryLinkStrategy,
-    ast: &Whamm,
+    ast: &[Script],
     app_wasm: &mut Module,
     core_wasm_path: &str,
     mem_allocator: &mut MemoryAllocator,

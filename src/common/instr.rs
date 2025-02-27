@@ -172,18 +172,23 @@ pub fn run(
     err.check_has_errors();
     let mut mem_allocator = get_memory_allocator(target_wasm, true);
 
+    // Collect the metadata for the AST and transform to different representation
+    // specifically used for targeting Wizard during compilation.
+    let mut metadata_collector = MetadataCollector::new(&mut symbol_table, &mut err, &config);
+    metadata_collector.visit_whamm(&whamm);
+
     // Merge in the core library IF NEEDED
     let mut map_package = MapLibPackage::default();
     let mut io_package = IOPackage::new(*mem_allocator.mem_tracker_global);
     let mut core_packages: Vec<&mut dyn LibPackage> = vec![&mut map_package, &mut io_package];
     let mut injected_funcs = crate::lang_features::libraries::actions::link_core_lib(
         &config.library_strategy,
-        &whamm,
+        &metadata_collector.ast,
         target_wasm,
         core_wasm_path,
         &mut mem_allocator,
         &mut core_packages,
-        &mut err,
+        metadata_collector.err,
     );
     let mut map_lib_adapter = map_package.adapter;
     let mut io_adapter = io_package.adapter;
@@ -191,12 +196,8 @@ pub fn run(
     let mut unshared_var_handler = UnsharedVarHandler::default();
 
     // If there were any errors encountered, report and exit!
-    err.check_has_errors();
+    metadata_collector.err.check_has_errors();
 
-    // Collect the metadata for the AST and transform to different representation
-    // specifically used for targeting Wizard during compilation.
-    let mut metadata_collector = MetadataCollector::new(&mut symbol_table, &mut err, &config);
-    metadata_collector.visit_whamm(&whamm);
     if config.wizard {
         run_instr_wizard(
             metadata_collector,
