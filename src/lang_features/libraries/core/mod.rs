@@ -2,7 +2,7 @@ pub mod io;
 pub mod maps;
 
 use crate::common::error::ErrorGen;
-use crate::parser::types::WhammVisitor;
+use crate::generator::ast::AstVisitor;
 use orca_wasm::ir::id::FunctionID;
 use orca_wasm::Module;
 use std::collections::HashMap;
@@ -13,7 +13,7 @@ const UNEXPECTED_ERR_MSG: &str =
     "Adapter: Looks like you've found a bug...please report this behavior! Exiting now...";
 
 // A lib package needs to be able to visit the AST and determine if it's needed (should be linked)
-pub trait LibPackage: WhammVisitor<bool> {
+pub trait LibPackage: AstVisitor<bool> {
     fn is_used(&self) -> bool;
     fn import_memory(&self) -> bool;
     fn set_lib_mem_id(&mut self, mem_id: i32);

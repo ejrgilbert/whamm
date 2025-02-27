@@ -18,7 +18,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: true
-      - run: rustup component add rustfmt
+      - name: Setup rust for fmt
+        run: |
+          rustup update stable
+          rustup component add rustfmt
       - run: cargo fmt --all -- --check
 
 
@@ -34,6 +37,8 @@ jobs:
           binaryName: wasm2wat
           binaryUrl: https://github.com/WebAssembly/wabt/releases/download/1.0.34/wabt-1.0.34-ubuntu.tar.gz
           binaryPathInArchive: wabt-1.0.34/bin/wasm2wat
+      - name: Setup rust for fmt
+        run: rustup update stable
       - name: Setup wasm-tools and WASI P1 Target
         run: |
           echo "[INFO] Installing the 'wasm32-wasip1' compilation target..."
