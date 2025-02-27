@@ -1,5 +1,7 @@
 use crate::lang_features::report_vars::Metadata as ReportMetadata;
-use crate::parser::types::{Block, DataType, Definition, Expr, Global, RulePart, Statement};
+use crate::parser::types::{
+    BinOp, Block, DataType, Definition, Expr, Global, RulePart, Statement, UnOp, Value,
+};
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 
@@ -334,4 +336,22 @@ impl Display for WhammParam {
             Self::FieldIdx => f.write_str("field_idx"),
         }
     }
+}
+
+// TODO -- create a default implementation!
+pub trait AstVisitor<T> {
+    fn visit_ast(&mut self, ast: &[Script]) -> T;
+    fn visit_script(&mut self, script: &Script) -> T;
+    fn visit_probe(&mut self, probe: &Probe) -> T;
+    fn visit_metadata(&mut self, metadata: &Metadata) -> T;
+    fn visit_whamm_param(&mut self, param: &WhammParam) -> T;
+    fn visit_fn(&mut self, f: &crate::parser::types::Fn) -> T;
+    fn visit_formal_param(&mut self, param: &(Expr, DataType)) -> T;
+    fn visit_block(&mut self, block: &Block) -> T;
+    fn visit_stmt(&mut self, stmt: &Statement) -> T;
+    fn visit_expr(&mut self, expr: &Expr) -> T;
+    fn visit_unop(&mut self, unop: &UnOp) -> T;
+    fn visit_binop(&mut self, binop: &BinOp) -> T;
+    fn visit_datatype(&mut self, datatype: &DataType) -> T;
+    fn visit_value(&mut self, val: &Value) -> T;
 }
