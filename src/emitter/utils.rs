@@ -474,9 +474,8 @@ fn possibly_emit_memaddr_calc_offset<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLo
         };
 
         // this will be different based on if this is a global or local var
-        if let Some(VarAddr::MemLoc { var_offset, .. }) = addr {
-            ctx.mem_allocator
-                .calc_offset(*var_offset, ctx.table, injector, ctx.err);
+        if let Some(VarAddr::MemLoc { .. }) = addr {
+            ctx.mem_allocator.emit_addr(ctx.table, injector, ctx.err);
         }
         true
     } else {
@@ -504,8 +503,14 @@ fn emit_set<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             Some(VarAddr::Global { addr }) => {
                 injector.global_set(GlobalID(*addr));
             }
-            Some(VarAddr::MemLoc { mem_id, ty, .. }) => {
-                ctx.mem_allocator.set_in_mem(*mem_id, &ty.clone(), injector);
+            Some(VarAddr::MemLoc {
+                mem_id,
+                ty,
+                var_offset,
+                ..
+            }) => {
+                ctx.mem_allocator
+                    .set_in_mem(*var_offset, *mem_id, &ty.clone(), injector);
             }
             Some(VarAddr::Local { addr }) => {
                 injector.local_set(LocalID(*addr));
