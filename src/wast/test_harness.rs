@@ -287,7 +287,7 @@ fn write_bin_wast_file(
     // output the support statements
     for stmt in support_stmts {
         wast_file.write_all(stmt.as_bytes())?;
-        wast_file.write_all(&[b'\n'])?;
+        wast_file.write_all(b"\n")?;
     }
 
     // output the target module binary with format: (module binary "<binary>")
@@ -301,9 +301,9 @@ fn write_bin_wast_file(
     // output the associated assertions (line by line)
     for assert in assertions.iter() {
         wast_file.write_all(assert.str.as_bytes())?;
-        wast_file.write_all(&[b'\n'])?;
+        wast_file.write_all(b"\n")?;
     }
-    wast_file.write_all(&[b'\n'])?;
+    wast_file.write_all(b"\n")?;
     wast_file
         .flush()
         .expect("Failed to flush out the wast file");
