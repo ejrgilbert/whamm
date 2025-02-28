@@ -37,9 +37,8 @@ impl MemoryAllocator {
     // ==== Get / Set ====
     // ===================
 
-    pub(crate) fn calc_offset<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub(crate) fn emit_addr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         &self,
-        var_offset: u32,
         table: &SymbolTable,
         injector: &mut T,
         err: &mut ErrorGen,
@@ -56,10 +55,7 @@ impl MemoryAllocator {
             return;
         };
 
-        // calculate the true offset
         injector.local_get(LocalID(*var_block_start));
-        injector.u32_const(var_offset);
-        injector.i32_add();
     }
 
     pub fn get_from_mem<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
@@ -71,56 +67,56 @@ impl MemoryAllocator {
         injector: &mut T,
         err: &mut ErrorGen,
     ) {
-        self.calc_offset(var_offset, table, injector, err);
+        self.emit_addr(table, injector, err);
 
         // perform the correct load based on the type of data at this memory location
         match ty {
             DataType::U8 => injector.i32_load8_u(MemArg {
                 align: 0,
                 max_align: 0,
-                offset: 0,
+                offset: var_offset as u64,
                 memory: mem_id,
             }),
             DataType::I8 => injector.i32_load8_s(MemArg {
                 align: 0,
                 max_align: 0,
-                offset: 0,
+                offset: var_offset as u64,
                 memory: mem_id,
             }),
             DataType::U16 => injector.i32_load16_u(MemArg {
                 align: 0,
                 max_align: 0,
-                offset: 0,
+                offset: var_offset as u64,
                 memory: mem_id,
             }),
             DataType::I16 => injector.i32_load16_s(MemArg {
                 align: 0,
                 max_align: 0,
-                offset: 0,
+                offset: var_offset as u64,
                 memory: mem_id,
             }),
             DataType::U32 | DataType::I32 | DataType::Boolean => injector.i32_load(MemArg {
                 align: 0,
                 max_align: 0,
-                offset: 0,
+                offset: var_offset as u64,
                 memory: mem_id,
             }),
             DataType::F32 => injector.f32_load(MemArg {
                 align: 0,
                 max_align: 0,
-                offset: 0,
+                offset: var_offset as u64,
                 memory: mem_id,
             }),
             DataType::U64 | DataType::I64 => injector.i64_load(MemArg {
                 align: 0,
                 max_align: 0,
-                offset: 0,
+                offset: var_offset as u64,
                 memory: mem_id,
             }),
             DataType::F64 => injector.f64_load(MemArg {
                 align: 0,
                 max_align: 0,
-                offset: 0,
+                offset: var_offset as u64,
                 memory: mem_id,
             }),
             DataType::Null
@@ -134,6 +130,7 @@ impl MemoryAllocator {
 
     pub fn set_in_mem<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         &self,
+        var_offset: u32,
         mem_id: u32,
         ty: &DataType,
         injector: &mut T,
@@ -143,37 +140,37 @@ impl MemoryAllocator {
             DataType::U8 | DataType::I8 => injector.i32_store8(MemArg {
                 align: 0,
                 max_align: 0,
-                offset: 0,
+                offset: var_offset as u64,
                 memory: mem_id,
             }),
             DataType::U16 | DataType::I16 => injector.i32_store16(MemArg {
                 align: 0,
                 max_align: 0,
-                offset: 0,
+                offset: var_offset as u64,
                 memory: mem_id,
             }),
             DataType::U32 | DataType::I32 | DataType::Boolean => injector.i32_store(MemArg {
                 align: 0,
                 max_align: 0,
-                offset: 0,
+                offset: var_offset as u64,
                 memory: mem_id,
             }),
             DataType::F32 => injector.f32_store(MemArg {
                 align: 0,
                 max_align: 0,
-                offset: 0,
+                offset: var_offset as u64,
                 memory: mem_id,
             }),
             DataType::U64 | DataType::I64 => injector.i64_store(MemArg {
                 align: 0,
                 max_align: 0,
-                offset: 0,
+                offset: var_offset as u64,
                 memory: mem_id,
             }),
             DataType::F64 => injector.f64_store(MemArg {
                 align: 0,
                 max_align: 0,
-                offset: 0,
+                offset: var_offset as u64,
                 memory: mem_id,
             }),
             DataType::Null
