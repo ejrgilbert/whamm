@@ -177,7 +177,7 @@ fn instrument_with_paper_eval_branches_scripts() {
     let processed_scripts = common::setup_tests("paper_eval/branches");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("paper_eval-branches", processed_scripts, true, true)
+    run_core_suite("paper_eval-branches", processed_scripts, false, true)
 }
 #[test]
 fn instrument_with_paper_eval_categories_scripts() {

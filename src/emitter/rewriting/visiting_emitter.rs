@@ -218,30 +218,27 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         );
 
         // Save args in reverse order (the leftmost arg is at the bottom of the stack)
-        arg_locals
-            .iter()
-            .rev()
-            .for_each(|(arg_name, arg_local_id)| {
-                // emit an opcode in the event to assign the ToS to this new local
-                self.app_iter.local_set(LocalID(*arg_local_id));
+        arg_locals.iter().for_each(|(arg_name, arg_local_id)| {
+            // emit an opcode in the event to assign the ToS to this new local
+            self.app_iter.local_set(LocalID(*arg_local_id));
 
-                // place in symbol table with var addr for future reference
-                let id = self.table.put(
-                    arg_name.to_string(),
-                    Record::Var {
-                        ty: DataType::I32, // we only support integers right now.
-                        name: arg_name.to_string(),
-                        value: None,
-                        def: Definition::User,
-                        is_report_var: false,
-                        addr: Some(VarAddr::Local {
-                            addr: *arg_local_id,
-                        }),
-                        loc: None,
-                    },
-                );
-                arg_recs.insert(0, (arg_name.to_string(), id));
-            });
+            // place in symbol table with var addr for future reference
+            let id = self.table.put(
+                arg_name.to_string(),
+                Record::Var {
+                    ty: DataType::I32, // we only support integers right now.
+                    name: arg_name.to_string(),
+                    value: None,
+                    def: Definition::User,
+                    is_report_var: false,
+                    addr: Some(VarAddr::Local {
+                        addr: *arg_local_id,
+                    }),
+                    loc: None,
+                },
+            );
+            arg_recs.insert(0, (arg_name.to_string(), id));
+        });
         self.instr_created_args = arg_recs;
         true
     }
@@ -509,7 +506,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         )
         .0;
 
-        for _arg in curr_instr_args {
+        let num_to_drop = curr_instr_args.len() - self.instr_created_args.len();
+        for _arg in 0..num_to_drop {
             self.app_iter.drop();
         }
         true
@@ -539,14 +537,12 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         }
     }
 
-    pub fn inject_map_init(&mut self, err: &mut ErrorGen) {
-        if !self.map_lib_adapter.is_used {
+    pub fn inject_map_init(&mut self) {
+        if !self.map_lib_adapter.used_in_global_scope {
             return;
         }
         self.before();
-        let fid = self
-            .map_lib_adapter
-            .get_map_init_fid(self.app_iter.module, err);
+        let fid = self.map_lib_adapter.get_map_init_fid(self.app_iter.module);
         self.map_lib_adapter
             .inject_map_init_check(&mut self.app_iter, fid);
     }

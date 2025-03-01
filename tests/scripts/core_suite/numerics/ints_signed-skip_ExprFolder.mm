@@ -1,18 +1,20 @@
-wasm:opcode:call(arg1: i8, arg3: i16, arg5: i32, arg7: i64):before {
+wasm:opcode:call(arg2: i64, arg4: i32, arg6: i16, arg8: i8):before {
+
     // Call target, parameters are used as type values (all are set to '1'):
-    // (u8, i8, u16, i16, u32, i32, u64, i64, f32, f64)
+    // type signature: (u8, i8, u16, i16, u32, i32, u64, i64, f32, f64)
+    // stack order: (f64, f32, i64, u64, i32, u32, i16, u16, i8, u8)
 
     // ==== BINOP ====
 
     // --- logical operators ---
     // setup
-    var t_8: i8 = arg1;
+    var t_8: i8 = arg8;
     var f_8: i8 = 0;
-    var t_16: i16 = arg3;
+    var t_16: i16 = arg6;
     var f_16: i16 = 0;
-    var t_32: i32 = arg5;
+    var t_32: i32 = arg4;
     var f_32: i32 = 0;
-    var t_64: i64 = arg7;
+    var t_64: i64 = arg2;
     var f_64: i64 = 0;
 
     // TEST: and
@@ -41,10 +43,10 @@ wasm:opcode:call(arg1: i8, arg3: i16, arg5: i32, arg7: i64):before {
 
     // --- relational operators ---
     // setup
-    var v8: i8 = arg1;
-    var v16: i16 = arg3;
-    var v32: i32 = arg5;
-    var v64: i64 = arg7;
+    var v8: i8 = arg8;
+    var v16: i16 = arg6;
+    var v32: i32 = arg4;
+    var v64: i64 = arg2;
 
     // TEST: ==
     report var eq_test0: bool;

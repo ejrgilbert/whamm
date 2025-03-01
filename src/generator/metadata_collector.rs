@@ -1,6 +1,6 @@
 use crate::common::error::ErrorGen;
 use crate::common::instr::Config;
-use crate::generator::ast::{Probe, Script};
+use crate::generator::ast::{Probe, ReqArgs, Script};
 use crate::lang_features::report_vars::{BytecodeLoc, Metadata as ReportMetadata};
 use crate::parser::rules::{Event, Package, Probe as ParserProbe, Provider};
 use crate::parser::types::{
@@ -90,13 +90,21 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
             self.curr_probe.metadata.pred_is_dynamic = true;
         }
     }
-    fn set_req_args(&mut self, req_args: bool) {
+    fn combine_req_args(&mut self, req_args: ReqArgs) {
         match self.visiting {
             Visiting::Predicate => {
-                self.curr_probe.metadata.pred_args.req_args = req_args;
+                self.curr_probe
+                    .metadata
+                    .pred_args
+                    .req_args
+                    .combine(&req_args);
             }
             Visiting::Body => {
-                self.curr_probe.metadata.body_args.req_args = req_args;
+                self.curr_probe
+                    .metadata
+                    .body_args
+                    .req_args
+                    .combine(&req_args);
             }
             Visiting::None => {
                 // error
@@ -256,10 +264,19 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
             self.visiting = Visiting::Predicate;
             self.visit_expr(pred);
         }
+        // compile which args have been requested
+        self.curr_probe.metadata.pred_args.process_req_args();
         if let Some(body) = probe.body() {
             self.visiting = Visiting::Body;
             self.visit_stmts(body.stmts.as_slice());
+            if probe.mode().name() == "alt" {
+                // XXX: this is bad
+                // always save all args for an alt probe
+                self.combine_req_args(ReqArgs::All);
+            }
         }
+        // compile which args have been requested
+        self.curr_probe.metadata.body_args.process_req_args();
         self.visiting = Visiting::None;
 
         trace!("Exiting: CodeGenerator::visit_probe");
@@ -422,9 +439,8 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                 if matches!(def, Definition::CompilerDynamic) {
                     // will need to emit this function!
                     self.used_provided_fns.insert((context, fn_name));
-
                     // will need to possibly define arguments!
-                    self.set_req_args(*req_args);
+                    self.combine_req_args(req_args.clone());
                 }
 
                 args.iter().for_each(|arg| {

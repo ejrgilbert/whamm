@@ -38,7 +38,7 @@ pub(crate) fn try_path(path: &String) {
 
 /// Copy to enable access for testing...
 /// Options for handling instrumentation library.
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum LibraryLinkStrategy {
     /// Merge the library with the `app.wasm` **target VM must support multi-memory**.
     /// Will create a new memory in the `app.wasm` to be targeted by the instrumentation.
@@ -178,7 +178,11 @@ pub fn run(
     metadata_collector.visit_whamm(&whamm);
 
     // Merge in the core library IF NEEDED
-    let mut map_package = MapLibPackage::default();
+    let mut map_package = MapLibPackage::new(if config.wizard {
+        InjectStrategy::Wizard
+    } else {
+        InjectStrategy::Rewriting
+    });
     let mut io_package = IOPackage::new(*mem_allocator.mem_tracker_global);
     let mut core_packages: Vec<&mut dyn LibPackage> = vec![&mut map_package, &mut io_package];
     let mut injected_funcs = crate::lang_features::libraries::actions::link_core_lib(

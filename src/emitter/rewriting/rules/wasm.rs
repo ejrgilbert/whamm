@@ -2,7 +2,7 @@ use crate::emitter::rewriting::rules::{
     event_factory, probe_factory, Arg, Event, FromStr, LocInfo, Package, ProbeRule,
 };
 use crate::for_each_opcode;
-use crate::generator::ast::{Probe, WhammParam};
+use crate::generator::ast::{Probe, ReqArgs, WhammParam};
 use crate::parser::rules::core::WhammModeKind;
 use crate::parser::rules::wasm::{OpcodeEventKind, WasmPackageKind};
 use crate::parser::types::{BinOp, DataType, Definition, Expr, RulePart, Value};
@@ -141,7 +141,7 @@ impl OpcodeEvent {
                     | FuncKind::Local(LocalFunction { ty_id, .. }) => {
                         if let Some(ty) = app_wasm.types.get(*ty_id) {
                             let mut res = vec![];
-                            for t in ty.params().iter() {
+                            for t in ty.params().iter().rev() {
                                 res.push(Some(*t));
                             }
                             (res, Some(**ty_id))
@@ -177,7 +177,7 @@ impl OpcodeEvent {
             Operator::CallIndirect { type_index, .. } => {
                 if let Some(ty) = app_wasm.types.get(TypeID(*type_index)) {
                     let mut res = vec![];
-                    for t in ty.params().iter() {
+                    for t in ty.params().iter().rev() {
                         res.push(Some(*t));
                     }
                     (res, Some(*type_index))
@@ -535,6 +535,7 @@ impl OpcodeEvent {
         for (idx, ty) in ty_list.iter().enumerate() {
             args.push(Arg::new(format!("arg{}", idx), ty.to_owned()));
         }
+
         (args, ty_id)
     }
 }
@@ -548,24 +549,17 @@ impl Event for OpcodeEvent {
         let mut loc_info = LocInfo::new();
 
         // create a combination of WhammParams for all probes here
-        let mut req_args = false;
         let mut all_params = HashSet::new();
         for (_, probes) in self.probes.iter() {
             for Probe { metadata, .. } in probes.iter() {
-                req_args |= metadata.body_args.req_args;
                 for param in metadata.body_args.params.iter() {
                     all_params.insert(param);
                 }
 
-                req_args |= metadata.pred_args.req_args;
                 for param in metadata.pred_args.params.iter() {
                     all_params.insert(param);
                 }
             }
-        }
-
-        if req_args {
-            loc_info.args = OpcodeEvent::get_ty_info_for_instr(app_wasm, curr_fid, instr).0;
         }
 
         match self.kind {
@@ -4502,6 +4496,35 @@ impl Event for OpcodeEvent {
                     loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
+        }
+
+        let (all_args, ..) = OpcodeEvent::get_ty_info_for_instr(app_wasm, curr_fid, instr);
+
+        // figure out which args are requested based on matched probes
+        let mut req_args = ReqArgs::None;
+        let mut probes_to_remove = vec![];
+        for (i, (_, probe)) in loc_info.probes.iter_mut().enumerate() {
+            if probe.metadata.body_args.req_args.matches(all_args.len()) {
+                req_args.combine(&probe.metadata.body_args.req_args);
+            } else {
+                // remove probe!
+                probes_to_remove.push(i);
+                continue;
+            }
+            if probe.metadata.pred_args.req_args.matches(all_args.len()) {
+                req_args.combine(&probe.metadata.pred_args.req_args);
+            } else {
+                // remove probe!
+                probes_to_remove.push(i);
+                continue;
+            }
+        }
+        for i in probes_to_remove.iter() {
+            loc_info.probes.remove(*i);
+        }
+
+        if req_args.is_some() {
+            loc_info.args = req_args.of(all_args);
         }
 
         if loc_info.has_match() {

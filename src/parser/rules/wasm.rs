@@ -1,4 +1,5 @@
 use crate::for_each_opcode;
+use crate::generator::ast::ReqArgs;
 use crate::parser::rules::{
     event_factory, get_array_globals, get_br_table_globals, get_call_fns, get_call_globals,
     get_memarg_globals, get_struct_globals, get_unknown_args_globals, Event, EventInfo,
@@ -58,7 +59,7 @@ impl WasmPackage {
                 ty_info: vec![],
             },
             true,
-            true,
+            ReqArgs::All,
         );
 
         Self {

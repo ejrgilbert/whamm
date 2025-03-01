@@ -1,17 +1,18 @@
-wasm:opcode:call(arg0: u8, arg2: u16, arg4: u32, arg6: u64):before {
+wasm:opcode:call(arg3: u64, arg5: u32, arg7: u16, arg9: u8):before {
+
     // Call target, parameters are used as type values (all are set to '1'):
     // (u8, i8, u16, i16, u32, i32, u64, i64, f32, f64)
     // ==== BINOP ====
 
     // --- logical operators ---
     // setup
-    var t_8: u8 = arg0;
+    var t_8: u8 = arg9;
     var f_8: u8 = 0;
-    var t_16: u16 = arg2;
+    var t_16: u16 = arg7;
     var f_16: u16 = 0;
-    var t_32: u32 = arg4;
+    var t_32: u32 = arg5;
     var f_32: u32 = 0;
-    var t_64: u64 = arg6;
+    var t_64: u64 = arg3;
     var f_64: u64 = 0;
 
     // TEST: and
@@ -40,10 +41,10 @@ wasm:opcode:call(arg0: u8, arg2: u16, arg4: u32, arg6: u64):before {
 
     // --- relational operators ---
     // setup
-    var v8: u8 = arg0;
-    var v16: u16 = arg2;
-    var v32: u32 = arg4;
-    var v64: u64 = arg6;
+    var v8: u8 = arg9;
+    var v16: u16 = arg7;
+    var v32: u32 = arg5;
+    var v64: u64 = arg3;
 
     // TEST: ==
     report var eq_test0: bool;

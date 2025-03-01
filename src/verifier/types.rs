@@ -1,4 +1,5 @@
 use crate::common::error::ErrorGen;
+use crate::generator::ast::ReqArgs;
 use crate::lang_features::libraries::core::WHAMM_CORE_LIB_NAME;
 use crate::parser::types::{DataType, Definition, FnId, Location, ProbeRule, Value};
 use pest::error::LineColLocation;
@@ -639,7 +640,7 @@ pub enum Record {
 
         /// Bookkeeping for provided functions that need the args defined
         /// (only tracks this for dynamic provided functions)
-        req_args: bool,
+        req_args: ReqArgs,
     },
     Var {
         ty: DataType,

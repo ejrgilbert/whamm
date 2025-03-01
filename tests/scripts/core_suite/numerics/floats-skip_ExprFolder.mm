@@ -1,14 +1,15 @@
-wasm:opcode:call(arg8: f32, arg9: f64):before {
+wasm:opcode:call(arg0: f64, arg1: f32):before {
     // Call target, parameters are used as type values (all are set to '1'):
-    // (u8, i8, u16, i16, u32, i32, u64, i64, f32, f64)
+    // type signature: (u8, i8, u16, i16, u32, i32, u64, i64, f32, f64)
+    // stack order: (f64, f32, i64, u64, i32, u32, i16, u16, i8, u8)
 
     // ==== BINOP ====
 
     // --- logical operators ---
     // setup
-    var t_32: f32 = arg8;
+    var t_32: f32 = arg1;
     var f_32: f32 = 0;
-    var t_64: f64 = arg9;
+    var t_64: f64 = arg0;
     var f_64: f64 = 0;
 
     // TEST: and
@@ -25,8 +26,8 @@ wasm:opcode:call(arg8: f32, arg9: f64):before {
 
     // --- relational operators ---
     // setup
-    var v32: f32 = arg8;
-    var v64: f64 = arg9;
+    var v32: f32 = arg1;
+    var v64: f64 = arg0;
 
     // TEST: ==
 

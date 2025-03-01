@@ -1,4 +1,5 @@
 use crate::common::error::ErrorGen;
+use crate::generator::ast::ReqArgs;
 use crate::parser::rules::{Event, Package, Probe, Provider, UNKNOWN_IMMS};
 use crate::parser::types::Definition::{CompilerDynamic, CompilerStatic};
 use crate::parser::types::{
@@ -32,7 +33,7 @@ pub fn build_symbol_table(ast: &mut Whamm, err: &mut ErrorGen) -> SymbolTable {
         curr_event: None,
         curr_probe: None,
         curr_fn: None,
-        req_args: false,
+        req_args: ReqArgs::None,
     };
     visitor.visit_whamm(ast);
     visitor.table

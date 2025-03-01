@@ -3,6 +3,7 @@ pub mod core;
 pub mod wasm;
 use crate::common::error::{ErrorGen, WhammError};
 use crate::common::terminal::{magenta_italics, white};
+use crate::generator::ast::ReqArgs;
 use crate::parser::rules::core::{CorePackage, WhammMode, WhammModeKind, WhammProbe};
 use crate::parser::rules::wasm::{OpcodeCategory, WasmPackage};
 use crate::parser::types::{
@@ -1825,7 +1826,7 @@ pub fn get_call_fns() -> Vec<ProvidedFunction> {
         )],
         DataType::Tuple { ty_info: vec![] },
         true,
-        true
+        ReqArgs::All
     ), ProvidedFunction::new(
         "alt_call_by_name".to_string(),
         "Insert an alternate call (targeting the passed function name) into the Wasm bytecode. Will also emit the original parameters onto the stack.".to_string(),
@@ -1839,7 +1840,7 @@ pub fn get_call_fns() -> Vec<ProvidedFunction> {
         )],
         DataType::Tuple { ty_info: vec![] },
         true,
-        true
+        ReqArgs::All
     )]
 }
 

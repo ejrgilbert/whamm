@@ -8,6 +8,7 @@ use termcolor::{Buffer, ColorChoice, WriteColor};
 
 use crate::common::error::{ErrorGen, WhammError};
 use crate::common::terminal::{green, grey_italics, long_line, magenta, white, yellow};
+use crate::generator::ast::ReqArgs;
 use crate::parser::rules::{
     print_provider_docs, provider_factory, Event, Package, Probe, Provider, WhammProvider,
 };
@@ -1459,7 +1460,7 @@ impl Whamm {
             strcmp_params,
             DataType::Boolean,
             false,
-            false,
+            ReqArgs::None,
         );
 
         vec![strcmp]
@@ -1947,7 +1948,7 @@ pub struct ProvidedFunction {
     pub name: String,
     pub docs: String,
     pub function: Fn,
-    pub req_args: bool,
+    pub req_args: ReqArgs,
 }
 impl ProvidedFunction {
     pub fn new(
@@ -1956,7 +1957,7 @@ impl ProvidedFunction {
         params: Vec<(Expr, DataType)>,
         return_ty: DataType,
         is_static: bool,
-        req_args: bool,
+        req_args: ReqArgs,
     ) -> Self {
         Self {
             name: name.clone(),
