@@ -12,6 +12,7 @@ use crate::parser::types::{
 use glob::Pattern;
 use std::collections::HashMap;
 use termcolor::Buffer;
+use crate::generator::ast::ReqArgs;
 
 pub trait NameOptions {
     fn get_name_options() -> Vec<String>;
@@ -1825,7 +1826,7 @@ pub fn get_call_fns() -> Vec<ProvidedFunction> {
         )],
         DataType::Tuple { ty_info: vec![] },
         true,
-        true
+        ReqArgs::All
     ), ProvidedFunction::new(
         "alt_call_by_name".to_string(),
         "Insert an alternate call (targeting the passed function name) into the Wasm bytecode. Will also emit the original parameters onto the stack.".to_string(),
@@ -1839,7 +1840,7 @@ pub fn get_call_fns() -> Vec<ProvidedFunction> {
         )],
         DataType::Tuple { ty_info: vec![] },
         true,
-        true
+        ReqArgs::All
     )]
 }
 

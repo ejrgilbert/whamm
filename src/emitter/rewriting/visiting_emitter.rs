@@ -410,7 +410,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             &fid,
             self.app_iter.curr_op().unwrap(),
         )
-        .1;
+        .2;
 
         // emit the condition of the `if` expression
         is_success &= self.emit_expr(condition, err);

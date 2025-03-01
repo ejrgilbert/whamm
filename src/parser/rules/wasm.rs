@@ -12,6 +12,7 @@ use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::mem::discriminant;
 use termcolor::Buffer;
+use crate::generator::ast::ReqArgs;
 
 pub enum WasmPackageKind {
     Opcode,
@@ -58,7 +59,7 @@ impl WasmPackage {
                 ty_info: vec![],
             },
             true,
-            true,
+            ReqArgs::All
         );
 
         Self {

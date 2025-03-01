@@ -4,6 +4,8 @@ use crate::parser::types::{
 };
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
+use itertools::Itertools;
+use crate::emitter::rewriting::rules::Arg;
 
 #[derive(Clone, Default)]
 pub struct Script {
@@ -133,16 +135,114 @@ impl Metadata {
 }
 
 #[derive(Clone, Debug, Default)]
+pub enum ReqArgs {
+    #[default]
+    None,
+    FirstN {
+        n: u32
+    },
+    All
+}
+impl ReqArgs {
+    pub fn is_some(&self) -> bool {
+        !matches!(self, Self::None)
+    }
+
+    pub fn matches(&self, num_args: usize) -> bool {
+        // Check if the requested args is within the bounds of the available args
+        match self {
+            Self::None | Self::All => true,
+            Self::FirstN {n} => *n + 1 <= num_args as u32,
+        }
+    }
+
+    /// Make `self` request the most of the two `ReqArgs` instances.
+    pub fn combine(&mut self, other: &Self) {
+        match self {
+            ReqArgs::All => {} // already max
+            ReqArgs::None => match other {
+                ReqArgs::None => {} // equal amount
+                ReqArgs::FirstN {..} | ReqArgs::All => *self = other.clone(),
+            }
+            ReqArgs::FirstN {n: my_n} => match other {
+                ReqArgs::None => {} // less than self
+                ReqArgs::FirstN {n: other_n} => {
+                    let mut cmp_n = *other_n;
+                    *self = ReqArgs::FirstN {
+                        n: *my_n.max(&mut cmp_n)
+                    }
+                },
+                ReqArgs::All => *self = other.clone() // other is max
+            }
+        }
+    }
+    pub fn of(&self, args: Vec<Arg>, reversed: bool) -> Vec<Arg> {
+        if args.is_empty() {
+            return vec![];
+        }
+        match self {
+            Self::None => vec![],
+            Self::All => args,
+            Self::FirstN {n} => {
+                if reversed {
+                    // If reversed, I have to return all the args to
+                    // get the first N!
+                    args
+                } else {
+                    if *n == 0 {
+                        vec![args.first().unwrap().clone()]
+                    } else {
+                        args.as_slice()[0..*n as usize + 1].to_vec()
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default)]
 pub struct WhammParams {
     pub params: HashSet<WhammParam>,
-    pub req_args: bool,
+    pub req_args: ReqArgs,
+
+    requested_args: Vec<u32>
 }
 impl WhammParams {
     pub fn push(&mut self, param: WhammParam) {
-        if matches!(param, WhammParam::Arg { .. }) {
-            self.req_args = true;
+        if let WhammParam::Arg { n, .. } = param {
+            self.requested_args.push(n);
         }
         self.params.insert(param);
+    }
+
+    /// This gets called at the end of a probe visit to figure out
+    /// which args to save off!!
+    /// (see MetadataCollector::visit_probe)
+    pub fn process_req_args(&mut self) {
+        if self.requested_args.is_empty() {
+            // not requesting any args, but could have been set externally!
+            // so tentatively do the combination here
+            self.req_args.combine(&ReqArgs::None);
+            return;
+        }
+        let sorted_args = self.requested_args.iter().sorted();
+
+        let mut first_n = 0;
+        for (i, arg_n) in sorted_args.into_iter().enumerate() {
+            if i as u32 == *arg_n {
+                // is requesting the first N thus far
+                first_n = *arg_n;
+            } else {
+                // is requesting out of order...
+                // tentatively do the combination here in case hardcoded elsewhere
+                self.req_args.combine(&ReqArgs::All);
+                return;
+            }
+        }
+
+        // has requested the first N args without skipping any!
+        // tentatively do the combination here in case hardcoded elsewhere
+        self.req_args.combine(&ReqArgs::FirstN {n: first_n});
     }
 }
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]

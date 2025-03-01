@@ -15,6 +15,7 @@ use orca_wasm::ir::types::DataType as OrcaType;
 use pest::pratt_parser::PrattParser;
 use pest_derive::Parser;
 use termcolor::BufferWriter;
+use crate::generator::ast::ReqArgs;
 
 #[derive(Parser)]
 #[grammar = "./parser/whamm.pest"] // Path relative to base `src` dir
@@ -1459,7 +1460,7 @@ impl Whamm {
             strcmp_params,
             DataType::Boolean,
             false,
-            false,
+            ReqArgs::None
         );
 
         vec![strcmp]
@@ -1947,7 +1948,7 @@ pub struct ProvidedFunction {
     pub name: String,
     pub docs: String,
     pub function: Fn,
-    pub req_args: bool,
+    pub req_args: ReqArgs
 }
 impl ProvidedFunction {
     pub fn new(
@@ -1956,7 +1957,7 @@ impl ProvidedFunction {
         params: Vec<(Expr, DataType)>,
         return_ty: DataType,
         is_static: bool,
-        req_args: bool,
+        req_args: ReqArgs
     ) -> Self {
         Self {
             name: name.clone(),
