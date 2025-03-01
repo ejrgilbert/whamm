@@ -1,11 +1,11 @@
+use crate::emitter::rewriting::rules::Arg;
 use crate::lang_features::report_vars::Metadata as ReportMetadata;
 use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Global, RulePart, Statement, UnOp, Value,
 };
+use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
-use itertools::Itertools;
-use crate::emitter::rewriting::rules::Arg;
 
 #[derive(Clone, Default)]
 pub struct Script {
@@ -139,9 +139,9 @@ pub enum ReqArgs {
     #[default]
     None,
     FirstN {
-        n: u32
+        n: u32,
     },
-    All
+    All,
 }
 impl ReqArgs {
     pub fn is_some(&self) -> bool {
@@ -152,7 +152,7 @@ impl ReqArgs {
         // Check if the requested args is within the bounds of the available args
         match self {
             Self::None | Self::All => true,
-            Self::FirstN {n} => *n + 1 <= num_args as u32,
+            Self::FirstN { n } => *n < num_args as u32,
         }
     }
 
@@ -162,18 +162,18 @@ impl ReqArgs {
             ReqArgs::All => {} // already max
             ReqArgs::None => match other {
                 ReqArgs::None => {} // equal amount
-                ReqArgs::FirstN {..} | ReqArgs::All => *self = other.clone(),
-            }
-            ReqArgs::FirstN {n: my_n} => match other {
+                ReqArgs::FirstN { .. } | ReqArgs::All => *self = other.clone(),
+            },
+            ReqArgs::FirstN { n: my_n } => match other {
                 ReqArgs::None => {} // less than self
-                ReqArgs::FirstN {n: other_n} => {
+                ReqArgs::FirstN { n: other_n } => {
                     let mut cmp_n = *other_n;
                     *self = ReqArgs::FirstN {
-                        n: *my_n.max(&mut cmp_n)
+                        n: *my_n.max(&mut cmp_n),
                     }
-                },
-                ReqArgs::All => *self = other.clone() // other is max
-            }
+                }
+                ReqArgs::All => *self = other.clone(), // other is max
+            },
         }
     }
     pub fn of(&self, args: Vec<Arg>, reversed: bool) -> Vec<Arg> {
@@ -183,17 +183,15 @@ impl ReqArgs {
         match self {
             Self::None => vec![],
             Self::All => args,
-            Self::FirstN {n} => {
+            Self::FirstN { n } => {
                 if reversed {
                     // If reversed, I have to return all the args to
                     // get the first N!
                     args
+                } else if *n == 0 {
+                    vec![args.first().unwrap().clone()]
                 } else {
-                    if *n == 0 {
-                        vec![args.first().unwrap().clone()]
-                    } else {
-                        args.as_slice()[0..*n as usize + 1].to_vec()
-                    }
+                    args.as_slice()[0..*n as usize + 1].to_vec()
                 }
             }
         }
@@ -205,7 +203,7 @@ pub struct WhammParams {
     pub params: HashSet<WhammParam>,
     pub req_args: ReqArgs,
 
-    requested_args: Vec<u32>
+    requested_args: Vec<u32>,
 }
 impl WhammParams {
     pub fn push(&mut self, param: WhammParam) {
@@ -242,7 +240,7 @@ impl WhammParams {
 
         // has requested the first N args without skipping any!
         // tentatively do the combination here in case hardcoded elsewhere
-        self.req_args.combine(&ReqArgs::FirstN {n: first_n});
+        self.req_args.combine(&ReqArgs::FirstN { n: first_n });
     }
 }
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]

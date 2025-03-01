@@ -6,10 +6,10 @@ use parser_types::{BinOp, Block, DataType, Expr, Fn, Script, Statement, UnOp, Va
 use std::collections::HashMap;
 
 use crate::common::error::ErrorGen;
+use crate::generator::ast::ReqArgs;
 use crate::parser::rules::{Event, Package, Probe, Provider};
 use crate::parser::types::{Definition, Global, ProvidedFunction, ProvidedGlobal, WhammVisitorMut};
 use log::trace;
-use crate::generator::ast::ReqArgs;
 
 const UNEXPECTED_ERR_MSG: &str = "SymbolTableBuilder: Looks like you've found a bug...please report this behavior! Exiting now...";
 
@@ -563,15 +563,14 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         trace!("Entering: visit_provider");
 
         self.add_provider(provider.as_ref());
-        provider
-            .get_provided_fns_mut()
-            .iter_mut()
-            .for_each(|ProvidedFunction {
-                           function, req_args, ..
-                       }| {
+        provider.get_provided_fns_mut().iter_mut().for_each(
+            |ProvidedFunction {
+                 function, req_args, ..
+             }| {
                 self.req_args = req_args.clone();
                 self.visit_fn(function);
-            });
+            },
+        );
         self.visit_provided_globals(provider.get_provided_globals());
         provider
             .packages_mut()
@@ -586,15 +585,14 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         trace!("Entering: visit_package");
 
         self.add_package(package);
-        package
-            .get_provided_fns_mut()
-            .iter_mut()
-            .for_each(|ProvidedFunction {
-                           function, req_args, ..
-                       }| {
+        package.get_provided_fns_mut().iter_mut().for_each(
+            |ProvidedFunction {
+                 function, req_args, ..
+             }| {
                 self.req_args = req_args.clone();
                 self.visit_fn(function);
-            });
+            },
+        );
         self.visit_provided_globals(package.get_provided_globals());
         package
             .events_mut()
@@ -609,15 +607,14 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         trace!("Entering: visit_event");
 
         self.add_event(event);
-        event
-            .get_provided_fns_mut()
-            .iter_mut()
-            .for_each(|ProvidedFunction {
-                           function, req_args, ..
-                       }| {
+        event.get_provided_fns_mut().iter_mut().for_each(
+            |ProvidedFunction {
+                 function, req_args, ..
+             }| {
                 self.req_args = req_args.clone();
                 self.visit_fn(function);
-            });
+            },
+        );
         self.visit_provided_globals(event.get_provided_globals());
 
         // visit probe_map
@@ -636,15 +633,14 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
         trace!("Entering: visit_probe");
 
         self.add_probe(probe.as_ref());
-        probe
-            .get_mode_provided_fns_mut()
-            .iter_mut()
-            .for_each(|ProvidedFunction {
-                           function, req_args, ..
-                       }| {
+        probe.get_mode_provided_fns_mut().iter_mut().for_each(
+            |ProvidedFunction {
+                 function, req_args, ..
+             }| {
                 self.req_args = req_args.clone();
                 self.visit_fn(function);
-            });
+            },
+        );
         self.visit_provided_globals(probe.get_mode_provided_globals());
 
         // Will not visit predicate/body at this stage

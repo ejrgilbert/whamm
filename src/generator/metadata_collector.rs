@@ -93,10 +93,18 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
     fn combine_req_args(&mut self, req_args: ReqArgs) {
         match self.visiting {
             Visiting::Predicate => {
-                self.curr_probe.metadata.pred_args.req_args.combine(&req_args);
+                self.curr_probe
+                    .metadata
+                    .pred_args
+                    .req_args
+                    .combine(&req_args);
             }
             Visiting::Body => {
-                self.curr_probe.metadata.body_args.req_args.combine(&req_args);
+                self.curr_probe
+                    .metadata
+                    .body_args
+                    .req_args
+                    .combine(&req_args);
             }
             Visiting::None => {
                 // error

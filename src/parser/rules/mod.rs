@@ -3,6 +3,7 @@ pub mod core;
 pub mod wasm;
 use crate::common::error::{ErrorGen, WhammError};
 use crate::common::terminal::{magenta_italics, white};
+use crate::generator::ast::ReqArgs;
 use crate::parser::rules::core::{CorePackage, WhammMode, WhammModeKind, WhammProbe};
 use crate::parser::rules::wasm::{OpcodeCategory, WasmPackage};
 use crate::parser::types::{
@@ -12,7 +13,6 @@ use crate::parser::types::{
 use glob::Pattern;
 use std::collections::HashMap;
 use termcolor::Buffer;
-use crate::generator::ast::ReqArgs;
 
 pub trait NameOptions {
     fn get_name_options() -> Vec<String>;

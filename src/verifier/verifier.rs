@@ -1,4 +1,5 @@
 use crate::common::error::ErrorGen;
+use crate::generator::ast::ReqArgs;
 use crate::parser::rules::{Event, Package, Probe, Provider, UNKNOWN_IMMS};
 use crate::parser::types::Definition::{CompilerDynamic, CompilerStatic};
 use crate::parser::types::{
@@ -8,7 +9,6 @@ use crate::parser::types::{
 use crate::verifier::builder_visitor::SymbolTableBuilder;
 use crate::verifier::types::{line_col_from_loc, Record, SymbolTable};
 use std::vec;
-use crate::generator::ast::ReqArgs;
 
 const UNEXPECTED_ERR_MSG: &str =
     "TypeChecker: Looks like you've found a bug...please report this behavior! Exiting now...";
@@ -33,7 +33,7 @@ pub fn build_symbol_table(ast: &mut Whamm, err: &mut ErrorGen) -> SymbolTable {
         curr_event: None,
         curr_probe: None,
         curr_fn: None,
-        req_args: ReqArgs::None
+        req_args: ReqArgs::None,
     };
     visitor.visit_whamm(ast);
     visitor.table

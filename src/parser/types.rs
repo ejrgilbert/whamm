@@ -8,6 +8,7 @@ use termcolor::{Buffer, ColorChoice, WriteColor};
 
 use crate::common::error::{ErrorGen, WhammError};
 use crate::common::terminal::{green, grey_italics, long_line, magenta, white, yellow};
+use crate::generator::ast::ReqArgs;
 use crate::parser::rules::{
     print_provider_docs, provider_factory, Event, Package, Probe, Provider, WhammProvider,
 };
@@ -15,7 +16,6 @@ use orca_wasm::ir::types::DataType as OrcaType;
 use pest::pratt_parser::PrattParser;
 use pest_derive::Parser;
 use termcolor::BufferWriter;
-use crate::generator::ast::ReqArgs;
 
 #[derive(Parser)]
 #[grammar = "./parser/whamm.pest"] // Path relative to base `src` dir
@@ -1460,7 +1460,7 @@ impl Whamm {
             strcmp_params,
             DataType::Boolean,
             false,
-            ReqArgs::None
+            ReqArgs::None,
         );
 
         vec![strcmp]
@@ -1948,7 +1948,7 @@ pub struct ProvidedFunction {
     pub name: String,
     pub docs: String,
     pub function: Fn,
-    pub req_args: ReqArgs
+    pub req_args: ReqArgs,
 }
 impl ProvidedFunction {
     pub fn new(
@@ -1957,7 +1957,7 @@ impl ProvidedFunction {
         params: Vec<(Expr, DataType)>,
         return_ty: DataType,
         is_static: bool,
-        req_args: ReqArgs
+        req_args: ReqArgs,
     ) -> Self {
         Self {
             name: name.clone(),

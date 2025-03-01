@@ -1,11 +1,11 @@
 use crate::common::error::ErrorGen;
+use crate::generator::ast::ReqArgs;
 use crate::lang_features::libraries::core::WHAMM_CORE_LIB_NAME;
 use crate::parser::types::{DataType, Definition, FnId, Location, ProbeRule, Value};
 use pest::error::LineColLocation;
 use std::collections::HashMap;
 use std::fmt;
 use std::fmt::{Display, Formatter};
-use crate::generator::ast::ReqArgs;
 
 const UNEXPECTED_ERR_MSG: &str =
     "SymbolTable: Looks like you've found a bug...please report this behavior!";
