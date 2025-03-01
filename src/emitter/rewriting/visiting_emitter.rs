@@ -220,7 +220,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         // Save args in reverse order (the leftmost arg is at the bottom of the stack)
         arg_locals
             .iter()
-            // .rev()
             .for_each(|(arg_name, arg_local_id)| {
                 // emit an opcode in the event to assign the ToS to this new local
                 self.app_iter.local_set(LocalID(*arg_local_id));
