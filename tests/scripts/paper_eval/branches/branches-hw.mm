@@ -22,12 +22,12 @@ wasm::br_table:before {
   taken_branches[index]++;
 }
 
-wasm::select(arg0: i32, arg1: i32, arg2: i32):before {
+wasm::select(arg0: i32):before {
   report unshared var selected_first: u32;
   report unshared var selected_second: u32;
 
   // which branch was taken?
-  if (arg2 != 0) {
+  if (arg0 != 0) {
     selected_first++;
   } else {
     selected_second++;

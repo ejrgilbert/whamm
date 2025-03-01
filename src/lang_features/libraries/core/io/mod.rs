@@ -26,6 +26,9 @@ impl LibPackage for IOPackage {
     fn is_used(&self) -> bool {
         self.is_used
     }
+    fn is_used_in_global_scope(&self) -> bool {
+        false // doesn't matter
+    }
     fn import_memory(&self) -> bool {
         false
     }
@@ -45,6 +48,9 @@ impl LibPackage for IOPackage {
     }
     fn set_adapter_usage(&mut self, is_used: bool) {
         self.adapter.is_used = is_used;
+    }
+    fn set_global_adapter_usage(&mut self, _is_used: bool) {
+        // nothing to do here
     }
     fn define_helper_funcs(
         &mut self,

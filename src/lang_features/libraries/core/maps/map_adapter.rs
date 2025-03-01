@@ -22,6 +22,7 @@ pub const MAP_LIB_MEM_OFFSET: u32 = 0;
 
 pub struct MapLibAdapter {
     pub is_used: bool,
+    pub used_in_global_scope: bool,
     // func_name -> fid
     funcs: HashMap<String, u32>,
     map_count: u32,
@@ -112,6 +113,7 @@ impl MapLibAdapter {
         ]);
         MapLibAdapter {
             is_used: false,
+            used_in_global_scope: false,
             funcs,
             map_count: 0,
             init_bool_location: 0,
@@ -430,23 +432,18 @@ impl MapLibAdapter {
 
     const MAP_INIT_FNAME: &'static str = "instr_init";
 
-    pub fn get_map_init_fid(&self, app_wasm: &mut Module, err: &mut ErrorGen) -> FunctionID {
+    pub fn get_map_init_fid(&self, app_wasm: &mut Module) -> FunctionID {
         match app_wasm
             .functions
             .get_local_fid_by_name(Self::MAP_INIT_FNAME)
         {
             Some(to_call) => to_call,
             None => {
-                err.unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} \
-                        No {} function found in the module!",
-                        Self::MAP_INIT_FNAME
-                    )),
-                    None,
+                panic!(
+                    "{UNEXPECTED_ERR_MSG} \
+                    No {} function found in the module!",
+                    Self::MAP_INIT_FNAME
                 );
-                unreachable!();
             }
         }
     }
@@ -462,18 +459,13 @@ impl MapLibAdapter {
         err: &mut ErrorGen,
     ) {
         //time to set up the map_init fn
-        let init_id = self.get_map_init_fid(app_wasm, err);
+        let init_id = self.get_map_init_fid(app_wasm);
 
         let Some(mut init_fn) = app_wasm.functions.get_fn_modifier(init_id) else {
-            err.unexpected_error(
-                true,
-                Some(format!(
+            panic!(
                     "{UNEXPECTED_ERR_MSG} \
                                 No instr_init found in the module!"
-                )),
-                None,
-            );
-            return;
+                );
         };
         init_fn.before_at(Location::Module {
             func_idx: init_id, // not used

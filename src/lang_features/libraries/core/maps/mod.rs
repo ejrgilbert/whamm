@@ -8,16 +8,33 @@ use crate::parser::types::{BinOp, Block, DataType, Expr, Statement, UnOp, Value}
 use log::debug;
 use orca_wasm::ir::id::FunctionID;
 use orca_wasm::Module;
+use crate::emitter::InjectStrategy;
 
-#[derive(Default)]
 pub struct MapLibPackage {
+    strategy: InjectStrategy,
     is_used: bool,
-    pub adapter: MapLibAdapter,
+    pub used_in_global_scope: bool,
+    pub adapter: MapLibAdapter
+}
+impl MapLibPackage {
+    pub fn new(strategy: InjectStrategy) -> Self {
+        Self {
+            strategy,
+            is_used: false,
+            used_in_global_scope: false,
+            adapter: MapLibAdapter::default()
+        }
+    }
 }
 impl LibPackage for MapLibPackage {
     fn is_used(&self) -> bool {
         self.is_used
     }
+
+    fn is_used_in_global_scope(&self) -> bool {
+        self.used_in_global_scope
+    }
+
     fn import_memory(&self) -> bool {
         true
     }
@@ -37,6 +54,9 @@ impl LibPackage for MapLibPackage {
     }
     fn set_adapter_usage(&mut self, is_used: bool) {
         self.adapter.is_used = is_used;
+    }
+    fn set_global_adapter_usage(&mut self, is_used: bool) {
+        self.adapter.used_in_global_scope = is_used;
     }
 
     fn define_helper_funcs(
@@ -78,6 +98,7 @@ impl AstVisitor<bool> for MapLibPackage {
         // visit global statements
         for stmt in script.global_stmts.iter() {
             if self.visit_stmt(stmt) {
+                self.used_in_global_scope = true;
                 return true;
             }
         }
@@ -175,6 +196,11 @@ impl AstVisitor<bool> for MapLibPackage {
                 {
                     if let Expr::VarId { name, .. } = var_id {
                         debug!("{name} is a map!");
+                    }
+                    if matches!(self.strategy, InjectStrategy::Rewriting) {
+                        // TODO -- this needs to change when I refactor to use
+                        //    allocated memory for probes! (that's the reason it's true here)
+                        self.used_in_global_scope = true;
                     }
                     true
                 } else {
