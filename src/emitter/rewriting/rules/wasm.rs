@@ -141,7 +141,7 @@ impl OpcodeEvent {
                     | FuncKind::Local(LocalFunction { ty_id, .. }) => {
                         if let Some(ty) = app_wasm.types.get(*ty_id) {
                             let mut res = vec![];
-                            for t in ty.params().iter() {
+                            for t in ty.params().iter().rev() {
                                 res.push(Some(*t));
                             }
                             (res, true, Some(**ty_id))
@@ -177,7 +177,7 @@ impl OpcodeEvent {
             Operator::CallIndirect { type_index, .. } => {
                 if let Some(ty) = app_wasm.types.get(TypeID(*type_index)) {
                     let mut res = vec![];
-                    for t in ty.params().iter() {
+                    for t in ty.params().iter().rev() {
                         res.push(Some(*t));
                     }
                     (res, true, Some(*type_index))
@@ -549,18 +549,18 @@ impl OpcodeEvent {
         };
 
         let mut args = vec![];
-        if reverse {
-            for (idx, ty) in ty_list.iter().rev().enumerate() {
-                args.insert(
-                    0,
-                    Arg::new(format!("arg{}", ty_list.len() - 1 - idx), ty.to_owned()),
-                );
-            }
-        } else {
+        // if reverse {
+        //     // for (idx, ty) in ty_list.iter().rev().enumerate() {
+        //     //     args.insert(
+        //     //         0,
+        //     //         Arg::new(format!("arg{}", ty_list.len() - 1 - idx), ty.to_owned()),
+        //     //     );
+        //     // }
+        // } else {
             for (idx, ty) in ty_list.iter().enumerate() {
                 args.push(Arg::new(format!("arg{}", idx), ty.to_owned()));
             }
-        }
+        // }
 
         (args, reverse, ty_id)
     }

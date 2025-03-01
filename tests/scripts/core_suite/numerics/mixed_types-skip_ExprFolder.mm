@@ -1,30 +1,31 @@
-wasm:opcode:call(arg0: u8, arg1: i8, arg2: u16, arg3: i16, arg4: u32, arg5: i32, arg6: u64, arg7: i64, arg8: f32, arg9: f64):before {
+wasm:opcode:call(arg0: f64, arg1: f32, arg2: i64, arg3: u64, arg4: i32, arg5: u32, arg6: i16, arg7: u16, arg8: i8, arg9: u8):before {
     // Call target, parameters are used as type values (all are set to '1'):
-    // (u8, i8, u16, i16, u32, i32, u64, i64, f32, f64)
+    // type signature: (u8, i8, u16, i16, u32, i32, u64, i64, f32, f64)
+    // stack order: (f64, f32, i64, u64, i32, u32, i16, u16, i8, u8)
 
     // ==== BINOP ====
 
     // --- logical operators ---
     // setup
-    var t_i8: i8 = arg1;
+    var t_i8: i8 = arg8;
     var f_i8: i8 = 0;
-    var t_u8: u8 = arg0;
+    var t_u8: u8 = arg9;
     var f_u8: u8 = 0;
-    var t_i16: i16 = arg3;
+    var t_i16: i16 = arg6;
     var f_i16: i16 = 0;
-    var t_u16: u16 = arg2;
+    var t_u16: u16 = arg7;
     var f_u16: u16 = 0;
-    var t_i32: i32 = arg5;
+    var t_i32: i32 = arg4;
     var f_i32: i32 = 0;
-    var t_u32: u32 = arg4;
+    var t_u32: u32 = arg5;
     var f_u32: u32 = 0;
-    var t_i64: i64 = arg7;
+    var t_i64: i64 = arg2;
     var f_i64: i64 = 0;
-    var t_u64: u64 = arg6;
+    var t_u64: u64 = arg3;
     var f_u64: u64 = 0;
-    var t_f32: f32 = arg8;
+    var t_f32: f32 = arg1;
     var f_f32: f32 = 0;
-    var t_f64: f64 = arg9;
+    var t_f64: f64 = arg0;
     var f_f64: f64 = 0;
 
     // TEST: and
@@ -45,16 +46,16 @@ wasm:opcode:call(arg0: u8, arg1: i8, arg2: u16, arg3: i16, arg4: u32, arg5: i32,
 
     // --- relational operators ---
     // setup
-    var v_u8: u8 = arg0;
-    var v_i8: i8 = arg1;
-    var v_u16: u16 = arg2;
-    var v_i16: i16 = arg3;
-    var v_u32: u32 = arg4;
-    var v_i32: i32 = arg5;
-    var v_u64: u64 = arg6;
-    var v_i64: i64 = arg7;
-    var v_f32: f32 = arg8;
-    var v_f64: f64 = arg9;
+    var v_u8: u8 = arg9;
+    var v_i8: i8 = arg8;
+    var v_u16: u16 = arg7;
+    var v_i16: i16 = arg6;
+    var v_u32: u32 = arg5;
+    var v_i32: i32 = arg4;
+    var v_u64: u64 = arg3;
+    var v_i64: i64 = arg2;
+    var v_f32: f32 = arg1;
+    var v_f64: f64 = arg0;
 
     // TEST: ==
 

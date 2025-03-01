@@ -39,7 +39,5 @@
 ;; ---- `CALL`: local functions ----
 ;; =================================
 
-;; -------------------------------
-;; ==== ARGS, predicate, arg0 ====
 ;; WHAMM --> var count: i32; wasm:opcode:call:before { count++; }
 (assert_return (invoke "get_count") (i32.const 1250))

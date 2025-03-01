@@ -1,19 +1,20 @@
-wasm:opcode:call(arg0: u8, arg1: i8, arg2: u16, arg3: i16, arg4: u32, arg5: i32, arg6: u64, arg7: i64, arg8: f32, arg9: f64):before /
-    arg0 == 1
+wasm:opcode:call(arg0: f64, arg1: f32, arg2: i64, arg3: u64, arg4: i32, arg5: u32, arg6: i16, arg7: u16, arg8: i8, arg9: u8):before /
+    arg9 == 1
 / {
     // Call target, parameters are used as type values (all are set to '1'):
-    // (u8, i8, u16, i16, u32, i32, u64, i64, f32, f64)
-    
-    var v_u8: u8 = arg0;
-    var v_i8: i8 = arg1;
-    var v_u16: u16 = arg2;
-    var v_i16: i16 = arg3;
-    var v_u32: u32 = arg4;
-    var v_i32: i32 = arg5;
-    var v_u64: u64 = arg6;
-    var v_i64: i64 = arg7;
-    var v_f32: f32 = arg8;
-    var v_f64: f64 = arg9;
+    // type signature: (u8, i8, u16, i16, u32, i32, u64, i64, f32, f64)
+    // stack order: (f64, f32, i64, u64, i32, u32, i16, u16, i8, u8)
+
+    var v_u8: u8 = arg9;
+    var v_i8: i8 = arg8;
+    var v_u16: u16 = arg7;
+    var v_i16: i16 = arg6;
+    var v_u32: u32 = arg5;
+    var v_i32: i32 = arg4;
+    var v_u64: u64 = arg3;
+    var v_i64: i64 = arg2;
+    var v_f32: f32 = arg1;
+    var v_f64: f64 = arg0;
 
     var TWO: u8 = v_u8 + v_u8;
     var NEG: i8 = 0 - v_i8;

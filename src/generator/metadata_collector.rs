@@ -269,6 +269,11 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
         if let Some(body) = probe.body() {
             self.visiting = Visiting::Body;
             self.visit_stmts(body.stmts.as_slice());
+            if probe.mode().name() == "alt" {
+                // XXX: this is bad
+                // always save all args for an alt probe
+                self.combine_req_args(ReqArgs::All);
+            }
         }
         // compile which args have been requested
         self.curr_probe.metadata.body_args.process_req_args();

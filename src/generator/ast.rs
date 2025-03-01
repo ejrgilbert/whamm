@@ -184,11 +184,12 @@ impl ReqArgs {
             Self::None => vec![],
             Self::All => args,
             Self::FirstN { n } => {
-                if reversed {
-                    // If reversed, I have to return all the args to
-                    // get the first N!
-                    args
-                } else if *n == 0 {
+                // if reversed {
+                //     // If reversed, I have to return all the args to
+                //     // get the first N!
+                //     args
+                // } else if *n == 0 {
+                if *n == 0 {
                     vec![args.first().unwrap().clone()]
                 } else {
                     args.as_slice()[0..*n as usize + 1].to_vec()

@@ -91,6 +91,7 @@ impl AstVisitor<bool> for MapLibPackage {
         for (name, global) in script.globals.iter() {
             if let DataType::Map { .. } = global.ty {
                 debug!("{name} is a map!");
+                self.used_in_global_scope = true;
                 return true;
             }
         }
@@ -104,26 +105,23 @@ impl AstVisitor<bool> for MapLibPackage {
         }
 
         // visit probes
+        // visit ALL!! so we can see if there's global scope maps
+        let mut has_maps = false;
         for probe in script.probes.iter() {
-            if self.visit_probe(probe) {
-                return true;
-            }
+            has_maps |= self.visit_probe(probe);
         }
-        false
+        has_maps
     }
 
     fn visit_probe(&mut self, probe: &Probe) -> bool {
-        if self.visit_metadata(&probe.metadata) {
-            return true;
-        }
+        // visit ALL!! so we can see if there's global scope maps
+        let mut has_maps = self.visit_metadata(&probe.metadata);
         if let Some(body) = &probe.body {
             for stmt in body.stmts.iter() {
-                if self.visit_stmt(stmt) {
-                    return true;
-                }
+                has_maps |= self.visit_stmt(stmt);
             }
         }
-        false
+        has_maps
     }
 
     fn visit_metadata(&mut self, metadata: &Metadata) -> bool {
@@ -167,12 +165,12 @@ impl AstVisitor<bool> for MapLibPackage {
     }
 
     fn visit_block(&mut self, block: &Block) -> bool {
+        // visit ALL!! so we can see if there's global scope maps
+        let mut has_maps = false;
         for stmt in &block.stmts {
-            if self.visit_stmt(stmt) {
-                return true;
-            }
+            has_maps |= self.visit_stmt(stmt);
         }
-        false
+        has_maps
     }
 
     fn visit_stmt(&mut self, stmt: &Statement) -> bool {

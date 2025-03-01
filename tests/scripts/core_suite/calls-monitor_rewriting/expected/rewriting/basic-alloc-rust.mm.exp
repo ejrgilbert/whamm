@@ -44,7 +44,7 @@ hello world!
 
 ============================= REPORT CSV FLUSH ================================
 id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)
-3, global_id, count, u32, i32, script0, 30:262, 0_wasm:opcode:call:before, 1
-4, global_id, count, u32, i32, script0, 30:275, 0_wasm:opcode:call:before, 0
+3, global_id, count, u32, i32, script0, 30:262, 0_wasm:opcode:call:before, 0
+4, global_id, count, u32, i32, script0, 30:275, 0_wasm:opcode:call:before, 1
 5, global_id, count, u32, i32, script0, 30:288, 0_wasm:opcode:call:before, 0
 6, global_id, count, u32, i32, script0, 30:319, 0_wasm:opcode:call:before, 2
