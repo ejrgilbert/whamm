@@ -410,7 +410,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             &fid,
             self.app_iter.curr_op().unwrap(),
         )
-        .2;
+        .1;
 
         // emit the condition of the `if` expression
         is_success &= self.emit_expr(condition, err);
@@ -545,9 +545,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             return;
         }
         self.before();
-        let fid = self
-            .map_lib_adapter
-            .get_map_init_fid(self.app_iter.module);
+        let fid = self.map_lib_adapter.get_map_init_fid(self.app_iter.module);
         self.map_lib_adapter
             .inject_map_init_check(&mut self.app_iter, fid);
     }

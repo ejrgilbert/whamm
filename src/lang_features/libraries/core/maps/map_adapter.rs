@@ -463,9 +463,9 @@ impl MapLibAdapter {
 
         let Some(mut init_fn) = app_wasm.functions.get_fn_modifier(init_id) else {
             panic!(
-                    "{UNEXPECTED_ERR_MSG} \
+                "{UNEXPECTED_ERR_MSG} \
                                 No instr_init found in the module!"
-                );
+            );
         };
         init_fn.before_at(Location::Module {
             func_idx: init_id, // not used

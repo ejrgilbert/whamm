@@ -130,9 +130,9 @@ impl OpcodeEvent {
         app_wasm: &Module,
         curr_fid: &FunctionID,
         instr: &Operator,
-    ) -> (Vec<Arg>, bool, Option<u32>) {
+    ) -> (Vec<Arg>, Option<u32>) {
         // TODO -- how to make this less manual?
-        let (ty_list, reverse, ty_id): (Vec<Option<OrcaType>>, bool, Option<u32>) = match instr {
+        let (ty_list, ty_id): (Vec<Option<OrcaType>>, Option<u32>) = match instr {
             Operator::Call {
                 function_index: fid,
             } => {
@@ -144,17 +144,17 @@ impl OpcodeEvent {
                             for t in ty.params().iter().rev() {
                                 res.push(Some(*t));
                             }
-                            (res, true, Some(**ty_id))
+                            (res, Some(**ty_id))
                         } else {
                             // no type info found!!
                             warn!("No type information found for import with FID {fid}");
-                            (vec![], false, None)
+                            (vec![], None)
                         }
                     }
                 }
             }
             Operator::If { .. } | Operator::BrIf { .. } | Operator::BrTable { .. } => {
-                (vec![Some(OrcaType::I32)], false, None)
+                (vec![Some(OrcaType::I32)], None)
             }
             Operator::Block {
                 blockty: wasmparser::BlockType::FuncType(ty_id),
@@ -167,11 +167,11 @@ impl OpcodeEvent {
                     for t in ty.params().iter() {
                         res.push(Some(*t));
                     }
-                    (res, false, Some(*ty_id))
+                    (res, Some(*ty_id))
                 } else {
                     // no type info found!!
                     warn!("No type information found for opcode");
-                    (vec![], false, None)
+                    (vec![], None)
                 }
             }
             Operator::CallIndirect { type_index, .. } => {
@@ -180,11 +180,11 @@ impl OpcodeEvent {
                     for t in ty.params().iter().rev() {
                         res.push(Some(*t));
                     }
-                    (res, true, Some(*type_index))
+                    (res, Some(*type_index))
                 } else {
                     // no type info found!!
                     warn!("No type information found for CallIndirect");
-                    (vec![], false, None)
+                    (vec![], None)
                 }
             }
             Operator::Drop => {
@@ -193,7 +193,7 @@ impl OpcodeEvent {
                 //     HOWEVER, we will need to keep a virtual stack to check if this match site is in fact
                 //     a match based on the type bounds. (if they don't match up, not a match, don't emit)
                 // e.g. [unknown]
-                (vec![None], false, None)
+                (vec![None], None)
             }
             Operator::Select => {
                 // TODO -- how to express an unknown type?
@@ -201,19 +201,19 @@ impl OpcodeEvent {
                 //     HOWEVER, we will need to keep a virtual stack to check if this match site is in fact
                 //     a match based on the type bounds. (if they don't match up, not a match, don't emit)
                 // e.g. [unknown, unknown, i32]
-                (vec![None, None, Some(OrcaType::I32)], false, None)
+                (vec![None, None, Some(OrcaType::I32)], None)
             }
             Operator::LocalSet { local_index } | Operator::LocalTee { local_index } => {
                 if let FuncKind::Local(LocalFunction { body, .. }) =
                     app_wasm.functions.get_kind(*curr_fid)
                 {
                     if let Some((_, ty)) = body.locals.get(*local_index as usize) {
-                        (vec![Some(*ty)], false, None)
+                        (vec![Some(*ty)], None)
                     } else {
-                        (vec![], false, None) // ignore
+                        (vec![], None) // ignore
                     }
                 } else {
-                    (vec![], false, None) // ignore
+                    (vec![], None) // ignore
                 }
             }
             Operator::GlobalSet { global_index } => {
@@ -227,7 +227,7 @@ impl OpcodeEvent {
                         ..
                     }) => OrcaType::from(*content_type),
                 };
-                (vec![Some(ty)], false, None)
+                (vec![Some(ty)], None)
             }
             Operator::I32Load { .. }
             | Operator::I64Load { .. }
@@ -242,28 +242,20 @@ impl OpcodeEvent {
             | Operator::I64Load16S { .. }
             | Operator::I64Load16U { .. }
             | Operator::I64Load32S { .. }
-            | Operator::I64Load32U { .. } => (vec![Some(OrcaType::I32)], false, None),
+            | Operator::I64Load32U { .. } => (vec![Some(OrcaType::I32)], None),
 
             Operator::I32Store { .. }
             | Operator::I32Store8 { .. }
-            | Operator::I32Store16 { .. } => {
-                (vec![Some(OrcaType::I32), Some(OrcaType::I32)], false, None)
-            }
+            | Operator::I32Store16 { .. } => (vec![Some(OrcaType::I32), Some(OrcaType::I32)], None),
             Operator::I64Store { .. }
             | Operator::I64Store8 { .. }
             | Operator::I64Store16 { .. }
-            | Operator::I64Store32 { .. } => {
-                (vec![Some(OrcaType::I32), Some(OrcaType::I64)], false, None)
-            }
-            Operator::F32Store { .. } => {
-                (vec![Some(OrcaType::I32), Some(OrcaType::F32)], false, None)
-            }
-            Operator::F64Store { .. } => {
-                (vec![Some(OrcaType::I32), Some(OrcaType::F64)], false, None)
-            }
-            Operator::MemoryGrow { .. } => (vec![Some(OrcaType::I32)], false, None),
+            | Operator::I64Store32 { .. } => (vec![Some(OrcaType::I32), Some(OrcaType::I64)], None),
+            Operator::F32Store { .. } => (vec![Some(OrcaType::I32), Some(OrcaType::F32)], None),
+            Operator::F64Store { .. } => (vec![Some(OrcaType::I32), Some(OrcaType::F64)], None),
+            Operator::MemoryGrow { .. } => (vec![Some(OrcaType::I32)], None),
 
-            Operator::I32Eqz => (vec![Some(OrcaType::I32)], false, None),
+            Operator::I32Eqz => (vec![Some(OrcaType::I32)], None),
             Operator::I32Ne
             | Operator::I32Eq
             | Operator::I32LtS
@@ -273,10 +265,10 @@ impl OpcodeEvent {
             | Operator::I32LeS
             | Operator::I32LeU
             | Operator::I32GeS
-            | Operator::I32GeU => (vec![Some(OrcaType::I32), Some(OrcaType::I32)], false, None),
+            | Operator::I32GeU => (vec![Some(OrcaType::I32), Some(OrcaType::I32)], None),
 
             Operator::I32Clz | Operator::I32Ctz | Operator::I32Popcnt => {
-                (vec![Some(OrcaType::I32)], false, None)
+                (vec![Some(OrcaType::I32)], None)
             }
 
             Operator::I32Add
@@ -293,9 +285,9 @@ impl OpcodeEvent {
             | Operator::I32ShrS
             | Operator::I32ShrU
             | Operator::I32Rotl
-            | Operator::I32Rotr => (vec![Some(OrcaType::I32), Some(OrcaType::I32)], false, None),
+            | Operator::I32Rotr => (vec![Some(OrcaType::I32), Some(OrcaType::I32)], None),
 
-            Operator::I64Eqz => (vec![Some(OrcaType::I64)], false, None),
+            Operator::I64Eqz => (vec![Some(OrcaType::I64)], None),
             Operator::I64Eq
             | Operator::I64Ne
             | Operator::I64LtS
@@ -305,10 +297,10 @@ impl OpcodeEvent {
             | Operator::I64LeS
             | Operator::I64LeU
             | Operator::I64GeS
-            | Operator::I64GeU => (vec![Some(OrcaType::I64), Some(OrcaType::I64)], false, None),
+            | Operator::I64GeU => (vec![Some(OrcaType::I64), Some(OrcaType::I64)], None),
 
             Operator::I64Clz | Operator::I64Ctz | Operator::I64Popcnt => {
-                (vec![Some(OrcaType::I64)], false, None)
+                (vec![Some(OrcaType::I64)], None)
             }
             Operator::I64Add
             | Operator::I64Sub
@@ -324,14 +316,14 @@ impl OpcodeEvent {
             | Operator::I64ShrS
             | Operator::I64ShrU
             | Operator::I64Rotl
-            | Operator::I64Rotr => (vec![Some(OrcaType::I64), Some(OrcaType::I64)], false, None),
+            | Operator::I64Rotr => (vec![Some(OrcaType::I64), Some(OrcaType::I64)], None),
 
             Operator::F32Eq
             | Operator::F32Ne
             | Operator::F32Lt
             | Operator::F32Gt
             | Operator::F32Le
-            | Operator::F32Ge => (vec![Some(OrcaType::F32), Some(OrcaType::F32)], false, None),
+            | Operator::F32Ge => (vec![Some(OrcaType::F32), Some(OrcaType::F32)], None),
 
             Operator::F32Abs
             | Operator::F32Neg
@@ -339,23 +331,21 @@ impl OpcodeEvent {
             | Operator::F32Floor
             | Operator::F32Trunc
             | Operator::F32Nearest
-            | Operator::F32Sqrt => (vec![Some(OrcaType::F32)], false, None),
+            | Operator::F32Sqrt => (vec![Some(OrcaType::F32)], None),
             Operator::F32Add
             | Operator::F32Sub
             | Operator::F32Mul
             | Operator::F32Div
             | Operator::F32Min
             | Operator::F32Max
-            | Operator::F32Copysign => {
-                (vec![Some(OrcaType::F32), Some(OrcaType::F32)], false, None)
-            }
+            | Operator::F32Copysign => (vec![Some(OrcaType::F32), Some(OrcaType::F32)], None),
 
             Operator::F64Eq
             | Operator::F64Ne
             | Operator::F64Lt
             | Operator::F64Gt
             | Operator::F64Le
-            | Operator::F64Ge => (vec![Some(OrcaType::F64), Some(OrcaType::F64)], false, None),
+            | Operator::F64Ge => (vec![Some(OrcaType::F64), Some(OrcaType::F64)], None),
 
             Operator::F64Abs
             | Operator::F64Neg
@@ -363,16 +353,14 @@ impl OpcodeEvent {
             | Operator::F64Floor
             | Operator::F64Trunc
             | Operator::F64Nearest
-            | Operator::F64Sqrt => (vec![Some(OrcaType::F32)], false, None),
+            | Operator::F64Sqrt => (vec![Some(OrcaType::F32)], None),
             Operator::F64Add
             | Operator::F64Sub
             | Operator::F64Mul
             | Operator::F64Div
             | Operator::F64Min
             | Operator::F64Max
-            | Operator::F64Copysign => {
-                (vec![Some(OrcaType::F64), Some(OrcaType::F64)], false, None)
-            }
+            | Operator::F64Copysign => (vec![Some(OrcaType::F64), Some(OrcaType::F64)], None),
 
             Operator::I32WrapI64
             | Operator::F32ConvertI64S
@@ -382,10 +370,8 @@ impl OpcodeEvent {
             | Operator::F64ReinterpretI64
             | Operator::I64Extend8S
             | Operator::I64Extend16S
-            | Operator::I64Extend32S => (vec![Some(OrcaType::I64)], false, None),
-            Operator::I32TruncF32S | Operator::I32TruncF32U => {
-                (vec![Some(OrcaType::F32)], false, None)
-            }
+            | Operator::I64Extend32S => (vec![Some(OrcaType::I64)], None),
+            Operator::I32TruncF32S | Operator::I32TruncF32U => (vec![Some(OrcaType::F32)], None),
             Operator::I32TruncF64S
             | Operator::I32TruncF64U
             | Operator::I64TruncF64S
@@ -395,7 +381,7 @@ impl OpcodeEvent {
             | Operator::I32TruncSatF64S
             | Operator::I32TruncSatF64U
             | Operator::I64TruncSatF64S
-            | Operator::I64TruncSatF64U => (vec![Some(OrcaType::F64)], false, None),
+            | Operator::I64TruncSatF64U => (vec![Some(OrcaType::F64)], None),
             Operator::I64ExtendI32S
             | Operator::I64ExtendI32U
             | Operator::F32ConvertI32S
@@ -404,7 +390,7 @@ impl OpcodeEvent {
             | Operator::F64ConvertI32U
             | Operator::F32ReinterpretI32
             | Operator::I32Extend8S
-            | Operator::I32Extend16S => (vec![Some(OrcaType::I32)], false, None),
+            | Operator::I32Extend16S => (vec![Some(OrcaType::I32)], None),
             Operator::I64TruncF32S
             | Operator::I64TruncF32U
             | Operator::F64PromoteF32
@@ -412,7 +398,7 @@ impl OpcodeEvent {
             | Operator::I32TruncSatF32S
             | Operator::I32TruncSatF32U
             | Operator::I64TruncSatF32S
-            | Operator::I64TruncSatF32U => (vec![Some(OrcaType::F32)], false, None),
+            | Operator::I64TruncSatF32U => (vec![Some(OrcaType::F32)], None),
 
             Operator::MemoryCopy { .. }
             | Operator::MemoryFill { .. }
@@ -423,14 +409,13 @@ impl OpcodeEvent {
                     Some(OrcaType::I32),
                     Some(OrcaType::I32),
                 ],
-                false,
                 None,
             ),
 
-            Operator::TableGet { .. } => (vec![Some(OrcaType::I32)], false, None),
+            Operator::TableGet { .. } => (vec![Some(OrcaType::I32)], None),
 
             Operator::MemoryAtomicNotify { .. } => {
-                (vec![Some(OrcaType::I32), Some(OrcaType::I32)], false, None)
+                (vec![Some(OrcaType::I32), Some(OrcaType::I32)], None)
             }
             Operator::MemoryAtomicWait32 { .. } => (
                 vec![
@@ -438,7 +423,6 @@ impl OpcodeEvent {
                     Some(OrcaType::I32),
                     Some(OrcaType::I64),
                 ],
-                false,
                 None,
             ),
             Operator::MemoryAtomicWait64 { .. } => (
@@ -447,7 +431,6 @@ impl OpcodeEvent {
                     Some(OrcaType::I64),
                     Some(OrcaType::I64),
                 ],
-                false,
                 None,
             ),
 
@@ -457,16 +440,16 @@ impl OpcodeEvent {
             | Operator::I32AtomicLoad16U { .. }
             | Operator::I64AtomicLoad8U { .. }
             | Operator::I64AtomicLoad16U { .. }
-            | Operator::I64AtomicLoad32U { .. } => (vec![Some(OrcaType::I32)], false, None),
+            | Operator::I64AtomicLoad32U { .. } => (vec![Some(OrcaType::I32)], None),
 
             Operator::I32AtomicStore { .. }
             | Operator::I32AtomicStore8 { .. }
-            | Operator::I32AtomicStore16 { .. } => (vec![Some(OrcaType::I32)], false, None),
+            | Operator::I32AtomicStore16 { .. } => (vec![Some(OrcaType::I32)], None),
 
             Operator::I64AtomicStore { .. }
             | Operator::I64AtomicStore8 { .. }
             | Operator::I64AtomicStore16 { .. }
-            | Operator::I64AtomicStore32 { .. } => (vec![Some(OrcaType::I32)], false, None),
+            | Operator::I64AtomicStore32 { .. } => (vec![Some(OrcaType::I32)], None),
 
             Operator::I32AtomicRmwAdd { .. }
             | Operator::I32AtomicRmw8AddU { .. }
@@ -489,7 +472,7 @@ impl OpcodeEvent {
             | Operator::I32AtomicRmwCmpxchg { .. }
             | Operator::I32AtomicRmw8CmpxchgU { .. }
             | Operator::I32AtomicRmw16CmpxchgU { .. } => {
-                (vec![Some(OrcaType::I32), Some(OrcaType::I32)], false, None)
+                (vec![Some(OrcaType::I32), Some(OrcaType::I32)], None)
             }
 
             Operator::I64AtomicRmwAdd { .. }
@@ -520,7 +503,7 @@ impl OpcodeEvent {
             | Operator::I64AtomicRmw8CmpxchgU { .. }
             | Operator::I64AtomicRmw16CmpxchgU { .. }
             | Operator::I64AtomicRmw32CmpxchgU { .. } => {
-                (vec![Some(OrcaType::I32), Some(OrcaType::I32)], false, None)
+                (vec![Some(OrcaType::I32), Some(OrcaType::I32)], None)
             }
 
             Operator::Unreachable
@@ -543,26 +526,17 @@ impl OpcodeEvent {
             | Operator::RefNull { .. }
             | Operator::RefFunc { .. }
             | Operator::TableSize { .. }
-            | Operator::AtomicFence => (vec![], false, None),
+            | Operator::AtomicFence => (vec![], None),
 
-            _ => (vec![], false, None), // ignore other opcodes
+            _ => (vec![], None), // ignore other opcodes
         };
 
         let mut args = vec![];
-        // if reverse {
-        //     // for (idx, ty) in ty_list.iter().rev().enumerate() {
-        //     //     args.insert(
-        //     //         0,
-        //     //         Arg::new(format!("arg{}", ty_list.len() - 1 - idx), ty.to_owned()),
-        //     //     );
-        //     // }
-        // } else {
-            for (idx, ty) in ty_list.iter().enumerate() {
-                args.push(Arg::new(format!("arg{}", idx), ty.to_owned()));
-            }
-        // }
+        for (idx, ty) in ty_list.iter().enumerate() {
+            args.push(Arg::new(format!("arg{}", idx), ty.to_owned()));
+        }
 
-        (args, reverse, ty_id)
+        (args, ty_id)
     }
 }
 impl Event for OpcodeEvent {
@@ -4524,8 +4498,7 @@ impl Event for OpcodeEvent {
             }
         }
 
-        let (all_args, reversed, ..) =
-            OpcodeEvent::get_ty_info_for_instr(app_wasm, curr_fid, instr);
+        let (all_args, ..) = OpcodeEvent::get_ty_info_for_instr(app_wasm, curr_fid, instr);
 
         // figure out which args are requested based on matched probes
         let mut req_args = ReqArgs::None;
@@ -4551,7 +4524,7 @@ impl Event for OpcodeEvent {
         }
 
         if req_args.is_some() {
-            loc_info.args = req_args.of(all_args, reversed);
+            loc_info.args = req_args.of(all_args);
         }
 
         if loc_info.has_match() {

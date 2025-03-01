@@ -176,7 +176,7 @@ impl ReqArgs {
             },
         }
     }
-    pub fn of(&self, args: Vec<Arg>, reversed: bool) -> Vec<Arg> {
+    pub fn of(&self, args: Vec<Arg>) -> Vec<Arg> {
         if args.is_empty() {
             return vec![];
         }
@@ -184,11 +184,6 @@ impl ReqArgs {
             Self::None => vec![],
             Self::All => args,
             Self::FirstN { n } => {
-                // if reversed {
-                //     // If reversed, I have to return all the args to
-                //     // get the first N!
-                //     args
-                // } else if *n == 0 {
                 if *n == 0 {
                     vec![args.first().unwrap().clone()]
                 } else {

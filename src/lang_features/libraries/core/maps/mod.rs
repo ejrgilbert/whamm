@@ -1,6 +1,7 @@
 pub mod map_adapter;
 
 use crate::common::error::ErrorGen;
+use crate::emitter::InjectStrategy;
 use crate::generator::ast::{AstVisitor, Metadata, Probe, Script, WhammParam};
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::lang_features::libraries::core::{LibAdapter, LibPackage};
@@ -8,13 +9,12 @@ use crate::parser::types::{BinOp, Block, DataType, Expr, Statement, UnOp, Value}
 use log::debug;
 use orca_wasm::ir::id::FunctionID;
 use orca_wasm::Module;
-use crate::emitter::InjectStrategy;
 
 pub struct MapLibPackage {
     strategy: InjectStrategy,
     is_used: bool,
     pub used_in_global_scope: bool,
-    pub adapter: MapLibAdapter
+    pub adapter: MapLibAdapter,
 }
 impl MapLibPackage {
     pub fn new(strategy: InjectStrategy) -> Self {
@@ -22,7 +22,7 @@ impl MapLibPackage {
             strategy,
             is_used: false,
             used_in_global_scope: false,
-            adapter: MapLibAdapter::default()
+            adapter: MapLibAdapter::default(),
         }
     }
 }
