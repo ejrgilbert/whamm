@@ -218,29 +218,27 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         );
 
         // Save args in reverse order (the leftmost arg is at the bottom of the stack)
-        arg_locals
-            .iter()
-            .for_each(|(arg_name, arg_local_id)| {
-                // emit an opcode in the event to assign the ToS to this new local
-                self.app_iter.local_set(LocalID(*arg_local_id));
+        arg_locals.iter().for_each(|(arg_name, arg_local_id)| {
+            // emit an opcode in the event to assign the ToS to this new local
+            self.app_iter.local_set(LocalID(*arg_local_id));
 
-                // place in symbol table with var addr for future reference
-                let id = self.table.put(
-                    arg_name.to_string(),
-                    Record::Var {
-                        ty: DataType::I32, // we only support integers right now.
-                        name: arg_name.to_string(),
-                        value: None,
-                        def: Definition::User,
-                        is_report_var: false,
-                        addr: Some(VarAddr::Local {
-                            addr: *arg_local_id,
-                        }),
-                        loc: None,
-                    },
-                );
-                arg_recs.insert(0, (arg_name.to_string(), id));
-            });
+            // place in symbol table with var addr for future reference
+            let id = self.table.put(
+                arg_name.to_string(),
+                Record::Var {
+                    ty: DataType::I32, // we only support integers right now.
+                    name: arg_name.to_string(),
+                    value: None,
+                    def: Definition::User,
+                    is_report_var: false,
+                    addr: Some(VarAddr::Local {
+                        addr: *arg_local_id,
+                    }),
+                    loc: None,
+                },
+            );
+            arg_recs.insert(0, (arg_name.to_string(), id));
+        });
         self.instr_created_args = arg_recs;
         true
     }
