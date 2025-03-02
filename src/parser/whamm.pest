@@ -20,7 +20,7 @@ param = { ID ~ ":" ~ TYPE }
 // ===================
 
 lib_import = { "use" ~ ID ~ ";" }
-lib_call = ${ ID ~ "." ~ fn_call }
+lib_call = { ID ~ "." ~ fn_call }
 
 // =====================
 // ---- Identifiers ----

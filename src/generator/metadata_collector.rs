@@ -299,7 +299,10 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
 
     fn visit_stmt(&mut self, stmt: &Statement) {
         match stmt {
-            Statement::LibImport { .. } => todo!(),
+            Statement::LibImport { .. } => {
+                // TODO: collect the USED library functions, can use this to create imports at ModuleGenerator time!
+                todo!()
+            },
             Statement::Decl { .. } => {
                 // ignore
             }

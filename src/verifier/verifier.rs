@@ -123,6 +123,9 @@ struct TypeChecker<'a> {
     in_function: bool,
     has_reports: bool,
 
+    // If a lib function call, use this for lookup
+    lib_name: Option<String>,
+
     // bookkeeping for casting
     curr_loc: Option<Location>,
     outer_cast_fixes_assign: bool,
@@ -138,6 +141,7 @@ impl<'a> TypeChecker<'a> {
             in_script_global: false,
             in_function: false,
             has_reports: false,
+            lib_name: None,
             curr_loc: None,
             outer_cast_fixes_assign: false,
             assign_ty: None,
@@ -396,7 +400,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
         if self.in_script_global {
             match stmt {
                 //allow declarations and assignment
-                Statement::Decl { .. } | Statement::Assign { .. } => {}
+                Statement::Decl { .. } | Statement::Assign { .. } | Statement::LibImport {..}=> {}
                 Statement::UnsharedDecl { is_report, .. } => {
                     if *is_report {
                         self.has_reports = true;
@@ -414,7 +418,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
             }
         }
         match stmt {
-            Statement::LibImport { .. } => todo!(),
+            Statement::LibImport { .. } => { return None },
             Statement::Assign { var_id, expr, .. } => {
                 // change type in symbol table?
                 let lhs_loc = var_id.loc().clone().unwrap();
@@ -1077,7 +1081,13 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     Some(DataType::AssumeGood)
                 }
             }
-            Expr::LibCall { lib_name, call, .. } => todo!(),
+            Expr::LibCall { lib_name, call, .. } => {
+                self.lib_name = Some(lib_name.clone());
+                let res = self.visit_expr(&mut **call);
+                self.lib_name = None;
+
+                res
+            },
             //disallow calls when the in the global state of the script
             Expr::Call {
                 fn_target,
@@ -1113,30 +1123,28 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     }
                 };
 
-                if let Some(id) = self.table.lookup(fn_name) {
-                    if let Some(Record::Fn {
-                        name: _,
+                let rec = if let Some(lib_name) = &self.lib_name {
+                    if let Some(id) = self.table.lookup_lib_fn(lib_name, fn_name, self.err) {
+                        id
+                    } else {
+                        return Some(DataType::AssumeGood)
+                    }
+                } else {
+                    if let Some(id) = self.table.lookup_fn(fn_name, true, self.err) {
+                        id
+                    } else {
+                        return Some(DataType::AssumeGood)
+                    }
+                };
+
+                let (params, ret_ty, def, loc) = match rec {
+                    Record::Fn {
                         params,
                         ret_ty,
-                        addr: _,
                         def,
                         loc,
                         ..
-                    }) = self.table.get_record(id)
-                    {
-                        //check if in global state and if is_comp_provided is false --> not allowed if both are the case
-                        if self.in_script_global
-                            && !(*def == CompilerDynamic || *def == CompilerStatic)
-                        {
-                            self.err.type_check_error(
-                                false,
-                                "Function calls to user def functions are not allowed in the global state of the script"
-                                    .to_owned(),
-                                &loc.clone().map(|l| l.line_col),
-                            );
-                            //continue to check for other errors even after emitting this one
-                        }
-
+                    } => {
                         // look up param
                         let mut expected_param_tys = vec![];
                         for param in params {
@@ -1145,64 +1153,90 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 expected_param_tys.push(Some(ty.clone()));
                             }
                         }
-                        for (i, (expected, actual)) in expected_param_tys
-                            .iter()
-                            .zip(actual_param_tys.iter())
-                            .enumerate()
-                        {
-                            match (expected, actual) {
-                                (Some(expected), Some(actual)) => {
-                                    // if actual is a tuple, it's not structurally equal
-                                    if expected != actual {
-                                        let arg = args.get_mut(i).unwrap();
-                                        let arg_loc = arg.loc().clone().unwrap();
-                                        if expected.can_implicitly_cast()
-                                            && actual.can_implicitly_cast()
-                                        {
-                                            // try to implicitly do a cast here
-                                            if let Err((msg, fatal)) = arg.implicit_cast(expected) {
-                                                self.err.type_check_error(
-                                                    fatal,
-                                                    msg,
-                                                    &Some(arg_loc.line_col),
-                                                )
-                                            }
-                                        } else {
-                                            self.err.type_check_error(
-                                                false,
-                                                format! {"Expected type {:?} param {}, got {:?}", expected, i, actual},
-                                                &Some(arg_loc.line_col)
-                                            );
-                                        }
+                        (expected_param_tys, ret_ty.clone(), def, loc)
+                    },
+                    Record::LibFn {
+                        name,
+                        params,
+                        results,
+                        def,
+                        loc,
+                        ..
+                    } => {
+                        let ret_ty = if results.len() > 1 {
+                            panic!("We don't support functions with multiple return types: {}.{}", &self.lib_name.as_ref().unwrap(), name);
+                        } else if results.len() == 0 {
+                            DataType::Tuple { ty_info: vec![] }
+                        } else {
+                            results.first().unwrap().clone()
+                        };
+                        let mut expected_param_tys = vec![];
+                        for param in params.iter() {
+                            expected_param_tys.push(Some(param.clone()));
+                        }
+                        (expected_param_tys, ret_ty, def, loc)
+                    }
+                    other => {
+                        panic!("Got unexpected record type: {:?}", other)
+                    }
+                };
+
+                //check if in global state and if is_comp_provided is false --> not allowed if both are the case
+                if self.in_script_global
+                    && !(*def == CompilerDynamic || *def == CompilerStatic)
+                {
+                    self.err.type_check_error(
+                        false,
+                        "Function calls to user def functions are not allowed in the global state of the script"
+                            .to_owned(),
+                        &loc.clone().map(|l| l.line_col),
+                    );
+                    //continue to check for other errors even after emitting this one
+                }
+
+                for (i, (expected, actual)) in params
+                    .iter()
+                    .zip(actual_param_tys.iter())
+                    .enumerate()
+                {
+                    match (expected, actual) {
+                        (Some(expected), Some(actual)) => {
+                            // if actual is a tuple, it's not structurally equal
+                            if expected != actual {
+                                let arg = args.get_mut(i).unwrap();
+                                let arg_loc = arg.loc().clone().unwrap();
+                                if expected.can_implicitly_cast()
+                                    && actual.can_implicitly_cast()
+                                {
+                                    // try to implicitly do a cast here
+                                    if let Err((msg, fatal)) = arg.implicit_cast(expected) {
+                                        self.err.type_check_error(
+                                            fatal,
+                                            msg,
+                                            &Some(arg_loc.line_col),
+                                        )
                                     }
-                                }
-                                _ => {
+                                } else {
                                     self.err.type_check_error(
                                         false,
-                                        "Can't get type of argument".to_owned(),
-                                        &loc.clone().map(|l| l.line_col),
+                                        format! {"Expected type {:?} param {}, got {:?}", expected, i, actual},
+                                        &Some(arg_loc.line_col)
                                     );
                                 }
                             }
                         }
-
-                        return Some(ret_ty.clone());
-                    } else {
-                        self.err.type_check_error(
-                            false,
-                            format! {"Can't look up `{}` in symbol table", fn_name},
-                            &loc.clone().map(|l| l.line_col),
-                        );
+                        _ => {
+                            self.err.type_check_error(
+                                false,
+                                "Can't get type of argument".to_owned(),
+                                &loc.clone().map(|l| l.line_col),
+                            );
+                        }
                     }
-                } else {
-                    self.err.type_check_error(
-                        false,
-                        format! {"Function {} not found in symbol table", fn_name},
-                        &loc.clone().map(|l| l.line_col),
-                    );
                 }
 
-                Some(DataType::AssumeGood)
+                return Some(ret_ty.clone());
+
             }
             Expr::MapGet { map, key, loc } => {
                 //ensure that map is a map, then get the other stuff from the map info

@@ -399,6 +399,30 @@ impl SymbolTable {
         }
     }
 
+    pub fn lookup_lib_fn(&self, lib_name: &str, lib_fn_name: &str, err: &mut ErrorGen) -> Option<&Record> {
+        if let Some(rec) = self.lookup_lib(lib_name, &None, err) {
+            if let Record::Library { fns, .. } = rec {
+                if let Some(rec) = fns.get(lib_fn_name) {
+                    if let Some(rec) = self.get_record(*rec) {
+                        Some(rec)
+                    } else {
+                        err.unexpected_error(true, Some(format!("Could not find library func for: {}", lib_fn_name)), None);
+                        None
+                    }
+                } else {
+                    Self::no_match(err, rec, "LibraryFunc", &None);
+                    None
+                }
+            } else {
+                Self::no_match(err, rec, "Library", &None);
+                None
+            }
+        } else {
+            err.unexpected_error(true, Some(format!("Could not find library for: {}", lib_name)), None);
+            None
+        }
+    }
+
     pub fn lookup_with_context(&self, key: &str) -> (Option<usize>, String) {
         match self.get_curr_scope() {
             None => (None, "".to_string()),
@@ -606,7 +630,7 @@ pub enum Record {
     },
     Library {
         name: String,
-        fns: Vec<usize>
+        fns: HashMap<String, usize>
     },
     Provider {
         name: String,
@@ -639,6 +663,7 @@ pub enum Record {
 
         /// The address of this function post-injection
         addr: Option<u32>,
+        loc: Option<Location>
     },
     Fn {
         name: FnId,

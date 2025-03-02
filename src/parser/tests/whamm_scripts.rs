@@ -16,7 +16,7 @@ use lib;
 
 lib.call();
 wasm:opcode:call(arg0: i32):before {
-    lib.other_call();
+    lib.other_call(1, 2);
 }
 lib.blah();
 wasm:opcode:call(arg0: i32):before {

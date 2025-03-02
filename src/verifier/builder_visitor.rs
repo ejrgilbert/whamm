@@ -270,7 +270,6 @@ impl SymbolTableBuilder<'_, '_> {
         // functions should be globally accessible within the scope of the
         // script. Not having a scope for the Library supports this!
 
-        let mut fids = vec![];
         if let Some(lib_module) = self.user_libs.get(lib_name) {
             // add user library to the current scope (should be Script)
             // enters a new scope (named 'lib_name')
@@ -288,6 +287,20 @@ impl SymbolTableBuilder<'_, '_> {
                 self.err,
             ) {
                 return;
+            }
+
+            let lib_id = self.table.put(lib_name.clone(), Record::Library {
+                name: lib_name.clone(),
+                fns: Default::default(),
+            });
+            match self.table.get_record_mut(self.curr_script.unwrap()) {
+                Some(Record::Script { user_libs, .. }) => {
+                    user_libs.push(lib_id);
+                }
+                _ => {
+                    self.err
+                        .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+                }
             }
 
             for export in lib_module.exports.iter() {
@@ -309,12 +322,20 @@ impl SymbolTableBuilder<'_, '_> {
                             def: Definition::User,
                             params,
                             results,
-                            addr: None
+                            addr: None,
+                            loc: None
                         };
 
-                        // Add fn to scope
+                        // Add fn to library
                         let id = self.table.put(fn_name.clone(), fn_rec);
-                        fids.push(id);
+                        match self.table.get_record_mut(lib_id) {
+                            Some(Record::Library { fns, .. }) => {
+                                fns.insert(fn_name.clone(), id);
+                            }
+                            _ => {
+                                panic!("{}", UNEXPECTED_ERR_MSG);
+                            }
+                        }
                     } else {
                         panic!(
                             "UserLib: Could not find type ID for function {}",
@@ -329,11 +350,6 @@ impl SymbolTableBuilder<'_, '_> {
                 Some("The script uses a library, but it wasn't configured in the CLI".to_string()),
                 loc.clone(),
             );
-        }
-
-        // add all new fn records to the current record
-        for fid in fids {
-            self.add_fn_id_to_curr_rec(fid);
         }
 
         // TODO -- when to actually import the functions? IN THE ModuleGenerator?
@@ -368,11 +384,7 @@ impl SymbolTableBuilder<'_, '_> {
                             );
                         } else {
                             //case for no location but not comp def
-                            self.err.unexpected_error(
-                                true,
-                                Some(UNEXPECTED_ERR_MSG.to_string()),
-                                None,
-                            );
+                            panic!("{}", UNEXPECTED_ERR_MSG);
                         }
                     }
                     //case for curr not having a loc -> shouldn't happen: either user def without a loc or 2 comp def with same name
@@ -449,7 +461,7 @@ impl SymbolTableBuilder<'_, '_> {
             | Some(Record::Event { fns, .. })
             | Some(Record::Probe { fns, .. }) => {
                 fns.push(id);
-            }
+            },
             _ => {
                 self.err
                     .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
