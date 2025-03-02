@@ -387,7 +387,7 @@ impl WhammVisitor<String> for AsStrVisitor {
 
     fn visit_stmt(&mut self, stmt: &Statement) -> String {
         match stmt {
-            Statement::LibImport {lib_name, ..} => todo!(),
+            Statement::LibImport { lib_name, .. } => todo!(),
             Statement::Decl { ty, var_id, .. } => {
                 format!("{} {}", self.visit_datatype(ty), self.visit_expr(var_id))
             }
@@ -455,7 +455,7 @@ impl WhammVisitor<String> for AsStrVisitor {
                 );
                 s
             }
-            Expr::LibCall {lib_name, call, ..} => todo!(),
+            Expr::LibCall { lib_name, call, .. } => todo!(),
             Expr::Call {
                 fn_target, args, ..
             } => {

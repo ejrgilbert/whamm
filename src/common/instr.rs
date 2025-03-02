@@ -107,6 +107,7 @@ pub fn run_with_path(
     core_wasm_path: &str,
     app_wasm_path: String,
     script_path: String,
+    user_libs: Vec<(String, Vec<u8>)>,
     output_wasm_path: String,
     max_errors: i32,
     config: Config,
@@ -139,6 +140,7 @@ pub fn run_with_path(
         &mut target_wasm,
         &whamm_script,
         &script_path,
+        user_libs,
         max_errors,
         config,
     );
@@ -157,6 +159,7 @@ pub fn run(
     target_wasm: &mut Module,
     whamm_script: &String,
     script_path: &str,
+    user_libs: Vec<(String, Vec<u8>)>,
     max_errors: i32,
     config: Config,
 ) -> Vec<u8> {

@@ -1130,7 +1130,7 @@ pub enum Statement {
 impl Statement {
     pub fn loc(&self) -> &Option<Location> {
         match self {
-            Statement::LibImport {loc, ..}
+            Statement::LibImport { loc, .. }
             | Statement::Decl { loc, .. }
             | Statement::If { loc, .. }
             | Statement::Return { loc, .. }

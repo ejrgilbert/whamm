@@ -79,7 +79,7 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     ctx: &mut EmitCtx,
 ) -> bool {
     match stmt {
-        Statement::LibImport {..} => todo!(),
+        Statement::LibImport { .. } => todo!(),
         Statement::Decl { .. } => emit_decl_stmt(stmt, injector, ctx),
         Statement::Assign { .. } => emit_assign_stmt(stmt, strategy, injector, ctx),
         Statement::Expr { expr, .. } | Statement::Return { expr, .. } => {
@@ -688,7 +688,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 ctx,
             )
         }
-        Expr::LibCall {lib_name, call, .. } => todo!(),
+        Expr::LibCall { lib_name, call, .. } => todo!(),
         Expr::Call {
             fn_target, args, ..
         } => {

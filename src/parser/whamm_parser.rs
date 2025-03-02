@@ -1,5 +1,6 @@
 use crate::common::error::{ErrorGen, WhammError};
 use crate::parser::types;
+use crate::parser::types::Statement::LibImport;
 use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, FnId, Location, NumFmt, NumLit, ProbeRule, Rule,
     RulePart, Script, Statement, UnOp, Value, Whamm, WhammParser, PRATT_PARSER,
@@ -9,7 +10,6 @@ use pest::error::{Error, LineColLocation};
 use pest::iterators::{Pair, Pairs};
 use pest::Parser;
 use std::str::FromStr;
-use crate::parser::types::Statement::LibImport;
 
 const UNEXPECTED_ERR_MSG: &str =
     "WhammParser: Looks like you've found a bug...please report this behavior! Exiting now...";
@@ -172,11 +172,7 @@ pub fn handle_script(whamm: &mut Whamm, pair: Pair<Rule>, err: &mut ErrorGen) {
     });
 }
 
-pub fn handle_lib_import(
-    whamm: &mut Whamm,
-    script_count: usize,
-    pair: Pair<Rule>
-) {
+pub fn handle_lib_import(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>) {
     // Add lib import to the script
     let script: &mut Script = whamm.scripts.get_mut(script_count).unwrap();
 
