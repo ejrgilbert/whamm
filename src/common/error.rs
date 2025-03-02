@@ -170,6 +170,16 @@ impl ErrorGen {
             }
         }
     }
+    pub fn parse_error_at_loc(
+        &mut self,
+        fatal: bool,
+        message: Option<String>,
+        line_col: Option<Location>,
+    ) {
+        let err_loc = line_col.as_ref().map(|err_loc| err_loc.line_col.clone());
+        let err = Self::get_parse_error(fatal, message, err_loc, vec![], vec![]);
+        self.add_error(err);
+    }
 
     pub fn parse_error(
         &mut self,

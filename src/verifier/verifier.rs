@@ -8,6 +8,8 @@ use crate::parser::types::{
 };
 use crate::verifier::builder_visitor::SymbolTableBuilder;
 use crate::verifier::types::{line_col_from_loc, Record, SymbolTable};
+use orca_wasm::Module;
+use std::collections::HashMap;
 use std::vec;
 
 const UNEXPECTED_ERR_MSG: &str =
@@ -22,9 +24,14 @@ pub fn type_check(ast: &mut Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> 
     (!err.has_errors, has_reports)
 }
 
-pub fn build_symbol_table(ast: &mut Whamm, err: &mut ErrorGen) -> SymbolTable {
+pub fn build_symbol_table(
+    ast: &mut Whamm,
+    user_libs: HashMap<String, Module>,
+    err: &mut ErrorGen,
+) -> SymbolTable {
     let mut visitor = SymbolTableBuilder {
         table: SymbolTable::new(),
+        user_libs,
         err,
         curr_whamm: None,
         curr_script: None,

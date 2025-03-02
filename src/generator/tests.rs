@@ -2,6 +2,7 @@
 // = Setup Logging =
 // =================
 
+use std::collections::HashMap;
 use crate::common::error::ErrorGen;
 use crate::generator::folding::ExprFolder;
 use crate::parser::tests;
@@ -144,7 +145,7 @@ fn assert_simplified_predicate(pred: &Expr) {
 
 fn basic_run(script: &str, err: &mut ErrorGen) {
     let mut whamm = tests::get_ast(script, err);
-    let mut table = verifier::build_symbol_table(&mut whamm, err);
+    let mut table = verifier::build_symbol_table(&mut whamm, HashMap::default(), err);
     table.reset();
 
     let pred = get_pred(&whamm);
@@ -285,7 +286,7 @@ wasm::call:alt /
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
 
     let mut whamm = tests::get_ast(script, &mut err);
-    let mut table = verifier::build_symbol_table(&mut whamm, &mut err);
+    let mut table = verifier::build_symbol_table(&mut whamm, HashMap::default(), &mut err);
     table.reset();
 
     let pred = get_pred(&whamm);

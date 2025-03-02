@@ -166,9 +166,15 @@ pub fn run(
     // Set up error reporting mechanism
     let mut err = ErrorGen::new(script_path.to_string(), "".to_string(), max_errors);
 
+    // Parse user libraries to Wasm modules
+    let mut user_lib_modules: HashMap<String, Module> = HashMap::default();
+    for (lib_name, lib_buff) in user_libs.iter() {
+        user_lib_modules.insert(lib_name.clone(), Module::parse(lib_buff, false).unwrap());
+    }
+
     // Process the script
     let mut whamm = get_script_ast(whamm_script, &mut err);
-    let (mut symbol_table, has_reports) = get_symbol_table(&mut whamm, &mut err);
+    let (mut symbol_table, has_reports) = get_symbol_table(&mut whamm, user_lib_modules, &mut err);
     err.check_too_many();
 
     // If there were any errors encountered, report and exit!
@@ -388,8 +394,12 @@ fn get_memory_allocator(target_wasm: &mut Module, create_new_mem: bool) -> Memor
     }
 }
 
-fn get_symbol_table(ast: &mut Whamm, err: &mut ErrorGen) -> (SymbolTable, bool) {
-    let mut st = build_symbol_table(ast, err);
+fn get_symbol_table(
+    ast: &mut Whamm,
+    user_libs: HashMap<String, Module>,
+    err: &mut ErrorGen,
+) -> (SymbolTable, bool) {
+    let mut st = build_symbol_table(ast, user_libs, err);
     err.check_too_many();
     let has_reports = verify_ast(ast, &mut st, err);
     (st, has_reports)

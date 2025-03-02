@@ -557,8 +557,8 @@ pub enum ScopeType {
     Fn,
     Null,
 }
-impl fmt::Display for ScopeType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl Display for ScopeType {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
             ScopeType::Whamm { .. } => {
                 write!(f, "Whamm")
@@ -599,9 +599,14 @@ pub enum Record {
     },
     Script {
         id: u8,
+        user_libs: Vec<usize>,
         fns: Vec<usize>,
         globals: Vec<usize>,
         providers: Vec<usize>,
+    },
+    Library {
+        name: String,
+        fns: Vec<usize>
     },
     Provider {
         name: String,
@@ -625,6 +630,15 @@ pub enum Record {
         mode: String,
         fns: Vec<usize>,
         globals: Vec<usize>,
+    },
+    LibFn {
+        name: String,
+        params: Vec<DataType>,
+        results: Vec<DataType>,
+        def: Definition,
+
+        /// The address of this function post-injection
+        addr: Option<u32>,
     },
     Fn {
         name: FnId,
@@ -652,12 +666,7 @@ pub enum Record {
         /// The address of this var post-injection
         addr: Option<VarAddr>,
         loc: Option<Location>,
-    },
-    Library {
-        name: String,
-        is_comp_provided: bool,
-        fns: HashMap<String, u32>, // func_name -> FID
-    },
+    }
 }
 impl Record {
     pub fn loc(&self) -> &Option<Location> {

@@ -59,7 +59,7 @@ fn try_main() -> Result<(), failure::Error> {
             let app_path = if let Some(app_path) = args.app {
                 app_path
             } else if !args.wizard {
-                    panic!("When performing bytecode rewriting (not the wizard target), a path to the target application is required!\nSee `whamm instr --help`")
+                panic!("When performing bytecode rewriting (not the wizard target), a path to the target application is required!\nSee `whamm instr --help`")
             } else {
                 "".to_string()
             };
