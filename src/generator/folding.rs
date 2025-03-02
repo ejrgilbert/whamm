@@ -26,6 +26,7 @@ impl ExprFolder {
             Expr::UnOp { .. } => self.fold_unop(expr, table, err),
             Expr::BinOp { .. } => self.fold_binop(expr, table, err),
             Expr::Ternary { .. } => self.fold_ternary(expr, table, err),
+            Expr::LibCall {..} => todo!(),
             Expr::Call { .. } => self.fold_call(expr, table),
             Expr::VarId { .. } => self.fold_var_id(expr, table, err),
             Expr::Primitive { .. } => self.fold_primitive(expr, table, err),
@@ -298,6 +299,7 @@ impl ExprFolder {
                             },
                         }
                     }
+                    Expr::LibCall {lib_name, call, ..} => todo!(),
                     Expr::UnOp { .. }
                     | Expr::Ternary { .. }
                     | Expr::BinOp { .. }

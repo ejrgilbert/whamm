@@ -375,6 +375,7 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
 
     fn visit_stmt(&mut self, stmt: &mut Statement) -> bool {
         match stmt {
+            Statement::LibImport {..} => todo!(),
             Statement::Decl { .. } => {
                 // ignore, this stmt type will not have a string in it!
                 true
@@ -424,6 +425,7 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
 
                 is_success
             }
+            Expr::LibCall {lib_name, call, ..} => todo!(),
             Expr::Call { args, .. } => {
                 let mut is_success = true;
                 args.iter_mut().for_each(|arg| {

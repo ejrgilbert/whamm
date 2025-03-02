@@ -10,6 +10,19 @@ use glob::{glob, glob_with};
 use log::{debug, error, info, warn};
 
 const VALID_SCRIPTS: &[&str] = &[
+    // with libraries
+    r#"
+use lib;
+
+lib.call();
+wasm:opcode:call(arg0: i32):before {
+    lib.other_call();
+}
+lib.blah();
+wasm:opcode:call(arg0: i32):before {
+    lib.other_call();
+}
+    "#,
     // type bounding
     r#"
 wasm:opcode:call(arg0: i32):before {}

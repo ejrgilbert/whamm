@@ -1084,6 +1084,10 @@ impl Block {
 // Statements
 #[derive(Clone, Debug)]
 pub enum Statement {
+    LibImport {
+        lib_name: String,
+        loc: Option<Location>,
+    },
     Decl {
         ty: DataType,
         var_id: Expr, // should be VarId
@@ -1126,7 +1130,8 @@ pub enum Statement {
 impl Statement {
     pub fn loc(&self) -> &Option<Location> {
         match self {
-            Statement::Decl { loc, .. }
+            Statement::LibImport {loc, ..}
+            | Statement::Decl { loc, .. }
             | Statement::If { loc, .. }
             | Statement::Return { loc, .. }
             | Statement::Assign { loc, .. }
@@ -1184,6 +1189,11 @@ pub enum Expr {
         // Type is fn_target.return_ty, should be VarId
         fn_target: Box<Expr>,
         args: Vec<Expr>,
+        loc: Option<Location>,
+    },
+    LibCall {
+        lib_name: String,
+        call: Box<Expr>, // should be Expr::Call
         loc: Option<Location>,
     },
     VarId {
@@ -1248,6 +1258,7 @@ impl Expr {
             Expr::UnOp { loc, .. }
             | Expr::Ternary { loc, .. }
             | Expr::BinOp { loc, .. }
+            | Expr::LibCall { loc, .. }
             | Expr::Call { loc, .. }
             | Expr::VarId { loc, .. }
             | Expr::MapGet { loc, .. }

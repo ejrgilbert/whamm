@@ -407,6 +407,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
             }
         }
         match stmt {
+            Statement::LibImport {..} => todo!(),
             Statement::Assign { var_id, expr, .. } => {
                 // change type in symbol table?
                 let lhs_loc = var_id.loc().clone().unwrap();
@@ -1069,6 +1070,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     Some(DataType::AssumeGood)
                 }
             }
+            Expr::LibCall {lib_name, call, .. } => todo!(),
             //disallow calls when the in the global state of the script
             Expr::Call {
                 fn_target,

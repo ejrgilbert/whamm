@@ -299,6 +299,7 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
 
     fn visit_stmt(&mut self, stmt: &Statement) {
         match stmt {
+            Statement::LibImport {..} => todo!(),
             Statement::Decl { .. } => {
                 // ignore
             }
@@ -406,6 +407,7 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                 }
                 self.check_strcmp = false;
             }
+            Expr::LibCall {lib_name, call, ..} => todo!(),
             Expr::Call {
                 args, fn_target, ..
             } => {

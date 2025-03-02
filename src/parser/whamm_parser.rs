@@ -9,6 +9,7 @@ use pest::error::{Error, LineColLocation};
 use pest::iterators::{Pair, Pairs};
 use pest::Parser;
 use std::str::FromStr;
+use crate::parser::types::Statement::LibImport;
 
 const UNEXPECTED_ERR_MSG: &str =
     "WhammParser: Looks like you've found a bug...please report this behavior! Exiting now...";
@@ -119,6 +120,7 @@ pub fn parser_entry_point(
             handle_script(whamm, pair, err);
             trace!("End process script");
         }
+        Rule::lib_import => handle_lib_import(whamm, script_count, pair),
         Rule::if_stmt => {
             trace!("Begin process statement");
             handle_global_if_stmt(whamm, script_count, pair, err);
@@ -168,6 +170,26 @@ pub fn handle_script(whamm: &mut Whamm, pair: Pair<Rule>, err: &mut ErrorGen) {
     pair.into_inner().for_each(|p| {
         parser_entry_point(whamm, new_script_count, p, err);
     });
+}
+
+pub fn handle_lib_import(
+    whamm: &mut Whamm,
+    script_count: usize,
+    pair: Pair<Rule>
+) {
+    // Add lib import to the script
+    let script: &mut Script = whamm.scripts.get_mut(script_count).unwrap();
+
+    let lib_name: Pair<Rule> = pair.into_inner().next().unwrap();
+    let lib_import = LibImport {
+        lib_name: lib_name.as_str().parse().unwrap(),
+        loc: Some(Location {
+            line_col: LineColLocation::from(lib_name.as_span()),
+            path: None,
+        }),
+    };
+
+    script.add_global_stmts(vec![lib_import]);
 }
 
 pub fn handle_global_if_stmt(
@@ -390,6 +412,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
         }
         Rule::decl => handle_decl(&mut pair.into_inner(), err),
         Rule::assignment => handle_assignment(pair, err),
+        Rule::lib_call => handle_lib_call_outer(pair, err),
         Rule::fn_call => handle_function_call_outer(pair, err),
         Rule::incrementor => handle_incrementor(pair, err),
         Rule::decrementor => handle_decrementor(pair, err),
@@ -406,6 +429,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                     Rule::statement,
                     Rule::decl,
                     Rule::assignment,
+                    Rule::lib_call,
                     Rule::fn_call,
                     Rule::incrementor,
                     Rule::decrementor,
@@ -473,6 +497,21 @@ fn handle_assignment(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     }
 }
 
+fn handle_lib_call_outer(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
+    match handle_lib_call(pair) {
+        Ok(call) => {
+            let call_loc = call.loc().clone();
+            vec![Statement::Expr {
+                expr: call,
+                loc: call_loc,
+            }]
+        }
+        Err(errors) => {
+            err.add_errors(errors);
+            vec![]
+        }
+    }
+}
 fn handle_function_call_outer(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     match handle_fn_call(pair) {
         Ok(call) => {
@@ -901,6 +940,27 @@ fn handle_param(mut pairs: Pairs<Rule>, err: &mut ErrorGen) -> Option<(Expr, Dat
     }
 }
 
+fn handle_lib_call(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
+    let loc = LineColLocation::from(pair.as_span());
+    let mut pairs = pair.into_inner();
+
+    let lib_name_rule = pairs.next().unwrap();
+    let lib_name = lib_name_rule.as_str().parse().unwrap();
+
+    // handle lib func call
+    let lib_func_call = handle_fn_call(pairs.next().unwrap());
+    assert!(lib_func_call.is_ok());
+
+    Ok(Expr::LibCall {
+        lib_name,
+        call: Box::new(lib_func_call.unwrap()),
+        loc: Some(Location {
+            line_col: loc,
+            path: None,
+        }),
+    })
+}
+
 fn handle_fn_call(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     // This has to be duplicated due to the Expression/Statement masking as the function return type
     let mut pairs = pair.into_inner();
@@ -1189,6 +1249,7 @@ fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
 
 fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     match pair.as_rule() {
+        Rule::lib_call => handle_lib_call(pair),
         Rule::fn_call => handle_fn_call(pair),
         Rule::ID => Ok(handle_id(pair)),
         Rule::tuple => handle_tuple(pair),
