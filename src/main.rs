@@ -68,16 +68,11 @@ fn try_main() -> Result<(), failure::Error> {
             } else {
                 CORE_WASM_PATH.to_string()
             };
-            let user_libs = if let Some(user_lib_paths) = args.user_libs {
-                parse_user_lib_paths(user_lib_paths)
-            } else {
-                vec![]
-            };
             common::instr::run_with_path(
                 &core_lib_path,
                 app_path,
                 args.script,
-                user_libs,
+                args.user_libs,
                 args.output_path,
                 MAX_ERRORS,
                 Config::new(
@@ -105,20 +100,4 @@ fn run_wast(wast_path: String) {
     wast::test_harness::setup_and_run_tests(&vec![PathBuf::from(wast_path)])
         .expect("WAST Test failed!");
     println!("The wast test passed!");
-}
-
-fn parse_user_lib_paths(paths: Vec<String>) -> Vec<(String, Vec<u8>)> {
-    let mut res = vec![];
-    for path in paths.iter() {
-        let parts = path.split('=').collect::<Vec<&str>>();
-        assert_eq!(2, parts.len(), "A user lib should be specified using the following format: <lib_name>=/path/to/lib.wasm");
-
-        let lib_name = parts.first().unwrap().to_string();
-        let lib_path = parts.get(1).unwrap();
-        let buff = std::fs::read(lib_path).unwrap();
-
-        res.push((lib_name, buff));
-    }
-
-    res
 }

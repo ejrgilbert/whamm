@@ -107,11 +107,17 @@ pub fn run_with_path(
     core_wasm_path: &str,
     app_wasm_path: String,
     script_path: String,
-    user_libs: Vec<(String, Vec<u8>)>,
+    user_lib_paths: Option<Vec<String>>,
     output_wasm_path: String,
     max_errors: i32,
     config: Config,
 ) {
+    let user_libs = if let Some(user_lib_paths) = user_lib_paths {
+        parse_user_lib_paths(user_lib_paths)
+    } else {
+        vec![]
+    };
+
     let buff = if !config.wizard {
         std::fs::read(app_wasm_path).unwrap()
     } else {
@@ -152,6 +158,22 @@ pub fn run_with_path(
             &output_wasm_path, e
         )
     }
+}
+
+pub fn parse_user_lib_paths(paths: Vec<String>) -> Vec<(String, Vec<u8>)> {
+    let mut res = vec![];
+    for path in paths.iter() {
+        let parts = path.split('=').collect::<Vec<&str>>();
+        assert_eq!(2, parts.len(), "A user lib should be specified using the following format: <lib_name>=/path/to/lib.wasm");
+
+        let lib_name = parts.first().unwrap().to_string();
+        let lib_path = parts.get(1).unwrap();
+        let buff = std::fs::read(lib_path).unwrap();
+
+        res.push((lib_name, buff));
+    }
+
+    res
 }
 
 pub fn run(

@@ -7,7 +7,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 use whamm::common::error::ErrorGen;
-use whamm::common::instr::{Config, LibraryLinkStrategy};
+use whamm::common::instr::{parse_user_lib_paths, Config, LibraryLinkStrategy};
 use whamm::wast::test_harness::wasm2wat_on_file;
 
 const APP_WASM_PATH: &str = "tests/apps/core_suite/handwritten/basic.wasm";
@@ -201,6 +201,17 @@ fn instrument_with_paper_eval_hotness_scripts() {
 }
 
 #[test]
+fn instrument_with_paper_eval_cache_sim_scripts() {
+    common::setup_logger();
+    let processed_scripts = common::setup_tests("paper_eval/cache_sim");
+    assert!(!processed_scripts.is_empty());
+
+    // TODO on wizard:
+    //   -- support 'effective_addr'
+    run_core_suite("paper_eval-cache_sim", processed_scripts, true, false)
+}
+
+#[test]
 fn instrument_with_branch_monitor_scripts() {
     common::setup_logger();
     let processed_scripts = common::setup_tests("core_suite/branch-monitor");
@@ -242,6 +253,7 @@ struct TestCase {
     script: PathBuf,
     script_str: String,
     app: PathBuf,
+    libs: PathBuf,
     exp: PathBuf,
 }
 
@@ -252,6 +264,7 @@ fn run_core_suite(
     with_wizard: bool,
 ) {
     build_whamm_core_lib();
+    build_user_libs();
     wat2wasm_on_dir("tests/apps/core_suite/rust");
     wat2wasm_on_dir("tests/apps/core_suite/handwritten");
 
@@ -262,6 +275,7 @@ fn run_core_suite(
         let path = script_path.parent().unwrap();
 
         let app = path.join("app").join(format!("{}.app", fname));
+        let libs = path.join("libs").join(format!("{}.libs", fname));
         let rewriting_exp = path
             .join("expected")
             .join("rewriting")
@@ -275,12 +289,14 @@ fn run_core_suite(
             script: script_path.clone(),
             script_str: script_str.clone(),
             app: app.clone(),
+            libs: libs.clone(),
             exp: rewriting_exp,
         });
         wizard_tests.push(TestCase {
             script: script_path.clone(),
             script_str: script_str.clone(),
             app,
+            libs,
             exp: wizard_exp,
         });
     }
@@ -296,6 +312,7 @@ fn run_core_suite(
             script,
             script_str,
             app,
+            libs,
             exp,
         } in rewriting_tests.iter()
         {
@@ -305,13 +322,22 @@ fn run_core_suite(
             );
             let app_path_str = fs::read_to_string(app)
                 .unwrap_or_else(|_| panic!("Unable to read file at {:?}", app));
+            let libs_path_str = if let Ok(res) = fs::read_to_string(libs) {
+                let mut libs = vec![];
+                for lib in res.split('\n') {
+                    libs.push(lib.to_string());
+                }
+                Some(libs)
+            } else {
+                None
+            };
             let exp_output = fs::read_to_string(exp)
                 .unwrap_or_else(|_| panic!("Unable to read file at {:?}", exp));
             run_testcase_rewriting(
                 script,
                 script_str,
                 &app_path_str,
-                vec![],
+                libs_path_str,
                 &exp_output,
                 &instr_app_path,
                 &mut err,
@@ -324,6 +350,7 @@ fn run_core_suite(
             script,
             script_str,
             app,
+            libs,
             exp,
         } in wizard_tests.iter()
         {
@@ -333,13 +360,22 @@ fn run_core_suite(
             );
             let app_path_str = fs::read_to_string(app)
                 .unwrap_or_else(|_| panic!("Unable to read file at {:?}", app));
+            let libs_path_str = if let Ok(res) = fs::read_to_string(libs) {
+                let mut libs = vec![];
+                for lib in res.split('\n') {
+                    libs.push(lib.to_string());
+                }
+                Some(libs)
+            } else {
+                None
+            };
             let exp_output = fs::read_to_string(exp)
                 .unwrap_or_else(|_| panic!("Unable to read file at {:?}", exp));
             run_testcase_wizard(
                 script,
                 script_str,
                 &app_path_str,
-                vec![],
+                libs_path_str,
                 &exp_output,
                 &instr_app_path,
                 &mut err,
@@ -348,37 +384,13 @@ fn run_core_suite(
     }
 }
 
-fn build_whamm_core_lib() {
-    // Build the whamm_core library
-
-    // let home = match env::var("HOME") {
-    //     Ok(val) => val,
-    //     Err(_) => panic!("Could not find HOME environment variable"),
-    // };
-
-    // let res = Command::new(format!("{home}/.cargo/bin/rustup"))
-    //     .arg("target")
-    //     .arg("add")
-    //     .arg("wasm32-wasip1")
-    //     .current_dir("whamm_core")
-    //     .output()
-    //     .expect("failed to execute process");
-    // if !res.status.success() {
-    //     println!(
-    //         "[ERROR] 'rustup target add wasm32-wasip1' failed:\n{}\n{}",
-    //         String::from_utf8(res.stdout).unwrap(),
-    //         String::from_utf8(res.stderr).unwrap()
-    //     );
-    // }
-    // assert!(res.status.success());
-
-    // let res = Command::new(format!("{home}/.cargo/bin/cargo"))
+fn build_lib(lib_path: &str) {
     let res = Command::new("cargo")
         .arg("build")
         .arg("--target")
         .arg("wasm32-wasip1")
         .arg("--release")
-        .current_dir("whamm_core")
+        .current_dir(lib_path)
         .output()
         .expect("failed to execute process");
     if !res.status.success() {
@@ -389,6 +401,19 @@ fn build_whamm_core_lib() {
         );
     }
     assert!(res.status.success());
+}
+
+fn build_whamm_core_lib() {
+    // Build the whamm_core library
+    build_lib("whamm_core");
+}
+
+fn build_user_libs() {
+    let lib_projects = fs::read_dir("./user_libs").unwrap();
+
+    for path in lib_projects {
+        build_lib(path.unwrap().path().display().to_string().as_str());
+    }
 }
 
 /// create output path if it doesn't exist
@@ -438,11 +463,22 @@ fn run_testcase_rewriting(
     script: &PathBuf,
     script_str: &String,
     app_path_str: &str,
-    user_libs: Vec<(String, Vec<u8>)>,
+    user_libs: Option<Vec<String>>,
     exp_output: &String,
     instr_app_path: &String,
     err: &mut ErrorGen,
 ) {
+    let runner_arg = if let Some(libs) = &user_libs {
+        libs.join(" ")
+    } else {
+        "".to_string()
+    };
+    let user_libs = if let Some(user_lib_paths) = user_libs {
+        parse_user_lib_paths(user_lib_paths)
+    } else {
+        vec![]
+    };
+
     // run the script on configured application
     let wasm = fs::read(app_path_str).unwrap();
     let mut module_to_instrument = Module::parse(&wasm, false).unwrap();
@@ -468,6 +504,8 @@ fn run_testcase_rewriting(
         .env("WASM_MODULE", format!("../{instr_app_path}"))
         .current_dir("wasmtime-runner")
         .arg("run")
+        .arg("--")
+        .arg(runner_arg)
         .output()
         .expect("failed to run wasmtime-runner");
     if !res.status.success() {
@@ -488,11 +526,16 @@ fn run_testcase_wizard(
     script: &PathBuf,
     script_str: &String,
     app_path_str: &str,
-    user_libs: Vec<(String, Vec<u8>)>,
+    user_libs: Option<Vec<String>>,
     exp_output: &String,
     instr_app_path: &String,
     err: &mut ErrorGen,
 ) {
+    let user_libs = if let Some(user_lib_paths) = user_libs {
+        parse_user_lib_paths(user_lib_paths)
+    } else {
+        vec![]
+    };
     // run the script on configured application
     let mut module_to_instrument = Module::default();
     run_script(
