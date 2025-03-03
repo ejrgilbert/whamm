@@ -72,6 +72,7 @@ pub trait GeneratingVisitor: WhammVisitorMut<bool> {
         ty: DataType,
         value: &Option<Value>,
     ) -> Option<FunctionID>;
+    fn link_user_lib(&mut self, lib_name: &str);
     fn add_injected_func(&mut self, fid: FunctionID);
     fn get_context_name_mut(&mut self) -> &mut String;
     fn get_context_name(&self) -> &String;
@@ -208,6 +209,8 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
         });
         // inject globals
         is_success &= self.visit_globals(&script.globals);
+        // visit global statements
+        is_success &= self.visit_stmts(&mut script.global_stmts);
         // visit providers
         script.providers.iter_mut().for_each(|(_name, provider)| {
             is_success &= self.visit_provider(provider);
@@ -375,7 +378,10 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
 
     fn visit_stmt(&mut self, stmt: &mut Statement) -> bool {
         match stmt {
-            Statement::LibImport { .. } => todo!(),
+            Statement::LibImport { lib_name, .. } => {
+                self.link_user_lib(lib_name);
+                true
+            }
             Statement::Decl { .. } => {
                 // ignore, this stmt type will not have a string in it!
                 true
@@ -425,7 +431,7 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
 
                 is_success
             }
-            Expr::LibCall { lib_name, call, .. } => todo!(),
+            Expr::LibCall { call, .. } => self.visit_expr(call),
             Expr::Call { args, .. } => {
                 let mut is_success = true;
                 args.iter_mut().for_each(|arg| {

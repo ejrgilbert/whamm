@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 use crate::parser::tests;
 use crate::verifier::verifier;
+use std::collections::HashMap;
 
 use crate::common::error::ErrorGen;
 use log::{debug, error, info};
@@ -452,7 +452,7 @@ pub fn test_build_table() {
 
     for script in VALID_SCRIPTS {
         let mut ast = tests::get_ast(script, &mut err);
-        let table = verifier::build_symbol_table(&mut ast, HashMap::default(), &mut err);
+        let table = verifier::build_symbol_table(&mut ast, &HashMap::default(), &mut err);
         debug!("{:#?}", table);
     }
 }
@@ -473,7 +473,7 @@ wasm::call:alt /
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
 
     let mut ast = tests::get_ast(script, &mut err);
-    let table = verifier::build_symbol_table(&mut ast, HashMap::default(), &mut err);
+    let table = verifier::build_symbol_table(&mut ast, &HashMap::default(), &mut err);
     debug!("{:#?}", table);
 
     // 7 scopes: whamm, strcmp, drop_args, script0, wasm, alt_call_by_name, alt_call_by_id, opcode, call, alt
@@ -489,7 +489,7 @@ wasm::call:alt /
 
 fn is_valid_script(script: &str, err: &mut ErrorGen) -> bool {
     let mut ast = tests::get_ast(script, err);
-    let mut table = verifier::build_symbol_table(&mut ast, HashMap::default(), err);
+    let mut table = verifier::build_symbol_table(&mut ast, &HashMap::default(), err);
     verifier::type_check(&mut ast, &mut table, err).0
 }
 
@@ -524,7 +524,7 @@ pub fn test_template() {
         }
     "#;
     let mut ast = tests::get_ast(script, &mut err);
-    let mut table = verifier::build_symbol_table(&mut ast, HashMap::default(), &mut err);
+    let mut table = verifier::build_symbol_table(&mut ast, &HashMap::default(), &mut err);
     verifier::type_check(&mut ast, &mut table, &mut err);
     err.report();
     assert!(!err.has_errors);
@@ -561,7 +561,7 @@ pub fn expect_fatal_error() {
         }
     "#;
     let mut ast = tests::get_ast(script, &mut err);
-    let mut table = verifier::build_symbol_table(&mut ast, HashMap::default(), &mut err);
+    let mut table = verifier::build_symbol_table(&mut ast, &HashMap::default(), &mut err);
     verifier::type_check(&mut ast, &mut table, &mut err);
     err.report();
     assert!(err.has_errors);
@@ -583,7 +583,7 @@ pub fn test_recursive_calls() {
         }
     "#;
     let mut ast = tests::get_ast(script, &mut err);
-    let mut table = verifier::build_symbol_table(&mut ast, HashMap::default(), &mut err);
+    let mut table = verifier::build_symbol_table(&mut ast, &HashMap::default(), &mut err);
     verifier::type_check(&mut ast, &mut table, &mut err);
     err.report();
     assert!(!err.has_errors);
@@ -602,7 +602,7 @@ pub fn testing_map() {
     "#;
 
     let mut ast = tests::get_ast(script, &mut err);
-    let mut table = verifier::build_symbol_table(&mut ast, HashMap::default(), &mut err);
+    let mut table = verifier::build_symbol_table(&mut ast, &HashMap::default(), &mut err);
     verifier::type_check(&mut ast, &mut table, &mut err);
     err.report();
     assert!(!err.has_errors);
@@ -618,7 +618,7 @@ pub fn test_report_decl() {
             report var b: bool;
         }"#;
     let mut ast = tests::get_ast(script, &mut err);
-    let mut table = verifier::build_symbol_table(&mut ast, HashMap::default(), &mut err);
+    let mut table = verifier::build_symbol_table(&mut ast, &HashMap::default(), &mut err);
     verifier::type_check(&mut ast, &mut table, &mut err);
     err.report();
     assert!(!err.has_errors);

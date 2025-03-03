@@ -30,13 +30,9 @@ fn emit_dynamic_compiler_data(
     emitter.emit_dynamic_compiler_data(data, err);
 }
 
-fn add_to_table(
-    data: &HashMap<String, Option<Value>>,
-    emitter: &mut VisitingEmitter,
-    err: &mut ErrorGen,
-) {
+fn add_to_table(data: &HashMap<String, Option<Value>>, emitter: &mut VisitingEmitter) {
     data.iter().for_each(|(dyn_var_name, dyn_var_val)| {
-        emitter.define(dyn_var_name, dyn_var_val, err);
+        emitter.define(dyn_var_name, dyn_var_val);
     });
 }
 
@@ -130,7 +126,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
                             .enter_scope_via_rule(&probe.script_id.to_string(), probe_rule));
 
                         // Initialize the symbol table with the metadata at this program point
-                        add_to_table(&loc_info.static_data, &mut self.emitter, self.err);
+                        add_to_table(&loc_info.static_data, &mut self.emitter);
 
                         // Create a new clone of the probe, fold the predicate.
                         // NOTE: We make a clone so that the probe is reset for each instruction!

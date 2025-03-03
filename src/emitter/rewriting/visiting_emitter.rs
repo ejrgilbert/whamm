@@ -15,7 +15,6 @@ use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::report_vars::ReportVars;
 use crate::parser;
-use crate::parser::rules::UNKNOWN_IMMS;
 use crate::parser::types::{Block, DataType, Definition, Expr, NumLit, RulePart, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use itertools::Itertools;
@@ -279,74 +278,25 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         Ok(true)
     }
 
-    fn override_var_val(&mut self, rec_id: &usize, val: Option<Value>) {
-        let mut rec = self.table.get_record_mut(*rec_id);
-        if let Some(Record::Var { value, .. }) = &mut rec {
-            *value = val;
-        }
-    }
-
-    pub(crate) fn define(
-        &mut self,
-        var_name: &str,
-        var_val: &Option<Value>,
-        err: &mut ErrorGen,
-    ) -> bool {
-        let rec_id = match self.table.lookup(var_name) {
-            Some(rec_id) => rec_id,
-            _ => {
-                // check if this is an unknown immN!
-                if var_name.starts_with("imm") {
-                    let Some(Record::Var { ty, .. }) =
-                        self.table.lookup_var(UNKNOWN_IMMS, &None, err, true)
-                    else {
-                        err.unexpected_error(true, Some("unexpected type".to_string()), None);
-                        return false;
-                    };
-                    self.table.put(
-                        var_name.to_string(),
-                        Record::Var {
-                            ty: ty.clone(),
-                            name: var_name.to_string(),
-                            value: var_val.clone(),
-                            def: Definition::User,
-                            is_report_var: false,
-                            addr: None,
-                            loc: None,
-                        },
-                    );
-                    return true;
-                }
-                err.unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} \
-                        `{var_name}` symbol does not exist in this scope!"
-                    )),
-                    None,
-                );
-                return false;
-            }
-        };
-        self.override_var_val(&rec_id, var_val.clone());
-
+    pub(crate) fn define(&mut self, var_name: &str, var_val: &Option<Value>) -> bool {
+        self.table.override_record_val(var_name, var_val.clone());
         true
     }
 
     pub(crate) fn reset_table_data(&mut self, loc_info: &LocInfo) {
         // reset static_data
         loc_info.static_data.iter().for_each(|(symbol_name, ..)| {
-            self.table.remove_record(symbol_name);
+            self.table.override_record_val(symbol_name, None);
         });
 
         // reset dynamic_data
         loc_info.dynamic_data.iter().for_each(|(symbol_name, ..)| {
-            self.table.remove_record(symbol_name);
+            self.table.override_record_val(symbol_name, None);
         });
 
         for i in 0..loc_info.args.len() {
             let arg_name = format!("arg{}", i);
-            self.table.remove_record(&arg_name);
+            self.table.override_record_val(&arg_name, None);
         }
         self.instr_created_args.clear();
     }
@@ -623,7 +573,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
                     ref mut addr,
                     ref mut ty,
                     ..
-                }) = self.table.lookup_var_mut(name, &None, err)
+                }) = self.table.lookup_var_mut(name)
                 else {
                     err.unexpected_error(true, Some("unexpected type".to_string()), None);
                     return false;

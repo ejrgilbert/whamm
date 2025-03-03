@@ -8,7 +8,9 @@ use std::collections::HashMap;
 use crate::common::error::ErrorGen;
 use crate::generator::ast::ReqArgs;
 use crate::parser::rules::{Event, Package, Probe, Provider};
-use crate::parser::types::{Definition, FnId, Global, ProvidedFunction, ProvidedGlobal, WhammVisitorMut};
+use crate::parser::types::{
+    Definition, FnId, Global, ProvidedFunction, ProvidedGlobal, WhammVisitorMut,
+};
 use log::trace;
 use orca_wasm::ir::id::FunctionID;
 use orca_wasm::Module;
@@ -16,9 +18,9 @@ use wasmparser::ExternalKind;
 
 const UNEXPECTED_ERR_MSG: &str = "SymbolTableBuilder: Looks like you've found a bug...please report this behavior! Exiting now...";
 
-pub struct SymbolTableBuilder<'a, 'b> {
+pub struct SymbolTableBuilder<'a, 'b, 'c> {
     pub table: SymbolTable,
-    pub user_libs: HashMap<String, Module<'b>>,
+    pub user_libs: &'b HashMap<String, Module<'c>>,
     pub err: &'a mut ErrorGen,
     pub curr_whamm: Option<usize>,  // indexes into this::table::records
     pub curr_script: Option<usize>, // indexes into this::table::records
@@ -31,7 +33,7 @@ pub struct SymbolTableBuilder<'a, 'b> {
     // bookkeeping for providedfunctions
     pub req_args: ReqArgs,
 }
-impl SymbolTableBuilder<'_, '_> {
+impl SymbolTableBuilder<'_, '_, '_> {
     fn add_script(&mut self, script: &Script) {
         /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
         In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
@@ -279,20 +281,17 @@ impl SymbolTableBuilder<'_, '_> {
             // THEN:
             // -- should be able to do a normal function call AND type check
             // -- (after looking up the library scope in the table)
-            if check_duplicate_id(
-                lib_name,
-                &None,
-                &Definition::User,
-                &self.table,
-                self.err,
-            ) {
+            if check_duplicate_id(lib_name, &None, &Definition::User, &self.table, self.err) {
                 return;
             }
 
-            let lib_id = self.table.put(lib_name.clone(), Record::Library {
-                name: lib_name.clone(),
-                fns: Default::default(),
-            });
+            let lib_id = self.table.put(
+                lib_name.clone(),
+                Record::Library {
+                    name: lib_name.clone(),
+                    fns: Default::default(),
+                },
+            );
             match self.table.get_record_mut(self.curr_script.unwrap()) {
                 Some(Record::Script { user_libs, .. }) => {
                     user_libs.push(lib_id);
@@ -318,12 +317,13 @@ impl SymbolTableBuilder<'_, '_> {
                         }
                         let fn_name = export.name.clone();
                         let fn_rec = Record::LibFn {
+                            lib_name: lib_name.clone(),
                             name: fn_name.clone(),
                             def: Definition::User,
                             params,
                             results,
                             addr: None,
-                            loc: None
+                            loc: None,
                         };
 
                         // Add fn to library
@@ -461,7 +461,7 @@ impl SymbolTableBuilder<'_, '_> {
             | Some(Record::Event { fns, .. })
             | Some(Record::Probe { fns, .. }) => {
                 fns.push(id);
-            },
+            }
             _ => {
                 self.err
                     .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
@@ -554,7 +554,7 @@ impl SymbolTableBuilder<'_, '_> {
     }
 }
 
-impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_> {
+impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
     fn visit_whamm(&mut self, whamm: &mut Whamm) {
         trace!("Entering: visit_whamm");
         let name: String = "whamm".to_string();

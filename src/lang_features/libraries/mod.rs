@@ -1,3 +1,3 @@
 pub mod actions;
 pub(crate) mod core;
-mod linking;
+pub mod linking;

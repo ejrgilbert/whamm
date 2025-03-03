@@ -14,6 +14,18 @@ pub struct ExprFolder {
 impl ExprFolder {
     pub fn fold_expr(expr: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
         let mut instance = Self { curr_loc: None };
+        if let Expr::LibCall {
+            call,
+            lib_name,
+            loc,
+        } = expr
+        {
+            return Expr::LibCall {
+                lib_name: lib_name.clone(),
+                loc: loc.clone(),
+                call: Box::new(Self::fold_expr(call, table, err)),
+            };
+        }
         instance.fold_expr_inner(expr, table, err)
     }
     pub fn get_single_bool(expr: &Expr) -> Option<bool> {
@@ -22,15 +34,16 @@ impl ExprFolder {
     }
     fn fold_expr_inner(&mut self, expr: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
         self.curr_loc = expr.loc().clone();
+
         match *expr {
             Expr::UnOp { .. } => self.fold_unop(expr, table, err),
             Expr::BinOp { .. } => self.fold_binop(expr, table, err),
             Expr::Ternary { .. } => self.fold_ternary(expr, table, err),
-            Expr::LibCall { .. } => todo!(),
             Expr::Call { .. } => self.fold_call(expr, table),
             Expr::VarId { .. } => self.fold_var_id(expr, table, err),
             Expr::Primitive { .. } => self.fold_primitive(expr, table, err),
             Expr::MapGet { .. } => self.fold_map_get(expr, table, err),
+            Expr::LibCall { .. } => unreachable!("Should be handled in Self::fold_expr"),
         }
     }
 
@@ -299,11 +312,11 @@ impl ExprFolder {
                             },
                         }
                     }
-                    Expr::LibCall { lib_name, call, .. } => todo!(),
                     Expr::UnOp { .. }
                     | Expr::Ternary { .. }
                     | Expr::BinOp { .. }
                     | Expr::Call { .. }
+                    | Expr::LibCall { .. }
                     | Expr::VarId { .. }
                     | Expr::MapGet { .. } => Expr::UnOp {
                         op: UnOp::Cast {

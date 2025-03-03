@@ -24,7 +24,7 @@ use log::{error, info};
 use orca_wasm::ir::id::{FunctionID, GlobalID};
 use orca_wasm::ir::types::{DataType as OrcaType, InitExpr, Value as OrcaValue};
 use orca_wasm::{Instructions, Module};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::process::exit;
 use wasmparser::MemoryType;
@@ -174,7 +174,7 @@ pub fn run(
 
     // Process the script
     let mut whamm = get_script_ast(whamm_script, &mut err);
-    let (mut symbol_table, has_reports) = get_symbol_table(&mut whamm, user_lib_modules, &mut err);
+    let (mut symbol_table, has_reports) = get_symbol_table(&mut whamm, &user_lib_modules, &mut err);
     err.check_too_many();
 
     // If there were any errors encountered, report and exit!
@@ -194,8 +194,8 @@ pub fn run(
     });
     let mut io_package = IOPackage::new(*mem_allocator.mem_tracker_global);
     let mut core_packages: Vec<&mut dyn LibPackage> = vec![&mut map_package, &mut io_package];
-    let mut injected_funcs = crate::lang_features::libraries::actions::link_core_lib(
-        &config.library_strategy,
+    let mut injected_core_lib_funcs = crate::lang_features::libraries::actions::link_core_lib(
+        config.library_strategy,
         &metadata_collector.ast,
         target_wasm,
         core_wasm_path,
@@ -203,6 +203,25 @@ pub fn run(
         &mut core_packages,
         metadata_collector.err,
     );
+
+    // make the used user library functions the correct form
+    let mut used_fns_per_lib: HashMap<String, HashSet<String>> = HashMap::default();
+    for (used_lib, used_fn) in metadata_collector.used_user_library_fns.iter() {
+        used_fns_per_lib
+            .entry(used_lib.clone())
+            .and_modify(|set| {
+                set.insert(used_fn.clone());
+            })
+            .or_insert(HashSet::from_iter([used_fn.clone()].iter().cloned()));
+    }
+    // let mut injected_user_lib_funcs = crate::lang_features::libraries::actions::link_user_libs(
+    //     config.library_strategy,
+    //     target_wasm,
+    //     &metadata_collector.used_user_library_fns,
+    //     &user_lib_modules,
+    //     metadata_collector.table,
+    //     metadata_collector.err,
+    // );
     let mut map_lib_adapter = map_package.adapter;
     let mut io_adapter = io_package.adapter;
     let mut report_vars = ReportVars::new();
@@ -214,6 +233,8 @@ pub fn run(
     if config.wizard {
         run_instr_wizard(
             metadata_collector,
+            used_fns_per_lib,
+            user_lib_modules,
             target_wasm,
             &mut mem_allocator,
             &mut io_adapter,
@@ -225,6 +246,8 @@ pub fn run(
         run_instr_rewrite(
             &mut whamm,
             metadata_collector,
+            used_fns_per_lib,
+            user_lib_modules,
             target_wasm,
             has_reports,
             &mut mem_allocator,
@@ -232,7 +255,7 @@ pub fn run(
             &mut map_lib_adapter,
             &mut report_vars,
             &mut unshared_var_handler,
-            &mut injected_funcs,
+            &mut injected_core_lib_funcs,
         );
     }
 
@@ -252,6 +275,8 @@ pub fn run(
 
 fn run_instr_wizard(
     metadata_collector: MetadataCollector,
+    used_fns_per_lib: HashMap<String, HashSet<String>>,
+    user_lib_modules: HashMap<String, Module>,
     target_wasm: &mut Module,
     mem_allocator: &mut MemoryAllocator,
     io_adapter: &mut IOAdapter,
@@ -285,6 +310,8 @@ fn run_instr_wizard(
         err,
         injected_funcs: &mut injected_funcs,
         config,
+        used_fns_per_lib,
+        user_lib_modules,
         curr_script_id: u8::MAX,
         unshared_var_handler: &mut wizard_unshared_var_handler,
     };
@@ -294,6 +321,8 @@ fn run_instr_wizard(
 fn run_instr_rewrite(
     whamm: &mut Whamm,
     metadata_collector: MetadataCollector,
+    used_fns_per_lib: HashMap<String, HashSet<String>>,
+    user_lib_modules: HashMap<String, Module>,
     target_wasm: &mut Module,
     has_reports: bool,
     mem_allocator: &mut MemoryAllocator,
@@ -322,6 +351,8 @@ fn run_instr_rewrite(
         ),
         context_name: "".to_string(),
         err,
+        used_fns_per_lib,
+        user_lib_modules,
         injected_funcs,
     };
     init.run(whamm, used_funcs, used_strings);
@@ -396,7 +427,7 @@ fn get_memory_allocator(target_wasm: &mut Module, create_new_mem: bool) -> Memor
 
 fn get_symbol_table(
     ast: &mut Whamm,
-    user_libs: HashMap<String, Module>,
+    user_libs: &HashMap<String, Module>,
     err: &mut ErrorGen,
 ) -> (SymbolTable, bool) {
     let mut st = build_symbol_table(ast, user_libs, err);

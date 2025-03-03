@@ -152,14 +152,19 @@ impl SymbolTable {
         self.get_curr_scope_mut().unwrap().containing_script = Some(id);
     }
 
-    pub fn remove_record(&mut self, symbol_name: &String) {
-        match self.get_curr_scope_mut() {
-            None => {
-                // nothing to do
+    pub fn override_record_val(&mut self, symbol_name: &str, val: Option<Value>) {
+        let rec_id = match self.lookup(symbol_name) {
+            Some(rec_id) => rec_id,
+            _ => {
+                panic!(
+                    "{UNEXPECTED_ERR_MSG} \
+                    `{symbol_name}` symbol does not exist in this scope!"
+                );
             }
-            Some(curr) => {
-                curr.records.remove(symbol_name);
-            }
+        };
+        let mut rec = self.get_record_mut(rec_id);
+        if let Some(Record::Var { value, .. }) = &mut rec {
+            *value = val;
         }
     }
 
@@ -257,70 +262,44 @@ impl SymbolTable {
         None
     }
 
-    fn no_match(err: &mut ErrorGen, rec: &Record, exp: &str, loc: &Option<Location>) {
-        err.unexpected_error(
-            true,
-            Some(format!(
-                "Unexpected record type. Expected {exp}, found: {:?}",
-                rec
-            )),
-            line_col_from_loc(loc),
-        );
+    fn no_match(rec: &Record, exp: &str) {
+        panic!("Unexpected record type. Expected {}, found: {:?}", exp, rec)
     }
 
-    pub fn lookup_lib(
-        &self,
-        key: &str,
-        loc: &Option<Location>,
-        err: &mut ErrorGen,
-    ) -> Option<&Record> {
+    pub fn lookup_lib(&self, key: &str) -> Option<&Record> {
         if let Some(rec) = self.lookup_rec(key) {
             if matches!(rec, Record::Library { .. }) {
                 Some(rec)
             } else {
-                Self::no_match(err, rec, "Library", loc);
+                Self::no_match(rec, "Library");
                 None
             }
         } else {
             None
         }
     }
-    pub fn lookup_lib_mut(
-        &mut self,
-        key: &str,
-        loc: &Option<Location>,
-        err: &mut ErrorGen,
-    ) -> Option<&mut Record> {
+    pub fn lookup_lib_mut(&mut self, key: &str) -> Option<&mut Record> {
         if let Some(rec) = self.lookup_rec_mut(key) {
             if matches!(rec, Record::Library { .. }) {
                 Some(rec)
             } else {
-                Self::no_match(err, rec, "Library", loc);
+                Self::no_match(rec, "Library");
                 None
             }
         } else {
             None
         }
     }
-    pub fn lookup_core_lib_mut(
-        &mut self,
-        loc: &Option<Location>,
-        err: &mut ErrorGen,
-    ) -> Option<&mut Record> {
-        self.lookup_lib_mut(WHAMM_CORE_LIB_NAME, loc, err)
+    pub fn lookup_core_lib_mut(&mut self) -> Option<&mut Record> {
+        self.lookup_lib_mut(WHAMM_CORE_LIB_NAME)
     }
 
-    pub fn lookup_var_mut(
-        &mut self,
-        key: &str,
-        loc: &Option<Location>,
-        err: &mut ErrorGen,
-    ) -> Option<&mut Record> {
+    pub fn lookup_var_mut(&mut self, key: &str) -> Option<&mut Record> {
         if let Some(rec) = self.lookup_rec_mut(key) {
             if matches!(rec, Record::Var { .. }) {
                 Some(rec)
             } else {
-                Self::no_match(err, rec, "Var", loc);
+                Self::no_match(rec, "Var");
                 None
             }
         } else {
@@ -338,7 +317,7 @@ impl SymbolTable {
             if matches!(rec, Record::Var { .. }) {
                 Some(rec)
             } else {
-                Self::no_match(err, rec, "Var", loc);
+                Self::no_match(rec, "Var");
                 None
             }
         } else {
@@ -362,7 +341,7 @@ impl SymbolTable {
             if matches!(rec, Record::Fn { .. }) {
                 (Some(rec), context)
             } else {
-                Self::no_match(err, rec, "Fn", &None);
+                Self::no_match(rec, "Fn");
                 (None, context)
             }
         } else {
@@ -375,7 +354,7 @@ impl SymbolTable {
             if matches!(rec, Record::Fn { .. }) {
                 Some(rec)
             } else {
-                Self::no_match(err, rec, "Fn", &None);
+                Self::no_match(rec, "Fn");
                 None
             }
         } else {
@@ -390,7 +369,7 @@ impl SymbolTable {
             if matches!(rec, Record::Fn { .. }) {
                 Some(rec)
             } else {
-                Self::no_match(err, rec, "Fn", &None);
+                Self::no_match(rec, "Fn");
                 None
             }
         } else {
@@ -399,27 +378,57 @@ impl SymbolTable {
         }
     }
 
-    pub fn lookup_lib_fn(&self, lib_name: &str, lib_fn_name: &str, err: &mut ErrorGen) -> Option<&Record> {
-        if let Some(rec) = self.lookup_lib(lib_name, &None, err) {
+    pub fn lookup_lib_fn(
+        &self,
+        lib_name: &str,
+        lib_fn_name: &str,
+        err: &mut ErrorGen,
+    ) -> Option<&Record> {
+        if let Some(rec) = self.lookup_lib(lib_name) {
             if let Record::Library { fns, .. } = rec {
                 if let Some(rec) = fns.get(lib_fn_name) {
                     if let Some(rec) = self.get_record(*rec) {
                         Some(rec)
                     } else {
-                        err.unexpected_error(true, Some(format!("Could not find library func for: {}", lib_fn_name)), None);
+                        err.unexpected_error(
+                            true,
+                            Some(format!("Could not find library func for: {}", lib_fn_name)),
+                            None,
+                        );
                         None
                     }
                 } else {
-                    Self::no_match(err, rec, "LibraryFunc", &None);
+                    Self::no_match(rec, "LibraryFunc");
                     None
                 }
             } else {
-                Self::no_match(err, rec, "Library", &None);
+                Self::no_match(rec, "Library");
                 None
             }
         } else {
-            err.unexpected_error(true, Some(format!("Could not find library for: {}", lib_name)), None);
+            err.unexpected_error(
+                true,
+                Some(format!("Could not find library for: {}", lib_name)),
+                None,
+            );
             None
+        }
+    }
+
+    pub fn lookup_lib_fn_mut(&mut self, lib_name: &str, lib_fn_name: &str) -> Option<&mut Record> {
+        let rec_id = if let Some(Record::Library { fns, .. }) = self.lookup_lib_mut(lib_name) {
+            if let Some(rec) = fns.get(lib_fn_name) {
+                *rec
+            } else {
+                panic!("Could not find match for library function: {lib_name}.{lib_fn_name}");
+            }
+        } else {
+            panic!("Could not find library for: {}", lib_name);
+        };
+        if let Some(rec) = self.get_record_mut(rec_id) {
+            Some(rec)
+        } else {
+            panic!("Could not find match for library function: {lib_name}.{lib_fn_name}");
         }
     }
 
@@ -630,7 +639,7 @@ pub enum Record {
     },
     Library {
         name: String,
-        fns: HashMap<String, usize>
+        fns: HashMap<String, usize>,
     },
     Provider {
         name: String,
@@ -656,6 +665,7 @@ pub enum Record {
         globals: Vec<usize>,
     },
     LibFn {
+        lib_name: String,
         name: String,
         params: Vec<DataType>,
         results: Vec<DataType>,
@@ -663,7 +673,7 @@ pub enum Record {
 
         /// The address of this function post-injection
         addr: Option<u32>,
-        loc: Option<Location>
+        loc: Option<Location>,
     },
     Fn {
         name: FnId,
@@ -691,7 +701,7 @@ pub enum Record {
         /// The address of this var post-injection
         addr: Option<VarAddr>,
         loc: Option<Location>,
-    }
+    },
 }
 impl Record {
     pub fn loc(&self) -> &Option<Location> {

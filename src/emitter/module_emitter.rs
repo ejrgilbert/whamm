@@ -539,7 +539,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         report_mode: bool,
         err: &mut ErrorGen,
     ) -> Option<FunctionID> {
-        let Record::Var { addr, ty, .. } = self.table.lookup_var_mut(&name, &None, err)? else {
+        let Record::Var { addr, ty, .. } = self.table.lookup_var_mut(&name)? else {
             err.unexpected_error(true, Some("unexpected type".to_string()), None);
             return None;
         };

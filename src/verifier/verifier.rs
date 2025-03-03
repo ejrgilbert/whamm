@@ -26,7 +26,7 @@ pub fn type_check(ast: &mut Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> 
 
 pub fn build_symbol_table(
     ast: &mut Whamm,
-    user_libs: HashMap<String, Module>,
+    user_libs: &HashMap<String, Module>,
     err: &mut ErrorGen,
 ) -> SymbolTable {
     let mut visitor = SymbolTableBuilder {
@@ -400,7 +400,8 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
         if self.in_script_global {
             match stmt {
                 //allow declarations and assignment
-                Statement::Decl { .. } | Statement::Assign { .. } | Statement::LibImport {..}=> {}
+                Statement::Decl { .. } | Statement::Assign { .. } | Statement::LibImport { .. } => {
+                }
                 Statement::UnsharedDecl { is_report, .. } => {
                     if *is_report {
                         self.has_reports = true;
@@ -418,7 +419,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
             }
         }
         match stmt {
-            Statement::LibImport { .. } => { return None },
+            Statement::LibImport { .. } => None,
             Statement::Assign { var_id, expr, .. } => {
                 // change type in symbol table?
                 let lhs_loc = var_id.loc().clone().unwrap();
@@ -1083,11 +1084,11 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
             }
             Expr::LibCall { lib_name, call, .. } => {
                 self.lib_name = Some(lib_name.clone());
-                let res = self.visit_expr(&mut **call);
+                let res = self.visit_expr(call);
                 self.lib_name = None;
 
                 res
-            },
+            }
             //disallow calls when the in the global state of the script
             Expr::Call {
                 fn_target,
@@ -1127,14 +1128,12 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     if let Some(id) = self.table.lookup_lib_fn(lib_name, fn_name, self.err) {
                         id
                     } else {
-                        return Some(DataType::AssumeGood)
+                        return Some(DataType::AssumeGood);
                     }
+                } else if let Some(id) = self.table.lookup_fn(fn_name, true, self.err) {
+                    id
                 } else {
-                    if let Some(id) = self.table.lookup_fn(fn_name, true, self.err) {
-                        id
-                    } else {
-                        return Some(DataType::AssumeGood)
-                    }
+                    return Some(DataType::AssumeGood);
                 };
 
                 let (params, ret_ty, def, loc) = match rec {
@@ -1154,7 +1153,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             }
                         }
                         (expected_param_tys, ret_ty.clone(), def, loc)
-                    },
+                    }
                     Record::LibFn {
                         name,
                         params,
@@ -1164,8 +1163,12 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         ..
                     } => {
                         let ret_ty = if results.len() > 1 {
-                            panic!("We don't support functions with multiple return types: {}.{}", &self.lib_name.as_ref().unwrap(), name);
-                        } else if results.len() == 0 {
+                            panic!(
+                                "We don't support functions with multiple return types: {}.{}",
+                                &self.lib_name.as_ref().unwrap(),
+                                name
+                            );
+                        } else if results.is_empty() {
                             DataType::Tuple { ty_info: vec![] }
                         } else {
                             results.first().unwrap().clone()
@@ -1182,9 +1185,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 };
 
                 //check if in global state and if is_comp_provided is false --> not allowed if both are the case
-                if self.in_script_global
-                    && !(*def == CompilerDynamic || *def == CompilerStatic)
-                {
+                if self.in_script_global && !(*def == CompilerDynamic || *def == CompilerStatic) {
                     self.err.type_check_error(
                         false,
                         "Function calls to user def functions are not allowed in the global state of the script"
@@ -1194,10 +1195,8 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     //continue to check for other errors even after emitting this one
                 }
 
-                for (i, (expected, actual)) in params
-                    .iter()
-                    .zip(actual_param_tys.iter())
-                    .enumerate()
+                for (i, (expected, actual)) in
+                    params.iter().zip(actual_param_tys.iter()).enumerate()
                 {
                     match (expected, actual) {
                         (Some(expected), Some(actual)) => {
@@ -1205,9 +1204,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             if expected != actual {
                                 let arg = args.get_mut(i).unwrap();
                                 let arg_loc = arg.loc().clone().unwrap();
-                                if expected.can_implicitly_cast()
-                                    && actual.can_implicitly_cast()
-                                {
+                                if expected.can_implicitly_cast() && actual.can_implicitly_cast() {
                                     // try to implicitly do a cast here
                                     if let Err((msg, fatal)) = arg.implicit_cast(expected) {
                                         self.err.type_check_error(
@@ -1235,8 +1232,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     }
                 }
 
-                return Some(ret_ty.clone());
-
+                Some(ret_ty.clone())
             }
             Expr::MapGet { map, key, loc } => {
                 //ensure that map is a map, then get the other stuff from the map info

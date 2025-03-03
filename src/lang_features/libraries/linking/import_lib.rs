@@ -4,10 +4,11 @@ use crate::generator::ast::Script;
 use crate::lang_features::libraries::core::{
     LibPackage, WHAMM_CORE_LIB_MEM_NAME, WHAMM_CORE_LIB_NAME,
 };
-use crate::parser::types::Whamm;
+use crate::verifier::types::{Record, SymbolTable};
 use log::trace;
 use orca_wasm::ir::id::FunctionID;
 use orca_wasm::{DataType, Module};
+use std::collections::HashSet;
 use wasmparser::{ExternalKind, MemoryType};
 
 /// Some documentation on why it's difficult to only import the *used* functions.
@@ -45,7 +46,7 @@ pub fn link_core_lib(
                 package.set_lib_mem_id(lib_mem_id);
             }
             package.set_instr_mem_id(mem_allocator.mem_id as i32);
-            injected_funcs.extend(import_lib(
+            injected_funcs.extend(import_lib_package(
                 app_wasm,
                 WHAMM_CORE_LIB_NAME.to_string(),
                 &core_lib,
@@ -58,13 +59,21 @@ pub fn link_core_lib(
 }
 
 pub fn link_user_lib(
-    _ast: &Whamm,
-    _app_wasm: &mut Module,
-    _lib_wasm: &Module,
-    _err: &mut ErrorGen,
-) {
-    // should only import ALL EXPORTED contents of the lib_wasm
-    unimplemented!("Have not added support for user libraries...yet!")
+    app_wasm: &mut Module,
+    lib_wasm: &Module,
+    lib_name: String,
+    used_lib_fns: &HashSet<String>,
+    table: &mut SymbolTable,
+    err: &mut ErrorGen,
+) -> Vec<FunctionID> {
+    let added = import_lib_fn_names(app_wasm, lib_name, lib_wasm, used_lib_fns, Some(table), err);
+
+    let mut injected_funcs = vec![];
+    for (_, fid) in added.iter() {
+        injected_funcs.push(FunctionID(*fid));
+    }
+
+    injected_funcs
 }
 
 fn import_lib_memory(app_wasm: &mut Module, lib_name: String) -> i32 {
@@ -80,7 +89,7 @@ fn import_lib_memory(app_wasm: &mut Module, lib_name: String) -> i32 {
     mem_id as i32
 }
 
-fn import_lib(
+fn import_lib_package(
     app_wasm: &mut Module,
     lib_name: String,
     lib_wasm: &Module,
@@ -90,22 +99,63 @@ fn import_lib(
     trace!("Enter import_lib");
 
     // should only import the EXPORTED contents of the lib_wasm
-    let package_fn_names = package.get_fn_names();
+    let added = import_lib_fn_names(
+        app_wasm,
+        lib_name,
+        lib_wasm,
+        &HashSet::from_iter(package.get_fn_names().iter().cloned()),
+        None,
+        err,
+    );
+
+    for (name, fid) in added.iter() {
+        // save the FID
+        package.add_fid_to_adapter(name.as_str(), *fid);
+    }
+
+    // enable the library to define in-module helper functions
+    let injected_funcs = package.define_helper_funcs(app_wasm, err);
+
+    trace!("Exit import_lib");
+    injected_funcs
+}
+
+fn import_lib_fn_names(
+    app_wasm: &mut Module,
+    lib_name: String,
+    lib_wasm: &Module,
+    lib_fns: &HashSet<String>,
+    mut table: Option<&mut SymbolTable>,
+    err: &mut ErrorGen,
+) -> Vec<(String, u32)> {
+    let mut injected_fns = vec![];
     for export in lib_wasm.exports.iter() {
         // we don't care about non-function exports
         if let ExternalKind::Func = export.kind {
-            if package_fn_names.contains(&export.name) {
+            if lib_fns.contains(&export.name) {
                 let func = lib_wasm.functions.get(FunctionID(export.index));
                 if let Some(ty) = lib_wasm.types.get(func.get_type_id()) {
+                    let fn_name = export.name.as_str();
                     let fid = import_func(
                         lib_name.as_str(),
-                        export.name.as_str(),
+                        fn_name,
                         &ty.params().clone(),
                         &ty.results().clone(),
                         app_wasm,
                     );
-                    // save the FID
-                    package.add_fid_to_adapter(export.name.as_str(), fid);
+                    // save the FID to the symbol table
+                    if let Some(table) = table.as_mut() {
+                        let Some(Record::LibFn { addr, .. }) =
+                            table.lookup_lib_fn_mut(&lib_name, fn_name)
+                        else {
+                            panic!("unexpected type");
+                        };
+
+                        *addr = Some(fid);
+                    }
+
+                    // save the FID as an injected function
+                    injected_fns.push((export.name.clone(), fid));
                 } else {
                     err.unexpected_error(
                         true,
@@ -119,12 +169,7 @@ fn import_lib(
             }
         }
     }
-
-    // enable the library to define in-module helper functions
-    let injected_funcs = package.define_helper_funcs(app_wasm, err);
-
-    trace!("Exit import_lib");
-    injected_funcs
+    injected_fns
 }
 
 fn import_memory(module_name: &str, mem_name: &str, use_name: &str, app_wasm: &mut Module) -> u32 {

@@ -11,22 +11,25 @@ use crate::verifier::types::Record;
 use log::trace;
 use orca_wasm::ir::id::{FunctionID, LocalID};
 use orca_wasm::ir::types::DataType as OrcaType;
-use std::collections::HashSet;
+use orca_wasm::Module;
+use std::collections::{HashMap, HashSet};
 
-pub struct WizardGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l> {
+pub struct WizardGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l, 'm> {
     pub emitter: ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g>,
     pub io_adapter: &'h mut IOAdapter,
     pub context_name: String,
     pub err: &'i mut ErrorGen,
     pub injected_funcs: &'j mut Vec<FunctionID>,
     pub config: &'k Config,
+    pub used_fns_per_lib: HashMap<String, HashSet<String>>,
+    pub user_lib_modules: HashMap<String, Module<'m>>,
 
     // tracking
     pub curr_script_id: u8,
     pub unshared_var_handler: &'l mut UnsharedVarHandler,
 }
 
-impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     pub fn run(
         &mut self,
         ast: Vec<Script>,
@@ -208,7 +211,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 }
 
-impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     // TODO -- these are all duplicates, try to factor out
     fn emit_string(&mut self, val: &mut Value) -> bool {
         self.emitter.emit_string(val, self.err)
@@ -234,6 +237,25 @@ impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '
         value: &Option<Value>,
     ) -> Option<FunctionID> {
         self.emitter.emit_report_global(name, ty, value, self.err)
+    }
+
+    fn link_user_lib(&mut self, lib_name: &str) {
+        // Perform import now! (we'll be in the right table scope at this point)
+        if let Some(used_fns) = self.used_fns_per_lib.get(lib_name) {
+            let Some(lib_wasm) = self.user_lib_modules.get(lib_name) else {
+                panic!("Could not find wasm module for library '{lib_name}'");
+            };
+            self.injected_funcs.extend(
+                crate::lang_features::libraries::linking::import_lib::link_user_lib(
+                    self.emitter.app_wasm,
+                    lib_wasm,
+                    lib_name.to_string(),
+                    used_fns,
+                    self.emitter.table,
+                    self.err,
+                ),
+            );
+        }
     }
 
     fn add_injected_func(&mut self, fid: FunctionID) {
@@ -270,6 +292,6 @@ impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '
         self.emitter.exit_scope(self.err);
     }
     fn lookup_var_mut(&mut self, name: &str) -> Option<&mut Record> {
-        self.emitter.table.lookup_var_mut(name, &None, self.err)
+        self.emitter.table.lookup_var_mut(name)
     }
 }
