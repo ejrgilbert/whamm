@@ -4612,28 +4612,8 @@ fn create_memarg_globals(
                     loc_info
                         .static_data
                         .insert("effective_addr".to_string(), Some(Value::gen_u64(offset)));
-                    // loc_info.add_dynamic_assign(
-                    //     "effective_addr".to_string(),
-                    //     DataType::U32,
-                    //     Expr::Primitive {
-                    //         val: Value::gen_u64(offset),
-                    //         loc: None,
-                    //     }
-                    // );
-                    // loc_info.add_dynamic_assign(
-                    //     "effective_addr".to_string(),
-                    //     DataType::U32,
-                    //     Expr::VarId {
-                    //         definition: Definition::CompilerDynamic,
-                    //         name: "arg0".to_string(),
-                    //         loc: None,
-                    //     }
-                    // );
                 }
             }
-            // other => if matches!(param.def(), Definition::CompilerStatic) {
-            //     panic!("WhammParam not supported for opcode: {}", other);
-            // }
             _ => {}
         }
     }

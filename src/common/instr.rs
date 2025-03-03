@@ -236,14 +236,6 @@ pub fn run(
             })
             .or_insert(HashSet::from_iter([used_fn.clone()].iter().cloned()));
     }
-    // let mut injected_user_lib_funcs = crate::lang_features::libraries::actions::link_user_libs(
-    //     config.library_strategy,
-    //     target_wasm,
-    //     &metadata_collector.used_user_library_fns,
-    //     &user_lib_modules,
-    //     metadata_collector.table,
-    //     metadata_collector.err,
-    // );
     let mut map_lib_adapter = map_package.adapter;
     let mut io_adapter = io_package.adapter;
     let mut report_vars = ReportVars::new();

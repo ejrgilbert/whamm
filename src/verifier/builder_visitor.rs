@@ -351,8 +351,6 @@ impl SymbolTableBuilder<'_, '_, '_> {
                 loc.clone(),
             );
         }
-
-        // TODO -- when to actually import the functions? IN THE ModuleGenerator?
     }
 
     fn add_fn(&mut self, f: &mut Fn) {
