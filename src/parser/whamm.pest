@@ -3,7 +3,7 @@
 // ==============================
 
 // supports top-level global declarations/initial assignments and probe definitions
-script = { SOI ~ (if_stmt | statement | fn_def)* ~ probe_def ~ ( if_stmt | statement | fn_def | probe_def )* ~ EOI }
+script = { SOI ~ (lib_import | if_stmt | statement | fn_def)* ~ probe_def ~ ( if_stmt | statement | fn_def | probe_def )* ~ EOI }
  
 // TODO -- support comma separated list of rules: https://docs.oracle.com/cd/E23824_01/html/E22973/glghi.html#scrolltoc
 probe_def = { PROBE_RULE ~ PUSH(predicate?) ~ block }
@@ -14,6 +14,14 @@ predicate = { "/" ~ expr ~ "/" }
 fn_def = { "fn" ~ ID ~ "(" ~ param_list? ~ ")" ~ ("->" ~ TYPE) ? ~ block }
 param_list = _{ (( param ) ~ ("," ~ param )*) }
 param = { ID ~ ":" ~ TYPE }
+
+// ===================
+// ---- Libraries ----
+// ===================
+
+lib_import = { "use" ~ ID ~ ";" }
+lib_call = { ID ~ "." ~ fn_call }
+
 // =====================
 // ---- Identifiers ----
 // =====================
@@ -92,7 +100,7 @@ TYPE_PRIMITIVE = _{
 // ---- Statements ----
 // ====================
 
-statement = { ( decl_init | fn_call | special_decl | decl | assignment | incrementor | decrementor | ret ) ~ ";" }
+statement = { ( decl_init | lib_call | fn_call | special_decl | decl | assignment | incrementor | decrementor | ret ) ~ ";" }
 
 // control flow
 if_stmt = { "if" ~ "(" ~ expr ~ ")" ~ block ~ (else_stmt | elif) ? }
@@ -133,10 +141,9 @@ postfix = _{ cast }
     cast = { "as" ~ TYPE_PRIMITIVE }
 
 val = _{ BOOL | get_map | ID | FLOAT | INT | STRING | tuple }
-operand = _{ prefix? ~ ( fn_call | "(" ~ expr ~ ")" | val ) ~ postfix? }
+operand = _{ prefix? ~ ( lib_call | fn_call | "(" ~ expr ~ ")" | val ) ~ postfix? }
 
 tuple = { "(" ~ ")" | "(" ~ (val) ~ ( "," ~ val )* ~ ")" }
-
 
 BINOP = _{ SHIFTOP | LOGOP | BITOP | RELOP | SUMOP | MULOP }
 

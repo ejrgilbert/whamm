@@ -8,13 +8,19 @@ use std::collections::HashMap;
 use crate::common::error::ErrorGen;
 use crate::generator::ast::ReqArgs;
 use crate::parser::rules::{Event, Package, Probe, Provider};
-use crate::parser::types::{Definition, Global, ProvidedFunction, ProvidedGlobal, WhammVisitorMut};
+use crate::parser::types::{
+    Definition, FnId, Global, ProvidedFunction, ProvidedGlobal, WhammVisitorMut,
+};
 use log::trace;
+use orca_wasm::ir::id::FunctionID;
+use orca_wasm::Module;
+use wasmparser::ExternalKind;
 
 const UNEXPECTED_ERR_MSG: &str = "SymbolTableBuilder: Looks like you've found a bug...please report this behavior! Exiting now...";
 
-pub struct SymbolTableBuilder<'a> {
+pub struct SymbolTableBuilder<'a, 'b, 'c> {
     pub table: SymbolTable,
+    pub user_libs: &'b HashMap<String, Module<'c>>,
     pub err: &'a mut ErrorGen,
     pub curr_whamm: Option<usize>,  // indexes into this::table::records
     pub curr_script: Option<usize>, // indexes into this::table::records
@@ -27,7 +33,7 @@ pub struct SymbolTableBuilder<'a> {
     // bookkeeping for providedfunctions
     pub req_args: ReqArgs,
 }
-impl SymbolTableBuilder<'_> {
+impl SymbolTableBuilder<'_, '_, '_> {
     fn add_script(&mut self, script: &Script) {
         /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
         In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
@@ -45,6 +51,7 @@ impl SymbolTableBuilder<'_> {
         // create record
         let script_rec = Record::Script {
             id: script.id,
+            user_libs: vec![],
             fns: vec![],
             globals: vec![],
             providers: vec![],
@@ -260,8 +267,94 @@ impl SymbolTableBuilder<'_> {
             .set_curr_scope_info(probe.mode().name(), ScopeType::Probe);
     }
 
+    fn add_user_lib(&mut self, lib_name: &String, loc: &Option<Location>) {
+        // NOTE -- we don't have a Library scope! This is because the library
+        // functions should be globally accessible within the scope of the
+        // script. Not having a scope for the Library supports this!
+
+        if let Some(lib_module) = self.user_libs.get(lib_name) {
+            // add user library to the current scope (should be Script)
+            // enters a new scope (named 'lib_name')
+            // for each exported function in 'lib_module':
+            //   -- add new function to the lib scope
+            //   -- with the right type information
+            // THEN:
+            // -- should be able to do a normal function call AND type check
+            // -- (after looking up the library scope in the table)
+            if check_duplicate_id(lib_name, &None, &Definition::User, &self.table, self.err) {
+                return;
+            }
+
+            let lib_id = self.table.put(
+                lib_name.clone(),
+                Record::Library {
+                    name: lib_name.clone(),
+                    fns: Default::default(),
+                },
+            );
+            match self.table.get_record_mut(self.curr_script.unwrap()) {
+                Some(Record::Script { user_libs, .. }) => {
+                    user_libs.push(lib_id);
+                }
+                _ => {
+                    self.err
+                        .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+                }
+            }
+
+            for export in lib_module.exports.iter() {
+                // we don't care about non-function exports
+                if let ExternalKind::Func = export.kind {
+                    let func = lib_module.functions.get(FunctionID(export.index));
+                    if let Some(ty) = lib_module.types.get(func.get_type_id()) {
+                        let mut params = vec![];
+                        for p in ty.params().iter() {
+                            params.push(DataType::from_wasm_type(p));
+                        }
+                        let mut results = vec![];
+                        for p in ty.results().iter() {
+                            results.push(DataType::from_wasm_type(p));
+                        }
+                        let fn_name = export.name.clone();
+                        let fn_rec = Record::LibFn {
+                            lib_name: lib_name.clone(),
+                            name: fn_name.clone(),
+                            def: Definition::User,
+                            params,
+                            results,
+                            addr: None,
+                            loc: None,
+                        };
+
+                        // Add fn to library
+                        let id = self.table.put(fn_name.clone(), fn_rec);
+                        match self.table.get_record_mut(lib_id) {
+                            Some(Record::Library { fns, .. }) => {
+                                fns.insert(fn_name.clone(), id);
+                            }
+                            _ => {
+                                panic!("{}", UNEXPECTED_ERR_MSG);
+                            }
+                        }
+                    } else {
+                        panic!(
+                            "UserLib: Could not find type ID for function {}",
+                            export.name
+                        );
+                    }
+                }
+            }
+        } else {
+            self.err.parse_error_at_loc(
+                true,
+                Some("The script uses a library, but it wasn't configured in the CLI".to_string()),
+                loc.clone(),
+            );
+        }
+    }
+
     fn add_fn(&mut self, f: &mut Fn) {
-        let f_id: &parser_types::FnId = &f.name;
+        let f_id: &FnId = &f.name;
         //if there is another id with the same name in the table -> should cause an error because 2 functions with the same name
         if let Some(other_fn_id) = self.table.lookup(&f_id.name) {
             //check if the other id has a record
@@ -289,11 +382,7 @@ impl SymbolTableBuilder<'_> {
                             );
                         } else {
                             //case for no location but not comp def
-                            self.err.unexpected_error(
-                                true,
-                                Some(UNEXPECTED_ERR_MSG.to_string()),
-                                None,
-                            );
+                            panic!("{}", UNEXPECTED_ERR_MSG);
                         }
                     }
                     //case for curr not having a loc -> shouldn't happen: either user def without a loc or 2 comp def with same name
@@ -463,7 +552,7 @@ impl SymbolTableBuilder<'_> {
     }
 }
 
-impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
+impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
     fn visit_whamm(&mut self, whamm: &mut Whamm) {
         trace!("Entering: visit_whamm");
         let name: String = "whamm".to_string();
@@ -536,14 +625,10 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
                         },
                     );
                 } else {
-                    self.err.unexpected_error(
-                        true,
-                        Some(format!(
-                            "{} \
+                    panic!(
+                        "{} \
                 Variable declaration var_id is not the correct Expr variant!!",
-                            UNEXPECTED_ERR_MSG
-                        )),
-                        None,
+                        UNEXPECTED_ERR_MSG
                     );
                 }
             };
@@ -684,14 +769,10 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
             || self.curr_event.is_some()
             || self.curr_probe.is_some()
         {
-            self.err.unexpected_error(
-                true,
-                Some(format!(
-                    "{} \
+            panic!(
+                "{} \
             Only global script statements should be visited!",
-                    UNEXPECTED_ERR_MSG
-                )),
-                None,
+                UNEXPECTED_ERR_MSG
             );
         }
         let mut is_report_var = false;
@@ -704,34 +785,35 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_> {
             }
             _ => stmt,
         };
-        if let Statement::Decl {
-            ty, var_id, loc, ..
-        } = stmt
-        {
-            if let Expr::VarId {
-                name, definition, ..
-            } = &var_id
-            {
-                // Add symbol to table
-                self.add_global(
-                    ty.clone(),
-                    name.clone(),
-                    None,
-                    definition.clone(),
-                    is_report_var,
-                    loc.clone(),
-                );
-            } else {
-                self.err.unexpected_error(
-                    true,
-                    Some(format!(
+        match stmt {
+            Statement::LibImport { lib_name, loc, .. } => {
+                self.add_user_lib(lib_name, loc);
+            }
+            Statement::Decl {
+                ty, var_id, loc, ..
+            } => {
+                if let Expr::VarId {
+                    name, definition, ..
+                } = &var_id
+                {
+                    // Add symbol to table
+                    self.add_global(
+                        ty.clone(),
+                        name.clone(),
+                        None,
+                        definition.clone(),
+                        is_report_var,
+                        loc.clone(),
+                    );
+                } else {
+                    panic!(
                         "{} \
                 Variable declaration var_id is not the correct Expr variant!!",
                         UNEXPECTED_ERR_MSG
-                    )),
-                    None,
-                );
+                    );
+                }
             }
+            _ => {}
         }
     }
 

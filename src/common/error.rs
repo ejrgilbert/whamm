@@ -170,6 +170,16 @@ impl ErrorGen {
             }
         }
     }
+    pub fn parse_error_at_loc(
+        &mut self,
+        fatal: bool,
+        message: Option<String>,
+        line_col: Option<Location>,
+    ) {
+        let err_loc = line_col.as_ref().map(|err_loc| err_loc.line_col.clone());
+        let err = Self::get_parse_error(fatal, message, err_loc, vec![], vec![]);
+        self.add_error(err);
+    }
 
     pub fn parse_error(
         &mut self,
@@ -492,7 +502,7 @@ impl ErrorGen {
         self.add_warn(warn);
     }
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct CodeLocation {
     // True if this is an error-causing code location, false if not (just informational)
     pub is_err: bool,
@@ -656,7 +666,7 @@ impl CodeLocation {
         }
     }
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct WhammError {
     pub fatal: bool,
     /// The location within the input string causing the error

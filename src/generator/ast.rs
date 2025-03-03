@@ -264,7 +264,7 @@ pub enum WhammParam {
     Align,
     Offset,
     Memory,
-    EffectiveAddress,
+    EffectiveAddr,
 
     // GC
     Tid,
@@ -294,7 +294,7 @@ impl WhammParam {
             | Self::Align
             | Self::Offset
             | Self::Memory
-            | Self::EffectiveAddress
+            | Self::EffectiveAddr
             | Self::Tid
             | Self::FieldIdx => {
                 assert_eq!(t, self.ty())
@@ -317,7 +317,7 @@ impl WhammParam {
             | Self::Align
             | Self::Offset
             | Self::Memory
-            | Self::EffectiveAddress
+            | Self::EffectiveAddr
             | Self::Tid
             | Self::FieldIdx => Definition::CompilerStatic,
             Self::Targets | Self::Arg { .. } | Self::Local { .. } => Definition::CompilerDynamic,
@@ -345,7 +345,7 @@ impl WhammParam {
             | Self::Align
             | Self::Offset
             | Self::Memory
-            | Self::EffectiveAddress
+            | Self::EffectiveAddr
             | Self::Tid
             | Self::FieldIdx => DataType::U32,
         }
@@ -367,7 +367,7 @@ impl From<String> for WhammParam {
             "align" => return Self::Align,
             "offset" => return Self::Offset,
             "memory" => return Self::Memory,
-            "effective_address" => return Self::EffectiveAddress,
+            "effective_addr" => return Self::EffectiveAddr,
             "tid" => return Self::Tid,
             "field_idx" => return Self::FieldIdx,
             _ => {}
@@ -425,7 +425,7 @@ impl Display for WhammParam {
             Self::Align => f.write_str("align"),
             Self::Offset => f.write_str("offset"),
             Self::Memory => f.write_str("memory"),
-            Self::EffectiveAddress => f.write_str("effective_address"),
+            Self::EffectiveAddr => f.write_str("effective_addr"),
             Self::Tid => f.write_str("tid"),
             Self::FieldIdx => f.write_str("field_idx"),
         }

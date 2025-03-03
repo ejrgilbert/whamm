@@ -9,7 +9,8 @@ use crate::lang_features::report_vars::LocationData;
 use crate::parser::types::{DataType, Fn, ProbeRule, Value, Whamm, WhammVisitorMut};
 use crate::verifier::types::Record;
 use orca_wasm::ir::id::FunctionID;
-use std::collections::HashSet;
+use orca_wasm::Module;
+use std::collections::{HashMap, HashSet};
 
 /// Serves as the first phase of instrumenting a module by setting up
 /// the groundwork.
@@ -18,13 +19,15 @@ use std::collections::HashSet;
 /// emit some compiler-provided functions and user-defined globals.
 /// This process should ideally be generic, made to perform a specific
 /// instrumentation technique by the Emitter field.
-pub struct InitGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> {
+pub struct InitGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j> {
     pub emitter: ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g>,
     pub context_name: String,
     pub err: &'h mut ErrorGen,
     pub injected_funcs: &'i mut Vec<FunctionID>,
+    pub used_fns_per_lib: HashMap<String, HashSet<String>>,
+    pub user_lib_modules: HashMap<String, Module<'j>>,
 }
-impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     pub fn run(
         &mut self,
         whamm: &mut Whamm,
@@ -46,7 +49,7 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 }
 
-impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     fn emit_string(&mut self, val: &mut Value) -> bool {
         self.emitter.emit_string(val, self.err)
     }
@@ -71,6 +74,25 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
         value: &Option<Value>,
     ) -> Option<FunctionID> {
         self.emitter.emit_report_global(name, ty, value, self.err)
+    }
+
+    fn link_user_lib(&mut self, lib_name: &str) {
+        // Perform import now! (we'll be in the right table scope at this point)
+        if let Some(used_fns) = self.used_fns_per_lib.get(lib_name) {
+            let Some(lib_wasm) = self.user_lib_modules.get(lib_name) else {
+                panic!("Could not find wasm module for library '{lib_name}'");
+            };
+            self.injected_funcs.extend(
+                crate::lang_features::libraries::linking::import_lib::link_user_lib(
+                    self.emitter.app_wasm,
+                    lib_wasm,
+                    lib_name.to_string(),
+                    used_fns,
+                    self.emitter.table,
+                    self.err,
+                ),
+            );
+        }
     }
 
     fn add_injected_func(&mut self, fid: FunctionID) {
@@ -107,6 +129,6 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
         self.emitter.exit_scope(self.err);
     }
     fn lookup_var_mut(&mut self, name: &str) -> Option<&mut Record> {
-        self.emitter.table.lookup_var_mut(name, &None, self.err)
+        self.emitter.table.lookup_var_mut(name)
     }
 }

@@ -52,14 +52,17 @@ pub enum Cmd {
 #[derive(Debug, Args)]
 pub struct InstrArgs {
     /// The path to the application's Wasm module we want to instrument.
-    #[arg(short, long, value_parser, default_value = "")]
-    pub app: String,
+    #[arg(short, long, value_parser)]
+    pub app: Option<String>,
     /// The path to the Script containing the instrumentation Probe definitions.
     #[arg(short, long, value_parser)]
     pub script: String,
     /// The path to the core Whamm library Wasm module.
-    #[arg(short, long, value_parser, default_value = "")]
-    pub core_lib: String,
+    #[arg(short, long, value_parser)]
+    pub core_lib: Option<String>,
+    /// To configure user-provided libraries. These are comma-delimited, formatted <lib_name>=<lib_path, e.g.: --user_libs lib_name0=/path/to/lib0.wasm,lib_name1=/path/to/lib1.wasm
+    #[arg(short, long, value_delimiter = ',', num_args = 1..)]
+    pub user_libs: Option<Vec<String>>,
     /// The path that the instrumented version of the Wasm app should be output to.
     #[arg(short, long, value_parser, default_value = "./output/output.wasm")]
     pub output_path: String,

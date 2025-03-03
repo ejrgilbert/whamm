@@ -29,6 +29,8 @@ pub struct MetadataCollector<'a, 'b, 'c> {
     pub ast: Vec<Script>,
 
     // misc. trackers
+    pub used_user_library_fns: HashSet<(String, String)>,
+    curr_user_lib: Option<String>,
     pub used_provided_fns: HashSet<(String, String)>,
     pub used_report_var_dts: HashSet<DataType>,
     pub check_strcmp: bool,
@@ -52,6 +54,8 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
         Self {
             table,
             ast: Vec::default(),
+            used_user_library_fns: HashSet::default(),
+            curr_user_lib: None,
             used_provided_fns: HashSet::default(),
             used_report_var_dts: HashSet::default(),
             check_strcmp: false,
@@ -299,6 +303,9 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
 
     fn visit_stmt(&mut self, stmt: &Statement) {
         match stmt {
+            Statement::LibImport { .. } => {
+                // Nothing to do, we just want to track the libraries/functions that are **used**
+            }
             Statement::Decl { .. } => {
                 // ignore
             }
@@ -406,6 +413,11 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                 }
                 self.check_strcmp = false;
             }
+            Expr::LibCall { lib_name, call, .. } => {
+                self.curr_user_lib = Some(lib_name.to_string());
+                self.visit_expr(call);
+                self.curr_user_lib = None;
+            }
             Expr::Call {
                 args, fn_target, ..
             } => {
@@ -421,26 +433,63 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                         "".to_string()
                     }
                 };
-                let (
-                    Some(Record::Fn {
-                        def,
-                        ret_ty,
-                        req_args,
-                        ..
-                    }),
-                    context,
-                ) = self.table.lookup_fn_with_context(&fn_name, self.err)
-                else {
-                    self.err
-                        .unexpected_error(true, Some("unexpected type".to_string()), None);
-                    return;
+
+                let (def, ret_ty, req_args, context) = if let Some(lib_name) = &self.curr_user_lib {
+                    let Some(Record::LibFn {
+                        name, results, def, ..
+                    }) = self.table.lookup_lib_fn(lib_name, &fn_name, self.err)
+                    else {
+                        panic!(
+                            "Could not find library function for {}.{}",
+                            lib_name, fn_name
+                        )
+                    };
+
+                    // Track user library that's being used
+                    let Some(exp_lib_name) = &self.curr_user_lib else {
+                        panic!("Current user library is not set!")
+                    };
+                    assert_eq!(exp_lib_name, lib_name, "Library names should be equal!!");
+                    self.used_user_library_fns
+                        .insert((lib_name.clone(), fn_name.clone()));
+                    let ret_ty = if results.len() > 1 {
+                        panic!(
+                            "We don't support functions with multiple return types: {}.{}",
+                            lib_name, name
+                        );
+                    } else if results.is_empty() {
+                        DataType::Tuple { ty_info: vec![] }
+                    } else {
+                        results.first().unwrap().clone()
+                    };
+
+                    (def, ret_ty, ReqArgs::None, None)
+                } else {
+                    let (
+                        Some(Record::Fn {
+                            def,
+                            ret_ty,
+                            req_args,
+                            ..
+                        }),
+                        context,
+                    ) = self.table.lookup_fn_with_context(&fn_name, self.err)
+                    else {
+                        self.err
+                            .unexpected_error(true, Some("unexpected type".to_string()), None);
+                        return;
+                    };
+                    (def, ret_ty.clone(), req_args.clone(), Some(context))
                 };
+
                 self.check_strcmp = matches!(ret_ty, DataType::Str);
                 if matches!(def, Definition::CompilerDynamic) {
-                    // will need to emit this function!
-                    self.used_provided_fns.insert((context, fn_name));
-                    // will need to possibly define arguments!
-                    self.combine_req_args(req_args.clone());
+                    if let Some(context) = context {
+                        // will need to emit this function!
+                        self.used_provided_fns.insert((context, fn_name));
+                        // will need to possibly define arguments!
+                        self.combine_req_args(req_args.clone());
+                    }
                 }
 
                 args.iter().for_each(|arg| {

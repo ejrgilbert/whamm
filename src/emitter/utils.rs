@@ -30,6 +30,7 @@ pub struct EmitCtx<'a, 'b, 'c, 'd, 'e, 'f> {
     table: &'a mut SymbolTable,
     mem_allocator: &'b MemoryAllocator,
     in_map_op: bool,
+    in_lib_call_to: Option<String>,
     map_lib_adapter: &'c mut MapLibAdapter,
     report_vars: &'d mut ReportVars,
     unshared_var_handler: &'e mut UnsharedVarHandler,
@@ -50,6 +51,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> EmitCtx<'a, 'b, 'c, 'd, 'e, 'f> {
             table,
             mem_allocator,
             in_map_op: false,
+            in_lib_call_to: None,
             map_lib_adapter,
             report_vars,
             unshared_var_handler,
@@ -79,6 +81,7 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     ctx: &mut EmitCtx,
 ) -> bool {
     match stmt {
+        Statement::LibImport { .. } => todo!(),
         Statement::Decl { .. } => emit_decl_stmt(stmt, injector, ctx),
         Statement::Assign { .. } => emit_assign_stmt(stmt, strategy, injector, ctx),
         Statement::Expr { expr, .. } | Statement::Return { expr, .. } => {
@@ -234,8 +237,7 @@ fn emit_unshared_decl_stmt(
                         ..
                     } => {
                         // look up in symbol table
-                        let Some(Record::Var { addr, .. }) =
-                            ctx.table.lookup_var_mut(var_name, &None, ctx.err)
+                        let Some(Record::Var { addr, .. }) = ctx.table.lookup_var_mut(var_name)
                         else {
                             ctx.err.unexpected_error(
                                 true,
@@ -296,9 +298,7 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             // Save off primitives to symbol table
             // TODO -- this is only necessary for `new_target_fn_name`, remove after deprecating!
             if let (Expr::VarId { name, .. }, Expr::Primitive { val, .. }) = (&var_id, &expr) {
-                let Some(Record::Var { value, def, .. }) =
-                    ctx.table.lookup_var_mut(name, &None, ctx.err)
-                else {
+                let Some(Record::Var { value, def, .. }) = ctx.table.lookup_var_mut(name) else {
                     ctx.err
                         .unexpected_error(true, Some("unexpected type".to_string()), None);
                     return false;
@@ -467,7 +467,7 @@ fn possibly_emit_memaddr_calc_offset<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLo
     ctx: &mut EmitCtx,
 ) -> bool {
     if let Expr::VarId { name, .. } = var_id {
-        let Some(Record::Var { addr, .. }) = ctx.table.lookup_var_mut(name, &None, ctx.err) else {
+        let Some(Record::Var { addr, .. }) = ctx.table.lookup_var_mut(name) else {
             ctx.err
                 .unexpected_error(true, Some("unexpected type".to_string()), None);
             return false;
@@ -491,8 +491,7 @@ fn emit_set<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     ctx: &mut EmitCtx,
 ) -> bool {
     if let Expr::VarId { name, .. } = var_id {
-        let Some(Record::Var { addr, loc, .. }) = ctx.table.lookup_var_mut(name, &None, ctx.err)
-        else {
+        let Some(Record::Var { addr, loc, .. }) = ctx.table.lookup_var_mut(name) else {
             ctx.err
                 .unexpected_error(true, Some("unexpected type".to_string()), None);
             return false;
@@ -687,6 +686,13 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 ctx,
             )
         }
+        Expr::LibCall { lib_name, call, .. } => {
+            ctx.in_lib_call_to = Some(lib_name.clone());
+            let is_success = emit_expr(&mut *call, strategy, injector, ctx);
+
+            ctx.in_lib_call_to = None;
+            is_success
+        }
         Expr::Call {
             fn_target, args, ..
         } => {
@@ -701,32 +707,39 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 is_success = emit_expr(arg, strategy, injector, ctx);
             }
 
-            let Some(Record::Fn { addr, .. }) = ctx.table.lookup_fn(&fn_name, true, ctx.err) else {
-                ctx.err
-                    .unexpected_error(true, Some("unexpected type".to_string()), None);
-                return false;
-            };
-            if let Some(f_id) = addr {
-                injector.call(FunctionID(*f_id));
+            let addr = if let Some(lib_name) = &ctx.in_lib_call_to {
+                let Some(Record::LibFn { addr, .. }) =
+                    ctx.table.lookup_lib_fn(lib_name, &fn_name, ctx.err)
+                else {
+                    ctx.err
+                        .unexpected_error(true, Some("unexpected type".to_string()), None);
+                    return false;
+                };
+                *addr
             } else {
-                ctx.err.unexpected_error(
-                    true,
-                    Some(format!(
-                        "{} \
-                                fn_target address not in symbol table, not emitted yet...",
-                        ctx.err_msg,
-                    )),
-                    None,
+                let Some(Record::Fn { addr, .. }) = ctx.table.lookup_fn(&fn_name, true, ctx.err)
+                else {
+                    ctx.err
+                        .unexpected_error(true, Some("unexpected type".to_string()), None);
+                    return false;
+                };
+                *addr
+            };
+
+            if let Some(f_id) = addr {
+                injector.call(FunctionID(f_id));
+            } else {
+                panic!(
+                    "{} \
+                                fn_target address not in symbol table for '{}', not emitted yet...",
+                    ctx.err_msg, fn_name
                 );
-                return false;
             }
             is_success
         }
         Expr::VarId { name, .. } => {
             // TODO -- support string vars (unimplemented)
-            let Some(Record::Var { addr, def, .. }) =
-                ctx.table.lookup_var_mut(name, &None, ctx.err)
-            else {
+            let Some(Record::Var { addr, def, .. }) = ctx.table.lookup_var_mut(name) else {
                 ctx.err
                     .unexpected_error(true, Some("unexpected type".to_string()), None);
                 return false;

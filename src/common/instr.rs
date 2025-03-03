@@ -24,7 +24,7 @@ use log::{error, info};
 use orca_wasm::ir::id::{FunctionID, GlobalID};
 use orca_wasm::ir::types::{DataType as OrcaType, InitExpr, Value as OrcaValue};
 use orca_wasm::{Instructions, Module};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::process::exit;
 use wasmparser::MemoryType;
@@ -107,10 +107,17 @@ pub fn run_with_path(
     core_wasm_path: &str,
     app_wasm_path: String,
     script_path: String,
+    user_lib_paths: Option<Vec<String>>,
     output_wasm_path: String,
     max_errors: i32,
     config: Config,
 ) {
+    let user_libs = if let Some(user_lib_paths) = user_lib_paths {
+        parse_user_lib_paths(user_lib_paths)
+    } else {
+        vec![]
+    };
+
     let buff = if !config.wizard {
         std::fs::read(app_wasm_path).unwrap()
     } else {
@@ -139,6 +146,7 @@ pub fn run_with_path(
         &mut target_wasm,
         &whamm_script,
         &script_path,
+        user_libs,
         max_errors,
         config,
     );
@@ -152,20 +160,43 @@ pub fn run_with_path(
     }
 }
 
+pub fn parse_user_lib_paths(paths: Vec<String>) -> Vec<(String, Vec<u8>)> {
+    let mut res = vec![];
+    for path in paths.iter() {
+        let parts = path.split('=').collect::<Vec<&str>>();
+        assert_eq!(2, parts.len(), "A user lib should be specified using the following format: <lib_name>=/path/to/lib.wasm");
+
+        let lib_name = parts.first().unwrap().to_string();
+        let lib_path = parts.get(1).unwrap();
+        let buff = std::fs::read(lib_path).unwrap();
+
+        res.push((lib_name, buff));
+    }
+
+    res
+}
+
 pub fn run(
     core_wasm_path: &str,
     target_wasm: &mut Module,
     whamm_script: &String,
     script_path: &str,
+    user_libs: Vec<(String, Vec<u8>)>,
     max_errors: i32,
     config: Config,
 ) -> Vec<u8> {
     // Set up error reporting mechanism
     let mut err = ErrorGen::new(script_path.to_string(), "".to_string(), max_errors);
 
+    // Parse user libraries to Wasm modules
+    let mut user_lib_modules: HashMap<String, Module> = HashMap::default();
+    for (lib_name, lib_buff) in user_libs.iter() {
+        user_lib_modules.insert(lib_name.clone(), Module::parse(lib_buff, false).unwrap());
+    }
+
     // Process the script
     let mut whamm = get_script_ast(whamm_script, &mut err);
-    let (mut symbol_table, has_reports) = get_symbol_table(&mut whamm, &mut err);
+    let (mut symbol_table, has_reports) = get_symbol_table(&mut whamm, &user_lib_modules, &mut err);
     err.check_too_many();
 
     // If there were any errors encountered, report and exit!
@@ -185,8 +216,8 @@ pub fn run(
     });
     let mut io_package = IOPackage::new(*mem_allocator.mem_tracker_global);
     let mut core_packages: Vec<&mut dyn LibPackage> = vec![&mut map_package, &mut io_package];
-    let mut injected_funcs = crate::lang_features::libraries::actions::link_core_lib(
-        &config.library_strategy,
+    let mut injected_core_lib_funcs = crate::lang_features::libraries::actions::link_core_lib(
+        config.library_strategy,
         &metadata_collector.ast,
         target_wasm,
         core_wasm_path,
@@ -194,6 +225,17 @@ pub fn run(
         &mut core_packages,
         metadata_collector.err,
     );
+
+    // make the used user library functions the correct form
+    let mut used_fns_per_lib: HashMap<String, HashSet<String>> = HashMap::default();
+    for (used_lib, used_fn) in metadata_collector.used_user_library_fns.iter() {
+        used_fns_per_lib
+            .entry(used_lib.clone())
+            .and_modify(|set| {
+                set.insert(used_fn.clone());
+            })
+            .or_insert(HashSet::from_iter([used_fn.clone()].iter().cloned()));
+    }
     let mut map_lib_adapter = map_package.adapter;
     let mut io_adapter = io_package.adapter;
     let mut report_vars = ReportVars::new();
@@ -205,6 +247,8 @@ pub fn run(
     if config.wizard {
         run_instr_wizard(
             metadata_collector,
+            used_fns_per_lib,
+            user_lib_modules,
             target_wasm,
             &mut mem_allocator,
             &mut io_adapter,
@@ -216,6 +260,8 @@ pub fn run(
         run_instr_rewrite(
             &mut whamm,
             metadata_collector,
+            used_fns_per_lib,
+            user_lib_modules,
             target_wasm,
             has_reports,
             &mut mem_allocator,
@@ -223,7 +269,7 @@ pub fn run(
             &mut map_lib_adapter,
             &mut report_vars,
             &mut unshared_var_handler,
-            &mut injected_funcs,
+            &mut injected_core_lib_funcs,
         );
     }
 
@@ -243,6 +289,8 @@ pub fn run(
 
 fn run_instr_wizard(
     metadata_collector: MetadataCollector,
+    used_fns_per_lib: HashMap<String, HashSet<String>>,
+    user_lib_modules: HashMap<String, Module>,
     target_wasm: &mut Module,
     mem_allocator: &mut MemoryAllocator,
     io_adapter: &mut IOAdapter,
@@ -276,6 +324,8 @@ fn run_instr_wizard(
         err,
         injected_funcs: &mut injected_funcs,
         config,
+        used_fns_per_lib,
+        user_lib_modules,
         curr_script_id: u8::MAX,
         unshared_var_handler: &mut wizard_unshared_var_handler,
     };
@@ -285,6 +335,8 @@ fn run_instr_wizard(
 fn run_instr_rewrite(
     whamm: &mut Whamm,
     metadata_collector: MetadataCollector,
+    used_fns_per_lib: HashMap<String, HashSet<String>>,
+    user_lib_modules: HashMap<String, Module>,
     target_wasm: &mut Module,
     has_reports: bool,
     mem_allocator: &mut MemoryAllocator,
@@ -313,6 +365,8 @@ fn run_instr_rewrite(
         ),
         context_name: "".to_string(),
         err,
+        used_fns_per_lib,
+        user_lib_modules,
         injected_funcs,
     };
     init.run(whamm, used_funcs, used_strings);
@@ -385,8 +439,12 @@ fn get_memory_allocator(target_wasm: &mut Module, create_new_mem: bool) -> Memor
     }
 }
 
-fn get_symbol_table(ast: &mut Whamm, err: &mut ErrorGen) -> (SymbolTable, bool) {
-    let mut st = build_symbol_table(ast, err);
+fn get_symbol_table(
+    ast: &mut Whamm,
+    user_libs: &HashMap<String, Module>,
+    err: &mut ErrorGen,
+) -> (SymbolTable, bool) {
+    let mut st = build_symbol_table(ast, user_libs, err);
     err.check_too_many();
     let has_reports = verify_ast(ast, &mut st, err);
     (st, has_reports)

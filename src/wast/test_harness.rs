@@ -229,6 +229,7 @@ fn generate_instrumented_bin_wast(
             &mut module_to_instrument,
             &test_case.whamm_script,
             &wast_path_str,
+            vec![],
             0,
             Config {
                 wizard: false,
