@@ -1035,6 +1035,7 @@ macro_rules! for_each_opcode {
     I32Load, Load, i32_load, Some(vec![DataType::U32]), vec![], get_memarg_globals(Some(4)), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
     I64Load, Load, i64_load, Some(vec![DataType::U32]), vec![], get_memarg_globals(Some(8)), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
     F32Load, Load, f32_load, Some(vec![DataType::U32]), vec![], get_memarg_globals(Some(4)), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+    F64Load, Load, f64_load, Some(vec![DataType::U32]), vec![], get_memarg_globals(Some(8)), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
     I32Load8S, Load, i32_load8_s, Some(vec![DataType::U32]), vec![], get_memarg_globals(Some(1)), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
     I32Load8U, Load, i32_load8_u, Some(vec![DataType::U32]), vec![], get_memarg_globals(Some(1)), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
     I32Load16S, Load, i32_load16_s, Some(vec![DataType::U32]), vec![], get_memarg_globals(Some(2)), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
@@ -1874,6 +1875,16 @@ pub fn get_memarg_globals(data_size: Option<u8>) -> HashMap<String, ProvidedGlob
             DataType::U32,
             None,
             true,
+        ),
+    );
+    globals.insert(
+        "addr".to_string(),
+        ProvidedGlobal::new(
+            "addr".to_string(),
+            "The memory address argument passed to the opcode.".to_string(),
+            DataType::U32,
+            None,
+            false,
         ),
     );
     globals.insert(

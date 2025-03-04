@@ -1075,6 +1075,30 @@ impl Event for OpcodeEvent {
                     loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
+            OpcodeEventKind::F64Load { .. } => {
+                if let Operator::F64Load {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    req_args = create_memarg_globals(
+                        &all_params,
+                        &mut loc_info,
+                        0,
+                        *align,
+                        *offset,
+                        *memory,
+                    );
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
             OpcodeEventKind::I32Load8S { .. } => {
                 if let Operator::I32Load8S {
                     memarg:
@@ -4718,6 +4742,18 @@ fn create_memarg_globals(
                 loc_info
                     .static_data
                     .insert("memory".to_string(), Some(Value::gen_u32(memory)));
+            }
+            WhammParam::Addr => {
+                req_args = ReqArgs::FirstN { n: addr_arg };
+                loc_info.add_dynamic_assign(
+                    "addr".to_string(),
+                    DataType::U32,
+                    Expr::VarId {
+                        definition: Definition::CompilerDynamic,
+                        name: format!("arg{addr_arg}"),
+                        loc: None,
+                    },
+                );
             }
             WhammParam::EffectiveAddr => {
                 req_args = ReqArgs::FirstN { n: addr_arg };

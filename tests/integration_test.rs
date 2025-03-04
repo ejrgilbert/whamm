@@ -207,8 +207,8 @@ fn instrument_with_paper_eval_cache_sim_scripts() {
     assert!(!processed_scripts.is_empty());
 
     // TODO on wizard:
-    //   -- support 'effective_addr'
-    run_core_suite("paper_eval-cache_sim", processed_scripts, true, false)
+    //   -- support 'effective_addr', 'offset', 'addr', 'data_size'
+    run_core_suite("paper_eval-cache_sim", processed_scripts, true, true)
 }
 
 #[test]
@@ -427,7 +427,7 @@ fn run_script(
     script_text: &String,
     script_path: &PathBuf,
     target_wasm: &mut Module,
-    user_libs: Vec<(String, Vec<u8>)>,
+    user_libs: Vec<(String, String, Vec<u8>)>,
     output_path: Option<String>,
     target_wizard: bool,
     err: &mut ErrorGen,
@@ -449,7 +449,7 @@ fn run_script(
     );
     if let Some(path) = output_path {
         try_path(&path);
-        if let Err(e) = std::fs::write(&path, wasm_result) {
+        if let Err(e) = fs::write(&path, wasm_result) {
             unreachable!(
                 "Failed to dump instrumented wasm to {} from error: {}",
                 &path, e
@@ -536,6 +536,12 @@ fn run_testcase_wizard(
     } else {
         vec![]
     };
+
+    let mut libs_to_link = "".to_string();
+    for (_, lib_path, _) in user_libs.iter() {
+        libs_to_link += &format!("+{lib_path}");
+    }
+
     // run the script on configured application
     let mut module_to_instrument = Module::default();
     run_script(
@@ -553,7 +559,7 @@ fn run_testcase_wizard(
     let wizeng_path = "output/tests/engines/wizeng";
     let res = Command::new(wizeng_path)
         .arg("--env=TO_CONSOLE=true")
-        .arg(format!("--monitors={}+{}", instr_app_path, whamm_core_lib_path))
+        .arg(format!("--monitors={}+{}{}", instr_app_path, whamm_core_lib_path, libs_to_link))
         .arg(app_path_str)
         .output()
         .expect(&format!("Failed to run wizard command, please make sure the wizeng executable is available at the path: {}", wizeng_path));
