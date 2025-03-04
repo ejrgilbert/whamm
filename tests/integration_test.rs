@@ -207,7 +207,7 @@ fn instrument_with_paper_eval_cache_sim_scripts() {
     assert!(!processed_scripts.is_empty());
 
     // TODO on wizard:
-    //   -- support 'effective_addr', 'offset', 'addr', 'data_size'
+    //   -- support 'effective_addr'
     run_core_suite("paper_eval-cache_sim", processed_scripts, true, true)
 }
 
