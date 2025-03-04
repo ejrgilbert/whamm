@@ -267,6 +267,7 @@ fn run_core_suite(
     build_user_libs();
     wat2wasm_on_dir("tests/apps/core_suite/rust");
     wat2wasm_on_dir("tests/apps/core_suite/handwritten");
+    wat2wasm_on_dir("tests/apps/core_suite/clang");
 
     let mut rewriting_tests = vec![];
     let mut wizard_tests = vec![];
