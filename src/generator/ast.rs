@@ -297,7 +297,7 @@ impl WhammParam {
             | Self::EffectiveAddr
             | Self::Tid
             | Self::FieldIdx => {
-                assert_eq!(t, self.ty())
+                assert_eq!(t, self.ty(), "Type doesn't match when setting {}", self)
             }
         }
     }

@@ -1,4 +1,6 @@
 ============================= REPORT CSV FLUSH ================================
 id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)
-1, global_id, val, i32, i32, script0, 0:1, 0_wasm:opcode:i32_load:before, 42
-2, global_id, val, i32, i32, script0, 0:2, 0_wasm:opcode:i32_load:before, 42
+1, global_id, hit, u32, i32, script0, 0:1, 0_wasm:opcode:i32_load:before, 1
+2, global_id, miss, u32, i32, script0, 0:1, 0_wasm:opcode:i32_load:before, 1
+3, global_id, hit, u32, i32, script0, 0:2, 0_wasm:opcode:i32_load:before, 2
+4, global_id, miss, u32, i32, script0, 0:2, 0_wasm:opcode:i32_load:before, 0

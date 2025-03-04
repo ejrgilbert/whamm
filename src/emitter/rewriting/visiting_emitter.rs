@@ -532,6 +532,13 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 .get_func_by_name("main".to_string())
             {
                 main_fid
+            } else if let Some(main_fid) = self
+                .app_iter
+                .module
+                .exports
+                .get_func_by_name("_start".to_string())
+            {
+                main_fid
             } else if let Some(start_fid) = self.app_iter.module.start {
                 start_fid
             } else {

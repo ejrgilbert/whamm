@@ -8,7 +8,7 @@ use crate::parser::rules::core::{CorePackage, WhammMode, WhammModeKind, WhammPro
 use crate::parser::rules::wasm::{OpcodeCategory, WasmPackage};
 use crate::parser::types::{
     print_fns, print_global_vars, Block, DataType, Definition, Expr, Location, ProbeRule,
-    ProvidedFunction, ProvidedGlobal, RulePart,
+    ProvidedFunction, ProvidedGlobal, RulePart, Value,
 };
 use glob::Pattern;
 use std::collections::HashMap;
@@ -1032,28 +1032,28 @@ macro_rules! for_each_opcode {
     LocalTee, Local, local_tee, None, vec![(DataType::U32, 1)], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_tee"
     GlobalGet, Global, global_get, Some(vec![]), vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Global_get"
     GlobalSet, Global, global_set, None, vec![(DataType::U32, 1)], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Global_set"
-    I32Load, Load, i32_load, Some(vec![DataType::U32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
-    I64Load, Load, i64_load, Some(vec![DataType::U32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
-    F32Load, Load, f32_load, Some(vec![DataType::U32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
-    I32Load8S, Load, i32_load8_s, Some(vec![DataType::U32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
-    I32Load8U, Load, i32_load8_u, Some(vec![DataType::U32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
-    I32Load16S, Load, i32_load16_s, Some(vec![DataType::U32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
-    I32Load16U, Load, i32_load16_u, Some(vec![DataType::U32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
-    I64Load8S, Load, i64_load8_s, Some(vec![DataType::U32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
-    I64Load8U, Load, i64_load8_u, Some(vec![DataType::U32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
-    I64Load16S, Load, i64_load16_s, Some(vec![DataType::U32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
-    I64Load16U, Load, i64_load16_u, Some(vec![DataType::U32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
-    I64Load32S, Load, i64_load32_s, Some(vec![DataType::U32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
-    I64Load32U, Load, i64_load32_u, Some(vec![DataType::U32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
-    I32Store, Store, i32_store, Some(vec![DataType::U32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
-    I64Store, Store, i64_store, Some(vec![DataType::U32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
-    F32Store, Store, f32_store, Some(vec![DataType::U32, DataType::F32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
-    F64Store, Store, f64_store, Some(vec![DataType::U32, DataType::F64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
-    I32Store8, Store, i32_store8, Some(vec![DataType::U32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
-    I32Store16, Store, i32_store16, Some(vec![DataType::U32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
-    I64Store8, Store, i64_store8, Some(vec![DataType::U32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
-    I64Store16, Store, i64_store16, Some(vec![DataType::U32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
-    I64Store32, Store, i64_store32, Some(vec![DataType::U32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
+    I32Load, Load, i32_load, Some(vec![DataType::U32]), vec![], get_memarg_globals(Some(4)), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+    I64Load, Load, i64_load, Some(vec![DataType::U32]), vec![], get_memarg_globals(Some(8)), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+    F32Load, Load, f32_load, Some(vec![DataType::U32]), vec![], get_memarg_globals(Some(4)), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+    I32Load8S, Load, i32_load8_s, Some(vec![DataType::U32]), vec![], get_memarg_globals(Some(1)), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+    I32Load8U, Load, i32_load8_u, Some(vec![DataType::U32]), vec![], get_memarg_globals(Some(1)), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+    I32Load16S, Load, i32_load16_s, Some(vec![DataType::U32]), vec![], get_memarg_globals(Some(2)), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+    I32Load16U, Load, i32_load16_u, Some(vec![DataType::U32]), vec![], get_memarg_globals(Some(2)), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+    I64Load8S, Load, i64_load8_s, Some(vec![DataType::U32]), vec![], get_memarg_globals(Some(1)), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+    I64Load8U, Load, i64_load8_u, Some(vec![DataType::U32]), vec![], get_memarg_globals(Some(1)), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+    I64Load16S, Load, i64_load16_s, Some(vec![DataType::U32]), vec![], get_memarg_globals(Some(2)), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+    I64Load16U, Load, i64_load16_u, Some(vec![DataType::U32]), vec![], get_memarg_globals(Some(2)), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+    I64Load32S, Load, i64_load32_s, Some(vec![DataType::U32]), vec![], get_memarg_globals(Some(4)), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+    I64Load32U, Load, i64_load32_u, Some(vec![DataType::U32]), vec![], get_memarg_globals(Some(4)), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+    I32Store, Store, i32_store, Some(vec![DataType::I32, DataType::U32]), vec![], get_memarg_globals(Some(4)), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
+    I64Store, Store, i64_store, Some(vec![DataType::I64, DataType::U32]), vec![], get_memarg_globals(Some(8)), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
+    F32Store, Store, f32_store, Some(vec![DataType::F32, DataType::U32]), vec![], get_memarg_globals(Some(4)), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
+    F64Store, Store, f64_store, Some(vec![DataType::F64, DataType::U32]), vec![], get_memarg_globals(Some(8)), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
+    I32Store8, Store, i32_store8, Some(vec![DataType::I32, DataType::U32]), vec![], get_memarg_globals(Some(1)), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
+    I32Store16, Store, i32_store16, Some(vec![DataType::I32, DataType::U32]), vec![], get_memarg_globals(Some(2)), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
+    I64Store8, Store, i64_store8, Some(vec![DataType::I64, DataType::U32]), vec![], get_memarg_globals(Some(1)), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
+    I64Store16, Store, i64_store16, Some(vec![DataType::I64, DataType::U32]), vec![], get_memarg_globals(Some(2)), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
+    I64Store32, Store, i64_store32, Some(vec![DataType::I64, DataType::U32]), vec![], get_memarg_globals(Some(4)), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
     MemorySize, Memory, memory_size, Some(vec![]), vec![(DataType::U32, 1)], vec![], vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Size"
     MemoryGrow, Memory, memory_grow, Some(vec![DataType::U32]), vec![(DataType::U32, 1)], vec![], vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Grow"
     I32Const, Const, i32_const, Some(vec![]), vec![(DataType::I32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Const"
@@ -1293,82 +1293,82 @@ macro_rules! for_each_opcode {
     // 0xFE prefixed operators
     // threads
     // https://github.com/WebAssembly/threads
-    MemoryAtomicNotify, Atomic, memory_atomic_notify, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    MemoryAtomicWait32, Atomic, memory_atomic_wait32, Some(vec![DataType::I32, DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    MemoryAtomicWait64, Atomic, memory_atomic_wait64, Some(vec![DataType::I32, DataType::I64, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    MemoryAtomicNotify, Atomic, memory_atomic_notify, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(None), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    MemoryAtomicWait32, Atomic, memory_atomic_wait32, Some(vec![DataType::I32, DataType::I32, DataType::I64]), vec![], get_memarg_globals(None), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    MemoryAtomicWait64, Atomic, memory_atomic_wait64, Some(vec![DataType::I32, DataType::I64, DataType::I64]), vec![], get_memarg_globals(None), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
     AtomicFence, Atomic, atomic_fence, Some(vec![]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
-    I32AtomicLoad, Atomic, i32_atomic_load, Some(vec![DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicLoad, Atomic, i64_atomic_load, Some(vec![DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I32AtomicLoad8U, Atomic, i32_atomic_load8_u, Some(vec![DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I32AtomicLoad16U, Atomic, i32_atomic_load16_u, Some(vec![DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicLoad8U, Atomic, i64_atomic_load8_u, Some(vec![DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicLoad16U, Atomic, i64_atomic_load16_u, Some(vec![DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicLoad32U, Atomic, i64_atomic_load32_u, Some(vec![DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicLoad, Atomic, i32_atomic_load, Some(vec![DataType::I32]), vec![], get_memarg_globals(Some(4)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicLoad, Atomic, i64_atomic_load, Some(vec![DataType::I32]), vec![], get_memarg_globals(Some(8)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicLoad8U, Atomic, i32_atomic_load8_u, Some(vec![DataType::I32]), vec![], get_memarg_globals(Some(1)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicLoad16U, Atomic, i32_atomic_load16_u, Some(vec![DataType::I32]), vec![], get_memarg_globals(Some(2)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicLoad8U, Atomic, i64_atomic_load8_u, Some(vec![DataType::I32]), vec![], get_memarg_globals(Some(1)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicLoad16U, Atomic, i64_atomic_load16_u, Some(vec![DataType::I32]), vec![], get_memarg_globals(Some(2)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicLoad32U, Atomic, i64_atomic_load32_u, Some(vec![DataType::I32]), vec![], get_memarg_globals(Some(4)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
-    I32AtomicStore, Atomic, i32_atomic_store, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I32AtomicStore8, Atomic, i32_atomic_store8, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I32AtomicStore16, Atomic, i32_atomic_store16, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicStore, Atomic, i64_atomic_store, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicStore8, Atomic, i64_atomic_store8, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicStore16, Atomic, i64_atomic_store16, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicStore32, Atomic, i64_atomic_store32, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicStore, Atomic, i32_atomic_store, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(Some(4)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicStore8, Atomic, i32_atomic_store8, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(Some(1)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicStore16, Atomic, i32_atomic_store16, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(Some(2)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicStore, Atomic, i64_atomic_store, Some(vec![DataType::I64, DataType::I32]), vec![], get_memarg_globals(Some(8)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicStore8, Atomic, i64_atomic_store8, Some(vec![DataType::I64, DataType::I32]), vec![], get_memarg_globals(Some(1)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicStore16, Atomic, i64_atomic_store16, Some(vec![DataType::I64, DataType::I32]), vec![], get_memarg_globals(Some(2)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicStore32, Atomic, i64_atomic_store32, Some(vec![DataType::I64, DataType::I32]), vec![], get_memarg_globals(Some(4)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
-    I32AtomicRmwAdd, Atomic, i32_atomic_rmw_add, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I32AtomicRmw8AddU, Atomic, i32_atomic_rmw8_add_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I32AtomicRmw16AddU, Atomic, i32_atomic_rmw16_add_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicRmwAdd, Atomic, i64_atomic_rmw_add, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicRmw8AddU, Atomic, i64_atomic_rmw8_add_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicRmw16AddU, Atomic, i64_atomic_rmw16_add_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicRmw32AddU, Atomic, i64_atomic_rmw32_add_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmwAdd, Atomic, i32_atomic_rmw_add, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(Some(4)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmw8AddU, Atomic, i32_atomic_rmw8_add_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(Some(1)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmw16AddU, Atomic, i32_atomic_rmw16_add_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(Some(2)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmwAdd, Atomic, i64_atomic_rmw_add, Some(vec![DataType::I64, DataType::I32]), vec![], get_memarg_globals(Some(8)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw8AddU, Atomic, i64_atomic_rmw8_add_u, Some(vec![DataType::I64, DataType::I32]), vec![], get_memarg_globals(Some(1)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw16AddU, Atomic, i64_atomic_rmw16_add_u, Some(vec![DataType::I64, DataType::I32]), vec![], get_memarg_globals(Some(2)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw32AddU, Atomic, i64_atomic_rmw32_add_u, Some(vec![DataType::I64, DataType::I32]), vec![], get_memarg_globals(Some(4)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
-    I32AtomicRmwSub, Atomic, i32_atomic_rmw_sub, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I32AtomicRmw8SubU, Atomic, i32_atomic_rmw8_sub_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I32AtomicRmw16SubU, Atomic, i32_atomic_rmw16_sub_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicRmwSub, Atomic, i64_atomic_rmw_sub, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicRmw8SubU, Atomic, i64_atomic_rmw8_sub_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicRmw16SubU, Atomic, i64_atomic_rmw16_sub_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicRmw32SubU, Atomic, i64_atomic_rmw32_sub_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmwSub, Atomic, i32_atomic_rmw_sub, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(Some(4)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmw8SubU, Atomic, i32_atomic_rmw8_sub_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(Some(1)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmw16SubU, Atomic, i32_atomic_rmw16_sub_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(Some(2)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmwSub, Atomic, i64_atomic_rmw_sub, Some(vec![DataType::I64, DataType::I32]), vec![], get_memarg_globals(Some(8)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw8SubU, Atomic, i64_atomic_rmw8_sub_u, Some(vec![DataType::I64, DataType::I32]), vec![], get_memarg_globals(Some(1)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw16SubU, Atomic, i64_atomic_rmw16_sub_u, Some(vec![DataType::I64, DataType::I32]), vec![], get_memarg_globals(Some(2)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw32SubU, Atomic, i64_atomic_rmw32_sub_u, Some(vec![DataType::I64, DataType::I32]), vec![], get_memarg_globals(Some(4)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
-    I32AtomicRmwAnd, Atomic, i32_atomic_rmw_and, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I32AtomicRmw8AndU, Atomic, i32_atomic_rmw8_and_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I32AtomicRmw16AndU, Atomic, i32_atomic_rmw16_and_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicRmwAnd, Atomic, i64_atomic_rmw_and, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicRmw8AndU, Atomic, i64_atomic_rmw8_and_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicRmw16AndU, Atomic, i64_atomic_rmw16_and_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicRmw32AndU, Atomic, i64_atomic_rmw32_and_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmwAnd, Atomic, i32_atomic_rmw_and, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(Some(4)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmw8AndU, Atomic, i32_atomic_rmw8_and_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(Some(1)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmw16AndU, Atomic, i32_atomic_rmw16_and_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(Some(2)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmwAnd, Atomic, i64_atomic_rmw_and, Some(vec![DataType::I64, DataType::I32]), vec![], get_memarg_globals(Some(8)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw8AndU, Atomic, i64_atomic_rmw8_and_u, Some(vec![DataType::I64, DataType::I32]), vec![], get_memarg_globals(Some(1)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw16AndU, Atomic, i64_atomic_rmw16_and_u, Some(vec![DataType::I64, DataType::I32]), vec![], get_memarg_globals(Some(2)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw32AndU, Atomic, i64_atomic_rmw32_and_u, Some(vec![DataType::I64, DataType::I32]), vec![], get_memarg_globals(Some(4)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
-    I32AtomicRmwOr, Atomic, i32_atomic_rmw_or, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I32AtomicRmw8OrU, Atomic, i32_atomic_rmw8_or_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I32AtomicRmw16OrU, Atomic, i32_atomic_rmw16_or_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicRmwOr, Atomic, i64_atomic_rmw_or, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicRmw8OrU, Atomic, i64_atomic_rmw8_or_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicRmw16OrU, Atomic, i64_atomic_rmw16_or_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicRmw32OrU, Atomic, i64_atomic_rmw32_or_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmwOr, Atomic, i32_atomic_rmw_or, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(Some(4)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmw8OrU, Atomic, i32_atomic_rmw8_or_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(Some(1)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmw16OrU, Atomic, i32_atomic_rmw16_or_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(Some(2)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmwOr, Atomic, i64_atomic_rmw_or, Some(vec![DataType::I64, DataType::I32]), vec![], get_memarg_globals(Some(8)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw8OrU, Atomic, i64_atomic_rmw8_or_u, Some(vec![DataType::I64, DataType::I32]), vec![], get_memarg_globals(Some(1)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw16OrU, Atomic, i64_atomic_rmw16_or_u, Some(vec![DataType::I64, DataType::I32]), vec![], get_memarg_globals(Some(2)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw32OrU, Atomic, i64_atomic_rmw32_or_u, Some(vec![DataType::I64, DataType::I32]), vec![], get_memarg_globals(Some(4)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
-    I32AtomicRmwXor, Atomic, i32_atomic_rmw_xor, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I32AtomicRmw8XorU, Atomic, i32_atomic_rmw8_xor_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I32AtomicRmw16XorU, Atomic, i32_atomic_rmw16_xor_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicRmwXor, Atomic, i64_atomic_rmw_xor, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicRmw8XorU, Atomic, i64_atomic_rmw8_xor_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicRmw16XorU, Atomic, i64_atomic_rmw16_xor_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicRmw32XorU, Atomic, i64_atomic_rmw32_xor_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmwXor, Atomic, i32_atomic_rmw_xor, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(Some(4)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmw8XorU, Atomic, i32_atomic_rmw8_xor_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(Some(1)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmw16XorU, Atomic, i32_atomic_rmw16_xor_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(Some(2)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmwXor, Atomic, i64_atomic_rmw_xor, Some(vec![DataType::I64, DataType::I32]), vec![], get_memarg_globals(Some(8)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw8XorU, Atomic, i64_atomic_rmw8_xor_u, Some(vec![DataType::I64, DataType::I32]), vec![], get_memarg_globals(Some(1)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw16XorU, Atomic, i64_atomic_rmw16_xor_u, Some(vec![DataType::I64, DataType::I32]), vec![], get_memarg_globals(Some(2)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw32XorU, Atomic, i64_atomic_rmw32_xor_u, Some(vec![DataType::I64, DataType::I32]), vec![], get_memarg_globals(Some(4)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
-    I32AtomicRmwXchg, Atomic, i32_atomic_rmw_xchg, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I32AtomicRmw8XchgU, Atomic, i32_atomic_rmw8_xchg_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I32AtomicRmw16XchgU, Atomic, i32_atomic_rmw16_xchg_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicRmwXchg, Atomic, i64_atomic_rmw_xchg, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicRmw8XchgU, Atomic, i64_atomic_rmw8_xchg_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicRmw16XchgU, Atomic, i64_atomic_rmw16_xchg_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicRmw32XchgU, Atomic, i64_atomic_rmw32_xchg_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmwXchg, Atomic, i32_atomic_rmw_xchg, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(Some(4)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmw8XchgU, Atomic, i32_atomic_rmw8_xchg_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(Some(1)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmw16XchgU, Atomic, i32_atomic_rmw16_xchg_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(Some(2)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmwXchg, Atomic, i64_atomic_rmw_xchg, Some(vec![DataType::I64, DataType::I32]), vec![], get_memarg_globals(Some(8)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw8XchgU, Atomic, i64_atomic_rmw8_xchg_u, Some(vec![DataType::I64, DataType::I32]), vec![], get_memarg_globals(Some(1)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw16XchgU, Atomic, i64_atomic_rmw16_xchg_u, Some(vec![DataType::I64, DataType::I32]), vec![], get_memarg_globals(Some(2)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw32XchgU, Atomic, i64_atomic_rmw32_xchg_u, Some(vec![DataType::I64, DataType::I32]), vec![], get_memarg_globals(Some(4)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
-    I32AtomicRmwCmpxchg, Atomic, i32_atomic_rmw_cmpxchg, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I32AtomicRmw8CmpxchgU, Atomic, i32_atomic_rmw8_cmpxchg_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I32AtomicRmw16CmpxchgU, Atomic, i32_atomic_rmw16_cmpxchg_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicRmwCmpxchg, Atomic, i64_atomic_rmw_cmpxchg, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicRmw8CmpxchgU, Atomic, i64_atomic_rmw8_cmpxchg_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicRmw16CmpxchgU, Atomic, i64_atomic_rmw16_cmpxchg_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-    I64AtomicRmw32CmpxchgU, Atomic, i64_atomic_rmw32_cmpxchg_u, Some(vec![DataType::I32, DataType::I64]), vec![], get_memarg_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmwCmpxchg, Atomic, i32_atomic_rmw_cmpxchg, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(Some(4)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmw8CmpxchgU, Atomic, i32_atomic_rmw8_cmpxchg_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(Some(1)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I32AtomicRmw16CmpxchgU, Atomic, i32_atomic_rmw16_cmpxchg_u, Some(vec![DataType::I32, DataType::I32]), vec![], get_memarg_globals(Some(2)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmwCmpxchg, Atomic, i64_atomic_rmw_cmpxchg, Some(vec![DataType::I64, DataType::I32]), vec![], get_memarg_globals(Some(8)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw8CmpxchgU, Atomic, i64_atomic_rmw8_cmpxchg_u, Some(vec![DataType::I64, DataType::I32]), vec![], get_memarg_globals(Some(1)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw16CmpxchgU, Atomic, i64_atomic_rmw16_cmpxchg_u, Some(vec![DataType::I64, DataType::I32]), vec![], get_memarg_globals(Some(2)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+    I64AtomicRmw32CmpxchgU, Atomic, i64_atomic_rmw32_cmpxchg_u, Some(vec![DataType::I64, DataType::I32]), vec![], get_memarg_globals(Some(4)), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
     // Typed Function references
     CallRef, Control, call_ref, None, vec![(DataType::U32, 1)], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
@@ -1844,7 +1844,7 @@ pub fn get_call_fns() -> Vec<ProvidedFunction> {
     )]
 }
 
-pub fn get_memarg_globals() -> HashMap<String, ProvidedGlobal> {
+pub fn get_memarg_globals(data_size: Option<u8>) -> HashMap<String, ProvidedGlobal> {
     let mut globals = HashMap::new();
     globals.insert(
         "align".to_string(),
@@ -1887,6 +1887,19 @@ pub fn get_memarg_globals() -> HashMap<String, ProvidedGlobal> {
             false,
         ),
     );
+    if let Some(data_size) = data_size {
+        globals.insert(
+            "data_size".to_string(),
+            ProvidedGlobal::new(
+                "data_size".to_string(),
+                "The number of bytes that the memory operation is on, e.g. i32.load8_u is 1"
+                    .to_string(),
+                DataType::U32,
+                Some(Value::gen_u8(data_size)),
+                false,
+            ),
+        );
+    }
 
     globals
 }

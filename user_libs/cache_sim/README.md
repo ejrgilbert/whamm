@@ -1,5 +1,12 @@
 # Whamm! User Library -- CacheSimulator #
 
+## Cache Specifications ##
+
+- Size: 1 MB
+- Associativity: 4 way set-associative
+- Block Size: 128 byte block
+- Replacement Policy: LRU
+
 ## To Build ##
 
 To build:
