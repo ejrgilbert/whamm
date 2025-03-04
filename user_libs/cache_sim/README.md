@@ -1,7 +1,0 @@
-# Whamm! User Library -- CacheSimulator #
-
-## To Build ##
-
-To build:
-- In the base of this project (`whamm/user_libs/cache_sim`), execute: `cargo build --release --target wasm32-wasip1`
-- The built `wasm` binary will be located at `whamm/user_libs/cache_sim/target/wasm32-wasip1/release/cache_sim.wasm`

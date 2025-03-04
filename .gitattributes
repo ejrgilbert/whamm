@@ -1,1 +1,2 @@
-tests/apps/* linguist-vendored
+tests/apps/* linguist-vendored=false
+tests/**/*.exp linguist-vendored=false

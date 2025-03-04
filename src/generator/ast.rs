@@ -264,6 +264,7 @@ pub enum WhammParam {
     Align,
     Offset,
     Memory,
+    Addr,
     EffectiveAddr,
 
     // GC
@@ -294,10 +295,11 @@ impl WhammParam {
             | Self::Align
             | Self::Offset
             | Self::Memory
+            | Self::Addr
             | Self::EffectiveAddr
             | Self::Tid
             | Self::FieldIdx => {
-                assert_eq!(t, self.ty())
+                assert_eq!(t, self.ty(), "Type doesn't match when setting {}", self)
             }
         }
     }
@@ -320,7 +322,9 @@ impl WhammParam {
             | Self::EffectiveAddr
             | Self::Tid
             | Self::FieldIdx => Definition::CompilerStatic,
-            Self::Targets | Self::Arg { .. } | Self::Local { .. } => Definition::CompilerDynamic,
+            Self::Targets | Self::Addr | Self::Arg { .. } | Self::Local { .. } => {
+                Definition::CompilerDynamic
+            }
         }
     }
     pub fn ty(&self) -> DataType {
@@ -340,11 +344,12 @@ impl WhammParam {
                 key_ty: Box::new(DataType::U32),
                 val_ty: Box::new(DataType::U32),
             }, // TODO -- really want to request mapID though...
+            Self::Offset => DataType::U64,
             Self::NumTargets
             | Self::DefaultTarget
             | Self::Align
-            | Self::Offset
             | Self::Memory
+            | Self::Addr
             | Self::EffectiveAddr
             | Self::Tid
             | Self::FieldIdx => DataType::U32,
@@ -367,6 +372,7 @@ impl From<String> for WhammParam {
             "align" => return Self::Align,
             "offset" => return Self::Offset,
             "memory" => return Self::Memory,
+            "addr" => return Self::Addr,
             "effective_addr" => return Self::EffectiveAddr,
             "tid" => return Self::Tid,
             "field_idx" => return Self::FieldIdx,
@@ -425,6 +431,7 @@ impl Display for WhammParam {
             Self::Align => f.write_str("align"),
             Self::Offset => f.write_str("offset"),
             Self::Memory => f.write_str("memory"),
+            Self::Addr => f.write_str("addr"),
             Self::EffectiveAddr => f.write_str("effective_addr"),
             Self::Tid => f.write_str("tid"),
             Self::FieldIdx => f.write_str("field_idx"),

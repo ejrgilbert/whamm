@@ -250,9 +250,9 @@ impl OpcodeEvent {
             Operator::I64Store { .. }
             | Operator::I64Store8 { .. }
             | Operator::I64Store16 { .. }
-            | Operator::I64Store32 { .. } => (vec![Some(OrcaType::I32), Some(OrcaType::I64)], None),
-            Operator::F32Store { .. } => (vec![Some(OrcaType::I32), Some(OrcaType::F32)], None),
-            Operator::F64Store { .. } => (vec![Some(OrcaType::I32), Some(OrcaType::F64)], None),
+            | Operator::I64Store32 { .. } => (vec![Some(OrcaType::I64), Some(OrcaType::I32)], None),
+            Operator::F32Store { .. } => (vec![Some(OrcaType::F32), Some(OrcaType::I32)], None),
+            Operator::F64Store { .. } => (vec![Some(OrcaType::F64), Some(OrcaType::I32)], None),
             Operator::MemoryGrow { .. } => (vec![Some(OrcaType::I32)], None),
 
             Operator::I32Eqz => (vec![Some(OrcaType::I32)], None),
@@ -1014,8 +1014,14 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args =
-                        create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    req_args = create_memarg_globals(
+                        &all_params,
+                        &mut loc_info,
+                        0,
+                        *align,
+                        *offset,
+                        *memory,
+                    );
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1032,8 +1038,14 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args =
-                        create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    req_args = create_memarg_globals(
+                        &all_params,
+                        &mut loc_info,
+                        0,
+                        *align,
+                        *offset,
+                        *memory,
+                    );
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1050,8 +1062,38 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args =
-                        create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    req_args = create_memarg_globals(
+                        &all_params,
+                        &mut loc_info,
+                        0,
+                        *align,
+                        *offset,
+                        *memory,
+                    );
+
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::F64Load { .. } => {
+                if let Operator::F64Load {
+                    memarg:
+                        MemArg {
+                            align,
+                            offset,
+                            memory,
+                            ..
+                        },
+                } = instr
+                {
+                    req_args = create_memarg_globals(
+                        &all_params,
+                        &mut loc_info,
+                        0,
+                        *align,
+                        *offset,
+                        *memory,
+                    );
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1068,8 +1110,14 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args =
-                        create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    req_args = create_memarg_globals(
+                        &all_params,
+                        &mut loc_info,
+                        0,
+                        *align,
+                        *offset,
+                        *memory,
+                    );
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1086,8 +1134,14 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args =
-                        create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    req_args = create_memarg_globals(
+                        &all_params,
+                        &mut loc_info,
+                        0,
+                        *align,
+                        *offset,
+                        *memory,
+                    );
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1104,8 +1158,14 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args =
-                        create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    req_args = create_memarg_globals(
+                        &all_params,
+                        &mut loc_info,
+                        0,
+                        *align,
+                        *offset,
+                        *memory,
+                    );
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1122,8 +1182,14 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args =
-                        create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    req_args = create_memarg_globals(
+                        &all_params,
+                        &mut loc_info,
+                        0,
+                        *align,
+                        *offset,
+                        *memory,
+                    );
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1140,8 +1206,14 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args =
-                        create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    req_args = create_memarg_globals(
+                        &all_params,
+                        &mut loc_info,
+                        0,
+                        *align,
+                        *offset,
+                        *memory,
+                    );
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1158,8 +1230,14 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args =
-                        create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    req_args = create_memarg_globals(
+                        &all_params,
+                        &mut loc_info,
+                        0,
+                        *align,
+                        *offset,
+                        *memory,
+                    );
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1176,8 +1254,14 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args =
-                        create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    req_args = create_memarg_globals(
+                        &all_params,
+                        &mut loc_info,
+                        0,
+                        *align,
+                        *offset,
+                        *memory,
+                    );
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1194,8 +1278,14 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args =
-                        create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    req_args = create_memarg_globals(
+                        &all_params,
+                        &mut loc_info,
+                        0,
+                        *align,
+                        *offset,
+                        *memory,
+                    );
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1212,8 +1302,14 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args =
-                        create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    req_args = create_memarg_globals(
+                        &all_params,
+                        &mut loc_info,
+                        0,
+                        *align,
+                        *offset,
+                        *memory,
+                    );
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1230,8 +1326,14 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args =
-                        create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    req_args = create_memarg_globals(
+                        &all_params,
+                        &mut loc_info,
+                        0,
+                        *align,
+                        *offset,
+                        *memory,
+                    );
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1248,8 +1350,14 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args =
-                        create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    req_args = create_memarg_globals(
+                        &all_params,
+                        &mut loc_info,
+                        1,
+                        *align,
+                        *offset,
+                        *memory,
+                    );
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1266,8 +1374,14 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args =
-                        create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    req_args = create_memarg_globals(
+                        &all_params,
+                        &mut loc_info,
+                        1,
+                        *align,
+                        *offset,
+                        *memory,
+                    );
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1284,8 +1398,14 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args =
-                        create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    req_args = create_memarg_globals(
+                        &all_params,
+                        &mut loc_info,
+                        1,
+                        *align,
+                        *offset,
+                        *memory,
+                    );
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1302,8 +1422,14 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args =
-                        create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    req_args = create_memarg_globals(
+                        &all_params,
+                        &mut loc_info,
+                        1,
+                        *align,
+                        *offset,
+                        *memory,
+                    );
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1320,8 +1446,14 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args =
-                        create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    req_args = create_memarg_globals(
+                        &all_params,
+                        &mut loc_info,
+                        1,
+                        *align,
+                        *offset,
+                        *memory,
+                    );
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1338,8 +1470,14 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args =
-                        create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    req_args = create_memarg_globals(
+                        &all_params,
+                        &mut loc_info,
+                        1,
+                        *align,
+                        *offset,
+                        *memory,
+                    );
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1356,8 +1494,14 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args =
-                        create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    req_args = create_memarg_globals(
+                        &all_params,
+                        &mut loc_info,
+                        1,
+                        *align,
+                        *offset,
+                        *memory,
+                    );
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1374,8 +1518,14 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args =
-                        create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    req_args = create_memarg_globals(
+                        &all_params,
+                        &mut loc_info,
+                        1,
+                        *align,
+                        *offset,
+                        *memory,
+                    );
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1392,8 +1542,14 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args =
-                        create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    req_args = create_memarg_globals(
+                        &all_params,
+                        &mut loc_info,
+                        1,
+                        *align,
+                        *offset,
+                        *memory,
+                    );
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3336,7 +3492,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 0, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3353,7 +3509,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 0, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3370,7 +3526,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 0, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3393,7 +3549,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 0, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3410,7 +3566,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 0, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3427,7 +3583,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 0, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3444,7 +3600,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 0, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3461,7 +3617,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 0, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3478,7 +3634,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 0, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3495,7 +3651,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 0, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3512,7 +3668,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3529,7 +3685,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3546,7 +3702,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3563,7 +3719,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3580,7 +3736,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3597,7 +3753,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3614,7 +3770,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3631,7 +3787,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3648,7 +3804,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3665,7 +3821,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3682,7 +3838,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3699,7 +3855,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3716,7 +3872,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3733,7 +3889,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3750,7 +3906,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3767,7 +3923,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3784,7 +3940,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3801,7 +3957,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3818,7 +3974,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3835,7 +3991,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3852,7 +4008,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3869,7 +4025,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3886,7 +4042,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3903,7 +4059,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3920,7 +4076,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3937,7 +4093,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3954,7 +4110,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3971,7 +4127,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3988,7 +4144,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4005,7 +4161,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4022,7 +4178,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4039,7 +4195,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4056,7 +4212,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4073,7 +4229,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4090,7 +4246,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4107,7 +4263,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4124,7 +4280,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4141,7 +4297,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4158,7 +4314,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4175,7 +4331,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4192,7 +4348,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4209,7 +4365,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4226,7 +4382,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4243,7 +4399,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4260,7 +4416,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4277,7 +4433,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4294,7 +4450,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4311,7 +4467,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4328,7 +4484,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4345,7 +4501,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4362,7 +4518,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4379,7 +4535,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4396,7 +4552,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4413,7 +4569,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4430,7 +4586,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4447,7 +4603,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4564,6 +4720,7 @@ impl Event for OpcodeEvent {
 fn create_memarg_globals(
     all_params: &HashSet<&WhammParam>,
     loc_info: &mut LocInfo,
+    addr_arg: u32,
     align: u8,
     offset: u64,
     memory: u32,
@@ -4586,8 +4743,20 @@ fn create_memarg_globals(
                     .static_data
                     .insert("memory".to_string(), Some(Value::gen_u32(memory)));
             }
+            WhammParam::Addr => {
+                req_args = ReqArgs::FirstN { n: addr_arg };
+                loc_info.add_dynamic_assign(
+                    "addr".to_string(),
+                    DataType::U32,
+                    Expr::VarId {
+                        definition: Definition::CompilerDynamic,
+                        name: format!("arg{addr_arg}"),
+                        loc: None,
+                    },
+                );
+            }
             WhammParam::EffectiveAddr => {
-                req_args = ReqArgs::FirstN { n: 0 };
+                req_args = ReqArgs::FirstN { n: addr_arg };
                 // only have to add to offset if it's nonzero!
                 if offset != 0 {
                     loc_info.add_dynamic_assign(
@@ -4596,7 +4765,7 @@ fn create_memarg_globals(
                         Expr::BinOp {
                             lhs: Box::new(Expr::VarId {
                                 definition: Definition::CompilerDynamic,
-                                name: "arg0".to_string(),
+                                name: format!("arg{addr_arg}"),
                                 loc: None,
                             }),
                             op: BinOp::Add,

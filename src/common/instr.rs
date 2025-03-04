@@ -160,7 +160,7 @@ pub fn run_with_path(
     }
 }
 
-pub fn parse_user_lib_paths(paths: Vec<String>) -> Vec<(String, Vec<u8>)> {
+pub fn parse_user_lib_paths(paths: Vec<String>) -> Vec<(String, String, Vec<u8>)> {
     let mut res = vec![];
     for path in paths.iter() {
         let parts = path.split('=').collect::<Vec<&str>>();
@@ -170,7 +170,7 @@ pub fn parse_user_lib_paths(paths: Vec<String>) -> Vec<(String, Vec<u8>)> {
         let lib_path = parts.get(1).unwrap();
         let buff = std::fs::read(lib_path).unwrap();
 
-        res.push((lib_name, buff));
+        res.push((lib_name, lib_path.to_string(), buff));
     }
 
     res
@@ -181,7 +181,7 @@ pub fn run(
     target_wasm: &mut Module,
     whamm_script: &String,
     script_path: &str,
-    user_libs: Vec<(String, Vec<u8>)>,
+    user_libs: Vec<(String, String, Vec<u8>)>,
     max_errors: i32,
     config: Config,
 ) -> Vec<u8> {
@@ -190,7 +190,7 @@ pub fn run(
 
     // Parse user libraries to Wasm modules
     let mut user_lib_modules: HashMap<String, Module> = HashMap::default();
-    for (lib_name, lib_buff) in user_libs.iter() {
+    for (lib_name, _, lib_buff) in user_libs.iter() {
         user_lib_modules.insert(lib_name.clone(), Module::parse(lib_buff, false).unwrap());
     }
 
