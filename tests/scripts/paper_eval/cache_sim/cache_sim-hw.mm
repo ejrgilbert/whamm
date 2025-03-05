@@ -14,7 +14,7 @@ wasm:opcode:*load*|*store*:before {
     var eff_addr: u32 = addr + offset as u32;
     var result: i32 = cache.check_access(eff_addr as i32, data_size as i32);
     var addr0_res: i32 = result & 0xFFFF0000;
-    var addr1_res: i16 = (result & 0x0000FFFF) as i16;
+    var addr1_res: i32 = (result & 0x0000FFFF);
 
     if (addr0_res != 0) {
         hit++;
@@ -23,7 +23,7 @@ wasm:opcode:*load*|*store*:before {
     }
 
     // Only add the second result if it was actually calculated (not -1)
-    if (addr1_res != -1) {
+    if (addr1_res != 0x0000FFFF) {
         if (addr1_res != 0) {
             hit++;
         } else {
