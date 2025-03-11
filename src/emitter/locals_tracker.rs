@@ -1,4 +1,3 @@
-use orca_wasm::ir::id::LocalID;
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::{DataType, Opcode};
 use std::collections::HashMap;
@@ -85,38 +84,38 @@ impl LocalsTracker {
     }
 }
 
-fn gen_null_const<'a, T: Opcode<'a>>(ty: &DataType, injector: &mut T) {
-    match ty {
-        DataType::I8 => injector.i32_const(0),
-        DataType::I16 => injector.i32_const(0),
-        DataType::I32 => injector.i32_const(0),
-        DataType::I64 => injector.i64_const(0),
-        DataType::F32 => injector.f32_const(0f32),
-        DataType::F64 => injector.f64_const(0f64),
-        DataType::V128
-        | DataType::FuncRef
-        | DataType::FuncRefNull
-        | DataType::ExternRef
-        | DataType::ExternRefNull
-        | DataType::Any
-        | DataType::AnyNull
-        | DataType::None
-        | DataType::NoExtern
-        | DataType::NoFunc
-        | DataType::Eq
-        | DataType::EqNull
-        | DataType::Struct
-        | DataType::StructNull
-        | DataType::Array
-        | DataType::ArrayNull
-        | DataType::I31
-        | DataType::I31Null
-        | DataType::Exn
-        | DataType::NoExn
-        | DataType::Module { .. }
-        | DataType::RecGroup(_)
-        | DataType::CoreTypeId(_)
-        | DataType::Cont
-        | DataType::NoCont => todo!(),
-    };
-}
+// fn gen_null_const<'a, T: Opcode<'a>>(ty: &DataType, injector: &mut T) {
+//     match ty {
+//         DataType::I8 => injector.i32_const(0),
+//         DataType::I16 => injector.i32_const(0),
+//         DataType::I32 => injector.i32_const(0),
+//         DataType::I64 => injector.i64_const(0),
+//         DataType::F32 => injector.f32_const(0f32),
+//         DataType::F64 => injector.f64_const(0f64),
+//         DataType::V128
+//         | DataType::FuncRef
+//         | DataType::FuncRefNull
+//         | DataType::ExternRef
+//         | DataType::ExternRefNull
+//         | DataType::Any
+//         | DataType::AnyNull
+//         | DataType::None
+//         | DataType::NoExtern
+//         | DataType::NoFunc
+//         | DataType::Eq
+//         | DataType::EqNull
+//         | DataType::Struct
+//         | DataType::StructNull
+//         | DataType::Array
+//         | DataType::ArrayNull
+//         | DataType::I31
+//         | DataType::I31Null
+//         | DataType::Exn
+//         | DataType::NoExn
+//         | DataType::Module { .. }
+//         | DataType::RecGroup(_)
+//         | DataType::CoreTypeId(_)
+//         | DataType::Cont
+//         | DataType::NoCont => todo!(),
+//     };
+// }
