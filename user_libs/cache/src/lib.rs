@@ -17,28 +17,29 @@ static MY_CACHE: Lazy<Mutex<CacheInstance>> = Lazy::new(|| Mutex::new(CacheInsta
 pub fn check_access(addr: u32, data_size: u8) -> u32 {
     let addrs = calculate_address(addr as u64, data_size);
 
-    let cache_res0 = check_access_internal(addrs.primary);
+    let mut hits = 0;
+    let mut misses = 0;
 
-    let cache_res1 = if let Some(secondary) = addrs.secondary {
-        Some(check_access_internal(secondary))
+    if matches!(check_access_internal(addrs.primary), LRUResult::Hit{..}) {
+        hits += 1;
     } else {
-        None
-    };
-
-    let mut res = 0;
-    if cache_res0 {
-        res |= 1;
-        res = res << 16;
+        misses += 1;
     }
-    if let Some(cache_res1) = cache_res1 {
-        if cache_res1 {
-            res |= 1;
+
+    if let Some(secondary) = addrs.secondary {
+        if matches!(check_access_internal(secondary), LRUResult::Hit{..}) {
+            hits += 1;
+        } else {
+            misses += 1;
         }
-    } else {
-        res |= 0xFFFF;
     }
 
-    res
+    // Result format:
+    // | hits: 32-16 | misses: 15-0 |
+    hits = hits << 16;
+    hits |= misses;
+
+    hits
 }
 
 fn calculate_address(addr: u64, data_size: u8) -> CacheAddresses {
@@ -92,8 +93,8 @@ fn get_address_from_parts(tag: u32, index: u32, offset: u32) -> u32 {
     return addr;
 }
 
-fn check_access_internal(addr: u32) -> bool {
-    matches!(MY_CACHE.lock().unwrap().access(addr), LRUResult::Hit{..})
+fn check_access_internal(addr: u32) -> LRUResult {
+    MY_CACHE.lock().unwrap().access(addr)
 }
 
 struct CacheAddresses { primary: u32, secondary: Option<u32>}
