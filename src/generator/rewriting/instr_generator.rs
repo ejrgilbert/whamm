@@ -228,12 +228,10 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_> {
                 | WhammModeKind::Entry
                 | WhammModeKind::Exit => {
                     is_success &= self.emit_probe_as_if();
-                    self.emitter.reset_locals_for_probe();
                     self.replace_args();
                 }
                 WhammModeKind::Alt => {
                     is_success &= self.emit_probe_as_if_else();
-                    self.emitter.reset_locals_for_probe();
                 }
                 _ => {
                     self.err.unexpected_error(
@@ -248,6 +246,7 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_> {
                 }
             }
         }
+        self.emitter.reset_locals_for_probe();
 
         is_success
     }
