@@ -168,7 +168,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
         self.emitter.curr_unshared = probe.unshared_to_alloc.clone();
         let probe_rule_str = probe_rule.to_string();
         let curr_probe_id = format!("{}_{}", probe.probe_number, probe_rule_str);
-        let loc = match self.emitter.app_iter.curr_loc().0 {
+        let (loc, new_fid) = match self.emitter.app_iter.curr_loc().0 {
             OrcaLocation::Module {
                 func_idx,
                 instr_idx,
@@ -178,8 +178,17 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
                 func_idx,
                 instr_idx,
                 ..
-            } => BytecodeLoc::new(*func_idx, instr_idx as u32),
+            } => (BytecodeLoc::new(*func_idx, instr_idx as u32), *func_idx),
         };
+
+        match self.emitter.report_vars.curr_location {
+            LocationData::Local {bytecode_loc: BytecodeLoc {fid: prev_fid, ..}, ..} => if prev_fid != new_fid {
+                // we're now visiting a new function! reset the locals!
+                self.emitter.reset_locals_for_function();
+            },
+            _ => {}
+        };
+
         //set the current location in bytecode and load some new globals for potential report vars
         self.emitter.report_vars.curr_location = LocationData::Local {
             script_id: curr_script_id,
@@ -234,6 +243,7 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_> {
                 }
             }
         }
+        self.emitter.reset_locals_for_probe();
 
         is_success
     }

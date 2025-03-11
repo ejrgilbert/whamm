@@ -21,6 +21,7 @@ use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::Opcode;
 use orca_wasm::Instructions;
 use std::collections::HashSet;
+use crate::emitter::locals_tracker::LocalsTracker;
 
 const UNEXPECTED_ERR_MSG: &str =
     "ModuleEmitter: Looks like you've found a bug...please report this behavior!";
@@ -31,6 +32,7 @@ pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub emitting_func: Option<FunctionBuilder<'b>>,
     pub table: &'c mut SymbolTable,
     pub mem_allocator: &'d mut MemoryAllocator,
+    pub locals_tracker: LocalsTracker,
     pub map_lib_adapter: &'e mut MapLibAdapter,
     pub report_vars: &'f mut ReportVars,
     pub unshared_var_handler: &'g mut UnsharedVarHandler,
@@ -53,6 +55,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             app_wasm,
             emitting_func: None,
             mem_allocator,
+            locals_tracker: LocalsTracker::default(),
             map_lib_adapter,
             report_vars,
             unshared_var_handler,
@@ -117,6 +120,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         // emit non-provided fn
         // TODO: only when we're supporting user-defined fns in script...
         unimplemented!();
+        // self.reset_locals_for_function();
     }
 
     pub fn emit_special_func(
@@ -184,6 +188,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
 
         let fid =
             self.emit_special_fn_inner(None, &params, dynamic_pred, results, body, export, err);
+
+        self.reset_locals_for_function();
 
         (fid, param_str.to_string())
     }
@@ -627,6 +633,13 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     }
 }
 impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
+    fn reset_locals_for_probe(&mut self) {
+        self.locals_tracker.reset_probe();
+    }
+
+    fn reset_locals_for_function(&mut self) {
+        self.locals_tracker.reset_function();
+    }
     fn emit_body(
         &mut self,
         _curr_instr_args: &[Arg],
@@ -641,6 +654,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
                 &mut EmitCtx::new(
                     self.table,
                     self.mem_allocator,
+                    &mut self.locals_tracker,
                     self.map_lib_adapter,
                     self.report_vars,
                     self.unshared_var_handler,
@@ -667,6 +681,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
                 &mut EmitCtx::new(
                     self.table,
                     self.mem_allocator,
+                    &mut self.locals_tracker,
                     self.map_lib_adapter,
                     self.report_vars,
                     self.unshared_var_handler,
@@ -688,6 +703,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
                 &mut EmitCtx::new(
                     self.table,
                     self.mem_allocator,
+                    &mut self.locals_tracker,
                     self.map_lib_adapter,
                     self.report_vars,
                     self.unshared_var_handler,

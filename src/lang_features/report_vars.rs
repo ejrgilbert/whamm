@@ -1408,7 +1408,7 @@ pub enum LocationData {
 }
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct BytecodeLoc {
-    fid: u32,
+    pub fid: u32,
     pc: u32,
 }
 impl Display for BytecodeLoc {

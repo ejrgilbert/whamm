@@ -1,5 +1,6 @@
 #![allow(clippy::too_many_arguments)]
 pub mod memory_allocator;
+mod locals_tracker;
 pub mod module_emitter;
 pub mod rewriting;
 #[cfg(test)]
@@ -28,6 +29,8 @@ pub enum InjectStrategy {
 // =================================================
 
 pub trait Emitter {
+    fn reset_locals_for_probe(&mut self);
+    fn reset_locals_for_function(&mut self);
     fn emit_body(&mut self, curr_instr_args: &[Arg], body: &mut Block, err: &mut ErrorGen) -> bool;
     fn emit_stmt(
         &mut self,

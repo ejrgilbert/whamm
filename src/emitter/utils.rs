@@ -15,7 +15,7 @@ use orca_wasm::ir::types::{BlockType, DataType as OrcaType, InitExpr, Value as O
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::{MacroOpcode, Opcode};
 use orca_wasm::{Instructions, Module};
-
+use crate::emitter::locals_tracker::LocalsTracker;
 // ==================================================================
 // ================ Emitter Helper Functions ========================
 // - Necessary to extract common logic between Emitter and InstrumentationVisitor.
@@ -26,30 +26,33 @@ use orca_wasm::{Instructions, Module};
 // ==================================================================
 // ==================================================================
 
-pub struct EmitCtx<'a, 'b, 'c, 'd, 'e, 'f> {
+pub struct EmitCtx<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     table: &'a mut SymbolTable,
     mem_allocator: &'b MemoryAllocator,
+    locals_tracker: &'c mut LocalsTracker,
     in_map_op: bool,
     in_lib_call_to: Option<String>,
-    map_lib_adapter: &'c mut MapLibAdapter,
-    report_vars: &'d mut ReportVars,
-    unshared_var_handler: &'e mut UnsharedVarHandler,
+    map_lib_adapter: &'d mut MapLibAdapter,
+    report_vars: &'e mut ReportVars,
+    unshared_var_handler: &'f mut UnsharedVarHandler,
     err_msg: String,
-    err: &'f mut ErrorGen,
+    err: &'g mut ErrorGen,
 }
-impl<'a, 'b, 'c, 'd, 'e, 'f> EmitCtx<'a, 'b, 'c, 'd, 'e, 'f> {
+impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> EmitCtx<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub fn new(
         table: &'a mut SymbolTable,
         mem_allocator: &'b MemoryAllocator,
-        map_lib_adapter: &'c mut MapLibAdapter,
-        report_vars: &'d mut ReportVars,
-        unshared_var_handler: &'e mut UnsharedVarHandler,
+        locals_tracker: &'c mut LocalsTracker,
+        map_lib_adapter: &'d mut MapLibAdapter,
+        report_vars: &'e mut ReportVars,
+        unshared_var_handler: &'f mut UnsharedVarHandler,
         err_msg: &str,
-        err: &'f mut ErrorGen,
+        err: &'g mut ErrorGen,
     ) -> Self {
         Self {
             table,
             mem_allocator,
+            locals_tracker,
             in_map_op: false,
             in_lib_call_to: None,
             map_lib_adapter,
@@ -192,8 +195,8 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     // address.
                     let wasm_ty = ty.to_wasm_type();
                     if wasm_ty.len() == 1 {
-                        let id = injector.add_local(*wasm_ty.first().unwrap());
-                        *addr = Some(VarAddr::Local { addr: *id });
+                        let id = ctx.locals_tracker.use_local(*wasm_ty.first().unwrap(), injector);
+                        *addr = Some(VarAddr::Local { addr: id });
                         true
                     } else {
                         todo!()
@@ -641,7 +644,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         } => {
             let mut is_success = emit_expr(&mut *lhs, strategy, injector, ctx);
             is_success &= emit_expr(&mut *rhs, strategy, injector, ctx);
-            is_success &= emit_binop(op, done_on, injector);
+            is_success &= emit_binop(op, done_on, injector, ctx);
             is_success
         }
         Expr::Ternary {
@@ -809,6 +812,7 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
     op: &BinOp,
     done_on: &DataType,
     injector: &mut T,
+    ctx: &mut EmitCtx,
 ) -> bool {
     match op {
         BinOp::And => {
@@ -1205,8 +1209,8 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::I64 => injector.i64_rem_signed(),
                 #[rustfmt::skip]
                 DataType::F32 => {
-                    let a = injector.add_local(OrcaType::F32);
-                    let b = injector.add_local(OrcaType::F32);
+                    let a = LocalID(ctx.locals_tracker.use_local(OrcaType::F32, injector));
+                    let b = LocalID(ctx.locals_tracker.use_local(OrcaType::F32, injector));
 
                     // Step 0: Do some stack juggling
                     injector.local_set(b)
@@ -1236,8 +1240,8 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 }
                 #[rustfmt::skip]
                 DataType::F64 => {
-                    let a = injector.add_local(OrcaType::F64);
-                    let b = injector.add_local(OrcaType::F64);
+                    let a = LocalID(ctx.locals_tracker.use_local(OrcaType::F64, injector));
+                    let b = LocalID(ctx.locals_tracker.use_local(OrcaType::F64, injector));
 
                     // Step 0: Do some stack juggling
                     injector.local_set(b)
