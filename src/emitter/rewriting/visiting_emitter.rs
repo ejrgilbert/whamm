@@ -4,6 +4,7 @@ use crate::emitter::rewriting::rules::{Arg, LocInfo, ProbeRule, Provider, WhammP
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use std::collections::HashMap;
 
+use crate::emitter::locals_tracker::LocalsTracker;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::utils::{
     block_type_to_wasm, emit_expr, emit_stmt, whamm_type_to_wasm_global, EmitCtx,
@@ -25,7 +26,6 @@ use orca_wasm::ir::module::Module;
 use orca_wasm::ir::types::BlockType as OrcaBlockType;
 use orca_wasm::iterator::iterator_trait::{IteratingInstrumenter, Iterator as OrcaIterator};
 use orca_wasm::iterator::module_iterator::ModuleIterator;
-use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::{Instrumenter, Opcode};
 use orca_wasm::Location;
 use std::iter::Iterator;
@@ -38,6 +38,7 @@ pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub app_iter: ModuleIterator<'a, 'b>,
     pub table: &'c mut SymbolTable,
     pub mem_allocator: &'d mut MemoryAllocator,
+    pub locals_tracker: LocalsTracker,
     pub map_lib_adapter: &'e mut MapLibAdapter,
     pub io_adapter: &'f mut IOAdapter,
     pub(crate) report_vars: &'g mut ReportVars,
@@ -64,6 +65,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             app_iter: ModuleIterator::new(app_wasm, injected_funcs),
             table,
             mem_allocator,
+            locals_tracker: LocalsTracker::default(),
             map_lib_adapter,
             io_adapter,
             report_vars,
@@ -163,6 +165,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     &mut EmitCtx::new(
                         self.table,
                         self.mem_allocator,
+                        &mut self.locals_tracker,
                         self.map_lib_adapter,
                         self.report_vars,
                         self.unshared_var_handler,
@@ -176,8 +179,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     }
 
     pub(crate) fn save_args(&mut self, args: &[Arg], err: &mut ErrorGen) -> bool {
-        // TODO -- reuse locals!
-
         // No opcodes should have been emitted in the module yet!
         // So, we can just save off the first * items in the stack as the args
         // to the call.
@@ -211,7 +212,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     wasm_ty
                 };
                 // create local for the param in the module
-                let arg_local_id = self.app_iter.add_local(ty);
+                let arg_local_id = LocalID(self.locals_tracker.use_local(ty, &mut self.app_iter));
                 arg_locals.push((arg_name.to_string(), *arg_local_id));
             },
         );
@@ -555,6 +556,14 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     }
 }
 impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
+    fn reset_locals_for_probe(&mut self) {
+        self.locals_tracker.reset_probe(&mut self.app_iter);
+    }
+
+    fn reset_locals_for_function(&mut self) {
+        self.locals_tracker.reset_function();
+    }
+
     fn emit_body(&mut self, curr_instr_args: &[Arg], body: &mut Block, err: &mut ErrorGen) -> bool {
         let mut is_success = true;
 
@@ -647,6 +656,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
             &mut EmitCtx::new(
                 self.table,
                 self.mem_allocator,
+                &mut self.locals_tracker,
                 self.map_lib_adapter,
                 self.report_vars,
                 self.unshared_var_handler,
@@ -664,6 +674,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
             &mut EmitCtx::new(
                 self.table,
                 self.mem_allocator,
+                &mut self.locals_tracker,
                 self.map_lib_adapter,
                 self.report_vars,
                 self.unshared_var_handler,
