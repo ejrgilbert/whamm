@@ -1,5 +1,6 @@
 #![allow(clippy::too_many_arguments)]
 use crate::common::error::ErrorGen;
+use crate::emitter::locals_tracker::LocalsTracker;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::InjectStrategy;
 use crate::generator::folding::ExprFolder;
@@ -15,7 +16,6 @@ use orca_wasm::ir::types::{BlockType, DataType as OrcaType, InitExpr, Value as O
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::{MacroOpcode, Opcode};
 use orca_wasm::{Instructions, Module};
-use crate::emitter::locals_tracker::LocalsTracker;
 // ==================================================================
 // ================ Emitter Helper Functions ========================
 // - Necessary to extract common logic between Emitter and InstrumentationVisitor.
@@ -195,7 +195,9 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     // address.
                     let wasm_ty = ty.to_wasm_type();
                     if wasm_ty.len() == 1 {
-                        let id = ctx.locals_tracker.use_local(*wasm_ty.first().unwrap(), injector);
+                        let id = ctx
+                            .locals_tracker
+                            .use_local(*wasm_ty.first().unwrap(), injector);
                         *addr = Some(VarAddr::Local { addr: id });
                         true
                     } else {

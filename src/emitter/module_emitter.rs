@@ -1,4 +1,5 @@
 use crate::common::error::{ErrorGen, WhammError};
+use crate::emitter::locals_tracker::LocalsTracker;
 use crate::emitter::memory_allocator::{MemoryAllocator, VAR_BLOCK_BASE_VAR};
 use crate::emitter::rewriting::rules::Arg;
 use crate::emitter::utils::{emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global, EmitCtx};
@@ -21,7 +22,6 @@ use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::Opcode;
 use orca_wasm::Instructions;
 use std::collections::HashSet;
-use crate::emitter::locals_tracker::LocalsTracker;
 
 const UNEXPECTED_ERR_MSG: &str =
     "ModuleEmitter: Looks like you've found a bug...please report this behavior!";
@@ -120,6 +120,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         // emit non-provided fn
         // TODO: only when we're supporting user-defined fns in script...
         unimplemented!();
+        // TODO: Remember to reset locals like what follows:
         // self.reset_locals_for_function();
     }
 
@@ -634,7 +635,9 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
 }
 impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
     fn reset_locals_for_probe(&mut self) {
-        self.locals_tracker.reset_probe();
+        if let Some(func) = &mut self.emitting_func {
+            self.locals_tracker.reset_probe(func);
+        }
     }
 
     fn reset_locals_for_function(&mut self) {

@@ -1,6 +1,6 @@
 #![allow(clippy::too_many_arguments)]
-pub mod memory_allocator;
 mod locals_tracker;
+pub mod memory_allocator;
 pub mod module_emitter;
 pub mod rewriting;
 #[cfg(test)]

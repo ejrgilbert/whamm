@@ -181,12 +181,15 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
             } => (BytecodeLoc::new(*func_idx, instr_idx as u32), *func_idx),
         };
 
-        match self.emitter.report_vars.curr_location {
-            LocationData::Local {bytecode_loc: BytecodeLoc {fid: prev_fid, ..}, ..} => if prev_fid != new_fid {
+        if let LocationData::Local {
+            bytecode_loc: BytecodeLoc { fid: prev_fid, .. },
+            ..
+        } = self.emitter.report_vars.curr_location
+        {
+            if prev_fid != new_fid {
                 // we're now visiting a new function! reset the locals!
                 self.emitter.reset_locals_for_function();
-            },
-            _ => {}
+            }
         };
 
         //set the current location in bytecode and load some new globals for potential report vars

@@ -1,6 +1,7 @@
-use std::collections::HashMap;
-use orca_wasm::DataType;
+use orca_wasm::ir::id::LocalID;
 use orca_wasm::module_builder::AddLocal;
+use orca_wasm::{DataType, Opcode};
+use std::collections::HashMap;
 
 #[derive(Default)]
 pub struct LocalsTracker {
@@ -24,7 +25,7 @@ impl LocalsTracker {
     }
     fn add_in_use(&mut self, ty: DataType, id: u32) {
         self.in_use
-            .entry(ty.clone())
+            .entry(ty)
             .and_modify(|list| {
                 // insert at the beginning so that lower IDs are at the top
                 // (for `extend` to keep them there)
@@ -34,7 +35,7 @@ impl LocalsTracker {
     }
     pub fn add(&mut self, ty: DataType, id: u32) {
         self.available
-            .entry(ty.clone())
+            .entry(ty)
             .and_modify(|list| {
                 // insert at the beginning so that lower IDs are at the top
                 // (for `pop`)
@@ -42,12 +43,79 @@ impl LocalsTracker {
             })
             .or_insert(vec![id]);
     }
-    pub fn reset_probe(&mut self) {
+    pub fn reset_probe<'a, T: Opcode<'a>>(&mut self, injector: &mut T) {
+        // Reset the local variables to their default value, keeps value guarantee consistent
+        // between probe body entries!
+        for (ty, list) in self.in_use.iter() {
+            // two locals is where the 'tee' logic gets a benefit over 'set', e.g.:
+            // i32.const 0
+            // local.tee 0
+            // local.tee 1
+            // local.tee 2
+            // drop
+
+            // vs
+
+            // i32.const 0
+            // local.set 0
+            // i32.const 0
+            // local.set 1
+            // i32.const 0
+            // local.set 2
+            if list.len() > 2 {
+                gen_null_const(ty, injector);
+                for id in list.iter().rev() {
+                    injector.local_tee(LocalID(*id));
+                }
+                injector.drop();
+            } else {
+                for id in list.iter().rev() {
+                    gen_null_const(ty, injector);
+                    injector.local_set(LocalID(*id));
+                }
+            }
+        }
         self.available.extend(self.in_use.to_owned());
-        // self.in_use.clear();
+        self.in_use.clear();
     }
     pub fn reset_function(&mut self) {
         self.available.clear();
         self.in_use.clear();
     }
+}
+
+fn gen_null_const<'a, T: Opcode<'a>>(ty: &DataType, injector: &mut T) {
+    match ty {
+        DataType::I8 => injector.i32_const(0),
+        DataType::I16 => injector.i32_const(0),
+        DataType::I32 => injector.i32_const(0),
+        DataType::I64 => injector.i64_const(0),
+        DataType::F32 => injector.f32_const(0f32),
+        DataType::F64 => injector.f64_const(0f64),
+        DataType::V128
+        | DataType::FuncRef
+        | DataType::FuncRefNull
+        | DataType::ExternRef
+        | DataType::ExternRefNull
+        | DataType::Any
+        | DataType::AnyNull
+        | DataType::None
+        | DataType::NoExtern
+        | DataType::NoFunc
+        | DataType::Eq
+        | DataType::EqNull
+        | DataType::Struct
+        | DataType::StructNull
+        | DataType::Array
+        | DataType::ArrayNull
+        | DataType::I31
+        | DataType::I31Null
+        | DataType::Exn
+        | DataType::NoExn
+        | DataType::Module { .. }
+        | DataType::RecGroup(_)
+        | DataType::CoreTypeId(_)
+        | DataType::Cont
+        | DataType::NoCont => todo!(),
+    };
 }

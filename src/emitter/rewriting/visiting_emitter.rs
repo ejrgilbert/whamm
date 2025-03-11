@@ -4,6 +4,7 @@ use crate::emitter::rewriting::rules::{Arg, LocInfo, ProbeRule, Provider, WhammP
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use std::collections::HashMap;
 
+use crate::emitter::locals_tracker::LocalsTracker;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::utils::{
     block_type_to_wasm, emit_expr, emit_stmt, whamm_type_to_wasm_global, EmitCtx,
@@ -28,7 +29,6 @@ use orca_wasm::iterator::module_iterator::ModuleIterator;
 use orca_wasm::opcode::{Instrumenter, Opcode};
 use orca_wasm::Location;
 use std::iter::Iterator;
-use crate::emitter::locals_tracker::LocalsTracker;
 
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
@@ -557,7 +557,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
 }
 impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
     fn reset_locals_for_probe(&mut self) {
-        self.locals_tracker.reset_probe();
+        self.locals_tracker.reset_probe(&mut self.app_iter);
     }
 
     fn reset_locals_for_function(&mut self) {
