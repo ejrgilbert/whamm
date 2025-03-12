@@ -27,7 +27,7 @@ use orca_wasm::ir::module::Module;
 use orca_wasm::ir::types::BlockType as OrcaBlockType;
 use orca_wasm::iterator::iterator_trait::{IteratingInstrumenter, Iterator as OrcaIterator};
 use orca_wasm::iterator::module_iterator::ModuleIterator;
-use orca_wasm::opcode::{Instrumenter, Opcode};
+use orca_wasm::opcode::{Instrumenter, MacroOpcode, Opcode};
 use orca_wasm::Location;
 use std::iter::Iterator;
 
@@ -581,23 +581,37 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
         // Create the variable pointing to the start of the allocated memory block
         if !self.curr_unshared.is_empty() {
             let id = self.locals_tracker.use_local(OrcaType::I32, &mut self.app_iter);
-            self.table.put(
-                VAR_BLOCK_BASE_VAR.to_string(),
-                Record::Var {
-                    ty: DataType::I32,
-                    name: VAR_BLOCK_BASE_VAR.to_string(),
-                    value: Some(Value::gen_u32(self.unshared_var_handler.get_curr_offset())),
-                    def: Definition::CompilerStatic,
-                    is_report_var: false,
-                    addr: Some(VarAddr::Local { addr: id }),
-                    loc: None,
-                },
-            );
+
+            // THIS VAR NEEDS TO BE REDEFINED!
+            let offset_value = self.unshared_var_handler.get_curr_offset();
+            if let Some(Record::Var { value, .. }) = self.table.lookup_var_mut(VAR_BLOCK_BASE_VAR, false) {
+                *value = Some(Value::gen_u32(offset_value));
+            } else {
+                self.table.put(
+                    VAR_BLOCK_BASE_VAR.to_string(),
+                    Record::Var {
+                        ty: DataType::I32,
+                        name: VAR_BLOCK_BASE_VAR.to_string(),
+                        value: Some(Value::gen_u32(offset_value)),
+                        def: Definition::CompilerStatic,
+                        is_report_var: false,
+                        addr: Some(VarAddr::Local { addr: id }),
+                        loc: None,
+                    },
+                );
+            };
+            self.app_iter.u32_const(offset_value)
+                .local_set(LocalID(id));
+
         }
         // TODO -- try to get rid of clone on sorted_unshared
+
+        let (fid, pc) = match self.app_iter.curr_loc().0 {
+            Location::Module { func_idx, instr_idx, .. } | Location::Component { func_idx, instr_idx, .. } => (*func_idx, instr_idx as u32),
+        };
         self.unshared_var_handler.allocate_vars(
             sorted_unshared.as_slice(),
-            0, 0, self.table,
+            fid, pc, self.table,
             self.mem_allocator,
             self.report_vars, self.app_iter.module, err);
 
@@ -615,7 +629,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
                              ref mut addr,
                              ref mut ty,
                              ..
-                         }) = self.table.lookup_var_mut(name)
+                         }) = self.table.lookup_var_mut(name, true)
                 else {
                     err.unexpected_error(true, Some("unexpected type".to_string()), None);
                     return false;

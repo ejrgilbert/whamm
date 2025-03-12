@@ -294,7 +294,7 @@ impl SymbolTable {
         self.lookup_lib_mut(WHAMM_CORE_LIB_NAME)
     }
 
-    pub fn lookup_var_mut(&mut self, key: &str) -> Option<&mut Record> {
+    pub fn lookup_var_mut(&mut self, key: &str, panic_if_missing: bool) -> Option<&mut Record> {
         if let Some(rec) = self.lookup_rec_mut(key) {
             if matches!(rec, Record::Var { .. }) {
                 Some(rec)
@@ -303,7 +303,11 @@ impl SymbolTable {
                 None
             }
         } else {
-            panic!("Could not find var for: {}", key)
+            if panic_if_missing {
+                panic!("Could not find var for: {}", key)
+            } else {
+                None
+            }
         }
     }
     pub fn lookup_var(

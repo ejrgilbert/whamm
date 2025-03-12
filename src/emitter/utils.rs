@@ -243,7 +243,7 @@ fn emit_unshared_decl_stmt(
                         ..
                     } => {
                         // look up in symbol table
-                        let Some(Record::Var { addr, .. }) = ctx.table.lookup_var_mut(var_name)
+                        let Some(Record::Var { addr, .. }) = ctx.table.lookup_var_mut(var_name, true)
                         else {
                             ctx.err.unexpected_error(
                                 true,
@@ -307,7 +307,7 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             // Save off primitives to symbol table
             // TODO -- this is only necessary for `new_target_fn_name`, remove after deprecating!
             if let (Expr::VarId { name, .. }, Expr::Primitive { val, .. }) = (&var_id, &expr) {
-                let Some(Record::Var { value, def, .. }) = ctx.table.lookup_var_mut(name) else {
+                let Some(Record::Var { value, def, .. }) = ctx.table.lookup_var_mut(name, true) else {
                     ctx.err
                         .unexpected_error(true, Some("unexpected type".to_string()), None);
                     return false;
@@ -476,7 +476,7 @@ fn possibly_emit_memaddr_calc_offset<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLo
     ctx: &mut EmitCtx,
 ) -> bool {
     if let Expr::VarId { name, .. } = var_id {
-        let Some(Record::Var { addr, .. }) = ctx.table.lookup_var_mut(name) else {
+        let Some(Record::Var { addr, .. }) = ctx.table.lookup_var_mut(name, true) else {
             ctx.err
                 .unexpected_error(true, Some("unexpected type".to_string()), None);
             return false;
@@ -500,7 +500,7 @@ fn emit_set<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     ctx: &mut EmitCtx,
 ) -> bool {
     if let Expr::VarId { name, .. } = var_id {
-        let Some(Record::Var { addr, loc, .. }) = ctx.table.lookup_var_mut(name) else {
+        let Some(Record::Var { addr, loc, .. }) = ctx.table.lookup_var_mut(name, true) else {
             ctx.err
                 .unexpected_error(true, Some("unexpected type".to_string()), None);
             return false;
@@ -748,7 +748,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         }
         Expr::VarId { name, .. } => {
             // TODO -- support string vars (unimplemented)
-            let Some(Record::Var { addr, def, .. }) = ctx.table.lookup_var_mut(name) else {
+            let Some(Record::Var { addr, def, .. }) = ctx.table.lookup_var_mut(name, true) else {
                 ctx.err
                     .unexpected_error(true, Some("unexpected type".to_string()), None);
                 return false;

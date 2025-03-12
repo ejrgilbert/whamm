@@ -8,7 +8,7 @@ use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::{MemoryAllocator, StringAddr, WASM_PAGE_SIZE};
 use crate::emitter::utils::whamm_type_to_wasm_global;
 use crate::generator::ast::UnsharedVar;
-use crate::lang_features::report_vars::{Metadata, ReportVars};
+use crate::lang_features::report_vars::{Metadata, NULL_PTR_IN_MEM, ReportVars};
 use crate::parser::types::DataType;
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 
@@ -50,19 +50,19 @@ impl UnsharedVarHandler {
         self.setup_data(wasm);
         self.setup_globals(wasm)
     }
+
+    /// The data goes into a new memory!!
+    /// This is to enable a statically known value for the VAR_BLOCK_BASE_VAR at every match location.
+    /// If we were to append to instrumentation memory, it'd mix with the emitted strings...which
+    /// could mess up the linked list pointer max! This just protects from that scenario in a straightforward
+    /// way (no need to do weird calculations or extend the bits of the linked list pointers).
     fn setup_data(&self, wasm: &mut Module) {
         // setup the data segment
         let mut bytes = vec![];
 
-        // TODO -- actually generate the data segment bytes here
-        for AllocatedVar {
-            mem_offset: _mem_offset,
-            report_var_header,
-            probe_header,
-            var_header,
-            ty
-        } in self.allocated_vars.iter() {
-            todo!()
+        // generate the data segment bytes
+        for var in self.allocated_vars.iter() {
+            bytes.extend(var.encode());
         }
 
         let data = DataSegment {
@@ -164,7 +164,7 @@ impl UnsharedVarHandler {
             let ty_tracker = self.report_trackers.entry(ty.clone()).or_insert(ReportAllocTracker::default());
 
             // look up in symbol table
-            let Some(Record::Var { addr, .. }) = table.lookup_var_mut(name)
+            let Some(Record::Var { addr, .. }) = table.lookup_var_mut(name, true)
             else {
                 panic!("unexpected type");
             };
@@ -173,8 +173,9 @@ impl UnsharedVarHandler {
                 // 2. If is_report, prep the report var header (linked list)
                 if let Some(prev_idx) = &mut ty_tracker.last_var {
                     if let Some(prev_var) = self.allocated_vars.get_mut(*prev_idx) {
+                        let ptr = (self.curr_mem_offset - prev_var.mem_offset) + (curr_offset);
                         prev_var.report_var_header = Some(ReportVarHeader {
-                            next: self.curr_mem_offset + curr_offset
+                            next: ptr
                         });
                     } else {
                         panic!("Couldn't look up var")
@@ -202,7 +203,11 @@ impl UnsharedVarHandler {
             let allocated_var = AllocatedVar {
                 mem_offset: self.curr_mem_offset + curr_offset,
                 ty: ty.clone(),
-                report_var_header: None,
+                report_var_header: if *is_report {
+                    Some(ReportVarHeader::null_ptr())
+                } else {
+                    None
+                },
                 probe_header,
                 var_header
             };
@@ -266,6 +271,24 @@ struct AllocatedVar {
     var_header: VarHeader
 }
 impl AllocatedVar {
+    fn encode(&self) -> Vec<u8> {
+        let mut res = vec![];
+
+        if let Some(report_header) = &self.report_var_header {
+            res.extend(report_header.encode())
+        }
+        res.extend(self.probe_header.encode());
+        res.extend(self.var_header.encode());
+
+        // make space for the allocated variable's value
+        if let Some(num_bytes) = self.ty.num_bytes() {
+            for _ in 0..num_bytes {
+                res.push(0u8);
+            }
+        }
+
+        res
+    }
     fn num_bytes(&self) -> usize {
         let mut used = 0;
 
@@ -291,6 +314,15 @@ struct ReportVarHeader {
     next: u32,
 }
 impl ReportVarHeader {
+    fn null_ptr() -> Self {
+        Self {
+            next: NULL_PTR_IN_MEM as u32
+        }
+    }
+
+    fn encode(&self) -> Box<[u8]> {
+        Box::new(self.next.to_le_bytes())
+    }
     fn num_bytes() -> usize {
         size_of::<i32>()
     }
@@ -307,6 +339,12 @@ impl ProbeHeader {
             pc
         }
     }
+    fn encode(&self) -> Vec<u8> {
+        let mut res = self.fid.to_le_bytes().to_vec();
+        res.extend(self.pc.to_le_bytes());
+
+        res
+    }
     fn num_bytes() -> usize {
         size_of::<i32>() * 2
     }
@@ -320,6 +358,15 @@ struct VarHeader {
     probe_id_len: u8
 }
 impl VarHeader {
+    fn encode(&self) -> Vec<u8> {
+        let mut res = self.name_ptr.to_le_bytes().to_vec();
+        res.extend(self.name_len.to_le_bytes());
+        res.extend(self.script_id.to_le_bytes());
+        res.extend(self.probe_id_ptr.to_le_bytes());
+        res.extend(self.probe_id_len.to_le_bytes());
+
+        res
+    }
     fn num_bytes() -> usize {
         (size_of::<u32>() * 2) + (size_of::<u8>() * 3)
     }
