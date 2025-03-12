@@ -4,6 +4,7 @@ use crate::common::{run_basic_instrumentation, run_whamm_bin, wat2wasm_on_dir};
 use log::error;
 use orca_wasm::Module;
 use std::fs;
+use std::fs::File;
 use std::path::PathBuf;
 use std::process::Command;
 use whamm::common::error::ErrorGen;
@@ -332,14 +333,22 @@ fn run_core_suite(
             } else {
                 None
             };
-            let exp_output = fs::read_to_string(exp)
-                .unwrap_or_else(|_| panic!("Unable to read file at {:?}", exp));
+            let metadata = fs::metadata(exp).expect("Failed to load expected output file metadata");
+            let exp_out = if metadata.len() > MAX_EXP_OUT_SIZE {
+                ExpectedOutput::hash(exp)
+            } else {
+                ExpectedOutput::Str(
+                    fs::read_to_string(exp)
+                        .unwrap_or_else(|_| panic!("Unable to read file at {:?}", exp)),
+                )
+            };
             run_testcase_rewriting(
                 script,
                 script_str,
                 &app_path_str,
                 libs_path_str,
-                &exp_output,
+                exp_out,
+                &outdir,
                 &instr_app_path,
                 &mut err,
             );
@@ -370,18 +379,50 @@ fn run_core_suite(
             } else {
                 None
             };
-            let exp_output = fs::read_to_string(exp)
-                .unwrap_or_else(|_| panic!("Unable to read file at {:?}", exp));
+            let metadata = fs::metadata(exp).expect("Failed to load expected output file metadata");
+            let exp_out = if metadata.len() > MAX_EXP_OUT_SIZE {
+                ExpectedOutput::hash(exp)
+            } else {
+                ExpectedOutput::Str(
+                    fs::read_to_string(exp)
+                        .unwrap_or_else(|_| panic!("Unable to read file at {:?}", exp)),
+                )
+            };
             run_testcase_wizard(
                 script,
                 script_str,
                 &app_path_str,
                 libs_path_str,
-                &exp_output,
+                exp_out,
+                &outdir,
                 &instr_app_path,
                 &mut err,
             );
         }
+    }
+}
+const MAX_EXP_OUT_SIZE: u64 = 50_000; // 50 KB
+enum ExpectedOutput {
+    Hash(String),
+    Str(String),
+}
+impl ExpectedOutput {
+    pub fn hash(file: &PathBuf) -> Self {
+        Self::Hash(file_hash(file))
+    }
+}
+
+fn file_hash(file: &PathBuf) -> String {
+    let res = Command::new("sha1sum")
+        .arg(file)
+        .output()
+        .expect("failed to run sha1sum");
+    if !res.status.success() {
+        panic!("Could not get hash for file: {:?}", file)
+    } else {
+        let stdout = String::from_utf8(res.stdout).unwrap();
+        let parts: Vec<&str> = stdout.split(' ').collect();
+        parts[0].to_string()
     }
 }
 
@@ -465,7 +506,8 @@ fn run_testcase_rewriting(
     script_str: &String,
     app_path_str: &str,
     user_libs: Option<Vec<String>>,
-    exp_output: &String,
+    exp_output: ExpectedOutput,
+    outdir: &String,
     instr_app_path: &String,
     err: &mut ErrorGen,
 ) {
@@ -500,7 +542,16 @@ fn run_testcase_rewriting(
 
     // run the instrumented application on wasmtime
     // let res = Command::new(format!("{home}/.cargo/bin/cargo"))
-    let res = Command::new("cargo")
+
+    let out_filename = "instr-flush.out";
+    let out_file = format!("{outdir}/{out_filename}");
+    let _ = fs::remove_file(out_file.clone());
+    let mut cmd = Command::new("cargo");
+    if matches!(exp_output, ExpectedOutput::Hash(_)) {
+        cmd.stdout(File::create(out_file.clone()).expect("failed to open log"));
+    }
+
+    let res = cmd
         .env("TO_CONSOLE", "true")
         .env("WASM_MODULE", format!("../{instr_app_path}"))
         .current_dir("wasmtime-runner")
@@ -517,9 +568,16 @@ fn run_testcase_rewriting(
         );
         assert!(false);
     } else {
-        // make sure the output is as expected
-        let stdout = String::from_utf8(res.stdout).unwrap();
-        assert_eq!(stdout.trim(), exp_output.trim());
+        match exp_output {
+            ExpectedOutput::Str(exp_str) => {
+                let stdout = String::from_utf8(res.stdout).unwrap();
+                assert_eq!(stdout.trim(), exp_str.trim());
+            }
+            ExpectedOutput::Hash(exp_hash) => {
+                let hash = file_hash(&PathBuf::from(out_file));
+                assert_eq!(hash, exp_hash);
+            }
+        };
     }
 }
 
@@ -528,7 +586,8 @@ fn run_testcase_wizard(
     script_str: &String,
     app_path_str: &str,
     user_libs: Option<Vec<String>>,
-    exp_output: &String,
+    exp_output: ExpectedOutput,
+    outdir: &String,
     instr_app_path: &String,
     err: &mut ErrorGen,
 ) {
@@ -558,8 +617,16 @@ fn run_testcase_wizard(
     // run the instrumented application on wizard
     let whamm_core_lib_path = "whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
     let wizeng_path = "output/tests/engines/wizeng";
-    let res = Command::new(wizeng_path)
-        .arg("--env=TO_CONSOLE=true")
+
+    let out_filename = "instr-flush.out";
+    let out_file = format!("{outdir}/{out_filename}");
+    let _ = fs::remove_file(out_file.clone());
+    let mut cmd = Command::new(wizeng_path);
+    if matches!(exp_output, ExpectedOutput::Hash(_)) {
+        cmd.stdout(File::create(out_file.clone()).expect("failed to open log"));
+    }
+
+    let res = cmd.arg("--env=TO_CONSOLE=true")
         .arg(format!("--monitors={}+{}{}", instr_app_path, whamm_core_lib_path, libs_to_link))
         .arg(app_path_str)
         .output()
@@ -572,8 +639,15 @@ fn run_testcase_wizard(
         );
         assert!(false);
     } else {
-        // make sure the output is as expected
-        let stdout = String::from_utf8(res.stdout).unwrap();
-        assert_eq!(stdout.trim(), exp_output.trim());
+        match exp_output {
+            ExpectedOutput::Str(exp_str) => {
+                let stdout = String::from_utf8(res.stdout).unwrap();
+                assert_eq!(stdout.trim(), exp_str.trim());
+            }
+            ExpectedOutput::Hash(exp_hash) => {
+                let hash = file_hash(&PathBuf::from(out_file));
+                assert_eq!(hash, exp_hash);
+            }
+        };
     }
 }

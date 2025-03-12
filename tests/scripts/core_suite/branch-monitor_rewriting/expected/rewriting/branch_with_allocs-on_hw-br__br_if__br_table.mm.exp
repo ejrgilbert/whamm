@@ -1,11 +1,11 @@
 ============================= REPORT CSV FLUSH ================================
 id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)
-4, global_id, taken, i32, i32, script0, 0:5, 1_wasm:opcode:br_if:before, 0
-5, global_id, not_taken, i32, i32, script0, 0:5, 1_wasm:opcode:br_if:before, 1
-6, global_id, taken, i32, i32, script0, 0:6, 0_wasm:opcode:br:before, 1
-7, global_id, taken, i32, i32, script0, 1:6, 1_wasm:opcode:br_if:before, 1
-8, global_id, not_taken, i32, i32, script0, 1:6, 1_wasm:opcode:br_if:before, 3
-9, global_id, taken, i32, i32, script0, 1:10, 1_wasm:opcode:br_if:before, 1
-10, global_id, not_taken, i32, i32, script0, 1:10, 1_wasm:opcode:br_if:before, 2
-11, global_id, taken, i32, i32, script0, 1:11, 0_wasm:opcode:br:before, 2
-1, map_id, taken_branches, map<u32,u32>, i32, script0, 2:4, 2_wasm:opcode:br_table:before, 0->1;1->1;2->1
+4, memaddr, taken, i32, i32, script0, 0:5, 1_wasm:opcode:br_if:before, 0
+31, memaddr, not_taken, i32, i32, script0, 0:5, 1_wasm:opcode:br_if:before, 1
+58, memaddr, taken, i32, i32, script0, 0:6, 0_wasm:opcode:br:before, 1
+85, memaddr, taken, i32, i32, script0, 1:6, 1_wasm:opcode:br_if:before, 1
+112, memaddr, not_taken, i32, i32, script0, 1:6, 1_wasm:opcode:br_if:before, 3
+139, memaddr, taken, i32, i32, script0, 1:10, 1_wasm:opcode:br_if:before, 1
+166, memaddr, not_taken, i32, i32, script0, 1:10, 1_wasm:opcode:br_if:before, 2
+193, memaddr, taken, i32, i32, script0, 1:11, 0_wasm:opcode:br:before, 2
+220, memaddr, taken_branches, map<u32,u32>, i32, script0, 2:4, 2_wasm:opcode:br_table:before, 0->1;1->1;2->1
