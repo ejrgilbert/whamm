@@ -294,6 +294,6 @@ impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '
         self.emitter.exit_scope(self.err);
     }
     fn lookup_var_mut(&mut self, name: &str) -> Option<&mut Record> {
-        self.emitter.table.lookup_var_mut(name)
+        self.emitter.table.lookup_var_mut(name, true)
     }
 }

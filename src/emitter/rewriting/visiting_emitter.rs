@@ -2,13 +2,12 @@ use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::rewriting::rules::wasm::OpcodeEvent;
 use crate::emitter::rewriting::rules::{Arg, LocInfo, ProbeRule, Provider, WhammProvider};
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
+use orca_wasm::ir::types::DataType as OrcaType;
 use std::collections::HashMap;
 
 use crate::emitter::locals_tracker::LocalsTracker;
-use crate::emitter::memory_allocator::MemoryAllocator;
-use crate::emitter::utils::{
-    block_type_to_wasm, emit_expr, emit_stmt, whamm_type_to_wasm_global, EmitCtx,
-};
+use crate::emitter::memory_allocator::{MemoryAllocator, VAR_BLOCK_BASE_VAR};
+use crate::emitter::utils::{block_type_to_wasm, emit_expr, emit_stmt, EmitCtx};
 use crate::emitter::{configure_flush_routines, Emitter, InjectStrategy};
 use crate::generator::ast::UnsharedVar;
 use crate::generator::folding::ExprFolder;
@@ -26,7 +25,7 @@ use orca_wasm::ir::module::Module;
 use orca_wasm::ir::types::BlockType as OrcaBlockType;
 use orca_wasm::iterator::iterator_trait::{IteratingInstrumenter, Iterator as OrcaIterator};
 use orca_wasm::iterator::module_iterator::ModuleIterator;
-use orca_wasm::opcode::{Instrumenter, Opcode};
+use orca_wasm::opcode::{Instrumenter, MacroOpcode, Opcode};
 use orca_wasm::Location;
 use std::iter::Iterator;
 
@@ -167,8 +166,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                         self.mem_allocator,
                         &mut self.locals_tracker,
                         self.map_lib_adapter,
-                        self.report_vars,
-                        self.unshared_var_handler,
                         UNEXPECTED_ERR_MSG,
                         err,
                     ),
@@ -508,6 +505,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
 
             let var_flush = configure_flush_routines(
                 self.app_iter.module,
+                self.unshared_var_handler,
                 self.report_vars,
                 self.map_lib_adapter,
                 self.mem_allocator,
@@ -576,41 +574,59 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
             .iter()
             .sorted_by(|a, b| Ord::cmp(&a.ty, &b.ty));
 
-        for UnsharedVar {
-            name,
-            ty,
-            is_report,
-            ..
-        } in sorted_unshared.into_iter()
-        {
-            if matches!(ty, DataType::Map { .. }) {
-                // handle maps
-                let Some(Record::Var {
-                    ref mut addr,
-                    ref mut ty,
-                    ..
-                }) = self.table.lookup_var_mut(name)
-                else {
-                    err.unexpected_error(true, Some("unexpected type".to_string()), None);
-                    return false;
-                };
+        // Create the variable pointing to the start of the allocated memory block
+        if !self.curr_unshared.is_empty() {
+            let id = self
+                .locals_tracker
+                .use_local(OrcaType::I32, &mut self.app_iter);
 
-                self.map_lib_adapter.emit_map_init(
-                    name.clone(),
-                    addr,
-                    ty,
-                    *is_report,
-                    self.report_vars,
-                    self.app_iter.module,
-                    err,
-                );
+            // THIS VAR NEEDS TO BE REDEFINED!
+            let offset_value = self.unshared_var_handler.get_curr_offset();
+            if let Some(Record::Var { value, addr, .. }) =
+                self.table.lookup_var_mut(VAR_BLOCK_BASE_VAR, false)
+            {
+                *value = Some(Value::gen_u32(offset_value));
+                *addr = Some(VarAddr::Local { addr: id });
             } else {
-                // if it's not a map, we'll just use this generated GID when
-                // we need to during the AST visit
-                let (global_id, ..) = whamm_type_to_wasm_global(self.app_iter.module, ty);
-                self.unshared_var_handler.add_available_gid(*global_id, ty);
-            }
+                self.table.put(
+                    VAR_BLOCK_BASE_VAR.to_string(),
+                    Record::Var {
+                        ty: DataType::I32,
+                        name: VAR_BLOCK_BASE_VAR.to_string(),
+                        value: Some(Value::gen_u32(offset_value)),
+                        def: Definition::CompilerStatic,
+                        is_report_var: false,
+                        addr: Some(VarAddr::Local { addr: id }),
+                        loc: None,
+                    },
+                );
+            };
+            self.app_iter.u32_const(offset_value).local_set(LocalID(id));
         }
+
+        let (fid, pc) = match self.app_iter.curr_loc().0 {
+            Location::Module {
+                func_idx,
+                instr_idx,
+                ..
+            }
+            | Location::Component {
+                func_idx,
+                instr_idx,
+                ..
+            } => (*func_idx, instr_idx as u32),
+        };
+        self.unshared_var_handler.allocate_vars(
+            sorted_unshared.as_slice(),
+            fid,
+            pc,
+            self.table,
+            self.mem_allocator,
+            self.map_lib_adapter,
+            self.report_vars,
+            self.app_iter.module,
+            err,
+        );
 
         for stmt in body.stmts.iter_mut() {
             is_success &= self.emit_stmt(curr_instr_args, stmt, err);
@@ -658,8 +674,6 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
                 self.mem_allocator,
                 &mut self.locals_tracker,
                 self.map_lib_adapter,
-                self.report_vars,
-                self.unshared_var_handler,
                 UNEXPECTED_ERR_MSG,
                 err,
             ),
@@ -676,8 +690,6 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
                 self.mem_allocator,
                 &mut self.locals_tracker,
                 self.map_lib_adapter,
-                self.report_vars,
-                self.unshared_var_handler,
                 UNEXPECTED_ERR_MSG,
                 err,
             ),

@@ -546,7 +546,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         report_mode: bool,
         err: &mut ErrorGen,
     ) -> Option<FunctionID> {
-        let Record::Var { addr, ty, .. } = self.table.lookup_var_mut(&name)? else {
+        let Record::Var { addr, ty, .. } = self.table.lookup_var_mut(&name, true)? else {
             err.unexpected_error(true, Some("unexpected type".to_string()), None);
             return None;
         };
@@ -555,19 +555,20 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         // this is used for user-defined global vars in the script...
         match ty {
             DataType::Map { .. } => {
-                self.map_lib_adapter.emit_map_init(
+                let map_id = self.map_lib_adapter.emit_map_init(
                     name,
-                    addr,
                     ty,
                     report_mode,
+                    true,
                     self.report_vars,
                     self.app_wasm,
                     err,
                 );
+                *addr = Some(VarAddr::MapId { addr: map_id });
                 None
             }
             _ => {
-                let (global_id, global_ty) = whamm_type_to_wasm_global(self.app_wasm, ty);
+                let (global_id, global_ty) = whamm_type_to_wasm_global(self.app_wasm, ty, None);
                 *addr = Some(VarAddr::Global { addr: *global_id });
                 //now save off the global variable metadata
                 if report_mode {
@@ -659,8 +660,6 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
                     self.mem_allocator,
                     &mut self.locals_tracker,
                     self.map_lib_adapter,
-                    self.report_vars,
-                    self.unshared_var_handler,
                     UNEXPECTED_ERR_MSG,
                     err,
                 ),
@@ -686,8 +685,6 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
                     self.mem_allocator,
                     &mut self.locals_tracker,
                     self.map_lib_adapter,
-                    self.report_vars,
-                    self.unshared_var_handler,
                     UNEXPECTED_ERR_MSG,
                     err,
                 ),
@@ -708,8 +705,6 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
                     self.mem_allocator,
                     &mut self.locals_tracker,
                     self.map_lib_adapter,
-                    self.report_vars,
-                    self.unshared_var_handler,
                     UNEXPECTED_ERR_MSG,
                     err,
                 ),
