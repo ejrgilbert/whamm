@@ -222,6 +222,7 @@ impl MapLibAdapter {
     pub fn map_create_report<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         &mut self,
         name: String,
+        is_global: bool,
         ty: DataType,
         func: &mut T,
         report_vars: &mut ReportVars,
@@ -229,7 +230,9 @@ impl MapLibAdapter {
     ) -> u32 {
         let map_id = self.map_create(ty.clone(), func, err);
         //create the metadata for the map
-        report_vars.put_map_metadata(map_id, name.clone(), ty, err);
+        if is_global {
+            report_vars.put_map_metadata(map_id, name.clone(), ty, err);
+        }
         map_id
     }
 
@@ -451,13 +454,14 @@ impl MapLibAdapter {
     pub fn emit_map_init(
         &mut self,
         name: String,
-        addr: &mut Option<VarAddr>,
-        ty: &mut DataType,
+        // addr: &mut Option<VarAddr>,
+        ty: &DataType,
         is_report: bool,
+        is_global: bool,
         report_vars: &mut ReportVars,
         app_wasm: &mut Module,
         err: &mut ErrorGen,
-    ) {
+    ) -> u32 {
         //time to set up the map_init fn
         let init_id = self.get_map_init_fid(app_wasm);
 
@@ -472,12 +476,13 @@ impl MapLibAdapter {
             instr_idx: 0,
         });
         let map_id = if is_report {
-            self.map_create_report(name, ty.clone(), &mut init_fn, report_vars, err)
+            self.map_create_report(name, is_global, ty.clone(), &mut init_fn, report_vars, err)
         } else {
             self.map_create(ty.clone(), &mut init_fn, err)
         };
 
-        *addr = Some(VarAddr::MapId { addr: map_id });
+        // *addr = Some(VarAddr::MapId { addr: map_id });
+        map_id
     }
 
     pub fn inject_map_init_check<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(

@@ -3,13 +3,14 @@
 use std::collections::HashMap;
 use orca_wasm::{DataSegment, DataSegmentKind, Instructions, Module};
 use orca_wasm::ir::id::MemoryID;
-use orca_wasm::ir::types::{InitExpr, Value};
+use orca_wasm::ir::types::{InitExpr, Value as OrcaValue};
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::{MemoryAllocator, StringAddr, WASM_PAGE_SIZE};
 use crate::emitter::utils::whamm_type_to_wasm_global;
 use crate::generator::ast::UnsharedVar;
+use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::lang_features::report_vars::{Metadata, NULL_PTR_IN_MEM, ReportVars};
-use crate::parser::types::DataType;
+use crate::parser::types::{DataType, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 
 
@@ -69,7 +70,7 @@ impl UnsharedVarHandler {
             data: bytes,
             kind: DataSegmentKind::Active {
                 memory_index: self.mem_id,
-                offset_expr: InitExpr::new(vec![Instructions::Value(Value::I32(0))]),
+                offset_expr: InitExpr::new(vec![Instructions::Value(OrcaValue::I32(0))]),
             },
         };
         wasm.add_data(data);
@@ -79,8 +80,12 @@ impl UnsharedVarHandler {
 
         for (ty, ReportAllocTracker {first_var, ..}) in self.report_trackers.iter() {
             if let Some(first_var) = first_var {
-                let (global_id, _) = whamm_type_to_wasm_global(wasm, ty, Some(InitExpr::new(vec![Instructions::Value(Value::I32(*first_var as i32))])));
-                global_trackers.insert(ty.clone(), *global_id);
+                if let Some(AllocatedVar {mem_offset, ..}) = self.allocated_vars.get(*first_var as usize) {
+                    let (global_id, _) = whamm_type_to_wasm_global(wasm, &DataType::I32, Some(InitExpr::new(vec![Instructions::Value(OrcaValue::I32(*mem_offset as i32))])));
+                    global_trackers.insert(ty.clone(), *global_id);
+                } else {
+                    panic!("First var not found in allocated_vars list!");
+                }
             } else {
                 panic!("First var should be set by now!");
             }
@@ -100,6 +105,7 @@ impl UnsharedVarHandler {
         // addr: &mut Option<VarAddr>,
         table: &mut SymbolTable,
         mem_allocator: &mut MemoryAllocator,
+        map_lib_adapter: &mut MapLibAdapter,
         report_vars: &mut ReportVars,
         wasm: &mut Module,
         // err_msg: &str,
@@ -125,6 +131,7 @@ impl UnsharedVarHandler {
             if !var.is_report {
                 continue;
             }
+            report_vars.all_used_report_dts.insert(var.ty.clone());
 
             let Some(Metadata::Local { name, probe_id, .. }) = &var.report_metadata
             else {
@@ -161,6 +168,9 @@ impl UnsharedVarHandler {
             report_metadata,
         } in vars.iter()
         {
+            // if matches!(ty, DataType::Map {..}) {
+            //     println!("map");
+            // }
             let ty_tracker = self.report_trackers.entry(ty.clone()).or_insert(ReportAllocTracker::default());
 
             // look up in symbol table
@@ -173,7 +183,7 @@ impl UnsharedVarHandler {
                 // 2. If is_report, prep the report var header (linked list)
                 if let Some(prev_idx) = &mut ty_tracker.last_var {
                     if let Some(prev_var) = self.allocated_vars.get_mut(*prev_idx) {
-                        let ptr = (self.curr_mem_offset - prev_var.mem_offset) + (curr_offset);
+                        let ptr = (self.curr_mem_offset + curr_offset) - prev_var.mem_offset;
                         prev_var.report_var_header = Some(ReportVarHeader {
                             next: ptr
                         });
@@ -200,8 +210,27 @@ impl UnsharedVarHandler {
             // 4. Store the header for this variable
             let var_header = VarHeader::new(report_metadata, mem_allocator, err);
 
+            // TODO -- see if we need to init maps??
+
+            let value = if matches!(ty, DataType::Map {..}) {
+                let map_id = map_lib_adapter.emit_map_init(
+                    name.clone(),
+                    // addr,
+                    ty,
+                    *is_report,
+                    false,
+                    report_vars,
+                    wasm,
+                    err,
+                );
+                Some(Value::gen_i32(map_id as i32))
+            } else {
+                None
+            };
+
             let allocated_var = AllocatedVar {
                 mem_offset: self.curr_mem_offset + curr_offset,
+                value,
                 ty: ty.clone(),
                 report_var_header: if *is_report {
                     Some(ReportVarHeader::null_ptr())
@@ -220,8 +249,6 @@ impl UnsharedVarHandler {
             });
 
             curr_offset += allocated_var.num_bytes() as u32;
-
-            // TODO -- see if we need to init maps??
 
             self.allocated_vars.push(allocated_var);
         }
@@ -265,6 +292,7 @@ impl UnsharedVarHandler {
 
 struct AllocatedVar {
     mem_offset: u32,
+    value: Option<Value>,
     ty: DataType,
     report_var_header: Option<ReportVarHeader>,
     probe_header: ProbeHeader,
@@ -280,10 +308,14 @@ impl AllocatedVar {
         res.extend(self.probe_header.encode());
         res.extend(self.var_header.encode());
 
-        // make space for the allocated variable's value
-        if let Some(num_bytes) = self.ty.num_bytes() {
-            for _ in 0..num_bytes {
-                res.push(0u8);
+        if let Some(value) = &self.value {
+            res.extend(value.encode());
+        } else {
+            // just make space for the allocated variable's value
+            if let Some(num_bytes) = self.ty.num_bytes() {
+                for _ in 0..num_bytes {
+                    res.push(0u8);
+                }
             }
         }
 

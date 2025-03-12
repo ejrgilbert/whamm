@@ -555,15 +555,16 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         // this is used for user-defined global vars in the script...
         match ty {
             DataType::Map { .. } => {
-                self.map_lib_adapter.emit_map_init(
+                let map_id = self.map_lib_adapter.emit_map_init(
                     name,
-                    addr,
                     ty,
                     report_mode,
+                    true,
                     self.report_vars,
                     self.app_wasm,
                     err,
                 );
+                *addr = Some(VarAddr::MapId { addr: map_id });
                 None
             }
             _ => {

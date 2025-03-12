@@ -584,8 +584,9 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
 
             // THIS VAR NEEDS TO BE REDEFINED!
             let offset_value = self.unshared_var_handler.get_curr_offset();
-            if let Some(Record::Var { value, .. }) = self.table.lookup_var_mut(VAR_BLOCK_BASE_VAR, false) {
+            if let Some(Record::Var { value, addr, .. }) = self.table.lookup_var_mut(VAR_BLOCK_BASE_VAR, false) {
                 *value = Some(Value::gen_u32(offset_value));
+                *addr = Some(VarAddr::Local { addr: id });
             } else {
                 self.table.put(
                     VAR_BLOCK_BASE_VAR.to_string(),
@@ -613,39 +614,40 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
             sorted_unshared.as_slice(),
             fid, pc, self.table,
             self.mem_allocator,
+            self.map_lib_adapter,
             self.report_vars, self.app_iter.module, err);
 
-        for UnsharedVar {
-            name,
-            ty,
-            is_report,
-            ..
-        } in sorted_unshared.into_iter()
-        {
-            self.report_vars.all_used_report_dts.insert(ty.clone());
-            if matches!(ty, DataType::Map { .. }) {
-                // handle maps
-                let Some(Record::Var {
-                             ref mut addr,
-                             ref mut ty,
-                             ..
-                         }) = self.table.lookup_var_mut(name, true)
-                else {
-                    err.unexpected_error(true, Some("unexpected type".to_string()), None);
-                    return false;
-                };
-
-                self.map_lib_adapter.emit_map_init(
-                    name.clone(),
-                    addr,
-                    ty,
-                    *is_report,
-                    self.report_vars,
-                    self.app_iter.module,
-                    err,
-                );
-            }
-        }
+        // for UnsharedVar {
+        //     name,
+        //     ty,
+        //     is_report,
+        //     ..
+        // } in sorted_unshared.into_iter()
+        // {
+        //     // self.report_vars.all_used_report_dts.insert(ty.clone());
+        //     if matches!(ty, DataType::Map { .. }) {
+        //         // handle maps
+        //         let Some(Record::Var {
+        //                      ref mut addr,
+        //                      ref mut ty,
+        //                      ..
+        //                  }) = self.table.lookup_var_mut(name, true)
+        //         else {
+        //             err.unexpected_error(true, Some("unexpected type".to_string()), None);
+        //             return false;
+        //         };
+        //
+        //         self.map_lib_adapter.emit_map_init(
+        //             name.clone(),
+        //             addr,
+        //             ty,
+        //             *is_report,
+        //             self.report_vars,
+        //             self.app_iter.module,
+        //             err,
+        //         );
+        //     }
+        // }
 
         for stmt in body.stmts.iter_mut() {
             is_success &= self.emit_stmt(curr_instr_args, stmt, err);

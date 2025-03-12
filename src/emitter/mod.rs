@@ -54,6 +54,9 @@ pub fn configure_flush_routines(
 ) -> Option<u32> {
     // at this point, I want to use the collected metadata in UnsharedVars
     // to generate a new data segment AND generate the necessary globals!
+    if report_vars.variable_metadata.is_empty() && report_vars.all_used_report_dts.is_empty() {
+        return None;
+    }
 
     let mut on_exit = FunctionBuilder::new(&[], &[]);
 
