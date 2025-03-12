@@ -4,9 +4,7 @@ use crate::emitter::locals_tracker::LocalsTracker;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::InjectStrategy;
 use crate::generator::folding::ExprFolder;
-use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::maps::map_adapter::{MapLibAdapter, MAP_LIB_MEM_OFFSET};
-use crate::lang_features::report_vars::ReportVars;
 use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Location, NumLit, Statement, UnOp, Value,
 };
@@ -26,28 +24,24 @@ use orca_wasm::{Instructions, Module};
 // ==================================================================
 // ==================================================================
 
-pub struct EmitCtx<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
+pub struct EmitCtx<'a, 'b, 'c, 'd, 'e> {
     table: &'a mut SymbolTable,
     mem_allocator: &'b MemoryAllocator,
     locals_tracker: &'c mut LocalsTracker,
     in_map_op: bool,
     in_lib_call_to: Option<String>,
     map_lib_adapter: &'d mut MapLibAdapter,
-    report_vars: &'e mut ReportVars,
-    unshared_var_handler: &'f mut UnsharedVarHandler,
     err_msg: String,
-    err: &'g mut ErrorGen,
+    err: &'e mut ErrorGen,
 }
-impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> EmitCtx<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
+impl<'a, 'b, 'c, 'd, 'e> EmitCtx<'a, 'b, 'c, 'd, 'e> {
     pub fn new(
         table: &'a mut SymbolTable,
         mem_allocator: &'b MemoryAllocator,
         locals_tracker: &'c mut LocalsTracker,
         map_lib_adapter: &'d mut MapLibAdapter,
-        report_vars: &'e mut ReportVars,
-        unshared_var_handler: &'f mut UnsharedVarHandler,
         err_msg: &str,
-        err: &'g mut ErrorGen,
+        err: &'e mut ErrorGen,
     ) -> Self {
         Self {
             table,
@@ -56,8 +50,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> EmitCtx<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             in_map_op: false,
             in_lib_call_to: None,
             map_lib_adapter,
-            report_vars,
-            unshared_var_handler,
             err_msg: err_msg.to_string(),
             err,
         }
@@ -84,7 +76,7 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     ctx: &mut EmitCtx,
 ) -> bool {
     match stmt {
-        Statement::LibImport { .. } => todo!(),
+        Statement::LibImport { .. } => true, // already handled!
         Statement::Decl { .. } => emit_decl_stmt(stmt, injector, ctx),
         Statement::Assign { .. } => emit_assign_stmt(stmt, strategy, injector, ctx),
         Statement::Expr { expr, .. } | Statement::Return { expr, .. } => {
@@ -100,7 +92,7 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 emit_if_else(cond, conseq, alt, strategy, injector, ctx)
             }
         }
-        Statement::UnsharedDecl { .. } => emit_unshared_decl_stmt(stmt, strategy, ctx),
+        Statement::UnsharedDecl { .. } => emit_unshared_decl_stmt(stmt, ctx),
         Statement::SetMap { .. } => {
             ctx.in_map_op = true;
             let res = emit_set_map_stmt(stmt, strategy, injector, ctx);
@@ -220,70 +212,10 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     }
 }
 
-fn emit_unshared_decl_stmt(
-    stmt: &mut Statement,
-    strategy: InjectStrategy,
-    ctx: &mut EmitCtx,
-) -> bool {
-    // TODO(unshared) (check me)
-    //   call lang_features.unshared_vars.rewriting IF doing rewriting...
-    //   ...will need to thread injection method through
-    //   (ignore this statement on wizard target since it's already handled)
-    if let Statement::UnsharedDecl {
-        decl, is_report, ..
-    } = stmt
-    {
-        // TODO -- can skip this entire thing...
-        match strategy {
-            InjectStrategy::Rewriting => {
-                return match &**decl {
-                    Statement::Decl {
-                        ty,
-                        var_id: Expr::VarId { name: var_name, .. },
-                        ..
-                    } => {
-                        // look up in symbol table
-                        let Some(Record::Var { addr, .. }) = ctx.table.lookup_var_mut(var_name, true)
-                        else {
-                            ctx.err.unexpected_error(
-                                true,
-                                Some("unexpected type".to_string()),
-                                None,
-                            );
-                            return false;
-                        };
-                        assert!(addr.is_some());
-                        return true;
-
-                        // ctx.unshared_var_handler.allocate_var(
-                        //     var_name,
-                        //     ty,
-                        //     *is_report,
-                        //     addr,
-                        //     ctx.report_vars,
-                        //     &ctx.err_msg,
-                        //     ctx.err,
-                        // )
-                        // todo!()
-                    }
-                    _ => {
-                        ctx.err.unexpected_error(
-                            false,
-                            Some(format!(
-                                "{} Wrong statement type, should be `decl`",
-                                ctx.err_msg
-                            )),
-                            None,
-                        );
-                        false
-                    }
-                };
-            }
-            InjectStrategy::Wizard => {
-                // ignore, this statement has already been processed!
-                return true;
-            }
-        }
+fn emit_unshared_decl_stmt(stmt: &mut Statement, ctx: &mut EmitCtx) -> bool {
+    if let Statement::UnsharedDecl { .. } = stmt {
+        // ignore, this statement has already been processed!
+        return true;
     }
     ctx.err.unexpected_error(
         false,
@@ -307,7 +239,8 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             // Save off primitives to symbol table
             // TODO -- this is only necessary for `new_target_fn_name`, remove after deprecating!
             if let (Expr::VarId { name, .. }, Expr::Primitive { val, .. }) = (&var_id, &expr) {
-                let Some(Record::Var { value, def, .. }) = ctx.table.lookup_var_mut(name, true) else {
+                let Some(Record::Var { value, def, .. }) = ctx.table.lookup_var_mut(name, true)
+                else {
                     ctx.err
                         .unexpected_error(true, Some("unexpected type".to_string()), None);
                     return false;
@@ -408,14 +341,19 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 
 // transform a whamm type to default wasm type, used for creating new global
 // TODO: Might be more generic to also include Local
-pub fn whamm_type_to_wasm_global(app_wasm: &mut Module, ty: &DataType, init_expr: Option<InitExpr>) -> (GlobalID, OrcaType) {
+pub fn whamm_type_to_wasm_global(
+    app_wasm: &mut Module,
+    ty: &DataType,
+    init_expr: Option<InitExpr>,
+) -> (GlobalID, OrcaType) {
     let orca_wasm_ty = ty.to_wasm_type();
 
     if orca_wasm_ty.len() == 1 {
         match orca_wasm_ty.first().unwrap() {
             OrcaType::I32 => {
                 let global_id = app_wasm.add_global(
-                    init_expr.unwrap_or(InitExpr::new(vec![Instructions::Value(OrcaValue::I32(0))])),
+                    init_expr
+                        .unwrap_or(InitExpr::new(vec![Instructions::Value(OrcaValue::I32(0))])),
                     OrcaType::I32,
                     true,
                     false,
@@ -424,7 +362,8 @@ pub fn whamm_type_to_wasm_global(app_wasm: &mut Module, ty: &DataType, init_expr
             }
             OrcaType::I64 => {
                 let global_id = app_wasm.add_global(
-                    init_expr.unwrap_or(InitExpr::new(vec![Instructions::Value(OrcaValue::I64(0))])),
+                    init_expr
+                        .unwrap_or(InitExpr::new(vec![Instructions::Value(OrcaValue::I64(0))])),
                     OrcaType::I64,
                     true,
                     false,
@@ -433,7 +372,9 @@ pub fn whamm_type_to_wasm_global(app_wasm: &mut Module, ty: &DataType, init_expr
             }
             OrcaType::F32 => {
                 let global_id = app_wasm.add_global(
-                    init_expr.unwrap_or(InitExpr::new(vec![Instructions::Value(OrcaValue::F32(0f32))])),
+                    init_expr.unwrap_or(InitExpr::new(vec![Instructions::Value(OrcaValue::F32(
+                        0f32,
+                    ))])),
                     OrcaType::F32,
                     true,
                     false,
@@ -442,7 +383,9 @@ pub fn whamm_type_to_wasm_global(app_wasm: &mut Module, ty: &DataType, init_expr
             }
             OrcaType::F64 => {
                 let global_id = app_wasm.add_global(
-                    init_expr.unwrap_or(InitExpr::new(vec![Instructions::Value(OrcaValue::F64(0f64))])),
+                    init_expr.unwrap_or(InitExpr::new(vec![Instructions::Value(OrcaValue::F64(
+                        0f64,
+                    ))])),
                     OrcaType::F64,
                     true,
                     false,

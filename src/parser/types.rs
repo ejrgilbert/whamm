@@ -498,16 +498,16 @@ pub enum NumLit {
 impl NumLit {
     pub fn encode(&self) -> Vec<u8> {
         match self {
-            Self::I8 {val} => val.to_le_bytes().to_vec(),
-            Self::U8 {val} => val.to_le_bytes().to_vec(),
-            Self::I16 {val} => val.to_le_bytes().to_vec(),
-            Self::U16 {val} => val.to_le_bytes().to_vec(),
-            Self::I32 {val} => val.to_le_bytes().to_vec(),
-            Self::U32 {val} => val.to_le_bytes().to_vec(),
-            Self::I64 {val} => val.to_le_bytes().to_vec(),
-            Self::U64 {val} => val.to_le_bytes().to_vec(),
-            Self::F32 {val} => val.to_le_bytes().to_vec(),
-            Self::F64 {val} => val.to_le_bytes().to_vec(),
+            Self::I8 { val } => val.to_le_bytes().to_vec(),
+            Self::U8 { val } => val.to_le_bytes().to_vec(),
+            Self::I16 { val } => val.to_le_bytes().to_vec(),
+            Self::U16 { val } => val.to_le_bytes().to_vec(),
+            Self::I32 { val } => val.to_le_bytes().to_vec(),
+            Self::U32 { val } => val.to_le_bytes().to_vec(),
+            Self::I64 { val } => val.to_le_bytes().to_vec(),
+            Self::U64 { val } => val.to_le_bytes().to_vec(),
+            Self::F32 { val } => val.to_le_bytes().to_vec(),
+            Self::F64 { val } => val.to_le_bytes().to_vec(),
         }
     }
     fn implicit_cast(&mut self, target: &DataType) -> Result<(), String> {
@@ -925,11 +925,11 @@ pub enum Value {
 impl Value {
     pub fn encode(&self) -> Vec<u8> {
         match self {
-            Self::Number {val, ..} => val.encode(),
-            Self::Boolean {..} |
-            Self::Str {..} |
-            Self::Tuple {..} |
-            Self::U32U32Map {..} => {
+            Self::Number { val, .. } => val.encode(),
+            Self::Boolean { .. }
+            | Self::Str { .. }
+            | Self::Tuple { .. }
+            | Self::U32U32Map { .. } => {
                 todo!()
             }
         }

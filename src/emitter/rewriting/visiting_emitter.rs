@@ -2,14 +2,12 @@ use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::rewriting::rules::wasm::OpcodeEvent;
 use crate::emitter::rewriting::rules::{Arg, LocInfo, ProbeRule, Provider, WhammProvider};
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
-use std::collections::HashMap;
 use orca_wasm::ir::types::DataType as OrcaType;
+use std::collections::HashMap;
 
 use crate::emitter::locals_tracker::LocalsTracker;
 use crate::emitter::memory_allocator::{MemoryAllocator, VAR_BLOCK_BASE_VAR};
-use crate::emitter::utils::{
-    block_type_to_wasm, emit_expr, emit_stmt, whamm_type_to_wasm_global, EmitCtx,
-};
+use crate::emitter::utils::{block_type_to_wasm, emit_expr, emit_stmt, EmitCtx};
 use crate::emitter::{configure_flush_routines, Emitter, InjectStrategy};
 use crate::generator::ast::UnsharedVar;
 use crate::generator::folding::ExprFolder;
@@ -168,8 +166,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                         self.mem_allocator,
                         &mut self.locals_tracker,
                         self.map_lib_adapter,
-                        self.report_vars,
-                        self.unshared_var_handler,
                         UNEXPECTED_ERR_MSG,
                         err,
                     ),
@@ -580,11 +576,15 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
 
         // Create the variable pointing to the start of the allocated memory block
         if !self.curr_unshared.is_empty() {
-            let id = self.locals_tracker.use_local(OrcaType::I32, &mut self.app_iter);
+            let id = self
+                .locals_tracker
+                .use_local(OrcaType::I32, &mut self.app_iter);
 
             // THIS VAR NEEDS TO BE REDEFINED!
             let offset_value = self.unshared_var_handler.get_curr_offset();
-            if let Some(Record::Var { value, addr, .. }) = self.table.lookup_var_mut(VAR_BLOCK_BASE_VAR, false) {
+            if let Some(Record::Var { value, addr, .. }) =
+                self.table.lookup_var_mut(VAR_BLOCK_BASE_VAR, false)
+            {
                 *value = Some(Value::gen_u32(offset_value));
                 *addr = Some(VarAddr::Local { addr: id });
             } else {
@@ -601,53 +601,32 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
                     },
                 );
             };
-            self.app_iter.u32_const(offset_value)
-                .local_set(LocalID(id));
-
+            self.app_iter.u32_const(offset_value).local_set(LocalID(id));
         }
-        // TODO -- try to get rid of clone on sorted_unshared
 
         let (fid, pc) = match self.app_iter.curr_loc().0 {
-            Location::Module { func_idx, instr_idx, .. } | Location::Component { func_idx, instr_idx, .. } => (*func_idx, instr_idx as u32),
+            Location::Module {
+                func_idx,
+                instr_idx,
+                ..
+            }
+            | Location::Component {
+                func_idx,
+                instr_idx,
+                ..
+            } => (*func_idx, instr_idx as u32),
         };
         self.unshared_var_handler.allocate_vars(
             sorted_unshared.as_slice(),
-            fid, pc, self.table,
+            fid,
+            pc,
+            self.table,
             self.mem_allocator,
             self.map_lib_adapter,
-            self.report_vars, self.app_iter.module, err);
-
-        // for UnsharedVar {
-        //     name,
-        //     ty,
-        //     is_report,
-        //     ..
-        // } in sorted_unshared.into_iter()
-        // {
-        //     // self.report_vars.all_used_report_dts.insert(ty.clone());
-        //     if matches!(ty, DataType::Map { .. }) {
-        //         // handle maps
-        //         let Some(Record::Var {
-        //                      ref mut addr,
-        //                      ref mut ty,
-        //                      ..
-        //                  }) = self.table.lookup_var_mut(name, true)
-        //         else {
-        //             err.unexpected_error(true, Some("unexpected type".to_string()), None);
-        //             return false;
-        //         };
-        //
-        //         self.map_lib_adapter.emit_map_init(
-        //             name.clone(),
-        //             addr,
-        //             ty,
-        //             *is_report,
-        //             self.report_vars,
-        //             self.app_iter.module,
-        //             err,
-        //         );
-        //     }
-        // }
+            self.report_vars,
+            self.app_iter.module,
+            err,
+        );
 
         for stmt in body.stmts.iter_mut() {
             is_success &= self.emit_stmt(curr_instr_args, stmt, err);
@@ -695,8 +674,6 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
                 self.mem_allocator,
                 &mut self.locals_tracker,
                 self.map_lib_adapter,
-                self.report_vars,
-                self.unshared_var_handler,
                 UNEXPECTED_ERR_MSG,
                 err,
             ),
@@ -713,8 +690,6 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
                 self.mem_allocator,
                 &mut self.locals_tracker,
                 self.map_lib_adapter,
-                self.report_vars,
-                self.unshared_var_handler,
                 UNEXPECTED_ERR_MSG,
                 err,
             ),

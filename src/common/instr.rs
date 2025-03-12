@@ -21,7 +21,7 @@ use crate::parser::whamm_parser::parse_script;
 use crate::verifier::types::SymbolTable;
 use crate::verifier::verifier::{build_symbol_table, type_check};
 use log::{error, info};
-use orca_wasm::ir::id::{FunctionID, GlobalID};
+use orca_wasm::ir::id::FunctionID;
 use orca_wasm::ir::types::{DataType as OrcaType, InitExpr, Value as OrcaValue};
 use orca_wasm::{Instructions, Module};
 use std::collections::{HashMap, HashSet};
@@ -239,13 +239,14 @@ pub fn run(
     let mut map_lib_adapter = map_package.adapter;
     let mut io_adapter = io_package.adapter;
     let mut report_vars = ReportVars::new();
-    let mut unshared_var_handler = UnsharedVarHandler::new(*target_wasm.add_local_memory(MemoryType {
-        memory64: false,
-        shared: false,
-        initial: 1,
-        maximum: None,
-        page_size_log2: None,
-    }));
+    let mut unshared_var_handler =
+        UnsharedVarHandler::new(*target_wasm.add_local_memory(MemoryType {
+            memory64: false,
+            shared: false,
+            initial: 1,
+            maximum: None,
+            page_size_log2: None,
+        }));
 
     // If there were any errors encountered, report and exit!
     metadata_collector.err.check_has_errors();
@@ -405,14 +406,6 @@ fn run_instr_rewrite(
 
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
-
-    // for (ty, list) in unshared_var_handler.available_gids.iter() {
-    //     //should be 0, but good for cleanup
-    //     for gid in list.iter() {
-    //         err.add_compiler_warn(format!("Unused {ty} GID: {}", gid));
-    //         target_wasm.delete_global(GlobalID(*gid));
-    //     }
-    // }
 }
 
 fn get_memory_allocator(target_wasm: &mut Module, create_new_mem: bool) -> MemoryAllocator {

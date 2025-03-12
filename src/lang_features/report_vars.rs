@@ -261,23 +261,32 @@ impl ReportVars {
 
         // print the in-memory variables
         // TODO -- can I combine this with the other logic instead?
-        self.emit_locals_flush(func, mem_allocator, io_adapter, map_lib_adapter, header_info, mem_id, wasm, err);
+        self.emit_locals_flush(
+            func,
+            mem_allocator,
+            io_adapter,
+            map_lib_adapter,
+            header_info,
+            mem_id,
+            wasm,
+            err,
+        );
 
         // print the global variables
         self.emit_globals_flush(func, var_meta, io_adapter, map_lib_adapter, err);
     }
 
-    pub fn configure_trackers(
-        &mut self,
-        trackers: HashMap<DataType, u32>
-    ) {
+    pub fn configure_trackers(&mut self, trackers: HashMap<DataType, u32>) {
         for (ty, id) in trackers.iter() {
-            self.alloc_tracker.entry(ty.clone()).and_modify(|tracker| {
-                tracker.first_var = Some(*id);
-            }).or_insert(ReportAllocTracker {
-                first_var: Some(*id),
-                last_var: None
-            });
+            self.alloc_tracker
+                .entry(ty.clone())
+                .and_modify(|tracker| {
+                    tracker.first_var = Some(*id);
+                })
+                .or_insert(ReportAllocTracker {
+                    first_var: Some(*id),
+                    last_var: None,
+                });
         }
     }
 

@@ -302,12 +302,10 @@ impl SymbolTable {
                 Self::no_match(rec, "Var");
                 None
             }
+        } else if panic_if_missing {
+            panic!("Could not find var for: {}", key)
         } else {
-            if panic_if_missing {
-                panic!("Could not find var for: {}", key)
-            } else {
-                None
-            }
+            None
         }
     }
     pub fn lookup_var(

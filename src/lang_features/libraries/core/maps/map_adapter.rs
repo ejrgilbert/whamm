@@ -4,7 +4,6 @@ use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::lang_features::libraries::core::LibAdapter;
 use crate::lang_features::report_vars::ReportVars;
 use crate::parser::types::DataType;
-use crate::verifier::types::VarAddr;
 use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
 use orca_wasm::ir::types::BlockType as OrcaBlockType;
 use orca_wasm::ir::types::DataType as OrcaType;
@@ -454,7 +453,6 @@ impl MapLibAdapter {
     pub fn emit_map_init(
         &mut self,
         name: String,
-        // addr: &mut Option<VarAddr>,
         ty: &DataType,
         is_report: bool,
         is_global: bool,
@@ -475,14 +473,11 @@ impl MapLibAdapter {
             func_idx: init_id, // not used
             instr_idx: 0,
         });
-        let map_id = if is_report {
+        if is_report {
             self.map_create_report(name, is_global, ty.clone(), &mut init_fn, report_vars, err)
         } else {
             self.map_create(ty.clone(), &mut init_fn, err)
-        };
-
-        // *addr = Some(VarAddr::MapId { addr: map_id });
-        map_id
+        }
     }
 
     pub fn inject_map_init_check<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
