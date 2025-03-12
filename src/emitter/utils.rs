@@ -233,6 +233,7 @@ fn emit_unshared_decl_stmt(
         decl, is_report, ..
     } = stmt
     {
+        // TODO -- can skip this entire thing...
         match strategy {
             InjectStrategy::Rewriting => {
                 return match &**decl {
@@ -251,16 +252,19 @@ fn emit_unshared_decl_stmt(
                             );
                             return false;
                         };
+                        assert!(addr.is_some());
+                        return true;
 
-                        ctx.unshared_var_handler.allocate_var(
-                            var_name,
-                            ty,
-                            *is_report,
-                            addr,
-                            ctx.report_vars,
-                            &ctx.err_msg,
-                            ctx.err,
-                        )
+                        // ctx.unshared_var_handler.allocate_var(
+                        //     var_name,
+                        //     ty,
+                        //     *is_report,
+                        //     addr,
+                        //     ctx.report_vars,
+                        //     &ctx.err_msg,
+                        //     ctx.err,
+                        // )
+                        // todo!()
                     }
                     _ => {
                         ctx.err.unexpected_error(
@@ -404,14 +408,14 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 
 // transform a whamm type to default wasm type, used for creating new global
 // TODO: Might be more generic to also include Local
-pub fn whamm_type_to_wasm_global(app_wasm: &mut Module, ty: &DataType) -> (GlobalID, OrcaType) {
+pub fn whamm_type_to_wasm_global(app_wasm: &mut Module, ty: &DataType, init_expr: Option<InitExpr>) -> (GlobalID, OrcaType) {
     let orca_wasm_ty = ty.to_wasm_type();
 
     if orca_wasm_ty.len() == 1 {
         match orca_wasm_ty.first().unwrap() {
             OrcaType::I32 => {
                 let global_id = app_wasm.add_global(
-                    InitExpr::new(vec![Instructions::Value(OrcaValue::I32(0))]),
+                    init_expr.unwrap_or(InitExpr::new(vec![Instructions::Value(OrcaValue::I32(0))])),
                     OrcaType::I32,
                     true,
                     false,
@@ -420,7 +424,7 @@ pub fn whamm_type_to_wasm_global(app_wasm: &mut Module, ty: &DataType) -> (Globa
             }
             OrcaType::I64 => {
                 let global_id = app_wasm.add_global(
-                    InitExpr::new(vec![Instructions::Value(OrcaValue::I64(0))]),
+                    init_expr.unwrap_or(InitExpr::new(vec![Instructions::Value(OrcaValue::I64(0))])),
                     OrcaType::I64,
                     true,
                     false,
@@ -429,7 +433,7 @@ pub fn whamm_type_to_wasm_global(app_wasm: &mut Module, ty: &DataType) -> (Globa
             }
             OrcaType::F32 => {
                 let global_id = app_wasm.add_global(
-                    InitExpr::new(vec![Instructions::Value(OrcaValue::F32(0f32))]),
+                    init_expr.unwrap_or(InitExpr::new(vec![Instructions::Value(OrcaValue::F32(0f32))])),
                     OrcaType::F32,
                     true,
                     false,
@@ -438,7 +442,7 @@ pub fn whamm_type_to_wasm_global(app_wasm: &mut Module, ty: &DataType) -> (Globa
             }
             OrcaType::F64 => {
                 let global_id = app_wasm.add_global(
-                    InitExpr::new(vec![Instructions::Value(OrcaValue::F64(0f64))]),
+                    init_expr.unwrap_or(InitExpr::new(vec![Instructions::Value(OrcaValue::F64(0f64))])),
                     OrcaType::F64,
                     true,
                     false,

@@ -3,9 +3,10 @@ use crate::emitter::rewriting::rules::wasm::OpcodeEvent;
 use crate::emitter::rewriting::rules::{Arg, LocInfo, ProbeRule, Provider, WhammProvider};
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use std::collections::HashMap;
+use orca_wasm::ir::types::DataType as OrcaType;
 
 use crate::emitter::locals_tracker::LocalsTracker;
-use crate::emitter::memory_allocator::MemoryAllocator;
+use crate::emitter::memory_allocator::{MemoryAllocator, VAR_BLOCK_BASE_VAR};
 use crate::emitter::utils::{
     block_type_to_wasm, emit_expr, emit_stmt, whamm_type_to_wasm_global, EmitCtx,
 };
@@ -508,6 +509,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
 
             let var_flush = configure_flush_routines(
                 self.app_iter.module,
+                self.unshared_var_handler,
                 self.report_vars,
                 self.map_lib_adapter,
                 self.mem_allocator,
@@ -576,6 +578,29 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
             .iter()
             .sorted_by(|a, b| Ord::cmp(&a.ty, &b.ty));
 
+        // Create the variable pointing to the start of the allocated memory block
+        if !self.curr_unshared.is_empty() {
+            let id = self.locals_tracker.use_local(OrcaType::I32, &mut self.app_iter);
+            self.table.put(
+                VAR_BLOCK_BASE_VAR.to_string(),
+                Record::Var {
+                    ty: DataType::I32,
+                    name: VAR_BLOCK_BASE_VAR.to_string(),
+                    value: Some(Value::gen_u32(self.unshared_var_handler.get_curr_offset())),
+                    def: Definition::CompilerStatic,
+                    is_report_var: false,
+                    addr: Some(VarAddr::Local { addr: id }),
+                    loc: None,
+                },
+            );
+        }
+        // TODO -- try to get rid of clone on sorted_unshared
+        self.unshared_var_handler.allocate_vars(
+            sorted_unshared.as_slice(),
+            0, 0, self.table,
+            self.mem_allocator,
+            self.report_vars, self.app_iter.module, err);
+
         for UnsharedVar {
             name,
             ty,
@@ -583,13 +608,14 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
             ..
         } in sorted_unshared.into_iter()
         {
+            self.report_vars.all_used_report_dts.insert(ty.clone());
             if matches!(ty, DataType::Map { .. }) {
                 // handle maps
                 let Some(Record::Var {
-                    ref mut addr,
-                    ref mut ty,
-                    ..
-                }) = self.table.lookup_var_mut(name)
+                             ref mut addr,
+                             ref mut ty,
+                             ..
+                         }) = self.table.lookup_var_mut(name)
                 else {
                     err.unexpected_error(true, Some("unexpected type".to_string()), None);
                     return false;
@@ -604,11 +630,6 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
                     self.app_iter.module,
                     err,
                 );
-            } else {
-                // if it's not a map, we'll just use this generated GID when
-                // we need to during the AST visit
-                let (global_id, ..) = whamm_type_to_wasm_global(self.app_iter.module, ty);
-                self.unshared_var_handler.add_available_gid(*global_id, ty);
             }
         }
 

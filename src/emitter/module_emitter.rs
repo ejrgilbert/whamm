@@ -567,7 +567,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 None
             }
             _ => {
-                let (global_id, global_ty) = whamm_type_to_wasm_global(self.app_wasm, ty);
+                let (global_id, global_ty) = whamm_type_to_wasm_global(self.app_wasm, ty, None);
                 *addr = Some(VarAddr::Global { addr: *global_id });
                 //now save off the global variable metadata
                 if report_mode {

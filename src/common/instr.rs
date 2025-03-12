@@ -239,7 +239,13 @@ pub fn run(
     let mut map_lib_adapter = map_package.adapter;
     let mut io_adapter = io_package.adapter;
     let mut report_vars = ReportVars::new();
-    let mut unshared_var_handler = UnsharedVarHandler::default();
+    let mut unshared_var_handler = UnsharedVarHandler::new(*target_wasm.add_local_memory(MemoryType {
+        memory64: false,
+        shared: false,
+        initial: 1,
+        maximum: None,
+        page_size_log2: None,
+    }));
 
     // If there were any errors encountered, report and exit!
     metadata_collector.err.check_has_errors();
@@ -273,6 +279,8 @@ pub fn run(
         );
     }
 
+    // Bump the memory pages to account for used memory
+    unshared_var_handler.memory_grow(target_wasm);
     // Bump the memory pages to account for used memory
     mem_allocator.memory_grow(target_wasm);
     // Update the memory tracker global to point to the start of free memory
@@ -398,13 +406,13 @@ fn run_instr_rewrite(
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
 
-    for (ty, list) in unshared_var_handler.available_gids.iter() {
-        //should be 0, but good for cleanup
-        for gid in list.iter() {
-            err.add_compiler_warn(format!("Unused {ty} GID: {}", gid));
-            target_wasm.delete_global(GlobalID(*gid));
-        }
-    }
+    // for (ty, list) in unshared_var_handler.available_gids.iter() {
+    //     //should be 0, but good for cleanup
+    //     for gid in list.iter() {
+    //         err.add_compiler_warn(format!("Unused {ty} GID: {}", gid));
+    //         target_wasm.delete_global(GlobalID(*gid));
+    //     }
+    // }
 }
 
 fn get_memory_allocator(target_wasm: &mut Module, create_new_mem: bool) -> MemoryAllocator {

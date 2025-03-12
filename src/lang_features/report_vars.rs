@@ -261,6 +261,37 @@ impl ReportVars {
 
         // print the in-memory variables
         // TODO -- can I combine this with the other logic instead?
+        self.emit_locals_flush(func, mem_allocator, io_adapter, map_lib_adapter, header_info, mem_id, wasm, err);
+
+        // print the global variables
+        self.emit_globals_flush(func, var_meta, io_adapter, map_lib_adapter, err);
+    }
+
+    pub fn configure_trackers(
+        &mut self,
+        trackers: HashMap<DataType, u32>
+    ) {
+        for (ty, id) in trackers.iter() {
+            self.alloc_tracker.entry(ty.clone()).and_modify(|tracker| {
+                tracker.first_var = Some(*id);
+            }).or_insert(ReportAllocTracker {
+                first_var: Some(*id),
+                last_var: None
+            });
+        }
+    }
+
+    pub fn emit_locals_flush(
+        &mut self,
+        func: &mut FunctionBuilder,
+        mem_allocator: &MemoryAllocator,
+        io_adapter: &mut IOAdapter,
+        map_lib_adapter: &mut MapLibAdapter,
+        header_info: (u32, u32),
+        mem_id: u32,
+        wasm: &mut Module,
+        err: &mut ErrorGen,
+    ) {
         io_adapter.putsln(header_info.0, header_info.1, func, err);
         self.call_dt_flushers(
             func,
@@ -271,9 +302,6 @@ impl ReportVars {
             wasm,
             err,
         );
-
-        // print the global variables
-        self.emit_globals_flush(func, var_meta, io_adapter, map_lib_adapter, err);
     }
 
     pub fn emit_globals_flush(
@@ -325,7 +353,7 @@ impl ReportVars {
         }
     }
 
-    fn call_dt_flushers(
+    pub fn call_dt_flushers(
         &mut self,
         func: &mut FunctionBuilder,
         mem_allocator: &MemoryAllocator,
