@@ -17,55 +17,55 @@ report var gc: u32;
 report var atomic: u32;
 
 wasm:opcode:*:before {
-    if (category == "const") {
+    if (category_name == "const") {
         const++;
     } else {
-        if (category == "misc") {
+        if (category_name == "misc") {
             misc++;
         } else {
-            if (category == "control") {
+            if (category_name == "control") {
                 control++;
             } else {
-                if (category == "local") {
+                if (category_name == "local") {
                     local++;
                 } else {
-                    if (category == "global") {
+                    if (category_name == "global") {
                         global++;
                     } else {
-                        if (category == "table") {
+                        if (category_name == "table") {
                             table++;
                         } else {
-                             if (category == "load") {
+                             if (category_name == "load") {
                                  load++;
                              } else {
-                                   if (category == "store") {
+                                   if (category_name == "store") {
                                        store++;
                                    } else {
-                                       if (category == "mem") {
+                                       if (category_name == "mem") {
                                            mem++;
                                        } else {
-                                           if (category == "arith") {
+                                           if (category_name == "arith") {
                                                arith++;
                                            } else {
-                                               if (category == "compare") {
+                                               if (category_name == "compare") {
                                                    compare++;
                                                } else {
-                                                   if (category == "convert") {
+                                                   if (category_name == "convert") {
                                                        convert++;
                                                    } else {
-                                                       if (category == "exn") {
+                                                       if (category_name == "exn") {
                                                            exn++;
                                                        } else {
-                                                           if (category == "simd") {
+                                                           if (category_name == "simd") {
                                                                simd++;
                                                            } else {
-                                                               if (category == "ref") {
+                                                               if (category_name == "ref") {
                                                                    ref++;
                                                                } else {
-                                                                   if (category == "gc") {
+                                                                   if (category_name == "gc") {
                                                                        gc++;
                                                                    } else {
-                                                                       if (category == "atomic") {
+                                                                       if (category_name == "atomic") {
                                                                            atomic++;
                                                                        }
                                                                   }

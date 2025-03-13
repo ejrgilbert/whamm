@@ -194,6 +194,29 @@ pub enum OpcodeCategory {
     Gc,
     Atomic,
 }
+impl OpcodeCategory {
+    fn id(&self) -> u32 {
+        match self {
+            Arith => 0,
+            Atomic => 1,
+            Compare => 2,
+            Const => 3,
+            Control => 4,
+            Convert => 5,
+            Exn => 6,
+            Gc => 7,
+            Global => 8,
+            Load => 9,
+            Local => 10,
+            Memory => 11,
+            Misc => 12,
+            Ref => 13,
+            Simd => 14,
+            Store => 15,
+            Table => 16,
+        }
+    }
+}
 impl Display for OpcodeCategory {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let str = match self {
@@ -310,12 +333,22 @@ macro_rules! define_opcode {
                 Self::gen_args(&mut globals, kind.get_args());
                 Self::gen_immediates(&mut globals, kind.get_imms());
                 globals.insert(
-                    "category".to_string(),
+                    "category_name".to_string(),
                      ProvidedGlobal::new(
-                         "category".to_string(),
-                         "The category of this opcode.".to_string(),
+                         "category_name".to_string(),
+                         "The category name of this opcode.".to_string(),
                          DataType::Str,
                          Some(crate::parser::types::Value::Str { val: kind.category().to_string() }),
+                         true,
+                     )
+                );
+                globals.insert(
+                    "category_id".to_string(),
+                     ProvidedGlobal::new(
+                         "category_id".to_string(),
+                         "The ID of the category of this opcode.".to_string(),
+                         DataType::U32,
+                         Some(crate::parser::types::Value::gen_u32(kind.category().id())),
                          true,
                      )
                 );

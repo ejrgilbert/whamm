@@ -188,8 +188,6 @@ fn instrument_with_paper_eval_categories_scripts() {
     let processed_scripts = common::setup_tests("paper_eval/categories");
     assert!(!processed_scripts.is_empty());
 
-    // TODO -- figure out how to get category-rust.mm to work
-    //         (issue with passing String map key to library)
     run_core_suite("paper_eval-categories", processed_scripts, true, true)
 }
 #[test]
