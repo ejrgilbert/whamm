@@ -44,7 +44,7 @@ impl Package for WasmPackage {
     ) -> Option<LocInfo> {
         let mut loc_info = LocInfo::new();
         match self.kind {
-            WasmPackageKind::Opcode { .. } => {
+            WasmPackageKind::Opcode => {
                 // nothing to add
             }
         }
@@ -64,7 +64,7 @@ impl Package for WasmPackage {
     }
     fn add_events(&mut self, ast_events: &HashMap<String, HashMap<WhammModeKind, Vec<Probe>>>) {
         let events = match self.kind {
-            WasmPackageKind::Opcode { .. } => event_factory::<OpcodeEvent>(ast_events),
+            WasmPackageKind::Opcode => event_factory::<OpcodeEvent>(ast_events),
         };
         self.events = events;
     }

@@ -5,7 +5,7 @@ use log::error;
 use orca_wasm::Module;
 use std::fs;
 use std::fs::File;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 use whamm::common::error::ErrorGen;
 use whamm::common::instr::{parse_user_lib_paths, Config, LibraryLinkStrategy};
@@ -509,11 +509,6 @@ fn run_testcase_rewriting(
     instr_app_path: &String,
     err: &mut ErrorGen,
 ) {
-    // let runner_arg = if let Some(libs) = &user_libs {
-    //     libs.join(" ")
-    // } else {
-    //     "".to_string()
-    // };
     let user_libs = if let Some(user_lib_paths) = &user_libs_arg {
         parse_user_lib_paths(user_lib_paths.clone())
     } else {
@@ -553,8 +548,7 @@ fn run_testcase_rewriting(
 
     if let Some(libs) = &user_libs_arg {
         for lib in libs.iter() {
-            let fname = Path::new(lib).file_stem().unwrap().to_str().unwrap();
-            cmd.arg("--preload").arg(format!("{fname}={lib}"));
+            cmd.arg("--preload").arg(format!("{lib}"));
         }
     }
 
