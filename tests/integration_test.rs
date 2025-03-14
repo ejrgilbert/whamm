@@ -483,6 +483,11 @@ fn run_script(
         Config {
             wizard: target_wizard,
             enable_wizard_alt: false,
+            metrics: false,
+            no_bundle: false,
+            no_body: false,
+            no_pred: false,
+            no_report: false,
             testing: true,
             library_strategy: LibraryLinkStrategy::Imported,
         },

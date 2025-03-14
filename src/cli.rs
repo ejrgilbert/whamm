@@ -71,6 +71,22 @@ pub struct InstrArgs {
     #[arg(short, long, action, default_value = "false")]
     pub wizard: bool,
 
+    /// Emits metrics on time to perform certain tasks if set.
+    #[arg(short, long, action, default_value = "false")]
+    pub metrics: bool,
+    /// Override on bundling arguments for probe bodies (can only use if no-body is true!!), does not emit if set (for gathering overhead metrics)
+    #[arg(long, action, default_value = "false")]
+    pub no_bundle: bool,
+    /// Override on emitting probe bodies, does not emit if set (for gathering overhead metrics)
+    #[arg(long, action, default_value = "false")]
+    pub no_body: bool,
+    /// Override on emitting dynamic probe predicates, does not emit if set (for gathering overhead metrics)
+    #[arg(long, action, default_value = "false")]
+    pub no_pred: bool,
+    /// (only rewriting) Override on flushing report data, does not flush if set (for gathering overhead metrics)
+    #[arg(long, action, default_value = "false")]
+    pub no_report: bool,
+
     /// Whether to emit extra exported functions that are helpful during testing.
     #[arg(short, long, action, default_value = "false")]
     pub testing: bool,

@@ -1,4 +1,5 @@
 use crate::common::error::ErrorGen;
+use crate::common::instr::Config;
 use crate::emitter::rewriting::rules::{provider_factory, Arg, LocInfo, ProbeRule, WhammProvider};
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::Emitter;
@@ -45,7 +46,7 @@ fn add_to_table(data: &HashMap<String, Option<Value>>, emitter: &mut VisitingEmi
 /// passed emitter to emit instrumentation code.
 /// This process should ideally be generic, made to perform a specific
 /// instrumentation technique by the passed Emitter type.
-pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> {
+pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> {
     pub emitter: VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g>,
     pub ast: SimpleAST,
     pub err: &'h mut ErrorGen,
@@ -57,12 +58,14 @@ pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> {
     /// Whether there are reports to flush at the end of execution
     has_reports: bool,
     on_exit_fid: Option<u32>,
+    config: &'i Config,
 }
-impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> {
+impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> {
     pub fn new(
         emitter: VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g>,
         ast: SimpleAST,
         err: &'h mut ErrorGen,
+        config: &'i Config,
         has_reports: bool,
     ) -> Self {
         Self {
@@ -74,6 +77,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
             curr_probe: None,
             has_reports,
             on_exit_fid: None,
+            config,
         }
     }
 
@@ -174,8 +178,13 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
                         self.curr_probe_mode = probe_rule.mode.as_ref().unwrap().clone();
                         self.curr_probe = Some((body_clone, pred_clone));
 
-                        // emit the probe (since the predicate is not false)
-                        is_success &= self.emit_probe(&loc_info.dynamic_data);
+                        if !self.config.no_bundle {
+                            // since we're only supporting 'no_bundle' when 'no_body' and 'no_pred' are also true
+                            // we can simplify the check to just not emitting the probe altogether
+
+                            // emit the probe (since the predicate is not false)
+                            is_success &= self.emit_probe(&loc_info.dynamic_data);
+                        }
 
                         // Now that we've emitted this probe, reset the symbol table's static/dynamic
                         // data defined for this instr
@@ -225,7 +234,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
         };
     }
 }
-impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_> {
+impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_, '_> {
     fn emit_probe(&mut self, dynamic_data: &HashMap<String, Block>) -> bool {
         let mut is_success = true;
 
@@ -239,7 +248,10 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_> {
         emit_dynamic_compiler_data(dynamic_data, &mut self.emitter, self.err);
         if self.pred_is_true() {
             // The predicate has been reduced to a 'true', emit un-predicated body
-            self.emit_body();
+            if !self.config.no_body {
+                // Only emit the body if we're configured to do so
+                self.emit_body();
+            }
             if !matches!(self.curr_probe_mode, WhammModeKind::Alt) {
                 self.replace_args();
             }
@@ -344,15 +356,37 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_> {
 
     fn emit_probe_as_if(&mut self) -> bool {
         if let Some((Some(ref mut body), Some(ref mut pred))) = self.curr_probe {
-            match self
-                .emitter
-                .emit_if(&self.curr_instr_args, pred, body, self.err)
-            {
-                Err(e) => {
-                    self.err.add_error(*e);
-                    false
+            match (self.config.no_body, self.config.no_pred) {
+                // emit as normal
+                (false, false) => {
+                    match self
+                        .emitter
+                        .emit_if(&self.curr_instr_args, pred, body, self.err)
+                    {
+                        Err(e) => {
+                            self.err.add_error(*e);
+                            false
+                        }
+                        Ok(res) => res,
+                    }
                 }
-                Ok(res) => res,
+                // emit an unpredicated body
+                (false, true) => self.emit_body(),
+                // emit empty if block
+                (true, false) => match self.emitter.emit_if(
+                    &self.curr_instr_args,
+                    pred,
+                    &mut Block::default(),
+                    self.err,
+                ) {
+                    Err(e) => {
+                        self.err.add_error(*e);
+                        false
+                    }
+                    Ok(res) => res,
+                },
+                // emit nothing
+                (true, true) => true,
             }
         } else {
             false
@@ -361,25 +395,47 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_> {
 
     fn emit_probe_as_if_else(&mut self) -> bool {
         if let Some((Some(ref mut body), Some(ref mut pred))) = self.curr_probe {
-            match self.emitter.emit_if_with_orig_as_else(
-                &self.curr_instr_args,
-                pred,
-                body,
-                self.err,
-            ) {
-                Err(e) => {
-                    self.err.add_error(*e);
-                    false
-                }
-                Ok(res) => res,
+            match (self.config.no_body, self.config.no_pred) {
+                // normal
+                (false, false) => match self.emitter.emit_if_with_orig_as_else(
+                    &self.curr_instr_args,
+                    pred,
+                    body,
+                    self.err,
+                ) {
+                    Err(e) => {
+                        self.err.add_error(*e);
+                        false
+                    }
+                    Ok(res) => res,
+                },
+                // unpredicated body
+                (false, true) => self.emit_body(),
+                // empty if stmt
+                (true, false) => match self.emitter.emit_if_with_orig_as_else(
+                    &self.curr_instr_args,
+                    pred,
+                    &mut Block::default(),
+                    self.err,
+                ) {
+                    Err(e) => {
+                        self.err.add_error(*e);
+                        false
+                    }
+                    Ok(res) => res,
+                },
+                // emit nothing
+                (true, true) => true,
             }
         } else {
             false
         }
     }
     fn after_run(&mut self) -> bool {
-        self.emitter
-            .configure_flush_routines(self.has_reports, self.err);
+        if !self.config.no_report {
+            self.emitter
+                .configure_flush_routines(self.has_reports, self.err);
+        }
         true
     }
 }

@@ -1,6 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 use crate::cli::LibraryLinkStrategyArg;
 use crate::common::error::ErrorGen;
+use crate::common::metrics::Metrics;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::module_emitter::ModuleEmitter;
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
@@ -66,6 +67,12 @@ pub struct Config {
     /// Whether we allow probes that cause 'alternate' behavior in wizard
     pub enable_wizard_alt: bool,
 
+    pub metrics: bool,
+    pub no_bundle: bool,
+    pub no_body: bool,
+    pub no_pred: bool,
+    pub no_report: bool,
+
     /// Whether to emit extra exported functions that are helpful during testing.
     pub testing: bool,
 
@@ -77,6 +84,11 @@ impl Default for Config {
         Self {
             wizard: false,
             enable_wizard_alt: false,
+            metrics: false,
+            no_bundle: false,
+            no_body: false,
+            no_pred: false,
+            no_report: false,
             testing: false,
             library_strategy: LibraryLinkStrategy::Imported,
         }
@@ -86,6 +98,11 @@ impl Config {
     pub fn new(
         wizard: bool,
         enable_wizard_alt: bool,
+        metrics: bool,
+        no_bundle: bool,
+        no_body: bool,
+        no_pred: bool,
+        no_report: bool,
         testing: bool,
         link_strategy: Option<LibraryLinkStrategyArg>,
     ) -> Self {
@@ -94,9 +111,18 @@ impl Config {
             exit(1);
         }
         let library_strategy = LibraryLinkStrategy::from(link_strategy);
+
+        if no_bundle && (!no_body || !no_pred) {
+            panic!("Cannot disable argument bundling without also disabling body and predicate emitting! Otherwise invalid Wasm would be generated.")
+        }
         Self {
             wizard,
             enable_wizard_alt,
+            metrics,
+            no_bundle,
+            no_body,
+            no_pred,
+            no_report,
             testing,
             library_strategy,
         }
@@ -251,8 +277,10 @@ pub fn run(
     // If there were any errors encountered, report and exit!
     metadata_collector.err.check_has_errors();
 
+    let mut metrics = Metrics::default();
     if config.wizard {
         run_instr_wizard(
+            &mut metrics,
             metadata_collector,
             used_fns_per_lib,
             user_lib_modules,
@@ -265,6 +293,7 @@ pub fn run(
         );
     } else {
         run_instr_rewrite(
+            &mut metrics,
             &mut whamm,
             metadata_collector,
             used_fns_per_lib,
@@ -293,10 +322,13 @@ pub fn run(
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
 
-    target_wasm.encode()
+    let wasm = target_wasm.encode();
+    metrics.flush();
+    wasm
 }
 
 fn run_instr_wizard(
+    _metrics: &mut Metrics,
     metadata_collector: MetadataCollector,
     used_fns_per_lib: HashMap<String, HashSet<String>>,
     user_lib_modules: HashMap<String, Module>,
@@ -342,6 +374,7 @@ fn run_instr_wizard(
 }
 
 fn run_instr_rewrite(
+    metrics: &mut Metrics,
     whamm: &mut Whamm,
     metadata_collector: MetadataCollector,
     used_fns_per_lib: HashMap<String, HashSet<String>>,
@@ -360,6 +393,7 @@ fn run_instr_rewrite(
     let ast = metadata_collector.ast;
     let used_funcs = metadata_collector.used_provided_fns;
     let used_strings = metadata_collector.strings_to_emit;
+    let config = metadata_collector.config;
 
     // Phase 0 of instrumentation (emit globals and provided fns)
     let mut init = InitGenerator {
@@ -400,9 +434,14 @@ fn run_instr_rewrite(
         ),
         simple_ast,
         err,
+        config,
         has_reports,
     );
+
+    let match_time = "match&inject".to_string();
+    metrics.start(&match_time);
     instr.run();
+    metrics.end(&match_time);
 
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
