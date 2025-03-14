@@ -44,7 +44,7 @@ jobs:
           
           echo "[INFO] Testing the 'wasm-tools' configuration..."
           wasm-tools --version
-      - name: Set-up OCaml
+      - name: Setup OCaml
         uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: 5
@@ -56,6 +56,9 @@ jobs:
           echo "[INFO] Installing 'progress'..."
           git clone https://github.com/titzer/progress.git
           echo "$GITHUB_WORKSPACE/progress/bin" >> $GITHUB_PATH
+      - name: Setup Wasmtime
+        run: |
+          curl https://wasmtime.dev/install.sh -sSf | bash
       - name: Setup Virgil
         run: |
           echo "[INFO] Testing 'progress' is on PATH..."
