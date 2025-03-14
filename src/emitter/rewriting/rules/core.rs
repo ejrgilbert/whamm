@@ -49,7 +49,7 @@ impl Package for CorePackage {
             }
         });
 
-        if loc_info.has_match() {
+        if loc_info.has_match() || loc_info.is_prog_exit {
             Some(loc_info)
         } else {
             None
@@ -110,7 +110,7 @@ impl Event for CoreEvent {
             });
         });
 
-        if loc_info.has_match() {
+        if loc_info.has_match() || loc_info.is_prog_exit {
             Some(loc_info)
         } else {
             None

@@ -56,7 +56,7 @@ impl Package for WasmPackage {
             }
         });
 
-        if loc_info.has_match() {
+        if loc_info.has_match() || loc_info.is_prog_exit {
             Some(loc_info)
         } else {
             None
@@ -4705,7 +4705,8 @@ impl Event for OpcodeEvent {
             loc_info.args = req_args.of(all_args);
         }
 
-        if loc_info.has_match() {
+        loc_info.is_prog_exit = is_prog_exit_call(instr, app_wasm);
+        if loc_info.has_match() || loc_info.is_prog_exit {
             Some(loc_info)
         } else {
             None
@@ -4791,4 +4792,38 @@ fn create_memarg_globals(
 
 fn define_imm_n(n: u32, val: Option<Value>, loc_info: &mut LocInfo) {
     loc_info.static_data.insert(format!("imm{n}"), val);
+}
+
+fn is_prog_exit_call(opcode: &Operator, wasm: &Module) -> bool {
+    if let Operator::Call {
+        function_index: fid,
+    }
+    | Operator::ReturnCall {
+        function_index: fid,
+    } = opcode
+    {
+        let target = match wasm.functions.get_kind(FunctionID(*fid)) {
+            FuncKind::Import(ImportedFunction { import_id, .. }) => {
+                let import = wasm.imports.get(*import_id);
+                let mod_name = import.module.to_string();
+                let func_name = import.name.to_string();
+                format!("{mod_name}:{func_name}")
+            }
+            FuncKind::Local(LocalFunction { func_id, .. }) => {
+                let mod_name = match &wasm.module_name {
+                    Some(name) => name.clone(),
+                    None => "".to_string(),
+                };
+                let func_name = match &wasm.functions.get_name(*func_id) {
+                    Some(name) => name.clone(),
+                    None => "".to_string(),
+                };
+                format!("{mod_name}:{func_name}")
+            }
+        };
+        let exiting_call = HashSet::from(["wasi_snapshot_preview1:proc_exit".to_string()]);
+        exiting_call.contains(&target)
+    } else {
+        false
+    }
 }

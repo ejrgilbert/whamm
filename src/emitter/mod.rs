@@ -57,7 +57,7 @@ pub fn configure_flush_routines(
         return None;
     }
 
-    let mut on_exit = FunctionBuilder::new(&[], &[]);
+    let mut flush_reports = FunctionBuilder::new(&[], &[]);
 
     // call the report_vars to emit calls to all report var flushers
     let (header_addr, header_len) = Metadata::setup_csv_header(wasm, mem_allocator);
@@ -66,7 +66,7 @@ pub fn configure_flush_routines(
     let trackers = var_handler.setup_module(wasm);
     report_vars.configure_trackers(trackers);
     report_vars.emit_flush_logic(
-        &mut on_exit,
+        &mut flush_reports,
         &var_meta,
         mem_allocator,
         io_adapter,
@@ -77,8 +77,8 @@ pub fn configure_flush_routines(
         err,
     );
 
-    let on_exit = on_exit.finish_module(wasm);
-    wasm.set_fn_name(on_exit, "on_exit".to_string());
+    let on_exit = flush_reports.finish_module(wasm);
+    wasm.set_fn_name(on_exit, "flush_reports".to_string());
 
     Some(*on_exit)
 }
