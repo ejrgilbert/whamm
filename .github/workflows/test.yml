@@ -34,6 +34,10 @@ jobs:
           binaryName: wasm2wat
           binaryUrl: https://github.com/WebAssembly/wabt/releases/download/1.0.34/wabt-1.0.34-ubuntu.tar.gz
           binaryPathInArchive: wabt-1.0.34/bin/wasm2wat
+      - name: Setup `wasmtime`
+        uses: bytecodealliance/actions/wasmtime/setup@v1
+      - name: Check `wasmtime`
+        run: "wasmtime --version"
       - name: Setup wasm-tools and WASI P1 Target
         run: |
           echo "[INFO] Installing the 'wasm32-wasip1' compilation target..."
@@ -56,10 +60,6 @@ jobs:
           echo "[INFO] Installing 'progress'..."
           git clone https://github.com/titzer/progress.git
           echo "$GITHUB_WORKSPACE/progress/bin" >> $GITHUB_PATH
-      - name: Setup Wasmtime
-        run: |
-          curl https://wasmtime.dev/install.sh -sSf | bash
-          wasmtime --help
       - name: Setup Virgil
         run: |
           echo "[INFO] Testing 'progress' is on PATH..."
