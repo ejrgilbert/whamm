@@ -552,27 +552,6 @@ fn run_testcase_rewriting(
         }
     }
 
-    let which = Command::new("which").arg("wasmtime").output().unwrap();
-    println!(
-        "which wasmtime: {}",
-        String::from_utf8(which.stdout).unwrap()
-    );
-
-    let ls_core = Command::new("ls")
-        .arg("whamm_core/target/wasm32-wasip1/release/whamm_core.wasm")
-        .output()
-        .unwrap();
-    println!(
-        "ls core-lib: {}",
-        String::from_utf8(ls_core.stdout).unwrap()
-    );
-
-    let ls_app = Command::new("ls").arg(instr_app_path).output().unwrap();
-    println!(
-        "which instr-app: {}",
-        String::from_utf8(ls_app.stdout).unwrap()
-    );
-
     let res = cmd
         .arg("--preload")
         .arg(whamm_core_lib_path)
