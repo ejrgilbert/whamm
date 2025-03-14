@@ -53,8 +53,10 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 
     fn emit_end_func(&mut self, used_report_dts: HashSet<DataType>) {
-        self.emitter
-            .emit_end_fn(used_report_dts, self.io_adapter, self.err);
+        if ! self.config.no_report {
+            self.emitter
+                .emit_end_fn(used_report_dts, self.io_adapter, self.err);
+        }
     }
 
     // Visit the AST
@@ -137,12 +139,22 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
             } else {
                 None
             };
+            let (pred, body_block) = match (self.config.no_pred, self.config.no_body) {
+                // as normal
+                (false, false) => (dynamic_pred, body),
+                // empty if statement
+                (false, true) => (dynamic_pred, &mut Block::default()),
+                // unpredicated body
+                (true, false) => (None, body),
+                // empty function
+                (true, true) => (None, &mut Block::default()),
+            };
             self.emitter.emit_special_func(
                 alloc_local,
                 &probe.metadata.body_args,
-                dynamic_pred,
+                pred,
                 &[],
-                body,
+                body_block,
                 false,
                 self.err,
             )

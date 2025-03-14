@@ -66,6 +66,11 @@ pub struct Config {
     /// Whether we allow probes that cause 'alternate' behavior in wizard
     pub enable_wizard_alt: bool,
 
+    pub metrics: bool,
+    pub no_body: bool,
+    pub no_pred: bool,
+    pub no_report: bool,
+
     /// Whether to emit extra exported functions that are helpful during testing.
     pub testing: bool,
 
@@ -77,6 +82,10 @@ impl Default for Config {
         Self {
             wizard: false,
             enable_wizard_alt: false,
+            metrics: false,
+            no_body: false,
+            no_pred: false,
+            no_report: false,
             testing: false,
             library_strategy: LibraryLinkStrategy::Imported,
         }
@@ -86,6 +95,10 @@ impl Config {
     pub fn new(
         wizard: bool,
         enable_wizard_alt: bool,
+        metrics: bool,
+        no_body: bool,
+        no_pred: bool,
+        no_report: bool,
         testing: bool,
         link_strategy: Option<LibraryLinkStrategyArg>,
     ) -> Self {
@@ -97,6 +110,10 @@ impl Config {
         Self {
             wizard,
             enable_wizard_alt,
+            metrics,
+            no_body,
+            no_pred,
+            no_report,
             testing,
             library_strategy,
         }
@@ -360,6 +377,7 @@ fn run_instr_rewrite(
     let ast = metadata_collector.ast;
     let used_funcs = metadata_collector.used_provided_fns;
     let used_strings = metadata_collector.strings_to_emit;
+    let config = metadata_collector.config;
 
     // Phase 0 of instrumentation (emit globals and provided fns)
     let mut init = InitGenerator {
@@ -400,6 +418,7 @@ fn run_instr_rewrite(
         ),
         simple_ast,
         err,
+        config,
         has_reports,
     );
     instr.run();
