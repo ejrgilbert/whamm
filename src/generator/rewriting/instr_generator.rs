@@ -178,8 +178,13 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
                         self.curr_probe_mode = probe_rule.mode.as_ref().unwrap().clone();
                         self.curr_probe = Some((body_clone, pred_clone));
 
-                        // emit the probe (since the predicate is not false)
-                        is_success &= self.emit_probe(&loc_info.dynamic_data);
+                        if !self.config.no_bundle {
+                            // since we're only supporting 'no_bundle' when 'no_body' and 'no_pred' are also true
+                            // we can simplify the check to just not emitting the probe altogether
+
+                            // emit the probe (since the predicate is not false)
+                            is_success &= self.emit_probe(&loc_info.dynamic_data);
+                        }
 
                         // Now that we've emitted this probe, reset the symbol table's static/dynamic
                         // data defined for this instr

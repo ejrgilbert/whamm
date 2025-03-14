@@ -79,6 +79,7 @@ fn try_main() -> Result<(), failure::Error> {
                     args.wizard,
                     ENABLE_WIZARD_ALT,
                     args.metrics,
+                    args.no_bundle,
                     args.no_body,
                     args.no_pred,
                     args.no_report,

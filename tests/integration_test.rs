@@ -484,6 +484,7 @@ fn run_script(
             wizard: target_wizard,
             enable_wizard_alt: false,
             metrics: false,
+            no_bundle: false,
             no_body: false,
             no_pred: false,
             no_report: false,

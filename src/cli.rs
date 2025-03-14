@@ -74,6 +74,9 @@ pub struct InstrArgs {
     /// Emits metrics on time to perform certain tasks if set.
     #[arg(short, long, action, default_value = "false")]
     pub metrics: bool,
+    /// Override on bundling arguments for probe bodies (can only use if no-body is true!!), does not emit if set (for gathering overhead metrics)
+    #[arg(long, action, default_value = "false")]
+    pub no_bundle: bool,
     /// Override on emitting probe bodies, does not emit if set (for gathering overhead metrics)
     #[arg(long, action, default_value = "false")]
     pub no_body: bool,

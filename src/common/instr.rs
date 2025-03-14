@@ -1,6 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 use crate::cli::LibraryLinkStrategyArg;
 use crate::common::error::ErrorGen;
+use crate::common::metrics::Metrics;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::module_emitter::ModuleEmitter;
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
@@ -28,7 +29,6 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::process::exit;
 use wasmparser::MemoryType;
-use crate::common::metrics::Metrics;
 
 /// create output path if it doesn't exist
 pub(crate) fn try_path(path: &String) {
@@ -68,6 +68,7 @@ pub struct Config {
     pub enable_wizard_alt: bool,
 
     pub metrics: bool,
+    pub no_bundle: bool,
     pub no_body: bool,
     pub no_pred: bool,
     pub no_report: bool,
@@ -84,6 +85,7 @@ impl Default for Config {
             wizard: false,
             enable_wizard_alt: false,
             metrics: false,
+            no_bundle: false,
             no_body: false,
             no_pred: false,
             no_report: false,
@@ -97,6 +99,7 @@ impl Config {
         wizard: bool,
         enable_wizard_alt: bool,
         metrics: bool,
+        no_bundle: bool,
         no_body: bool,
         no_pred: bool,
         no_report: bool,
@@ -108,10 +111,15 @@ impl Config {
             exit(1);
         }
         let library_strategy = LibraryLinkStrategy::from(link_strategy);
+
+        if no_bundle && (!no_body || !no_pred) {
+            panic!("Cannot disable argument bundling without also disabling body and predicate emitting! Otherwise invalid Wasm would be generated.")
+        }
         Self {
             wizard,
             enable_wizard_alt,
             metrics,
+            no_bundle,
             no_body,
             no_pred,
             no_report,

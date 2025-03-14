@@ -1,7 +1,7 @@
 use crate::common::error::ErrorGen;
 use crate::common::instr::Config;
 use crate::emitter::module_emitter::ModuleEmitter;
-use crate::generator::ast::{Probe, Script};
+use crate::generator::ast::{Probe, Script, WhammParams};
 use crate::generator::{create_curr_loc, emit_needed_funcs, GeneratingVisitor};
 use crate::lang_features::alloc_vars::wizard::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
@@ -53,7 +53,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 
     fn emit_end_func(&mut self, used_report_dts: HashSet<DataType>) {
-        if ! self.config.no_report {
+        if !self.config.no_report {
             self.emitter
                 .emit_end_fn(used_report_dts, self.io_adapter, self.err);
         }
@@ -149,9 +149,27 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
                 // empty function
                 (true, true) => (None, &mut Block::default()),
             };
+
+            // since we're only supporting 'no_bundle' when 'no_body' and 'no_pred' are also true
+            // we can simplify this to just not requesting any arguments...shouldn't even have a
+            // function body!
+            if self.config.no_bundle {
+                assert!(pred.is_none());
+                assert!(body_block.stmts.is_empty());
+            }
+            let def_params = WhammParams::default();
+
             self.emitter.emit_special_func(
-                alloc_local,
-                &probe.metadata.body_args,
+                if self.config.no_bundle {
+                    None
+                } else {
+                    alloc_local
+                },
+                if self.config.no_bundle {
+                    &def_params
+                } else {
+                    &probe.metadata.body_args
+                },
                 pred,
                 &[],
                 body_block,

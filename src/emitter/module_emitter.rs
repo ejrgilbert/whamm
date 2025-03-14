@@ -208,11 +208,11 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         let func = FunctionBuilder::new(params, results);
         self.emitting_func = Some(func);
 
-        if self.map_lib_adapter.used_in_global_scope {
+        if !block.is_empty() && self.map_lib_adapter.used_in_global_scope {
             let fid = self.map_lib_adapter.get_map_init_fid(self.app_wasm);
             if let Some(func) = &mut self.emitting_func {
                 self.map_lib_adapter.inject_map_init_check(func, fid);
-            };
+            }
         }
 
         if let Some(dynamic_pred) = dynamic_pred {
