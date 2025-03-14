@@ -44,7 +44,7 @@ impl Package for WasmPackage {
     ) -> Option<LocInfo> {
         let mut loc_info = LocInfo::new();
         match self.kind {
-            WasmPackageKind::Opcode {..} => {
+            WasmPackageKind::Opcode { .. } => {
                 // nothing to add
             }
         }
@@ -64,7 +64,7 @@ impl Package for WasmPackage {
     }
     fn add_events(&mut self, ast_events: &HashMap<String, HashMap<WhammModeKind, Vec<Probe>>>) {
         let events = match self.kind {
-            WasmPackageKind::Opcode {..} => event_factory::<OpcodeEvent>(ast_events),
+            WasmPackageKind::Opcode { .. } => event_factory::<OpcodeEvent>(ast_events),
         };
         self.events = events;
     }
@@ -4795,8 +4795,13 @@ fn define_imm_n(n: u32, val: Option<Value>, loc_info: &mut LocInfo) {
 }
 
 fn is_prog_exit_call(opcode: &Operator, wasm: &Module) -> bool {
-    if let Operator::Call {function_index: fid}
-        | Operator::ReturnCall {function_index: fid} = opcode {
+    if let Operator::Call {
+        function_index: fid,
+    }
+    | Operator::ReturnCall {
+        function_index: fid,
+    } = opcode
+    {
         let target = match wasm.functions.get_kind(FunctionID(*fid)) {
             FuncKind::Import(ImportedFunction { import_id, .. }) => {
                 let import = wasm.imports.get(*import_id);
@@ -4814,7 +4819,7 @@ fn is_prog_exit_call(opcode: &Operator, wasm: &Module) -> bool {
                     None => "".to_string(),
                 };
                 format!("{mod_name}:{func_name}")
-            },
+            }
         };
         let exiting_call = HashSet::from(["wasi_snapshot_preview1:proc_exit".to_string()]);
         exiting_call.contains(&target)

@@ -8,12 +8,12 @@ use crate::generator::rewriting::simple_ast::SimpleAST;
 use crate::lang_features::report_vars::{BytecodeLoc, LocationData};
 use crate::parser::rules::core::WhammModeKind;
 use crate::parser::types::{Block, Expr, Value};
+use orca_wasm::ir::function::FunctionBuilder;
+use orca_wasm::ir::id::FunctionID;
 use orca_wasm::iterator::iterator_trait::Iterator;
 use orca_wasm::{Location as OrcaLocation, Opcode};
 use std::collections::HashMap;
 use std::iter::Iterator as StdIter;
-use orca_wasm::ir::function::FunctionBuilder;
-use orca_wasm::ir::id::FunctionID;
 
 const UNEXPECTED_ERR_MSG: &str =
     "InstrGenerator: Looks like you've found a bug...please report this behavior!";
@@ -73,7 +73,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
             curr_probe_mode: WhammModeKind::Begin,
             curr_probe: None,
             has_reports,
-            on_exit_fid: None
+            on_exit_fid: None,
         }
     }
 
@@ -117,14 +117,13 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 
             rules.iter().for_each(|rule| {
                 // Check if any of the configured rules match this instruction in the application.
                 if let Some(loc_info) = get_loc_info(rule, &self.emitter) {
-
                     // Inject a call to the on-exit flush function
                     if loc_info.is_prog_exit {
-
                         if self.on_exit_fid.is_none() {
                             let on_exit = FunctionBuilder::new(&[], &[]);
                             let on_exit_id = on_exit.finish_module(self.emitter.app_iter.module);
-                            self.emitter.app_iter
+                            self.emitter
+                                .app_iter
                                 .module
                                 .set_fn_name(on_exit_id, "on_exit".to_string());
 

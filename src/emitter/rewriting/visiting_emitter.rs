@@ -511,7 +511,12 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 err,
             );
 
-            let on_exit_id = if let Some(fid) = self.app_iter.module.functions.get_local_fid_by_name("on_exit") {
+            let on_exit_id = if let Some(fid) = self
+                .app_iter
+                .module
+                .functions
+                .get_local_fid_by_name("on_exit")
+            {
                 let Some(mut on_exit) = self.app_iter.module.functions.get_fn_modifier(fid) else {
                     panic!(
                         "{UNEXPECTED_ERR_MSG} \

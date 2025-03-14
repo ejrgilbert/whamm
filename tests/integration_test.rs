@@ -549,8 +549,7 @@ fn run_testcase_rewriting(
     if matches!(exp_output, ExpectedOutput::Hash(_)) {
         cmd.stdout(File::create(out_file.clone()).expect("failed to open log"));
     }
-    cmd.arg("run")
-        .arg("--env").arg("TO_CONSOLE=true");
+    cmd.arg("run").arg("--env").arg("TO_CONSOLE=true");
 
     if let Some(libs) = &user_libs_arg {
         for lib in libs.iter() {
@@ -560,7 +559,8 @@ fn run_testcase_rewriting(
     }
 
     let res = cmd
-        .arg("--preload").arg(whamm_core_lib_path)
+        .arg("--preload")
+        .arg(whamm_core_lib_path)
         .arg(instr_app_path)
         .output()
         .expect("failed to run on wasmtime");
