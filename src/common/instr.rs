@@ -28,6 +28,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::process::exit;
 use wasmparser::MemoryType;
+use crate::common::metrics::Metrics;
 
 /// create output path if it doesn't exist
 pub(crate) fn try_path(path: &String) {
@@ -268,8 +269,10 @@ pub fn run(
     // If there were any errors encountered, report and exit!
     metadata_collector.err.check_has_errors();
 
+    let mut metrics = Metrics::default();
     if config.wizard {
         run_instr_wizard(
+            &mut metrics,
             metadata_collector,
             used_fns_per_lib,
             user_lib_modules,
@@ -282,6 +285,7 @@ pub fn run(
         );
     } else {
         run_instr_rewrite(
+            &mut metrics,
             &mut whamm,
             metadata_collector,
             used_fns_per_lib,
@@ -310,10 +314,13 @@ pub fn run(
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
 
-    target_wasm.encode()
+    let wasm = target_wasm.encode();
+    metrics.flush();
+    wasm
 }
 
 fn run_instr_wizard(
+    _metrics: &mut Metrics,
     metadata_collector: MetadataCollector,
     used_fns_per_lib: HashMap<String, HashSet<String>>,
     user_lib_modules: HashMap<String, Module>,
@@ -359,6 +366,7 @@ fn run_instr_wizard(
 }
 
 fn run_instr_rewrite(
+    metrics: &mut Metrics,
     whamm: &mut Whamm,
     metadata_collector: MetadataCollector,
     used_fns_per_lib: HashMap<String, HashSet<String>>,
@@ -421,7 +429,11 @@ fn run_instr_rewrite(
         config,
         has_reports,
     );
+
+    let match_time = "match&inject".to_string();
+    metrics.start(&match_time);
     instr.run();
+    metrics.end(&match_time);
 
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
