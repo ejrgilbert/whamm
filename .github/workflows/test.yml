@@ -59,6 +59,7 @@ jobs:
       - name: Setup Wasmtime
         run: |
           curl https://wasmtime.dev/install.sh -sSf | bash
+          wasmtime --help
       - name: Setup Virgil
         run: |
           echo "[INFO] Testing 'progress' is on PATH..."
