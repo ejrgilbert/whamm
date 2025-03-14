@@ -148,6 +148,8 @@ impl Display for ProbeRule {
 
 #[derive(Default, Debug)]
 pub struct LocInfo<'a> {
+    /// Whether this location calls something that exits the program
+    pub is_prog_exit: bool,
     /// static information to be saved in symbol table
     pub static_data: HashMap<String, Option<Value>>,
     /// dynamic information to be defined at the probe location
@@ -414,6 +416,9 @@ impl<'a> LocInfo<'a> {
         // handle num_alt_probes
         self.num_alt_probes += other.num_alt_probes;
 
+        // handle function end
+        self.is_prog_exit = self.is_prog_exit || other.is_prog_exit;
+
         // handle probes
         self.probes.append(&mut other.probes);
     }
@@ -536,7 +541,7 @@ impl Provider for WhammProvider {
             }
         });
 
-        if loc_info.has_match() {
+        if loc_info.has_match() || loc_info.is_prog_exit {
             Some(loc_info)
         } else {
             None

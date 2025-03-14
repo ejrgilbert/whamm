@@ -501,8 +501,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
 
         // only do this is there are report variables
         if has_reports {
-            let mut on_exit = FunctionBuilder::new(&[], &[]);
-
             let var_flush = configure_flush_routines(
                 self.app_iter.module,
                 self.unshared_var_handler,
@@ -512,14 +510,29 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 self.io_adapter,
                 err,
             );
-            if let Some(flush_fid) = var_flush {
-                on_exit.call(FunctionID(flush_fid));
-            }
 
-            let on_exit_id = on_exit.finish_module(self.app_iter.module);
-            self.app_iter
-                .module
-                .set_fn_name(on_exit_id, "on_exit".to_string());
+            let on_exit_id = if let Some(fid) = self.app_iter.module.functions.get_local_fid_by_name("on_exit") {
+                let Some(mut on_exit) = self.app_iter.module.functions.get_fn_modifier(fid) else {
+                    panic!(
+                        "{UNEXPECTED_ERR_MSG} \
+                                No on_exit found in the module!"
+                    );
+                };
+                if let Some(flush_fid) = var_flush {
+                    on_exit.call(FunctionID(flush_fid));
+                }
+                fid
+            } else {
+                let mut on_exit = FunctionBuilder::new(&[], &[]);
+                if let Some(flush_fid) = var_flush {
+                    on_exit.call(FunctionID(flush_fid));
+                }
+                let on_exit_id = on_exit.finish_module(self.app_iter.module);
+                self.app_iter
+                    .module
+                    .set_fn_name(on_exit_id, "on_exit".to_string());
+                on_exit_id
+            };
 
             // now find where the "exit" is in the bytecode
             // exit of export "main"

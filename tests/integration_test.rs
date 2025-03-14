@@ -5,7 +5,7 @@ use log::error;
 use orca_wasm::Module;
 use std::fs;
 use std::fs::File;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use whamm::common::error::ErrorGen;
 use whamm::common::instr::{parse_user_lib_paths, Config, LibraryLinkStrategy};
@@ -180,7 +180,7 @@ fn instrument_with_paper_eval_branches_scripts() {
     let processed_scripts = common::setup_tests("paper_eval/branches");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("paper_eval-branches", processed_scripts, false, true)
+    run_core_suite("paper_eval-branches", processed_scripts, true, true)
 }
 #[test]
 fn instrument_with_paper_eval_categories_scripts() {
@@ -503,19 +503,19 @@ fn run_testcase_rewriting(
     script: &PathBuf,
     script_str: &String,
     app_path_str: &str,
-    user_libs: Option<Vec<String>>,
+    user_libs_arg: Option<Vec<String>>,
     exp_output: ExpectedOutput,
     outdir: &String,
     instr_app_path: &String,
     err: &mut ErrorGen,
 ) {
-    let runner_arg = if let Some(libs) = &user_libs {
-        libs.join(" ")
-    } else {
-        "".to_string()
-    };
-    let user_libs = if let Some(user_lib_paths) = user_libs {
-        parse_user_lib_paths(user_lib_paths)
+    // let runner_arg = if let Some(libs) = &user_libs {
+    //     libs.join(" ")
+    // } else {
+    //     "".to_string()
+    // };
+    let user_libs = if let Some(user_lib_paths) = &user_libs_arg {
+        parse_user_lib_paths(user_lib_paths.clone())
     } else {
         vec![]
     };
@@ -541,26 +541,32 @@ fn run_testcase_rewriting(
     // run the instrumented application on wasmtime
     // let res = Command::new(format!("{home}/.cargo/bin/cargo"))
 
+    let whamm_core_lib_path = "whamm_core=whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
     let out_filename = "instr-flush.out";
     let out_file = format!("{outdir}/{out_filename}");
     let _ = fs::remove_file(out_file.clone());
-    let mut cmd = Command::new("cargo");
+    let mut cmd = Command::new("wasmtime");
     if matches!(exp_output, ExpectedOutput::Hash(_)) {
         cmd.stdout(File::create(out_file.clone()).expect("failed to open log"));
     }
+    cmd.arg("run")
+        .arg("--env").arg("TO_CONSOLE=true");
+
+    if let Some(libs) = &user_libs_arg {
+        for lib in libs.iter() {
+            let fname = Path::new(lib).file_stem().unwrap().to_str().unwrap();
+            cmd.arg("--preload").arg(format!("{fname}={lib}"));
+        }
+    }
 
     let res = cmd
-        .env("TO_CONSOLE", "true")
-        .env("WASM_MODULE", format!("../{instr_app_path}"))
-        .current_dir("wasmtime-runner")
-        .arg("run")
-        .arg("--")
-        .arg(runner_arg)
+        .arg("--preload").arg(whamm_core_lib_path)
+        .arg(instr_app_path)
         .output()
-        .expect("failed to run wasmtime-runner");
+        .expect("failed to run on wasmtime");
     if !res.status.success() {
         println!(
-            "[ERROR] Failed to run wasmtime-runner:\n{}\n{}",
+            "[ERROR] Failed to run on wasmtime:\n{}\n{}",
             String::from_utf8(res.stdout).unwrap(),
             String::from_utf8(res.stderr).unwrap()
         );

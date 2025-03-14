@@ -1,0 +1,1 @@
+tests/apps/core_suite/polybench/2mm.wasm
