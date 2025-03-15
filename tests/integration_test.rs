@@ -198,6 +198,14 @@ fn instrument_with_paper_eval_hotness_scripts() {
 
     run_core_suite("paper_eval-hotness", processed_scripts, true, true)
 }
+#[test]
+fn instrument_with_paper_eval_ins_count_scripts() {
+    common::setup_logger();
+    let processed_scripts = common::setup_tests("paper_eval/ins_count");
+    assert!(!processed_scripts.is_empty());
+
+    run_core_suite("paper_eval-ins_count", processed_scripts, true, true)
+}
 
 #[test]
 fn instrument_with_paper_eval_cache_sim_scripts() {
