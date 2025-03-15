@@ -439,9 +439,13 @@ fn run_instr_rewrite(
     );
 
     let match_time = "match&inject".to_string();
-    metrics.start(&match_time);
+    if config.metrics {
+        metrics.start(&match_time);
+    }
     instr.run();
-    metrics.end(&match_time);
+    if config.metrics {
+        metrics.end(&match_time);
+    }
 
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
