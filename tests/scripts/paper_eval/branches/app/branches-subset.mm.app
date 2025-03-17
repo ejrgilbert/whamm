@@ -1,0 +1,1 @@
+tests/apps/core_suite/handwritten/branches-no-br_table.wasm
