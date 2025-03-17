@@ -701,6 +701,17 @@ impl ReportVars {
         let curr_addr = flush_fn.add_local(OrcaType::I32);
         let next_addr = flush_fn.add_local(OrcaType::I32);
 
+        // check that we actually have some of this DT to flush
+        // if not: return
+        flush_fn
+            .block(BlockType::Empty)
+            .global_get(GlobalID(
+                self.alloc_tracker.get(&dt).unwrap().first_var.unwrap(),
+            ))
+            .i32_const(NULL_PTR_IN_GLOBAL)
+            .i32_eq()
+            .br_if(0);
+
         flush_fn
             .global_get(GlobalID(
                 self.alloc_tracker.get(&dt).unwrap().first_var.unwrap(),
@@ -770,7 +781,7 @@ impl ReportVars {
             .end();
         // otherwise, fall through to end.
 
-        flush_fn.end();
+        flush_fn.end().end();
 
         let flush_fid = flush_fn.finish_module(wasm);
         wasm.set_fn_name(flush_fid, format!("flush_{}_vars", dt));

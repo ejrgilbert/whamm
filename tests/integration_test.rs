@@ -579,6 +579,7 @@ fn run_testcase_rewriting(
         );
         assert!(false);
     } else {
+        assert!(res.stderr.is_empty(), "Had error: {}", String::from_utf8(res.stderr).unwrap());
         match exp_output {
             ExpectedOutput::Str(exp_str) => {
                 let stdout = String::from_utf8(res.stdout).unwrap();
