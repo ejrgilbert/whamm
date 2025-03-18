@@ -1245,8 +1245,8 @@ macro_rules! for_each_opcode {
     // RefCastNonNull, RefCastNullable
     RefCast, Gc, ref_cast, None, vec![], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
     // TODO -- support immN and argN types
-    BrOnCast, Gc, br_on_cast, None, vec![(DataType::U32, 1), (DataType::Unknown, 2)], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
-    BrOnCastFail, Gc, br_on_cast_fail, None, vec![(DataType::U32, 1), (DataType::Unknown, 2)], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    BrOnCast, Control, br_on_cast, None, vec![(DataType::U32, 1), (DataType::Unknown, 2)], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    BrOnCastFail, Control, br_on_cast_fail, None, vec![(DataType::U32, 1), (DataType::Unknown, 2)], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
     // TODO -- support argN types
     AnyConvertExtern, Gc, any_convert_extern, None, vec![], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
     // TODO -- support argN types
@@ -1278,7 +1278,7 @@ macro_rules! for_each_opcode {
     MemoryFill, Memory, memory_fill, Some(vec![DataType::I32, DataType::I32, DataType::I32]), vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Fill"
     DataDrop, Memory, data_drop, Some(vec![]), vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://pengowray.github.io/wasm-ops/"
 
-    ElemDrop, Memory, elem_drop, Some(vec![]), vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://pengowray.github.io/wasm-ops/"
+    ElemDrop, Table, elem_drop, Some(vec![]), vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://pengowray.github.io/wasm-ops/"
     TableCopy, Table, table_copy, Some(vec![DataType::I32, DataType::I32, DataType::I32]), vec![(DataType::U32, 2)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
     TableInit, Table, table_init, Some(vec![DataType::I32, DataType::I32, DataType::I32]), vec![(DataType::U32, 2)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
 
