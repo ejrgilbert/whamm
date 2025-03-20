@@ -1710,6 +1710,15 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
                     injector.f32_demote_f64();
                 }
                 (DataType::F64, DataType::F64) => {} // nothing to do
+                (
+                    DataType::Boolean,
+                    DataType::U8
+                    | DataType::I8
+                    | DataType::U16
+                    | DataType::I16
+                    | DataType::I32
+                    | DataType::U32,
+                ) => {} // nothing to do
                 (DataType::F64, _) => {
                     // should've been handled by type checker
                     unreachable!();

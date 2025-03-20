@@ -1,14 +1,12 @@
 // Matches _if and br_if events
 wasm::*_if:before {
-  report unshared var taken: i32;
-  report unshared var not_taken: i32;
+  report unshared var taken: u32;
+  report unshared var total: u32;
 
   // which branch was taken?
-  if (arg0 != 0) {
-    taken++;
-  } else {
-    not_taken++;
-  }
+  var was_taken: bool = arg0 != 0;
+  taken = taken + (was_taken as u32);
+  total++;
 }
 
 wasm::br_table:before {
@@ -24,12 +22,10 @@ wasm::br_table:before {
 
 wasm::select(arg0: i32):before {
   report unshared var selected_first: u32;
-  report unshared var selected_second: u32;
+  report unshared var total: u32;
 
   // which branch was taken?
-  if (arg0 != 0) {
-    selected_first++;
-  } else {
-    selected_second++;
-  }
+  var was_taken: bool = arg0 != 0;
+  selected_first = selected_first + (was_taken as u32);
+  total++;
 }
