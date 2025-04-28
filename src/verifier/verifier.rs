@@ -122,6 +122,7 @@ struct TypeChecker<'a> {
     in_script_global: bool,
     in_function: bool,
     has_reports: bool,
+    curr_match_rule: Option<String>,
 
     // If a lib function call, use this for lookup
     lib_name: Option<String>,
@@ -141,6 +142,7 @@ impl<'a> TypeChecker<'a> {
             in_script_global: false,
             in_function: false,
             has_reports: false,
+            curr_match_rule: None,
             lib_name: None,
             curr_loc: None,
             outer_cast_fixes_assign: false,
@@ -175,6 +177,25 @@ impl<'a> TypeChecker<'a> {
                 loc: loc.clone(),
             },
         );
+    }
+
+    fn set_curr_rule(&mut self, val: Option<String>) {
+        self.curr_match_rule = val;
+    }
+
+    fn get_curr_rule(&self) -> &String {
+        let Some(curr_rule) = &self.curr_match_rule else {
+            panic!("should have a value associated with the curr_match_rule")
+        };
+        curr_rule
+    }
+
+    fn append_curr_rule(&mut self, val: String) {
+        let Some(curr_rule) = &mut self.curr_match_rule else {
+            panic!("should have a value associated with the curr_match_rule")
+        };
+        *curr_rule += &val;
+        self.err.update_match_rule(self.curr_match_rule.clone());
     }
 }
 
@@ -219,28 +240,35 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
 
     fn visit_provider(&mut self, provider: &mut Box<dyn Provider>) -> Option<DataType> {
         let _ = self.table.enter_named_scope(&provider.name());
+        self.set_curr_rule(Some(provider.name()));
 
         provider.packages_mut().for_each(|package| {
             self.visit_package(package);
         });
 
         self.table.exit_scope(self.err);
+        self.set_curr_rule(None);
         None
     }
 
     fn visit_package(&mut self, package: &mut dyn Package) -> Option<DataType> {
         let _ = self.table.enter_named_scope(&package.name());
+        self.append_curr_rule(format!(":{}", package.name()));
 
         package.events_mut().for_each(|event| {
             self.visit_event(event);
         });
 
         self.table.exit_scope(self.err);
+        // Remove this package from `curr_rule`
+        let curr_rule = self.get_curr_rule();
+        self.set_curr_rule(Some(curr_rule[..curr_rule.rfind(':').unwrap()].to_string()));
         None
     }
 
     fn visit_event(&mut self, event: &mut dyn Event) -> Option<DataType> {
         let _ = self.table.enter_named_scope(&event.name());
+        self.append_curr_rule(format!(":{}", event.name()));
 
         for (var, ty_bound) in event.ty_info().iter() {
             if let Expr::VarId { name, loc, .. } = var {
@@ -294,11 +322,15 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
         });
 
         self.table.exit_scope(self.err);
+        let curr_rule = self.get_curr_rule();
+        let new_rule = curr_rule[..curr_rule.rfind(':').unwrap()].to_string();
+        self.set_curr_rule(Some(new_rule));
         None
     }
 
     fn visit_probe(&mut self, probe: &mut Box<dyn Probe>) -> Option<DataType> {
         let _ = self.table.enter_named_scope(&(*probe).mode().name());
+        self.append_curr_rule(format!(":{}", probe.mode().name()));
 
         // type check predicate
         if let Some(predicate) = &mut probe.predicate_mut() {
@@ -320,6 +352,8 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
         }
 
         self.table.exit_scope(self.err);
+        let curr_rule = self.get_curr_rule();
+        self.set_curr_rule(Some(curr_rule[..curr_rule.rfind(':').unwrap()].to_string()));
         None
     }
 
@@ -708,16 +742,12 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                         }
                                     }
                                 }
-                            } else if lhs_ty == rhs_ty {
+                            } else if lhs_ty == rhs_ty
+                                || attempt_implicit_cast(
+                                    rhs, &lhs_ty, &rhs_ty, rhs_loc, "value", self.err,
+                                )
+                            {
                                 return Some(lhs_ty);
-                            } else {
-                                let loc =
-                                    Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
-                                if attempt_implicit_cast(
-                                    rhs, &lhs_ty, &rhs_ty, loc, "value", self.err,
-                                ) {
-                                    return Some(lhs_ty);
-                                }
                             }
                             Some(DataType::AssumeGood)
                         }
@@ -747,18 +777,14 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             {
                                 return Some(DataType::Boolean);
                             }
-                            if lhs_ty == rhs_ty {
+                            if lhs_ty == rhs_ty
+                                || attempt_implicit_cast(
+                                    rhs, &lhs_ty, &rhs_ty, rhs_loc, "value", self.err,
+                                )
+                            {
                                 Some(DataType::Boolean)
                             } else {
-                                let loc =
-                                    Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
-                                if attempt_implicit_cast(
-                                    rhs, &lhs_ty, &rhs_ty, loc, "value", self.err,
-                                ) {
-                                    Some(DataType::Boolean)
-                                } else {
-                                    Some(DataType::AssumeGood)
-                                }
+                                Some(DataType::AssumeGood)
                             }
                         }
                         BinOp::GT | BinOp::LT | BinOp::GE | BinOp::LE => {
@@ -767,18 +793,14 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             {
                                 return Some(DataType::Boolean);
                             }
-                            if lhs_ty == rhs_ty && lhs_ty.can_implicitly_cast() {
+                            if lhs_ty == rhs_ty && lhs_ty.can_implicitly_cast()
+                                || attempt_implicit_cast(
+                                    rhs, &lhs_ty, &rhs_ty, rhs_loc, "value", self.err,
+                                )
+                            {
                                 Some(DataType::Boolean)
                             } else {
-                                let loc =
-                                    Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
-                                if attempt_implicit_cast(
-                                    rhs, &lhs_ty, &rhs_ty, loc, "value", self.err,
-                                ) {
-                                    Some(DataType::Boolean)
-                                } else {
-                                    Some(DataType::AssumeGood)
-                                }
+                                Some(DataType::AssumeGood)
                             }
                         }
                         BinOp::LShift => {
@@ -797,18 +819,13 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 return Some(lhs_ty);
                             }
 
-                            if lhs_ty.is_numeric() {
-                                if lhs_ty == rhs_ty {
-                                    return Some(lhs_ty);
-                                } else {
-                                    let loc =
-                                        Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
-                                    if attempt_implicit_cast(
-                                        rhs, &lhs_ty, &rhs_ty, loc, "value", self.err,
-                                    ) {
-                                        return Some(lhs_ty);
-                                    }
-                                }
+                            if lhs_ty.is_numeric()
+                                && (lhs_ty == rhs_ty
+                                    || attempt_implicit_cast(
+                                        rhs, &lhs_ty, &rhs_ty, rhs_loc, "value", self.err,
+                                    ))
+                            {
+                                return Some(lhs_ty);
                             }
                             Some(DataType::AssumeGood)
                         }
@@ -831,18 +848,13 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 return Some(lhs_ty);
                             }
 
-                            if lhs_ty.is_numeric() {
-                                if lhs_ty == rhs_ty {
-                                    return Some(lhs_ty);
-                                } else {
-                                    let loc =
-                                        Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
-                                    if attempt_implicit_cast(
-                                        rhs, &lhs_ty, &rhs_ty, loc, "value", self.err,
-                                    ) {
-                                        return Some(lhs_ty);
-                                    }
-                                }
+                            if lhs_ty.is_numeric()
+                                && (lhs_ty == rhs_ty
+                                    || attempt_implicit_cast(
+                                        rhs, &lhs_ty, &rhs_ty, rhs_loc, "value", self.err,
+                                    ))
+                            {
+                                return Some(lhs_ty);
                             }
                             Some(DataType::AssumeGood)
                         }
@@ -865,18 +877,13 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 return Some(lhs_ty);
                             }
 
-                            if lhs_ty.is_numeric() {
-                                if lhs_ty == rhs_ty {
-                                    return Some(lhs_ty);
-                                } else {
-                                    let loc =
-                                        Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
-                                    if attempt_implicit_cast(
-                                        rhs, &lhs_ty, &rhs_ty, loc, "value", self.err,
-                                    ) {
-                                        return Some(lhs_ty);
-                                    }
-                                }
+                            if lhs_ty.is_numeric()
+                                && (lhs_ty == rhs_ty
+                                    || attempt_implicit_cast(
+                                        rhs, &lhs_ty, &rhs_ty, rhs_loc, "value", self.err,
+                                    ))
+                            {
+                                return Some(lhs_ty);
                             }
                             Some(DataType::AssumeGood)
                         }
@@ -899,18 +906,13 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 return Some(lhs_ty);
                             }
 
-                            if lhs_ty.is_numeric() {
-                                if lhs_ty == rhs_ty {
-                                    return Some(lhs_ty);
-                                } else {
-                                    let loc =
-                                        Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
-                                    if attempt_implicit_cast(
-                                        rhs, &lhs_ty, &rhs_ty, loc, "value", self.err,
-                                    ) {
-                                        return Some(lhs_ty);
-                                    }
-                                }
+                            if lhs_ty.is_numeric()
+                                && (lhs_ty == rhs_ty
+                                    || attempt_implicit_cast(
+                                        rhs, &lhs_ty, &rhs_ty, rhs_loc, "value", self.err,
+                                    ))
+                            {
+                                return Some(lhs_ty);
                             }
                             Some(DataType::AssumeGood)
                         }
@@ -933,18 +935,13 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 return Some(lhs_ty);
                             }
 
-                            if lhs_ty.is_numeric() {
-                                if lhs_ty == rhs_ty {
-                                    return Some(lhs_ty);
-                                } else {
-                                    let loc =
-                                        Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
-                                    if attempt_implicit_cast(
-                                        rhs, &lhs_ty, &rhs_ty, loc, "value", self.err,
-                                    ) {
-                                        return Some(lhs_ty);
-                                    }
-                                }
+                            if lhs_ty.is_numeric()
+                                && (lhs_ty == rhs_ty
+                                    || attempt_implicit_cast(
+                                        rhs, &lhs_ty, &rhs_ty, rhs_loc, "value", self.err,
+                                    ))
+                            {
+                                return Some(lhs_ty);
                             }
                             Some(DataType::AssumeGood)
                         }
@@ -1412,7 +1409,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 Err(msg) => {
                                     let loc =
                                         self.curr_loc.as_ref().map(|loc| loc.line_col.clone());
-                                    self.err.type_check_error(false, format!("CastError: Cannot implicitly cast {msg}. Please add an explicit cast."),
+                                    self.err.type_check_error(false, format!("CastError: Cannot implicitly cast {msg} to {exp_ty}. Please add an explicit cast."),
                                                               &loc);
                                     return Some(DataType::AssumeGood);
                                 }
