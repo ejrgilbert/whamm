@@ -1944,6 +1944,7 @@ pub struct ProvidedGlobal {
     pub docs: String,
     pub global: Global,
     pub value: Option<Value>,
+    pub derived_from: Option<Expr>,
 }
 impl ProvidedGlobal {
     pub fn new(
@@ -1951,6 +1952,7 @@ impl ProvidedGlobal {
         docs: String,
         ty: DataType,
         value: Option<Value>,
+        alias_for: Option<Expr>,
         is_static: bool,
     ) -> Self {
         Self {
@@ -1976,6 +1978,7 @@ impl ProvidedGlobal {
                 value: None,
             },
             value,
+            derived_from: alias_for,
         }
     }
 }

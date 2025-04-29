@@ -339,6 +339,7 @@ macro_rules! define_opcode {
                          "The category name of this opcode.".to_string(),
                          DataType::Str,
                          Some(crate::parser::types::Value::Str { val: kind.category().to_string() }),
+                         None,
                          true,
                      )
                 );
@@ -349,6 +350,7 @@ macro_rules! define_opcode {
                          "The ID of the category of this opcode.".to_string(),
                          DataType::U32,
                          Some(crate::parser::types::Value::gen_u32(kind.category().id())),
+                         None,
                          true,
                      )
                 );
@@ -367,6 +369,7 @@ macro_rules! define_opcode {
                                 format!("The argument to the opcode at index {}.", i),
                                 arg_ty.clone(),
                                 None,
+                                None,
                                 false,
                             ),
                         );
@@ -379,6 +382,7 @@ macro_rules! define_opcode {
                             "The argument to the call at the specific index, e.g. [0:9]+.\
                                 Keep in mind, the number of arguments to a call changes based on the targeted function.".to_string(),
                             DataType::Unknown,
+                            None,
                             None,
                             false
                         )
@@ -398,6 +402,7 @@ macro_rules! define_opcode {
                             name.to_string(),
                             format!("The immediate to the opcode at index {}.", idx),
                             ty.clone(),
+                            None,
                             None,
                             true
                         ),
