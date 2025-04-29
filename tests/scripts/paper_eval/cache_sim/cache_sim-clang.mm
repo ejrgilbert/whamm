@@ -10,9 +10,7 @@ wasm:opcode:*load*|*store*:before {
     report var hit: u32;
     report var miss: u32;
 
-//     var result: i32 = cache.check_access(effective_addr, data_size as i32);
-    var eff_addr: u32 = addr + offset as u32;
-    var result: i32 = cache.check_access(eff_addr as i32, data_size as i32);
+    var result: i32 = cache.check_access(effective_addr as i32, data_size as i32);
     var num_hits: i32 = (result & 0xFFFF0000) >> 16;
     var num_misses: i32 = (result & 0x0000FFFF);
 

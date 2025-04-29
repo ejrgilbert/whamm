@@ -9,7 +9,8 @@ use crate::parser::types::{
 use crate::verifier::builder_visitor::SymbolTableBuilder;
 use crate::verifier::types::{line_col_from_loc, Record, SymbolTable};
 use orca_wasm::Module;
-use std::collections::HashMap;
+use pest::error::LineColLocation;
+use std::collections::{HashMap, HashSet};
 use std::vec;
 
 const UNEXPECTED_ERR_MSG: &str =
@@ -40,6 +41,9 @@ pub fn build_symbol_table(
         curr_event: None,
         curr_probe: None,
         curr_fn: None,
+        aliases: HashMap::default(),
+        used_derived_vars: HashSet::default(),
+        derived_vars: HashMap::default(),
         req_args: ReqArgs::None,
     };
     visitor.visit_whamm(ast);
@@ -68,22 +72,12 @@ pub fn check_duplicate_id(
                 let new_loc = loc.as_ref().map(|l| l.line_col.clone());
                 if loc.is_none() {
                     // happens if new_loc is compiler-provided or is a user-def func without location -- both should throw unexpected error
-                    err.unexpected_error(
-                        false,
-                        Some(format!("{UNEXPECTED_ERR_MSG} No location found for record")),
-                        None,
-                    );
+                    panic!("{UNEXPECTED_ERR_MSG} No location found for record");
                 } else {
                     err.compiler_fn_overload_error(false, name.to_string(), new_loc);
                 }
             } else {
-                err.unexpected_error(
-                    false,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} Expected other record to be provided by compiler."
-                    )),
-                    None,
-                );
+                panic!("{UNEXPECTED_ERR_MSG} Expected other record to be provided by compiler.");
             }
         } else if loc.is_none() {
             // happens if new ID is compiler-provided or is a user-def func without location
@@ -456,8 +450,16 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
             Statement::LibImport { .. } => None,
             Statement::Assign { var_id, expr, .. } => {
                 // change type in symbol table?
-                let lhs_loc = var_id.loc().clone().unwrap();
-                let rhs_loc = expr.loc().clone().unwrap();
+                let (full_loc, rhs_loc) = match (var_id.loc(), expr.loc()) {
+                    (Some(var_id_loc), Some(expr_loc)) => (
+                        Some(
+                            Location::from(&var_id_loc.line_col, &expr_loc.line_col, None).line_col,
+                        ),
+                        Some(expr_loc.line_col.clone()),
+                    ),
+                    (None, Some(expr_loc)) => (None, Some(expr_loc.line_col.clone())),
+                    _ => (None, None),
+                };
                 let lhs_ty_op = self.visit_expr(var_id);
 
                 if let Some(lhs_ty) = &lhs_ty_op {
@@ -479,28 +481,25 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         match expr.implicit_cast(&lhs_ty) {
                             Ok(_) => None,
                             Err((msg, fatal)) => {
-                                self.err
-                                    .type_check_error(fatal, msg, &Some(rhs_loc.line_col));
+                                self.err.type_check_error(fatal, msg, &rhs_loc);
                                 None
                             }
                         }
                     } else {
                         // using a struct in parser to merge two locations
-                        let loc = Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
                         self.err.type_check_error(
                             false,
                             format! {"Type Mismatch, lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty},
-                            &Some(loc.line_col),
+                            &full_loc,
                         );
 
                         None
                     }
                 } else {
-                    let loc = Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
                     self.err.type_check_error(
                         false,
                         "Can't get type of lhs or rhs of this assignment".to_string(),
-                        &Some(loc.line_col),
+                        &full_loc,
                     );
                     None
                 };
@@ -638,24 +637,24 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         {
                             //ensure that the key_ty matches and the val_ty matches
                             if key_ty != *map_key_ty {
-                                let key_loc = key.loc().clone().unwrap();
+                                let key_loc = Some(key.loc().clone().unwrap().line_col);
                                 attempt_implicit_cast(
                                     key,
                                     &map_key_ty,
                                     &key_ty,
-                                    key_loc,
+                                    &key_loc,
                                     "key",
                                     self.err,
                                 );
                                 return None;
                             }
                             if val_ty != *map_val_ty {
-                                let val_loc = val.loc().clone().unwrap();
+                                let val_loc = Some(val.loc().clone().unwrap().line_col);
                                 attempt_implicit_cast(
                                     val,
                                     &map_val_ty,
                                     &val_ty,
-                                    val_loc,
+                                    &val_loc,
                                     "val",
                                     self.err,
                                 );
@@ -691,11 +690,29 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 done_on,
                 ..
             } => {
-                let lhs_loc = lhs.loc().clone().unwrap();
-                let rhs_loc = match rhs.loc().clone() {
-                    Some(loc) => loc,
-                    None => lhs_loc.clone(),
+                let (full_line_col, rhs_line_col) = match (lhs.loc(), rhs.loc()) {
+                    (Some(lhs_loc), Some(rhs_loc)) => {
+                        let full_line_col =
+                            Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None)
+                                .line_col
+                                .clone();
+                        (Some(full_line_col), Some(rhs_loc.line_col.clone()))
+                    }
+                    (Some(lhs_loc), None) => {
+                        let full_line_col =
+                            Location::from(&lhs_loc.line_col, &lhs_loc.line_col, None)
+                                .line_col
+                                .clone();
+                        (Some(full_line_col), Some(lhs_loc.line_col.clone()))
+                    }
+                    (None, Some(rhs_loc)) => (None, Some(rhs_loc.line_col.clone())),
+                    _ => (None, None),
                 };
+                // let lhs_loc = lhs.loc().clone().unwrap();
+                // let rhs_loc = match rhs.loc().clone() {
+                //     Some(loc) => loc,
+                //     None => lhs_loc.clone(),
+                // };
                 let lhs_ty_op = self.visit_expr(lhs);
                 let rhs_ty_op = self.visit_expr(rhs);
                 if let (Some(lhs_ty), Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {
@@ -718,25 +735,35 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                         if lhs_ty == rhs_ty {
                                             return Some(lhs_ty);
                                         } else {
-                                            let loc = Location::from(
-                                                &lhs_loc.line_col,
-                                                &rhs_loc.line_col,
-                                                None,
-                                            );
+                                            // let loc = Location::from(
+                                            //     &lhs_loc.line_col,
+                                            //     &rhs_loc.line_col,
+                                            //     None,
+                                            // );
                                             if attempt_implicit_cast(
-                                                rhs, exp_ty, &rhs_ty, loc, "value", self.err,
+                                                rhs,
+                                                exp_ty,
+                                                &rhs_ty,
+                                                &full_line_col,
+                                                "value",
+                                                self.err,
                                             ) {
                                                 return Some(exp_ty.clone());
                                             }
                                         }
                                     } else {
-                                        let loc = Location::from(
-                                            &lhs_loc.line_col,
-                                            &rhs_loc.line_col,
-                                            None,
-                                        );
+                                        // let loc = Location::from(
+                                        //     &lhs_loc.line_col,
+                                        //     &rhs_loc.line_col,
+                                        //     None,
+                                        // );
                                         if attempt_implicit_cast(
-                                            lhs, exp_ty, &lhs_ty, loc, "value", self.err,
+                                            lhs,
+                                            exp_ty,
+                                            &lhs_ty,
+                                            &full_line_col,
+                                            "value",
+                                            self.err,
                                         ) {
                                             return Some(exp_ty.clone());
                                         }
@@ -744,7 +771,12 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 }
                             } else if lhs_ty == rhs_ty
                                 || attempt_implicit_cast(
-                                    rhs, &lhs_ty, &rhs_ty, rhs_loc, "value", self.err,
+                                    rhs,
+                                    &lhs_ty,
+                                    &rhs_ty,
+                                    &rhs_line_col,
+                                    "value",
+                                    self.err,
                                 )
                             {
                                 return Some(lhs_ty);
@@ -763,10 +795,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 self.err.type_check_error(
                                     false,
                                     "Different types for lhs and rhs".to_owned(),
-                                    &Some(
-                                        Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None)
-                                            .line_col,
-                                    ),
+                                    &full_line_col,
                                 );
                                 Some(DataType::AssumeGood)
                             }
@@ -779,7 +808,12 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             }
                             if lhs_ty == rhs_ty
                                 || attempt_implicit_cast(
-                                    rhs, &lhs_ty, &rhs_ty, rhs_loc, "value", self.err,
+                                    rhs,
+                                    &lhs_ty,
+                                    &rhs_ty,
+                                    &rhs_line_col,
+                                    "value",
+                                    self.err,
                                 )
                             {
                                 Some(DataType::Boolean)
@@ -795,7 +829,12 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             }
                             if lhs_ty == rhs_ty && lhs_ty.can_implicitly_cast()
                                 || attempt_implicit_cast(
-                                    rhs, &lhs_ty, &rhs_ty, rhs_loc, "value", self.err,
+                                    rhs,
+                                    &lhs_ty,
+                                    &rhs_ty,
+                                    &rhs_line_col,
+                                    "value",
+                                    self.err,
                                 )
                             {
                                 Some(DataType::Boolean)
@@ -805,12 +844,10 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         }
                         BinOp::LShift => {
                             if matches!(lhs_ty, DataType::F32 | DataType::F64) {
-                                let loc =
-                                    Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
                                 self.err.type_check_error(
                                     false,
                                     format!("Left shift operation not allowed on type: {}", lhs_ty),
-                                    &Some(loc.line_col),
+                                    &full_line_col,
                                 );
                                 return Some(DataType::AssumeGood);
                             } else if matches!(lhs_ty, DataType::AssumeGood) {
@@ -822,7 +859,12 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             if lhs_ty.is_numeric()
                                 && (lhs_ty == rhs_ty
                                     || attempt_implicit_cast(
-                                        rhs, &lhs_ty, &rhs_ty, rhs_loc, "value", self.err,
+                                        rhs,
+                                        &lhs_ty,
+                                        &rhs_ty,
+                                        &rhs_line_col,
+                                        "value",
+                                        self.err,
                                     ))
                             {
                                 return Some(lhs_ty);
@@ -831,15 +873,13 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         }
                         BinOp::RShift => {
                             if matches!(lhs_ty, DataType::F32 | DataType::F64) {
-                                let loc =
-                                    Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
                                 self.err.type_check_error(
                                     false,
                                     format!(
                                         "Right shift operation not allowed on type: {}",
                                         lhs_ty
                                     ),
-                                    &Some(loc.line_col),
+                                    &full_line_col,
                                 );
                                 return Some(DataType::AssumeGood);
                             } else if matches!(lhs_ty, DataType::AssumeGood) {
@@ -851,7 +891,12 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             if lhs_ty.is_numeric()
                                 && (lhs_ty == rhs_ty
                                     || attempt_implicit_cast(
-                                        rhs, &lhs_ty, &rhs_ty, rhs_loc, "value", self.err,
+                                        rhs,
+                                        &lhs_ty,
+                                        &rhs_ty,
+                                        &rhs_line_col,
+                                        "value",
+                                        self.err,
                                     ))
                             {
                                 return Some(lhs_ty);
@@ -860,15 +905,13 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         }
                         BinOp::BitAnd => {
                             if matches!(lhs_ty, DataType::F32 | DataType::F64) {
-                                let loc =
-                                    Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
                                 self.err.type_check_error(
                                     false,
                                     format!(
                                         "The bitwise AND operation not allowed on type: {}",
                                         lhs_ty
                                     ),
-                                    &Some(loc.line_col),
+                                    &full_line_col,
                                 );
                                 return Some(DataType::AssumeGood);
                             } else if matches!(lhs_ty, DataType::AssumeGood) {
@@ -880,7 +923,12 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             if lhs_ty.is_numeric()
                                 && (lhs_ty == rhs_ty
                                     || attempt_implicit_cast(
-                                        rhs, &lhs_ty, &rhs_ty, rhs_loc, "value", self.err,
+                                        rhs,
+                                        &lhs_ty,
+                                        &rhs_ty,
+                                        &rhs_line_col,
+                                        "value",
+                                        self.err,
                                     ))
                             {
                                 return Some(lhs_ty);
@@ -889,15 +937,13 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         }
                         BinOp::BitOr => {
                             if matches!(lhs_ty, DataType::F32 | DataType::F64) {
-                                let loc =
-                                    Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
                                 self.err.type_check_error(
                                     false,
                                     format!(
                                         "The bitwise OR operation not allowed on type: {}",
                                         lhs_ty
                                     ),
-                                    &Some(loc.line_col),
+                                    &full_line_col,
                                 );
                                 return Some(DataType::AssumeGood);
                             } else if matches!(lhs_ty, DataType::AssumeGood) {
@@ -909,7 +955,12 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             if lhs_ty.is_numeric()
                                 && (lhs_ty == rhs_ty
                                     || attempt_implicit_cast(
-                                        rhs, &lhs_ty, &rhs_ty, rhs_loc, "value", self.err,
+                                        rhs,
+                                        &lhs_ty,
+                                        &rhs_ty,
+                                        &rhs_line_col,
+                                        "value",
+                                        self.err,
                                     ))
                             {
                                 return Some(lhs_ty);
@@ -918,15 +969,13 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         }
                         BinOp::BitXor => {
                             if matches!(lhs_ty, DataType::F32 | DataType::F64) {
-                                let loc =
-                                    Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
                                 self.err.type_check_error(
                                     false,
                                     format!(
                                         "The bitwise XOR operation not allowed on type: {}",
                                         lhs_ty
                                     ),
-                                    &Some(loc.line_col),
+                                    &full_line_col,
                                 );
                                 return Some(DataType::AssumeGood);
                             } else if matches!(lhs_ty, DataType::AssumeGood) {
@@ -938,7 +987,12 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             if lhs_ty.is_numeric()
                                 && (lhs_ty == rhs_ty
                                     || attempt_implicit_cast(
-                                        rhs, &lhs_ty, &rhs_ty, rhs_loc, "value", self.err,
+                                        rhs,
+                                        &lhs_ty,
+                                        &rhs_ty,
+                                        &rhs_line_col,
+                                        "value",
+                                        self.err,
                                     ))
                             {
                                 return Some(lhs_ty);
@@ -947,11 +1001,10 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         }
                     }
                 } else {
-                    let loc = Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None);
                     self.err.type_check_error(
                         false,
                         "Can't get type of lhs or rhs of this binary operation".to_string(),
-                        &Some(loc.line_col),
+                        &full_line_col,
                     );
 
                     Some(DataType::AssumeGood)
@@ -1473,14 +1526,14 @@ fn attempt_implicit_cast(
     to_cast: &mut Expr,
     exp_ty: &DataType,
     actual_ty: &DataType,
-    loc: Location,
+    loc: &Option<LineColLocation>,
     name_in_err: &str,
     err: &mut ErrorGen,
 ) -> bool {
     if exp_ty.can_implicitly_cast() && actual_ty.can_implicitly_cast() {
         // try to implicitly do a cast here
         return if let Err((msg, fatal)) = to_cast.implicit_cast(exp_ty) {
-            err.type_check_error(fatal, msg, &Some(loc.line_col));
+            err.type_check_error(fatal, msg, loc);
             false
         } else {
             true
@@ -1489,7 +1542,7 @@ fn attempt_implicit_cast(
         err.type_check_error(
             false,
             format! {"Type Mismatch, expected {name_in_err} type: {:?}, actual {name_in_err} type: {:?}", exp_ty, actual_ty},
-            &Some(loc.line_col),
+            loc
         );
     }
     false
