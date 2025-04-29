@@ -708,11 +708,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     (None, Some(rhs_loc)) => (None, Some(rhs_loc.line_col.clone())),
                     _ => (None, None),
                 };
-                // let lhs_loc = lhs.loc().clone().unwrap();
-                // let rhs_loc = match rhs.loc().clone() {
-                //     Some(loc) => loc,
-                //     None => lhs_loc.clone(),
-                // };
                 let lhs_ty_op = self.visit_expr(lhs);
                 let rhs_ty_op = self.visit_expr(rhs);
                 if let (Some(lhs_ty), Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {
@@ -735,11 +730,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                         if lhs_ty == rhs_ty {
                                             return Some(lhs_ty);
                                         } else {
-                                            // let loc = Location::from(
-                                            //     &lhs_loc.line_col,
-                                            //     &rhs_loc.line_col,
-                                            //     None,
-                                            // );
                                             if attempt_implicit_cast(
                                                 rhs,
                                                 exp_ty,
@@ -752,11 +742,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                             }
                                         }
                                     } else {
-                                        // let loc = Location::from(
-                                        //     &lhs_loc.line_col,
-                                        //     &rhs_loc.line_col,
-                                        //     None,
-                                        // );
                                         if attempt_implicit_cast(
                                             lhs,
                                             exp_ty,

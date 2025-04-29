@@ -264,8 +264,6 @@ pub enum WhammParam {
     Align,
     Offset,
     Memory,
-    // derived variables
-    // Derived { derivation: Box<Expr> }
 }
 impl WhammParam {
     pub fn new(var_name: String, var_type: DataType) -> Self {
