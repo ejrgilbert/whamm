@@ -10,6 +10,7 @@ const ERR_UNDERLINE_CHAR: char = '^';
 const INFO_UNDERLINE_CHAR: char = '-';
 
 pub struct ErrorGen {
+    curr_match_rule: Option<String>,
     script_path: String,
     script_text: String,
     max_errors: i32,
@@ -23,6 +24,7 @@ pub struct ErrorGen {
 impl ErrorGen {
     pub fn new(script_path: String, script_text: String, max_errors: i32) -> Self {
         Self {
+            curr_match_rule: None,
             script_path,
             script_text,
             max_errors,
@@ -35,8 +37,13 @@ impl ErrorGen {
         }
     }
 
-    pub fn add_error(&mut self, error: WhammError) {
+    pub fn update_match_rule(&mut self, match_rule: Option<String>) {
+        self.curr_match_rule = match_rule;
+    }
+
+    pub fn add_error(&mut self, mut error: WhammError) {
         let fatal = error.fatal;
+        error.match_rule = self.curr_match_rule.clone();
         self.errors.push(error);
         self.inc_errors();
 
@@ -96,6 +103,7 @@ impl ErrorGen {
 
     pub fn get_instrumentation_error(fatal: bool, message: String) -> WhammError {
         WhammError {
+            match_rule: None,
             fatal,
             ty: ErrorType::InstrumentationError { message },
             err_loc: None,
@@ -121,6 +129,7 @@ impl ErrorGen {
             line2_str: None,
         });
         WhammError {
+            match_rule: None,
             fatal,
             ty: ErrorType::ArithmeticError { message },
             err_loc,
@@ -142,6 +151,7 @@ impl ErrorGen {
     ) -> WhammError {
         if let Some(line_col) = line_col {
             WhammError {
+                match_rule: None,
                 fatal,
                 ty: ErrorType::ParsingError {
                     positives,
@@ -159,6 +169,7 @@ impl ErrorGen {
             }
         } else {
             WhammError {
+                match_rule: None,
                 fatal,
                 ty: ErrorType::ParsingError {
                     positives,
@@ -215,6 +226,7 @@ impl ErrorGen {
         });
 
         WhammError {
+            match_rule: None,
             fatal,
             ty: ErrorType::DuplicateIdentifierError {
                 duplicated_id: duplicated_id.clone(),
@@ -240,6 +252,7 @@ impl ErrorGen {
         });
 
         WhammError {
+            match_rule: None,
             fatal,
             ty: ErrorType::DuplicateIdentifierError {
                 duplicated_id: duplicated_id.clone(),
@@ -292,6 +305,7 @@ impl ErrorGen {
         });
 
         WhammError {
+            match_rule: None,
             fatal,
             ty: ErrorType::TypeCheckError {
                 message: message.clone(),
@@ -343,6 +357,7 @@ impl ErrorGen {
         });
 
         WhammError {
+            match_rule: None,
             fatal,
             ty: ErrorType::WizardError {
                 message: message.clone(),
@@ -373,6 +388,7 @@ impl ErrorGen {
     ) -> WhammError {
         if let Some(line_col) = line_col {
             WhammError {
+                match_rule: None,
                 fatal,
                 ty: ErrorType::Error {
                     message: message.clone(),
@@ -388,6 +404,7 @@ impl ErrorGen {
             }
         } else {
             WhammError {
+                match_rule: None,
                 fatal,
                 ty: ErrorType::Error { message },
                 err_loc: None,
@@ -430,6 +447,7 @@ impl ErrorGen {
         } = &e.variant
         {
             WhammError {
+                match_rule: self.curr_match_rule.clone(),
                 fatal: false,
                 ty: ErrorType::ParsingError {
                     positives: positives.clone(),
@@ -447,6 +465,7 @@ impl ErrorGen {
             }
         } else {
             WhammError {
+                match_rule: self.curr_match_rule.clone(),
                 fatal: false,
                 ty: ErrorType::Error { message: None },
                 err_loc: Some(CodeLocation {
@@ -487,6 +506,7 @@ impl ErrorGen {
             line2_str: None,
         });
         let warn = WhammWarning {
+            match_rule: self.curr_match_rule.clone(),
             ty: WarnType::TypeCheckWarning { message },
             warn_loc: loc,
             info_loc: None,
@@ -495,6 +515,7 @@ impl ErrorGen {
     }
     pub fn add_compiler_warn(&mut self, message: String) {
         let warn = WhammWarning {
+            match_rule: self.curr_match_rule.clone(),
             ty: WarnType::CompilerWarning { message },
             warn_loc: None,
             info_loc: None,
@@ -668,6 +689,7 @@ impl CodeLocation {
 }
 #[derive(Clone, Debug)]
 pub struct WhammError {
+    pub match_rule: Option<String>,
     pub fatal: bool,
     /// The location within the input string causing the error
     pub err_loc: Option<CodeLocation>,
@@ -679,6 +701,7 @@ pub struct WhammError {
 impl From<std::io::Error> for Box<WhammError> {
     fn from(e: std::io::Error) -> Self {
         Box::new(WhammError {
+            match_rule: None,
             fatal: true,
             err_loc: None,
             info_loc: None,
@@ -690,6 +713,7 @@ impl From<std::io::Error> for Box<WhammError> {
 }
 
 pub struct WhammWarning {
+    pub match_rule: Option<String>,
     pub ty: WarnType,
     pub warn_loc: Option<CodeLocation>,
     pub info_loc: Option<CodeLocation>,
@@ -702,7 +726,12 @@ impl WhammWarning {
         let writer = BufferWriter::stderr(ColorChoice::Always);
         let mut buffer = writer.buffer();
 
-        yellow(true, format!("warning[{}]", self.ty.name()), &mut buffer);
+        let preamble = if let Some(rule) = &self.match_rule {
+            format!("warning[{}]@{rule}", self.ty.name())
+        } else {
+            format!("warning[{}]", self.ty.name())
+        };
+        yellow(true, preamble, &mut buffer);
         white(true, format!(": {}\n", message), &mut buffer);
 
         if let Some(warn_loc) = &mut self.warn_loc {
@@ -798,7 +827,12 @@ impl WhammError {
         let writer = BufferWriter::stderr(ColorChoice::Always);
         let mut buffer = writer.buffer();
 
-        red(true, format!("error[{}]", self.ty.name()), &mut buffer);
+        let preamble = if let Some(rule) = &self.match_rule {
+            format!("error[{}]@{rule}", self.ty.name())
+        } else {
+            format!("error[{}]", self.ty.name())
+        };
+        red(true, preamble, &mut buffer);
         white(true, format!(": {}\n", message), &mut buffer);
 
         if let Some(err_loc) = &mut self.err_loc {

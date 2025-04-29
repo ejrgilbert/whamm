@@ -1255,7 +1255,7 @@ impl Expr {
     pub fn implicit_cast(&mut self, target: &DataType) -> Result<(), (String, bool)> {
         match self.internal_implicit_cast(target) {
             Err(msg) => Err((
-                format!("CastError: Cannot implicitly cast {msg}. Please add an explicit cast."),
+                format!("CastError: Cannot implicitly cast {msg} to {target}. Please add an explicit cast."),
                 false,
             )),
             _ => Ok(()),
