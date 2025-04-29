@@ -709,9 +709,6 @@ impl Event for OpcodeEvent {
                                     }
                                 }
                             }
-                            // other => if matches!(param.def(), Definition::CompilerStatic) {
-                            //     panic!("WhammParam not supported for opcode: {}", other);
-                            // }
                             _ => {}
                         }
                     }
@@ -783,9 +780,6 @@ impl Event for OpcodeEvent {
 
                                 define_imm_n(0, Some(Value::gen_u32(*fid)), &mut loc_info);
                             }
-                            // other => if matches!(param.def(), Definition::CompilerStatic) {
-                            //     panic!("WhammParam not supported for opcode: {}", other);
-                            // }
                             _ => {}
                         }
                     }
@@ -876,9 +870,6 @@ impl Event for OpcodeEvent {
 
                                 define_imm_n(0, Some(Value::gen_u32(*fid)), &mut loc_info);
                             }
-                            // other => if matches!(param.def(), Definition::CompilerStatic) {
-                            //     panic!("WhammParam not supported for opcode: {}", other);
-                            // }
                             _ => {}
                         }
                     }
@@ -2287,9 +2278,6 @@ impl Event for OpcodeEvent {
                                 &mut loc_info,
                             );
                         }
-                        // other => if matches!(param.def(), Definition::CompilerStatic) {
-                        //     panic!("WhammParam not supported for opcode: {}", other);
-                        // }
                     }
 
                     // add the probes for this event
