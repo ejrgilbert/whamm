@@ -729,29 +729,25 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                     if *exp_ty == lhs_ty {
                                         if lhs_ty == rhs_ty {
                                             return Some(lhs_ty);
-                                        } else {
-                                            if attempt_implicit_cast(
-                                                rhs,
-                                                exp_ty,
-                                                &rhs_ty,
-                                                &full_line_col,
-                                                "value",
-                                                self.err,
-                                            ) {
-                                                return Some(exp_ty.clone());
-                                            }
-                                        }
-                                    } else {
-                                        if attempt_implicit_cast(
-                                            lhs,
+                                        } else if attempt_implicit_cast(
+                                            rhs,
                                             exp_ty,
-                                            &lhs_ty,
+                                            &rhs_ty,
                                             &full_line_col,
                                             "value",
                                             self.err,
                                         ) {
                                             return Some(exp_ty.clone());
                                         }
+                                    } else if attempt_implicit_cast(
+                                        lhs,
+                                        exp_ty,
+                                        &lhs_ty,
+                                        &full_line_col,
+                                        "value",
+                                        self.err,
+                                    ) {
+                                        return Some(exp_ty.clone());
                                     }
                                 }
                             } else if lhs_ty == rhs_ty
