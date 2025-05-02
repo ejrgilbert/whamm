@@ -2700,16 +2700,28 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::RefTest { .. } => {
-                if let Operator::RefTestNonNull { hty: _ } | Operator::RefTestNullable { hty: _ } =
-                    instr
+                if let Operator::RefTestNonNull { hty: _ } = instr
+                {
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::RefTestNull { .. } => {
+                if let Operator::RefTestNullable { hty: _ } = instr
                 {
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
             OpcodeEventKind::RefCast { .. } => {
-                if let Operator::RefCastNonNull { hty: _ } | Operator::RefCastNullable { hty: _ } =
-                    instr
+                if let Operator::RefCastNonNull { hty: _ } = instr
+                {
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::RefCastNull { .. } => {
+                if let Operator::RefCastNullable { hty: _ } = instr
                 {
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
