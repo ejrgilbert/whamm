@@ -1244,9 +1244,13 @@ macro_rules! for_each_opcode {
     // TODO -- support immN and argN types
     // RefTestNonNull, RefTestNullable
     RefTest, Gc, ref_test, None, vec![], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    RefTestNull, Gc, ref_test_null, None, vec![], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
     // TODO -- support immN and argN types
     // RefCastNonNull, RefCastNullable
     RefCast, Gc, ref_cast, None, vec![], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+    RefCastNull, Gc, ref_cast_null, None, vec![], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
     // TODO -- support immN and argN types
     BrOnCast, Control, br_on_cast, None, vec![(DataType::U32, 1), (DataType::Unknown, 2)], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
     BrOnCastFail, Control, br_on_cast_fail, None, vec![(DataType::U32, 1), (DataType::Unknown, 2)], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"

@@ -193,6 +193,14 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
                 || probe.rule.event.name == "_return"
             {
                 probe.rule.to_string().replacen("_", "", 1)
+            } else if probe.rule.event.name.ends_with("st_null") {
+                // ref.test null
+                // ref.cast null
+                probe
+                    .rule
+                    .to_string()
+                    .replacen("_null", " null", 1)
+                    .replacen("_", ".", 1)
             } else {
                 probe.rule.to_string().replacen("_", ".", 1)
             }
