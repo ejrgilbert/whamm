@@ -1,0 +1,15 @@
+# =====================
+# ==== wasm:opcode ====
+# =====================
+
+opcode: &opcode
+  name: opcode
+  bound_vars: []
+  bound_fns: []
+  events:
+    - *unreachable
+    - *nop
+    - *block
+    - *loop
+    - *if
+    - *else

@@ -1,0 +1,6 @@
+providers:
+  - name: wasm
+    bound_vars: []
+    bound_fns: []
+    packages:
+      - *opcode

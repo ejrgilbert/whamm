@@ -27,6 +27,10 @@ termcolor = "1.4.1"
 pest = "2.7.7"
 pest_derive = "2.7.7"
 
+# Provider YAML configs
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9.34"
+
 # CLI
 clap = { version = "4.5.4", features = ["derive", "cargo", "env"] }
 clap_complete = "4.5.2"

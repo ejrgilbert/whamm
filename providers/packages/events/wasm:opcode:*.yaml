@@ -1,0 +1,102 @@
+
+# mode consts
+default_modes: &default_modes
+  - before
+  - after
+  - alt
+block_modes: &block_modes
+  - before
+  # TODO: alias semantic_after to after
+  - semantic_after
+  - block_alt
+  - entry
+  - exit
+
+# =======================
+# ==== wasm:opcode:* ====
+# =======================
+
+unreachable: &unreachable
+  name: unreachable
+  category: misc
+  # TODO: move args/imms into bound_vars
+  args: []
+  imms: []
+  bound_vars: []
+  bound_fns: []
+  supported_modes: [ alt, before ]
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/unreachable"
+
+
+nop: &nop
+  name: unreachable
+  category: misc
+  # TODO: move args/imms into bound_vars
+  args: []
+  imms: []
+  bound_vars: []
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-control"
+
+block: &block
+  name: block
+  category: control
+  # TODO: move args/imms into bound_vars
+  args: null
+  imms: []
+  bound_vars: []
+  bound_fns: []
+  supported_modes: *block_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/block"
+
+loop: &loop
+  name: loop
+  category: control
+  # TODO: move args/imms into bound_vars
+  args: null
+  imms: []
+  bound_vars: []
+  bound_fns: []
+  supported_modes: *block_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/loop"
+
+if: &if
+  name: if
+  category: control
+  # TODO: move args/imms into bound_vars
+  args: [ i32 ]
+  imms: []
+  bound_vars: []
+  bound_fns: []
+  supported_modes: *block_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"
+
+else: &else
+  name: else
+  category: control
+  # TODO: move args/imms into bound_vars
+  args: [ i32 ]
+  imms: []
+  bound_vars: []
+  bound_fns: []
+  supported_modes: *block_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"
+
+#($($op:ident, $category:expr, $name:ident, $args:expr, $imms:expr, $globals:expr, $fns:expr, $supported_modes:expr, $req_map:expr, $docs:expr)*)
+#Unreachable, Misc, unreachable, Some(vec![]), vec![], HashMap::new(), vec![], HashMap::from([(WhammModeKind::Before.name(), WhammModeKind::Before), (WhammModeKind::Alt.name(), WhammModeKind::Alt)]), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/unreachable"
+#Nop, Misc, nop, Some(vec![]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://www.w3.org/TR/wasm-core-2/#syntax-instr-control"
+#// TODO -- support blockty as a struct to read/manipulate (provided global?)
+#//         Block { blockty: $crate::BlockType } => visit_block
+#//         Loop { blockty: $crate::BlockType } => visit_loop
+#//         If { blockty: $crate::BlockType } => visit_if
+#Block, Control, block, None, vec![], HashMap::new(), vec![], OpcodeEvent::block_type_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/block"
+#Loop, Control, _loop, None, vec![], HashMap::new(), vec![], OpcodeEvent::block_type_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/loop"
+#If, Control, _if, Some(vec![DataType::I32]), vec![], HashMap::new(), vec![], OpcodeEvent::block_type_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"
+#Else, Control, _else, Some(vec![]), vec![], HashMap::new(), vec![], OpcodeEvent::block_type_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"

@@ -1,5 +1,6 @@
 extern crate core;
 
+use std::fs;
 use cli::{Cmd, WhammCli};
 
 use crate::common::error::ErrorGen;
@@ -18,6 +19,8 @@ use crate::common::instr::Config;
 use clap::Parser;
 use std::path::PathBuf;
 use std::process::exit;
+use glob::glob;
+use serde::{Deserialize, Serialize};
 
 const ENABLE_WIZARD_ALT: bool = false;
 const CORE_WASM_PATH: &str = "./whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
@@ -28,14 +31,15 @@ fn setup_logger() {
 }
 
 fn main() {
-    if let Err(e) = try_main() {
-        eprintln!("error: {}", e);
-        for c in e.iter_chain().skip(1) {
-            eprintln!("  caused by {}", c);
-        }
-        eprintln!("{}", e.backtrace());
-        exit(1)
-    }
+    read_yml();
+    // if let Err(e) = try_main() {
+    //     eprintln!("error: {}", e);
+    //     for c in e.iter_chain().skip(1) {
+    //         eprintln!("  caused by {}", c);
+    //     }
+    //     eprintln!("{}", e.backtrace());
+    //     exit(1)
+    // }
 }
 
 fn try_main() -> Result<(), failure::Error> {
@@ -105,4 +109,83 @@ fn run_wast(wast_path: String) {
     wast::test_harness::setup_and_run_tests(&vec![PathBuf::from(wast_path)])
         .expect("WAST Test failed!");
     println!("The wast test passed!");
+}
+
+fn read_yml() {
+    let mut yml_files = vec![];
+
+    // push events first (sets up the anchors)
+    for path in glob("providers/packages/events/*.yaml").expect("failed to read glob pattern") {
+        let file_name = path.as_ref().unwrap();
+        let unparsed_file = fs::read_to_string(file_name)
+            .unwrap_or_else(|_| panic!("Unable to read file at {:?}", &path));
+        yml_files.push(unparsed_file);
+    }
+
+    // push packages next (sets up the anchors)
+    for path in glob("providers/packages/*.yaml").expect("failed to read glob pattern") {
+        let file_name = path.as_ref().unwrap();
+        let unparsed_file = fs::read_to_string(file_name)
+            .unwrap_or_else(|_| panic!("Unable to read file at {:?}", &path));
+        yml_files.push(unparsed_file);
+    }
+
+    // finally the providers
+    for path in glob("providers/*.yaml").expect("failed to read glob pattern") {
+        let file_name = path.as_ref().unwrap();
+        let unparsed_file = fs::read_to_string(file_name)
+            .unwrap_or_else(|_| panic!("Unable to read file at {:?}", &path));
+        yml_files.push(unparsed_file);
+    }
+
+    let mut all_yml = "".to_string();
+    for yml in yml_files.iter() {
+        all_yml += yml;
+    }
+
+    // let f = std::fs::File::open("providers/wasm.yaml").expect("Could not open file.");
+    let def: MonitorModuleDefinition = serde_yaml::from_str(&all_yml).expect("Could not read values.");
+    println!("{:?}", def);
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Cfg {
+    update_frequency_sec: u32,
+    num_threads: u32,
+    data_sources: Vec<String>,
+}
+
+// TODO -- start working on reading from yaml into this type of structure
+#[derive(Debug, Serialize, Deserialize)]
+struct MonitorModuleDefinition {
+    providers: Vec<Provider>
+}
+#[derive(Debug, Serialize, Deserialize)]
+struct Provider {
+    name: String,
+    bound_vars: Vec<String>,
+    bound_fns: Vec<(String, String)>,
+    packages: Vec<Package>
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Package {
+    name: String,
+    bound_vars: Vec<(String, String)>,
+    bound_fns: Vec<(String, String)>,
+    events: Vec<Event>
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Event {
+    name: String,
+    // can this be an enum?
+    category: String,  // TODO: remove
+    args: Option<Vec<String>>, // TODO: remove
+    imms: Vec<String>, // TODO: remove
+    bound_vars: Vec<(String, String)>,
+    bound_fns: Vec<(String, String)>,
+    supported_modes: Vec<String>,
+    req_map: bool,
+    docs: String
 }
