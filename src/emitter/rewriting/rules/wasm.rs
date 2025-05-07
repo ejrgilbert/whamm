@@ -5,7 +5,7 @@ use crate::for_each_opcode;
 use crate::generator::ast::{Probe, ReqArgs, WhammParam};
 use crate::parser::rules::core::WhammModeKind;
 use crate::parser::rules::wasm::{OpcodeEventKind, WasmPackageKind};
-use crate::parser::types::{BinOp, DataType, Definition, Expr, RulePart, Value};
+use crate::parser::types::{DataType, RulePart, Value};
 use log::warn;
 use orca_wasm::ir::id::{FunctionID, GlobalID, TypeID};
 use orca_wasm::ir::module::module_functions::{FuncKind, ImportedFunction, LocalFunction};
@@ -709,9 +709,6 @@ impl Event for OpcodeEvent {
                                     }
                                 }
                             }
-                            // other => if matches!(param.def(), Definition::CompilerStatic) {
-                            //     panic!("WhammParam not supported for opcode: {}", other);
-                            // }
                             _ => {}
                         }
                     }
@@ -783,9 +780,6 @@ impl Event for OpcodeEvent {
 
                                 define_imm_n(0, Some(Value::gen_u32(*fid)), &mut loc_info);
                             }
-                            // other => if matches!(param.def(), Definition::CompilerStatic) {
-                            //     panic!("WhammParam not supported for opcode: {}", other);
-                            // }
                             _ => {}
                         }
                     }
@@ -876,9 +870,6 @@ impl Event for OpcodeEvent {
 
                                 define_imm_n(0, Some(Value::gen_u32(*fid)), &mut loc_info);
                             }
-                            // other => if matches!(param.def(), Definition::CompilerStatic) {
-                            //     panic!("WhammParam not supported for opcode: {}", other);
-                            // }
                             _ => {}
                         }
                     }
@@ -1014,14 +1005,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args = create_memarg_globals(
-                        &all_params,
-                        &mut loc_info,
-                        0,
-                        *align,
-                        *offset,
-                        *memory,
-                    );
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1038,14 +1022,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args = create_memarg_globals(
-                        &all_params,
-                        &mut loc_info,
-                        0,
-                        *align,
-                        *offset,
-                        *memory,
-                    );
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1062,14 +1039,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args = create_memarg_globals(
-                        &all_params,
-                        &mut loc_info,
-                        0,
-                        *align,
-                        *offset,
-                        *memory,
-                    );
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1086,14 +1056,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args = create_memarg_globals(
-                        &all_params,
-                        &mut loc_info,
-                        0,
-                        *align,
-                        *offset,
-                        *memory,
-                    );
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1110,14 +1073,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args = create_memarg_globals(
-                        &all_params,
-                        &mut loc_info,
-                        0,
-                        *align,
-                        *offset,
-                        *memory,
-                    );
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1134,14 +1090,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args = create_memarg_globals(
-                        &all_params,
-                        &mut loc_info,
-                        0,
-                        *align,
-                        *offset,
-                        *memory,
-                    );
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1158,14 +1107,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args = create_memarg_globals(
-                        &all_params,
-                        &mut loc_info,
-                        0,
-                        *align,
-                        *offset,
-                        *memory,
-                    );
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1182,14 +1124,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args = create_memarg_globals(
-                        &all_params,
-                        &mut loc_info,
-                        0,
-                        *align,
-                        *offset,
-                        *memory,
-                    );
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1206,14 +1141,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args = create_memarg_globals(
-                        &all_params,
-                        &mut loc_info,
-                        0,
-                        *align,
-                        *offset,
-                        *memory,
-                    );
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1230,14 +1158,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args = create_memarg_globals(
-                        &all_params,
-                        &mut loc_info,
-                        0,
-                        *align,
-                        *offset,
-                        *memory,
-                    );
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1254,14 +1175,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args = create_memarg_globals(
-                        &all_params,
-                        &mut loc_info,
-                        0,
-                        *align,
-                        *offset,
-                        *memory,
-                    );
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1278,14 +1192,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args = create_memarg_globals(
-                        &all_params,
-                        &mut loc_info,
-                        0,
-                        *align,
-                        *offset,
-                        *memory,
-                    );
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1302,14 +1209,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args = create_memarg_globals(
-                        &all_params,
-                        &mut loc_info,
-                        0,
-                        *align,
-                        *offset,
-                        *memory,
-                    );
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1326,14 +1226,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args = create_memarg_globals(
-                        &all_params,
-                        &mut loc_info,
-                        0,
-                        *align,
-                        *offset,
-                        *memory,
-                    );
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1350,14 +1243,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args = create_memarg_globals(
-                        &all_params,
-                        &mut loc_info,
-                        1,
-                        *align,
-                        *offset,
-                        *memory,
-                    );
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1374,14 +1260,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args = create_memarg_globals(
-                        &all_params,
-                        &mut loc_info,
-                        1,
-                        *align,
-                        *offset,
-                        *memory,
-                    );
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1398,14 +1277,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args = create_memarg_globals(
-                        &all_params,
-                        &mut loc_info,
-                        1,
-                        *align,
-                        *offset,
-                        *memory,
-                    );
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1422,14 +1294,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args = create_memarg_globals(
-                        &all_params,
-                        &mut loc_info,
-                        1,
-                        *align,
-                        *offset,
-                        *memory,
-                    );
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1446,14 +1311,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args = create_memarg_globals(
-                        &all_params,
-                        &mut loc_info,
-                        1,
-                        *align,
-                        *offset,
-                        *memory,
-                    );
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1470,14 +1328,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args = create_memarg_globals(
-                        &all_params,
-                        &mut loc_info,
-                        1,
-                        *align,
-                        *offset,
-                        *memory,
-                    );
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1494,14 +1345,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args = create_memarg_globals(
-                        &all_params,
-                        &mut loc_info,
-                        1,
-                        *align,
-                        *offset,
-                        *memory,
-                    );
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1518,14 +1362,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args = create_memarg_globals(
-                        &all_params,
-                        &mut loc_info,
-                        1,
-                        *align,
-                        *offset,
-                        *memory,
-                    );
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -1542,14 +1379,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    req_args = create_memarg_globals(
-                        &all_params,
-                        &mut loc_info,
-                        1,
-                        *align,
-                        *offset,
-                        *memory,
-                    );
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -2438,27 +2268,15 @@ impl Event for OpcodeEvent {
             OpcodeEventKind::StructNew { .. } => {
                 if let Operator::StructNew { struct_type_index } = instr {
                     for param in all_params {
-                        match param {
-                            WhammParam::Imm { n, ty } => {
-                                assert_eq!(*n, 0);
-                                assert!(matches!(ty, DataType::U32));
+                        if let WhammParam::Imm { n, ty } = param {
+                            assert_eq!(*n, 0);
+                            assert!(matches!(ty, DataType::U32));
 
-                                define_imm_n(
-                                    0,
-                                    Some(Value::gen_u32(*struct_type_index)),
-                                    &mut loc_info,
-                                );
-                            }
-                            WhammParam::Tid => {
-                                loc_info.static_data.insert(
-                                    "tid".to_string(),
-                                    Some(Value::gen_u32(*struct_type_index)),
-                                );
-                            }
-                            // other => if matches!(param.def(), Definition::CompilerStatic) {
-                            //     panic!("WhammParam not supported for opcode: {}", other);
-                            // }
-                            _ => {}
+                            define_imm_n(
+                                0,
+                                Some(Value::gen_u32(*struct_type_index)),
+                                &mut loc_info,
+                            );
                         }
                     }
 
@@ -2469,27 +2287,15 @@ impl Event for OpcodeEvent {
             OpcodeEventKind::StructNewDefault { .. } => {
                 if let Operator::StructNewDefault { struct_type_index } = instr {
                     for param in all_params {
-                        match param {
-                            WhammParam::Imm { n, ty } => {
-                                assert_eq!(*n, 0);
-                                assert!(matches!(ty, DataType::U32));
+                        if let WhammParam::Imm { n, ty } = param {
+                            assert_eq!(*n, 0);
+                            assert!(matches!(ty, DataType::U32));
 
-                                define_imm_n(
-                                    0,
-                                    Some(Value::gen_u32(*struct_type_index)),
-                                    &mut loc_info,
-                                );
-                            }
-                            WhammParam::Tid => {
-                                loc_info.static_data.insert(
-                                    "tid".to_string(),
-                                    Some(Value::gen_u32(*struct_type_index)),
-                                );
-                            }
-                            // other => if matches!(param.def(), Definition::CompilerStatic) {
-                            //     panic!("WhammParam not supported for opcode: {}", other);
-                            // }
-                            _ => {}
+                            define_imm_n(
+                                0,
+                                Some(Value::gen_u32(*struct_type_index)),
+                                &mut loc_info,
+                            );
                         }
                     }
 
@@ -2504,41 +2310,19 @@ impl Event for OpcodeEvent {
                 } = instr
                 {
                     for param in all_params {
-                        match param {
-                            WhammParam::Imm { n, ty } => {
-                                assert!(matches!(ty, DataType::U32));
-                                if *n == 0 {
-                                    define_imm_n(
-                                        *n,
-                                        Some(Value::gen_u32(*struct_type_index)),
-                                        &mut loc_info,
-                                    );
-                                } else if *n == 1 {
-                                    define_imm_n(
-                                        *n,
-                                        Some(Value::gen_u32(*field_index)),
-                                        &mut loc_info,
-                                    );
-                                } else {
-                                    panic!("WhammParam not available for opcode: {}", param);
-                                }
-                            }
-                            WhammParam::Tid => {
-                                loc_info.static_data.insert(
-                                    "tid".to_string(),
+                        if let WhammParam::Imm { n, ty } = param {
+                            assert!(matches!(ty, DataType::U32));
+                            if *n == 0 {
+                                define_imm_n(
+                                    *n,
                                     Some(Value::gen_u32(*struct_type_index)),
+                                    &mut loc_info,
                                 );
+                            } else if *n == 1 {
+                                define_imm_n(*n, Some(Value::gen_u32(*field_index)), &mut loc_info);
+                            } else {
+                                panic!("WhammParam not available for opcode: {}", param);
                             }
-                            WhammParam::FieldIdx => {
-                                loc_info.static_data.insert(
-                                    "field_idx".to_string(),
-                                    Some(Value::gen_u32(*field_index)),
-                                );
-                            }
-                            // other => if matches!(param.def(), Definition::CompilerStatic) {
-                            //     panic!("WhammParam not supported for opcode: {}", other);
-                            // }
-                            _ => {}
                         }
                     }
 
@@ -2553,41 +2337,19 @@ impl Event for OpcodeEvent {
                 } = instr
                 {
                     for param in all_params {
-                        match param {
-                            WhammParam::Imm { n, ty } => {
-                                assert!(matches!(ty, DataType::U32));
-                                if *n == 0 {
-                                    define_imm_n(
-                                        *n,
-                                        Some(Value::gen_u32(*struct_type_index)),
-                                        &mut loc_info,
-                                    );
-                                } else if *n == 1 {
-                                    define_imm_n(
-                                        *n,
-                                        Some(Value::gen_u32(*field_index)),
-                                        &mut loc_info,
-                                    );
-                                } else {
-                                    panic!("WhammParam not available for opcode: {}", param);
-                                }
-                            }
-                            WhammParam::Tid => {
-                                loc_info.static_data.insert(
-                                    "tid".to_string(),
+                        if let WhammParam::Imm { n, ty } = param {
+                            assert!(matches!(ty, DataType::U32));
+                            if *n == 0 {
+                                define_imm_n(
+                                    *n,
                                     Some(Value::gen_u32(*struct_type_index)),
+                                    &mut loc_info,
                                 );
+                            } else if *n == 1 {
+                                define_imm_n(*n, Some(Value::gen_u32(*field_index)), &mut loc_info);
+                            } else {
+                                panic!("WhammParam not available for opcode: {}", param);
                             }
-                            WhammParam::FieldIdx => {
-                                loc_info.static_data.insert(
-                                    "field_idx".to_string(),
-                                    Some(Value::gen_u32(*field_index)),
-                                );
-                            }
-                            // other => if matches!(param.def(), Definition::CompilerStatic) {
-                            //     panic!("WhammParam not supported for opcode: {}", other);
-                            // }
-                            _ => {}
                         }
                     }
 
@@ -2602,41 +2364,19 @@ impl Event for OpcodeEvent {
                 } = instr
                 {
                     for param in all_params {
-                        match param {
-                            WhammParam::Imm { n, ty } => {
-                                assert!(matches!(ty, DataType::U32));
-                                if *n == 0 {
-                                    define_imm_n(
-                                        *n,
-                                        Some(Value::gen_u32(*struct_type_index)),
-                                        &mut loc_info,
-                                    );
-                                } else if *n == 1 {
-                                    define_imm_n(
-                                        *n,
-                                        Some(Value::gen_u32(*field_index)),
-                                        &mut loc_info,
-                                    );
-                                } else {
-                                    panic!("WhammParam not available for opcode: {}", param);
-                                }
-                            }
-                            WhammParam::Tid => {
-                                loc_info.static_data.insert(
-                                    "tid".to_string(),
+                        if let WhammParam::Imm { n, ty } = param {
+                            assert!(matches!(ty, DataType::U32));
+                            if *n == 0 {
+                                define_imm_n(
+                                    *n,
                                     Some(Value::gen_u32(*struct_type_index)),
+                                    &mut loc_info,
                                 );
+                            } else if *n == 1 {
+                                define_imm_n(*n, Some(Value::gen_u32(*field_index)), &mut loc_info);
+                            } else {
+                                panic!("WhammParam not available for opcode: {}", param);
                             }
-                            WhammParam::FieldIdx => {
-                                loc_info.static_data.insert(
-                                    "field_idx".to_string(),
-                                    Some(Value::gen_u32(*field_index)),
-                                );
-                            }
-                            // other => if matches!(param.def(), Definition::CompilerStatic) {
-                            //     panic!("WhammParam not supported for opcode: {}", other);
-                            // }
-                            _ => {}
                         }
                     }
 
@@ -2651,41 +2391,19 @@ impl Event for OpcodeEvent {
                 } = instr
                 {
                     for param in all_params {
-                        match param {
-                            WhammParam::Imm { n, ty } => {
-                                assert!(matches!(ty, DataType::U32));
-                                if *n == 0 {
-                                    define_imm_n(
-                                        *n,
-                                        Some(Value::gen_u32(*struct_type_index)),
-                                        &mut loc_info,
-                                    );
-                                } else if *n == 1 {
-                                    define_imm_n(
-                                        *n,
-                                        Some(Value::gen_u32(*field_index)),
-                                        &mut loc_info,
-                                    );
-                                } else {
-                                    panic!("WhammParam not available for opcode: {}", param);
-                                }
-                            }
-                            WhammParam::Tid => {
-                                loc_info.static_data.insert(
-                                    "tid".to_string(),
+                        if let WhammParam::Imm { n, ty } = param {
+                            assert!(matches!(ty, DataType::U32));
+                            if *n == 0 {
+                                define_imm_n(
+                                    *n,
                                     Some(Value::gen_u32(*struct_type_index)),
+                                    &mut loc_info,
                                 );
+                            } else if *n == 1 {
+                                define_imm_n(*n, Some(Value::gen_u32(*field_index)), &mut loc_info);
+                            } else {
+                                panic!("WhammParam not available for opcode: {}", param);
                             }
-                            WhammParam::FieldIdx => {
-                                loc_info.static_data.insert(
-                                    "field_idx".to_string(),
-                                    Some(Value::gen_u32(*field_index)),
-                                );
-                            }
-                            // other => if matches!(param.def(), Definition::CompilerStatic) {
-                            //     panic!("WhammParam not supported for opcode: {}", other);
-                            // }
-                            _ => {}
                         }
                     }
 
@@ -2696,27 +2414,11 @@ impl Event for OpcodeEvent {
             OpcodeEventKind::ArrayNew { .. } => {
                 if let Operator::ArrayNew { array_type_index } = instr {
                     for param in all_params {
-                        match param {
-                            WhammParam::Imm { n, ty } => {
-                                assert_eq!(*n, 0);
-                                assert!(matches!(ty, DataType::U32));
+                        if let WhammParam::Imm { n, ty } = param {
+                            assert_eq!(*n, 0);
+                            assert!(matches!(ty, DataType::U32));
 
-                                define_imm_n(
-                                    0,
-                                    Some(Value::gen_u32(*array_type_index)),
-                                    &mut loc_info,
-                                );
-                            }
-                            WhammParam::Tid => {
-                                loc_info.static_data.insert(
-                                    "tid".to_string(),
-                                    Some(Value::gen_u32(*array_type_index)),
-                                );
-                            }
-                            // other => if matches!(param.def(), Definition::CompilerStatic) {
-                            //     panic!("WhammParam not supported for opcode: {}", other);
-                            // }
-                            _ => {}
+                            define_imm_n(0, Some(Value::gen_u32(*array_type_index)), &mut loc_info);
                         }
                     }
 
@@ -2727,27 +2429,11 @@ impl Event for OpcodeEvent {
             OpcodeEventKind::ArrayNewDefault { .. } => {
                 if let Operator::ArrayNewDefault { array_type_index } = instr {
                     for param in all_params {
-                        match param {
-                            WhammParam::Imm { n, ty } => {
-                                assert_eq!(*n, 0);
-                                assert!(matches!(ty, DataType::U32));
+                        if let WhammParam::Imm { n, ty } = param {
+                            assert_eq!(*n, 0);
+                            assert!(matches!(ty, DataType::U32));
 
-                                define_imm_n(
-                                    0,
-                                    Some(Value::gen_u32(*array_type_index)),
-                                    &mut loc_info,
-                                );
-                            }
-                            WhammParam::Tid => {
-                                loc_info.static_data.insert(
-                                    "tid".to_string(),
-                                    Some(Value::gen_u32(*array_type_index)),
-                                );
-                            }
-                            // other => if matches!(param.def(), Definition::CompilerStatic) {
-                            //     panic!("WhammParam not supported for opcode: {}", other);
-                            // }
-                            _ => {}
+                            define_imm_n(0, Some(Value::gen_u32(*array_type_index)), &mut loc_info);
                         }
                     }
 
@@ -2762,35 +2448,19 @@ impl Event for OpcodeEvent {
                 } = instr
                 {
                     for param in all_params {
-                        match param {
-                            WhammParam::Imm { n, ty } => {
-                                assert!(matches!(ty, DataType::U32));
-                                if *n == 0 {
-                                    define_imm_n(
-                                        *n,
-                                        Some(Value::gen_u32(*array_type_index)),
-                                        &mut loc_info,
-                                    );
-                                } else if *n == 1 {
-                                    define_imm_n(
-                                        *n,
-                                        Some(Value::gen_u32(*array_size)),
-                                        &mut loc_info,
-                                    );
-                                } else {
-                                    panic!("WhammParam not available for opcode: {}", param);
-                                }
-                            }
-                            WhammParam::Tid => {
-                                loc_info.static_data.insert(
-                                    "tid".to_string(),
+                        if let WhammParam::Imm { n, ty } = param {
+                            assert!(matches!(ty, DataType::U32));
+                            if *n == 0 {
+                                define_imm_n(
+                                    *n,
                                     Some(Value::gen_u32(*array_type_index)),
+                                    &mut loc_info,
                                 );
+                            } else if *n == 1 {
+                                define_imm_n(*n, Some(Value::gen_u32(*array_size)), &mut loc_info);
+                            } else {
+                                panic!("WhammParam not available for opcode: {}", param);
                             }
-                            // other => if matches!(param.def(), Definition::CompilerStatic) {
-                            //     panic!("WhammParam not supported for opcode: {}", other);
-                            // }
-                            _ => {}
                         }
                     }
 
@@ -2805,35 +2475,23 @@ impl Event for OpcodeEvent {
                 } = instr
                 {
                     for param in all_params {
-                        match param {
-                            WhammParam::Imm { n, ty } => {
-                                assert!(matches!(ty, DataType::U32));
-                                if *n == 0 {
-                                    define_imm_n(
-                                        *n,
-                                        Some(Value::gen_u32(*array_type_index)),
-                                        &mut loc_info,
-                                    );
-                                } else if *n == 1 {
-                                    define_imm_n(
-                                        *n,
-                                        Some(Value::gen_u32(*array_data_index)),
-                                        &mut loc_info,
-                                    );
-                                } else {
-                                    panic!("WhammParam not available for opcode: {}", param);
-                                }
-                            }
-                            WhammParam::Tid => {
-                                loc_info.static_data.insert(
-                                    "tid".to_string(),
+                        if let WhammParam::Imm { n, ty } = param {
+                            assert!(matches!(ty, DataType::U32));
+                            if *n == 0 {
+                                define_imm_n(
+                                    *n,
                                     Some(Value::gen_u32(*array_type_index)),
+                                    &mut loc_info,
                                 );
+                            } else if *n == 1 {
+                                define_imm_n(
+                                    *n,
+                                    Some(Value::gen_u32(*array_data_index)),
+                                    &mut loc_info,
+                                );
+                            } else {
+                                panic!("WhammParam not available for opcode: {}", param);
                             }
-                            // other => if matches!(param.def(), Definition::CompilerStatic) {
-                            //     panic!("WhammParam not supported for opcode: {}", other);
-                            // }
-                            _ => {}
                         }
                     }
 
@@ -2848,35 +2506,23 @@ impl Event for OpcodeEvent {
                 } = instr
                 {
                     for param in all_params {
-                        match param {
-                            WhammParam::Imm { n, ty } => {
-                                assert!(matches!(ty, DataType::U32));
-                                if *n == 0 {
-                                    define_imm_n(
-                                        *n,
-                                        Some(Value::gen_u32(*array_type_index)),
-                                        &mut loc_info,
-                                    );
-                                } else if *n == 1 {
-                                    define_imm_n(
-                                        *n,
-                                        Some(Value::gen_u32(*array_elem_index)),
-                                        &mut loc_info,
-                                    );
-                                } else {
-                                    panic!("WhammParam not available for opcode: {}", param);
-                                }
-                            }
-                            WhammParam::Tid => {
-                                loc_info.static_data.insert(
-                                    "tid".to_string(),
+                        if let WhammParam::Imm { n, ty } = param {
+                            assert!(matches!(ty, DataType::U32));
+                            if *n == 0 {
+                                define_imm_n(
+                                    *n,
                                     Some(Value::gen_u32(*array_type_index)),
+                                    &mut loc_info,
                                 );
+                            } else if *n == 1 {
+                                define_imm_n(
+                                    *n,
+                                    Some(Value::gen_u32(*array_elem_index)),
+                                    &mut loc_info,
+                                );
+                            } else {
+                                panic!("WhammParam not available for opcode: {}", param);
                             }
-                            // other => if matches!(param.def(), Definition::CompilerStatic) {
-                            //     panic!("WhammParam not supported for opcode: {}", other);
-                            // }
-                            _ => {}
                         }
                     }
 
@@ -2887,26 +2533,10 @@ impl Event for OpcodeEvent {
             OpcodeEventKind::ArrayGet { .. } => {
                 if let Operator::ArrayGet { array_type_index } = instr {
                     for param in all_params {
-                        match param {
-                            WhammParam::Imm { n, ty } => {
-                                assert_eq!(*n, 0);
-                                assert!(matches!(ty, DataType::U32));
-                                define_imm_n(
-                                    0,
-                                    Some(Value::gen_u32(*array_type_index)),
-                                    &mut loc_info,
-                                );
-                            }
-                            WhammParam::Tid => {
-                                loc_info.static_data.insert(
-                                    "tid".to_string(),
-                                    Some(Value::gen_u32(*array_type_index)),
-                                );
-                            }
-                            // other => if matches!(param.def(), Definition::CompilerStatic) {
-                            //     panic!("WhammParam not supported for opcode: {}", other);
-                            // }
-                            _ => {}
+                        if let WhammParam::Imm { n, ty } = param {
+                            assert_eq!(*n, 0);
+                            assert!(matches!(ty, DataType::U32));
+                            define_imm_n(0, Some(Value::gen_u32(*array_type_index)), &mut loc_info);
                         }
                     }
 
@@ -2917,26 +2547,10 @@ impl Event for OpcodeEvent {
             OpcodeEventKind::ArrayGetS { .. } => {
                 if let Operator::ArrayGetS { array_type_index } = instr {
                     for param in all_params {
-                        match param {
-                            WhammParam::Imm { n, ty } => {
-                                assert_eq!(*n, 0);
-                                assert!(matches!(ty, DataType::U32));
-                                define_imm_n(
-                                    0,
-                                    Some(Value::gen_u32(*array_type_index)),
-                                    &mut loc_info,
-                                );
-                            }
-                            WhammParam::Tid => {
-                                loc_info.static_data.insert(
-                                    "tid".to_string(),
-                                    Some(Value::gen_u32(*array_type_index)),
-                                );
-                            }
-                            // other => if matches!(param.def(), Definition::CompilerStatic) {
-                            //     panic!("WhammParam not supported for opcode: {}", other);
-                            // }
-                            _ => {}
+                        if let WhammParam::Imm { n, ty } = param {
+                            assert_eq!(*n, 0);
+                            assert!(matches!(ty, DataType::U32));
+                            define_imm_n(0, Some(Value::gen_u32(*array_type_index)), &mut loc_info);
                         }
                     }
 
@@ -2947,26 +2561,10 @@ impl Event for OpcodeEvent {
             OpcodeEventKind::ArrayGetU { .. } => {
                 if let Operator::ArrayGetU { array_type_index } = instr {
                     for param in all_params {
-                        match param {
-                            WhammParam::Imm { n, ty } => {
-                                assert_eq!(*n, 0);
-                                assert!(matches!(ty, DataType::U32));
-                                define_imm_n(
-                                    0,
-                                    Some(Value::gen_u32(*array_type_index)),
-                                    &mut loc_info,
-                                );
-                            }
-                            WhammParam::Tid => {
-                                loc_info.static_data.insert(
-                                    "tid".to_string(),
-                                    Some(Value::gen_u32(*array_type_index)),
-                                );
-                            }
-                            // other => if matches!(param.def(), Definition::CompilerStatic) {
-                            //     panic!("WhammParam not supported for opcode: {}", other);
-                            // }
-                            _ => {}
+                        if let WhammParam::Imm { n, ty } = param {
+                            assert_eq!(*n, 0);
+                            assert!(matches!(ty, DataType::U32));
+                            define_imm_n(0, Some(Value::gen_u32(*array_type_index)), &mut loc_info);
                         }
                     }
 
@@ -2977,26 +2575,10 @@ impl Event for OpcodeEvent {
             OpcodeEventKind::ArraySet { .. } => {
                 if let Operator::ArraySet { array_type_index } = instr {
                     for param in all_params {
-                        match param {
-                            WhammParam::Imm { n, ty } => {
-                                assert_eq!(*n, 0);
-                                assert!(matches!(ty, DataType::U32));
-                                define_imm_n(
-                                    0,
-                                    Some(Value::gen_u32(*array_type_index)),
-                                    &mut loc_info,
-                                );
-                            }
-                            WhammParam::Tid => {
-                                loc_info.static_data.insert(
-                                    "tid".to_string(),
-                                    Some(Value::gen_u32(*array_type_index)),
-                                );
-                            }
-                            // other => if matches!(param.def(), Definition::CompilerStatic) {
-                            //     panic!("WhammParam not supported for opcode: {}", other);
-                            // }
-                            _ => {}
+                        if let WhammParam::Imm { n, ty } = param {
+                            assert_eq!(*n, 0);
+                            assert!(matches!(ty, DataType::U32));
+                            define_imm_n(0, Some(Value::gen_u32(*array_type_index)), &mut loc_info);
                         }
                     }
 
@@ -3013,26 +2595,10 @@ impl Event for OpcodeEvent {
             OpcodeEventKind::ArrayFill { .. } => {
                 if let Operator::ArrayFill { array_type_index } = instr {
                     for param in all_params {
-                        match param {
-                            WhammParam::Imm { n, ty } => {
-                                assert_eq!(*n, 0);
-                                assert!(matches!(ty, DataType::U32));
-                                define_imm_n(
-                                    0,
-                                    Some(Value::gen_u32(*array_type_index)),
-                                    &mut loc_info,
-                                );
-                            }
-                            WhammParam::Tid => {
-                                loc_info.static_data.insert(
-                                    "tid".to_string(),
-                                    Some(Value::gen_u32(*array_type_index)),
-                                );
-                            }
-                            // other => if matches!(param.def(), Definition::CompilerStatic) {
-                            //     panic!("WhammParam not supported for opcode: {}", other);
-                            // }
-                            _ => {}
+                        if let WhammParam::Imm { n, ty } = param {
+                            assert_eq!(*n, 0);
+                            assert!(matches!(ty, DataType::U32));
+                            define_imm_n(0, Some(Value::gen_u32(*array_type_index)), &mut loc_info);
                         }
                     }
 
@@ -3078,35 +2644,23 @@ impl Event for OpcodeEvent {
                 } = instr
                 {
                     for param in all_params {
-                        match param {
-                            WhammParam::Imm { n, ty } => {
-                                assert!(matches!(ty, DataType::U32));
-                                if *n == 0 {
-                                    define_imm_n(
-                                        *n,
-                                        Some(Value::gen_u32(*array_type_index)),
-                                        &mut loc_info,
-                                    );
-                                } else if *n == 1 {
-                                    define_imm_n(
-                                        *n,
-                                        Some(Value::gen_u32(*array_data_index)),
-                                        &mut loc_info,
-                                    );
-                                } else {
-                                    panic!("WhammParam not available for opcode: {}", param);
-                                }
-                            }
-                            WhammParam::Tid => {
-                                loc_info.static_data.insert(
-                                    "tid".to_string(),
+                        if let WhammParam::Imm { n, ty } = param {
+                            assert!(matches!(ty, DataType::U32));
+                            if *n == 0 {
+                                define_imm_n(
+                                    *n,
                                     Some(Value::gen_u32(*array_type_index)),
+                                    &mut loc_info,
                                 );
+                            } else if *n == 1 {
+                                define_imm_n(
+                                    *n,
+                                    Some(Value::gen_u32(*array_data_index)),
+                                    &mut loc_info,
+                                );
+                            } else {
+                                panic!("WhammParam not available for opcode: {}", param);
                             }
-                            // other => if matches!(param.def(), Definition::CompilerStatic) {
-                            //     panic!("WhammParam not supported for opcode: {}", other);
-                            // }
-                            _ => {}
                         }
                     }
 
@@ -3121,35 +2675,23 @@ impl Event for OpcodeEvent {
                 } = instr
                 {
                     for param in all_params {
-                        match param {
-                            WhammParam::Imm { n, ty } => {
-                                assert!(matches!(ty, DataType::U32));
-                                if *n == 0 {
-                                    define_imm_n(
-                                        *n,
-                                        Some(Value::gen_u32(*array_type_index)),
-                                        &mut loc_info,
-                                    );
-                                } else if *n == 1 {
-                                    define_imm_n(
-                                        *n,
-                                        Some(Value::gen_u32(*array_elem_index)),
-                                        &mut loc_info,
-                                    );
-                                } else {
-                                    panic!("WhammParam not available for opcode: {}", param);
-                                }
-                            }
-                            WhammParam::Tid => {
-                                loc_info.static_data.insert(
-                                    "tid".to_string(),
+                        if let WhammParam::Imm { n, ty } = param {
+                            assert!(matches!(ty, DataType::U32));
+                            if *n == 0 {
+                                define_imm_n(
+                                    *n,
                                     Some(Value::gen_u32(*array_type_index)),
+                                    &mut loc_info,
                                 );
+                            } else if *n == 1 {
+                                define_imm_n(
+                                    *n,
+                                    Some(Value::gen_u32(*array_elem_index)),
+                                    &mut loc_info,
+                                );
+                            } else {
+                                panic!("WhammParam not available for opcode: {}", param);
                             }
-                            // other => if matches!(param.def(), Definition::CompilerStatic) {
-                            //     panic!("WhammParam not supported for opcode: {}", other);
-                            // }
-                            _ => {}
                         }
                     }
 
@@ -3158,17 +2700,25 @@ impl Event for OpcodeEvent {
                 }
             }
             OpcodeEventKind::RefTest { .. } => {
-                if let Operator::RefTestNonNull { hty: _ } | Operator::RefTestNullable { hty: _ } =
-                    instr
-                {
+                if let Operator::RefTestNonNull { hty: _ } = instr {
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::RefTestNull { .. } => {
+                if let Operator::RefTestNullable { hty: _ } = instr {
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
             }
             OpcodeEventKind::RefCast { .. } => {
-                if let Operator::RefCastNonNull { hty: _ } | Operator::RefCastNullable { hty: _ } =
-                    instr
-                {
+                if let Operator::RefCastNonNull { hty: _ } = instr {
+                    // add the probes for this event
+                    loc_info.add_probes(self.probe_rule(), &self.probes);
+                }
+            }
+            OpcodeEventKind::RefCastNull { .. } => {
+                if let Operator::RefCastNullable { hty: _ } = instr {
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
                 }
@@ -3492,7 +3042,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 0, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3509,7 +3059,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 0, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3526,7 +3076,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 0, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3549,7 +3099,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 0, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3566,7 +3116,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 0, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3583,7 +3133,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 0, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3600,7 +3150,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 0, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3617,7 +3167,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 0, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3634,7 +3184,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 0, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3651,7 +3201,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 0, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3668,7 +3218,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3685,7 +3235,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3702,7 +3252,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3719,7 +3269,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3736,7 +3286,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3753,7 +3303,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3770,7 +3320,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3787,7 +3337,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3804,7 +3354,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3821,7 +3371,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3838,7 +3388,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3855,7 +3405,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3872,7 +3422,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3889,7 +3439,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3906,7 +3456,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3923,7 +3473,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3940,7 +3490,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3957,7 +3507,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3974,7 +3524,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -3991,7 +3541,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4008,7 +3558,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4025,7 +3575,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4042,7 +3592,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4059,7 +3609,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4076,7 +3626,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4093,7 +3643,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4110,7 +3660,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4127,7 +3677,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4144,7 +3694,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4161,7 +3711,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4178,7 +3728,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4195,7 +3745,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4212,7 +3762,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4229,7 +3779,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4246,7 +3796,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4263,7 +3813,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4280,7 +3830,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4297,7 +3847,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4314,7 +3864,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4331,7 +3881,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4348,7 +3898,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4365,7 +3915,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4382,7 +3932,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4399,7 +3949,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4416,7 +3966,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4433,7 +3983,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4450,7 +4000,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4467,7 +4017,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4484,7 +4034,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4501,7 +4051,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4518,7 +4068,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4535,7 +4085,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4552,7 +4102,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4569,7 +4119,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4586,7 +4136,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4603,7 +4153,7 @@ impl Event for OpcodeEvent {
                         },
                 } = instr
                 {
-                    create_memarg_globals(&all_params, &mut loc_info, 1, *align, *offset, *memory);
+                    create_memarg_globals(&all_params, &mut loc_info, *align, *offset, *memory);
 
                     // add the probes for this event
                     loc_info.add_probes(self.probe_rule(), &self.probes);
@@ -4721,12 +4271,10 @@ impl Event for OpcodeEvent {
 fn create_memarg_globals(
     all_params: &HashSet<&WhammParam>,
     loc_info: &mut LocInfo,
-    addr_arg: u32,
     align: u8,
     offset: u64,
     memory: u32,
-) -> ReqArgs {
-    let mut req_args = ReqArgs::None;
+) {
     for param in all_params {
         match param {
             WhammParam::Align => {
@@ -4744,50 +4292,9 @@ fn create_memarg_globals(
                     .static_data
                     .insert("memory".to_string(), Some(Value::gen_u32(memory)));
             }
-            WhammParam::Addr => {
-                req_args = ReqArgs::FirstN { n: addr_arg };
-                loc_info.add_dynamic_assign(
-                    "addr".to_string(),
-                    DataType::U32,
-                    Expr::VarId {
-                        definition: Definition::CompilerDynamic,
-                        name: format!("arg{addr_arg}"),
-                        loc: None,
-                    },
-                );
-            }
-            WhammParam::EffectiveAddr => {
-                req_args = ReqArgs::FirstN { n: addr_arg };
-                // only have to add to offset if it's nonzero!
-                if offset != 0 {
-                    loc_info.add_dynamic_assign(
-                        "effective_addr".to_string(),
-                        DataType::U32,
-                        Expr::BinOp {
-                            lhs: Box::new(Expr::VarId {
-                                definition: Definition::CompilerDynamic,
-                                name: format!("arg{addr_arg}"),
-                                loc: None,
-                            }),
-                            op: BinOp::Add,
-                            rhs: Box::new(Expr::Primitive {
-                                val: Value::gen_u32(offset as u32),
-                                loc: None,
-                            }),
-                            done_on: DataType::U32,
-                            loc: None,
-                        },
-                    );
-                } else {
-                    loc_info
-                        .static_data
-                        .insert("effective_addr".to_string(), Some(Value::gen_u64(offset)));
-                }
-            }
             _ => {}
         }
     }
-    req_args
 }
 
 fn define_imm_n(n: u32, val: Option<Value>, loc_info: &mut LocInfo) {

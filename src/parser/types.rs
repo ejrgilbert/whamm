@@ -1255,7 +1255,7 @@ impl Expr {
     pub fn implicit_cast(&mut self, target: &DataType) -> Result<(), (String, bool)> {
         match self.internal_implicit_cast(target) {
             Err(msg) => Err((
-                format!("CastError: Cannot implicitly cast {msg}. Please add an explicit cast."),
+                format!("CastError: Cannot implicitly cast {msg} to {target}. Please add an explicit cast."),
                 false,
             )),
             _ => Ok(()),
@@ -1348,10 +1348,13 @@ pub enum Definition {
     User,
     CompilerStatic,
     CompilerDynamic,
+    CompilerDerived,
 }
 impl Definition {
     pub fn is_comp_provided(&self) -> bool {
-        matches!(self, Definition::CompilerStatic) || matches!(self, Definition::CompilerDynamic)
+        matches!(self, Definition::CompilerStatic)
+            || matches!(self, Definition::CompilerDynamic)
+            || matches!(self, Definition::CompilerDerived)
     }
 }
 
@@ -1944,6 +1947,7 @@ pub struct ProvidedGlobal {
     pub docs: String,
     pub global: Global,
     pub value: Option<Value>,
+    pub derived_from: Option<Expr>,
 }
 impl ProvidedGlobal {
     pub fn new(
@@ -1951,31 +1955,32 @@ impl ProvidedGlobal {
         docs: String,
         ty: DataType,
         value: Option<Value>,
+        derived_from: Option<Expr>,
         is_static: bool,
     ) -> Self {
+        let def = if is_static {
+            Definition::CompilerStatic
+        } else if derived_from.is_some() {
+            Definition::CompilerDerived
+        } else {
+            Definition::CompilerDynamic
+        };
         Self {
             name: name.clone(),
             docs,
             global: Global {
-                def: if is_static {
-                    Definition::CompilerStatic
-                } else {
-                    Definition::CompilerDynamic
-                },
+                def: def.clone(),
                 report: false,
                 ty,
                 var_name: Expr::VarId {
-                    definition: if is_static {
-                        Definition::CompilerStatic
-                    } else {
-                        Definition::CompilerDynamic
-                    },
+                    definition: def,
                     name,
                     loc: None,
                 },
                 value: None,
             },
             value,
+            derived_from,
         }
     }
 }
