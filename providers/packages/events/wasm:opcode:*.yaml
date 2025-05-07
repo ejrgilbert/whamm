@@ -10,8 +10,44 @@ argN: &argN
   docs: The argument to the call at the specific index, [0:9]+. (For example, the number of arguments to a call changes based on the targeted function.)
   derived_from: none
 
-arg0: &arg0_u32
+arg0_i32: &arg0_i32
   name: arg0
+  type: i32
+  docs: The argument to the opcode at index 0.
+  derived_from: none
+
+arg0_u32: &arg0_u32
+  name: arg0
+  type: u32
+  docs: The argument to the opcode at index 0.
+  derived_from: none
+
+arg0_i64: &arg0_i64
+  name: arg0
+  type: i64
+  docs: The argument to the opcode at index 0.
+  derived_from: none
+
+arg0_f32: &arg0_f32
+  name: arg0
+  type: f32
+  docs: The argument to the opcode at index 0.
+  derived_from: none
+
+arg0_f64: &arg0_f64
+  name: arg0
+  type: f64
+  docs: The argument to the opcode at index 0.
+  derived_from: none
+
+arg0_unknown: &arg0_unknown
+  name: arg0
+  type: unknown
+  docs: The argument to the opcode at index 0.
+  derived_from: none
+
+arg1_u32: &arg1_u32
+  name: arg1
   type: u32
   docs: The argument to the opcode at index 0.
   derived_from: none
@@ -20,7 +56,47 @@ arg0: &arg0_u32
 # ==== immN Constants ====
 # ========================
 
+immN: &immN
+  name: imm[0:9]+
+  type: unknown
+  docs: The immediate to the opcode at the specific index, e.g. [0:9]+, not including the default target. The number of immediates on the br_table is not statically known.
+  derived_from: none
 
+imm0_i32: &imm0_i32
+  name: imm0
+  type: i32
+  docs: The immediate to the opcode at index 0.
+  derived_from: none
+
+imm0_u32: &imm0_u32
+  name: imm0
+  type: u32
+  docs: The immediate to the opcode at index 0.
+  derived_from: none
+
+imm0_i64: &imm0_i64
+  name: imm0
+  type: i64
+  docs: The immediate to the opcode at index 0.
+  derived_from: none
+
+imm0_f32: &imm0_f32
+  name: imm0
+  type: f32
+  docs: The immediate to the opcode at index 0.
+  derived_from: none
+
+imm0_f64: &imm0_f64
+  name: imm0
+  type: f64
+  docs: The immediate to the opcode at index 0.
+  derived_from: none
+
+imm1_u32: &imm1_u32
+  name: imm1
+  type: u32
+  docs: The immediate to the opcode at index 1.
+  derived_from: none
 
 # ============================
 # ==== Category Constants ====
@@ -207,17 +283,106 @@ category_name_table: &category_name_table
 # ==== MODE Constants ====
 # ========================
 
+before: &before
+  name: before
+  docs: This mode will cause the instrumentation logic to run *before* the probed event (if the predicate evaluates to `true`).
+after: &after
+  name: after
+  docs:  This mode will cause the instrumentation logic to run *after* the probed event (if the predicate evaluates to `true`). For block-structured opcodes, the probe will be injected after the 'end' of the block.
+semantic_after: &semantic_after
+  name: semantic_after
+  docs: This mode will cause the instrumentation logic to run *semantically after* the instrumented location, meaning it will find the target point in the bytecode that will be executed *after* the point is reached (consider blocks and br* opcodes).
+alt: &alt
+  name: alt
+  docs: This mode will cause the instrumentation logic to run *instead of* the probed event (if the predicate evaluates to `true`).
+block_alt: &block_alt
+  name: block_alt
+  docs: This mode will cause the instrumentation logic to run *instead of* the probed block (if the predicate evaluates to `true`).
+entry: &entry
+  name: entry
+  docs: This mode will cause the instrumentation logic to run *on entry* to the instrumentation point (e.g. functions bodies, blocks, etc.).
+exit: &exit
+  name: exit
+  docs: This mode will cause the instrumentation logic to run *on exiting* to the instrumentation point (e.g. function bodies, blocks, etc.).
+
 default_modes: &default_modes
-  - before
-  - after
-  - alt
+  - *before
+  - *after
+  - *alt
+default_modes_no_alt: &default_modes_no_alt
+  - *before
+  - *after
 block_modes: &block_modes
-  - before
+  - *before
   # TODO: alias semantic_after to after
-  - semantic_after
-  - block_alt
-  - entry
-  - exit
+  - *semantic_after
+  # TODO: alias block_alt to alt
+  - *block_alt
+  - *entry
+  - *exit
+branching_modes: &branching_modes
+  - *before
+  - *after
+  - *alt
+  # TODO: alias semantic_after to at_target
+  - *semantic_after
+
+# ==========================
+# ==== *call* Constants ====
+# ==========================
+
+target_imp_module: &target_imp_module
+  name: target_imp_module
+  type: str
+  docs: The name of the module that the imported function comes from. To improve performance, pair with `target_fn_type == "import"` for faster short-circuiting.
+  derived_from: null
+target_fn_name: &target_fn_name
+  name: target_fn_name
+  type: str
+  docs: The function name of the call target. Local functions get this from the custom section, imports from the import name. To improve performance for imports, pair with `target_fn_type == "import"` for faster short-circuiting.
+  derived_from: null
+target_fn_type: &target_fn_type
+  name: target_fn_type
+  type: str
+  docs: The type of function being called at this call site. This constant will evaluate to either `local` or `import`.
+  derived_from: null
+alt_call_by_id: &alt_call_by_id
+  name: alt_call_by_id
+  params: "(func_id: i32)"
+  results: ()
+  req_args: -1
+  docs: Insert an alternate call (targeting the passed function ID) into the Wasm bytecode. Will also emit the original parameters onto the stack.
+alt_call_by_name: &alt_call_by_name
+  name: alt_call_by_name
+  params: "(func_name: str)"
+  results: ()
+  req_args: -1
+  docs: Insert an alternate call (targeting the passed function name) into the Wasm bytecode. Will also emit the original parameters onto the stack.
+
+# ==========================
+# ==== MemArg Constants ====
+# ==========================
+
+memory: &memory
+  name: memory
+  type: u32
+  docs: The ID of memory to load from.
+  derived_from: null
+align: &align
+  name: align
+  type: u32
+  docs: The alignment of the load.
+  derived_from: null
+effective_addr: &effective_addr
+  name: effective_addr
+  type: u32
+  docs: "The address in memory that will be loaded from, shorthand for: `arg0 + offset`"
+  derived_from: arg0 + offset
+offset: &offset
+  name: offset
+  type: u64
+  docs: The static offset of the load's target address.
+  derived_from: null
 
 # =======================
 # ==== wasm:opcode:* ====
@@ -229,7 +394,9 @@ unreachable: &unreachable
     - *category_id_misc
     - *category_name_misc
   bound_fns: []
-  supported_modes: [ alt, before ]
+  supported_modes:
+  - *alt
+  - *before
   req_map: false
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/unreachable"
 
@@ -265,22 +432,6 @@ loop: &loop
   req_map: false
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/loop"
 
-
-# TODO:
-#pub struct ProvidedGlobal {
-#    pub name: String,
-#    pub docs: String,
-#    pub global: Global,
-#    pub value: Option<Value>,
-#    pub derived_from: Option<Expr>,
-#}
-#pub struct ProvidedFunction {
-#  pub name: String,
-#  pub docs: String,
-#  pub function: Fn,
-#  pub req_args: ReqArgs,
-#}
-
 if: &if
   name: if
   bound_vars:
@@ -302,3 +453,924 @@ else: &else
   req_map: false
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"
 
+try_table: &try_table
+  name: try_table
+  bound_vars:
+    - *category_id_table
+    - *category_name_table
+  bound_fns: []
+  supported_modes: *block_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/exception-handling/blob/e7c7c313d26f6b0fe8f1bda33cd6ab5e9edd838b/proposals/exception-handling/Exceptions.md#try-blocks"
+
+throw: &throw
+  name: throw
+  bound_vars:
+    - *category_id_exn
+    - *category_name_exn
+    - *argN
+    - *imm0_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/exception-handling/blob/e7c7c313d26f6b0fe8f1bda33cd6ab5e9edd838b/proposals/exception-handling/Exceptions.md#throwing-an-exception"
+
+throw_ref: &throw_ref
+  name: throw_ref
+  bound_vars:
+    - *category_id_exn
+    - *category_name_exn
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/exception-handling/blob/e7c7c313d26f6b0fe8f1bda33cd6ab5e9edd838b/proposals/exception-handling/Exceptions.md#rethrowing-an-exception"
+
+end: &end
+  name: end
+  bound_vars:
+    - *category_id_control
+    - *category_name_control
+  bound_fns: []
+  supported_modes: *default_modes_no_alt
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/end"
+
+br: &br
+  name: br
+  bound_vars:
+    - *category_id_control
+    - *category_name_control
+    - *imm0_u32
+  bound_fns: []
+  supported_modes: *branching_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
+
+br_if: &br_if
+  name: br_if
+  bound_vars:
+    - *category_id_control
+    - *category_name_control
+    - *arg0_u32
+    - *imm0_u32
+  bound_fns: []
+  supported_modes: *branching_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
+
+br_table: &br_table
+  name: br_table
+  bound_vars:
+    - *category_id_control
+    - *category_name_control
+    - *arg0_u32
+    - *immN
+    - name: targets
+      type: map<u32, u32>
+      docs: "The NON-DEFAULT target branches for this br_table instruction represented as a map. The map follows the pattern: [0->imm0, 1->imm1, .. N->immN]."
+      derived_from: null
+    - name: default_target
+      type: u32
+      docs: The default target of this br_table instruction.
+      derived_from: null
+    - name: num_targets
+      type: u32
+      docs: "The number of NON-DEFAULT target branches for this br_table instruction (correlates with the number of immediates, e.g. `immN`).This means the total number of targets is really num_targets + 1, to include the default target. NOTE: This can be used in a predicate to ensure that the current br_table has the immN you need to interact with for the probe."
+      derived_from: null
+  bound_fns: []
+  supported_modes: *branching_modes
+  req_map: false
+  docs: "https://musteresel.github.io/posts/2020/01/webassembly-text-br_table-example.html"
+
+return: &return
+  name: return
+  bound_vars:
+    - *category_id_control
+    - *category_name_control
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/return"
+
+
+call: &call
+  name: call
+  bound_vars:
+    - *category_id_control
+    - *category_name_control
+    - *argN
+    - *imm0_u32
+    - *target_imp_module
+    - *target_fn_name
+    - *target_fn_type
+  bound_fns:
+    - *alt_call_by_id
+    - *alt_call_by_name
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call"
+
+call_indirect: &call_indirect
+  name: call_indirect
+  bound_vars:
+    - *category_id_control
+    - *category_name_control
+    - *argN
+    - *imm0_u32
+    - *imm1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call"
+
+return_call: &return_call
+  name: return_call
+  bound_vars:
+    - *category_id_control
+    - *category_name_control
+    - *argN
+    - *imm0_u32
+    - *target_imp_module
+    - *target_fn_name
+    - *target_fn_type
+  bound_fns:
+    - *alt_call_by_id
+    - *alt_call_by_name
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call"
+
+return_call_indirect: &return_call_indirect
+  name: return_call_indirect
+  bound_vars:
+    - *category_id_control
+    - *category_name_control
+    - *argN
+    - *imm0_u32
+    - *imm1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call"
+
+drop: &drop
+  name: drop
+  bound_vars:
+    - *category_id_misc
+    - *category_name_misc
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/Drop"
+
+select: &select
+  name: select
+  bound_vars:
+    - *category_id_control
+    - *category_name_control
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/Select"
+
+# TODO -- support pulling the type!
+#         TypedSelect { ty: $crate::ValType } => visit_typed_select
+typed_select: &typed_select
+  name: typed_select
+  bound_vars:
+    - *category_id_control
+    - *category_name_control
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/Select"
+
+local_get: &local_get
+  name: local_get
+  bound_vars:
+    - *category_id_local
+    - *category_name_local
+    - *imm0_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_get"
+
+local_set: &local_set
+  name: local_set
+  bound_vars:
+    - *category_id_local
+    - *category_name_local
+    - *arg0_unknown
+    - *imm0_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_set"
+
+local_tee: &local_tee
+  name: local_tee
+  bound_vars:
+    - *category_id_local
+    - *category_name_local
+    - *arg0_unknown
+    - *imm0_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_tee"
+
+global_get: &global_get
+  name: global_get
+  bound_vars:
+    - *category_id_global
+    - *category_name_global
+    - *imm0_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Global_get"
+
+global_set: &global_set
+  name: global_set
+  bound_vars:
+    - *category_id_global
+    - *category_name_global
+    - *arg0_unknown
+    - *imm0_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Global_set"
+
+i32_load: &i32_load
+  name: i32.load
+  bound_vars:
+    - *category_id_load
+    - *category_name_load
+    - *arg0_u32
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - name: data_size
+      type: u32
+      derived_from: 4
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      docs: The memory address argument passed to the opcode.
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+
+i64_load: &i64_load
+  name: i64.load
+  bound_vars:
+    - *category_id_load
+    - *category_name_load
+    - *arg0_u32
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - name: data_size
+      type: u32
+      derived_from: 8
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      docs: The memory address argument passed to the opcode.
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+
+f32_load: &f32_load
+  name: f32.load
+  bound_vars:
+    - *category_id_load
+    - *category_name_load
+    - *arg0_u32
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - name: data_size
+      type: u32
+      derived_from: 4
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      docs: The memory address argument passed to the opcode.
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+
+f64_load: &f64_load
+  name: f64.load
+  bound_vars:
+    - *category_id_load
+    - *category_name_load
+    - *arg0_u32
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - name: data_size
+      type: u32
+      derived_from: 8
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      docs: The memory address argument passed to the opcode.
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+
+i32_load8_s: &i32_load8_s
+  name: i32.load8_s
+  bound_vars:
+    - *category_id_load
+    - *category_name_load
+    - *arg0_u32
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - name: data_size
+      type: u32
+      derived_from: 1
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      docs: The memory address argument passed to the opcode.
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+
+i32_load8_u: &i32_load8_u
+  name: i32.load8_u
+  bound_vars:
+    - *category_id_load
+    - *category_name_load
+    - *arg0_u32
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - name: data_size
+      type: u32
+      derived_from: 1
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      docs: The memory address argument passed to the opcode.
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+
+i32_load16_s: &i32_load16_s
+  name: i32.load16_s
+  bound_vars:
+    - *category_id_load
+    - *category_name_load
+    - *arg0_u32
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - name: data_size
+      type: u32
+      derived_from: 2
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      docs: The memory address argument passed to the opcode.
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+
+i32_load16_u: &i32_load16_u
+  name: i32.load16_u
+  bound_vars:
+    - *category_id_load
+    - *category_name_load
+    - *arg0_u32
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - name: data_size
+      type: u32
+      derived_from: 2
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      docs: The memory address argument passed to the opcode.
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+
+i64_load8_s: &i64_load8_s
+  name: i64.load8_s
+  bound_vars:
+    - *category_id_load
+    - *category_name_load
+    - *arg0_u32
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - name: data_size
+      type: u32
+      derived_from: 1
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      docs: The memory address argument passed to the opcode.
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+
+i64_load8_u: &i64_load8_u
+  name: i64.load8_u
+  bound_vars:
+    - *category_id_load
+    - *category_name_load
+    - *arg0_u32
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - name: data_size
+      type: u32
+      derived_from: 1
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      docs: The memory address argument passed to the opcode.
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+
+i64_load16_s: &i64_load16_s
+  name: i64.load16_s
+  bound_vars:
+    - *category_id_load
+    - *category_name_load
+    - *arg0_u32
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - name: data_size
+      type: u32
+      derived_from: 2
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      docs: The memory address argument passed to the opcode.
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+
+i64_load16_u: &i64_load16_u
+  name: i64.load16_u
+  bound_vars:
+    - *category_id_load
+    - *category_name_load
+    - *arg0_u32
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - name: data_size
+      type: u32
+      derived_from: 2
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      docs: The memory address argument passed to the opcode.
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+
+i64_load32_s: &i64_load32_s
+  name: i64.load32_s
+  bound_vars:
+    - *category_id_load
+    - *category_name_load
+    - *arg0_u32
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - name: data_size
+      type: u32
+      derived_from: 4
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      docs: The memory address argument passed to the opcode.
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+
+i64_load32_u: &i64_load32_u
+  name: i64.load32_u
+  bound_vars:
+    - *category_id_load
+    - *category_name_load
+    - *arg0_u32
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - name: data_size
+      type: u32
+      derived_from: 4
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      docs: The memory address argument passed to the opcode.
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
+
+i32_store: &i32_store
+  name: i32.store
+  bound_vars:
+    - *category_id_store
+    - *category_name_store
+    - *arg0_i32
+    - *arg1_u32
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - name: data_size
+      type: u32
+      derived_from: 4
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      docs: The memory address argument passed to the opcode.
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
+
+i64_store: &i64_store
+  name: i64.store
+  bound_vars:
+    - *category_id_store
+    - *category_name_store
+    - *arg0_i64
+    - *arg1_u32
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - name: data_size
+      type: u32
+      derived_from: 8
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      docs: The memory address argument passed to the opcode.
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
+
+f32_store: &f32_store
+  name: f32.store
+  bound_vars:
+    - *category_id_store
+    - *category_name_store
+    - *arg0_f32
+    - *arg1_u32
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - name: data_size
+      type: u32
+      derived_from: 4
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      docs: The memory address argument passed to the opcode.
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
+
+f64_store: &f64_store
+  name: f64.store
+  bound_vars:
+    - *category_id_store
+    - *category_name_store
+    - *arg0_f64
+    - *arg1_u32
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - name: data_size
+      type: u32
+      derived_from: 8
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      docs: The memory address argument passed to the opcode.
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
+
+i32_store8: &i32_store8
+  name: i32.store8
+  bound_vars:
+    - *category_id_store
+    - *category_name_store
+    - *arg0_i32
+    - *arg1_u32
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - name: data_size
+      type: u32
+      derived_from: 1
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      docs: The memory address argument passed to the opcode.
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
+
+i32_store16: &i32_store16
+  name: i32.store16
+  bound_vars:
+    - *category_id_store
+    - *category_name_store
+    - *arg0_i32
+    - *arg1_u32
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - name: data_size
+      type: u32
+      derived_from: 2
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      docs: The memory address argument passed to the opcode.
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
+
+i64_store8: &i64_store8
+  name: i64.store8
+  bound_vars:
+    - *category_id_store
+    - *category_name_store
+    - *arg0_i64
+    - *arg1_u32
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - name: data_size
+      type: u32
+      derived_from: 1
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      docs: The memory address argument passed to the opcode.
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
+
+
+i64_store16: &i64_store16
+  name: i64.store16
+  bound_vars:
+    - *category_id_store
+    - *category_name_store
+    - *arg0_i64
+    - *arg1_u32
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - name: data_size
+      type: u32
+      derived_from: 2
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      docs: The memory address argument passed to the opcode.
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
+
+i64_store32: &i64_store32
+  name: i64.store32
+  bound_vars:
+    - *category_id_store
+    - *category_name_store
+    - *arg0_i64
+    - *arg1_u32
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - name: data_size
+      type: u32
+      derived_from: 4
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      docs: The memory address argument passed to the opcode.
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
+
+memory_size: &memory_size
+  name: memory.size
+  bound_vars:
+    - *category_id_memory
+    - *category_name_memory
+    - *imm0_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Size"
+
+memory_grow: &memory_grow
+  name: memory.grow
+  bound_vars:
+    - *category_id_memory
+    - *category_name_memory
+    - *arg0_u32
+    - *imm0_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Grow"
+
+i32_const: &i32_const
+  name: i32.const
+  bound_vars:
+    - *category_id_const
+    - *category_name_const
+    - *imm0_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Const"
+
+i64_const: &i64_const
+  name: i64.const
+  bound_vars:
+    - *category_id_const
+    - *category_name_const
+    - *imm0_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Const"
+
+f32_const: &f32_const
+  name: f32.const
+  bound_vars:
+    - *category_id_const
+    - *category_name_const
+    - *imm0_f32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Const"
+
+f64_const: &f64_const
+  name: f64.const
+  bound_vars:
+    - *category_id_const
+    - *category_name_const
+    - *imm0_f64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Const"
+
+# TODO -- support pulling heaptype
+#     RefNull { hty: $crate::HeapType } => visit_ref_null
+ref_null: &ref_null
+  name: ref.null
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+
+# TODO -- support argN
+ref_is_null: &ref_is_null
+  name: ref.is_null
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+
+ref_func: &ref_func
+  name: ref.func
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+    - *imm0_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+
+ref_eq: &ref_eq
+  name: ref.eq
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+
+i32_eqz: &i32_eqz
+  name: i32.eqz
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Equal"
+
+
+
+
+#($($op:ident, $category:expr, $name:ident, $args:expr, $imms:expr, $globals:expr, $fns:expr, $supported_modes:expr, $req_map:expr, $docs:expr)*) => {

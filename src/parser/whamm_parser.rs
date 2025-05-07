@@ -10,11 +10,16 @@ use pest::error::{Error, LineColLocation};
 use pest::iterators::{Pair, Pairs};
 use pest::Parser;
 use std::str::FromStr;
+use crate::parser::provider_handler::yml_to_providers;
 
 const UNEXPECTED_ERR_MSG: &str =
     "WhammParser: Looks like you've found a bug...please report this behavior! Exiting now...";
 
 pub fn print_info(rule: String, print_globals: bool, print_functions: bool, err: &mut ErrorGen) {
+    let def = yml_to_providers("./");
+    assert!(!def.is_empty());
+
+    // old implementation:
     trace!("Entered print_info");
     err.set_script_text(rule.to_owned());
 

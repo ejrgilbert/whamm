@@ -1071,6 +1071,9 @@ macro_rules! for_each_opcode {
     RefIsNull, Gc, ref_is_null, None, vec![], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
     RefFunc, Gc, ref_func, Some(vec![]), vec![(DataType::U32, 1)], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
     RefEq, Gc, ref_eq, None, vec![], get_unknown_args_globals(), vec![], WhammModeKind::default_modes(), false, "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+
+
+    // TODO: START FROM HERE
     I32Eqz, Compare, i32_eqz, Some(vec![DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Equal"
     I32Eq, Compare, i32_eq, Some(vec![DataType::I32, DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Equal"
     I32Ne, Compare, i32_ne, Some(vec![DataType::I32, DataType::I32]), vec![], HashMap::new(), vec![], WhammModeKind::default_modes(), false, "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Not_equal"
