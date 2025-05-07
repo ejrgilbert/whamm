@@ -75,7 +75,7 @@ jobs:
           which v3c
           
           echo "[INFO] Building 'wizeng'..."
-          git clone --branch task/add-num_targets https://github.com/ejrgilbert/wizard-engine.git
+          git clone https://github.com/titzer/wizard-engine.git
           pushd wizard-engine
           make -j
           popd
