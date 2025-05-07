@@ -1438,23 +1438,8 @@ pub(crate) fn print_fns(tabs: &mut usize, functions: &[ProvidedFunction], buffer
     }
 }
 
-pub type ProvidedProbes = HashMap<
-    String,
-    (
-        ProvidedFunctionality,
-        HashMap<
-            String,
-            (
-                ProvidedFunctionality,
-                HashMap<String, (ProvidedFunctionality, Vec<(ProvidedFunctionality, String)>)>,
-            ),
-        >,
-    ),
->;
-
 #[derive(Default)]
 pub struct Whamm {
-    pub provided_probes: ProvidedProbes,
     pub fns: Vec<ProvidedFunction>,               // Comp-provided
     pub globals: HashMap<String, ProvidedGlobal>, // Comp-provided
 
@@ -1463,7 +1448,6 @@ pub struct Whamm {
 impl Whamm {
     pub fn new() -> Self {
         Whamm {
-            provided_probes: HashMap::new(),
             fns: Whamm::get_provided_fns(),
             globals: Whamm::get_provided_globals(),
 
@@ -1936,11 +1920,6 @@ impl Script {
     }
 }
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct ProvidedFunctionality {
-    pub name: String,
-    pub docs: String,
-}
 #[derive(Clone, Debug)]
 pub struct ProvidedGlobal {
     pub name: String,
