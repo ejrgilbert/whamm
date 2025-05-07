@@ -1,19 +1,19 @@
-use crate::parser::types as parser_types;
-use crate::verifier::builder_visitor::parser_types::Location;
-use crate::verifier::types::{Record, ScopeType, SymbolTable};
-use crate::verifier::verifier::check_duplicate_id;
-use parser_types::{BinOp, Block, DataType, Expr, Fn, Script, Statement, UnOp, Value, Whamm};
-use std::collections::HashMap;
-
 use crate::common::error::ErrorGen;
 use crate::generator::ast::ReqArgs;
 use crate::parser::rules::{Event, Package, Probe, Provider};
+use crate::parser::types as parser_types;
 use crate::parser::types::{
     Definition, FnId, Global, ProvidedFunction, ProvidedGlobal, WhammVisitorMut,
 };
+use crate::verifier::builder_visitor::parser_types::Location;
+use crate::verifier::types::{Record, ScopeType, SymbolTable};
+use crate::verifier::verifier::check_duplicate_id;
+use itertools::Itertools;
 use log::trace;
 use orca_wasm::ir::id::FunctionID;
 use orca_wasm::Module;
+use parser_types::{BinOp, Block, DataType, Expr, Fn, Script, Statement, UnOp, Value, Whamm};
+use std::collections::{HashMap, HashSet};
 use wasmparser::ExternalKind;
 
 const UNEXPECTED_ERR_MSG: &str = "SymbolTableBuilder: Looks like you've found a bug...please report this behavior! Exiting now...";
@@ -29,6 +29,11 @@ pub struct SymbolTableBuilder<'a, 'b, 'c> {
     pub curr_event: Option<usize>,  // indexes into this::table::records
     pub curr_probe: Option<usize>,  // indexes into this::table::records
     pub curr_fn: Option<usize>,     // indexes into this::table::records
+
+    // track the derived variables that need to be defined
+    pub aliases: HashMap<String, String>,
+    pub used_derived_vars: HashSet<String>,
+    pub derived_vars: HashMap<String, (DataType, Expr)>,
 
     // bookkeeping for providedfunctions
     pub req_args: ReqArgs,
@@ -538,17 +543,43 @@ impl SymbolTableBuilder<'_, '_, '_> {
         self.add_global_id_to_curr_rec(id);
     }
 
-    fn visit_provided_globals(&mut self, globals: &HashMap<String, ProvidedGlobal>) {
-        for (name, ProvidedGlobal { global, value, .. }) in globals.iter() {
-            self.add_global(
-                global.ty.clone(),
-                name.clone(),
-                value.clone(),
-                global.def.clone(),
-                false,
-                None,
-            );
+    fn visit_provided_globals(
+        &mut self,
+        globals: &HashMap<String, ProvidedGlobal>,
+    ) -> (HashMap<String, String>, HashMap<String, (DataType, Expr)>) {
+        let mut aliases = HashMap::new();
+        let mut derived = HashMap::new();
+        for (
+            name,
+            ProvidedGlobal {
+                global,
+                value,
+                derived_from,
+                ..
+            },
+        ) in globals.iter()
+        {
+            if let Some(derived_from) = derived_from {
+                if let Expr::VarId { name: alias, .. } = derived_from {
+                    // this is a simple alias!
+                    aliases.insert(name.clone(), alias.clone());
+                } else {
+                    // Add derived globals to the probe body itself (to calculate the value)
+                    derived.insert(name.clone(), (global.ty.clone(), derived_from.clone()));
+                }
+            } else {
+                // Add other globals to the scope itself
+                self.add_global(
+                    global.ty.clone(),
+                    name.clone(),
+                    value.clone(),
+                    global.def.clone(),
+                    false,
+                    None,
+                );
+            }
         }
+        (aliases, derived)
     }
 }
 
@@ -583,13 +614,16 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
         );
 
         // visit globals
-        self.visit_provided_globals(&whamm.globals);
+        (self.aliases, self.derived_vars) = self.visit_provided_globals(&whamm.globals);
 
         // visit scripts
         whamm
             .scripts
             .iter_mut()
             .for_each(|script| self.visit_script(script));
+
+        self.aliases.clear();
+        self.derived_vars.clear();
 
         trace!("Exiting: visit_whamm");
         self.curr_whamm = None;
@@ -656,10 +690,21 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
                 self.visit_fn(function);
             },
         );
-        self.visit_provided_globals(provider.get_provided_globals());
+        let (prov_aliases, prov_derived_vars) =
+            self.visit_provided_globals(provider.get_provided_globals());
+        let to_remove_alias = prov_aliases.keys().cloned().collect_vec();
+        let to_remove_vars = prov_derived_vars.keys().cloned().collect_vec();
+        self.aliases.extend(prov_aliases.clone());
+        self.derived_vars.extend(prov_derived_vars.clone());
         provider
             .packages_mut()
             .for_each(|package| self.visit_package(package));
+        for var in to_remove_alias.iter() {
+            self.aliases.remove(var);
+        }
+        for var in to_remove_vars.iter() {
+            self.derived_vars.remove(var);
+        }
 
         trace!("Exiting: visit_provider");
         self.table.exit_scope(self.err);
@@ -678,10 +723,21 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
                 self.visit_fn(function);
             },
         );
-        self.visit_provided_globals(package.get_provided_globals());
+        let (pack_aliases, pack_derived_vars) =
+            self.visit_provided_globals(package.get_provided_globals());
+        let to_remove_alias = pack_aliases.keys().cloned().collect_vec();
+        let to_remove_vars = pack_derived_vars.keys().cloned().collect_vec();
+        self.aliases.extend(pack_aliases.clone());
+        self.derived_vars.extend(pack_derived_vars.clone());
         package
             .events_mut()
             .for_each(|event| self.visit_event(event));
+        for var in to_remove_alias.iter() {
+            self.aliases.remove(var);
+        }
+        for var in to_remove_vars.iter() {
+            self.derived_vars.remove(var);
+        }
 
         trace!("Exiting: visit_package");
         self.table.exit_scope(self.err);
@@ -700,14 +756,24 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
                 self.visit_fn(function);
             },
         );
-        self.visit_provided_globals(event.get_provided_globals());
-
+        let (ev_aliases, ev_derived_vars) =
+            self.visit_provided_globals(event.get_provided_globals());
+        let to_remove_alias = ev_aliases.keys().cloned().collect_vec();
+        let to_remove_vars = ev_derived_vars.keys().cloned().collect_vec();
+        self.aliases.extend(ev_aliases.clone());
+        self.derived_vars.extend(ev_derived_vars.clone());
         // visit probe_map
         event.probes_mut().iter_mut().for_each(|probes| {
             probes.1.iter_mut().for_each(|probe| {
                 self.visit_probe(probe);
             });
         });
+        for var in to_remove_alias.iter() {
+            self.aliases.remove(var);
+        }
+        for var in to_remove_vars.iter() {
+            self.derived_vars.remove(var);
+        }
 
         trace!("Exiting: visit_event");
         self.table.exit_scope(self.err);
@@ -726,9 +792,61 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
                 self.visit_fn(function);
             },
         );
-        self.visit_provided_globals(probe.get_mode_provided_globals());
+        let (probe_aliases, probe_derived_vars) =
+            self.visit_provided_globals(probe.get_mode_provided_globals());
+        let to_remove_alias = probe_aliases.keys().cloned().collect_vec();
+        let to_remove_vars = probe_derived_vars.keys().cloned().collect_vec();
+        self.aliases.extend(probe_aliases.clone());
+        self.derived_vars.extend(probe_derived_vars.clone());
 
         // Will not visit predicate/body at this stage
+        // visit the predicate/body to handle aliases and derived variables!
+        if let Some(predicate) = &mut probe.predicate_mut() {
+            self.visit_expr(predicate);
+        }
+
+        // Add the derived variables as new variables at the top of the probe body!
+        if let Some(body) = probe.body_mut() {
+            self.visit_block(body);
+
+            for (var, (ty, expr)) in self.derived_vars.iter() {
+                if self.used_derived_vars.contains(var) {
+                    // Only define a derived variable if it's used!
+                    body.stmts.insert(
+                        0,
+                        Statement::Decl {
+                            ty: ty.clone(),
+                            var_id: Expr::VarId {
+                                definition: Definition::CompilerDerived,
+                                name: var.clone(),
+                                loc: None,
+                            },
+                            loc: None,
+                        },
+                    );
+                    body.stmts.insert(
+                        1,
+                        Statement::Assign {
+                            var_id: Expr::VarId {
+                                definition: Definition::CompilerDerived,
+                                name: var.clone(),
+                                loc: None,
+                            },
+                            expr: expr.clone(),
+                            loc: None,
+                        },
+                    );
+                }
+            }
+        }
+
+        for var in to_remove_alias.iter() {
+            self.aliases.remove(var);
+        }
+        for var in to_remove_vars.iter() {
+            self.derived_vars.remove(var);
+        }
+        self.used_derived_vars.clear();
 
         trace!("Exiting: visit_probe");
         self.table.exit_scope(self.err);
@@ -757,93 +875,153 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
         trace!("Exiting: visit_formal_param");
     }
 
-    fn visit_block(&mut self, _block: &mut Block) {
-        // Not visiting Blocks
-        self.err
-            .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+    fn visit_block(&mut self, block: &mut Block) {
+        for stmt in block.stmts.iter_mut() {
+            self.visit_stmt(stmt);
+        }
     }
 
     fn visit_stmt(&mut self, stmt: &mut Statement) {
-        if self.curr_provider.is_some()
-            || self.curr_package.is_some()
-            || self.curr_event.is_some()
-            || self.curr_probe.is_some()
+        if self.curr_provider.is_none()
+            && self.curr_package.is_none()
+            && self.curr_event.is_none()
+            && self.curr_probe.is_none()
         {
-            panic!(
-                "{} \
-            Only global script statements should be visited!",
-                UNEXPECTED_ERR_MSG
-            );
-        }
-        let mut is_report_var = false;
-        let stmt = match &stmt {
-            Statement::UnsharedDecl {
-                decl, is_report, ..
-            } => {
-                is_report_var = *is_report;
-                &**decl
-            }
-            _ => stmt,
-        };
-        match stmt {
-            Statement::LibImport { lib_name, loc, .. } => {
-                self.add_user_lib(lib_name, loc);
-            }
-            Statement::Decl {
-                ty, var_id, loc, ..
-            } => {
-                if let Expr::VarId {
-                    name, definition, ..
-                } = &var_id
-                {
-                    // Add symbol to table
-                    self.add_global(
-                        ty.clone(),
-                        name.clone(),
-                        None,
-                        definition.clone(),
-                        is_report_var,
-                        loc.clone(),
-                    );
-                } else {
-                    panic!(
-                        "{} \
-                Variable declaration var_id is not the correct Expr variant!!",
-                        UNEXPECTED_ERR_MSG
-                    );
+            // in the global scope!
+
+            let mut is_report_var = false;
+            let stmt = match &stmt {
+                Statement::UnsharedDecl {
+                    decl, is_report, ..
+                } => {
+                    is_report_var = *is_report;
+                    &**decl
                 }
+                _ => stmt,
+            };
+            match stmt {
+                Statement::LibImport { lib_name, loc, .. } => {
+                    self.add_user_lib(lib_name, loc);
+                }
+                Statement::Decl {
+                    ty, var_id, loc, ..
+                } => {
+                    if let Expr::VarId {
+                        name, definition, ..
+                    } = &var_id
+                    {
+                        // Add symbol to table
+                        self.add_global(
+                            ty.clone(),
+                            name.clone(),
+                            None,
+                            definition.clone(),
+                            is_report_var,
+                            loc.clone(),
+                        );
+                    } else {
+                        panic!(
+                            "{} \
+                Variable declaration var_id is not the correct Expr variant!!",
+                            UNEXPECTED_ERR_MSG
+                        );
+                    }
+                }
+                _ => {}
             }
-            _ => {}
+        } else {
+            // in a probe, we just want to handle aliases and derived variables in this case
+            // so we only will visit statements that may contain an expression to handle
+            match stmt {
+                Statement::Assign { expr, .. } => {
+                    self.visit_expr(expr);
+                }
+                Statement::SetMap { map, key, val, .. } => {
+                    self.visit_expr(map);
+                    self.visit_expr(key);
+                    self.visit_expr(val);
+                }
+                Statement::Expr { expr, .. } => {
+                    self.visit_expr(expr);
+                }
+                Statement::Return { expr, .. } => {
+                    self.visit_expr(expr);
+                }
+                Statement::If {
+                    cond, conseq, alt, ..
+                } => {
+                    self.visit_expr(cond);
+                    self.visit_block(conseq);
+                    self.visit_block(alt);
+                }
+                Statement::UnsharedDecl { .. }
+                | Statement::LibImport { .. }
+                | Statement::Decl { .. } => {}
+            }
         }
     }
 
-    fn visit_expr(&mut self, _call: &mut Expr) {
-        // Not visiting predicates/statements
-        self.err
-            .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+    fn visit_expr(&mut self, expr: &mut Expr) {
+        match expr {
+            Expr::VarId { name, .. } => {
+                // see if this is an alias or derived var!
+                if let Some(alias) = self.aliases.get(name) {
+                    // this is an alias!
+                    *name = alias.clone();
+                } else if self.derived_vars.contains_key(name) {
+                    self.used_derived_vars.insert(name.clone());
+                }
+            }
+            Expr::UnOp { expr, .. } => {
+                self.visit_expr(expr);
+            }
+            Expr::Ternary {
+                cond, conseq, alt, ..
+            } => {
+                self.visit_expr(cond);
+                self.visit_expr(conseq);
+                self.visit_expr(alt);
+            }
+            Expr::BinOp { lhs, rhs, .. } => {
+                self.visit_expr(lhs);
+                self.visit_expr(rhs);
+            }
+            Expr::Call {
+                fn_target, args, ..
+            } => {
+                self.visit_expr(fn_target);
+                for arg in args.iter_mut() {
+                    self.visit_expr(arg);
+                }
+            }
+            Expr::LibCall { call, .. } => {
+                self.visit_expr(call);
+            }
+            Expr::Primitive { .. } => {}
+            Expr::MapGet { map, key, .. } => {
+                self.visit_expr(map);
+                self.visit_expr(key);
+            }
+        }
     }
 
     fn visit_unop(&mut self, _unop: &mut UnOp) {
         // Not visiting predicates/statements
-        self.err
-            .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+        panic!("{UNEXPECTED_ERR_MSG}");
     }
 
     fn visit_binop(&mut self, _binop: &mut BinOp) {
         // Not visiting predicates/statements
-        self.err
-            .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+        panic!("{UNEXPECTED_ERR_MSG}");
     }
 
     fn visit_datatype(&mut self, _datatype: &mut DataType) {
         // Not visiting predicates/statements
-        self.err
-            .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+        panic!("{UNEXPECTED_ERR_MSG}");
     }
 
     fn visit_value(&mut self, _val: &mut Value) {
         // Not visiting predicates/statements
-        self.err
-            .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+        panic!("{UNEXPECTED_ERR_MSG}");
     }
 }
