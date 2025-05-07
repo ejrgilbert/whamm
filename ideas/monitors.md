@@ -1,0 +1,29 @@
+# Monitors TODO #
+
+- [ ] GRP
+- [ ] path profiling
+- [ ] call stack
+- [ ] calls: Tallies direct and indirect calls.
+- [ ] blocks: Tallies basic block counts per function.
+- [ ] breakpoints: Triggers an external debugger (e.g. gdb) at specified points.
+- [ ] const: Tracks constants in various places in the program.
+- [ ] control: Tallies execution counts and shows a control-flow graph.
+- [ ] coverage: Tallies instruction and basic block coverage.
+- [ ] debug: An interactive synchronous debugger with breakpoints and stepping.
+- [ ] fprofile: Reports execution time spent in individual functions.
+- [ ] globals: Tallies reads and writes to Wasm globals.
+- [ ] icount: Tallies instruction counts per function.
+- [ ] loops: Tallies counts of loops.
+- [ ] memstats: Tallies stats on memory accesses.
+- [ ] opcodes: Tallies static and dynamic counts of each Wasm opcode.
+- [ ] profile: Reports execution time for entire calling context trees.
+- [ ] profile_bytecode: Recovers source level information from bytecode execution
+- [ ] r3: Generates a reduced set of event traces for wasm r3 replay module creation.
+- [ ] r3-replay:     Replays a module from an R3 trace file.
+- [ ] timeout: Enforces a limit on the number of instructions executed.
+- [ ] tracepoints: Traces value stack at given points.
+- [x] branches: Tallies direct and indirect branches.
+- [x] hotness: Tallies "hot" execution path counts.
+- [x] icount: Tallies the total number of instructions that ran during program execution.
+- [x] cache simulator: Simulates a cache lookup per memory operation
+- [x] imix: classifies each Wasm instruction and outputs a trace of instruction classes for offline analysis.

@@ -22,3 +22,16 @@ This type of variable actually attaches its scope to the function that an event 
 Meaning, that for all probe bodies executing inside a specific function, they all have access to that function's `frame` variables.
 The implementation for bytecode rewriting would be straightforward since it can just be a Wasm `local` variable.
 However, the implementation in Wizard would be a bit more complex since we would need a new datastructure to store the state that hangs off a function.
+
+Another example:
+```
+wasm:func:entry {
+    frame var start: u32;
+    start = time.now();
+}
+wasm:func:exit {
+    frame var start: u32;
+    report var profiles: vec<u32>;
+    profiles.push(time.now() - start);
+}
+```
