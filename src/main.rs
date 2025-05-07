@@ -165,15 +165,17 @@ struct MonitorModuleDefinition {
 struct Provider {
     name: String,
     bound_vars: Vec<BoundVar>,
-    bound_fns: Vec<(String, String)>,
-    packages: Vec<Package>,
+    bound_fns: Vec<BoundFunc>,
+    docs: String,
+    packages: Vec<Package>
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Package {
     name: String,
     bound_vars: Vec<BoundVar>,
-    bound_fns: Vec<(String, String)>,
+    bound_fns: Vec<BoundFunc>,
+    docs: String,
     events: Vec<Event>,
 }
 
@@ -182,8 +184,8 @@ struct Event {
     name: String,
     bound_vars: Vec<BoundVar>,
     bound_fns: Vec<BoundFunc>,
-    supported_modes: Vec<String>,
-    req_map: bool,
+    supported_modes: Vec<Mode>,
+    req_map: bool,      // TODO: Remove this...maybe make it request a list of libraries?
     docs: String,
 }
 
@@ -193,10 +195,20 @@ struct BoundVar {
     docs: String,
     #[serde(rename = "type")]
     ty: String,
-    derived_from: String
+    derived_from: Option<String>
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 struct BoundFunc {
+    name: String,
+    params: String,
+    results: String,
+    req_args: i32,      // TODO: Remove this...it's wasm opcode specific...
+    docs: String
+}
 
+#[derive(Debug, Serialize, Deserialize)]
+struct Mode {
+    name: String,
+    docs: String
 }
