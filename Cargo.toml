@@ -29,7 +29,7 @@ pest_derive = "2.7.7"
 
 # Provider YAML configs
 serde = { version = "1.0", features = ["derive"] }
-serde_yaml = "0.9.34"
+serde_yml = "0.0.12"
 
 # CLI
 clap = { version = "4.5.4", features = ["derive", "cargo", "env"] }

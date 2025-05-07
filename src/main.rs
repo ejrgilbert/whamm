@@ -1,7 +1,7 @@
 extern crate core;
 
-use std::fs;
 use cli::{Cmd, WhammCli};
+use std::fs;
 
 use crate::common::error::ErrorGen;
 use crate::parser::whamm_parser::*;
@@ -17,10 +17,10 @@ mod wast;
 
 use crate::common::instr::Config;
 use clap::Parser;
-use std::path::PathBuf;
-use std::process::exit;
 use glob::glob;
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+use std::process::exit;
 
 const ENABLE_WIZARD_ALT: bool = false;
 const CORE_WASM_PATH: &str = "./whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
@@ -144,7 +144,8 @@ fn read_yml() {
     }
 
     // let f = std::fs::File::open("providers/wasm.yaml").expect("Could not open file.");
-    let def: MonitorModuleDefinition = serde_yaml::from_str(&all_yml).expect("Could not read values.");
+    let def: MonitorModuleDefinition =
+        serde_yml::from_str(&all_yml).expect("Could not read values.");
     println!("{:?}", def);
 }
 
@@ -158,34 +159,44 @@ struct Cfg {
 // TODO -- start working on reading from yaml into this type of structure
 #[derive(Debug, Serialize, Deserialize)]
 struct MonitorModuleDefinition {
-    providers: Vec<Provider>
+    providers: Vec<Provider>,
 }
 #[derive(Debug, Serialize, Deserialize)]
 struct Provider {
     name: String,
-    bound_vars: Vec<String>,
+    bound_vars: Vec<BoundVar>,
     bound_fns: Vec<(String, String)>,
-    packages: Vec<Package>
+    packages: Vec<Package>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Package {
     name: String,
-    bound_vars: Vec<(String, String)>,
+    bound_vars: Vec<BoundVar>,
     bound_fns: Vec<(String, String)>,
-    events: Vec<Event>
+    events: Vec<Event>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Event {
     name: String,
-    // can this be an enum?
-    category: String,  // TODO: remove
-    args: Option<Vec<String>>, // TODO: remove
-    imms: Vec<String>, // TODO: remove
-    bound_vars: Vec<(String, String)>,
-    bound_fns: Vec<(String, String)>,
+    bound_vars: Vec<BoundVar>,
+    bound_fns: Vec<BoundFunc>,
     supported_modes: Vec<String>,
     req_map: bool,
-    docs: String
+    docs: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct BoundVar {
+    name: String,
+    docs: String,
+    #[serde(rename = "type")]
+    ty: String,
+    derived_from: String
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct BoundFunc {
+
 }
