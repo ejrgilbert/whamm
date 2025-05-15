@@ -1,49 +1,95 @@
 use crate::common::error::{ErrorGen, WhammError};
 use crate::parser::types;
 use crate::parser::types::Statement::LibImport;
-use crate::parser::types::{
-    BinOp, Block, DataType, Definition, Expr, FnId, Location, NumFmt, NumLit, ProbeRule, Rule,
-    RulePart, Script, Statement, UnOp, Value, Whamm, WhammParser, PRATT_PARSER,
-};
+use crate::parser::types::{BinOp, Block, DataType, Definition, Expr, FnId, Location, NumFmt, NumLit, ProbeRule, Rule, RulePart, Script, Statement, UnOp, Value, Whamm, WhammParser, PRATT_PARSER, print_global_vars, print_fns};
 use log::trace;
 use pest::error::{Error, LineColLocation};
 use pest::iterators::{Pair, Pairs};
 use pest::Parser;
 use std::str::FromStr;
-use crate::parser::provider_handler::yml_to_providers;
+use termcolor::{BufferWriter, ColorChoice, WriteColor};
+use crate::common::terminal::{long_line, magenta, white};
+use crate::parser::provider_handler::{get_matches, yml_to_providers, PrintInfo};
 
 const UNEXPECTED_ERR_MSG: &str =
     "WhammParser: Looks like you've found a bug...please report this behavior! Exiting now...";
 
 pub fn print_info(rule: String, print_globals: bool, print_functions: bool, err: &mut ErrorGen) {
+    // TODO
+    //   - handle aliases
+    //   - move old whamm info to new structure
+    //   - print variable derivations
+    //   - print type bound info
+    //   - change naming of things (globals -> vars, provided -> bound, etc.)
     let def = yml_to_providers("./");
     assert!(!def.is_empty());
 
-    // old implementation:
     trace!("Entered print_info");
     err.set_script_text(rule.to_owned());
+
+    let writer = BufferWriter::stderr(ColorChoice::Always);
+    let mut whamm_buffer = writer.buffer();
+
+    // Print `whamm` info
+    let mut tabs = 0;
+    if print_globals || print_functions {
+        white(true, "\nCORE ".to_string(), &mut whamm_buffer);
+        magenta(true, "`whamm`".to_string(), &mut whamm_buffer);
+        white(true, " FUNCTIONALITY\n\n".to_string(), &mut whamm_buffer);
+
+        // Print the globals
+        if print_globals {
+            let globals = Whamm::get_provided_globals();
+            print_global_vars(&mut tabs, &globals, &mut whamm_buffer);
+        }
+
+        // Print the functions
+        if print_functions {
+            let functions = Whamm::get_provided_fns();
+            print_fns(&mut tabs, &functions, &mut whamm_buffer);
+        }
+    }
+
+    long_line(&mut whamm_buffer);
+    white(true, "\n\n".to_string(), &mut whamm_buffer);
+
+    let mut prov_buff = writer.buffer();
+    let mut pkg_buff = writer.buffer();
+    let mut evt_buff = writer.buffer();
 
     let res = WhammParser::parse(Rule::PROBE_RULE, &rule);
     match res {
         Ok(mut pairs) => {
             // Create the probe rule from the input string
             let probe_rule = handle_probe_rule(
-                // inner of script
                 pairs.next().unwrap(),
                 err,
             );
 
             // Print the information for the passed probe rule
-            let mut whamm = Whamm::new();
-            let id = whamm.add_script(Script::new());
-            let script: &mut Script = whamm.scripts.get_mut(id).unwrap();
-            if let Err(e) = script.print_info(&probe_rule, print_globals, print_functions) {
-                err.add_error(*e);
+            let matches = get_matches(&probe_rule, &def);
+            let mut tabs = 0;
+            if !matches.is_empty() {
+                probe_rule.print_bold_provider(&mut prov_buff);
+                for provider in matches.iter() {
+                    provider.print_info(&probe_rule, print_globals, print_functions, &mut prov_buff, &mut pkg_buff, &mut evt_buff, &mut tabs);
+                }
             }
-        }
+        },
         Err(e) => {
             err.pest_err(e);
         }
+    }
+
+    let mut buffs = vec![whamm_buffer, prov_buff, pkg_buff, evt_buff];
+
+    for buff in buffs.iter_mut() {
+        writer
+            .print(&buff)
+            .expect("Uh oh, something went wrong while printing to terminal");
+        buff
+            .reset()
+            .expect("Uh oh, something went wrong while printing to terminal");
     }
 }
 
@@ -929,7 +975,7 @@ fn handle_special_decl(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
 }
 // EXPRESSIONS
 
-fn handle_param(mut pairs: Pairs<Rule>, err: &mut ErrorGen) -> Option<(Expr, DataType)> {
+pub fn handle_param(mut pairs: Pairs<Rule>, err: &mut ErrorGen) -> Option<(Expr, DataType)> {
     if let Some(id_rule) = pairs.next() {
         // process the name
         let id = handle_id(id_rule);
@@ -1088,7 +1134,7 @@ fn handle_arg(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
 /// I think this would be a problem even if we were to refactor the Parser into an object that
 /// would hold the mutable reference to the error gen as a member field. This is because you'd call
 /// self.<something> which would require 2 mutable references to self between the closures.
-fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
+pub fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     let pairs = pair.into_inner();
     PRATT_PARSER
         .map_primary(|primary| -> Result<Expr, Vec<WhammError>> { expr_primary(primary) })
@@ -1402,7 +1448,7 @@ fn type_from_rule_handler(pair: Pair<Rule>, err: &mut ErrorGen) -> DataType {
     }
 }
 
-fn type_from_rule(pair: Pair<Rule>) -> Result<DataType, Vec<WhammError>> {
+pub fn type_from_rule(pair: Pair<Rule>) -> Result<DataType, Vec<WhammError>> {
     trace!("Entering type_from_rule");
     return match pair.as_rule() {
         Rule::TY_U8 => Ok(DataType::U8),
@@ -1417,6 +1463,7 @@ fn type_from_rule(pair: Pair<Rule>) -> Result<DataType, Vec<WhammError>> {
         Rule::TY_F64 => Ok(DataType::F64),
         Rule::TY_BOOL => Ok(DataType::Boolean),
         Rule::TY_STRING => Ok(DataType::Str),
+        Rule::TY_UNKNOWN => Ok(DataType::Unknown),
         Rule::TY_TUPLE => {
             let mut tuple_content_types = vec![];
             for p in pair.into_inner() {

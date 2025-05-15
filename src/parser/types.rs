@@ -1455,7 +1455,7 @@ impl Whamm {
         }
     }
 
-    fn get_provided_fns() -> Vec<ProvidedFunction> {
+    pub(crate) fn get_provided_fns() -> Vec<ProvidedFunction> {
         let strcmp_params = vec![
             (
                 Expr::VarId {
@@ -1489,7 +1489,7 @@ impl Whamm {
         vec![strcmp]
     }
 
-    fn get_provided_globals() -> HashMap<String, ProvidedGlobal> {
+    pub(crate) fn get_provided_globals() -> HashMap<String, ProvidedGlobal> {
         HashMap::new()
     }
 
