@@ -50,7 +50,8 @@ pub fn get_matches(rule: &ProbeRule, all_providers: &Vec<ProviderDef>, err: &mut
 pub struct Provider {
     def: Def,
     type_bounds: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
-    packages: HashMap<String, Package>
+    packages: HashMap<String, Package>,
+    next_id: u32
 }
 impl Provider {
     pub fn new(def: Def, rule: &ProbeRule) -> Self {
@@ -58,13 +59,15 @@ impl Provider {
             Self {
                 def,
                 type_bounds: prov_rule.ty_info.clone(),
-                packages: HashMap::new()
+                packages: HashMap::new(),
+                next_id: 0
             }
         } else {
             Self {
                 def,
                 type_bounds: vec![],
-                packages: HashMap::new()
+                packages: HashMap::new(),
+                next_id: 0
             }
         }
     }
@@ -73,7 +76,7 @@ impl Provider {
             let pkg = self.packages.entry(matched_pkg.def.name.clone())
                 .or_insert(Package::new(matched_pkg.def.clone(), rule));
 
-            pkg.add_probes(&matched_pkg.events, rule, predicate.clone(), body.clone());
+            pkg.add_probes(&matched_pkg.events, rule, predicate.clone(), body.clone(), &mut self.next_id);
         }
     }
 }
@@ -100,12 +103,12 @@ impl Package {
             }
         }
     }
-    pub fn add_probes(&mut self, matched_evts: &Vec<EventDef>, rule: &ProbeRule, predicate: Option<Expr>, body: Option<Block>) {
+    pub fn add_probes(&mut self, matched_evts: &Vec<EventDef>, rule: &ProbeRule, predicate: Option<Expr>, body: Option<Block>, next_id: &mut u32) {
         for matched_evt in matched_evts.iter() {
             let evt = self.events.entry(matched_evt.def.name.clone())
                 .or_insert(Event::new(matched_evt.def.clone(), rule));
 
-            evt.add_probes(&matched_evt.modes, rule, predicate.clone(), body.clone());
+            evt.add_probes(&matched_evt.modes, rule, predicate.clone(), body.clone(), next_id);
         }
     }
 }
@@ -132,7 +135,7 @@ impl Event {
             }
         }
     }
-    pub fn add_probes(&mut self, matched_modes: &Vec<ModeDef>, rule: &ProbeRule, predicate: Option<Expr>, body: Option<Block>) {
+    pub fn add_probes(&mut self, matched_modes: &Vec<ModeDef>, rule: &ProbeRule, predicate: Option<Expr>, body: Option<Block>, next_id: &mut u32) {
         // TODO -- type_bounds for all of the hierarchy should be local to the PROBE...not to the prov/pkg/event...or it gets messed up for other probes...
         let loc = if let (Some(RulePart {loc: Some(start), ..}), Some(Block {loc: Some(end), ..})) = (&rule.provider, &body) {
             Some(Location::from(&start.line_col, &end.line_col, None))
@@ -145,13 +148,14 @@ impl Event {
                 .or_insert(vec![]);
 
             probes.push(Probe {
-                id: 0,                              // TODO -- running ID!!
+                id: *next_id,
                 kind: matched_mode.kind.clone(),
                 def: matched_mode.def.clone(),
                 loc: loc.clone(),
                 predicate: predicate.clone(),
                 body: body.clone(),
             });
+            *next_id += 1;
         }
     }
 }
