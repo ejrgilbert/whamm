@@ -1,6 +1,7 @@
+use std::collections::HashMap;
 use std::fs;
 use glob::{glob, Pattern};
-use log::error;
+use log::{error, trace};
 use pest::iterators::Pair;
 use pest::Parser;
 use serde::{Deserialize, Serialize};
@@ -9,32 +10,33 @@ use wasmparser::TypeBounds;
 use crate::common::error::{ErrorGen, WhammError};
 use crate::common::terminal::{green, long_line, magenta_italics, white};
 use crate::parser::rules::{matches_globs, print_provider_docs};
-use crate::parser::types::{DataType, Expr, Location, ProbeRule, ProvidedGlobal, Rule, RulePart, WhammParser};
+use crate::parser::rules::core::{WhammMode, WhammModeKind, WhammProbe};
+use crate::parser::types::{Block, DataType, Expr, Location, ProbeRule, ProvidedFunction, ProvidedGlobal, Rule, RulePart, WhammParser};
 use crate::parser::whamm_parser::{handle_expr, handle_param, type_from_rule};
 
-pub fn yml_to_providers(base_dir: &str) -> Vec<Provider> {
+pub fn yml_to_providers(base_dir: &str) -> Vec<ProviderDef> {
     let def = read_yml(base_dir);
-    from_helper::<Provider, ProviderDef>(def.providers)
+    from_helper::<ProviderDef, ProviderYml>(def.providers)
 }
 
-pub fn get_matches(rule: &ProbeRule, all_providers: &Vec<Provider>) -> Vec<Provider> {
-    let mut matches: Vec<Provider> = vec![];
+pub fn get_matches(rule: &ProbeRule, all_providers: &Vec<ProviderDef>, err: &mut ErrorGen) -> Vec<ProviderDef> {
+    let mut matches: Vec<ProviderDef> = vec![];
+    let mut last_err = None;
     for provider in all_providers.iter() {
-        if let Some(prov) = provider.match_on(rule) {
-            matches.push(*prov);
+        match provider.match_on(rule) {
+            Ok(prov) => matches.push(*prov),
+            Err(e) => last_err = Some(e)
         }
     }
 
     if matches.is_empty() {
-        todo!()
-        // let loc = provider_loc.as_ref().map(|loc| loc.line_col.clone());
-        // return Err(Box::new(ErrorGen::get_parse_error(
-        //     true,
-        //     Some("Could not find any matches for the provider pattern".to_string()),
-        //     loc,
-        //     vec![],
-        //     vec![],
-        // )));
+        // only return an error if there were no matches!
+        if let Some(e) = last_err {
+            err.add_error(e);
+        } else {
+            // shouldn't happen, panic
+            todo!()
+        }
     }
 
     matches
@@ -46,73 +48,194 @@ pub fn get_matches(rule: &ProbeRule, all_providers: &Vec<Provider>) -> Vec<Provi
 
 #[derive(Debug)]
 pub struct Provider {
-    name: String,
-    bound_vars: Vec<BoundVar>,
-    bound_fns: Vec<BoundFunc>,
-    docs: String,
-    packages: Vec<Package>,
+    def: Def,
     type_bounds: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
-    loc: Option<Location>
+    packages: HashMap<String, Package>
 }
-impl From<ProviderDef> for Provider {
-    fn from(value: ProviderDef) -> Self {
-        let bound_vars = from_helper::<BoundVar, BoundVarDef>(value.bound_vars);
-        let bound_fns = from_helper::<BoundFunc, BoundFuncDef>(value.bound_fns);
-        let packages = from_helper::<Package, PackageDef>(value.packages);
-        Self {
-            name: value.name.clone(),
-            bound_vars,
-            bound_fns,
-            docs: value.docs.clone(),
-            packages,
-            type_bounds: vec![],
-            loc: None
+impl Provider {
+    pub fn new(def: Def, rule: &ProbeRule) -> Self {
+        if let Some(prov_rule) = &rule.provider {
+            Self {
+                def,
+                type_bounds: prov_rule.ty_info.clone(),
+                packages: HashMap::new()
+            }
+        } else {
+            Self {
+                def,
+                type_bounds: vec![],
+                packages: HashMap::new()
+            }
+        }
+    }
+    pub fn add_probes(&mut self, matched_pkgs: &Vec<PackageDef>, rule: &ProbeRule, predicate: Option<Expr>, body: Option<Block>) {
+        for matched_pkg in matched_pkgs.iter() {
+            let pkg = self.packages.entry(matched_pkg.def.name.clone())
+                .or_insert(Package::new(matched_pkg.def.clone(), rule));
+
+            pkg.add_probes(&matched_pkg.events, rule, predicate.clone(), body.clone());
         }
     }
 }
-impl MatchOn for Provider {
-    fn match_on(&self, probe_rule: &ProbeRule) -> Option<Box<Self>> {
+
+#[derive(Debug)]
+pub struct Package {
+    def: Def,
+    type_bounds: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
+    events: HashMap<String, Event>
+}
+impl Package {
+    pub fn new(def: Def, rule: &ProbeRule) -> Self {
+        if let Some(pkg_rule) = &rule.package {
+            Self {
+                def,
+                type_bounds: pkg_rule.ty_info.clone(),
+                events: HashMap::new()
+            }
+        } else {
+            Self {
+                def,
+                type_bounds: vec![],
+                events: HashMap::new()
+            }
+        }
+    }
+    pub fn add_probes(&mut self, matched_evts: &Vec<EventDef>, rule: &ProbeRule, predicate: Option<Expr>, body: Option<Block>) {
+        for matched_evt in matched_evts.iter() {
+            let evt = self.events.entry(matched_evt.def.name.clone())
+                .or_insert(Event::new(matched_evt.def.clone(), rule));
+
+            evt.add_probes(&matched_evt.modes, rule, predicate.clone(), body.clone());
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Event {
+    def: Def,
+    type_bounds: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
+    probes: HashMap<ModeKind, Vec<Probe>>
+}
+impl Event {
+    pub fn new(def: Def, rule: &ProbeRule) -> Self {
+        if let Some(evt_rule) = &rule.event {
+            Self {
+                def,
+                type_bounds: evt_rule.ty_info.clone(),
+                probes: HashMap::new()
+            }
+        } else {
+            Self {
+                def,
+                type_bounds: vec![],
+                probes: HashMap::new()
+            }
+        }
+    }
+    pub fn add_probes(&mut self, matched_modes: &Vec<ModeDef>, rule: &ProbeRule, predicate: Option<Expr>, body: Option<Block>) {
+        // TODO -- type_bounds for all of the hierarchy should be local to the PROBE...not to the prov/pkg/event...or it gets messed up for other probes...
+        let loc = if let (Some(RulePart {loc: Some(start), ..}), Some(Block {loc: Some(end), ..})) = (&rule.provider, &body) {
+            Some(Location::from(&start.line_col, &end.line_col, None))
+        } else {
+            None
+        };
+
+        for matched_mode in matched_modes.iter() {
+            let probes = self.probes.entry(matched_mode.kind.clone())
+                .or_insert(vec![]);
+
+            probes.push(Probe {
+                id: 0,                              // TODO -- running ID!!
+                kind: matched_mode.kind.clone(),
+                def: matched_mode.def.clone(),
+                loc: loc.clone(),
+                predicate: predicate.clone(),
+                body: body.clone(),
+            });
+        }
+    }
+}
+
+
+
+// ===================================
+// ==== TYPES FOR PROBE RULE DEFS ====
+// ===================================
+
+#[derive(Clone, Debug)]
+pub struct Def {
+    pub name: String,
+    bound_vars: Vec<BoundVar>,
+    bound_fns: Vec<BoundFunc>,
+    docs: String,
+    req_map: bool      // TODO: Remove this...maybe make it request a list of libraries?
+}
+
+#[derive(Debug)]
+pub struct ProviderDef {
+    pub def: Def,
+    pub packages: Vec<PackageDef>
+}
+impl From<ProviderYml> for ProviderDef {
+    fn from(value: ProviderYml) -> Self {
+        let bound_vars = from_helper::<BoundVar, BoundVarYml>(value.bound_vars);
+        let bound_fns = from_helper::<BoundFunc, BoundFuncYml>(value.bound_fns);
+        let packages = from_helper::<PackageDef, PackageYml>(value.packages);
+        Self {
+            def: Def {
+                name: value.name.clone(),
+                bound_vars,
+                bound_fns,
+                docs: value.docs.clone(),
+                req_map: false
+            },
+            packages
+        }
+    }
+}
+impl MatchOn for ProviderDef {
+    fn match_on(&self, probe_rule: &ProbeRule) -> Result<Box<Self>, WhammError> {
         if let Some(RulePart {
             name: provider_patt,
-            ty_info,
             loc,
             ..
         }) = &probe_rule.provider {
-            let pkgs: Vec<Package> = match_helper(&self.name, &provider_patt, probe_rule, &self.packages)
-                .into_iter().map(|b| *b).collect();
-            return if !pkgs.is_empty() {
-                Some(Box::new(Self {
-                    name: self.name.clone(),
-                    bound_vars: self.bound_vars.clone(),
-                    bound_fns: self.bound_fns.clone(),
-                    docs: self.docs.clone(),
-                    packages: pkgs,
-                    type_bounds: ty_info.clone(),
-                    loc: loc.clone()
-                }))
-            } else {
-                None
+            return match match_helper(&self.def.name, "provider", &provider_patt, loc, probe_rule, &self.packages) {
+                Ok(pkgs_res) => {
+                    let packages: Vec<PackageDef> = pkgs_res.into_iter().map(|b| *b).collect();
+                    if !packages.is_empty() {
+                        Ok(Box::new(Self {
+                            def: self.def.clone(),
+                            packages
+                        }))
+                    } else {
+                        // shouldn't happen, panic
+                        todo!()
+                    }
+                }
+                Err(e) => Err(e),
             }
         } else {
+            // shouldn't happen, panic
             todo!()
         }
     }
 }
-impl PrintInfo for Provider {
+impl PrintInfo for ProviderDef {
     fn print_info(&self, probe_rule: &ProbeRule, print_globals: bool, print_functions: bool, prov_buff: &mut Buffer, pkg_buff: &mut Buffer, evt_buffer: &mut Buffer,
                   tabs: &mut usize) {
-        magenta_italics(true, self.name.clone(), prov_buff);
+        magenta_italics(true, self.def.name.clone(), prov_buff);
         white(true, " provider\n".to_string(), prov_buff);
 
         // Print the provider description
         *tabs += 1;
         white(
             false,
-            format!("{}{}\n\n", " ".repeat(*tabs * 4), self.docs),
+            format!("{}{}\n\n", " ".repeat(*tabs * 4), self.def.docs),
             prov_buff,
         );
-        print_bound_vars(&self.bound_vars, print_globals, prov_buff, tabs);
-        print_bound_fns(&self.bound_fns, print_globals, prov_buff, tabs);
+        print_bound_vars(&self.def.bound_vars, print_globals, prov_buff, tabs);
+        print_bound_fns(&self.def.bound_fns, print_functions, prov_buff, tabs);
         *tabs -= 1;
 
         long_line(prov_buff);
@@ -128,74 +251,69 @@ impl PrintInfo for Provider {
 }
 
 #[derive(Debug)]
-pub struct Package {
-    name: String,
-    bound_vars: Vec<BoundVar>,
-    bound_fns: Vec<BoundFunc>,
-    docs: String,
-    events: Vec<Event>,
-    type_bounds: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
-    loc: Option<Location>
+pub struct PackageDef {
+    def: Def,
+    events: Vec<EventDef>
 }
-impl From<PackageDef> for Package {
-    fn from(value: PackageDef) -> Self {
-        let bound_vars = from_helper::<BoundVar, BoundVarDef>(value.bound_vars);
-        let bound_fns = from_helper::<BoundFunc, BoundFuncDef>(value.bound_fns);
-        let events = from_helper::<Event, EventDef>(value.events);
+impl From<PackageYml> for PackageDef {
+    fn from(value: PackageYml) -> Self {
+        let bound_vars = from_helper::<BoundVar, BoundVarYml>(value.bound_vars);
+        let bound_fns = from_helper::<BoundFunc, BoundFuncYml>(value.bound_fns);
+        let events = from_helper::<EventDef, EventYml>(value.events);
         Self {
-            name: value.name.clone(),
-            bound_vars,
-            bound_fns,
-            docs: value.docs.clone(),
-            events,
-            type_bounds: vec![],
-            loc: None
+            def: Def {
+                name: value.name.clone(),
+                bound_vars,
+                bound_fns,
+                docs: value.docs.clone(),
+                req_map: false
+            },
+            events
         }
     }
 }
-impl MatchOn for Package {
-    fn match_on(&self, probe_rule: &ProbeRule) -> Option<Box<Self>> {
+impl MatchOn for PackageDef {
+    fn match_on(&self, probe_rule: &ProbeRule) -> Result<Box<Self>, WhammError> {
         if let Some(RulePart {
             name: pkg_patt,
-            ty_info,
             loc,
             ..
         }) = &probe_rule.package {
-            let evts: Vec<Event> = match_helper(&self.name, &pkg_patt, probe_rule, &self.events)
-                .into_iter().map(|b| *b).collect();
-            return if !evts.is_empty() {
-                Some(Box::new(Self {
-                    name: self.name.clone(),
-                    bound_vars: self.bound_vars.clone(),
-                    bound_fns: self.bound_fns.clone(),
-                    docs: self.docs.clone(),
-                    events: evts,
-                    type_bounds: ty_info.clone(),
-                    loc: loc.clone()
-                }))
-            } else {
-                None
+            return match match_helper(&self.def.name, "package", &pkg_patt, loc, probe_rule, &self.events) {
+                Ok(evts_res) => {
+                    let evts: Vec<EventDef> = evts_res.into_iter().map(|b| *b).collect();
+                    if !evts.is_empty() {
+                        Ok(Box::new(Self {
+                            def: self.def.clone(),
+                            events: evts
+                        }))
+                    } else {
+                        // shouldn't happen, panic
+                        todo!()
+                    }
+                },
+                Err(e) => Err(e)
             }
         } else {
             todo!()
         }
     }
 }
-impl PrintInfo for Package {
+impl PrintInfo for PackageDef {
     fn print_info(&self, probe_rule: &ProbeRule, print_globals: bool, print_functions: bool, prov_buff: &mut Buffer, pkg_buff: &mut Buffer, evt_buffer: &mut Buffer,
                   tabs: &mut usize) {
-        magenta_italics(true, self.name.clone(), pkg_buff);
+        magenta_italics(true, self.def.name.clone(), pkg_buff);
         white(true, " package\n".to_string(), pkg_buff);
 
         // Print the package description
         *tabs += 1;
         white(
             false,
-            format!("{}{}\n\n", " ".repeat(*tabs * 4), self.docs),
+            format!("{}{}\n\n", " ".repeat(*tabs * 4), self.def.docs),
             pkg_buff,
         );
-        print_bound_vars(&self.bound_vars, print_globals, pkg_buff, tabs);
-        print_bound_fns(&self.bound_fns, print_globals, pkg_buff, tabs);
+        print_bound_vars(&self.def.bound_vars, print_globals, pkg_buff, tabs);
+        print_bound_fns(&self.def.bound_fns, print_functions, pkg_buff, tabs);
         *tabs -= 1;
 
         long_line(pkg_buff);
@@ -214,77 +332,69 @@ impl PrintInfo for Package {
 }
 
 #[derive(Debug)]
-pub struct Event {
-    name: String,
-    bound_vars: Vec<BoundVar>,
-    bound_fns: Vec<BoundFunc>,
-    modes: Vec<Mode>,
-    req_map: bool,      // TODO: Remove this...maybe make it request a list of libraries?
-    docs: String,
-    type_bounds: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
-    loc: Option<Location>
+pub struct EventDef {
+    def: Def,
+    modes: Vec<ModeDef>
 }
-impl From<EventDef> for Event {
-    fn from(value: EventDef) -> Self {
-        let bound_vars = from_helper::<BoundVar, BoundVarDef>(value.bound_vars);
-        let bound_fns = from_helper::<BoundFunc, BoundFuncDef>(value.bound_fns);
-        let modes = from_helper::<Mode, ModeDef>(value.supported_modes);
+impl From<EventYml> for EventDef {
+    fn from(value: EventYml) -> Self {
+        let bound_vars = from_helper::<BoundVar, BoundVarYml>(value.bound_vars);
+        let bound_fns = from_helper::<BoundFunc, BoundFuncYml>(value.bound_fns);
+        let modes = from_helper::<ModeDef, ModeYml>(value.supported_modes);
         Self {
-            name: value.name.clone(),
-            bound_vars,
-            bound_fns,
-            modes,
-            req_map: value.req_map,
-            docs: value.docs.clone(),
-            type_bounds: vec![],
-            loc: None
+            def: Def {
+                name: value.name.clone(),
+                docs: value.docs.clone(),
+                bound_vars,
+                bound_fns,
+                req_map: value.req_map,
+            },
+            modes
         }
     }
 }
-impl MatchOn for Event {
-    fn match_on(&self, probe_rule: &ProbeRule) -> Option<Box<Self>> {
+impl MatchOn for EventDef {
+    fn match_on(&self, probe_rule: &ProbeRule) -> Result<Box<Self>, WhammError> {
         if let Some(RulePart {
             name: evt_patt,
-            ty_info,
             loc,
             ..
         }) = &probe_rule.event {
-            let mds: Vec<Mode> = match_helper(&self.name, &evt_patt, probe_rule, &self.modes)
-                .into_iter().map(|b| *b).collect();
-            return if !mds.is_empty() {
-                Some(Box::new(Self {
-                    name: self.name.clone(),
-                    bound_vars: self.bound_vars.clone(),
-                    bound_fns: self.bound_fns.clone(),
-                    docs: self.docs.clone(),
-                    req_map: self.req_map,
-                    modes: mds,
-                    type_bounds: ty_info.clone(),
-                    loc: loc.clone(),
-                }))
-            } else {
-                None
+            return match match_helper(&self.def.name, "event", &evt_patt, loc, probe_rule, &self.modes) {
+                Ok(mds_res) => {
+                    let mds: Vec<ModeDef> = mds_res.into_iter().map(|b| *b).collect();
+                    if !mds.is_empty() {
+                        Ok(Box::new(Self {
+                            def: self.def.clone(),
+                            modes: mds
+                        }))
+                    } else {
+                        // shouldn't happen, panic
+                        todo!()
+                    }
+                },
+                Err(e) => Err(e),
             }
         } else {
             todo!()
         }
     }
 }
-impl PrintInfo for Event {
+impl PrintInfo for EventDef {
     fn print_info(&self, probe_rule: &ProbeRule, print_globals: bool, print_functions: bool, prov_buff: &mut Buffer, pkg_buff: &mut Buffer, evt_buffer: &mut Buffer,
                   tabs: &mut usize) {
-        magenta_italics(true, self.name.clone(), evt_buffer);
+        magenta_italics(true, self.def.name.clone(), evt_buffer);
         white(true, " event\n".to_string(), evt_buffer);
 
         // Print the event description
         *tabs += 1;
         white(
             false,
-            format!("{}{}\n\n", " ".repeat(*tabs * 4), self.docs),
+            format!("{}{}\n\n", " ".repeat(*tabs * 4), self.def.docs),
             evt_buffer,
         );
-        print_bound_vars(&self.bound_vars, print_globals, evt_buffer, tabs);
-        print_bound_fns(&self.bound_fns, print_globals, evt_buffer, tabs);
+        print_bound_vars(&self.def.bound_vars, print_globals, evt_buffer, tabs);
+        print_bound_fns(&self.def.bound_fns, print_functions, evt_buffer, tabs);
 
         *tabs -= 1;
 
@@ -297,60 +407,72 @@ impl PrintInfo for Event {
     }
 }
 
-#[derive(Clone, Debug)]
-struct Mode {
-    name: String,
-    docs: String,
-    type_bounds: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
-    loc: Option<Location>
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+enum ModeKind {
+    // TODO
+    Before,
+    After,
+    Alt
 }
-impl From<ModeDef> for Mode {
-    fn from(value: ModeDef) -> Self {
+
+#[derive(Clone, Debug)]
+struct ModeDef {
+    def: Def,
+    kind: ModeKind
+}
+impl From<ModeYml> for ModeDef {
+    fn from(value: ModeYml) -> Self {
         Self {
-            name: value.name.clone(),
-            docs: value.docs.clone(),
-            type_bounds: vec![],
-            loc: None
+            def: Def {
+                name: value.name.clone(),
+                bound_vars: vec![],
+                bound_fns: vec![],
+                docs: value.docs.clone(),
+                req_map: false,
+            },
+            kind: ModeKind::Before, // TODO -- make this match on the name!
         }
     }
 }
-impl MatchOn for Mode {
-    fn match_on(&self, probe_rule: &ProbeRule) -> Option<Box<Self>> {
+impl MatchOn for ModeDef {
+    fn match_on(&self, probe_rule: &ProbeRule) -> Result<Box<Self>, WhammError> {
         if let Some(RulePart {
             name: md_patt,
-            ty_info,
             loc,
             ..
         }) = &probe_rule.mode {
-            if is_match(&self.name, &md_patt) {
-                Some(Box::new(Self {
-                    name: self.name.clone(),
-                    docs: self.docs.clone(),
-                    type_bounds: ty_info.clone(),
-                    loc: loc.clone(),
-                }))
+            if is_match(&self.def.name, &md_patt) {
+                Ok(Box::new(self.clone()))
             } else {
-                todo!()
+                Err(ErrorGen::get_parse_error(
+                    true,
+                    Some(format!(
+                        "Could not find any matches for the specified mode pattern: {md_patt}"
+                    )),
+                    Some(loc.as_ref().unwrap().line_col.clone()),
+                    vec![],
+                    vec![],
+                ))
             }
         } else {
             todo!()
         }
     }
 }
-impl PrintInfo for Mode {
-    fn print_info(&self, probe_rule: &ProbeRule, print_globals: bool, print_functions: bool, prov_buff: &mut Buffer, pkg_buff: &mut Buffer, evt_buffer: &mut Buffer, tabs: &mut usize) {
-        magenta_italics(true, format!("    {}", self.name), evt_buffer);
+impl PrintInfo for ModeDef {
+    fn print_info(&self, _probe_rule: &ProbeRule, print_globals: bool, print_functions: bool, prov_buff: &mut Buffer, _pkg_buff: &mut Buffer, evt_buffer: &mut Buffer, tabs: &mut usize) {
+        magenta_italics(true, format!("    {}", self.def.name), evt_buffer);
         white(true, " mode\n".to_string(), evt_buffer);
 
         // Print the mode description
         *tabs += 2;
         white(
             false,
-            format!("{}{}\n\n", " ".repeat(*tabs * 4), self.docs),
+            format!("{}{}\n\n", " ".repeat(*tabs * 4), self.def.docs),
             evt_buffer,
         );
-        // print_bound_vars(&self.bound_vars, print_globals, prov_buff, tabs);
-        // print_bound_fns(&self.bound_fns, print_globals, prov_buff, tabs);
+        print_bound_vars(&self.def.bound_vars, print_globals, prov_buff, tabs);
+        print_bound_fns(&self.def.bound_fns, print_functions, prov_buff, tabs);
 
         *tabs -= 2;
     }
@@ -363,8 +485,8 @@ pub struct BoundVar {
     ty: DataType,
     derived_from: Option<Expr>
 }
-impl From<BoundVarDef> for BoundVar {
-    fn from(value: BoundVarDef) -> Self {
+impl From<BoundVarYml> for BoundVar {
+    fn from(value: BoundVarYml) -> Self {
         let ty = parse_helper::<DataType>("DataType", Rule::TYPE_YML, &value.ty, &type_from_rule);
 
         let derived_from = if let Some(derived_from) = value.derived_from {
@@ -406,8 +528,8 @@ pub struct BoundFunc {
     req_args: i32,      // TODO: Remove this...it's wasm opcode specific...
     docs: String
 }
-impl From<BoundFuncDef> for BoundFunc {
-    fn from(value: BoundFuncDef) -> Self {
+impl From<BoundFuncYml> for BoundFunc {
+    fn from(value: BoundFuncYml) -> Self {
         let params = match WhammParser::parse(Rule::fn_params, &value.params) {
             Ok(mut pairs) => {
                 let mut err = ErrorGen::new("".to_string(), "".to_string(), 15);
@@ -481,7 +603,18 @@ pub trait PrintInfo {
                   tabs: &mut usize);
 }
 trait MatchOn {
-    fn match_on(&self, probe_rule: &ProbeRule) -> Option<Box<Self>>;
+    fn match_on(&self, probe_rule: &ProbeRule) -> Result<Box<Self>, WhammError>;
+}
+
+#[derive(Clone, Debug)]
+pub struct Probe {
+    // The ID of the probe (in order of placement in script)
+    pub id: u32,
+    pub kind: ModeKind,
+    pub def: Def,
+    pub loc: Option<Location>,
+    pub predicate: Option<Expr>,
+    pub body: Option<Block>,
 }
 
 // ===========================
@@ -516,28 +649,39 @@ fn print_bound_fns(fns: &Vec<BoundFunc>, print_functions: bool, buff: &mut Buffe
     }
 }
 
-fn match_helper<T: MatchOn>(name: &str, pattern: &str, rule: &ProbeRule, to_check: &Vec<T>) -> Vec<Box<T>> {
+fn match_helper<T: MatchOn>(name: &str, ctxt: &str, pattern: &str, loc: &Option<Location>, rule: &ProbeRule, to_check: &Vec<T>) -> Result<Vec<Box<T>>, WhammError> {
     let mut matches = vec![];
     if is_match(name, pattern) {
+        let mut last_err = None;
         for item in to_check.iter() {
-            if let Some(m) = item.match_on(rule) {
-                matches.push(m);
+            match item.match_on(rule) {
+                Ok(m) => matches.push(m),
+                Err(e) => last_err = Some(e)
             }
         }
 
         if matches.is_empty() {
-            todo!()
-            // let loc = provider_loc.as_ref().map(|loc| loc.line_col.clone());
-            // return Err(Box::new(ErrorGen::get_parse_error(
-            //     true,
-            //     Some("Could not find any matches for the provider pattern".to_string()),
-            //     loc,
-            //     vec![],
-            //     vec![],
-            // )));
+            // Only
+            if let Some(e) = last_err {
+                return Err(e);
+            } else {
+                // panic, shouldn't happen
+                todo!()
+            }
         }
+    } else {
+        // create an error here
+        return Err(ErrorGen::get_parse_error(
+            true,
+            Some(format!(
+                "Could not find any matches for the specified {ctxt} pattern: {pattern}"
+            )),
+            Some(loc.as_ref().unwrap().line_col.clone()),
+            vec![],
+            vec![],
+        ));
     }
-    matches
+    Ok(matches)
 }
 
 fn is_match(name: &str, patt: &str) -> bool {
@@ -566,7 +710,7 @@ fn parse_helper<T>(target: &str, parse_rule: Rule, token: &str, handler: &dyn Fn
             if let Some(pair) = pairs.next() {
                 let res = match handler(pair) {
                     Ok(res) => res,
-                    Err(errs) => todo!()
+                    Err(_errs) => todo!()
                 };
                 res
             } else {
@@ -598,13 +742,10 @@ fn read_yml(base_dir_tmp: &str) -> YmlDefinition {
     let mut yml_files = vec![];
 
     // push events first (sets up the anchors)
-    println!("{base_dir}/providers/packages/events/*.yaml");
     for path in glob(&format!("{base_dir}/providers/packages/events/*.yaml")).expect("failed to read glob pattern") {
         let file_name = path.as_ref().unwrap();
         let unparsed_file = fs::read_to_string(file_name)
             .unwrap_or_else(|_| panic!("Unable to read file at {:?}", &path));
-        println!("hi");
-        println!("{unparsed_file}");
         yml_files.push(unparsed_file);
     }
 
@@ -613,8 +754,6 @@ fn read_yml(base_dir_tmp: &str) -> YmlDefinition {
         let file_name = path.as_ref().unwrap();
         let unparsed_file = fs::read_to_string(file_name)
             .unwrap_or_else(|_| panic!("Unable to read file at {:?}", &path));
-        println!("hi");
-        println!("{unparsed_file}");
         yml_files.push(unparsed_file);
     }
 
@@ -623,8 +762,6 @@ fn read_yml(base_dir_tmp: &str) -> YmlDefinition {
         let file_name = path.as_ref().unwrap();
         let unparsed_file = fs::read_to_string(file_name)
             .unwrap_or_else(|_| panic!("Unable to read file at {:?}", &path));
-        println!("hi");
-        println!("{unparsed_file}");
         yml_files.push(unparsed_file);
     }
 
@@ -633,49 +770,47 @@ fn read_yml(base_dir_tmp: &str) -> YmlDefinition {
         all_yml += yml;
     }
 
-    println!("{all_yml}");
-
     let def: YmlDefinition =
         serde_yml::from_str(&all_yml).expect("Could not read values.");
-    println!("{:?}", def);
+    trace!("{:?}", def);
 
     def
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 struct YmlDefinition {
-    providers: Vec<ProviderDef>,
+    providers: Vec<ProviderYml>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
-struct ProviderDef {
+struct ProviderYml {
     name: String,
-    bound_vars: Vec<BoundVarDef>,
-    bound_fns: Vec<BoundFuncDef>,
+    bound_vars: Vec<BoundVarYml>,
+    bound_fns: Vec<BoundFuncYml>,
     docs: String,
-    packages: Vec<PackageDef>
+    packages: Vec<PackageYml>
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-struct PackageDef {
+struct PackageYml {
     name: String,
-    bound_vars: Vec<BoundVarDef>,
-    bound_fns: Vec<BoundFuncDef>,
+    bound_vars: Vec<BoundVarYml>,
+    bound_fns: Vec<BoundFuncYml>,
     docs: String,
-    events: Vec<EventDef>,
+    events: Vec<EventYml>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-struct EventDef {
+struct EventYml {
     name: String,
-    bound_vars: Vec<BoundVarDef>,
-    bound_fns: Vec<BoundFuncDef>,
-    supported_modes: Vec<ModeDef>,
+    bound_vars: Vec<BoundVarYml>,
+    bound_fns: Vec<BoundFuncYml>,
+    supported_modes: Vec<ModeYml>,
     req_map: bool,      // TODO: Remove this...maybe make it request a list of libraries?
     docs: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-struct BoundVarDef {
+struct BoundVarYml {
     name: String,
     docs: String,
     #[serde(rename = "type")]
@@ -684,7 +819,7 @@ struct BoundVarDef {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-struct BoundFuncDef {
+struct BoundFuncYml {
     name: String,
     params: String,
     results: String,
@@ -693,7 +828,7 @@ struct BoundFuncDef {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-struct ModeDef {
+struct ModeYml {
     name: String,
     docs: String
 }

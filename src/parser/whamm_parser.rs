@@ -9,13 +9,15 @@ use pest::Parser;
 use std::str::FromStr;
 use termcolor::{BufferWriter, ColorChoice, WriteColor};
 use crate::common::terminal::{long_line, magenta, white};
-use crate::parser::provider_handler::{get_matches, yml_to_providers, PrintInfo};
+use crate::parser::provider_handler::{get_matches, yml_to_providers, PrintInfo, ProviderDef};
 
 const UNEXPECTED_ERR_MSG: &str =
     "WhammParser: Looks like you've found a bug...please report this behavior! Exiting now...";
 
 pub fn print_info(rule: String, print_globals: bool, print_functions: bool, err: &mut ErrorGen) {
     // TODO
+    //   - allow partial proberules (e.g. wasm:opcode:*)
+    //   - check if works with subset matches (e.g. wasm:opcode:*:alt)
     //   - handle aliases
     //   - move old whamm info to new structure
     //   - print variable derivations
@@ -67,7 +69,7 @@ pub fn print_info(rule: String, print_globals: bool, print_functions: bool, err:
             );
 
             // Print the information for the passed probe rule
-            let matches = get_matches(&probe_rule, &def);
+            let matches = get_matches(&probe_rule, &def, err);
             let mut tabs = 0;
             if !matches.is_empty() {
                 probe_rule.print_bold_provider(&mut prov_buff);
@@ -125,7 +127,7 @@ pub fn parse_script(script: &String, err: &mut ErrorGen) -> Option<Whamm> {
 // = AST Constructors =
 // ====================
 
-pub fn to_ast(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Whamm, Box<Error<Rule>>> {
+fn to_ast(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Whamm, Box<Error<Rule>>> {
     trace!("Entered to_ast");
 
     // Create initial AST with Whamm node
@@ -158,12 +160,15 @@ pub fn to_ast(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Whamm, Box<Error<R
 // = Pair Handling Logic =
 // =======================
 
-pub fn parser_entry_point(
+fn parser_entry_point(
     whamm: &mut Whamm,
     script_count: usize,
     pair: Pair<Rule>,
     err: &mut ErrorGen,
 ) {
+    let def = yml_to_providers("./");
+    assert!(!def.is_empty());
+
     trace!("Enter process_pair");
     match pair.as_rule() {
         Rule::script => {
@@ -184,7 +189,7 @@ pub fn parser_entry_point(
         }
         Rule::probe_def => {
             trace!("Begin process probe_def");
-            handle_probe_def(whamm, script_count, pair, err);
+            handle_probe_def(whamm, &def, script_count, pair, err);
             trace!("End process probe_def");
         }
         Rule::EOI => {}
@@ -263,6 +268,7 @@ pub fn handle_global_statements(
 
 pub fn handle_probe_def(
     whamm: &mut Whamm,
+    prov_def: &Vec<ProviderDef>,
     script_count: usize,
     pair: Pair<Rule>,
     err: &mut ErrorGen,
@@ -310,9 +316,7 @@ pub fn handle_probe_def(
 
     // Add probe definition to the script
     let script: &mut Script = whamm.scripts.get_mut(script_count).unwrap();
-    if let Err(e) = script.add_probe(&probe_rule, this_predicate, this_body) {
-        err.add_error(*e);
-    }
+    script.add_probe(&probe_rule, prov_def, this_predicate, this_body, err);
 }
 
 pub fn handle_fn_def(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, err: &mut ErrorGen) {

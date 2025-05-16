@@ -4,18 +4,20 @@ use pest::error::LineColLocation;
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
+use log::trace;
 use termcolor::{Buffer, ColorChoice, WriteColor};
 
 use crate::common::error::{ErrorGen, WhammError};
 use crate::common::terminal::{green, grey_italics, long_line, magenta, white, yellow};
 use crate::generator::ast::ReqArgs;
 use crate::parser::rules::{
-    print_provider_docs, provider_factory, Event, Package, Probe, Provider, WhammProvider,
+    print_provider_docs, provider_factory, Event as OldEvent, Package as OldPackage, Probe as OldProbe, Provider as OldProvider, WhammProvider,
 };
 use orca_wasm::ir::types::DataType as OrcaType;
 use pest::pratt_parser::PrattParser;
 use pest_derive::Parser;
 use termcolor::BufferWriter;
+use crate::parser::provider_handler::{EventDef, get_matches, PackageDef, Provider, ProviderDef};
 
 #[derive(Parser)]
 #[grammar = "./parser/whamm.pest"] // Path relative to base `src` dir
@@ -1678,7 +1680,7 @@ impl ProbeRule {
 pub struct Script {
     pub id: u8,
     /// The rules of the probes that have been used in the Script.
-    pub providers: HashMap<String, Box<dyn Provider>>,
+    pub providers: HashMap<String, Provider>,
     pub fns: Vec<Fn>,                     // User-provided
     pub globals: HashMap<String, Global>, // User-provided, should be VarId
     pub global_stmts: Vec<Statement>,
@@ -1699,102 +1701,6 @@ impl Script {
         }
     }
 
-    pub fn print_info(
-        &mut self,
-        probe_rule: &ProbeRule,
-        print_globals: bool,
-        print_functions: bool,
-    ) -> Result<(), Box<WhammError>> {
-        let writer = BufferWriter::stderr(ColorChoice::Always);
-        let mut buffer = writer.buffer();
-
-        // Print `whamm` info
-        let mut tabs = 0;
-        if print_globals || print_functions {
-            white(true, "\nCORE ".to_string(), &mut buffer);
-            magenta(true, "`whamm`".to_string(), &mut buffer);
-            white(true, " FUNCTIONALITY\n\n".to_string(), &mut buffer);
-
-            // Print the globals
-            if print_globals {
-                let globals = Whamm::get_provided_globals();
-                print_global_vars(&mut tabs, &globals, &mut buffer);
-            }
-
-            // Print the functions
-            if print_functions {
-                let functions = Whamm::get_provided_fns();
-                print_fns(&mut tabs, &functions, &mut buffer);
-            }
-        }
-
-        long_line(&mut buffer);
-        white(true, "\n\n".to_string(), &mut buffer);
-
-        let mut providers: HashMap<String, Box<dyn Provider>> = HashMap::new();
-        let (matched_providers, matched_packages, matched_events, _matched_modes) =
-            provider_factory::<WhammProvider>(
-                &mut providers,
-                &mut self.num_probes,
-                probe_rule,
-                None,
-                None,
-                None,
-                true,
-            )?;
-
-        // Print the matched provider information
-        if matched_providers {
-            probe_rule.print_bold_provider(&mut buffer);
-        }
-        for (.., provider) in providers.iter() {
-            print_provider_docs(
-                provider,
-                print_globals,
-                print_functions,
-                &mut tabs,
-                &mut buffer,
-            );
-        }
-        long_line(&mut buffer);
-        white(true, "\n\n".to_string(), &mut buffer);
-
-        // Print the matched package information
-        if matched_packages {
-            probe_rule.print_bold_package(&mut buffer);
-        }
-        for (.., provider) in providers.iter() {
-            provider.print_package_docs(print_globals, print_functions, &mut tabs, &mut buffer);
-        }
-        long_line(&mut buffer);
-        white(true, "\n\n".to_string(), &mut buffer);
-
-        // Print the matched event information
-        if matched_events {
-            probe_rule.print_bold_event(&mut buffer);
-        }
-        for (.., provider) in providers.iter() {
-            provider.print_event_and_mode_docs(
-                probe_rule,
-                print_globals,
-                print_functions,
-                &mut tabs,
-                &mut buffer,
-            );
-        }
-        long_line(&mut buffer);
-        white(true, "\n\n".to_string(), &mut buffer);
-
-        writer
-            .print(&buffer)
-            .expect("Uh oh, something went wrong while printing to terminal");
-        buffer
-            .reset()
-            .expect("Uh oh, something went wrong while printing to terminal");
-
-        Ok(())
-    }
-
     pub fn add_global_stmts(&mut self, global_statements: Vec<Statement>) {
         for stmt in global_statements.iter() {
             self.global_stmts.push(stmt.clone());
@@ -1806,117 +1712,21 @@ impl Script {
     pub fn add_probe(
         &mut self,
         probe_rule: &ProbeRule,
+        def: &Vec<ProviderDef>,
         predicate: Option<Expr>,
         body: Option<Block>,
-    ) -> Result<(), Box<WhammError>> {
-        let (matched_providers, matched_packages, matched_events, matched_modes): (
-            bool,
-            bool,
-            bool,
-            bool,
-        ) = provider_factory::<WhammProvider>(
-            &mut self.providers,
-            &mut self.num_probes,
-            probe_rule,
-            None,
-            predicate,
-            body,
-            false,
-        )?;
-
-        if !matched_providers {
-            return if let Some(prov_patt) = &probe_rule.provider {
-                Err(Box::new(ErrorGen::get_parse_error(
-                    true,
-                    Some(format!(
-                        "Could not find any matches for the specified provider pattern: {}",
-                        prov_patt.name
-                    )),
-                    Some(prov_patt.loc.as_ref().unwrap().line_col.clone()),
-                    vec![],
-                    vec![],
-                )))
-            } else {
-                Err(Box::new(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} Could not find a provider matching pattern!"
-                    )),
-                    None,
-                )))
-            };
+        err: &mut ErrorGen
+    ) {
+        let matches = get_matches(&probe_rule, def, err);
+        if matches.is_empty() {
+            assert!(err.has_errors);
         }
+        for prov_match in matches.iter() {
+            let provider = self.providers.entry(prov_match.def.name.clone())
+                .or_insert(Provider::new(prov_match.def.clone(), probe_rule));
 
-        if !matched_packages {
-            return if let Some(prov_patt) = &probe_rule.package {
-                Err(Box::new(ErrorGen::get_parse_error(
-                    true,
-                    Some(format!(
-                        "Could not find any matches for the specified package pattern: {}",
-                        prov_patt.name
-                    )),
-                    Some(prov_patt.loc.as_ref().unwrap().line_col.clone()),
-                    vec![],
-                    vec![],
-                )))
-            } else {
-                Err(Box::new(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} Could not find a package matching pattern!"
-                    )),
-                    None,
-                )))
-            };
+            provider.add_probes(&prov_match.packages, probe_rule, predicate.clone(), body.clone());
         }
-
-        if !matched_events {
-            return if let Some(prov_patt) = &probe_rule.event {
-                Err(Box::new(ErrorGen::get_parse_error(
-                    true,
-                    Some(format!(
-                        "Could not find any matches for the specified event pattern: {}",
-                        prov_patt.name
-                    )),
-                    Some(prov_patt.loc.as_ref().unwrap().line_col.clone()),
-                    vec![],
-                    vec![],
-                )))
-            } else {
-                Err(Box::new(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} Could not find an event matching pattern!"
-                    )),
-                    None,
-                )))
-            };
-        }
-
-        if !matched_modes {
-            return if let Some(prov_patt) = &probe_rule.mode {
-                Err(Box::new(ErrorGen::get_parse_error(
-                    true,
-                    Some(format!(
-                        "Could not find any matches for the specified mode pattern: {}",
-                        prov_patt.name
-                    )),
-                    Some(prov_patt.loc.as_ref().unwrap().line_col.clone()),
-                    vec![],
-                    vec![],
-                )))
-            } else {
-                Err(Box::new(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} Could not find a mode matching pattern for {}!",
-                        probe_rule.full_name()
-                    )),
-                    None,
-                )))
-            };
-        }
-        Ok(())
     }
 }
 
@@ -2054,10 +1864,10 @@ pub enum BinOp {
 pub trait WhammVisitor<T> {
     fn visit_whamm(&mut self, whamm: &Whamm) -> T;
     fn visit_script(&mut self, script: &Script) -> T;
-    fn visit_provider(&mut self, provider: &Box<dyn Provider>) -> T;
-    fn visit_package(&mut self, package: &dyn Package) -> T;
-    fn visit_event(&mut self, event: &dyn Event) -> T;
-    fn visit_probe(&mut self, probe: &Box<dyn Probe>) -> T;
+    fn visit_provider(&mut self, provider: &Box<dyn OldProvider>) -> T;
+    fn visit_package(&mut self, package: &dyn OldPackage) -> T;
+    fn visit_event(&mut self, event: &dyn OldEvent) -> T;
+    fn visit_probe(&mut self, probe: &Box<dyn OldProbe>) -> T;
     // fn visit_predicate(&mut self, predicate: &Expr) -> T;
     fn visit_fn(&mut self, f: &Fn) -> T;
     fn visit_formal_param(&mut self, param: &(Expr, DataType)) -> T;
@@ -2074,10 +1884,10 @@ pub trait WhammVisitor<T> {
 pub trait WhammVisitorMut<T> {
     fn visit_whamm(&mut self, whamm: &mut Whamm) -> T;
     fn visit_script(&mut self, script: &mut Script) -> T;
-    fn visit_provider(&mut self, provider: &mut Box<dyn Provider>) -> T;
-    fn visit_package(&mut self, package: &mut dyn Package) -> T;
-    fn visit_event(&mut self, event: &mut dyn Event) -> T;
-    fn visit_probe(&mut self, probe: &mut Box<dyn Probe>) -> T;
+    fn visit_provider(&mut self, provider: &mut Box<dyn OldProvider>) -> T;
+    fn visit_package(&mut self, package: &mut dyn OldPackage) -> T;
+    fn visit_event(&mut self, event: &mut dyn OldEvent) -> T;
+    fn visit_probe(&mut self, probe: &mut Box<dyn OldProbe>) -> T;
     fn visit_fn(&mut self, f: &mut Fn) -> T;
     fn visit_formal_param(&mut self, param: &mut (Expr, DataType)) -> T;
     fn visit_block(&mut self, block: &mut Block) -> T;

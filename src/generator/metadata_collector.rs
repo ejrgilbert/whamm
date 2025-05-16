@@ -180,10 +180,11 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
 
         self.visit_stmts(&script.global_stmts);
 
+        // TODO
         // visit providers
-        script.providers.iter().for_each(|(_name, provider)| {
-            self.visit_provider(provider);
-        });
+        // script.providers.iter().for_each(|(_name, provider)| {
+        //     self.visit_provider(provider);
+        // });
 
         trace!("Exiting: CodeGenerator::visit_script");
         self.table.exit_scope(self.err);
