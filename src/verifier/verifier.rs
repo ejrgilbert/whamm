@@ -224,9 +224,11 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
             self.visit_fn(function);
         });
         self.in_function = false;
-        script.providers.iter_mut().for_each(|(_, provider)| {
-            self.visit_provider(provider);
-        });
+
+        // TODO
+        // script.providers.iter_mut().for_each(|(_, provider)| {
+        //     self.visit_provider(provider);
+        // });
 
         self.table.exit_scope(self.err);
         None

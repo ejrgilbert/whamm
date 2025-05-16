@@ -11,7 +11,8 @@ probe_def = { PROBE_RULE ~ PUSH(predicate?) ~ block }
 predicate = { "/" ~ expr ~ "/" }
 
 //making the decision not to support "void" functions -- can change later
-fn_def = { "fn" ~ ID ~ "(" ~ param_list? ~ ")" ~ ("->" ~ TYPE) ? ~ block }
+fn_def = { "fn" ~ ID ~ fn_params ~ ("->" ~ TYPE) ? ~ block }
+fn_params = { "(" ~ param_list? ~ ")" }
 param_list = _{ (( param ) ~ ("," ~ param )*) }
 param = { ID ~ ":" ~ TYPE }
 
@@ -29,6 +30,7 @@ lib_call = { ID ~ "." ~ fn_call }
 PROBE_ID = @{
     (ASCII_ALPHA
     | "_"
+    | "."
     | ASCII_DIGIT
     | "*"
     | "+"
@@ -94,6 +96,11 @@ TYPE_PRIMITIVE = _{
     TY_F64 |
     TY_BOOL |
     TY_STRING
+}
+TY_UNKNOWN = @{ "unknown" }
+TYPE_YML = _{
+    TYPE |
+    TY_UNKNOWN
 }
 
 // ====================

@@ -131,7 +131,8 @@ impl WhammVisitor<String> for AsStrVisitor {
             s += &format!("{} `{}` {{{}", self.get_indent(), name, NL);
 
             self.increase_indent();
-            s += &self.visit_provider(provider);
+            // TODO
+            // s += &self.visit_provider(provider);
             self.decrease_indent();
 
             s += &format!("{} }}{}", self.get_indent(), NL);

@@ -668,10 +668,12 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
             };
             self.visit_stmt(stmt)
         });
-        script
-            .providers
-            .iter_mut()
-            .for_each(|(_name, provider)| self.visit_provider(provider));
+
+        // TODO
+        // script
+        //     .providers
+        //     .iter_mut()
+        //     .for_each(|(_name, provider)| self.visit_provider(provider));
 
         trace!("Exiting: visit_script");
         self.table.exit_scope(self.err);
