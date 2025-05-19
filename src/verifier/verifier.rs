@@ -1,6 +1,7 @@
 use crate::common::error::ErrorGen;
 use crate::generator::ast::ReqArgs;
-use crate::parser::rules::{Event, Package, Probe, Provider, UNKNOWN_IMMS};
+use crate::parser::provider_handler::{Event, Package, Probe, Provider};
+use crate::parser::rules::UNKNOWN_IMMS;
 use crate::parser::types::Definition::{CompilerDynamic, CompilerStatic};
 use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Fn, Location, Script, Statement, UnOp, Value, Whamm,
@@ -225,20 +226,19 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
         });
         self.in_function = false;
 
-        // TODO
-        // script.providers.iter_mut().for_each(|(_, provider)| {
-        //     self.visit_provider(provider);
-        // });
+        script.providers.iter_mut().for_each(|(_, provider)| {
+            self.visit_provider(provider);
+        });
 
         self.table.exit_scope(self.err);
         None
     }
 
-    fn visit_provider(&mut self, provider: &mut Box<dyn Provider>) -> Option<DataType> {
-        let _ = self.table.enter_named_scope(&provider.name());
-        self.set_curr_rule(Some(provider.name()));
+    fn visit_provider(&mut self, provider: &mut Provider) -> Option<DataType> {
+        let _ = self.table.enter_named_scope(&provider.def.name);
+        self.set_curr_rule(Some(provider.def.name.clone()));
 
-        provider.packages_mut().for_each(|package| {
+        provider.packages.values_mut().for_each(|package| {
             self.visit_package(package);
         });
 
@@ -247,11 +247,11 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
         None
     }
 
-    fn visit_package(&mut self, package: &mut dyn Package) -> Option<DataType> {
-        let _ = self.table.enter_named_scope(&package.name());
-        self.append_curr_rule(format!(":{}", package.name()));
+    fn visit_package(&mut self, package: &mut Package) -> Option<DataType> {
+        let _ = self.table.enter_named_scope(&package.def.name);
+        self.append_curr_rule(format!(":{}", package.def.name));
 
-        package.events_mut().for_each(|event| {
+        package.events.values_mut().for_each(|event| {
             self.visit_event(event);
         });
 
@@ -262,56 +262,57 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
         None
     }
 
-    fn visit_event(&mut self, event: &mut dyn Event) -> Option<DataType> {
-        let _ = self.table.enter_named_scope(&event.name());
-        self.append_curr_rule(format!(":{}", event.name()));
+    fn visit_event(&mut self, event: &mut Event) -> Option<DataType> {
+        let _ = self.table.enter_named_scope(&event.def.name);
+        self.append_curr_rule(format!(":{}", event.def.name));
 
-        for (var, ty_bound) in event.ty_info().iter() {
-            if let Expr::VarId { name, loc, .. } = var {
-                if let Some(id) = self.table.lookup(name) {
-                    if let Some(rec) = self.table.get_record_mut(id) {
-                        if let Record::Var { ty, def, loc, .. } = rec {
-                            if !matches!(def, CompilerDynamic) {
-                                self.err.type_check_error(
-                                    false,
-                                    "Type bounds should only be done for dynamically defined compiler variables (e.g. argN, localN)".to_owned(),
-                                    &loc.clone().map(|l| l.line_col),
-                                );
-                            }
-                            *ty = ty_bound.clone();
-                        } else {
-                            // unexpected record type
-                            self.err.unexpected_error(
-                                true,
-                                Some(format!("{UNEXPECTED_ERR_MSG} Expected Var type")),
-                                loc.clone().map(|l| l.line_col),
-                            )
-                        }
-                    }
-                } else {
-                    let _ = self.table.put(
-                        name.clone(),
-                        Record::Var {
-                            ty: ty_bound.clone(),
-                            name: name.clone(),
-                            value: None,
-                            def: CompilerDynamic,
-                            is_report_var: false,
-                            addr: None,
-                            loc: loc.clone(),
-                        },
-                    );
-                }
-            } else {
-                self.err.type_check_error(
-                    false,
-                    format!("{UNEXPECTED_ERR_MSG} Expected VarId type"),
-                    &None,
-                );
-            }
-        }
+        // TODO -- handle type bounds!! Likely will be putting this on the probe...not in the event!
+        // for (var, ty_bound) in event.ty_info().iter() {
+        //     if let Expr::VarId { name, loc, .. } = var {
+        //         if let Some(id) = self.table.lookup(name) {
+        //             if let Some(rec) = self.table.get_record_mut(id) {
+        //                 if let Record::Var { ty, def, loc, .. } = rec {
+        //                     if !matches!(def, CompilerDynamic) {
+        //                         self.err.type_check_error(
+        //                             false,
+        //                             "Type bounds should only be done for dynamically defined compiler variables (e.g. argN, localN)".to_owned(),
+        //                             &loc.clone().map(|l| l.line_col),
+        //                         );
+        //                     }
+        //                     *ty = ty_bound.clone();
+        //                 } else {
+        //                     // unexpected record type
+        //                     self.err.unexpected_error(
+        //                         true,
+        //                         Some(format!("{UNEXPECTED_ERR_MSG} Expected Var type")),
+        //                         loc.clone().map(|l| l.line_col),
+        //                     )
+        //                 }
+        //             }
+        //         } else {
+        //             let _ = self.table.put(
+        //                 name.clone(),
+        //                 Record::Var {
+        //                     ty: ty_bound.clone(),
+        //                     name: name.clone(),
+        //                     value: None,
+        //                     def: CompilerDynamic,
+        //                     is_report_var: false,
+        //                     addr: None,
+        //                     loc: loc.clone(),
+        //                 },
+        //             );
+        //         }
+        //     } else {
+        //         self.err.type_check_error(
+        //             false,
+        //             format!("{UNEXPECTED_ERR_MSG} Expected VarId type"),
+        //             &None,
+        //         );
+        //     }
+        // }
 
-        event.probes_mut().iter_mut().for_each(|(_, probe)| {
+        event.probes.values_mut().for_each(|probe| {
             probe.iter_mut().for_each(|probe| {
                 self.visit_probe(probe);
             });
@@ -324,12 +325,12 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
         None
     }
 
-    fn visit_probe(&mut self, probe: &mut Box<dyn Probe>) -> Option<DataType> {
-        let _ = self.table.enter_named_scope(&(*probe).mode().name());
-        self.append_curr_rule(format!(":{}", probe.mode().name()));
+    fn visit_probe(&mut self, probe: &mut Probe) -> Option<DataType> {
+        let _ = self.table.enter_named_scope(&(*probe).kind.name());
+        self.append_curr_rule(format!(":{}", probe.kind.name()));
 
         // type check predicate
-        if let Some(predicate) = &mut probe.predicate_mut() {
+        if let Some(predicate) = &mut probe.predicate {
             let predicate_loc = predicate.loc().clone().unwrap();
             if let Some(ty) = self.visit_expr(predicate) {
                 if ty != DataType::Boolean {
@@ -343,7 +344,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
         }
 
         // type check action
-        if let Some(body) = &mut probe.body_mut() {
+        if let Some(body) = &mut probe.body {
             self.visit_block(body);
         }
 
@@ -360,12 +361,12 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
         self.table.enter_named_scope(&function.name.name);
         if let Some(check_ret_type) = self.visit_block(&mut function.body) {
             //figure out how to deal with void functions (return type is ())
-            if check_ret_type != function.return_ty {
+            if check_ret_type != function.results {
                 self.err.type_check_error(
                     false,
                     format!(
                         "The function signature for '{}' returns '{:?}', but the body returns '{:?}'",
-                        function.name.name, function.return_ty, check_ret_type
+                        function.name.name, function.results, check_ret_type
                     ),
                     &function.name.loc.clone().map(|l| l.line_col),
                 );
@@ -374,7 +375,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
 
         //return the type of the fn
         self.table.exit_scope(self.err);
-        Some(function.return_ty.clone())
+        Some(function.results.clone())
     }
 
     fn visit_formal_param(&mut self, _param: &mut (Expr, DataType)) -> Option<DataType> {
@@ -406,11 +407,11 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         .to_string(),
                     Some(loc.line_col),
                 );
-                block.return_ty = ret_type.clone();
+                block.results = ret_type.clone();
                 return ret_type;
             }
         }
-        block.return_ty = ret_type.clone();
+        block.results = ret_type.clone();
         //add a check for return statement type matching the function return type if provided
         ret_type
     }
@@ -1445,7 +1446,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 Err(msg) => {
                                     let loc =
                                         self.curr_loc.as_ref().map(|loc| loc.line_col.clone());
-                                    self.err.type_check_error(false, format!("CastError: Cannot implicitly cast {msg} to {exp_ty}. Please add an explicit cast."),
+                                    self.err.type_check_error(false, format!("CastError: Cannot implicitly cast {msg}. Please add an explicit cast."),
                                                               &loc);
                                     return Some(DataType::AssumeGood);
                                 }

@@ -224,7 +224,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     alt: Block::default(),
                     loc: None,
                 }],
-                return_ty: None,
+                results: None,
                 loc: None,
             };
         }

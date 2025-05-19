@@ -1,15 +1,19 @@
 use crate::common::error::{ErrorGen, WhammError};
+use crate::common::terminal::{long_line, magenta, white};
+use crate::parser::provider_handler::{get_matches, yml_to_providers, PrintInfo, ProviderDef};
 use crate::parser::types;
 use crate::parser::types::Statement::LibImport;
-use crate::parser::types::{BinOp, Block, DataType, Definition, Expr, FnId, Location, NumFmt, NumLit, ProbeRule, Rule, RulePart, Script, Statement, UnOp, Value, Whamm, WhammParser, PRATT_PARSER, print_global_vars, print_fns};
+use crate::parser::types::{
+    print_bound_vars, print_fns, BinOp, Block, DataType, Definition, Expr, FnId, Location, NumFmt,
+    NumLit, ProbeRule, Rule, RulePart, Script, Statement, UnOp, Value, Whamm, WhammParser,
+    PRATT_PARSER,
+};
 use log::trace;
 use pest::error::{Error, LineColLocation};
 use pest::iterators::{Pair, Pairs};
 use pest::Parser;
 use std::str::FromStr;
 use termcolor::{BufferWriter, ColorChoice, WriteColor};
-use crate::common::terminal::{long_line, magenta, white};
-use crate::parser::provider_handler::{get_matches, yml_to_providers, PrintInfo, ProviderDef};
 
 const UNEXPECTED_ERR_MSG: &str =
     "WhammParser: Looks like you've found a bug...please report this behavior! Exiting now...";
@@ -41,8 +45,8 @@ pub fn print_info(rule: String, print_globals: bool, print_functions: bool, err:
 
         // Print the globals
         if print_globals {
-            let globals = Whamm::get_provided_globals();
-            print_global_vars(&mut tabs, &globals, &mut whamm_buffer);
+            let vars = Whamm::get_bound_vars();
+            print_bound_vars(&mut tabs, &vars, &mut whamm_buffer);
         }
 
         // Print the functions
@@ -63,10 +67,7 @@ pub fn print_info(rule: String, print_globals: bool, print_functions: bool, err:
     match res {
         Ok(mut pairs) => {
             // Create the probe rule from the input string
-            let probe_rule = handle_probe_rule(
-                pairs.next().unwrap(),
-                err,
-            );
+            let probe_rule = handle_probe_rule(pairs.next().unwrap(), err);
 
             // Print the information for the passed probe rule
             let matches = get_matches(&probe_rule, &def, err);
@@ -74,10 +75,18 @@ pub fn print_info(rule: String, print_globals: bool, print_functions: bool, err:
             if !matches.is_empty() {
                 probe_rule.print_bold_provider(&mut prov_buff);
                 for provider in matches.iter() {
-                    provider.print_info(&probe_rule, print_globals, print_functions, &mut prov_buff, &mut pkg_buff, &mut evt_buff, &mut tabs);
+                    provider.print_info(
+                        &probe_rule,
+                        print_globals,
+                        print_functions,
+                        &mut prov_buff,
+                        &mut pkg_buff,
+                        &mut evt_buff,
+                        &mut tabs,
+                    );
                 }
             }
-        },
+        }
         Err(e) => {
             err.pest_err(e);
         }
@@ -89,8 +98,7 @@ pub fn print_info(rule: String, print_globals: bool, print_functions: bool, err:
         writer
             .print(&buff)
             .expect("Uh oh, something went wrong while printing to terminal");
-        buff
-            .reset()
+        buff.reset()
             .expect("Uh oh, something went wrong while printing to terminal");
     }
 }
@@ -381,7 +389,7 @@ pub fn handle_fn_def(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, e
         name: fn_id,
         params,
         body,
-        return_ty,
+        results: return_ty,
     });
 }
 
@@ -437,7 +445,7 @@ fn handle_body(pairs: &mut Pairs<Rule>, line_col: LineColLocation, err: &mut Err
     }
     Block {
         stmts,
-        return_ty: None,
+        results: None,
         loc: Some(Location {
             line_col,
             path: None,
@@ -803,7 +811,7 @@ fn handle_if(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                 conseq,
                 alt: Block {
                     stmts: vec![],
-                    return_ty: None,
+                    results: None,
                     loc: Some(Location {
                         line_col: if_stmt_line_col.clone(),
                         path: None,
@@ -871,7 +879,7 @@ fn handle_elif(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
                 conseq: inner_block,
                 alt: Block {
                     stmts: vec![],
-                    return_ty: None,
+                    results: None,
                     loc: Some(Location {
                         line_col: alt_loc.clone(),
                         path: None,
@@ -882,7 +890,7 @@ fn handle_elif(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
                     path: None,
                 }),
             }],
-            return_ty: None,
+            results: None,
             loc: Some(Location {
                 line_col: alt_loc.clone(),
                 path: None,
@@ -902,7 +910,7 @@ fn handle_elif(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
                 path: None,
             }),
         }],
-        return_ty: None,
+        results: None,
         loc: Some(Location {
             line_col: alt_loc.clone(),
             path: None,
@@ -1323,25 +1331,25 @@ fn probe_rule_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeRule {
     let rule_as_str = pair.as_str();
     let mut parts = pair.into_inner();
 
-    if rule_as_str.to_uppercase() == "BEGIN" || rule_as_str.to_uppercase() == "END" {
-        // This is a BEGIN or END probe! Special case
-        let loc = if let Some(rule) = parts.next() {
-            let id_line_col = LineColLocation::from(rule.as_span());
-            Some(Location {
-                line_col: id_line_col,
-                path: None,
-            })
-        } else {
-            None
-        };
-
-        return ProbeRule {
-            provider: Some(RulePart::new("core".to_string(), loc.clone())),
-            package: Some(RulePart::new("*".to_string(), loc.clone())),
-            event: Some(RulePart::new("*".to_string(), loc.clone())),
-            mode: Some(RulePart::new(rule_as_str.to_string(), loc)),
-        };
-    }
+    // if rule_as_str.to_uppercase() == "BEGIN" || rule_as_str.to_uppercase() == "END" {
+    //     // This is a BEGIN or END probe! Special case
+    //     let loc = if let Some(rule) = parts.next() {
+    //         let id_line_col = LineColLocation::from(rule.as_span());
+    //         Some(Location {
+    //             line_col: id_line_col,
+    //             path: None,
+    //         })
+    //     } else {
+    //         None
+    //     };
+    //
+    //     return ProbeRule {
+    //         provider: Some(RulePart::new("core".to_string(), loc.clone())),
+    //         package: Some(RulePart::new("*".to_string(), loc.clone())),
+    //         event: Some(RulePart::new("*".to_string(), loc.clone())),
+    //         mode: Some(RulePart::new(rule_as_str.to_string(), loc)),
+    //     };
+    // }
 
     let simplified = if let Some((prefix, postfix)) = rule_as_str.split_once("(") {
         let (_, after) = postfix.split_once(")").unwrap();

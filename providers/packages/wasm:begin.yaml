@@ -1,0 +1,10 @@
+# ====================
+# ==== wasm:begin ====
+# ====================
+
+begin: &begin
+  name: begin
+  docs: Executes on wasm startup.
+  bound_vars: []
+  bound_fns: []
+  events: []

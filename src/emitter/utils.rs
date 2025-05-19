@@ -400,7 +400,7 @@ pub fn whamm_type_to_wasm_global(
 }
 
 pub fn block_type_to_wasm(block: &Block) -> BlockType {
-    match &block.return_ty {
+    match &block.results {
         None => BlockType::Empty,
         Some(return_ty) => {
             let wasm_ty = return_ty.to_wasm_type();
@@ -622,7 +622,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                         expr: *(*conseq).clone(),
                         loc: None,
                     }],
-                    return_ty: Some(ty.clone()),
+                    results: Some(ty.clone()),
                     loc: None,
                 },
                 &mut Block {
@@ -630,7 +630,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                         expr: *(*alt).clone(),
                         loc: None,
                     }],
-                    return_ty: Some(ty.clone()),
+                    results: Some(ty.clone()),
                     loc: None,
                 },
                 strategy,

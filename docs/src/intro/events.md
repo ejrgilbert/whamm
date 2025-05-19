@@ -10,6 +10,6 @@ Currently available `packages`:
 - `memory` access (read/write) events
 - `table` access (read/write) events
 - WASI `component` operation events, e.g. `wasi:http:send_req:alt`
-- `BEGIN`/`END` events
+- `wasm:begin`/`wasm:end` events
 - `traps`
 - `exception` throw/rethrow/catch events

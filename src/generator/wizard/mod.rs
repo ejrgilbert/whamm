@@ -107,7 +107,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
                         expr: pred.clone(),
                         loc: None,
                     }],
-                    return_ty: None,
+                    results: None,
                     loc: None,
                 };
                 let (fid, str) = self.emitter.emit_special_func(

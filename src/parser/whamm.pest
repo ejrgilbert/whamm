@@ -12,7 +12,7 @@ predicate = { "/" ~ expr ~ "/" }
 
 //making the decision not to support "void" functions -- can change later
 fn_def = { "fn" ~ ID ~ fn_params ~ ("->" ~ TYPE) ? ~ block }
-fn_params = { "(" ~ param_list? ~ ")" }
+fn_params = _{ "(" ~ param_list? ~ ")" }
 param_list = _{ (( param ) ~ ("," ~ param )*) }
 param = { ID ~ ":" ~ TYPE }
 
@@ -53,7 +53,7 @@ ID = @{ (!DISALLOWED_ID ~ (ASCII_ALPHA | "_")+ ~ ( ASCII_DIGIT | (ASCII_ALPHA | 
 }
 PROBE_RULE = {
     PROBE_ID? ~ ":" ~ PROBE_ID? ~ ":" ~ PROBE_ID? ~ EVENT_TY_INFO? ~ ":" ~ PROBE_ID?
-    | PROBE_ID
+    | PROBE_ID ~ ":" ~ PROBE_ID // to handle wasm:before, wasm:after
 }
 
 // ===============

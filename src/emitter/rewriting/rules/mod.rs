@@ -353,7 +353,7 @@ impl<'a> LocInfo<'a> {
                     name,
                     Block {
                         stmts,
-                        return_ty: None,
+                        results: None,
                         loc: None,
                     },
                 );
@@ -384,7 +384,7 @@ impl<'a> LocInfo<'a> {
             name,
             Block {
                 stmts: vec![decl, assign],
-                return_ty: None,
+                results: None,
                 loc: None,
             },
         );

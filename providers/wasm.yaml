@@ -16,4 +16,6 @@ providers:
         docs: The name of the function the probe is located in. Empty string if not defined.
     bound_fns: []
     packages:
+      - *begin
+      - *wasm_end
       - *opcode

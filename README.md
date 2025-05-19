@@ -117,7 +117,7 @@ To be added:
 - `memory` access (read/write) events
 - `table` access (read/write) events
 - `component` operation events
-- `BEGIN`/`END` events
+- `wasm:begin`/`wasm:end` events
 - `traps`
 - `exception` throw/rethrow/catch events
 

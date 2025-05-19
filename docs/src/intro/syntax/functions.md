@@ -147,9 +147,9 @@ NOTE: This functionality hasn't been fully implemented! More docs to come post-i
 
 [//]: # (})
 
-[//]: # (//"BEGIN" is our probe that executes on wasm startup)
+[//]: # (//"wasm:begin" is our probe that executes on wasm startup)
 
-[//]: # (BEGIN {)
+[//]: # (wasm:begin {)
 
 [//]: # (    inner_fn&#40;&#41;; // call without assigning to something when void)
 
@@ -169,9 +169,9 @@ NOTE: This functionality hasn't been fully implemented! More docs to come post-i
 
 [//]: # (})
 
-[//]: # (//"BEGIN" is our probe that executes on wasm startup)
+[//]: # (//"wasm:begin" is our probe that executes on wasm startup)
 
-[//]: # (BEGIN{)
+[//]: # (wasm:begin{)
 
 [//]: # (    bool local1 = larger_than_5&#40;6&#41;;)
 

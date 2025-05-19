@@ -1,10 +1,9 @@
 use crate::common::error::ErrorGen;
 use crate::generator::ast::ReqArgs;
-use crate::parser::rules::{Event, Package, Probe, Provider};
+use crate::parser::provider_handler::{BoundFunc, BoundVar, Event, Package, Probe, Provider};
 use crate::parser::types as parser_types;
-use crate::parser::types::{
-    Definition, FnId, Global, ProvidedFunction, ProvidedGlobal, WhammVisitorMut,
-};
+use crate::parser::types::Definition::CompilerDynamic;
+use crate::parser::types::{Definition, FnId, Global, ProvidedFunction, WhammVisitorMut};
 use crate::verifier::builder_visitor::parser_types::Location;
 use crate::verifier::types::{Record, ScopeType, SymbolTable};
 use crate::verifier::verifier::check_duplicate_id;
@@ -85,12 +84,12 @@ impl SymbolTableBuilder<'_, '_, '_> {
             .set_curr_scope_info(script.id.to_string(), ScopeType::Script);
         self.table.set_curr_script(id);
     }
-    fn add_provider(&mut self, provider: &dyn Provider) {
+    fn add_provider(&mut self, provider: &Provider) {
         /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
         In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
         just in case it is non-fatal to avoid having 2 strings w/same name in record */
         if check_duplicate_id(
-            &provider.name(),
+            &provider.def.name,
             &None,
             &Definition::CompilerStatic,
             &self.table,
@@ -101,14 +100,14 @@ impl SymbolTableBuilder<'_, '_, '_> {
 
         // create record
         let provider_rec = Record::Provider {
-            name: provider.name().clone(),
+            name: provider.def.name.clone(),
             fns: vec![],
             globals: vec![],
             packages: vec![],
         };
 
         // Add provider to scope
-        let id = self.table.put(provider.name().clone(), provider_rec);
+        let id = self.table.put(provider.def.name.clone(), provider_rec);
 
         // Add provider to current script record
         match self
@@ -131,15 +130,15 @@ impl SymbolTableBuilder<'_, '_, '_> {
 
         // set scope name and type
         self.table
-            .set_curr_scope_info(provider.name().clone(), ScopeType::Provider);
+            .set_curr_scope_info(provider.def.name.clone(), ScopeType::Provider);
     }
 
-    fn add_package(&mut self, package: &dyn Package) {
+    fn add_package(&mut self, package: &Package) {
         /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
         In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
         just in case it is non-fatal to avoid having 2 strings w/same name in record */
         if check_duplicate_id(
-            &package.name(),
+            &package.def.name,
             &None,
             &Definition::CompilerStatic,
             &self.table,
@@ -150,14 +149,14 @@ impl SymbolTableBuilder<'_, '_, '_> {
 
         // create record
         let package_rec = Record::Package {
-            name: package.name().clone(),
+            name: package.def.name.clone(),
             fns: vec![],
             globals: vec![],
             events: vec![],
         };
 
         // Add package to scope
-        let id = self.table.put(package.name().clone(), package_rec);
+        let id = self.table.put(package.def.name.clone(), package_rec);
 
         // Add package to current provider record
         match self.table.get_record_mut(self.curr_provider.unwrap()) {
@@ -176,15 +175,15 @@ impl SymbolTableBuilder<'_, '_, '_> {
 
         // set scope name and type
         self.table
-            .set_curr_scope_info(package.name().clone(), ScopeType::Package);
+            .set_curr_scope_info(package.def.name.clone(), ScopeType::Package);
     }
 
-    fn add_event(&mut self, event: &dyn Event) {
+    fn add_event(&mut self, event: &Event) {
         /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
         In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
         just in case it is non-fatal to avoid having 2 strings w/same name in record */
         if check_duplicate_id(
-            &event.name(),
+            &event.def.name,
             &None,
             &Definition::CompilerStatic,
             &self.table,
@@ -195,14 +194,14 @@ impl SymbolTableBuilder<'_, '_, '_> {
 
         // create record
         let event_rec = Record::Event {
-            name: event.name().clone(),
+            name: event.def.name.clone(),
             fns: vec![],
             globals: vec![],
             probes: vec![],
         };
 
         // Add event to scope
-        let id = self.table.put(event.name().clone(), event_rec);
+        let id = self.table.put(event.def.name.clone(), event_rec);
 
         // Add event to current package record
         match self
@@ -225,15 +224,15 @@ impl SymbolTableBuilder<'_, '_, '_> {
 
         // set scope name and type
         self.table
-            .set_curr_scope_info(event.name().clone(), ScopeType::Event);
+            .set_curr_scope_info(event.def.name.clone(), ScopeType::Event);
     }
 
-    fn add_probe(&mut self, probe: &dyn Probe) {
+    fn add_probe(&mut self, probe: &Probe) {
         /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
         In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
         just in case it is non-fatal to avoid having 2 strings w/same name in record */
         if check_duplicate_id(
-            &probe.mode().name(),
+            &probe.kind.name(),
             &None,
             &Definition::CompilerStatic,
             &self.table,
@@ -244,13 +243,13 @@ impl SymbolTableBuilder<'_, '_, '_> {
 
         // create record
         let probe_rec = Record::Probe {
-            mode: probe.mode().name(),
+            mode: probe.kind.name(),
             fns: vec![],
             globals: vec![],
         };
 
         // Add probe to scope
-        let id = self.table.put(probe.mode().name(), probe_rec);
+        let id = self.table.put(probe.kind.name(), probe_rec);
 
         // Add probe to current event record
         match self.table.get_record_mut(self.curr_event.unwrap()) {
@@ -269,7 +268,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
 
         // set scope name and type
         self.table
-            .set_curr_scope_info(probe.mode().name(), ScopeType::Probe);
+            .set_curr_scope_info(probe.kind.name(), ScopeType::Probe);
     }
 
     fn add_user_lib(&mut self, lib_name: &String, loc: &Option<Location>) {
@@ -412,7 +411,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
             name: f.name.clone(),
             def: f.def.clone(),
             params: vec![],
-            ret_ty: f.return_ty.clone(),
+            ret_ty: f.results.clone(),
             addr: None,
             loc: f.name.loc.clone(),
             req_args: self.req_args.clone(),
@@ -543,37 +542,37 @@ impl SymbolTableBuilder<'_, '_, '_> {
         self.add_global_id_to_curr_rec(id);
     }
 
-    fn visit_provided_globals(
+    fn visit_bound_vars(
         &mut self,
-        globals: &HashMap<String, ProvidedGlobal>,
+        vars: &Vec<BoundVar>,
     ) -> (HashMap<String, String>, HashMap<String, (DataType, Expr)>) {
         let mut aliases = HashMap::new();
         let mut derived = HashMap::new();
-        for (
+        for BoundVar {
             name,
-            ProvidedGlobal {
-                global,
-                value,
-                derived_from,
-                ..
-            },
-        ) in globals.iter()
+            ty,
+            derived_from,
+            ..
+        } in vars.iter()
         {
             if let Some(derived_from) = derived_from {
                 if let Expr::VarId { name: alias, .. } = derived_from {
                     // this is a simple alias!
+                    println!("added as alias: {name} -> {alias}");
                     aliases.insert(name.clone(), alias.clone());
                 } else {
                     // Add derived globals to the probe body itself (to calculate the value)
-                    derived.insert(name.clone(), (global.ty.clone(), derived_from.clone()));
+                    println!("added to body: {name}");
+                    derived.insert(name.clone(), (ty.clone(), derived_from.clone()));
                 }
             } else {
                 // Add other globals to the scope itself
+                println!("added to table: {name}");
                 self.add_global(
-                    global.ty.clone(),
+                    ty.clone(),
                     name.clone(),
-                    value.clone(),
-                    global.def.clone(),
+                    None,            // todo this is just made up
+                    CompilerDynamic, // todo this is just made up
                     false,
                     None,
                 );
@@ -614,7 +613,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
         );
 
         // visit globals
-        (self.aliases, self.derived_vars) = self.visit_provided_globals(&whamm.globals);
+        (self.aliases, self.derived_vars) = self.visit_bound_vars(&whamm.bound_vars);
 
         // visit scripts
         whamm
@@ -669,38 +668,37 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
             self.visit_stmt(stmt)
         });
 
-        // TODO
-        // script
-        //     .providers
-        //     .iter_mut()
-        //     .for_each(|(_name, provider)| self.visit_provider(provider));
+        script
+            .providers
+            .iter_mut()
+            .for_each(|(_name, provider)| self.visit_provider(provider));
 
         trace!("Exiting: visit_script");
         self.table.exit_scope(self.err);
         self.curr_script = None;
     }
 
-    fn visit_provider(&mut self, provider: &mut Box<dyn Provider>) {
+    fn visit_provider(&mut self, provider: &mut Provider) {
         trace!("Entering: visit_provider");
 
-        self.add_provider(provider.as_ref());
-        provider.get_provided_fns_mut().iter_mut().for_each(
-            |ProvidedFunction {
-                 function, req_args, ..
-             }| {
+        self.add_provider(provider);
+        provider
+            .def
+            .bound_fns
+            .iter_mut()
+            .for_each(|BoundFunc { func, req_args, .. }| {
                 self.req_args = req_args.clone();
-                self.visit_fn(function);
-            },
-        );
-        let (prov_aliases, prov_derived_vars) =
-            self.visit_provided_globals(provider.get_provided_globals());
+                self.visit_fn(func);
+            });
+        let (prov_aliases, prov_derived_vars) = self.visit_bound_vars(&provider.def.bound_vars);
         let to_remove_alias = prov_aliases.keys().cloned().collect_vec();
         let to_remove_vars = prov_derived_vars.keys().cloned().collect_vec();
         self.aliases.extend(prov_aliases.clone());
         self.derived_vars.extend(prov_derived_vars.clone());
         provider
-            .packages_mut()
-            .for_each(|package| self.visit_package(package));
+            .packages
+            .iter_mut()
+            .for_each(|(_, package)| self.visit_package(package));
         for var in to_remove_alias.iter() {
             self.aliases.remove(var);
         }
@@ -713,27 +711,27 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
         self.curr_provider = None;
     }
 
-    fn visit_package(&mut self, package: &mut dyn Package) {
+    fn visit_package(&mut self, package: &mut Package) {
         trace!("Entering: visit_package");
 
         self.add_package(package);
-        package.get_provided_fns_mut().iter_mut().for_each(
-            |ProvidedFunction {
-                 function, req_args, ..
-             }| {
+        package
+            .def
+            .bound_fns
+            .iter_mut()
+            .for_each(|BoundFunc { func, req_args, .. }| {
                 self.req_args = req_args.clone();
-                self.visit_fn(function);
-            },
-        );
-        let (pack_aliases, pack_derived_vars) =
-            self.visit_provided_globals(package.get_provided_globals());
+                self.visit_fn(func);
+            });
+        let (pack_aliases, pack_derived_vars) = self.visit_bound_vars(&package.def.bound_vars);
         let to_remove_alias = pack_aliases.keys().cloned().collect_vec();
         let to_remove_vars = pack_derived_vars.keys().cloned().collect_vec();
         self.aliases.extend(pack_aliases.clone());
         self.derived_vars.extend(pack_derived_vars.clone());
         package
-            .events_mut()
-            .for_each(|event| self.visit_event(event));
+            .events
+            .iter_mut()
+            .for_each(|(_, event)| self.visit_event(event));
         for var in to_remove_alias.iter() {
             self.aliases.remove(var);
         }
@@ -746,27 +744,26 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
         self.curr_package = None;
     }
 
-    fn visit_event(&mut self, event: &mut dyn Event) {
+    fn visit_event(&mut self, event: &mut Event) {
         trace!("Entering: visit_event");
 
         self.add_event(event);
-        event.get_provided_fns_mut().iter_mut().for_each(
-            |ProvidedFunction {
-                 function, req_args, ..
-             }| {
+        event
+            .def
+            .bound_fns
+            .iter_mut()
+            .for_each(|BoundFunc { func, req_args, .. }| {
                 self.req_args = req_args.clone();
-                self.visit_fn(function);
-            },
-        );
-        let (ev_aliases, ev_derived_vars) =
-            self.visit_provided_globals(event.get_provided_globals());
+                self.visit_fn(func);
+            });
+        let (ev_aliases, ev_derived_vars) = self.visit_bound_vars(&event.def.bound_vars);
         let to_remove_alias = ev_aliases.keys().cloned().collect_vec();
         let to_remove_vars = ev_derived_vars.keys().cloned().collect_vec();
         self.aliases.extend(ev_aliases.clone());
         self.derived_vars.extend(ev_derived_vars.clone());
         // visit probe_map
-        event.probes_mut().iter_mut().for_each(|probes| {
-            probes.1.iter_mut().for_each(|probe| {
+        event.probes.values_mut().for_each(|probes| {
+            probes.iter_mut().for_each(|probe| {
                 self.visit_probe(probe);
             });
         });
@@ -782,20 +779,19 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
         self.curr_event = None;
     }
 
-    fn visit_probe(&mut self, probe: &mut Box<dyn Probe>) {
+    fn visit_probe(&mut self, probe: &mut Probe) {
         trace!("Entering: visit_probe");
 
-        self.add_probe(probe.as_ref());
-        probe.get_mode_provided_fns_mut().iter_mut().for_each(
-            |ProvidedFunction {
-                 function, req_args, ..
-             }| {
+        self.add_probe(probe);
+        probe
+            .def
+            .bound_fns
+            .iter_mut()
+            .for_each(|BoundFunc { func, req_args, .. }| {
                 self.req_args = req_args.clone();
-                self.visit_fn(function);
-            },
-        );
-        let (probe_aliases, probe_derived_vars) =
-            self.visit_provided_globals(probe.get_mode_provided_globals());
+                self.visit_fn(func);
+            });
+        let (probe_aliases, probe_derived_vars) = self.visit_bound_vars(&probe.def.bound_vars);
         let to_remove_alias = probe_aliases.keys().cloned().collect_vec();
         let to_remove_vars = probe_derived_vars.keys().cloned().collect_vec();
         self.aliases.extend(probe_aliases.clone());
@@ -803,12 +799,12 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
 
         // Will not visit predicate/body at this stage
         // visit the predicate/body to handle aliases and derived variables!
-        if let Some(predicate) = &mut probe.predicate_mut() {
+        if let Some(predicate) = &mut probe.predicate {
             self.visit_expr(predicate);
         }
 
         // Add the derived variables as new variables at the top of the probe body!
-        if let Some(body) = probe.body_mut() {
+        if let Some(body) = &mut probe.body {
             self.visit_block(body);
 
             for (var, (ty, expr)) in self.derived_vars.iter() {

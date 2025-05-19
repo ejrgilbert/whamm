@@ -8,49 +8,49 @@ argN: &argN
   name: arg[0:9]+
   type: unknown
   docs: The argument to the call at the specific index, [0:9]+. (For example, the number of arguments to a call changes based on the targeted function.)
-  derived_from: none
+  derived_from: null
 
 arg0_i32: &arg0_i32
   name: arg0
   type: i32
   docs: The argument to the opcode at index 0.
-  derived_from: none
+  derived_from: null
 
 arg0_u32: &arg0_u32
   name: arg0
   type: u32
   docs: The argument to the opcode at index 0.
-  derived_from: none
+  derived_from: null
 
 arg0_i64: &arg0_i64
   name: arg0
   type: i64
   docs: The argument to the opcode at index 0.
-  derived_from: none
+  derived_from: null
 
 arg0_f32: &arg0_f32
   name: arg0
   type: f32
   docs: The argument to the opcode at index 0.
-  derived_from: none
+  derived_from: null
 
 arg0_f64: &arg0_f64
   name: arg0
   type: f64
   docs: The argument to the opcode at index 0.
-  derived_from: none
+  derived_from: null
 
 arg0_unknown: &arg0_unknown
   name: arg0
   type: unknown
   docs: The argument to the opcode at index 0.
-  derived_from: none
+  derived_from: null
 
 arg1_u32: &arg1_u32
   name: arg1
   type: u32
   docs: The argument to the opcode at index 0.
-  derived_from: none
+  derived_from: null
 
 # ========================
 # ==== immN Constants ====
@@ -60,43 +60,43 @@ immN: &immN
   name: imm[0:9]+
   type: unknown
   docs: The immediate to the opcode at the specific index, e.g. [0:9]+, not including the default target. The number of immediates on the br_table is not statically known.
-  derived_from: none
+  derived_from: null
 
 imm0_i32: &imm0_i32
   name: imm0
   type: i32
   docs: The immediate to the opcode at index 0.
-  derived_from: none
+  derived_from: null
 
 imm0_u32: &imm0_u32
   name: imm0
   type: u32
   docs: The immediate to the opcode at index 0.
-  derived_from: none
+  derived_from: null
 
 imm0_i64: &imm0_i64
   name: imm0
   type: i64
   docs: The immediate to the opcode at index 0.
-  derived_from: none
+  derived_from: null
 
 imm0_f32: &imm0_f32
   name: imm0
   type: f32
   docs: The immediate to the opcode at index 0.
-  derived_from: none
+  derived_from: null
 
 imm0_f64: &imm0_f64
   name: imm0
   type: f64
   docs: The immediate to the opcode at index 0.
-  derived_from: none
+  derived_from: null
 
 imm1_u32: &imm1_u32
   name: imm1
   type: u32
   docs: The immediate to the opcode at index 1.
-  derived_from: none
+  derived_from: null
 
 # ============================
 # ==== Category Constants ====
@@ -109,87 +109,87 @@ category_id_arith: &category_id_arith
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
-  derived_from: arith
+  derived_from: 0
 category_id_atomic: &category_id_atomic
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
-  derived_from: atomic
+  derived_from: 1
 category_id_compare: &category_id_compare
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
-  derived_from: compare
+  derived_from: 2
 category_id_const: &category_id_const
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
-  derived_from: const
+  derived_from: 3
 category_id_control: &category_id_control
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
-  derived_from: control
+  derived_from: 4
 category_id_convert: &category_id_convert
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
-  derived_from: convert
+  derived_from: 5
 category_id_exn: &category_id_exn
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
-  derived_from: exn
+  derived_from: 6
 category_id_gc: &category_id_gc
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
-  derived_from: gc
+  derived_from: 7
 category_id_global: &category_id_global
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
-  derived_from: global
+  derived_from: 8
 category_id_load: &category_id_load
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
-  derived_from: load
+  derived_from: 9
 category_id_local: &category_id_local
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
-  derived_from: local
+  derived_from: 10
 category_id_memory: &category_id_memory
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
-  derived_from: memory
+  derived_from: 11
 category_id_misc: &category_id_misc
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
-  derived_from: misc
+  derived_from: 12
 category_id_ref: &category_id_ref
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
-  derived_from: ref
+  derived_from: 13
 category_id_simd: &category_id_simd
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
-  derived_from: simd
+  derived_from: 14
 category_id_store: &category_id_store
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
-  derived_from: store
+  derived_from: 15
 category_id_table: &category_id_table
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
-  derived_from: table
+  derived_from: 16
 
 # CATEGORY NAME
 
@@ -197,111 +197,122 @@ category_name_arith: &category_name_arith
   name: category_name
   docs: The category name of this opcode.
   type: str
-  derived_from: arith
+  derived_from: '"arith"'
 category_name_atomic: &category_name_atomic
   name: category_name
   docs: The category name of this opcode.
   type: str
-  derived_from: atomic
+  derived_from: '"atomic"'
 category_name_compare: &category_name_compare
   name: category_name
   docs: The category name of this opcode.
   type: str
-  derived_from: compare
+  derived_from: '"compare"'
 category_name_const: &category_name_const
   name: category_name
   docs: The category name of this opcode.
   type: str
-  derived_from: const
+  derived_from: '"const"'
 category_name_control: &category_name_control
   name: category_name
   docs: The category name of this opcode.
   type: str
-  derived_from: control
+  derived_from: '"control"'
 category_name_convert: &category_name_convert
   name: category_name
   docs: The category name of this opcode.
   type: str
-  derived_from: convert
+  derived_from: '"convert"'
 category_name_exn: &category_name_exn
   name: category_name
   docs: The category name of this opcode.
   type: str
-  derived_from: exn
+  derived_from: '"exn"'
 category_name_gc: &category_name_gc
   name: category_name
   docs: The category name of this opcode.
   type: str
-  derived_from: gc
+  derived_from: '"gc"'
 category_name_global: &category_name_global
   name: category_name
   docs: The category name of this opcode.
   type: str
-  derived_from: global
+  derived_from: '"global"'
 category_name_load: &category_name_load
   name: category_name
   docs: The category name of this opcode.
   type: str
-  derived_from: load
+  derived_from: '"load"'
 category_name_local: &category_name_local
   name: category_name
   docs: The category name of this opcode.
   type: str
-  derived_from: local
+  derived_from: '"local"'
 category_name_memory: &category_name_memory
   name: category_name
   docs: The category name of this opcode.
   type: str
-  derived_from: memory
+  derived_from: '"memory"'
 category_name_misc: &category_name_misc
   name: category_name
   docs: The category name of this opcode.
   type: str
-  derived_from: misc
+  derived_from: '"misc"'
 category_name_ref: &category_name_ref
   name: category_name
   docs: The category name of this opcode.
   type: str
-  derived_from: ref
+  derived_from: '"ref"'
 category_name_simd: &category_name_simd
   name: category_name
   docs: The category name of this opcode.
   type: str
-  derived_from: simd
+  derived_from: '"simd"'
 category_name_store: &category_name_store
   name: category_name
   docs: The category name of this opcode.
   type: str
-  derived_from: store
+  derived_from: '"store"'
 category_name_table: &category_name_table
   name: category_name
   docs: The category name of this opcode.
   type: str
-  derived_from: table
+  derived_from: '"table"'
 
 # ========================
 # ==== MODE Constants ====
 # ========================
 
 before: &before
+  alias_to: null
   name: before
   docs: This mode will cause the instrumentation logic to run *before* the probed event (if the predicate evaluates to `true`).
 after: &after
+  alias_to: null
   name: after
   docs:  This mode will cause the instrumentation logic to run *after* the probed event (if the predicate evaluates to `true`). For block-structured opcodes, the probe will be injected after the 'end' of the block.
 semantic_after: &semantic_after
+  alias_to: after
+  name: semantic_after
+  docs: This mode will cause the instrumentation logic to run *semantically after* the instrumented location, meaning it will find the target point in the bytecode that will be executed *after* the point is reached (consider blocks and br* opcodes).
+branching_after: &branching_after
+  alias_to: at_target
   name: semantic_after
   docs: This mode will cause the instrumentation logic to run *semantically after* the instrumented location, meaning it will find the target point in the bytecode that will be executed *after* the point is reached (consider blocks and br* opcodes).
 alt: &alt
+  alias_to: null
   name: alt
   docs: This mode will cause the instrumentation logic to run *instead of* the probed event (if the predicate evaluates to `true`).
 block_alt: &block_alt
+  alias_to: alt
   name: block_alt
   docs: This mode will cause the instrumentation logic to run *instead of* the probed block (if the predicate evaluates to `true`).
 entry: &entry
+  alias_to: null
   name: entry
   docs: This mode will cause the instrumentation logic to run *on entry* to the instrumentation point (e.g. functions bodies, blocks, etc.).
 exit: &exit
+  alias_to: null
   name: exit
   docs: This mode will cause the instrumentation logic to run *on exiting* to the instrumentation point (e.g. function bodies, blocks, etc.).
 
@@ -314,9 +325,7 @@ default_modes_no_alt: &default_modes_no_alt
   - *after
 block_modes: &block_modes
   - *before
-  # TODO: alias semantic_after to after
   - *semantic_after
-  # TODO: alias block_alt to alt
   - *block_alt
   - *entry
   - *exit
@@ -324,8 +333,7 @@ branching_modes: &branching_modes
   - *before
   - *after
   - *alt
-  # TODO: alias semantic_after to at_target
-  - *semantic_after
+  - *branching_after
 
 # ==========================
 # ==== *call* Constants ====

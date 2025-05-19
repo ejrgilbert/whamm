@@ -2,7 +2,7 @@ use crate::common::error::ErrorGen;
 use crate::common::instr::Config;
 use crate::generator::ast::{Probe, ReqArgs, Script};
 use crate::lang_features::report_vars::{BytecodeLoc, Metadata as ReportMetadata};
-use crate::parser::rules::{Event, Package, Probe as ParserProbe, Provider};
+use crate::parser::provider_handler::{Event, ModeKind, Package, Probe as ParserProbe, Provider};
 use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Location, Script as ParserScript, Statement, UnOp,
     Value, Whamm, WhammVisitor,
@@ -190,13 +190,13 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
         self.table.exit_scope(self.err);
     }
 
-    fn visit_provider(&mut self, provider: &Box<dyn Provider>) {
+    fn visit_provider(&mut self, provider: &Provider) {
         trace!("Entering: CodeGenerator::visit_provider");
-        self.table.enter_named_scope(&provider.name());
-        self.set_curr_rule(provider.name());
+        self.table.enter_named_scope(&provider.def.name);
+        self.set_curr_rule(provider.def.name.clone());
 
         // visit the packages
-        provider.packages().for_each(|package| {
+        provider.packages.values().for_each(|package| {
             self.visit_package(package);
         });
 
@@ -204,13 +204,13 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
         self.table.exit_scope(self.err);
     }
 
-    fn visit_package(&mut self, package: &dyn Package) {
+    fn visit_package(&mut self, package: &Package) {
         trace!("Entering: CodeGenerator::visit_package");
-        self.table.enter_named_scope(&package.name());
-        self.append_curr_rule(format!(":{}", package.name()));
+        self.table.enter_named_scope(&package.def.name);
+        self.append_curr_rule(format!(":{}", package.def.name));
 
         // visit the events
-        package.events().for_each(|event| {
+        package.events.values().for_each(|event| {
             self.visit_event(event);
         });
 
@@ -221,28 +221,25 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
         self.set_curr_rule(curr_rule[..curr_rule.rfind(':').unwrap()].to_string());
     }
 
-    fn visit_event(&mut self, event: &dyn Event) {
+    fn visit_event(&mut self, event: &Event) {
         trace!("Entering: CodeGenerator::visit_event");
-        self.table.enter_named_scope(&event.name());
-        self.append_curr_rule(format!(":{}", event.name()));
+        self.table.enter_named_scope(&event.def.name);
+        self.append_curr_rule(format!(":{}", event.def.name));
 
-        event.probes().iter().for_each(|(_ty, probes)| {
+        event.probes.iter().for_each(|(_ty, probes)| {
             probes.iter().for_each(|probe| {
                 if !self.config.wizard {
                     // add the mode when not on the wizard target
-                    self.append_curr_rule(format!(":{}", probe.mode().name()));
+                    self.append_curr_rule(format!(":{}", probe.kind.name()));
                 }
-                self.curr_probe = Probe::new(
-                    self.get_curr_rule().clone(),
-                    probe.id(),
-                    self.curr_script.id,
-                );
+                self.curr_probe =
+                    Probe::new(self.get_curr_rule().clone(), probe.id, self.curr_script.id);
                 self.visit_probe(probe);
 
                 // copy over data from original probe
-                self.curr_probe.predicate = probe.predicate().to_owned();
-                self.curr_probe.body = probe.body().to_owned();
-                self.curr_probe.body = probe.body().to_owned();
+                self.curr_probe.predicate = probe.predicate.to_owned();
+                self.curr_probe.body = probe.body.to_owned();
+                self.curr_probe.body = probe.body.to_owned();
                 self.curr_script.probes.push(self.curr_probe.clone());
 
                 if !self.config.wizard {
@@ -261,20 +258,20 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
         self.set_curr_rule(new_rule);
     }
 
-    fn visit_probe(&mut self, probe: &Box<dyn ParserProbe>) {
+    fn visit_probe(&mut self, probe: &ParserProbe) {
         trace!("Entering: CodeGenerator::visit_probe");
-        self.table.enter_named_scope(&probe.mode().name());
-        self.append_curr_rule(format!(":{}", probe.mode().name()));
-        if let Some(pred) = probe.predicate() {
+        self.table.enter_named_scope(&probe.kind.name());
+        self.append_curr_rule(format!(":{}", probe.kind.name()));
+        if let Some(pred) = &probe.predicate {
             self.visiting = Visiting::Predicate;
             self.visit_expr(pred);
         }
         // compile which args have been requested
         self.curr_probe.metadata.pred_args.process_req_args();
-        if let Some(body) = probe.body() {
+        if let Some(body) = &probe.body {
             self.visiting = Visiting::Body;
             self.visit_stmts(body.stmts.as_slice());
-            if probe.mode().name() == "alt" {
+            if probe.kind == ModeKind::Alt {
                 // XXX: this is bad
                 // always save all args for an alt probe
                 self.combine_req_args(ReqArgs::All);

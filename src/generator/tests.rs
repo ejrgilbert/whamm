@@ -11,6 +11,7 @@ use crate::verifier::types::{Record, ScopeType, SymbolTable};
 use crate::verifier::verifier;
 use log::{debug, error};
 use std::collections::HashMap;
+use crate::parser::provider_handler::ModeKind;
 
 pub fn setup_logger() {
     let _ = env_logger::builder().is_test(true).try_init();
@@ -36,27 +37,33 @@ fn get_rec<'a>(table: &'a mut SymbolTable, name: &str) -> Option<&'a mut Record>
 }
 
 fn get_pred(whamm: &Whamm) -> &Expr {
-    whamm
-        .scripts
-        .first()
-        .unwrap()
-        .providers
-        .get("wasm")
-        .unwrap()
-        .packages()
-        .next()
-        .unwrap()
-        .events()
-        .next()
-        .unwrap()
-        .probes()
-        .get("alt")
-        .unwrap()
-        .first()
-        .unwrap()
-        .predicate()
-        .as_ref()
-        .unwrap()
+    whamm.scripts.first().unwrap()
+        .providers.get("wasm").unwrap()
+        .packages.iter().next().unwrap()
+        .1.events.iter().next().unwrap()
+        .1.probes.get(&ModeKind::Alt).unwrap()
+        .first().unwrap().predicate.as_ref().unwrap()
+    // whamm
+    //     .scripts
+    //     .first()
+    //     .unwrap()
+    //     .providers
+    //     .get("wasm")
+    //     .unwrap()
+    //     .packages()
+    //     .next()
+    //     .unwrap()
+    //     .events()
+    //     .next()
+    //     .unwrap()
+    //     .probes()
+    //     .get("alt")
+    //     .unwrap()
+    //     .first()
+    //     .unwrap()
+    //     .predicate()
+    //     .as_ref()
+    //     .unwrap()
 }
 
 fn move_through_scopes_til_match(

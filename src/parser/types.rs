@@ -4,20 +4,17 @@ use pest::error::LineColLocation;
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
-use log::trace;
-use termcolor::{Buffer, ColorChoice, WriteColor};
+use termcolor::Buffer;
 
-use crate::common::error::{ErrorGen, WhammError};
-use crate::common::terminal::{green, grey_italics, long_line, magenta, white, yellow};
+use crate::common::error::ErrorGen;
+use crate::common::terminal::{green, grey_italics, magenta, white, yellow};
 use crate::generator::ast::ReqArgs;
-use crate::parser::rules::{
-    print_provider_docs, provider_factory, Event as OldEvent, Package as OldPackage, Probe as OldProbe, Provider as OldProvider, WhammProvider,
+use crate::parser::provider_handler::{
+    get_matches, BoundVar, Event, Package, Probe, Provider, ProviderDef,
 };
 use orca_wasm::ir::types::DataType as OrcaType;
 use pest::pratt_parser::PrattParser;
 use pest_derive::Parser;
-use termcolor::BufferWriter;
-use crate::parser::provider_handler::{EventDef, get_matches, PackageDef, Provider, ProviderDef};
 
 #[derive(Parser)]
 #[grammar = "./parser/whamm.pest"] // Path relative to base `src` dir
@@ -48,9 +45,9 @@ lazy_static::lazy_static! {
             .op(Op::postfix(cast))
     };
 }
-
-const UNEXPECTED_ERR_MSG: &str =
-    "WhammParser: Looks like you've found a bug...please report this behavior! Exiting now...";
+//
+// const UNEXPECTED_ERR_MSG: &str =
+//     "WhammParser: Looks like you've found a bug...please report this behavior! Exiting now...";
 
 // ===============
 // ==== Types ====
@@ -1093,7 +1090,7 @@ impl Value {
 #[derive(Clone, Debug, Default)]
 pub struct Block {
     pub stmts: Vec<Statement>,
-    pub return_ty: Option<DataType>,
+    pub results: Option<DataType>,
     pub loc: Option<Location>,
 }
 impl Block {
@@ -1257,7 +1254,7 @@ impl Expr {
     pub fn implicit_cast(&mut self, target: &DataType) -> Result<(), (String, bool)> {
         match self.internal_implicit_cast(target) {
             Err(msg) => Err((
-                format!("CastError: Cannot implicitly cast {msg} to {target}. Please add an explicit cast."),
+                format!("CastError: Cannot implicitly cast {msg}. Please add an explicit cast."),
                 false,
             )),
             _ => Ok(()),
@@ -1296,6 +1293,7 @@ impl Expr {
 
 // Functions
 
+// TODO -- get rid of FnId?
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct FnId {
     pub name: String,
@@ -1307,7 +1305,7 @@ pub struct Fn {
     pub(crate) def: Definition,
     pub(crate) name: FnId,
     pub(crate) params: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
-    pub(crate) return_ty: DataType,
+    pub(crate) results: DataType,
     pub(crate) body: Block,
 }
 impl Fn {
@@ -1329,7 +1327,7 @@ impl Fn {
         white(true, ")".to_string(), buffer);
 
         white(true, " -> ".to_string(), buffer);
-        self.return_ty.print(buffer);
+        self.results.print(buffer);
     }
 
     pub fn is_static(&self) -> bool {
@@ -1390,25 +1388,12 @@ impl Global {
     }
 }
 
-pub(crate) fn print_global_vars(
-    tabs: &mut usize,
-    globals: &HashMap<String, ProvidedGlobal>,
-    buffer: &mut Buffer,
-) {
-    if !globals.is_empty() {
+pub(crate) fn print_bound_vars(tabs: &mut usize, vars: &Vec<BoundVar>, buffer: &mut Buffer) {
+    if !vars.is_empty() {
         white(true, format!("{}GLOBALS:\n", " ".repeat(*tabs * 4)), buffer);
         *tabs += 1;
-        for (.., ProvidedGlobal { docs, global, .. }) in globals.iter() {
-            white(false, " ".repeat(*tabs * 4).to_string(), buffer);
-            global.print(buffer);
-
-            *tabs += 1;
-            white(
-                false,
-                format!("\n{}{}\n", " ".repeat(*tabs * 4), docs),
-                buffer,
-            );
-            *tabs -= 1;
+        for var in vars.iter() {
+            var.print_info(buffer, tabs);
         }
         *tabs -= 1;
         white(false, "\n".to_string(), buffer);
@@ -1442,8 +1427,8 @@ pub(crate) fn print_fns(tabs: &mut usize, functions: &[ProvidedFunction], buffer
 
 #[derive(Default)]
 pub struct Whamm {
-    pub fns: Vec<ProvidedFunction>,               // Comp-provided
-    pub globals: HashMap<String, ProvidedGlobal>, // Comp-provided
+    pub fns: Vec<ProvidedFunction>, // Comp-provided
+    pub bound_vars: Vec<BoundVar>,  // Comp-provided
 
     pub scripts: Vec<Script>,
 }
@@ -1451,7 +1436,7 @@ impl Whamm {
     pub fn new() -> Self {
         Whamm {
             fns: Whamm::get_provided_fns(),
-            globals: Whamm::get_provided_globals(),
+            bound_vars: Whamm::get_bound_vars(),
 
             scripts: vec![],
         }
@@ -1491,8 +1476,8 @@ impl Whamm {
         vec![strcmp]
     }
 
-    pub(crate) fn get_provided_globals() -> HashMap<String, ProvidedGlobal> {
-        HashMap::new()
+    pub(crate) fn get_bound_vars() -> Vec<BoundVar> {
+        vec![]
     }
 
     pub fn add_script(&mut self, mut script: Script) -> usize {
@@ -1715,17 +1700,24 @@ impl Script {
         def: &Vec<ProviderDef>,
         predicate: Option<Expr>,
         body: Option<Block>,
-        err: &mut ErrorGen
+        err: &mut ErrorGen,
     ) {
         let matches = get_matches(&probe_rule, def, err);
         if matches.is_empty() {
             assert!(err.has_errors);
         }
         for prov_match in matches.iter() {
-            let provider = self.providers.entry(prov_match.def.name.clone())
+            let provider = self
+                .providers
+                .entry(prov_match.def.name.clone())
                 .or_insert(Provider::new(prov_match.def.clone(), probe_rule));
 
-            provider.add_probes(&prov_match.packages, probe_rule, predicate.clone(), body.clone());
+            provider.add_probes(
+                &prov_match.packages,
+                probe_rule,
+                predicate.clone(),
+                body.clone(),
+            );
         }
     }
 }
@@ -1800,10 +1792,10 @@ impl ProvidedFunction {
                 },
                 name: FnId { name, loc: None },
                 params,
-                return_ty,
+                results: return_ty,
                 body: Block {
                     stmts: vec![],
-                    return_ty: None,
+                    results: None,
                     loc: None,
                 },
             },
@@ -1864,10 +1856,10 @@ pub enum BinOp {
 pub trait WhammVisitor<T> {
     fn visit_whamm(&mut self, whamm: &Whamm) -> T;
     fn visit_script(&mut self, script: &Script) -> T;
-    fn visit_provider(&mut self, provider: &Box<dyn OldProvider>) -> T;
-    fn visit_package(&mut self, package: &dyn OldPackage) -> T;
-    fn visit_event(&mut self, event: &dyn OldEvent) -> T;
-    fn visit_probe(&mut self, probe: &Box<dyn OldProbe>) -> T;
+    fn visit_provider(&mut self, provider: &Provider) -> T;
+    fn visit_package(&mut self, package: &Package) -> T;
+    fn visit_event(&mut self, event: &Event) -> T;
+    fn visit_probe(&mut self, probe: &Probe) -> T;
     // fn visit_predicate(&mut self, predicate: &Expr) -> T;
     fn visit_fn(&mut self, f: &Fn) -> T;
     fn visit_formal_param(&mut self, param: &(Expr, DataType)) -> T;
@@ -1884,10 +1876,10 @@ pub trait WhammVisitor<T> {
 pub trait WhammVisitorMut<T> {
     fn visit_whamm(&mut self, whamm: &mut Whamm) -> T;
     fn visit_script(&mut self, script: &mut Script) -> T;
-    fn visit_provider(&mut self, provider: &mut Box<dyn OldProvider>) -> T;
-    fn visit_package(&mut self, package: &mut dyn OldPackage) -> T;
-    fn visit_event(&mut self, event: &mut dyn OldEvent) -> T;
-    fn visit_probe(&mut self, probe: &mut Box<dyn OldProbe>) -> T;
+    fn visit_provider(&mut self, provider: &mut Provider) -> T;
+    fn visit_package(&mut self, package: &mut Package) -> T;
+    fn visit_event(&mut self, event: &mut Event) -> T;
+    fn visit_probe(&mut self, probe: &mut Probe) -> T;
     fn visit_fn(&mut self, f: &mut Fn) -> T;
     fn visit_formal_param(&mut self, param: &mut (Expr, DataType)) -> T;
     fn visit_block(&mut self, block: &mut Block) -> T;

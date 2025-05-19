@@ -1,0 +1,10 @@
+# ====================
+# ==== wasm:end ====
+# ====================
+
+wasm_end: &wasm_end
+  name: end
+  docs: Executes on wasm termination.
+  bound_vars: []
+  bound_fns: []
+  events: []

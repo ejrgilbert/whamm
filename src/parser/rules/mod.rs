@@ -7,8 +7,8 @@ use crate::generator::ast::ReqArgs;
 use crate::parser::rules::core::{CorePackage, WhammMode, WhammModeKind, WhammProbe};
 use crate::parser::rules::wasm::{OpcodeCategory, WasmPackage};
 use crate::parser::types::{
-    print_fns, print_global_vars, BinOp, Block, DataType, Definition, Expr, Location, ProbeRule,
-    ProvidedFunction, ProvidedGlobal, RulePart, UnOp, Value,
+    print_fns, BinOp, Block, DataType, Definition, Expr, Location, ProbeRule, ProvidedFunction,
+    ProvidedGlobal, RulePart, UnOp, Value,
 };
 use glob::Pattern;
 use std::collections::HashMap;
@@ -207,7 +207,7 @@ pub fn provider_factory<P: Provider + NameOptions + FromStrWithLoc + 'static>(
 
 pub fn print_provider_docs(
     provider: &Box<dyn Provider>,
-    print_globals: bool,
+    _print_globals: bool,
     print_functions: bool,
     tabs: &mut usize,
     buffer: &mut Buffer,
@@ -230,10 +230,10 @@ pub fn print_provider_docs(
     );
 
     // Print the globals
-    if print_globals {
-        let globals = provider.get_provided_globals();
-        print_global_vars(tabs, globals, buffer);
-    }
+    // if print_globals {
+    //     let globals = provider.get_provided_globals();
+    //     print_bound_vars(tabs, globals, buffer);
+    // }
 
     // Print the functions
     if print_functions {
@@ -355,7 +355,7 @@ fn package_factory<P: Package + NameOptions + FromStrWithLoc + 'static>(
 }
 fn print_package_docs(
     package: &Box<dyn Package>,
-    print_globals: bool,
+    _print_globals: bool,
     print_functions: bool,
     tabs: &mut usize,
     buffer: &mut Buffer,
@@ -378,9 +378,9 @@ fn print_package_docs(
     );
 
     // Print the globals
-    if print_globals {
-        print_global_vars(tabs, package.get_provided_globals(), buffer);
-    }
+    // if print_globals {
+    //     print_global_vars(tabs, package.get_provided_globals(), buffer);
+    // }
 
     // Print the functions
     if print_functions {
@@ -540,7 +540,7 @@ fn event_factory<E: Event + NameOptions + FromStrWithLoc + 'static>(
 }
 fn print_event_docs(
     event: &Box<dyn Event>,
-    print_globals: bool,
+    _print_globals: bool,
     print_functions: bool,
     tabs: &mut usize,
     buffer: &mut Buffer,
@@ -563,10 +563,10 @@ fn print_event_docs(
     );
 
     // Print the globals
-    if print_globals {
-        let globals = event.get_provided_globals();
-        print_global_vars(tabs, globals, buffer);
-    }
+    // if print_globals {
+    //     let globals = event.get_provided_globals();
+    //     print_global_vars(tabs, globals, buffer);
+    // }
 
     // Print the functions
     if print_functions {
@@ -625,7 +625,7 @@ fn mode_factory<M: Mode + NameOptions + FromStrWithLoc>(
 fn print_mode_docs<M: Mode>(
     alias: Option<&String>,
     mode: &M,
-    print_globals: bool,
+    _print_globals: bool,
     print_functions: bool,
     tabs: &mut usize,
     buffer: &mut Buffer,
@@ -651,10 +651,10 @@ fn print_mode_docs<M: Mode>(
     );
 
     // Print the globals
-    if print_globals {
-        let globals = mode.get_provided_globals();
-        print_global_vars(tabs, globals, buffer);
-    }
+    // if print_globals {
+    //     let globals = mode.get_provided_globals();
+    //     print_global_vars(tabs, globals, buffer);
+    // }
 
     // Print the functions
     if print_functions {
