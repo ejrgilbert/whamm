@@ -1,12 +1,12 @@
 ============================= REPORT CSV FLUSH ================================
 id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)
-559, memaddr, selected_first, u32, i32, script0, 3:8, 3_wasm:opcode:select, 1
-586, memaddr, selected_second, u32, i32, script0, 3:8, 3_wasm:opcode:select, 0
-343, memaddr, taken, i32, i32, script0, 0:10, 1_wasm:opcode:br_if, 0
-370, memaddr, not_taken, i32, i32, script0, 0:10, 1_wasm:opcode:br_if, 1
-397, memaddr, taken, i32, i32, script0, 1:12, 1_wasm:opcode:br_if, 1
-424, memaddr, not_taken, i32, i32, script0, 1:12, 1_wasm:opcode:br_if, 3
-451, memaddr, taken, i32, i32, script0, 1:19, 1_wasm:opcode:br_if, 1
-478, memaddr, not_taken, i32, i32, script0, 1:19, 1_wasm:opcode:br_if, 2
-505, memaddr, taken, i32, i32, script0, 2:6, 0_wasm:opcode:if, 0
-532, memaddr, not_taken, i32, i32, script0, 2:6, 0_wasm:opcode:if, 1
+558, memaddr, selected_first, u32, i32, script0, 3:8, 3_wasm:opcode:select, 1
+585, memaddr, selected_second, u32, i32, script0, 3:8, 3_wasm:opcode:select, 0
+342, memaddr, taken, i32, i32, script0, 0:10, 1_wasm:opcode:br_if, 0
+369, memaddr, not_taken, i32, i32, script0, 0:10, 1_wasm:opcode:br_if, 1
+396, memaddr, taken, i32, i32, script0, 1:12, 1_wasm:opcode:br_if, 1
+423, memaddr, not_taken, i32, i32, script0, 1:12, 1_wasm:opcode:br_if, 3
+450, memaddr, taken, i32, i32, script0, 1:19, 1_wasm:opcode:br_if, 1
+477, memaddr, not_taken, i32, i32, script0, 1:19, 1_wasm:opcode:br_if, 2
+504, memaddr, taken, i32, i32, script0, 2:6, 0_wasm:opcode:if, 0
+531, memaddr, not_taken, i32, i32, script0, 2:6, 0_wasm:opcode:if, 1
