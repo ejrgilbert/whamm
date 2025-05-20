@@ -489,10 +489,6 @@ wasm::call:alt /
     assert_eq!(num_recs, table.records.len());
 }
 
-
-// category_id, category_name, target_imp_name, imm0, arg[0:9]+)
-
-
 fn is_valid_script(script: &str, err: &mut ErrorGen) -> bool {
     let mut ast = tests::get_ast(script, err);
     let mut table = verifier::build_symbol_table(&mut ast, &HashMap::default(), err);

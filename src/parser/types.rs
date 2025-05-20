@@ -1348,13 +1348,24 @@ pub enum Definition {
     User,
     CompilerStatic,
     CompilerDynamic,
-    CompilerDerived,
+    CompilerDerived         // TODO -- can I remove this variant?
 }
 impl Definition {
     pub fn is_comp_provided(&self) -> bool {
         matches!(self, Definition::CompilerStatic)
             || matches!(self, Definition::CompilerDynamic)
             || matches!(self, Definition::CompilerDerived)
+    }
+}
+impl From<&str> for Definition {
+    fn from(value: &str) -> Self {
+        match value {
+            "user" => Self::User,
+            "static" => Self::CompilerStatic,
+            "dynamic" => Self::CompilerDynamic,
+            "derived" => Self::CompilerDerived,
+            _ => panic!("Invalid definition string: {value}")
+        }
     }
 }
 
@@ -1741,8 +1752,8 @@ impl ProvidedGlobal {
     ) -> Self {
         let def = if is_static {
             Definition::CompilerStatic
-        } else if derived_from.is_some() {
-            Definition::CompilerDerived
+        // } else if derived_from.is_some() {
+        //     Definition::CompilerDerived
         } else {
             Definition::CompilerDynamic
         };

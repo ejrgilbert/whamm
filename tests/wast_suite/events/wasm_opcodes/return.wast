@@ -93,7 +93,7 @@
 
 ;; ----------------------
 ;; ==== unpredicated ====
-;; WHAMM --> var count: i32; wasm:opcode:_return:before { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:return:before { count++; }
 (assert_return (invoke "get_count") (i32.const 5))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
@@ -101,28 +101,28 @@
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
 
 ;; target a specific `block` using `fn_id`/`fname`/`pc`
-;; WHAMM --> var count: i32; wasm:opcode:_return:before /fid == 2 && pc == 1/ { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:return:before /fid == 2 && pc == 1/ { count++; }
 (assert_return (invoke "get_count") (i32.const 0)) ;; location DNE
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
 
-;; WHAMM --> var count: i32; wasm:opcode:_return:before /fid == 2 && pc == 9/ { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:return:before /fid == 2 && pc == 9/ { count++; }
 (assert_return (invoke "get_count") (i32.const 1))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
 
-;; WHAMM --> var count: i32; wasm:opcode:_return:before /fid == 2 && pc == 12/ { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:return:before /fid == 2 && pc == 12/ { count++; }
 (assert_return (invoke "get_count") (i32.const 0))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
 
-;; WHAMM --> var count: i32; wasm:opcode:_return:before /fname == "basic_br" && pc == 9/ { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:return:before /fname == "basic_br" && pc == 9/ { count++; }
 (assert_return (invoke "get_count") (i32.const 1))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
@@ -130,7 +130,7 @@
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
 
 ;; after mode
-;; WHAMM --> var count: i32; wasm:opcode:_return:after { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:return:after { count++; }
 (assert_return (invoke "get_count") (i32.const 0))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check

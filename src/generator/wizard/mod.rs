@@ -181,32 +181,33 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         };
 
         // emit the export with the appropriate name
-        let name = if !probe.rule.event.name.starts_with("br")
-            && !probe.rule.event.name.starts_with("try")
-            && !probe.rule.event.name.starts_with("throw")
-            && !probe.rule.event.name.starts_with("return")
-            && !probe.rule.event.name.starts_with("call")
-        {
-            if probe.rule.event.name == "_if"
-                || probe.rule.event.name == "_else"
-                || probe.rule.event.name == "_loop"
-                || probe.rule.event.name == "_return"
-            {
-                probe.rule.to_string().replacen("_", "", 1)
-            } else if probe.rule.event.name.ends_with("st_null") {
-                // ref.test null
-                // ref.cast null
-                probe
-                    .rule
-                    .to_string()
-                    .replacen("_null", " null", 1)
-                    .replacen("_", ".", 1)
-            } else {
-                probe.rule.to_string().replacen("_", ".", 1)
-            }
-        } else {
-            probe.rule.to_string()
-        };
+        let name = probe.rule.to_string();
+        // let name = if !probe.rule.event.name.starts_with("br")
+        //     && !probe.rule.event.name.starts_with("try")
+        //     && !probe.rule.event.name.starts_with("throw")
+        //     && !probe.rule.event.name.starts_with("return")
+        //     && !probe.rule.event.name.starts_with("call")
+        // {
+        //     if probe.rule.event.name == "_if"
+        //         || probe.rule.event.name == "_else"
+        //         || probe.rule.event.name == "_loop"
+        //         || probe.rule.event.name == "_return"
+        //     {
+        //         probe.rule.to_string().replacen("_", "", 1)
+        //     } else if probe.rule.event.name.ends_with("st_null") {
+        //         // ref.test null
+        //         // ref.cast null
+        //         probe
+        //             .rule
+        //             .to_string()
+        //             .replacen("_null", " null", 1)
+        //             .replacen("_", ".", 1)
+        //     } else {
+        //         probe.rule.to_string().replacen("_", ".", 1)
+        //     }
+        // } else {
+        //     probe.rule.to_string()
+        // };
 
         let match_rule = self.create_wizard_match_rule(
             &name,

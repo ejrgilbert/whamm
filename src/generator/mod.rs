@@ -211,10 +211,10 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
         is_success &= self.visit_globals(&script.globals);
         // visit global statements
         is_success &= self.visit_stmts(&mut script.global_stmts);
-        // TODO visit providers
-        // script.providers.iter_mut().for_each(|(_name, provider)| {
-        //     is_success &= self.visit_provider(provider);
-        // });
+        // visit providers
+        script.providers.iter_mut().for_each(|(_name, provider)| {
+            is_success &= self.visit_provider(provider);
+        });
 
         trace!("Exiting: CodeGenerator::visit_script");
         self.exit_scope();

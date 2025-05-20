@@ -73,7 +73,9 @@ pub fn check_duplicate_id(
                 let new_loc = loc.as_ref().map(|l| l.line_col.clone());
                 if loc.is_none() {
                     // happens if new_loc is compiler-provided or is a user-def func without location -- both should throw unexpected error
-                    panic!("{UNEXPECTED_ERR_MSG} No location found for record");
+                    println!("{:#?}", old_rec);
+                    println!("{:#?}", table.get_curr_scope());
+                    panic!("{UNEXPECTED_ERR_MSG} No location found for record: {name}");
                 } else {
                     err.compiler_fn_overload_error(false, name.to_string(), new_loc);
                 }
@@ -192,6 +194,56 @@ impl<'a> TypeChecker<'a> {
         *curr_rule += &val;
         self.err.update_match_rule(self.curr_match_rule.clone());
     }
+
+    fn handle_type_bounds(&mut self, type_bounds: &Vec<(Expr, DataType)>) {
+
+        // TODO -- fix type bounds bug: put them local to the probe, not global to the event
+        //         ALSO need to handle type bounds on provider/package/mode as well!
+        for (var, ty_bound) in type_bounds.iter() {
+            if let Expr::VarId { name, loc, .. } = var {
+                if let Some(id) = self.table.lookup(name) {
+                    if let Some(rec) = self.table.get_record_mut(id) {
+                        if let Record::Var { ty, def, loc, .. } = rec {
+                            if !matches!(def, CompilerDynamic) {
+                                self.err.type_check_error(
+                                    false,
+                                    "Type bounds should only be done for dynamically defined compiler variables (e.g. argN, localN)".to_owned(),
+                                    &loc.clone().map(|l| l.line_col),
+                                );
+                            }
+                            *ty = ty_bound.clone();
+                        } else {
+                            // unexpected record type
+                            self.err.unexpected_error(
+                                true,
+                                Some(format!("{UNEXPECTED_ERR_MSG} Expected Var type")),
+                                loc.clone().map(|l| l.line_col),
+                            )
+                        }
+                    }
+                } else {
+                    let _ = self.table.put(
+                        name.clone(),
+                        Record::Var {
+                            ty: ty_bound.clone(),
+                            name: name.clone(),
+                            value: None,
+                            def: CompilerDynamic,
+                            is_report_var: false,
+                            addr: None,
+                            loc: loc.clone(),
+                        },
+                    );
+                }
+            } else {
+                self.err.type_check_error(
+                    false,
+                    format!("{UNEXPECTED_ERR_MSG} Expected VarId type"),
+                    &None,
+                );
+            }
+        }
+    }
 }
 
 impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
@@ -238,6 +290,8 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
         let _ = self.table.enter_named_scope(&provider.def.name);
         self.set_curr_rule(Some(provider.def.name.clone()));
 
+        self.handle_type_bounds(&provider.type_bounds);
+
         provider.packages.values_mut().for_each(|package| {
             self.visit_package(package);
         });
@@ -250,6 +304,8 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
     fn visit_package(&mut self, package: &mut Package) -> Option<DataType> {
         let _ = self.table.enter_named_scope(&package.def.name);
         self.append_curr_rule(format!(":{}", package.def.name));
+
+        self.handle_type_bounds(&package.type_bounds);
 
         package.events.values_mut().for_each(|event| {
             self.visit_event(event);
@@ -266,51 +322,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
         let _ = self.table.enter_named_scope(&event.def.name);
         self.append_curr_rule(format!(":{}", event.def.name));
 
-        // TODO -- handle type bounds!! Likely will be putting this on the probe...not in the event!
-        // for (var, ty_bound) in event.ty_info().iter() {
-        //     if let Expr::VarId { name, loc, .. } = var {
-        //         if let Some(id) = self.table.lookup(name) {
-        //             if let Some(rec) = self.table.get_record_mut(id) {
-        //                 if let Record::Var { ty, def, loc, .. } = rec {
-        //                     if !matches!(def, CompilerDynamic) {
-        //                         self.err.type_check_error(
-        //                             false,
-        //                             "Type bounds should only be done for dynamically defined compiler variables (e.g. argN, localN)".to_owned(),
-        //                             &loc.clone().map(|l| l.line_col),
-        //                         );
-        //                     }
-        //                     *ty = ty_bound.clone();
-        //                 } else {
-        //                     // unexpected record type
-        //                     self.err.unexpected_error(
-        //                         true,
-        //                         Some(format!("{UNEXPECTED_ERR_MSG} Expected Var type")),
-        //                         loc.clone().map(|l| l.line_col),
-        //                     )
-        //                 }
-        //             }
-        //         } else {
-        //             let _ = self.table.put(
-        //                 name.clone(),
-        //                 Record::Var {
-        //                     ty: ty_bound.clone(),
-        //                     name: name.clone(),
-        //                     value: None,
-        //                     def: CompilerDynamic,
-        //                     is_report_var: false,
-        //                     addr: None,
-        //                     loc: loc.clone(),
-        //                 },
-        //             );
-        //         }
-        //     } else {
-        //         self.err.type_check_error(
-        //             false,
-        //             format!("{UNEXPECTED_ERR_MSG} Expected VarId type"),
-        //             &None,
-        //         );
-        //     }
-        // }
+        self.handle_type_bounds(&event.type_bounds);
 
         event.probes.values_mut().for_each(|probe| {
             probe.iter_mut().for_each(|probe| {

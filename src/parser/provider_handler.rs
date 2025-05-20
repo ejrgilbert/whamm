@@ -2,7 +2,7 @@ use crate::common::error::{ErrorGen, WhammError};
 use crate::common::terminal::{green, long_line, magenta_italics, white};
 use crate::generator::ast::ReqArgs;
 use crate::parser::types::Definition::CompilerDynamic;
-use crate::parser::types::{Block, DataType, Expr, Fn as WhammFn, FnId, Location, ProbeRule, Rule, RulePart, Whamm, WhammParser};
+use crate::parser::types::{Block, DataType, Definition, Expr, Fn as WhammFn, FnId, Location, ProbeRule, Rule, RulePart, WhammParser};
 use crate::parser::whamm_parser::{handle_expr, handle_param, type_from_rule};
 use glob::{glob, Pattern};
 use log::{error, trace};
@@ -53,7 +53,7 @@ pub fn get_matches(
 #[derive(Debug)]
 pub struct Provider {
     pub(crate) def: Def,
-    type_bounds: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
+    pub(crate) type_bounds: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
     pub(crate) packages: HashMap<String, Package>,
     next_id: u32,
 }
@@ -102,7 +102,7 @@ impl Provider {
 #[derive(Debug)]
 pub struct Package {
     pub(crate) def: Def,
-    type_bounds: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
+    pub(crate) type_bounds: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
     pub(crate) events: HashMap<String, Event>,
 }
 impl Package {
@@ -149,7 +149,7 @@ impl Package {
 #[derive(Debug)]
 pub struct Event {
     pub(crate) def: Def,
-    type_bounds: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
+    pub(crate) type_bounds: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
     pub(crate) probes: HashMap<ModeKind, Vec<Probe>>,
 }
 impl Event {
@@ -714,6 +714,7 @@ pub struct BoundVar {
     pub name: String,
     docs: String,
     pub ty: DataType,
+    pub lifetime: Definition,
     pub derived_from: Option<Expr>,
 }
 impl From<BoundVarYml> for BoundVar {
@@ -736,6 +737,7 @@ impl From<BoundVarYml> for BoundVar {
             docs: value.docs.to_owned(),
             ty,
             derived_from,
+            lifetime: Definition::from(value.lifetime.as_str())
         }
     }
 }
@@ -1112,6 +1114,7 @@ struct BoundVarYml {
     #[serde(rename = "type")]
     ty: String,
     derived_from: Option<String>,
+    lifetime: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

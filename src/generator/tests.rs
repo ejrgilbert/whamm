@@ -43,27 +43,6 @@ fn get_pred(whamm: &Whamm) -> &Expr {
         .1.events.iter().next().unwrap()
         .1.probes.get(&ModeKind::Alt).unwrap()
         .first().unwrap().predicate.as_ref().unwrap()
-    // whamm
-    //     .scripts
-    //     .first()
-    //     .unwrap()
-    //     .providers
-    //     .get("wasm")
-    //     .unwrap()
-    //     .packages()
-    //     .next()
-    //     .unwrap()
-    //     .events()
-    //     .next()
-    //     .unwrap()
-    //     .probes()
-    //     .get("alt")
-    //     .unwrap()
-    //     .first()
-    //     .unwrap()
-    //     .predicate()
-    //     .as_ref()
-    //     .unwrap()
 }
 
 fn move_through_scopes_til_match(

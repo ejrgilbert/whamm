@@ -59,7 +59,6 @@ opcode: &opcode
     - *f64_store
     - *i32_store8
     - *i32_store16
-    - *i32_store16
     - *i64_store8
     - *i64_store16
     - *i64_store32

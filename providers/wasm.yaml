@@ -5,14 +5,17 @@ providers:
       - name: fid
         type: u32
         derived_from: null
+        lifetime: static
         docs: The ID of the function the probe is located in (zero-based indexing).
       - name: pc
         type: u32
         derived_from: null
+        lifetime: static
         docs: The instruction offset of the probe within the function (zero-based indexing).
       - name: fname
         type: str
         derived_from: null
+        lifetime: static
         docs: The name of the function the probe is located in. Empty string if not defined.
     bound_fns: []
     packages:

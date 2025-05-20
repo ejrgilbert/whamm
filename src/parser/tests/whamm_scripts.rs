@@ -24,7 +24,7 @@ wasm:opcode:call(arg0: i32):before {
     // type bounding
     r#"
 wasm:opcode:call(arg0: i32):before {}
-wasm:opcode:local_set(arg3: i64):before {}
+wasm:opcode:local.set(arg3: i64):before {}
 wasm:opcode:call(local5: f32):before {}
 wasm:opcode:call(local5: f32, arg0: u8):before {}
     "#,

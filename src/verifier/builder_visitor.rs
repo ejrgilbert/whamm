@@ -2,7 +2,6 @@ use crate::common::error::ErrorGen;
 use crate::generator::ast::ReqArgs;
 use crate::parser::provider_handler::{BoundFunc, BoundVar, Event, Package, Probe, Provider};
 use crate::parser::types as parser_types;
-use crate::parser::types::Definition::CompilerDynamic;
 use crate::parser::types::{Definition, FnId, Global, ProvidedFunction, WhammVisitorMut};
 use crate::verifier::builder_visitor::parser_types::Location;
 use crate::verifier::types::{Record, ScopeType, SymbolTable};
@@ -552,27 +551,25 @@ impl SymbolTableBuilder<'_, '_, '_> {
             name,
             ty,
             derived_from,
+            lifetime,
             ..
         } in vars.iter()
         {
             if let Some(derived_from) = derived_from {
                 if let Expr::VarId { name: alias, .. } = derived_from {
                     // this is a simple alias!
-                    println!("added as alias: {name} -> {alias}");
                     aliases.insert(name.clone(), alias.clone());
                 } else {
                     // Add derived globals to the probe body itself (to calculate the value)
-                    println!("added to body: {name}");
                     derived.insert(name.clone(), (ty.clone(), derived_from.clone()));
                 }
             } else {
                 // Add other globals to the scope itself
-                println!("added to table: {name}");
                 self.add_global(
                     ty.clone(),
                     name.clone(),
                     None,            // todo this is just made up
-                    CompilerDynamic, // todo this is just made up
+                    lifetime.clone(),
                     false,
                     None,
                 );

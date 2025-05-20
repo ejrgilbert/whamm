@@ -8,48 +8,56 @@ argN: &argN
   name: arg[0:9]+
   type: unknown
   docs: The argument to the call at the specific index, [0:9]+. (For example, the number of arguments to a call changes based on the targeted function.)
+  lifetime: dynamic
   derived_from: null
 
 arg0_i32: &arg0_i32
   name: arg0
   type: i32
   docs: The argument to the opcode at index 0.
+  lifetime: dynamic
   derived_from: null
 
 arg0_u32: &arg0_u32
   name: arg0
   type: u32
   docs: The argument to the opcode at index 0.
+  lifetime: dynamic
   derived_from: null
 
 arg0_i64: &arg0_i64
   name: arg0
   type: i64
   docs: The argument to the opcode at index 0.
+  lifetime: dynamic
   derived_from: null
 
 arg0_f32: &arg0_f32
   name: arg0
   type: f32
   docs: The argument to the opcode at index 0.
+  lifetime: dynamic
   derived_from: null
 
 arg0_f64: &arg0_f64
   name: arg0
   type: f64
   docs: The argument to the opcode at index 0.
+  lifetime: dynamic
   derived_from: null
 
 arg0_unknown: &arg0_unknown
   name: arg0
   type: unknown
   docs: The argument to the opcode at index 0.
+  lifetime: dynamic
   derived_from: null
 
 arg1_u32: &arg1_u32
   name: arg1
   type: u32
   docs: The argument to the opcode at index 0.
+  lifetime: dynamic
   derived_from: null
 
 # ========================
@@ -60,42 +68,49 @@ immN: &immN
   name: imm[0:9]+
   type: unknown
   docs: The immediate to the opcode at the specific index, e.g. [0:9]+, not including the default target. The number of immediates on the br_table is not statically known.
+  lifetime: static
   derived_from: null
 
 imm0_i32: &imm0_i32
   name: imm0
   type: i32
   docs: The immediate to the opcode at index 0.
+  lifetime: static
   derived_from: null
 
 imm0_u32: &imm0_u32
   name: imm0
   type: u32
   docs: The immediate to the opcode at index 0.
+  lifetime: static
   derived_from: null
 
 imm0_i64: &imm0_i64
   name: imm0
   type: i64
   docs: The immediate to the opcode at index 0.
+  lifetime: static
   derived_from: null
 
 imm0_f32: &imm0_f32
   name: imm0
   type: f32
   docs: The immediate to the opcode at index 0.
+  lifetime: static
   derived_from: null
 
 imm0_f64: &imm0_f64
   name: imm0
   type: f64
   docs: The immediate to the opcode at index 0.
+  lifetime: static
   derived_from: null
 
 imm1_u32: &imm1_u32
   name: imm1
   type: u32
   docs: The immediate to the opcode at index 1.
+  lifetime: static
   derived_from: null
 
 # ============================
@@ -109,86 +124,103 @@ category_id_arith: &category_id_arith
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
+  lifetime: static
   derived_from: 0
 category_id_atomic: &category_id_atomic
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
+  lifetime: static
   derived_from: 1
 category_id_compare: &category_id_compare
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
+  lifetime: static
   derived_from: 2
 category_id_const: &category_id_const
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
+  lifetime: static
   derived_from: 3
 category_id_control: &category_id_control
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
+  lifetime: static
   derived_from: 4
 category_id_convert: &category_id_convert
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
+  lifetime: static
   derived_from: 5
 category_id_exn: &category_id_exn
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
+  lifetime: static
   derived_from: 6
 category_id_gc: &category_id_gc
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
+  lifetime: static
   derived_from: 7
 category_id_global: &category_id_global
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
+  lifetime: static
   derived_from: 8
 category_id_load: &category_id_load
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
+  lifetime: static
   derived_from: 9
 category_id_local: &category_id_local
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
+  lifetime: static
   derived_from: 10
 category_id_memory: &category_id_memory
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
+  lifetime: static
   derived_from: 11
 category_id_misc: &category_id_misc
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
+  lifetime: static
   derived_from: 12
 category_id_ref: &category_id_ref
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
+  lifetime: static
   derived_from: 13
 category_id_simd: &category_id_simd
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
+  lifetime: static
   derived_from: 14
 category_id_store: &category_id_store
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
+  lifetime: static
   derived_from: 15
 category_id_table: &category_id_table
   name: category_id
   docs: The ID of the category of this opcode.
   type: u32
+  lifetime: static
   derived_from: 16
 
 # CATEGORY NAME
@@ -197,86 +229,103 @@ category_name_arith: &category_name_arith
   name: category_name
   docs: The category name of this opcode.
   type: str
+  lifetime: static
   derived_from: '"arith"'
 category_name_atomic: &category_name_atomic
   name: category_name
   docs: The category name of this opcode.
   type: str
+  lifetime: static
   derived_from: '"atomic"'
 category_name_compare: &category_name_compare
   name: category_name
   docs: The category name of this opcode.
   type: str
+  lifetime: static
   derived_from: '"compare"'
 category_name_const: &category_name_const
   name: category_name
   docs: The category name of this opcode.
   type: str
+  lifetime: static
   derived_from: '"const"'
 category_name_control: &category_name_control
   name: category_name
   docs: The category name of this opcode.
   type: str
+  lifetime: static
   derived_from: '"control"'
 category_name_convert: &category_name_convert
   name: category_name
   docs: The category name of this opcode.
   type: str
+  lifetime: static
   derived_from: '"convert"'
 category_name_exn: &category_name_exn
   name: category_name
   docs: The category name of this opcode.
   type: str
+  lifetime: static
   derived_from: '"exn"'
 category_name_gc: &category_name_gc
   name: category_name
   docs: The category name of this opcode.
   type: str
+  lifetime: static
   derived_from: '"gc"'
 category_name_global: &category_name_global
   name: category_name
   docs: The category name of this opcode.
   type: str
+  lifetime: static
   derived_from: '"global"'
 category_name_load: &category_name_load
   name: category_name
   docs: The category name of this opcode.
   type: str
+  lifetime: static
   derived_from: '"load"'
 category_name_local: &category_name_local
   name: category_name
   docs: The category name of this opcode.
   type: str
+  lifetime: static
   derived_from: '"local"'
 category_name_memory: &category_name_memory
   name: category_name
   docs: The category name of this opcode.
   type: str
+  lifetime: static
   derived_from: '"memory"'
 category_name_misc: &category_name_misc
   name: category_name
   docs: The category name of this opcode.
   type: str
+  lifetime: static
   derived_from: '"misc"'
 category_name_ref: &category_name_ref
   name: category_name
   docs: The category name of this opcode.
   type: str
+  lifetime: static
   derived_from: '"ref"'
 category_name_simd: &category_name_simd
   name: category_name
   docs: The category name of this opcode.
   type: str
+  lifetime: static
   derived_from: '"simd"'
 category_name_store: &category_name_store
   name: category_name
   docs: The category name of this opcode.
   type: str
+  lifetime: static
   derived_from: '"store"'
 category_name_table: &category_name_table
   name: category_name
   docs: The category name of this opcode.
   type: str
+  lifetime: static
   derived_from: '"table"'
 
 # ========================
@@ -343,16 +392,19 @@ target_imp_module: &target_imp_module
   name: target_imp_module
   type: str
   docs: The name of the module that the imported function comes from. To improve performance, pair with `target_fn_type == "import"` for faster short-circuiting.
+  lifetime: static
   derived_from: null
 target_fn_name: &target_fn_name
   name: target_fn_name
   type: str
   docs: The function name of the call target. Local functions get this from the custom section, imports from the import name. To improve performance for imports, pair with `target_fn_type == "import"` for faster short-circuiting.
+  lifetime: static
   derived_from: null
 target_fn_type: &target_fn_type
   name: target_fn_type
   type: str
   docs: The type of function being called at this call site. This constant will evaluate to either `local` or `import`.
+  lifetime: static
   derived_from: null
 alt_call_by_id: &alt_call_by_id
   name: alt_call_by_id
@@ -375,21 +427,25 @@ memory: &memory
   name: memory
   type: u32
   docs: The ID of memory to load from.
+  lifetime: static
   derived_from: null
 align: &align
   name: align
   type: u32
   docs: The alignment of the load.
+  lifetime: static
   derived_from: null
 effective_addr: &effective_addr
   name: effective_addr
   type: u32
-  docs: "The address in memory that will be loaded from, shorthand for: `arg0 + offset`"
-  derived_from: arg0 + offset
+  docs: "The address in memory that will be loaded from, shorthand for: `addr + offset as u32`"
+  lifetime: dynamic
+  derived_from: addr + offset as u32
 offset: &offset
   name: offset
   type: u64
   docs: The static offset of the load's target address.
+  lifetime: static
   derived_from: null
 
 # =======================
@@ -537,14 +593,17 @@ br_table: &br_table
     - name: targets
       type: map<u32, u32>
       docs: "The NON-DEFAULT target branches for this br_table instruction represented as a map. The map follows the pattern: [0->imm0, 1->imm1, .. N->immN]."
+      lifetime: static
       derived_from: null
     - name: default_target
       type: u32
       docs: The default target of this br_table instruction.
+      lifetime: static
       derived_from: null
     - name: num_targets
       type: u32
       docs: "The number of NON-DEFAULT target branches for this br_table instruction (correlates with the number of immediates, e.g. `immN`).This means the total number of targets is really num_targets + 1, to include the default target. NOTE: This can be used in a predicate to ensure that the current br_table has the immN you need to interact with for the probe."
+      lifetime: static
       derived_from: null
   bound_fns: []
   supported_modes: *branching_modes
@@ -658,7 +717,7 @@ typed_select: &typed_select
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/Select"
 
 local_get: &local_get
-  name: local_get
+  name: local.get
   bound_vars:
     - *category_id_local
     - *category_name_local
@@ -669,7 +728,7 @@ local_get: &local_get
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_get"
 
 local_set: &local_set
-  name: local_set
+  name: local.set
   bound_vars:
     - *category_id_local
     - *category_name_local
@@ -681,7 +740,7 @@ local_set: &local_set
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_set"
 
 local_tee: &local_tee
-  name: local_tee
+  name: local.tee
   bound_vars:
     - *category_id_local
     - *category_name_local
@@ -693,7 +752,7 @@ local_tee: &local_tee
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_tee"
 
 global_get: &global_get
-  name: global_get
+  name: global.get
   bound_vars:
     - *category_id_global
     - *category_name_global
@@ -704,7 +763,7 @@ global_get: &global_get
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Global_get"
 
 global_set: &global_set
-  name: global_set
+  name: global.set
   bound_vars:
     - *category_id_global
     - *category_name_global
@@ -718,6 +777,16 @@ global_set: &global_set
 i32_load: &i32_load
   name: i32.load
   bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 4
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
     - *category_id_load
     - *category_name_load
     - *arg0_u32
@@ -725,14 +794,6 @@ i32_load: &i32_load
     - *align
     - *effective_addr
     - *offset
-    - name: data_size
-      type: u32
-      derived_from: 4
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
-    - name: addr
-      type: u32
-      derived_from: arg0
-      docs: The memory address argument passed to the opcode.
   bound_fns: []
   supported_modes: *default_modes
   req_map: false
@@ -741,6 +802,16 @@ i32_load: &i32_load
 i64_load: &i64_load
   name: i64.load
   bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 8
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
     - *category_id_load
     - *category_name_load
     - *arg0_u32
@@ -748,14 +819,6 @@ i64_load: &i64_load
     - *align
     - *effective_addr
     - *offset
-    - name: data_size
-      type: u32
-      derived_from: 8
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
-    - name: addr
-      type: u32
-      derived_from: arg0
-      docs: The memory address argument passed to the opcode.
   bound_fns: []
   supported_modes: *default_modes
   req_map: false
@@ -764,6 +827,16 @@ i64_load: &i64_load
 f32_load: &f32_load
   name: f32.load
   bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 4
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
     - *category_id_load
     - *category_name_load
     - *arg0_u32
@@ -771,14 +844,6 @@ f32_load: &f32_load
     - *align
     - *effective_addr
     - *offset
-    - name: data_size
-      type: u32
-      derived_from: 4
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
-    - name: addr
-      type: u32
-      derived_from: arg0
-      docs: The memory address argument passed to the opcode.
   bound_fns: []
   supported_modes: *default_modes
   req_map: false
@@ -787,6 +852,16 @@ f32_load: &f32_load
 f64_load: &f64_load
   name: f64.load
   bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 8
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
     - *category_id_load
     - *category_name_load
     - *arg0_u32
@@ -794,14 +869,6 @@ f64_load: &f64_load
     - *align
     - *effective_addr
     - *offset
-    - name: data_size
-      type: u32
-      derived_from: 8
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
-    - name: addr
-      type: u32
-      derived_from: arg0
-      docs: The memory address argument passed to the opcode.
   bound_fns: []
   supported_modes: *default_modes
   req_map: false
@@ -810,6 +877,16 @@ f64_load: &f64_load
 i32_load8_s: &i32_load8_s
   name: i32.load8_s
   bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 1
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
     - *category_id_load
     - *category_name_load
     - *arg0_u32
@@ -817,14 +894,6 @@ i32_load8_s: &i32_load8_s
     - *align
     - *effective_addr
     - *offset
-    - name: data_size
-      type: u32
-      derived_from: 1
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
-    - name: addr
-      type: u32
-      derived_from: arg0
-      docs: The memory address argument passed to the opcode.
   bound_fns: []
   supported_modes: *default_modes
   req_map: false
@@ -833,6 +902,16 @@ i32_load8_s: &i32_load8_s
 i32_load8_u: &i32_load8_u
   name: i32.load8_u
   bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 1
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
     - *category_id_load
     - *category_name_load
     - *arg0_u32
@@ -840,14 +919,6 @@ i32_load8_u: &i32_load8_u
     - *align
     - *effective_addr
     - *offset
-    - name: data_size
-      type: u32
-      derived_from: 1
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
-    - name: addr
-      type: u32
-      derived_from: arg0
-      docs: The memory address argument passed to the opcode.
   bound_fns: []
   supported_modes: *default_modes
   req_map: false
@@ -856,6 +927,16 @@ i32_load8_u: &i32_load8_u
 i32_load16_s: &i32_load16_s
   name: i32.load16_s
   bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 2
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
     - *category_id_load
     - *category_name_load
     - *arg0_u32
@@ -863,14 +944,6 @@ i32_load16_s: &i32_load16_s
     - *align
     - *effective_addr
     - *offset
-    - name: data_size
-      type: u32
-      derived_from: 2
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
-    - name: addr
-      type: u32
-      derived_from: arg0
-      docs: The memory address argument passed to the opcode.
   bound_fns: []
   supported_modes: *default_modes
   req_map: false
@@ -879,6 +952,16 @@ i32_load16_s: &i32_load16_s
 i32_load16_u: &i32_load16_u
   name: i32.load16_u
   bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 2
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
     - *category_id_load
     - *category_name_load
     - *arg0_u32
@@ -886,14 +969,6 @@ i32_load16_u: &i32_load16_u
     - *align
     - *effective_addr
     - *offset
-    - name: data_size
-      type: u32
-      derived_from: 2
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
-    - name: addr
-      type: u32
-      derived_from: arg0
-      docs: The memory address argument passed to the opcode.
   bound_fns: []
   supported_modes: *default_modes
   req_map: false
@@ -902,6 +977,16 @@ i32_load16_u: &i32_load16_u
 i64_load8_s: &i64_load8_s
   name: i64.load8_s
   bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 1
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
     - *category_id_load
     - *category_name_load
     - *arg0_u32
@@ -909,14 +994,6 @@ i64_load8_s: &i64_load8_s
     - *align
     - *effective_addr
     - *offset
-    - name: data_size
-      type: u32
-      derived_from: 1
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
-    - name: addr
-      type: u32
-      derived_from: arg0
-      docs: The memory address argument passed to the opcode.
   bound_fns: []
   supported_modes: *default_modes
   req_map: false
@@ -925,6 +1002,16 @@ i64_load8_s: &i64_load8_s
 i64_load8_u: &i64_load8_u
   name: i64.load8_u
   bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 1
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
     - *category_id_load
     - *category_name_load
     - *arg0_u32
@@ -932,14 +1019,6 @@ i64_load8_u: &i64_load8_u
     - *align
     - *effective_addr
     - *offset
-    - name: data_size
-      type: u32
-      derived_from: 1
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
-    - name: addr
-      type: u32
-      derived_from: arg0
-      docs: The memory address argument passed to the opcode.
   bound_fns: []
   supported_modes: *default_modes
   req_map: false
@@ -948,6 +1027,16 @@ i64_load8_u: &i64_load8_u
 i64_load16_s: &i64_load16_s
   name: i64.load16_s
   bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 2
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
     - *category_id_load
     - *category_name_load
     - *arg0_u32
@@ -955,14 +1044,6 @@ i64_load16_s: &i64_load16_s
     - *align
     - *effective_addr
     - *offset
-    - name: data_size
-      type: u32
-      derived_from: 2
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
-    - name: addr
-      type: u32
-      derived_from: arg0
-      docs: The memory address argument passed to the opcode.
   bound_fns: []
   supported_modes: *default_modes
   req_map: false
@@ -971,6 +1052,16 @@ i64_load16_s: &i64_load16_s
 i64_load16_u: &i64_load16_u
   name: i64.load16_u
   bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 2
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
     - *category_id_load
     - *category_name_load
     - *arg0_u32
@@ -978,14 +1069,6 @@ i64_load16_u: &i64_load16_u
     - *align
     - *effective_addr
     - *offset
-    - name: data_size
-      type: u32
-      derived_from: 2
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
-    - name: addr
-      type: u32
-      derived_from: arg0
-      docs: The memory address argument passed to the opcode.
   bound_fns: []
   supported_modes: *default_modes
   req_map: false
@@ -994,6 +1077,16 @@ i64_load16_u: &i64_load16_u
 i64_load32_s: &i64_load32_s
   name: i64.load32_s
   bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 4
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
     - *category_id_load
     - *category_name_load
     - *arg0_u32
@@ -1001,14 +1094,6 @@ i64_load32_s: &i64_load32_s
     - *align
     - *effective_addr
     - *offset
-    - name: data_size
-      type: u32
-      derived_from: 4
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
-    - name: addr
-      type: u32
-      derived_from: arg0
-      docs: The memory address argument passed to the opcode.
   bound_fns: []
   supported_modes: *default_modes
   req_map: false
@@ -1017,6 +1102,16 @@ i64_load32_s: &i64_load32_s
 i64_load32_u: &i64_load32_u
   name: i64.load32_u
   bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 4
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
     - *category_id_load
     - *category_name_load
     - *arg0_u32
@@ -1024,14 +1119,6 @@ i64_load32_u: &i64_load32_u
     - *align
     - *effective_addr
     - *offset
-    - name: data_size
-      type: u32
-      derived_from: 4
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
-    - name: addr
-      type: u32
-      derived_from: arg0
-      docs: The memory address argument passed to the opcode.
   bound_fns: []
   supported_modes: *default_modes
   req_map: false
@@ -1040,6 +1127,16 @@ i64_load32_u: &i64_load32_u
 i32_store: &i32_store
   name: i32.store
   bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 4
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
     - *category_id_store
     - *category_name_store
     - *arg0_i32
@@ -1048,14 +1145,6 @@ i32_store: &i32_store
     - *align
     - *effective_addr
     - *offset
-    - name: data_size
-      type: u32
-      derived_from: 4
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
-    - name: addr
-      type: u32
-      derived_from: arg1
-      docs: The memory address argument passed to the opcode.
   bound_fns: []
   supported_modes: *default_modes
   req_map: false
@@ -1064,6 +1153,16 @@ i32_store: &i32_store
 i64_store: &i64_store
   name: i64.store
   bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 8
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
     - *category_id_store
     - *category_name_store
     - *arg0_i64
@@ -1072,14 +1171,6 @@ i64_store: &i64_store
     - *align
     - *effective_addr
     - *offset
-    - name: data_size
-      type: u32
-      derived_from: 8
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
-    - name: addr
-      type: u32
-      derived_from: arg1
-      docs: The memory address argument passed to the opcode.
   bound_fns: []
   supported_modes: *default_modes
   req_map: false
@@ -1088,6 +1179,16 @@ i64_store: &i64_store
 f32_store: &f32_store
   name: f32.store
   bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 4
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
     - *category_id_store
     - *category_name_store
     - *arg0_f32
@@ -1096,14 +1197,6 @@ f32_store: &f32_store
     - *align
     - *effective_addr
     - *offset
-    - name: data_size
-      type: u32
-      derived_from: 4
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
-    - name: addr
-      type: u32
-      derived_from: arg1
-      docs: The memory address argument passed to the opcode.
   bound_fns: []
   supported_modes: *default_modes
   req_map: false
@@ -1112,6 +1205,16 @@ f32_store: &f32_store
 f64_store: &f64_store
   name: f64.store
   bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 8
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
     - *category_id_store
     - *category_name_store
     - *arg0_f64
@@ -1120,14 +1223,6 @@ f64_store: &f64_store
     - *align
     - *effective_addr
     - *offset
-    - name: data_size
-      type: u32
-      derived_from: 8
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
-    - name: addr
-      type: u32
-      derived_from: arg1
-      docs: The memory address argument passed to the opcode.
   bound_fns: []
   supported_modes: *default_modes
   req_map: false
@@ -1136,6 +1231,16 @@ f64_store: &f64_store
 i32_store8: &i32_store8
   name: i32.store8
   bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 1
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
     - *category_id_store
     - *category_name_store
     - *arg0_i32
@@ -1144,14 +1249,6 @@ i32_store8: &i32_store8
     - *align
     - *effective_addr
     - *offset
-    - name: data_size
-      type: u32
-      derived_from: 1
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
-    - name: addr
-      type: u32
-      derived_from: arg1
-      docs: The memory address argument passed to the opcode.
   bound_fns: []
   supported_modes: *default_modes
   req_map: false
@@ -1160,6 +1257,16 @@ i32_store8: &i32_store8
 i32_store16: &i32_store16
   name: i32.store16
   bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 2
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
     - *category_id_store
     - *category_name_store
     - *arg0_i32
@@ -1168,14 +1275,6 @@ i32_store16: &i32_store16
     - *align
     - *effective_addr
     - *offset
-    - name: data_size
-      type: u32
-      derived_from: 2
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
-    - name: addr
-      type: u32
-      derived_from: arg1
-      docs: The memory address argument passed to the opcode.
   bound_fns: []
   supported_modes: *default_modes
   req_map: false
@@ -1184,6 +1283,16 @@ i32_store16: &i32_store16
 i64_store8: &i64_store8
   name: i64.store8
   bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 1
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
     - *category_id_store
     - *category_name_store
     - *arg0_i64
@@ -1192,14 +1301,6 @@ i64_store8: &i64_store8
     - *align
     - *effective_addr
     - *offset
-    - name: data_size
-      type: u32
-      derived_from: 1
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
-    - name: addr
-      type: u32
-      derived_from: arg1
-      docs: The memory address argument passed to the opcode.
   bound_fns: []
   supported_modes: *default_modes
   req_map: false
@@ -1209,6 +1310,16 @@ i64_store8: &i64_store8
 i64_store16: &i64_store16
   name: i64.store16
   bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 2
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
     - *category_id_store
     - *category_name_store
     - *arg0_i64
@@ -1217,14 +1328,6 @@ i64_store16: &i64_store16
     - *align
     - *effective_addr
     - *offset
-    - name: data_size
-      type: u32
-      derived_from: 2
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
-    - name: addr
-      type: u32
-      derived_from: arg1
-      docs: The memory address argument passed to the opcode.
   bound_fns: []
   supported_modes: *default_modes
   req_map: false
@@ -1233,6 +1336,16 @@ i64_store16: &i64_store16
 i64_store32: &i64_store32
   name: i64.store32
   bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 4
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
     - *category_id_store
     - *category_name_store
     - *arg0_i64
@@ -1241,14 +1354,6 @@ i64_store32: &i64_store32
     - *align
     - *effective_addr
     - *offset
-    - name: data_size
-      type: u32
-      derived_from: 4
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
-    - name: addr
-      type: u32
-      derived_from: arg1
-      docs: The memory address argument passed to the opcode.
   bound_fns: []
   supported_modes: *default_modes
   req_map: false

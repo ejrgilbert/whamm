@@ -84,11 +84,11 @@ pub struct OpcodeEvent {
     probes: HashMap<WhammModeKind, Vec<Probe>>,
 }
 macro_rules! define_opcode_event {
-($($op:ident, $category:expr, $name:ident, $num_args:expr, $imms:expr, $globals:expr, $fns:expr, $supported_modes:expr, $req_map:expr, $docs:expr)*) => {
+($($op:ident, $category:expr, $name:ident, $sname: expr, $num_args:expr, $imms:expr, $globals:expr, $fns:expr, $supported_modes:expr, $req_map:expr, $docs:expr)*) => {
 impl FromStr for OpcodeEvent {
     fn from_str(name: &str) -> Self {
         match name {
-            $(stringify!($name) => Self::$name(),)*
+            $($sname => Self::$name(),)*
              _ => panic!("unsupported OpcodeEvent: {name}"),
         }
     }

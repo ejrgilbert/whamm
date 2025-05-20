@@ -8,5 +8,5 @@ id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)
 424, memaddr, not_taken, i32, i32, script0, 1:12, 1_wasm:opcode:br_if, 3
 451, memaddr, taken, i32, i32, script0, 1:19, 1_wasm:opcode:br_if, 1
 478, memaddr, not_taken, i32, i32, script0, 1:19, 1_wasm:opcode:br_if, 2
-505, memaddr, taken, i32, i32, script0, 2:6, 0_wasm:opcode:_if, 0
-532, memaddr, not_taken, i32, i32, script0, 2:6, 0_wasm:opcode:_if, 1
+505, memaddr, taken, i32, i32, script0, 2:6, 0_wasm:opcode:if, 0
+532, memaddr, not_taken, i32, i32, script0, 2:6, 0_wasm:opcode:if, 1

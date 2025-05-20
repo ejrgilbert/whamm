@@ -243,7 +243,7 @@ impl Display for OpcodeCategory {
 }
 
 macro_rules! define_opcode {
-    ($($op:ident, $category:expr, $name:ident, $args:expr, $imms:expr, $globals:expr, $fns:expr, $supported_modes:expr, $req_map:expr, $docs:expr)*) => {
+    ($($op:ident, $category:expr, $name:ident, $sname: expr, $args:expr, $imms:expr, $globals:expr, $fns:expr, $supported_modes:expr, $req_map:expr, $docs:expr)*) => {
         /// Instructions as defined [here].
         ///
         /// [here]: https://webassembly.github.io/spec/core/binary/instructions.html
@@ -262,7 +262,7 @@ macro_rules! define_opcode {
             pub fn name(&self) -> String {
                 match self {
                     $(
-                        Self::$op {..} => stringify!($name).to_string(),
+                        Self::$op {..} => $sname.to_string(),
                     )*
                 }
             }
@@ -311,14 +311,14 @@ macro_rules! define_opcode {
         impl NameOptions for OpcodeEvent {
             fn get_name_options() -> Vec<String> {
                 vec![
-                    $(stringify!($name).to_string()),*
+                    $($sname.to_string()),*
                 ]
             }
         }
         impl FromStrWithLoc for OpcodeEvent {
             fn from_str(name: &str, ty_info: Vec<(Expr, DataType)>, loc: Option<Location>) -> Self {
                 match name {
-                    $(stringify!($name) => Self::$name(ty_info, loc),)*
+                    $($sname => Self::$name(ty_info, loc),)*
                      _ => panic!("unsupported OpcodeEvent: {name}"),
                 }
             }
