@@ -1,7 +1,6 @@
 use crate::common::error::{ErrorGen, WhammError};
 use crate::common::terminal::{green, long_line, magenta_italics, white};
 use crate::generator::ast::ReqArgs;
-use crate::parser::types::Definition::CompilerDynamic;
 use crate::parser::types::{Block, DataType, Definition, Expr, Fn as WhammFn, FnId, Location, ProbeRule, Rule, RulePart, WhammParser};
 use crate::parser::whamm_parser::{handle_expr, handle_param, type_from_rule};
 use glob::{glob, Pattern};
@@ -762,7 +761,7 @@ impl BoundVar {
 pub struct BoundFunc {
     pub func: WhammFn,
     pub req_args: ReqArgs, // TODO: Remove this...it's wasm opcode specific...
-    docs: String,
+    docs: String
 }
 impl From<BoundFuncYml> for BoundFunc {
     fn from(value: BoundFuncYml) -> Self {
@@ -797,7 +796,7 @@ impl From<BoundFuncYml> for BoundFunc {
 
         Self {
             func: WhammFn {
-                def: CompilerDynamic,
+                def: Definition::from(value.lifetime.as_str()),
                 name: FnId {
                     name: value.name.to_owned(),
                     loc: None,
@@ -1124,6 +1123,7 @@ struct BoundFuncYml {
     results: String,
     req_args: i32, // TODO: Remove this...it's wasm opcode specific...
     docs: String,
+    lifetime: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

@@ -40,7 +40,7 @@ fn emit_needed_funcs(
     for (context, fname) in funcs.iter() {
         if let Some(fid) = emitter.emit_provided_fn(
             context,
-            &crate::parser::types::Fn {
+            &Fn {
                 def: Definition::CompilerDynamic,
                 name: FnId {
                     name: fname.clone(),

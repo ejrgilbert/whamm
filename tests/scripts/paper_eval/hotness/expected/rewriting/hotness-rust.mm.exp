@@ -18252,7 +18252,7 @@ id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)
 491539, memaddr, count, u32, i32, script0, 167:0, 2_wasm:opcode:block:before, 0
 491566, memaddr, count, u32, i32, script0, 167:1, 21_wasm:opcode:local.get:before, 0
 491593, memaddr, count, u32, i32, script0, 167:2, 11_wasm:opcode:br_if:before, 0
-491620, memaddr, count, u32, i32, script0, 167:3, 49_wasm:opcode:memory_size:before, 0
+491620, memaddr, count, u32, i32, script0, 167:3, 49_wasm:opcode:memory.size:before, 0
 491647, memaddr, count, u32, i32, script0, 167:4, 51_wasm:opcode:i32.const:before, 0
 491674, memaddr, count, u32, i32, script0, 167:5, 106_wasm:opcode:i32.shl:before, 0
 491701, memaddr, count, u32, i32, script0, 167:6, 13_wasm:opcode:return:before, 0
@@ -18270,7 +18270,7 @@ id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)
 492025, memaddr, count, u32, i32, script0, 167:18, 21_wasm:opcode:local.get:before, 0
 492052, memaddr, count, u32, i32, script0, 167:19, 51_wasm:opcode:i32.const:before, 0
 492079, memaddr, count, u32, i32, script0, 167:20, 108_wasm:opcode:i32.shr_u:before, 0
-492106, memaddr, count, u32, i32, script0, 167:21, 50_wasm:opcode:memory_grow:before, 0
+492106, memaddr, count, u32, i32, script0, 167:21, 50_wasm:opcode:memory.grow:before, 0
 492133, memaddr, count, u32, i32, script0, 167:22, 23_wasm:opcode:local.tee:before, 0
 492160, memaddr, count, u32, i32, script0, 167:23, 51_wasm:opcode:i32.const:before, 0
 492187, memaddr, count, u32, i32, script0, 167:24, 61_wasm:opcode:i32.ne:before, 0
@@ -18505,7 +18505,7 @@ id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)
 498370, memaddr, count, u32, i32, script0, 172:102, 21_wasm:opcode:local.get:before, 0
 498397, memaddr, count, u32, i32, script0, 172:103, 21_wasm:opcode:local.get:before, 0
 498424, memaddr, count, u32, i32, script0, 172:104, 21_wasm:opcode:local.get:before, 0
-498451, memaddr, count, u32, i32, script0, 172:105, 225_wasm:opcode:memory_copy:before, 0
+498451, memaddr, count, u32, i32, script0, 172:105, 225_wasm:opcode:memory.copy:before, 0
 498478, memaddr, count, u32, i32, script0, 172:106, 21_wasm:opcode:local.get:before, 0
 498505, memaddr, count, u32, i32, script0, 172:107, 13_wasm:opcode:return:before, 0
 498532, memaddr, count, u32, i32, script0, 172:108, 9_wasm:opcode:end:before, 0
@@ -18951,7 +18951,7 @@ id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)
 510412, memaddr, count, u32, i32, script0, 173:25, 21_wasm:opcode:local.get:before, 0
 510439, memaddr, count, u32, i32, script0, 173:26, 21_wasm:opcode:local.get:before, 0
 510466, memaddr, count, u32, i32, script0, 173:27, 21_wasm:opcode:local.get:before, 0
-510493, memaddr, count, u32, i32, script0, 173:28, 225_wasm:opcode:memory_copy:before, 0
+510493, memaddr, count, u32, i32, script0, 173:28, 225_wasm:opcode:memory.copy:before, 0
 510520, memaddr, count, u32, i32, script0, 173:29, 10_wasm:opcode:br:before, 0
 510547, memaddr, count, u32, i32, script0, 173:30, 9_wasm:opcode:end:before, 0
 510574, memaddr, count, u32, i32, script0, 173:31, 21_wasm:opcode:local.get:before, 0
@@ -19576,7 +19576,7 @@ id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)
 527287, memaddr, count, u32, i32, script0, 174:5, 21_wasm:opcode:local.get:before, 0
 527314, memaddr, count, u32, i32, script0, 174:6, 21_wasm:opcode:local.get:before, 0
 527341, memaddr, count, u32, i32, script0, 174:7, 21_wasm:opcode:local.get:before, 0
-527368, memaddr, count, u32, i32, script0, 174:8, 226_wasm:opcode:memory_fill:before, 0
+527368, memaddr, count, u32, i32, script0, 174:8, 226_wasm:opcode:memory.fill:before, 0
 527395, memaddr, count, u32, i32, script0, 174:9, 21_wasm:opcode:local.get:before, 0
 527422, memaddr, count, u32, i32, script0, 174:10, 13_wasm:opcode:return:before, 0
 527449, memaddr, count, u32, i32, script0, 174:11, 9_wasm:opcode:end:before, 0

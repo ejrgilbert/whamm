@@ -32,6 +32,13 @@ arg0_i64: &arg0_i64
   lifetime: dynamic
   derived_from: null
 
+arg0_u64: &arg0_u64
+  name: arg0
+  type: u64
+  docs: The argument to the opcode at index 0.
+  lifetime: dynamic
+  derived_from: null
+
 arg0_f32: &arg0_f32
   name: arg0
   type: f32
@@ -53,10 +60,59 @@ arg0_unknown: &arg0_unknown
   lifetime: dynamic
   derived_from: null
 
+arg1_i32: &arg1_i32
+  name: arg1
+  type: i32
+  docs: The argument to the opcode at index 1.
+  lifetime: dynamic
+  derived_from: null
+
 arg1_u32: &arg1_u32
   name: arg1
   type: u32
-  docs: The argument to the opcode at index 0.
+  docs: The argument to the opcode at index 1.
+  lifetime: dynamic
+  derived_from: null
+
+arg1_i64: &arg1_i64
+  name: arg1
+  type: i64
+  docs: The argument to the opcode at index 1.
+  lifetime: dynamic
+  derived_from: null
+
+arg1_u64: &arg1_u64
+  name: arg1
+  type: u64
+  docs: The argument to the opcode at index 1.
+  lifetime: dynamic
+  derived_from: null
+
+arg1_f32: &arg1_f32
+  name: arg1
+  type: f32
+  docs: The argument to the opcode at index 1.
+  lifetime: dynamic
+  derived_from: null
+
+arg1_f64: &arg1_f64
+  name: arg1
+  type: f64
+  docs: The argument to the opcode at index 1.
+  lifetime: dynamic
+  derived_from: null
+
+arg2_i32: &arg2_i32
+  name: arg2
+  type: i32
+  docs: The argument to the opcode at index 2.
+  lifetime: dynamic
+  derived_from: null
+
+arg2_u32: &arg2_u32
+  name: arg2
+  type: u32
+  docs: The argument to the opcode at index 2.
   lifetime: dynamic
   derived_from: null
 
@@ -64,9 +120,16 @@ arg1_u32: &arg1_u32
 # ==== immN Constants ====
 # ========================
 
-immN: &immN
+immN_unknown: &immN
   name: imm[0:9]+
   type: unknown
+  docs: The immediate to the opcode at the specific index, e.g. [0:9]+, not including the default target. The number of immediates on the br_table is not statically known.
+  lifetime: static
+  derived_from: null
+
+immN_u32: &immN_u32
+  name: imm[0:9]+
+  type: u32
   docs: The immediate to the opcode at the specific index, e.g. [0:9]+, not including the default target. The number of immediates on the br_table is not statically known.
   lifetime: static
   derived_from: null
@@ -110,6 +173,20 @@ imm1_u32: &imm1_u32
   name: imm1
   type: u32
   docs: The immediate to the opcode at index 1.
+  lifetime: static
+  derived_from: null
+
+imm1_unknown: &imm1_unknown
+  name: imm1
+  type: unknown
+  docs: The immediate to the opcode at index 1.
+  lifetime: static
+  derived_from: null
+
+imm2_unknown: &imm2_unknown
+  name: imm2
+  type: unknown
+  docs: The immediate to the opcode at index 2.
   lifetime: static
   derived_from: null
 
@@ -408,16 +485,47 @@ target_fn_type: &target_fn_type
   derived_from: null
 alt_call_by_id: &alt_call_by_id
   name: alt_call_by_id
+  lifetime: static
   params: "(func_id: i32)"
   results: ()
   req_args: -1
   docs: Insert an alternate call (targeting the passed function ID) into the Wasm bytecode. Will also emit the original parameters onto the stack.
 alt_call_by_name: &alt_call_by_name
   name: alt_call_by_name
+  lifetime: static
   params: "(func_name: str)"
   results: ()
   req_args: -1
   docs: Insert an alternate call (targeting the passed function name) into the Wasm bytecode. Will also emit the original parameters onto the stack.
+
+# ============================
+# ==== *struct* Constants ====
+# ============================
+
+struct_tid: &struct_tid
+  name: tid
+  type: u32
+  docs: The type ID of this struct.
+  lifetime: static
+  derived_from: imm0
+
+field_idx: &field_idx
+  name: field_idx
+  type: u32
+  docs: The index of the struct field being accessed.
+  lifetime: static
+  derived_from: imm1
+
+# ============================
+# ==== *struct* Constants ====
+# ============================
+
+array_tid: &array_tid
+  name: tid
+  type: u32
+  docs: The type ID of this array.
+  lifetime: static
+  derived_from: imm0
 
 # ==========================
 # ==== MemArg Constants ====
@@ -589,7 +697,7 @@ br_table: &br_table
     - *category_id_control
     - *category_name_control
     - *arg0_u32
-    - *immN
+    - *immN_u32
     - name: targets
       type: map<u32, u32>
       docs: "The NON-DEFAULT target branches for this br_table instruction represented as a map. The map follows the pattern: [0->imm0, 1->imm1, .. N->immN]."
@@ -1483,7 +1591,3861 @@ i32_eqz: &i32_eqz
   req_map: false
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Equal"
 
+i32_eq: &i32_eq
+  name: i32.eq
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_i32
+    - *arg1_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Equal"
 
+i32_ne: &i32_ne
+  name: i32.ne
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_i32
+    - *arg1_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Not_equal"
 
+i32_lt_s: &i32_lt_s
+  name: i32.lt_s
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_i32
+    - *arg1_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_than"
 
-#($($op:ident, $category:expr, $name:ident, $args:expr, $imms:expr, $globals:expr, $fns:expr, $supported_modes:expr, $req_map:expr, $docs:expr)*) => {
+i32_lt_u: &i32_lt_u
+  name: i32.lt_u
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_u32
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_than"
+
+i32_gt_s: &i32_gt_s
+  name: i32.gt_s
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_i32
+    - *arg1_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_than"
+
+i32_gt_u: &i32_gt_u
+  name: i32.gt_u
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_u32
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_than"
+
+i32_le_s: &i32_le_s
+  name: i32.le_s
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_i32
+    - *arg1_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_or_equal"
+
+i32_le_u: &i32_le_u
+  name: i32.le_u
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_u32
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_or_equal"
+
+i32_ge_s: &i32_ge_s
+  name: i32.ge_s
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_i32
+    - *arg1_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_or_equal"
+
+i32_ge_u: &i32_ge_u
+  name: i32.ge_u
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_u32
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_or_equal"
+
+i64_eqz: &i64_eqz
+  name: i64.eqz
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Equal"
+
+i64_eq: &i64_eq
+  name: i64.eq
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Equal"
+
+i64_ne: &i64_ne
+  name: i64.ne
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_i64
+    - *arg1_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Not_equal"
+
+i64_lt_s: &i64_lt_s
+  name: i64.lt_s
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_i64
+    - *arg1_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_than"
+
+i64_lt_u: &i64_lt_u
+  name: i64.lt_u
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_u64
+    - *arg1_u64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_than"
+
+i64_gt_s: &i64_gt_s
+  name: i64.gt_s
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_i64
+    - *arg1_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_than"
+
+i64_gt_u: &i64_gt_u
+  name: i64.gt_u
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_u64
+    - *arg1_u64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_than"
+
+i64_le_s: &i64_le_s
+  name: i64.le_s
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_i64
+    - *arg1_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_or_equal"
+
+i64_le_u: &i64_le_u
+  name: i64.le_u
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_u64
+    - *arg1_u64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_or_equal"
+
+i64_ge_s: &i64_ge_s
+  name: i64.ge_s
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_i64
+    - *arg1_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_or_equal"
+
+i64_ge_u: &i64_ge_u
+  name: i64.ge_u
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_u64
+    - *arg1_u64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_or_equal"
+
+f32_eq: &f32_eq
+  name: f32.eq
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_f32
+    - *arg1_f32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Equal"
+
+f32_ne: &f32_ne
+  name: f32.ne
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_f32
+    - *arg1_f32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Not_equal"
+
+f32_lt: &f32_lt
+  name: f32.lt
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_f32
+    - *arg1_f32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_than"
+
+f32_gt: &f32_gt
+  name: f32.gt
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_f32
+    - *arg1_f32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_than"
+
+f32_le: &f32_le
+  name: f32.le
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_f32
+    - *arg1_f32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_or_equal"
+
+f32_ge: &f32_ge
+  name: f32.ge
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_f32
+    - *arg1_f32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_or_equal"
+
+f64_eq: &f64_eq
+  name: f64.eq
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_f64
+    - *arg1_f64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Equal"
+
+f64_ne: &f64_ne
+  name: f64.ne
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_f64
+    - *arg1_f64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Not_equal"
+
+f64_lt: &f64_lt
+  name: f64.lt
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_f64
+    - *arg1_f64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_than"
+
+f64_gt: &f64_gt
+  name: f64.gt
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_f64
+    - *arg1_f64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_than"
+
+f64_le: &f64_le
+  name: f64.le
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_f64
+    - *arg1_f64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_or_equal"
+
+f64_ge: &f64_ge
+  name: f64.ge
+  bound_vars:
+    - *category_id_compare
+    - *category_name_compare
+    - *arg0_f64
+    - *arg1_f64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_or_equal"
+
+i32_clz: &i32_clz
+  name: i32.clz
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Count_leading_zeros"
+
+i32_ctz: &i32_ctz
+  name: i32.ctz
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Count_trailing_zeros"
+
+i32_popcnt: &i32_popcnt
+  name: i32.popcnt
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Population_count"
+
+i32_add: &i32_add
+  name: i32.add
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i32
+    - *arg1_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Addition"
+
+i32_sub: &i32_sub
+  name: i32.sub
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i32
+    - *arg1_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Subtraction"
+
+i32_mul: &i32_mul
+  name: i32.mul
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i32
+    - *arg1_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Multiplication"
+
+i32_div_s: &i32_div_s
+  name: i32.div_s
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i32
+    - *arg1_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Division"
+
+i32_div_u: &i32_div_u
+  name: i32.div_u
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_u32
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Division"
+
+i32_rem_s: &i32_rem_s
+  name: i32.rem_s
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i32
+    - *arg1_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Remainder"
+
+i32_rem_u: &i32_rem_u
+  name: i32.rem_u
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_u32
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Remainder"
+
+i32_and: &i32_and
+  name: i32.and
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i32
+    - *arg1_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/AND"
+
+i32_or: &i32_or
+  name: i32.or
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i32
+    - *arg1_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/OR"
+
+i32_xor: &i32_xor
+  name: i32.xor
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i32
+    - *arg1_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/XOR"
+
+i32_shl: &i32_shl
+  name: i32.shl
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i32
+    - *arg1_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Left_shift"
+
+i32_shr_s: &i32_shr_s
+  name: i32.shr_s
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i32
+    - *arg1_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Right_shift"
+
+i32_shr_u: &i32_shr_u
+  name: i32.shr_u
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i32
+    - *arg1_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Right_shift"
+
+i32_rotl: &i32_rotl
+  name: i32.rotl
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i32
+    - *arg1_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Left_rotate"
+
+i32_rotr: &i32_rotr
+  name: i32.rotr
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i32
+    - *arg1_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Right_rotate"
+
+i64_clz: &i64_clz
+  name: i64.clz
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Count_leading_zeros"
+
+i64_ctz: &i64_ctz
+  name: i64.ctz
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Count_trailing_zeros"
+
+i64_popcnt: &i64_popcnt
+  name: i64.popcnt
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Population_count"
+
+i64_add: &i64_add
+  name: i64.add
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i64
+    - *arg1_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Addition"
+
+i64_sub: &i64_sub
+  name: i64.sub
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i64
+    - *arg1_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Subtraction"
+
+i64_mul: &i64_mul
+  name: i64.mul
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i64
+    - *arg1_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Multiplication"
+
+i64_div_s: &i64_div_s
+  name: i64.div_s
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i64
+    - *arg1_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Division"
+
+i64_div_u: &i64_div_u
+  name: i64.div_u
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i64
+    - *arg1_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Division"
+
+i64_rem_s: &i64_rem_s
+  name: i64.rem_s
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i64
+    - *arg1_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Remainder"
+
+i64_rem_u: &i64_rem_u
+  name: i64.rem_u
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i64
+    - *arg1_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Remainder"
+
+i64_and: &i64_and
+  name: i64.and
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i64
+    - *arg1_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/AND"
+
+i64_or: &i64_or
+  name: i64.or
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i64
+    - *arg1_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/OR"
+
+i64_xor: &i64_xor
+  name: i64.xor
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i64
+    - *arg1_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/XOR"
+
+i64_shl: &i64_shl
+  name: i64.shl
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i64
+    - *arg1_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Left_shift"
+
+i64_shr_s: &i64_shr_s
+  name: i64.shr_s
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i64
+    - *arg1_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Right_shift"
+
+i64_shr_u: &i64_shr_u
+  name: i64.shr_u
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i64
+    - *arg1_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Right_shift"
+
+i64_rotl: &i64_rotl
+  name: i64.rotl
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i64
+    - *arg1_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Left_rotate"
+
+i64_rotr: &i64_rotr
+  name: i64.rotr
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_i64
+    - *arg1_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Right_rotate"
+
+f32_abs: &f32_abs
+  name: f32.abs
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_f32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Absolute"
+
+f32_neg: &f32_neg
+  name: f32.neg
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_f32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Negate"
+
+f32_ceil: &f32_ceil
+  name: f32.ceil
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_f32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Ceil"
+
+f32_floor: &f32_floor
+  name: f32.floor
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_f32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Floor"
+
+f32_trunc: &f32_trunc
+  name: f32.trunc
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_f32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Truncate_float_to_float"
+
+f32_nearest: &f32_nearest
+  name: f32.nearest
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_f32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Nearest"
+
+f32_sqrt: &f32_sqrt
+  name: f32.sqrt
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_f32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Square_root"
+
+f32_add: &f32_add
+  name: f32.add
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_f32
+    - *arg1_f32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Addition"
+
+f32_sub: &f32_sub
+  name: f32.sub
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_f32
+    - *arg1_f32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Subtraction"
+
+f32_mul: &f32_mul
+  name: f32.mul
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_f32
+    - *arg1_f32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Multiplication"
+
+f32_div: &f32_div
+  name: f32.div
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_f32
+    - *arg1_f32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Division"
+
+f32_min: &f32_min
+  name: f32.min
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_f32
+    - *arg1_f32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Min"
+
+f32_max: &f32_max
+  name: f32.max
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_f32
+    - *arg1_f32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Max"
+
+f32_copysign: &f32_copysign
+  name: f32.copysign
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_f32
+    - *arg1_f32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Copy_sign"
+
+f64_abs: &f64_abs
+  name: f64.abs
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_f64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Absolute"
+
+f64_neg: &f64_neg
+  name: f64.neg
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_f64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Negate"
+
+f64_ceil: &f64_ceil
+  name: f64.ceil
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_f64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Ceil"
+
+f64_floor: &f64_floor
+  name: f64.floor
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_f64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Floor"
+
+f64_trunc: &f64_trunc
+  name: f64.trunc
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_f64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Trunc"
+
+f64_nearest: &f64_nearest
+  name: f64.nearest
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_f64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Nearest"
+
+f64_sqrt: &f64_sqrt
+  name: f64.sqrt
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_f64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Square_root"
+
+f64_add: &f64_add
+  name: f64.add
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_f64
+    - *arg1_f64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Addition"
+
+f64_sub: &f64_sub
+  name: f64.sub
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_f64
+    - *arg1_f64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Subtraction"
+
+f64_mul: &f64_mul
+  name: f64.mul
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_f64
+    - *arg1_f64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Multiplication"
+
+f64_div: &f64_div
+  name: f64.div
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_f64
+    - *arg1_f64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Division"
+
+f64_min: &f64_min
+  name: f64.min
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_f64
+    - *arg1_f64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Min"
+
+f64_max: &f64_max
+  name: f64.max
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_f64
+    - *arg1_f64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Max"
+
+f64_copysign: &f64_copysign
+  name: f64.copysign
+  bound_vars:
+    - *category_id_arith
+    - *category_name_arith
+    - *arg0_f64
+    - *arg1_f64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Copy_sign"
+
+i32_wrap_i64: &i32_wrap_i64
+  name: i32.wrap_i64
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Wrap"
+
+i32_trunc_f32_s: &i32_trunc_f32_s
+  name: i32.trunc_f32_s
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_f32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Truncate_float_to_int"
+
+i32_trunc_f32_u: &i32_trunc_f32_u
+  name: i32.trunc_f32_u
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_f32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Truncate_float_to_int"
+
+i32_trunc_f64_s: &i32_trunc_f64_s
+  name: i32.trunc_f64_s
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_f64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Truncate_float_to_int"
+
+i32_trunc_f64_u: &i32_trunc_f64_u
+  name: i32.trunc_f64_u
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_f64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Truncate_float_to_int"
+
+i64_extend_i32_s: &i64_extend_i32_s
+  name: i64.extend_i32_s
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Extend"
+
+i64_extend_i32_u: &i64_extend_i32_u
+  name: i64.extend_i32_u
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Extend"
+
+i64_trunc_f32_s: &i64_trunc_f32_s
+  name: i64.trunc_f32_s
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_f32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Truncate_float_to_int"
+
+i64_trunc_f32_u: &i64_trunc_f32_u
+  name: i64.trunc_f32_u
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_f32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Truncate_float_to_int"
+
+f32_convert_i32_s: &f32_convert_i32_s
+  name: f32.convert_i32_s
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Convert"
+
+f32_convert_i32_u: &f32_convert_i32_u
+  name: f32.convert_i32_u
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Convert"
+
+f32_convert_i64_s: &f32_convert_i64_s
+  name: f32.convert_i64_s
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Convert"
+
+f32_convert_i64_u: &f32_convert_i64_u
+  name: f32.convert_i64_u
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_u64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Convert"
+
+f32_demote_f64: &f32_demote_f64
+  name: f32.demote_f64
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_f64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Demote"
+
+f64_convert_i32_s: &f64_convert_i32_s
+  name: f64.convert_i32_s
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Convert"
+
+f64_convert_i32_u: &f64_convert_i32_u
+  name: f64.convert_i32_u
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Convert"
+
+f64_convert_i64_s: &f64_convert_i64_s
+  name: f64.convert_i64_s
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Convert"
+
+f64_convert_i64_u: &f64_convert_i64_u
+  name: f64.convert_i64_u
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_u64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Convert"
+
+f64_promote_f32: &f64_promote_f32
+  name: f64.promote_f32
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_f32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Promote"
+
+i32_reinterpret_f32: &i32_reinterpret_f32
+  name: i32.reinterpret_f32
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_f32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Reinterpret"
+
+i64_reinterpret_f64: &i64_reinterpret_f64
+  name: i64.reinterpret_f64
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_f64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Reinterpret"
+
+f32_reinterpret_i32: &f32_reinterpret_i32
+  name: f32.reinterpret_i32
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Reinterpret"
+
+f64_reinterpret_i64: &f64_reinterpret_i64
+  name: f64.reinterpret_i64
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Reinterpret"
+
+i32_extend8_s: &i32_extend8_s
+  name: i32.extend8_s
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Extend"
+
+i32_extend16_s: &i32_extend16_s
+  name: i32.extend16_s
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Extend"
+
+i64_extend8_s: &i64_extend8_s
+  name: i64.extend8_s
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Extend"
+
+i64_extend16_s: &i64_extend16_s
+  name: i64.extend16_s
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Extend"
+
+i64_extend32_s: &i64_extend32_s
+  name: i64.extend32_s
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_i64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Extend"
+
+struct_new: &struct_new
+  name: struct.new
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+    - *imm0_u32
+    - *struct_tid
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+struct_new_default: &struct_new_default
+  name: struct.new_default
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+    - *imm0_u32
+    - *struct_tid
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+struct_get: &struct_get
+  name: struct.get
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+    - *imm0_u32
+    - *imm1_u32
+    - *struct_tid
+    - *field_idx
+    - *argN           # TODO -- there's no support for this arg type at the moment
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+struct_get_s: &struct_get_s
+  name: struct.get_s
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+    - *imm0_u32
+    - *imm1_u32
+    - *struct_tid
+    - *field_idx
+    - *argN           # TODO -- there's no support for this arg type at the moment
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+struct_get_u: &struct_get_u
+  name: struct.get_u
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+    - *imm0_u32
+    - *imm1_u32
+    - *struct_tid
+    - *field_idx
+    - *argN           # TODO -- there's no support for this arg type at the moment
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+struct_set: &struct_set
+  name: struct.set
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+    - *imm0_u32
+    - *imm1_u32
+    - *struct_tid
+    - *field_idx
+    - *argN           # TODO -- there's no support for this arg type at the moment
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+array_new: &array_new
+  name: array.new
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+    - *imm0_u32
+    - *array_tid
+    - *arg0_u32
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+array_new_default: &array_new_default
+  name: array.new_default
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+    - *imm0_u32
+    - *array_tid
+    - *arg0_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+array_new_fixed: &array_new_fixed
+  name: array.new_fixed
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+    - *imm0_u32
+    - *array_tid
+    - *imm1_u32
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+array_new_data: &array_new_data
+  name: array.new_data
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+    - *imm0_u32
+    - *array_tid
+    - *imm1_u32
+    - *arg0_i32
+    - *arg1_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+array_new_elem: &array_new_elem
+  name: array.new_elem
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+    - *imm0_u32
+    - *array_tid
+    - *imm1_u32
+    - *arg0_i32
+    - *arg1_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+array_get: &array_get
+  name: array.get
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+    - *imm0_u32
+    - *array_tid
+    - *argN               # TODO -- there's no support for this arg type at the moment
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+array_get_s: &array_get_s
+  name: array.get_s
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+    - *imm0_u32
+    - *array_tid
+    - *argN               # TODO -- there's no support for this arg type at the moment
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+array_get_u: &array_get_u
+  name: array.get_u
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+    - *imm0_u32
+    - *array_tid
+    - *argN               # TODO -- there's no support for this arg type at the moment
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+array_set: &array_set
+  name: array.set
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+    - *imm0_u32
+    - *array_tid
+    - *argN               # TODO -- there's no support for this arg type at the moment
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+array_len: &array_len
+  name: array.len
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+    - *imm0_u32
+    - *array_tid
+    - *argN               # TODO -- there's no support for this arg type at the moment
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+array_fill: &array_fill
+  name: array.fill
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+    - *imm0_u32
+    - *array_tid
+    - *argN               # TODO -- there's no support for this arg type at the moment
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+array_copy: &array_copy
+  name: array.copy
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+    - *imm0_u32
+    - *imm1_u32
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+array_init_data: &array_init_data
+  name: array.init_data
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+    - *imm0_u32
+    - *array_tid
+    - *imm1_u32
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+array_init_elem: &array_init_elem
+  name: array.init_elem
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+    - *imm0_u32
+    - *array_tid
+    - *imm1_u32
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+ref_test: &ref_test
+  name: ref.test
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+    - *immN
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+ref_test_null: &ref_test_null
+  name: ref.test_null
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+    - *immN
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+ref_cast: &ref_cast
+  name: ref.cast
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+    - *immN
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+ref_cast_null: &ref_cast_null
+  name: ref.cast_null
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+    - *immN
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+br_on_cast: &br_on_cast
+  name: br_on_cast
+  bound_vars:
+    - *category_id_control
+    - *category_name_control
+    - *imm0_u32
+    - *imm1_unknown
+    - *imm2_unknown
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+br_on_cast_fail: &br_on_cast_fail
+  name: br_on_cast_fail
+  bound_vars:
+    - *category_id_control
+    - *category_name_control
+    - *imm0_u32
+    - *imm1_unknown
+    - *imm2_unknown
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+any_convert_extern: &any_convert_extern
+  name: any.convert_extern
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+extern_convert_any: &extern_convert_any
+  name: extern.convert_any
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+ref_i31: &ref_i31
+  name: ref.i31
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+    - *arg0_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+i31_get_s: &i31_get_s
+  name: i31.get_s
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+i31_get_u: &i31_get_u
+  name: i31.get_u
+  bound_vars:
+    - *category_id_gc
+    - *category_name_gc
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
+
+i32_trunc_sat_f32_s: &i32_trunc_sat_f32_s
+  name: i32.trunc_sat_f32_s
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_f32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://pengowray.github.io/wasm-ops/"
+
+i32_trunc_sat_f32_u: &i32_trunc_sat_f32_u
+  name: i32.trunc_sat_f32_u
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_f32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://pengowray.github.io/wasm-ops/"
+
+i32_trunc_sat_f64_s: &i32_trunc_sat_f64_s
+  name: i32.trunc_sat_f64_s
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_f64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://pengowray.github.io/wasm-ops/"
+
+i32_trunc_sat_f64_u: &i32_trunc_sat_f64_u
+  name: i32.trunc_sat_f64_u
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_f64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://pengowray.github.io/wasm-ops/"
+
+i64_trunc_sat_f32_s: &i64_trunc_sat_f32_s
+  name: i64.trunc_sat_f32_s
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_f32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://pengowray.github.io/wasm-ops/"
+
+i64_trunc_sat_f32_u: &i64_trunc_sat_f32_u
+  name: i64.trunc_sat_f32_u
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_f32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://pengowray.github.io/wasm-ops/"
+
+i64_trunc_sat_f64_s: &i64_trunc_sat_f64_s
+  name: i64.trunc_sat_f64_s
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_f64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://pengowray.github.io/wasm-ops/"
+
+i64_trunc_sat_f64_u: &i64_trunc_sat_f64_u
+  name: i64.trunc_sat_f64_u
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_f64
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://pengowray.github.io/wasm-ops/"
+
+memory_init: &memory_init
+  name: memory.init
+  bound_vars:
+    - *category_id_memory
+    - *category_name_memory
+    - *imm0_u32
+    - *imm1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://pengowray.github.io/wasm-ops/"
+
+memory_copy: &memory_copy
+  name: memory.copy
+  bound_vars:
+    - *category_id_memory
+    - *category_name_memory
+    - *imm0_u32
+    - *arg0_i32
+    - *arg1_i32
+    - *arg2_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Copy"
+
+memory_fill: &memory_fill
+  name: memory.fill
+  bound_vars:
+    - *category_id_memory
+    - *category_name_memory
+    - *imm0_u32
+    - *arg0_i32
+    - *arg1_i32
+    - *arg2_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Fill"
+
+data_drop: &data_drop
+  name: data.drop
+  bound_vars:
+    - *category_id_memory
+    - *category_name_memory
+    - *imm0_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://pengowray.github.io/wasm-ops/"
+
+elem_drop: &elem_drop
+  name: elem.drop
+  bound_vars:
+    - *category_id_table
+    - *category_name_table
+    - *imm0_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://pengowray.github.io/wasm-ops/"
+
+table_copy: &table_copy
+  name: table.copy
+  bound_vars:
+    - *category_id_table
+    - *category_name_table
+    - *imm0_u32
+    - *imm1_u32
+    - *arg0_i32
+    - *arg1_i32
+    - *arg2_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+
+table_init: &table_init
+  name: table.init
+  bound_vars:
+    - *category_id_table
+    - *category_name_table
+    - *imm0_u32
+    - *imm1_u32
+    - *arg0_i32
+    - *arg1_i32
+    - *arg2_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+
+table_fill: &table_fill
+  name: table.fill
+  bound_vars:
+    - *category_id_table
+    - *category_name_table
+    - *imm0_u32
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+
+table_get: &table_get
+  name: table.get
+  bound_vars:
+    - *category_id_table
+    - *category_name_table
+    - *imm0_u32
+    - *arg0_i32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+
+table_set: &table_set
+  name: table.set
+  bound_vars:
+    - *category_id_table
+    - *category_name_table
+    - *imm0_u32
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+
+table_grow: &table_grow
+  name: table.grow
+  bound_vars:
+    - *category_id_table
+    - *category_name_table
+    - *imm0_u32
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+
+table_size: &table_size
+  name: table.size
+  bound_vars:
+    - *category_id_table
+    - *category_name_table
+    - *imm0_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+
+memory_atomic_notify: &memory_atomic_notify
+  name: memory.atomic_notify
+  bound_vars:
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i32
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+memory_atomic_wait32: &memory_atomic_wait32
+  name: memory.atomic_wait32
+  bound_vars:
+    - name: addr
+      type: u32
+      derived_from: arg2
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_i32
+    - *arg2_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+memory_atomic_wait64: &memory_atomic_wait64
+  name: memory.atomic_wait64
+  bound_vars:
+    - name: addr
+      type: u32
+      derived_from: arg2
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_i64
+    - *arg2_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+atomic_fence: &atomic_fence
+  name: atomic.fence
+  bound_vars:
+    - *category_id_atomic
+    - *category_name_atomic
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i32_atomic_load: &i32_atomic_load
+  name: i32.atomic_load
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 4
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_load: &i64_atomic_load
+  name: i64.atomic_load
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 8
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i32_atomic_load8_u: &i32_atomic_load8_u
+  name: i32.atomic_load8_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 1
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i32_atomic_load16_u: &i32_atomic_load16_u
+  name: i32.atomic_load16_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 2
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_load8_u: &i64_atomic_load8_u
+  name: i64.atomic_load8_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 1
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_load16_u: &i64_atomic_load16_u
+  name: i64.atomic_load16_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 2
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_load32_u: &i64_atomic_load32_u
+  name: i64.atomic_load32_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 4
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg0
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i32_atomic_store: &i32_atomic_store
+  name: i32.atomic_store
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 4
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i32
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i32_atomic_store8: &i32_atomic_store8
+  name: i32.atomic_store8
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 1
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i32
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i32_atomic_store16: &i32_atomic_store16
+  name: i32.atomic_store16
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 2
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i32
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_store: &i64_atomic_store
+  name: i64.atomic_store
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 8
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_store8: &i64_atomic_store8
+  name: i64.atomic_store8
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 1
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_store16: &i64_atomic_store16
+  name: i64.atomic_store16
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 2
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_store32: &i64_atomic_store32
+  name: i64.atomic_store32
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 4
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i32_atomic_rmw_add: &i32_atomic_rmw_add
+  name: i32.atomic_rmw_add
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 4
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i32
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i32_atomic_rmw8_add_u: &i32_atomic_rmw8_add_u
+  name: i32.atomic_rmw8_add_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 1
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i32
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i32_atomic_rmw16_add_u: &i32_atomic_rmw16_add_u
+  name: i32.atomic_rmw16_add_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 2
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i32
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_rmw_add: &i64_atomic_rmw_add
+  name: i64.atomic_rmw_add
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 8
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_rmw8_add_u: &i64_atomic_rmw8_add_u
+  name: i64.atomic_rmw8_add_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 1
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_rmw16_add_u: &i64_atomic_rmw16_add_u
+  name: i64.atomic_rmw16_add_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 2
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_rmw32_add_u: &i64_atomic_rmw32_add_u
+  name: i64.atomic_rmw32_add_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 4
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i32_atomic_rmw_sub: &i32_atomic_rmw_sub
+  name: i32.atomic_rmw_sub
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 4
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i32
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i32_atomic_rmw8_sub_u: &i32_atomic_rmw8_sub_u
+  name: i32.atomic_rmw8_sub_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 1
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i32
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i32_atomic_rmw16_sub_u: &i32_atomic_rmw16_sub_u
+  name: i32.atomic_rmw16_sub_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 2
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i32
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_rmw_sub: &i64_atomic_rmw_sub
+  name: i64.atomic_rmw_sub
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 8
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_rmw8_sub_u: &i64_atomic_rmw8_sub_u
+  name: i64.atomic_rmw8_sub_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 1
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_rmw16_sub_u: &i64_atomic_rmw16_sub_u
+  name: i64.atomic_rmw16_sub_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 2
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_rmw32_sub_u: &i64_atomic_rmw32_sub_u
+  name: i64.atomic_rmw32_sub_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 4
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i32_atomic_rmw_and: &i32_atomic_rmw_and
+  name: i32.atomic_rmw_and
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 4
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i32
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i32_atomic_rmw8_and_u: &i32_atomic_rmw8_and_u
+  name: i32.atomic_rmw8_and_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 1
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i32
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i32_atomic_rmw16_and_u: &i32_atomic_rmw16_and_u
+  name: i32.atomic_rmw16_and_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 2
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i32
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_rmw_and: &i64_atomic_rmw_and
+  name: i64.atomic_rmw_and
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 8
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_rmw8_and_u: &i64_atomic_rmw8_and_u
+  name: i64.atomic_rmw8_and_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 1
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_rmw16_and_u: &i64_atomic_rmw16_and_u
+  name: i64.atomic_rmw16_and_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 2
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_rmw32_and_u: &i64_atomic_rmw32_and_u
+  name: i64.atomic_rmw32_and_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 4
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i32_atomic_rmw_or: &i32_atomic_rmw_or
+  name: i32.atomic_rmw_or
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 4
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i32
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i32_atomic_rmw8_or_u: &i32_atomic_rmw8_or_u
+  name: i32.atomic_rmw8_or_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 1
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i32
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i32_atomic_rmw16_or_u: &i32_atomic_rmw16_or_u
+  name: i32.atomic_rmw16_or_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 2
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i32
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_rmw_or: &i64_atomic_rmw_or
+  name: i64.atomic_rmw_or
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 8
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_rmw8_or_u: &i64_atomic_rmw8_or_u
+  name: i64.atomic_rmw8_or_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 1
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_rmw16_or_u: &i64_atomic_rmw16_or_u
+  name: i64.atomic_rmw16_or_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 2
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_rmw32_or_u: &i64_atomic_rmw32_or_u
+  name: i64.atomic_rmw32_or_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 4
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i32_atomic_rmw_xor: &i32_atomic_rmw_xor
+  name: i32.atomic_rmw_xor
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 4
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i32
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i32_atomic_rmw8_xor_u: &i32_atomic_rmw8_xor_u
+  name: i32.atomic_rmw8_xor_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 1
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i32
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i32_atomic_rmw16_xor_u: &i32_atomic_rmw16_xor_u
+  name: i32.atomic_rmw16_xor_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 2
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i32
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_rmw_xor: &i64_atomic_rmw_xor
+  name: i64.atomic_rmw_xor
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 8
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_rmw8_xor_u: &i64_atomic_rmw8_xor_u
+  name: i64.atomic_rmw8_xor_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 1
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_rmw16_xor_u: &i64_atomic_rmw16_xor_u
+  name: i64.atomic_rmw16_xor_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 2
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_rmw32_xor_u: &i64_atomic_rmw32_xor_u
+  name: i64.atomic_rmw32_xor_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 4
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i32_atomic_rmw_xchg: &i32_atomic_rmw_xchg
+  name: i32.atomic_rmw_xchg
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 4
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i32
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i32_atomic_rmw8_xchg_u: &i32_atomic_rmw8_xchg_u
+  name: i32.atomic_rmw8_xchg_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 1
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i32
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i32_atomic_rmw16_xchg_u: &i32_atomic_rmw16_xchg_u
+  name: i32.atomic_rmw16_xchg_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 2
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i32
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_rmw_xchg: &i64_atomic_rmw_xchg
+  name: i64.atomic_rmw_xchg
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 8
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_rmw8_xchg_u: &i64_atomic_rmw8_xchg_u
+  name: i64.atomic_rmw8_xchg_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 1
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_rmw16_xchg_u: &i64_atomic_rmw16_xchg_u
+  name: i64.atomic_rmw16_xchg_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 2
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_rmw32_xchg_u: &i64_atomic_rmw32_xchg_u
+  name: i64.atomic_rmw32_xchg_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 4
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i32_atomic_rmw_cmpxchg: &i32_atomic_rmw_cmpxchg
+  name: i32.atomic_rmw_cmpxchg
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 4
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i32
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i32_atomic_rmw8_cmpxchg_u: &i32_atomic_rmw8_cmpxchg_u
+  name: i32.atomic_rmw8_cmpxchg_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 1
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i32
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i32_atomic_rmw16_cmpxchg_u: &i32_atomic_rmw16_cmpxchg_u
+  name: i32.atomic_rmw16_cmpxchg_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 2
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i32
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_rmw_cmpxchg: &i64_atomic_rmw_cmpxchg
+  name: i64.atomic_rmw_cmpxchg
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 8
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_rmw8_cmpxchg_u: &i64_atomic_rmw8_cmpxchg_u
+  name: i64.atomic_rmw8_cmpxchg_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 1
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_rmw16_cmpxchg_u: &i64_atomic_rmw16_cmpxchg_u
+  name: i64.atomic_rmw16_cmpxchg_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 2
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+i64_atomic_rmw32_cmpxchg_u: &i64_atomic_rmw32_cmpxchg_u
+  name: i64.atomic_rmw32_cmpxchg_u
+  bound_vars:
+    - name: data_size
+      type: u32
+      derived_from: 4
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
+call_ref: &call_ref
+  name: call_ref
+  bound_vars:
+    - *category_id_control
+    - *category_name_control
+    - *imm0_u32
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+
+return_call_ref: &return_call_ref
+  name: return_call_ref
+  bound_vars:
+    - *category_id_control
+    - *category_name_control
+    - *imm0_u32
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+
+ref_as_non_null: &ref_as_non_null
+  name: ref.as_non_null
+  bound_vars:
+    - *category_id_convert
+    - *category_name_convert
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/function-references/Overview.md"
+
+br_on_null: &br_on_null
+  name: br_on_null
+  bound_vars:
+    - *category_id_control
+    - *category_name_control
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/function-references/Overview.md"
+
+br_on_non_null: &br_on_non_null
+  name: br_on_non_null
+  bound_vars:
+    - *category_id_control
+    - *category_name_control
+    - *imm0_u32
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+  req_map: false
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/function-references/Overview.md"

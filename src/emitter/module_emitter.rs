@@ -260,16 +260,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         if context == "whamm" && f.name.name == "strcmp" {
             self.emit_whamm_strcmp_fn(f, err)
         } else {
-            err.add_error(ErrorGen::get_unexpected_error(
-                true,
-                Some(format!(
-                    "{UNEXPECTED_ERR_MSG} \
-            Provided function, but could not find a context to provide the definition, context: {}",
-                    context
-                )),
-                None,
-            ));
-            None
+            panic!("Provided function, but could not find a context to provide the definition, context: {context}");
         }
     }
 

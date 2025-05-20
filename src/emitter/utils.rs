@@ -193,7 +193,7 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                         *addr = Some(VarAddr::Local { addr: id });
                         true
                     } else {
-                        todo!()
+                        todo!("not supported the type yet: {:?} as {:#?}", var_id, ty)
                     }
                 }
             }
