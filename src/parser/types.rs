@@ -1348,7 +1348,7 @@ pub enum Definition {
     User,
     CompilerStatic,
     CompilerDynamic,
-    CompilerDerived         // TODO -- can I remove this variant?
+    CompilerDerived, // TODO -- can I remove this variant?
 }
 impl Definition {
     pub fn is_comp_provided(&self) -> bool {
@@ -1364,7 +1364,7 @@ impl From<&str> for Definition {
             "static" => Self::CompilerStatic,
             "dynamic" => Self::CompilerDynamic,
             "derived" => Self::CompilerDerived,
-            _ => panic!("Invalid definition string: {value}")
+            _ => panic!("Invalid definition string: {value}"),
         }
     }
 }

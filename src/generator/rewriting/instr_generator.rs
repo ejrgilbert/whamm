@@ -150,9 +150,12 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
                     loc_info.probes.iter().for_each(|(probe_rule, probe)| {
                         // Enter the scope for this matched probe
                         self.set_curr_loc(probe_rule, probe);
-                        assert!(self
-                            .emitter
-                            .enter_scope_via_rule(&probe.script_id.to_string(), probe_rule), "Failed to enter scope: {}", probe_rule);
+                        assert!(
+                            self.emitter
+                                .enter_scope_via_rule(&probe.script_id.to_string(), probe_rule),
+                            "Failed to enter scope: {}",
+                            probe_rule
+                        );
 
                         // Initialize the symbol table with the metadata at this program point
                         add_to_table(&loc_info.static_data, &mut self.emitter);

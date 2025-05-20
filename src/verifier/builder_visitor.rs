@@ -559,7 +559,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
                 if let Expr::VarId { name: alias, .. } = derived_from {
                     // this is a simple alias!
                     aliases.insert(name.clone(), alias.clone());
-                } else if let Expr::Primitive {val, ..} = derived_from {
+                } else if let Expr::Primitive { val, .. } = derived_from {
                     // This is a simple value that can be folded away
                     self.add_global(
                         ty.clone(),
@@ -578,7 +578,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
                 self.add_global(
                     ty.clone(),
                     name.clone(),
-                    None,            // todo this is just made up
+                    None, // todo this is just made up
                     lifetime.clone(),
                     false,
                     None,

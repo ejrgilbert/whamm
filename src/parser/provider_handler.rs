@@ -1,7 +1,10 @@
 use crate::common::error::{ErrorGen, WhammError};
 use crate::common::terminal::{green, long_line, magenta_italics, white};
 use crate::generator::ast::ReqArgs;
-use crate::parser::types::{Block, DataType, Definition, Expr, Fn as WhammFn, FnId, Location, ProbeRule, Rule, RulePart, WhammParser};
+use crate::parser::types::{
+    Block, DataType, Definition, Expr, Fn as WhammFn, FnId, Location, ProbeRule, Rule, RulePart,
+    WhammParser,
+};
 use crate::parser::whamm_parser::{handle_expr, handle_param, type_from_rule};
 use glob::{glob, Pattern};
 use log::{error, trace};
@@ -257,11 +260,11 @@ impl MatchOn for ProviderDef {
                 loc,
                 probe_rule,
                 &self.packages,
-                err_ctxt
+                err_ctxt,
             ) {
                 Ok(pkgs_res) => {
                     let packages: Vec<PackageDef> = pkgs_res.into_iter().map(|b| *b).collect();
-                    if packages.is_empty() && probe_rule.package.is_some(){
+                    if packages.is_empty() && probe_rule.package.is_some() {
                         // if there's a further match pattern to consider, this isn't a match!
                         // (consider wasm:begin and wasm:end)
                         err_ctxt.on_provider = Some(ErrorGen::get_parse_error(
@@ -288,7 +291,7 @@ impl MatchOn for ProviderDef {
                 Err(e) => {
                     err_ctxt.on_provider = Some(e.clone());
                     Err(())
-                },
+                }
             };
         } else {
             // shouldn't happen, panic
@@ -378,7 +381,7 @@ impl MatchOn for PackageDef {
                 loc,
                 probe_rule,
                 &self.events,
-                err_ctxt
+                err_ctxt,
             ) {
                 Ok(evts_res) => {
                     let evts: Vec<EventDef> = evts_res.into_iter().map(|b| *b).collect();
@@ -409,7 +412,7 @@ impl MatchOn for PackageDef {
                 Err(e) => {
                     err_ctxt.on_package = Some(e);
                     Err(())
-                },
+                }
             };
         } else {
             todo!()
@@ -532,7 +535,7 @@ impl MatchOn for EventDef {
                 Err(e) => {
                     err_ctxt.on_event = Some(e);
                     Err(())
-                },
+                }
             };
         } else {
             todo!()
@@ -602,7 +605,7 @@ impl From<String> for ModeKind {
             "block_alt" => Self::BlockAlt,
             "entry" => Self::Entry,
             "exit" => Self::Exit,
-            _ => panic!("unable to match mode kind: {value}")
+            _ => panic!("unable to match mode kind: {value}"),
         }
     }
 }
@@ -642,7 +645,7 @@ impl From<ModeYml> for ModeDef {
                 req_map: false,
             },
             alias: value.alias_to.clone(),
-            kind: ModeKind::from(value.name)
+            kind: ModeKind::from(value.name),
         }
     }
 }
@@ -736,7 +739,7 @@ impl From<BoundVarYml> for BoundVar {
             docs: value.docs.to_owned(),
             ty,
             derived_from,
-            lifetime: Definition::from(value.lifetime.as_str())
+            lifetime: Definition::from(value.lifetime.as_str()),
         }
     }
 }
@@ -761,7 +764,7 @@ impl BoundVar {
 pub struct BoundFunc {
     pub func: WhammFn,
     pub req_args: ReqArgs, // TODO: Remove this...it's wasm opcode specific...
-    docs: String
+    docs: String,
 }
 impl From<BoundFuncYml> for BoundFunc {
     fn from(value: BoundFuncYml) -> Self {
@@ -916,7 +919,7 @@ fn match_helper<T: MatchOn>(
     loc: &Option<Location>,
     rule: &ProbeRule,
     to_check: &Vec<T>,
-    err_ctxt: &mut ErrCtxt
+    err_ctxt: &mut ErrCtxt,
 ) -> Result<Vec<Box<T>>, WhammError> {
     let mut matches = vec![];
     if is_match(name, pattern) {
@@ -1020,9 +1023,8 @@ impl ErrCtxt {
             self.on_provider.clone()
         } else {
             None
-        }
+        };
     }
-
 }
 
 // =====================

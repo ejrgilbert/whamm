@@ -2,10 +2,10 @@ use crate::parser::whamm_parser::*;
 
 use crate::common::error::ErrorGen;
 
+use crate::parser::provider_handler::ModeKind;
 use crate::parser::tests::{get_ast, setup_logger};
 use glob::{glob, glob_with};
 use log::{error, info, warn};
-use crate::parser::provider_handler::ModeKind;
 
 const VALID_SCRIPTS: &[&str] = &[
     // with libraries

@@ -196,7 +196,6 @@ impl<'a> TypeChecker<'a> {
     }
 
     fn handle_type_bounds(&mut self, type_bounds: &Vec<(Expr, DataType)>) {
-
         // TODO -- fix type bounds bug: put them local to the probe, not global to the event
         //         ALSO need to handle type bounds on provider/package/mode as well!
         for (var, ty_bound) in type_bounds.iter() {
