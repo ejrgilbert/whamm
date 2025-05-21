@@ -1399,7 +1399,7 @@ impl Global {
     }
 }
 
-pub(crate) fn print_bound_vars(tabs: &mut usize, vars: &Vec<BoundVar>, buffer: &mut Buffer) {
+pub(crate) fn print_bound_vars(tabs: &mut usize, vars: &[BoundVar], buffer: &mut Buffer) {
     if !vars.is_empty() {
         white(true, format!("{}GLOBALS:\n", " ".repeat(*tabs * 4)), buffer);
         *tabs += 1;
@@ -1708,12 +1708,12 @@ impl Script {
     pub fn add_probe(
         &mut self,
         probe_rule: &ProbeRule,
-        def: &Vec<ProviderDef>,
+        def: &[ProviderDef],
         predicate: Option<Expr>,
         body: Option<Block>,
         err: &mut ErrorGen,
     ) {
-        let matches = get_matches(&probe_rule, def, err);
+        let matches = get_matches(probe_rule, def, err);
         if matches.is_empty() {
             assert!(err.has_errors);
         }

@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_arguments)]
+
 use crate::common::error::{ErrorGen, WhammError};
 use crate::common::terminal::{green, long_line, magenta_italics, white};
 use crate::generator::ast::ReqArgs;
@@ -23,15 +25,14 @@ pub fn yml_to_providers(base_dir: &str) -> Vec<ProviderDef> {
 
 pub fn get_matches(
     rule: &ProbeRule,
-    all_providers: &Vec<ProviderDef>,
+    all_providers: &[ProviderDef],
     err: &mut ErrorGen,
 ) -> Vec<ProviderDef> {
     let mut err_ctxt = ErrCtxt::default();
     let mut matches: Vec<ProviderDef> = vec![];
     for provider in all_providers.iter() {
-        match provider.match_on(rule, &mut err_ctxt) {
-            Ok(prov) => matches.push(*prov),
-            _ => {}
+        if let Ok(prov) = provider.match_on(rule, &mut err_ctxt) {
+            matches.push(*prov);
         }
     }
 
@@ -79,7 +80,7 @@ impl Provider {
     }
     pub fn add_probes(
         &mut self,
-        matched_pkgs: &Vec<PackageDef>,
+        matched_pkgs: &[PackageDef],
         rule: &ProbeRule,
         predicate: Option<Expr>,
         body: Option<Block>,
@@ -125,7 +126,7 @@ impl Package {
     }
     pub fn add_probes(
         &mut self,
-        matched_evts: &Vec<EventDef>,
+        matched_evts: &[EventDef],
         rule: &ProbeRule,
         predicate: Option<Expr>,
         body: Option<Block>,
@@ -172,7 +173,7 @@ impl Event {
     }
     pub fn add_probes(
         &mut self,
-        matched_modes: &Vec<ModeDef>,
+        matched_modes: &[ModeDef],
         rule: &ProbeRule,
         predicate: Option<Expr>,
         body: Option<Block>,
@@ -192,10 +193,7 @@ impl Event {
         };
 
         for matched_mode in matched_modes.iter() {
-            let probes = self
-                .probes
-                .entry(matched_mode.kind.clone())
-                .or_insert(vec![]);
+            let probes = self.probes.entry(matched_mode.kind.clone()).or_default();
 
             probes.push(Probe {
                 id: *next_id,
@@ -220,7 +218,6 @@ pub struct Def {
     pub bound_vars: Vec<BoundVar>,
     pub bound_fns: Vec<BoundFunc>,
     docs: String,
-    req_map: bool, // TODO: Remove this...maybe make it request a list of libraries?
 }
 
 #[derive(Debug)]
@@ -239,7 +236,6 @@ impl From<ProviderYml> for ProviderDef {
                 bound_vars,
                 bound_fns,
                 docs: value.docs.clone(),
-                req_map: false,
             },
             packages,
         }
@@ -253,10 +249,10 @@ impl MatchOn for ProviderDef {
             ..
         }) = &probe_rule.provider
         {
-            return match match_helper(
+            match match_helper(
                 &self.def.name,
                 "provider",
-                &provider_patt,
+                provider_patt,
                 loc,
                 probe_rule,
                 &self.packages,
@@ -272,11 +268,7 @@ impl MatchOn for ProviderDef {
                             Some(format!(
                                 "Could not find any matches for the specified provider pattern: {provider_patt}"
                             )),
-                            if let Some(l) = loc {
-                                Some(l.line_col.clone())
-                            } else {
-                                None
-                            },
+                            loc.as_ref().map(|l| l.line_col.clone()),
                             vec![],
                             vec![],
                         ));
@@ -289,10 +281,10 @@ impl MatchOn for ProviderDef {
                     }
                 }
                 Err(e) => {
-                    err_ctxt.on_provider = Some(e.clone());
+                    err_ctxt.on_provider = Some(*e);
                     Err(())
                 }
-            };
+            }
         } else {
             // shouldn't happen, panic
             todo!()
@@ -360,7 +352,6 @@ impl From<PackageYml> for PackageDef {
                 bound_vars,
                 bound_fns,
                 docs: value.docs.clone(),
-                req_map: false,
             },
             events,
         }
@@ -374,10 +365,10 @@ impl MatchOn for PackageDef {
             ..
         }) = &probe_rule.package
         {
-            return match match_helper(
+            match match_helper(
                 &self.def.name,
                 "package",
-                &pkg_patt,
+                pkg_patt,
                 loc,
                 probe_rule,
                 &self.events,
@@ -393,11 +384,7 @@ impl MatchOn for PackageDef {
                             Some(format!(
                                 "Could not find any matches for the specified package pattern: {pkg_patt}"
                             )),
-                            if let Some(l) = loc {
-                                Some(l.line_col.clone())
-                            } else {
-                                None
-                            },
+                            loc.as_ref().map(|l| l.line_col.clone()),
                             vec![],
                             vec![],
                         ));
@@ -410,10 +397,10 @@ impl MatchOn for PackageDef {
                     }
                 }
                 Err(e) => {
-                    err_ctxt.on_package = Some(e);
+                    err_ctxt.on_package = Some(*e);
                     Err(())
                 }
-            };
+            }
         } else {
             todo!()
         }
@@ -483,7 +470,6 @@ impl From<EventYml> for EventDef {
                 docs: value.docs.clone(),
                 bound_vars,
                 bound_fns,
-                req_map: value.req_map,
             },
             modes,
         }
@@ -497,10 +483,10 @@ impl MatchOn for EventDef {
             ..
         }) = &probe_rule.event
         {
-            return match match_helper(
+            match match_helper(
                 &self.def.name,
                 "event",
-                &evt_patt,
+                evt_patt,
                 loc,
                 probe_rule,
                 &self.modes,
@@ -516,11 +502,7 @@ impl MatchOn for EventDef {
                             Some(format!(
                                 "Could not find any matches for the specified event pattern: {evt_patt}"
                             )),
-                            if let Some(l) = loc {
-                                Some(l.line_col.clone())
-                            } else {
-                                None
-                            },
+                            loc.as_ref().map(|l| l.line_col.clone()),
                             vec![],
                             vec![],
                         ));
@@ -533,10 +515,10 @@ impl MatchOn for EventDef {
                     }
                 }
                 Err(e) => {
-                    err_ctxt.on_event = Some(e);
+                    err_ctxt.on_event = Some(*e);
                     Err(())
                 }
-            };
+            }
         } else {
             todo!()
         }
@@ -642,7 +624,6 @@ impl From<ModeYml> for ModeDef {
                 bound_vars: vec![],
                 bound_fns: vec![],
                 docs: value.docs.clone(),
-                req_map: false,
             },
             alias: value.alias_to.clone(),
             kind: ModeKind::from(value.name),
@@ -660,7 +641,7 @@ impl MatchOn for ModeDef {
             } else {
                 self.def.name.clone()
             };
-            if is_match(&match_on, &md_patt) {
+            if is_match(&match_on, md_patt) {
                 Ok(Box::new(self.clone()))
             } else {
                 err_ctxt.on_mode = Some(ErrorGen::get_parse_error(
@@ -668,11 +649,7 @@ impl MatchOn for ModeDef {
                     Some(format!(
                         "Could not find any matches for the specified mode pattern: {md_patt}"
                     )),
-                    if let Some(l) = loc {
-                        Some(l.line_col.clone())
-                    } else {
-                        None
-                    },
+                    loc.as_ref().map(|l| l.line_col.clone()),
                     vec![],
                     vec![],
                 ));
@@ -723,16 +700,9 @@ impl From<BoundVarYml> for BoundVar {
     fn from(value: BoundVarYml) -> Self {
         let ty = parse_helper::<DataType>("DataType", Rule::TYPE_YML, &value.ty, &type_from_rule);
 
-        let derived_from = if let Some(derived_from) = value.derived_from {
-            Some(parse_helper::<Expr>(
-                "Expr",
-                Rule::expr,
-                &derived_from,
-                &handle_expr,
-            ))
-        } else {
-            None
-        };
+        let derived_from = value.derived_from.map(|derived_from| {
+            parse_helper::<Expr>("Expr", Rule::expr, &derived_from, &handle_expr)
+        });
 
         Self {
             name: value.name.to_owned(),
@@ -878,12 +848,7 @@ pub struct Probe {
 // ==== UTILITY FUNCTIONS ====
 // ===========================
 
-fn print_bound_vars(
-    vars: &Vec<BoundVar>,
-    print_globals: bool,
-    buff: &mut Buffer,
-    tabs: &mut usize,
-) {
+fn print_bound_vars(vars: &[BoundVar], print_globals: bool, buff: &mut Buffer, tabs: &mut usize) {
     if print_globals && !vars.is_empty() {
         white(true, format!("{}GLOBALS:\n", " ".repeat(*tabs * 4)), buff);
         *tabs += 1;
@@ -895,12 +860,7 @@ fn print_bound_vars(
     }
 }
 
-fn print_bound_fns(
-    fns: &Vec<BoundFunc>,
-    print_functions: bool,
-    buff: &mut Buffer,
-    tabs: &mut usize,
-) {
+fn print_bound_fns(fns: &[BoundFunc], print_functions: bool, buff: &mut Buffer, tabs: &mut usize) {
     if print_functions && !fns.is_empty() {
         white(true, format!("{}FUNCTIONS:\n", " ".repeat(*tabs * 4)), buff);
         *tabs += 1;
@@ -918,32 +878,27 @@ fn match_helper<T: MatchOn>(
     pattern: &str,
     loc: &Option<Location>,
     rule: &ProbeRule,
-    to_check: &Vec<T>,
+    to_check: &[T],
     err_ctxt: &mut ErrCtxt,
-) -> Result<Vec<Box<T>>, WhammError> {
+) -> Result<Vec<Box<T>>, Box<WhammError>> {
     let mut matches = vec![];
     if is_match(name, pattern) {
         for item in to_check.iter() {
-            match item.match_on(rule, err_ctxt) {
-                Ok(m) => matches.push(m),
-                _ => {}
+            if let Ok(m) = item.match_on(rule, err_ctxt) {
+                matches.push(m);
             }
         }
     } else {
         // create an error here
-        return Err(ErrorGen::get_parse_error(
+        return Err(Box::new(ErrorGen::get_parse_error(
             true,
             Some(format!(
                 "Could not find any matches for the specified {ctxt} pattern: {pattern}"
             )),
-            if let Some(l) = loc {
-                Some(l.line_col.clone())
-            } else {
-                None
-            },
+            loc.as_ref().map(|l| l.line_col.clone()),
             vec![],
             vec![],
-        ));
+        )));
     }
     Ok(matches)
 }
@@ -968,20 +923,15 @@ fn get_globs(patt: &str) -> Vec<Pattern> {
     globs
 }
 
-fn parse_helper<T>(
-    target: &str,
-    parse_rule: Rule,
-    token: &str,
-    handler: &dyn Fn(Pair<Rule>) -> Result<T, Vec<WhammError>>,
-) -> T {
+type RuleHandler<T> = dyn Fn(Pair<Rule>) -> Result<T, Vec<WhammError>>;
+fn parse_helper<T>(target: &str, parse_rule: Rule, token: &str, handler: &RuleHandler<T>) -> T {
     match WhammParser::parse(parse_rule, token) {
         Ok(mut pairs) => {
             if let Some(pair) = pairs.next() {
-                let res = match handler(pair) {
+                match handler(pair) {
                     Ok(res) => res,
                     Err(_errs) => todo!(),
-                };
-                res
+                }
             } else {
                 todo!()
             }
@@ -1013,7 +963,7 @@ impl ErrCtxt {
     //     return self.on_provider.is_some() || self.on_package.is_some() || self.on_event.is_some() || self.on_mode.is_some()
     // }
     fn get_most_specific(&self) -> Option<WhammError> {
-        return if self.on_mode.is_some() {
+        if self.on_mode.is_some() {
             self.on_mode.clone()
         } else if self.on_event.is_some() {
             self.on_event.clone()
@@ -1023,7 +973,7 @@ impl ErrCtxt {
             self.on_provider.clone()
         } else {
             None
-        };
+        }
     }
 }
 
@@ -1104,7 +1054,6 @@ struct EventYml {
     bound_vars: Vec<BoundVarYml>,
     bound_fns: Vec<BoundFuncYml>,
     supported_modes: Vec<ModeYml>,
-    req_map: bool, // TODO: Remove this...maybe make it request a list of libraries?
     docs: String,
 }
 

@@ -541,10 +541,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
         self.add_global_id_to_curr_rec(id);
     }
 
-    fn visit_bound_vars(
-        &mut self,
-        vars: &Vec<BoundVar>,
-    ) -> (Vec<String>, Vec<String>) {
+    fn visit_bound_vars(&mut self, vars: &[BoundVar]) -> (Vec<String>, Vec<String>) {
         let mut aliases = HashMap::new();
         let mut derived = HashMap::new();
         for BoundVar {
@@ -794,7 +791,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
                 self.req_args = req_args.clone();
                 self.visit_fn(func);
             });
-        let (to_remove_alias, to_remove_vars) = self.visit_bound_vars(&mut probe.def.bound_vars);
+        let (to_remove_alias, to_remove_vars) = self.visit_bound_vars(&probe.def.bound_vars);
 
         // Will not visit predicate/body at this stage
         // visit the predicate/body to handle aliases and derived variables!

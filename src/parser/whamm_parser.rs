@@ -92,11 +92,11 @@ pub fn print_info(rule: String, print_globals: bool, print_functions: bool, err:
         }
     }
 
-    let mut buffs = vec![whamm_buffer, prov_buff, pkg_buff, evt_buff];
+    let mut buffs = [whamm_buffer, prov_buff, pkg_buff, evt_buff];
 
     for buff in buffs.iter_mut() {
         writer
-            .print(&buff)
+            .print(buff)
             .expect("Uh oh, something went wrong while printing to terminal");
         buff.reset()
             .expect("Uh oh, something went wrong while printing to terminal");
@@ -276,7 +276,7 @@ pub fn handle_global_statements(
 
 pub fn handle_probe_def(
     whamm: &mut Whamm,
-    prov_def: &Vec<ProviderDef>,
+    prov_def: &[ProviderDef],
     script_count: usize,
     pair: Pair<Rule>,
     err: &mut ErrorGen,

@@ -569,7 +569,7 @@ unreachable: &unreachable
   supported_modes:
   - *alt
   - *before
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/unreachable"
 
 nop: &nop
@@ -579,7 +579,7 @@ nop: &nop
     - *category_name_misc
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://www.w3.org/TR/wasm-core-2/#syntax-instr-control"
 
 block: &block
@@ -590,7 +590,7 @@ block: &block
     - *argN
   bound_fns: []
   supported_modes: *block_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/block"
 
 loop: &loop
@@ -601,7 +601,7 @@ loop: &loop
     - *argN
   bound_fns: []
   supported_modes: *block_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/loop"
 
 if: &if
@@ -612,7 +612,7 @@ if: &if
     - *arg0_u32
   bound_fns: []
   supported_modes: *block_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"
 
 else: &else
@@ -622,7 +622,7 @@ else: &else
     - *category_name_control
   bound_fns: []
   supported_modes: *block_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"
 
 try_table: &try_table
@@ -632,7 +632,7 @@ try_table: &try_table
     - *category_name_table
   bound_fns: []
   supported_modes: *block_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/exception-handling/blob/e7c7c313d26f6b0fe8f1bda33cd6ab5e9edd838b/proposals/exception-handling/Exceptions.md#try-blocks"
 
 throw: &throw
@@ -644,7 +644,7 @@ throw: &throw
     - *imm0_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/exception-handling/blob/e7c7c313d26f6b0fe8f1bda33cd6ab5e9edd838b/proposals/exception-handling/Exceptions.md#throwing-an-exception"
 
 throw_ref: &throw_ref
@@ -655,7 +655,7 @@ throw_ref: &throw_ref
     - *argN
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/exception-handling/blob/e7c7c313d26f6b0fe8f1bda33cd6ab5e9edd838b/proposals/exception-handling/Exceptions.md#rethrowing-an-exception"
 
 end: &end
@@ -665,7 +665,7 @@ end: &end
     - *category_name_control
   bound_fns: []
   supported_modes: *default_modes_no_alt
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/end"
 
 br: &br
@@ -676,7 +676,7 @@ br: &br
     - *imm0_u32
   bound_fns: []
   supported_modes: *branching_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
 
 br_if: &br_if
@@ -688,7 +688,7 @@ br_if: &br_if
     - *imm0_u32
   bound_fns: []
   supported_modes: *branching_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/br"
 
 br_table: &br_table
@@ -715,7 +715,7 @@ br_table: &br_table
       derived_from: null
   bound_fns: []
   supported_modes: *branching_modes
-  req_map: false
+
   docs: "https://musteresel.github.io/posts/2020/01/webassembly-text-br_table-example.html"
 
 return: &return
@@ -725,7 +725,7 @@ return: &return
     - *category_name_control
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/return"
 
 
@@ -743,7 +743,7 @@ call: &call
     - *alt_call_by_id
     - *alt_call_by_name
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call"
 
 call_indirect: &call_indirect
@@ -756,7 +756,7 @@ call_indirect: &call_indirect
     - *imm1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call"
 
 return_call: &return_call
@@ -773,7 +773,7 @@ return_call: &return_call
     - *alt_call_by_id
     - *alt_call_by_name
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call"
 
 return_call_indirect: &return_call_indirect
@@ -786,7 +786,7 @@ return_call_indirect: &return_call_indirect
     - *imm1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call"
 
 drop: &drop
@@ -797,7 +797,7 @@ drop: &drop
     - *argN
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/Drop"
 
 select: &select
@@ -808,7 +808,7 @@ select: &select
     - *argN
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/Select"
 
 # TODO -- support pulling the type!
@@ -821,7 +821,7 @@ typed_select: &typed_select
     - *argN
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/Select"
 
 local_get: &local_get
@@ -832,7 +832,7 @@ local_get: &local_get
     - *imm0_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_get"
 
 local_set: &local_set
@@ -844,7 +844,7 @@ local_set: &local_set
     - *imm0_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_set"
 
 local_tee: &local_tee
@@ -856,7 +856,7 @@ local_tee: &local_tee
     - *imm0_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Local_tee"
 
 global_get: &global_get
@@ -867,7 +867,7 @@ global_get: &global_get
     - *imm0_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Global_get"
 
 global_set: &global_set
@@ -879,7 +879,7 @@ global_set: &global_set
     - *imm0_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Global_set"
 
 i32_load: &i32_load
@@ -904,7 +904,7 @@ i32_load: &i32_load
     - *offset
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
 
 i64_load: &i64_load
@@ -929,7 +929,7 @@ i64_load: &i64_load
     - *offset
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
 
 f32_load: &f32_load
@@ -954,7 +954,7 @@ f32_load: &f32_load
     - *offset
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
 
 f64_load: &f64_load
@@ -979,7 +979,7 @@ f64_load: &f64_load
     - *offset
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
 
 i32_load8_s: &i32_load8_s
@@ -1004,7 +1004,7 @@ i32_load8_s: &i32_load8_s
     - *offset
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
 
 i32_load8_u: &i32_load8_u
@@ -1029,7 +1029,7 @@ i32_load8_u: &i32_load8_u
     - *offset
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
 
 i32_load16_s: &i32_load16_s
@@ -1054,7 +1054,7 @@ i32_load16_s: &i32_load16_s
     - *offset
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
 
 i32_load16_u: &i32_load16_u
@@ -1079,7 +1079,7 @@ i32_load16_u: &i32_load16_u
     - *offset
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
 
 i64_load8_s: &i64_load8_s
@@ -1104,7 +1104,7 @@ i64_load8_s: &i64_load8_s
     - *offset
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
 
 i64_load8_u: &i64_load8_u
@@ -1129,7 +1129,7 @@ i64_load8_u: &i64_load8_u
     - *offset
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
 
 i64_load16_s: &i64_load16_s
@@ -1154,7 +1154,7 @@ i64_load16_s: &i64_load16_s
     - *offset
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
 
 i64_load16_u: &i64_load16_u
@@ -1179,7 +1179,7 @@ i64_load16_u: &i64_load16_u
     - *offset
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
 
 i64_load32_s: &i64_load32_s
@@ -1204,7 +1204,7 @@ i64_load32_s: &i64_load32_s
     - *offset
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
 
 i64_load32_u: &i64_load32_u
@@ -1229,7 +1229,7 @@ i64_load32_u: &i64_load32_u
     - *offset
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Load"
 
 i32_store: &i32_store
@@ -1255,7 +1255,7 @@ i32_store: &i32_store
     - *offset
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
 
 i64_store: &i64_store
@@ -1281,7 +1281,7 @@ i64_store: &i64_store
     - *offset
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
 
 f32_store: &f32_store
@@ -1307,7 +1307,7 @@ f32_store: &f32_store
     - *offset
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
 
 f64_store: &f64_store
@@ -1333,7 +1333,7 @@ f64_store: &f64_store
     - *offset
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
 
 i32_store8: &i32_store8
@@ -1359,7 +1359,7 @@ i32_store8: &i32_store8
     - *offset
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
 
 i32_store16: &i32_store16
@@ -1385,7 +1385,7 @@ i32_store16: &i32_store16
     - *offset
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
 
 i64_store8: &i64_store8
@@ -1411,7 +1411,7 @@ i64_store8: &i64_store8
     - *offset
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
 
 
@@ -1438,7 +1438,7 @@ i64_store16: &i64_store16
     - *offset
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
 
 i64_store32: &i64_store32
@@ -1464,7 +1464,7 @@ i64_store32: &i64_store32
     - *offset
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
 
 memory_size: &memory_size
@@ -1475,7 +1475,7 @@ memory_size: &memory_size
     - *imm0_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Size"
 
 memory_grow: &memory_grow
@@ -1487,7 +1487,7 @@ memory_grow: &memory_grow
     - *imm0_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Grow"
 
 i32_const: &i32_const
@@ -1498,7 +1498,7 @@ i32_const: &i32_const
     - *imm0_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Const"
 
 i64_const: &i64_const
@@ -1509,7 +1509,7 @@ i64_const: &i64_const
     - *imm0_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Const"
 
 f32_const: &f32_const
@@ -1520,7 +1520,7 @@ f32_const: &f32_const
     - *imm0_f32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Const"
 
 f64_const: &f64_const
@@ -1531,7 +1531,7 @@ f64_const: &f64_const
     - *imm0_f64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Const"
 
 # TODO -- support pulling heaptype
@@ -1543,7 +1543,7 @@ ref_null: &ref_null
     - *category_name_gc
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
 
 # TODO -- support argN
@@ -1555,7 +1555,7 @@ ref_is_null: &ref_is_null
     - *argN
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
 
 ref_func: &ref_func
@@ -1566,7 +1566,7 @@ ref_func: &ref_func
     - *imm0_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
 
 ref_eq: &ref_eq
@@ -1577,7 +1577,7 @@ ref_eq: &ref_eq
     - *argN
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
 
 i32_eqz: &i32_eqz
@@ -1588,7 +1588,7 @@ i32_eqz: &i32_eqz
     - *arg0_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Equal"
 
 i32_eq: &i32_eq
@@ -1600,7 +1600,7 @@ i32_eq: &i32_eq
     - *arg1_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Equal"
 
 i32_ne: &i32_ne
@@ -1612,7 +1612,7 @@ i32_ne: &i32_ne
     - *arg1_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Not_equal"
 
 i32_lt_s: &i32_lt_s
@@ -1624,7 +1624,7 @@ i32_lt_s: &i32_lt_s
     - *arg1_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_than"
 
 i32_lt_u: &i32_lt_u
@@ -1636,7 +1636,7 @@ i32_lt_u: &i32_lt_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_than"
 
 i32_gt_s: &i32_gt_s
@@ -1648,7 +1648,7 @@ i32_gt_s: &i32_gt_s
     - *arg1_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_than"
 
 i32_gt_u: &i32_gt_u
@@ -1660,7 +1660,7 @@ i32_gt_u: &i32_gt_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_than"
 
 i32_le_s: &i32_le_s
@@ -1672,7 +1672,7 @@ i32_le_s: &i32_le_s
     - *arg1_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_or_equal"
 
 i32_le_u: &i32_le_u
@@ -1684,7 +1684,7 @@ i32_le_u: &i32_le_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_or_equal"
 
 i32_ge_s: &i32_ge_s
@@ -1696,7 +1696,7 @@ i32_ge_s: &i32_ge_s
     - *arg1_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_or_equal"
 
 i32_ge_u: &i32_ge_u
@@ -1708,7 +1708,7 @@ i32_ge_u: &i32_ge_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_or_equal"
 
 i64_eqz: &i64_eqz
@@ -1719,7 +1719,7 @@ i64_eqz: &i64_eqz
     - *arg0_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Equal"
 
 i64_eq: &i64_eq
@@ -1730,7 +1730,7 @@ i64_eq: &i64_eq
     - *arg0_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Equal"
 
 i64_ne: &i64_ne
@@ -1742,7 +1742,7 @@ i64_ne: &i64_ne
     - *arg1_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Not_equal"
 
 i64_lt_s: &i64_lt_s
@@ -1754,7 +1754,7 @@ i64_lt_s: &i64_lt_s
     - *arg1_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_than"
 
 i64_lt_u: &i64_lt_u
@@ -1766,7 +1766,7 @@ i64_lt_u: &i64_lt_u
     - *arg1_u64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_than"
 
 i64_gt_s: &i64_gt_s
@@ -1778,7 +1778,7 @@ i64_gt_s: &i64_gt_s
     - *arg1_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_than"
 
 i64_gt_u: &i64_gt_u
@@ -1790,7 +1790,7 @@ i64_gt_u: &i64_gt_u
     - *arg1_u64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_than"
 
 i64_le_s: &i64_le_s
@@ -1802,7 +1802,7 @@ i64_le_s: &i64_le_s
     - *arg1_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_or_equal"
 
 i64_le_u: &i64_le_u
@@ -1814,7 +1814,7 @@ i64_le_u: &i64_le_u
     - *arg1_u64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_or_equal"
 
 i64_ge_s: &i64_ge_s
@@ -1826,7 +1826,7 @@ i64_ge_s: &i64_ge_s
     - *arg1_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_or_equal"
 
 i64_ge_u: &i64_ge_u
@@ -1838,7 +1838,7 @@ i64_ge_u: &i64_ge_u
     - *arg1_u64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_or_equal"
 
 f32_eq: &f32_eq
@@ -1850,7 +1850,7 @@ f32_eq: &f32_eq
     - *arg1_f32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Equal"
 
 f32_ne: &f32_ne
@@ -1862,7 +1862,7 @@ f32_ne: &f32_ne
     - *arg1_f32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Not_equal"
 
 f32_lt: &f32_lt
@@ -1874,7 +1874,7 @@ f32_lt: &f32_lt
     - *arg1_f32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_than"
 
 f32_gt: &f32_gt
@@ -1886,7 +1886,7 @@ f32_gt: &f32_gt
     - *arg1_f32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_than"
 
 f32_le: &f32_le
@@ -1898,7 +1898,7 @@ f32_le: &f32_le
     - *arg1_f32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_or_equal"
 
 f32_ge: &f32_ge
@@ -1910,7 +1910,7 @@ f32_ge: &f32_ge
     - *arg1_f32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_or_equal"
 
 f64_eq: &f64_eq
@@ -1922,7 +1922,7 @@ f64_eq: &f64_eq
     - *arg1_f64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Equal"
 
 f64_ne: &f64_ne
@@ -1934,7 +1934,7 @@ f64_ne: &f64_ne
     - *arg1_f64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Not_equal"
 
 f64_lt: &f64_lt
@@ -1946,7 +1946,7 @@ f64_lt: &f64_lt
     - *arg1_f64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_than"
 
 f64_gt: &f64_gt
@@ -1958,7 +1958,7 @@ f64_gt: &f64_gt
     - *arg1_f64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_than"
 
 f64_le: &f64_le
@@ -1970,7 +1970,7 @@ f64_le: &f64_le
     - *arg1_f64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Less_or_equal"
 
 f64_ge: &f64_ge
@@ -1982,7 +1982,7 @@ f64_ge: &f64_ge
     - *arg1_f64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Greater_or_equal"
 
 i32_clz: &i32_clz
@@ -1993,7 +1993,7 @@ i32_clz: &i32_clz
     - *arg0_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Count_leading_zeros"
 
 i32_ctz: &i32_ctz
@@ -2004,7 +2004,7 @@ i32_ctz: &i32_ctz
     - *arg0_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Count_trailing_zeros"
 
 i32_popcnt: &i32_popcnt
@@ -2015,7 +2015,7 @@ i32_popcnt: &i32_popcnt
     - *arg0_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Population_count"
 
 i32_add: &i32_add
@@ -2027,7 +2027,7 @@ i32_add: &i32_add
     - *arg1_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Addition"
 
 i32_sub: &i32_sub
@@ -2039,7 +2039,7 @@ i32_sub: &i32_sub
     - *arg1_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Subtraction"
 
 i32_mul: &i32_mul
@@ -2051,7 +2051,7 @@ i32_mul: &i32_mul
     - *arg1_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Multiplication"
 
 i32_div_s: &i32_div_s
@@ -2063,7 +2063,7 @@ i32_div_s: &i32_div_s
     - *arg1_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Division"
 
 i32_div_u: &i32_div_u
@@ -2075,7 +2075,7 @@ i32_div_u: &i32_div_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Division"
 
 i32_rem_s: &i32_rem_s
@@ -2087,7 +2087,7 @@ i32_rem_s: &i32_rem_s
     - *arg1_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Remainder"
 
 i32_rem_u: &i32_rem_u
@@ -2099,7 +2099,7 @@ i32_rem_u: &i32_rem_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Remainder"
 
 i32_and: &i32_and
@@ -2111,7 +2111,7 @@ i32_and: &i32_and
     - *arg1_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/AND"
 
 i32_or: &i32_or
@@ -2123,7 +2123,7 @@ i32_or: &i32_or
     - *arg1_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/OR"
 
 i32_xor: &i32_xor
@@ -2135,7 +2135,7 @@ i32_xor: &i32_xor
     - *arg1_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/XOR"
 
 i32_shl: &i32_shl
@@ -2147,7 +2147,7 @@ i32_shl: &i32_shl
     - *arg1_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Left_shift"
 
 i32_shr_s: &i32_shr_s
@@ -2159,7 +2159,7 @@ i32_shr_s: &i32_shr_s
     - *arg1_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Right_shift"
 
 i32_shr_u: &i32_shr_u
@@ -2171,7 +2171,7 @@ i32_shr_u: &i32_shr_u
     - *arg1_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Right_shift"
 
 i32_rotl: &i32_rotl
@@ -2183,7 +2183,7 @@ i32_rotl: &i32_rotl
     - *arg1_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Left_rotate"
 
 i32_rotr: &i32_rotr
@@ -2195,7 +2195,7 @@ i32_rotr: &i32_rotr
     - *arg1_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Right_rotate"
 
 i64_clz: &i64_clz
@@ -2206,7 +2206,7 @@ i64_clz: &i64_clz
     - *arg0_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Count_leading_zeros"
 
 i64_ctz: &i64_ctz
@@ -2217,7 +2217,7 @@ i64_ctz: &i64_ctz
     - *arg0_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Count_trailing_zeros"
 
 i64_popcnt: &i64_popcnt
@@ -2228,7 +2228,7 @@ i64_popcnt: &i64_popcnt
     - *arg0_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Population_count"
 
 i64_add: &i64_add
@@ -2240,7 +2240,7 @@ i64_add: &i64_add
     - *arg1_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Addition"
 
 i64_sub: &i64_sub
@@ -2252,7 +2252,7 @@ i64_sub: &i64_sub
     - *arg1_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Subtraction"
 
 i64_mul: &i64_mul
@@ -2264,7 +2264,7 @@ i64_mul: &i64_mul
     - *arg1_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Multiplication"
 
 i64_div_s: &i64_div_s
@@ -2276,7 +2276,7 @@ i64_div_s: &i64_div_s
     - *arg1_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Division"
 
 i64_div_u: &i64_div_u
@@ -2288,7 +2288,7 @@ i64_div_u: &i64_div_u
     - *arg1_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Division"
 
 i64_rem_s: &i64_rem_s
@@ -2300,7 +2300,7 @@ i64_rem_s: &i64_rem_s
     - *arg1_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Remainder"
 
 i64_rem_u: &i64_rem_u
@@ -2312,7 +2312,7 @@ i64_rem_u: &i64_rem_u
     - *arg1_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Remainder"
 
 i64_and: &i64_and
@@ -2324,7 +2324,7 @@ i64_and: &i64_and
     - *arg1_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/AND"
 
 i64_or: &i64_or
@@ -2336,7 +2336,7 @@ i64_or: &i64_or
     - *arg1_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/OR"
 
 i64_xor: &i64_xor
@@ -2348,7 +2348,7 @@ i64_xor: &i64_xor
     - *arg1_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/XOR"
 
 i64_shl: &i64_shl
@@ -2360,7 +2360,7 @@ i64_shl: &i64_shl
     - *arg1_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Left_shift"
 
 i64_shr_s: &i64_shr_s
@@ -2372,7 +2372,7 @@ i64_shr_s: &i64_shr_s
     - *arg1_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Right_shift"
 
 i64_shr_u: &i64_shr_u
@@ -2384,7 +2384,7 @@ i64_shr_u: &i64_shr_u
     - *arg1_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Right_shift"
 
 i64_rotl: &i64_rotl
@@ -2396,7 +2396,7 @@ i64_rotl: &i64_rotl
     - *arg1_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Left_rotate"
 
 i64_rotr: &i64_rotr
@@ -2408,7 +2408,7 @@ i64_rotr: &i64_rotr
     - *arg1_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Right_rotate"
 
 f32_abs: &f32_abs
@@ -2419,7 +2419,7 @@ f32_abs: &f32_abs
     - *arg0_f32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Absolute"
 
 f32_neg: &f32_neg
@@ -2430,7 +2430,7 @@ f32_neg: &f32_neg
     - *arg0_f32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Negate"
 
 f32_ceil: &f32_ceil
@@ -2441,7 +2441,7 @@ f32_ceil: &f32_ceil
     - *arg0_f32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Ceil"
 
 f32_floor: &f32_floor
@@ -2452,7 +2452,7 @@ f32_floor: &f32_floor
     - *arg0_f32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Floor"
 
 f32_trunc: &f32_trunc
@@ -2463,7 +2463,7 @@ f32_trunc: &f32_trunc
     - *arg0_f32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Truncate_float_to_float"
 
 f32_nearest: &f32_nearest
@@ -2474,7 +2474,7 @@ f32_nearest: &f32_nearest
     - *arg0_f32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Nearest"
 
 f32_sqrt: &f32_sqrt
@@ -2485,7 +2485,7 @@ f32_sqrt: &f32_sqrt
     - *arg0_f32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Square_root"
 
 f32_add: &f32_add
@@ -2497,7 +2497,7 @@ f32_add: &f32_add
     - *arg1_f32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Addition"
 
 f32_sub: &f32_sub
@@ -2509,7 +2509,7 @@ f32_sub: &f32_sub
     - *arg1_f32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Subtraction"
 
 f32_mul: &f32_mul
@@ -2521,7 +2521,7 @@ f32_mul: &f32_mul
     - *arg1_f32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Multiplication"
 
 f32_div: &f32_div
@@ -2533,7 +2533,7 @@ f32_div: &f32_div
     - *arg1_f32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Division"
 
 f32_min: &f32_min
@@ -2545,7 +2545,7 @@ f32_min: &f32_min
     - *arg1_f32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Min"
 
 f32_max: &f32_max
@@ -2557,7 +2557,7 @@ f32_max: &f32_max
     - *arg1_f32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Max"
 
 f32_copysign: &f32_copysign
@@ -2569,7 +2569,7 @@ f32_copysign: &f32_copysign
     - *arg1_f32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Copy_sign"
 
 f64_abs: &f64_abs
@@ -2580,7 +2580,7 @@ f64_abs: &f64_abs
     - *arg0_f64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Absolute"
 
 f64_neg: &f64_neg
@@ -2591,7 +2591,7 @@ f64_neg: &f64_neg
     - *arg0_f64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Negate"
 
 f64_ceil: &f64_ceil
@@ -2602,7 +2602,7 @@ f64_ceil: &f64_ceil
     - *arg0_f64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Ceil"
 
 f64_floor: &f64_floor
@@ -2613,7 +2613,7 @@ f64_floor: &f64_floor
     - *arg0_f64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Floor"
 
 f64_trunc: &f64_trunc
@@ -2624,7 +2624,7 @@ f64_trunc: &f64_trunc
     - *arg0_f64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Trunc"
 
 f64_nearest: &f64_nearest
@@ -2635,7 +2635,7 @@ f64_nearest: &f64_nearest
     - *arg0_f64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Nearest"
 
 f64_sqrt: &f64_sqrt
@@ -2646,7 +2646,7 @@ f64_sqrt: &f64_sqrt
     - *arg0_f64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Square_root"
 
 f64_add: &f64_add
@@ -2658,7 +2658,7 @@ f64_add: &f64_add
     - *arg1_f64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Addition"
 
 f64_sub: &f64_sub
@@ -2670,7 +2670,7 @@ f64_sub: &f64_sub
     - *arg1_f64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Subtraction"
 
 f64_mul: &f64_mul
@@ -2682,7 +2682,7 @@ f64_mul: &f64_mul
     - *arg1_f64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Multiplication"
 
 f64_div: &f64_div
@@ -2694,7 +2694,7 @@ f64_div: &f64_div
     - *arg1_f64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Division"
 
 f64_min: &f64_min
@@ -2706,7 +2706,7 @@ f64_min: &f64_min
     - *arg1_f64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Min"
 
 f64_max: &f64_max
@@ -2718,7 +2718,7 @@ f64_max: &f64_max
     - *arg1_f64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Max"
 
 f64_copysign: &f64_copysign
@@ -2730,7 +2730,7 @@ f64_copysign: &f64_copysign
     - *arg1_f64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Copy_sign"
 
 i32_wrap_i64: &i32_wrap_i64
@@ -2741,7 +2741,7 @@ i32_wrap_i64: &i32_wrap_i64
     - *arg0_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Wrap"
 
 i32_trunc_f32_s: &i32_trunc_f32_s
@@ -2752,7 +2752,7 @@ i32_trunc_f32_s: &i32_trunc_f32_s
     - *arg0_f32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Truncate_float_to_int"
 
 i32_trunc_f32_u: &i32_trunc_f32_u
@@ -2763,7 +2763,7 @@ i32_trunc_f32_u: &i32_trunc_f32_u
     - *arg0_f32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Truncate_float_to_int"
 
 i32_trunc_f64_s: &i32_trunc_f64_s
@@ -2774,7 +2774,7 @@ i32_trunc_f64_s: &i32_trunc_f64_s
     - *arg0_f64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Truncate_float_to_int"
 
 i32_trunc_f64_u: &i32_trunc_f64_u
@@ -2785,7 +2785,7 @@ i32_trunc_f64_u: &i32_trunc_f64_u
     - *arg0_f64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Truncate_float_to_int"
 
 i64_extend_i32_s: &i64_extend_i32_s
@@ -2796,7 +2796,7 @@ i64_extend_i32_s: &i64_extend_i32_s
     - *arg0_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Extend"
 
 i64_extend_i32_u: &i64_extend_i32_u
@@ -2807,7 +2807,7 @@ i64_extend_i32_u: &i64_extend_i32_u
     - *arg0_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Extend"
 
 i64_trunc_f32_s: &i64_trunc_f32_s
@@ -2818,7 +2818,7 @@ i64_trunc_f32_s: &i64_trunc_f32_s
     - *arg0_f32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Truncate_float_to_int"
 
 i64_trunc_f32_u: &i64_trunc_f32_u
@@ -2829,7 +2829,7 @@ i64_trunc_f32_u: &i64_trunc_f32_u
     - *arg0_f32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Truncate_float_to_int"
 
 f32_convert_i32_s: &f32_convert_i32_s
@@ -2840,7 +2840,7 @@ f32_convert_i32_s: &f32_convert_i32_s
     - *arg0_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Convert"
 
 f32_convert_i32_u: &f32_convert_i32_u
@@ -2851,7 +2851,7 @@ f32_convert_i32_u: &f32_convert_i32_u
     - *arg0_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Convert"
 
 f32_convert_i64_s: &f32_convert_i64_s
@@ -2862,7 +2862,7 @@ f32_convert_i64_s: &f32_convert_i64_s
     - *arg0_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Convert"
 
 f32_convert_i64_u: &f32_convert_i64_u
@@ -2873,7 +2873,7 @@ f32_convert_i64_u: &f32_convert_i64_u
     - *arg0_u64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Convert"
 
 f32_demote_f64: &f32_demote_f64
@@ -2884,7 +2884,7 @@ f32_demote_f64: &f32_demote_f64
     - *arg0_f64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Demote"
 
 f64_convert_i32_s: &f64_convert_i32_s
@@ -2895,7 +2895,7 @@ f64_convert_i32_s: &f64_convert_i32_s
     - *arg0_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Convert"
 
 f64_convert_i32_u: &f64_convert_i32_u
@@ -2906,7 +2906,7 @@ f64_convert_i32_u: &f64_convert_i32_u
     - *arg0_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Convert"
 
 f64_convert_i64_s: &f64_convert_i64_s
@@ -2917,7 +2917,7 @@ f64_convert_i64_s: &f64_convert_i64_s
     - *arg0_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Convert"
 
 f64_convert_i64_u: &f64_convert_i64_u
@@ -2928,7 +2928,7 @@ f64_convert_i64_u: &f64_convert_i64_u
     - *arg0_u64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Convert"
 
 f64_promote_f32: &f64_promote_f32
@@ -2939,7 +2939,7 @@ f64_promote_f32: &f64_promote_f32
     - *arg0_f32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Promote"
 
 i32_reinterpret_f32: &i32_reinterpret_f32
@@ -2950,7 +2950,7 @@ i32_reinterpret_f32: &i32_reinterpret_f32
     - *arg0_f32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Reinterpret"
 
 i64_reinterpret_f64: &i64_reinterpret_f64
@@ -2961,7 +2961,7 @@ i64_reinterpret_f64: &i64_reinterpret_f64
     - *arg0_f64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Reinterpret"
 
 f32_reinterpret_i32: &f32_reinterpret_i32
@@ -2972,7 +2972,7 @@ f32_reinterpret_i32: &f32_reinterpret_i32
     - *arg0_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Reinterpret"
 
 f64_reinterpret_i64: &f64_reinterpret_i64
@@ -2983,7 +2983,7 @@ f64_reinterpret_i64: &f64_reinterpret_i64
     - *arg0_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Reinterpret"
 
 i32_extend8_s: &i32_extend8_s
@@ -2994,7 +2994,7 @@ i32_extend8_s: &i32_extend8_s
     - *arg0_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Extend"
 
 i32_extend16_s: &i32_extend16_s
@@ -3005,7 +3005,7 @@ i32_extend16_s: &i32_extend16_s
     - *arg0_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Extend"
 
 i64_extend8_s: &i64_extend8_s
@@ -3016,7 +3016,7 @@ i64_extend8_s: &i64_extend8_s
     - *arg0_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Extend"
 
 i64_extend16_s: &i64_extend16_s
@@ -3027,7 +3027,7 @@ i64_extend16_s: &i64_extend16_s
     - *arg0_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Extend"
 
 i64_extend32_s: &i64_extend32_s
@@ -3038,7 +3038,7 @@ i64_extend32_s: &i64_extend32_s
     - *arg0_i64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Extend"
 
 struct_new: &struct_new
@@ -3051,7 +3051,7 @@ struct_new: &struct_new
     - *argN
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
 struct_new_default: &struct_new_default
@@ -3063,7 +3063,7 @@ struct_new_default: &struct_new_default
     - *struct_tid
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
 struct_get: &struct_get
@@ -3078,7 +3078,7 @@ struct_get: &struct_get
     - *argN           # TODO -- there's no support for this arg type at the moment
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
 struct_get_s: &struct_get_s
@@ -3093,7 +3093,7 @@ struct_get_s: &struct_get_s
     - *argN           # TODO -- there's no support for this arg type at the moment
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
 struct_get_u: &struct_get_u
@@ -3108,7 +3108,7 @@ struct_get_u: &struct_get_u
     - *argN           # TODO -- there's no support for this arg type at the moment
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
 struct_set: &struct_set
@@ -3123,7 +3123,7 @@ struct_set: &struct_set
     - *argN           # TODO -- there's no support for this arg type at the moment
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
 array_new: &array_new
@@ -3137,7 +3137,7 @@ array_new: &array_new
     - *argN
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
 array_new_default: &array_new_default
@@ -3150,7 +3150,7 @@ array_new_default: &array_new_default
     - *arg0_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
 array_new_fixed: &array_new_fixed
@@ -3164,7 +3164,7 @@ array_new_fixed: &array_new_fixed
     - *argN
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
 array_new_data: &array_new_data
@@ -3179,7 +3179,7 @@ array_new_data: &array_new_data
     - *arg1_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
 array_new_elem: &array_new_elem
@@ -3194,7 +3194,7 @@ array_new_elem: &array_new_elem
     - *arg1_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
 array_get: &array_get
@@ -3207,7 +3207,7 @@ array_get: &array_get
     - *argN               # TODO -- there's no support for this arg type at the moment
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
 array_get_s: &array_get_s
@@ -3220,7 +3220,7 @@ array_get_s: &array_get_s
     - *argN               # TODO -- there's no support for this arg type at the moment
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
 array_get_u: &array_get_u
@@ -3233,7 +3233,7 @@ array_get_u: &array_get_u
     - *argN               # TODO -- there's no support for this arg type at the moment
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
 array_set: &array_set
@@ -3246,7 +3246,7 @@ array_set: &array_set
     - *argN               # TODO -- there's no support for this arg type at the moment
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
 array_len: &array_len
@@ -3259,7 +3259,7 @@ array_len: &array_len
     - *argN               # TODO -- there's no support for this arg type at the moment
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
 array_fill: &array_fill
@@ -3272,7 +3272,7 @@ array_fill: &array_fill
     - *argN               # TODO -- there's no support for this arg type at the moment
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
 array_copy: &array_copy
@@ -3285,7 +3285,7 @@ array_copy: &array_copy
     - *argN
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
 array_init_data: &array_init_data
@@ -3299,7 +3299,7 @@ array_init_data: &array_init_data
     - *argN
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
 array_init_elem: &array_init_elem
@@ -3313,7 +3313,7 @@ array_init_elem: &array_init_elem
     - *argN
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
 ref_test: &ref_test
@@ -3325,7 +3325,7 @@ ref_test: &ref_test
     - *argN
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
 ref_test_null: &ref_test_null
@@ -3337,7 +3337,7 @@ ref_test_null: &ref_test_null
     - *argN
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
 ref_cast: &ref_cast
@@ -3349,7 +3349,7 @@ ref_cast: &ref_cast
     - *argN
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
 ref_cast_null: &ref_cast_null
@@ -3361,7 +3361,7 @@ ref_cast_null: &ref_cast_null
     - *argN
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
 br_on_cast: &br_on_cast
@@ -3375,7 +3375,7 @@ br_on_cast: &br_on_cast
     - *argN
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
 br_on_cast_fail: &br_on_cast_fail
@@ -3389,7 +3389,7 @@ br_on_cast_fail: &br_on_cast_fail
     - *argN
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
 any_convert_extern: &any_convert_extern
@@ -3400,7 +3400,7 @@ any_convert_extern: &any_convert_extern
     - *argN
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
 extern_convert_any: &extern_convert_any
@@ -3411,7 +3411,7 @@ extern_convert_any: &extern_convert_any
     - *argN
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
 ref_i31: &ref_i31
@@ -3422,7 +3422,7 @@ ref_i31: &ref_i31
     - *arg0_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
 i31_get_s: &i31_get_s
@@ -3433,7 +3433,7 @@ i31_get_s: &i31_get_s
     - *argN
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
 i31_get_u: &i31_get_u
@@ -3444,7 +3444,7 @@ i31_get_u: &i31_get_u
     - *argN
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/gc/MVP.md"
 
 i32_trunc_sat_f32_s: &i32_trunc_sat_f32_s
@@ -3455,7 +3455,7 @@ i32_trunc_sat_f32_s: &i32_trunc_sat_f32_s
     - *arg0_f32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://pengowray.github.io/wasm-ops/"
 
 i32_trunc_sat_f32_u: &i32_trunc_sat_f32_u
@@ -3466,7 +3466,7 @@ i32_trunc_sat_f32_u: &i32_trunc_sat_f32_u
     - *arg0_f32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://pengowray.github.io/wasm-ops/"
 
 i32_trunc_sat_f64_s: &i32_trunc_sat_f64_s
@@ -3477,7 +3477,7 @@ i32_trunc_sat_f64_s: &i32_trunc_sat_f64_s
     - *arg0_f64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://pengowray.github.io/wasm-ops/"
 
 i32_trunc_sat_f64_u: &i32_trunc_sat_f64_u
@@ -3488,7 +3488,7 @@ i32_trunc_sat_f64_u: &i32_trunc_sat_f64_u
     - *arg0_f64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://pengowray.github.io/wasm-ops/"
 
 i64_trunc_sat_f32_s: &i64_trunc_sat_f32_s
@@ -3499,7 +3499,7 @@ i64_trunc_sat_f32_s: &i64_trunc_sat_f32_s
     - *arg0_f32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://pengowray.github.io/wasm-ops/"
 
 i64_trunc_sat_f32_u: &i64_trunc_sat_f32_u
@@ -3510,7 +3510,7 @@ i64_trunc_sat_f32_u: &i64_trunc_sat_f32_u
     - *arg0_f32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://pengowray.github.io/wasm-ops/"
 
 i64_trunc_sat_f64_s: &i64_trunc_sat_f64_s
@@ -3521,7 +3521,7 @@ i64_trunc_sat_f64_s: &i64_trunc_sat_f64_s
     - *arg0_f64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://pengowray.github.io/wasm-ops/"
 
 i64_trunc_sat_f64_u: &i64_trunc_sat_f64_u
@@ -3532,7 +3532,7 @@ i64_trunc_sat_f64_u: &i64_trunc_sat_f64_u
     - *arg0_f64
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://pengowray.github.io/wasm-ops/"
 
 memory_init: &memory_init
@@ -3544,7 +3544,7 @@ memory_init: &memory_init
     - *imm1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://pengowray.github.io/wasm-ops/"
 
 memory_copy: &memory_copy
@@ -3558,7 +3558,7 @@ memory_copy: &memory_copy
     - *arg2_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Copy"
 
 memory_fill: &memory_fill
@@ -3572,7 +3572,7 @@ memory_fill: &memory_fill
     - *arg2_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Fill"
 
 data_drop: &data_drop
@@ -3583,7 +3583,7 @@ data_drop: &data_drop
     - *imm0_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://pengowray.github.io/wasm-ops/"
 
 elem_drop: &elem_drop
@@ -3594,7 +3594,7 @@ elem_drop: &elem_drop
     - *imm0_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://pengowray.github.io/wasm-ops/"
 
 table_copy: &table_copy
@@ -3609,7 +3609,7 @@ table_copy: &table_copy
     - *arg2_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
 
 table_init: &table_init
@@ -3624,7 +3624,7 @@ table_init: &table_init
     - *arg2_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
 
 table_fill: &table_fill
@@ -3636,7 +3636,7 @@ table_fill: &table_fill
     - *argN
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
 
 table_get: &table_get
@@ -3648,7 +3648,7 @@ table_get: &table_get
     - *arg0_i32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
 
 table_set: &table_set
@@ -3660,7 +3660,7 @@ table_set: &table_set
     - *argN
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
 
 table_grow: &table_grow
@@ -3672,7 +3672,7 @@ table_grow: &table_grow
     - *argN
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
 
 table_size: &table_size
@@ -3683,7 +3683,7 @@ table_size: &table_size
     - *imm0_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
 
 memory_atomic_notify: &memory_atomic_notify
@@ -3704,7 +3704,7 @@ memory_atomic_notify: &memory_atomic_notify
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 memory_atomic_wait32: &memory_atomic_wait32
@@ -3726,7 +3726,7 @@ memory_atomic_wait32: &memory_atomic_wait32
     - *arg2_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 memory_atomic_wait64: &memory_atomic_wait64
@@ -3748,7 +3748,7 @@ memory_atomic_wait64: &memory_atomic_wait64
     - *arg2_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 atomic_fence: &atomic_fence
@@ -3758,7 +3758,7 @@ atomic_fence: &atomic_fence
     - *category_name_atomic
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_load: &i32_atomic_load
@@ -3783,7 +3783,7 @@ i32_atomic_load: &i32_atomic_load
     - *arg0_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_load: &i64_atomic_load
@@ -3808,7 +3808,7 @@ i64_atomic_load: &i64_atomic_load
     - *arg0_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_load8_u: &i32_atomic_load8_u
@@ -3833,7 +3833,7 @@ i32_atomic_load8_u: &i32_atomic_load8_u
     - *arg0_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_load16_u: &i32_atomic_load16_u
@@ -3858,7 +3858,7 @@ i32_atomic_load16_u: &i32_atomic_load16_u
     - *arg0_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_load8_u: &i64_atomic_load8_u
@@ -3883,7 +3883,7 @@ i64_atomic_load8_u: &i64_atomic_load8_u
     - *arg0_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_load16_u: &i64_atomic_load16_u
@@ -3908,7 +3908,7 @@ i64_atomic_load16_u: &i64_atomic_load16_u
     - *arg0_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_load32_u: &i64_atomic_load32_u
@@ -3933,7 +3933,7 @@ i64_atomic_load32_u: &i64_atomic_load32_u
     - *arg0_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_store: &i32_atomic_store
@@ -3959,7 +3959,7 @@ i32_atomic_store: &i32_atomic_store
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_store8: &i32_atomic_store8
@@ -3985,7 +3985,7 @@ i32_atomic_store8: &i32_atomic_store8
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_store16: &i32_atomic_store16
@@ -4011,7 +4011,7 @@ i32_atomic_store16: &i32_atomic_store16
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_store: &i64_atomic_store
@@ -4037,7 +4037,7 @@ i64_atomic_store: &i64_atomic_store
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_store8: &i64_atomic_store8
@@ -4063,7 +4063,7 @@ i64_atomic_store8: &i64_atomic_store8
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_store16: &i64_atomic_store16
@@ -4089,7 +4089,7 @@ i64_atomic_store16: &i64_atomic_store16
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_store32: &i64_atomic_store32
@@ -4115,7 +4115,7 @@ i64_atomic_store32: &i64_atomic_store32
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw_add: &i32_atomic_rmw_add
@@ -4141,7 +4141,7 @@ i32_atomic_rmw_add: &i32_atomic_rmw_add
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw8_add_u: &i32_atomic_rmw8_add_u
@@ -4167,7 +4167,7 @@ i32_atomic_rmw8_add_u: &i32_atomic_rmw8_add_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw16_add_u: &i32_atomic_rmw16_add_u
@@ -4193,7 +4193,7 @@ i32_atomic_rmw16_add_u: &i32_atomic_rmw16_add_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw_add: &i64_atomic_rmw_add
@@ -4219,7 +4219,7 @@ i64_atomic_rmw_add: &i64_atomic_rmw_add
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw8_add_u: &i64_atomic_rmw8_add_u
@@ -4245,7 +4245,7 @@ i64_atomic_rmw8_add_u: &i64_atomic_rmw8_add_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw16_add_u: &i64_atomic_rmw16_add_u
@@ -4271,7 +4271,7 @@ i64_atomic_rmw16_add_u: &i64_atomic_rmw16_add_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw32_add_u: &i64_atomic_rmw32_add_u
@@ -4297,7 +4297,7 @@ i64_atomic_rmw32_add_u: &i64_atomic_rmw32_add_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw_sub: &i32_atomic_rmw_sub
@@ -4323,7 +4323,7 @@ i32_atomic_rmw_sub: &i32_atomic_rmw_sub
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw8_sub_u: &i32_atomic_rmw8_sub_u
@@ -4349,7 +4349,7 @@ i32_atomic_rmw8_sub_u: &i32_atomic_rmw8_sub_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw16_sub_u: &i32_atomic_rmw16_sub_u
@@ -4375,7 +4375,7 @@ i32_atomic_rmw16_sub_u: &i32_atomic_rmw16_sub_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw_sub: &i64_atomic_rmw_sub
@@ -4401,7 +4401,7 @@ i64_atomic_rmw_sub: &i64_atomic_rmw_sub
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw8_sub_u: &i64_atomic_rmw8_sub_u
@@ -4427,7 +4427,7 @@ i64_atomic_rmw8_sub_u: &i64_atomic_rmw8_sub_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw16_sub_u: &i64_atomic_rmw16_sub_u
@@ -4453,7 +4453,7 @@ i64_atomic_rmw16_sub_u: &i64_atomic_rmw16_sub_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw32_sub_u: &i64_atomic_rmw32_sub_u
@@ -4479,7 +4479,7 @@ i64_atomic_rmw32_sub_u: &i64_atomic_rmw32_sub_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw_and: &i32_atomic_rmw_and
@@ -4505,7 +4505,7 @@ i32_atomic_rmw_and: &i32_atomic_rmw_and
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw8_and_u: &i32_atomic_rmw8_and_u
@@ -4531,7 +4531,7 @@ i32_atomic_rmw8_and_u: &i32_atomic_rmw8_and_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw16_and_u: &i32_atomic_rmw16_and_u
@@ -4557,7 +4557,7 @@ i32_atomic_rmw16_and_u: &i32_atomic_rmw16_and_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw_and: &i64_atomic_rmw_and
@@ -4583,7 +4583,7 @@ i64_atomic_rmw_and: &i64_atomic_rmw_and
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw8_and_u: &i64_atomic_rmw8_and_u
@@ -4609,7 +4609,7 @@ i64_atomic_rmw8_and_u: &i64_atomic_rmw8_and_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw16_and_u: &i64_atomic_rmw16_and_u
@@ -4635,7 +4635,7 @@ i64_atomic_rmw16_and_u: &i64_atomic_rmw16_and_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw32_and_u: &i64_atomic_rmw32_and_u
@@ -4661,7 +4661,7 @@ i64_atomic_rmw32_and_u: &i64_atomic_rmw32_and_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw_or: &i32_atomic_rmw_or
@@ -4687,7 +4687,7 @@ i32_atomic_rmw_or: &i32_atomic_rmw_or
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw8_or_u: &i32_atomic_rmw8_or_u
@@ -4713,7 +4713,7 @@ i32_atomic_rmw8_or_u: &i32_atomic_rmw8_or_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw16_or_u: &i32_atomic_rmw16_or_u
@@ -4739,7 +4739,7 @@ i32_atomic_rmw16_or_u: &i32_atomic_rmw16_or_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw_or: &i64_atomic_rmw_or
@@ -4765,7 +4765,7 @@ i64_atomic_rmw_or: &i64_atomic_rmw_or
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw8_or_u: &i64_atomic_rmw8_or_u
@@ -4791,7 +4791,7 @@ i64_atomic_rmw8_or_u: &i64_atomic_rmw8_or_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw16_or_u: &i64_atomic_rmw16_or_u
@@ -4817,7 +4817,7 @@ i64_atomic_rmw16_or_u: &i64_atomic_rmw16_or_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw32_or_u: &i64_atomic_rmw32_or_u
@@ -4843,7 +4843,7 @@ i64_atomic_rmw32_or_u: &i64_atomic_rmw32_or_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw_xor: &i32_atomic_rmw_xor
@@ -4869,7 +4869,7 @@ i32_atomic_rmw_xor: &i32_atomic_rmw_xor
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw8_xor_u: &i32_atomic_rmw8_xor_u
@@ -4895,7 +4895,7 @@ i32_atomic_rmw8_xor_u: &i32_atomic_rmw8_xor_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw16_xor_u: &i32_atomic_rmw16_xor_u
@@ -4921,7 +4921,7 @@ i32_atomic_rmw16_xor_u: &i32_atomic_rmw16_xor_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw_xor: &i64_atomic_rmw_xor
@@ -4947,7 +4947,7 @@ i64_atomic_rmw_xor: &i64_atomic_rmw_xor
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw8_xor_u: &i64_atomic_rmw8_xor_u
@@ -4973,7 +4973,7 @@ i64_atomic_rmw8_xor_u: &i64_atomic_rmw8_xor_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw16_xor_u: &i64_atomic_rmw16_xor_u
@@ -4999,7 +4999,7 @@ i64_atomic_rmw16_xor_u: &i64_atomic_rmw16_xor_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw32_xor_u: &i64_atomic_rmw32_xor_u
@@ -5025,7 +5025,7 @@ i64_atomic_rmw32_xor_u: &i64_atomic_rmw32_xor_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw_xchg: &i32_atomic_rmw_xchg
@@ -5051,7 +5051,7 @@ i32_atomic_rmw_xchg: &i32_atomic_rmw_xchg
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw8_xchg_u: &i32_atomic_rmw8_xchg_u
@@ -5077,7 +5077,7 @@ i32_atomic_rmw8_xchg_u: &i32_atomic_rmw8_xchg_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw16_xchg_u: &i32_atomic_rmw16_xchg_u
@@ -5103,7 +5103,7 @@ i32_atomic_rmw16_xchg_u: &i32_atomic_rmw16_xchg_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw_xchg: &i64_atomic_rmw_xchg
@@ -5129,7 +5129,7 @@ i64_atomic_rmw_xchg: &i64_atomic_rmw_xchg
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw8_xchg_u: &i64_atomic_rmw8_xchg_u
@@ -5155,7 +5155,7 @@ i64_atomic_rmw8_xchg_u: &i64_atomic_rmw8_xchg_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw16_xchg_u: &i64_atomic_rmw16_xchg_u
@@ -5181,7 +5181,7 @@ i64_atomic_rmw16_xchg_u: &i64_atomic_rmw16_xchg_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw32_xchg_u: &i64_atomic_rmw32_xchg_u
@@ -5207,7 +5207,7 @@ i64_atomic_rmw32_xchg_u: &i64_atomic_rmw32_xchg_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw_cmpxchg: &i32_atomic_rmw_cmpxchg
@@ -5233,7 +5233,7 @@ i32_atomic_rmw_cmpxchg: &i32_atomic_rmw_cmpxchg
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw8_cmpxchg_u: &i32_atomic_rmw8_cmpxchg_u
@@ -5259,7 +5259,7 @@ i32_atomic_rmw8_cmpxchg_u: &i32_atomic_rmw8_cmpxchg_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw16_cmpxchg_u: &i32_atomic_rmw16_cmpxchg_u
@@ -5285,7 +5285,7 @@ i32_atomic_rmw16_cmpxchg_u: &i32_atomic_rmw16_cmpxchg_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw_cmpxchg: &i64_atomic_rmw_cmpxchg
@@ -5311,7 +5311,7 @@ i64_atomic_rmw_cmpxchg: &i64_atomic_rmw_cmpxchg
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw8_cmpxchg_u: &i64_atomic_rmw8_cmpxchg_u
@@ -5337,7 +5337,7 @@ i64_atomic_rmw8_cmpxchg_u: &i64_atomic_rmw8_cmpxchg_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw16_cmpxchg_u: &i64_atomic_rmw16_cmpxchg_u
@@ -5363,7 +5363,7 @@ i64_atomic_rmw16_cmpxchg_u: &i64_atomic_rmw16_cmpxchg_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw32_cmpxchg_u: &i64_atomic_rmw32_cmpxchg_u
@@ -5389,7 +5389,7 @@ i64_atomic_rmw32_cmpxchg_u: &i64_atomic_rmw32_cmpxchg_u
     - *arg1_u32
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 call_ref: &call_ref
@@ -5401,7 +5401,7 @@ call_ref: &call_ref
     - *argN
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
 
 return_call_ref: &return_call_ref
@@ -5413,7 +5413,7 @@ return_call_ref: &return_call_ref
     - *argN
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
 
 ref_as_non_null: &ref_as_non_null
@@ -5424,7 +5424,7 @@ ref_as_non_null: &ref_as_non_null
     - *argN
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/function-references/Overview.md"
 
 br_on_null: &br_on_null
@@ -5435,7 +5435,7 @@ br_on_null: &br_on_null
     - *argN
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/function-references/Overview.md"
 
 br_on_non_null: &br_on_non_null
@@ -5447,5 +5447,5 @@ br_on_non_null: &br_on_non_null
     - *argN
   bound_fns: []
   supported_modes: *default_modes
-  req_map: false
+
   docs: "https://github.com/WebAssembly/gc/blob/main/proposals/function-references/Overview.md"

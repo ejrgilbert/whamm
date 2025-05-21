@@ -195,7 +195,7 @@ impl<'a> TypeChecker<'a> {
         self.err.update_match_rule(self.curr_match_rule.clone());
     }
 
-    fn handle_type_bounds(&mut self, type_bounds: &Vec<(Expr, DataType)>) {
+    fn handle_type_bounds(&mut self, type_bounds: &[(Expr, DataType)]) {
         // TODO -- fix type bounds bug: put them local to the probe, not global to the event
         //         ALSO need to handle type bounds on provider/package/mode as well!
         for (var, ty_bound) in type_bounds.iter() {
@@ -337,7 +337,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
     }
 
     fn visit_probe(&mut self, probe: &mut Probe) -> Option<DataType> {
-        let _ = self.table.enter_named_scope(&(*probe).kind.name());
+        let _ = self.table.enter_named_scope(&probe.kind.name());
         self.append_curr_rule(format!(":{}", probe.kind.name()));
 
         // type check predicate
