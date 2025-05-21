@@ -1,8 +1,8 @@
 ============================= REPORT CSV FLUSH ================================
 id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)
-1226, memaddr, hit, u32, i32, script0, 0:5, 15_wasm:opcode:i64_store, 0
-1253, memaddr, miss, u32, i32, script0, 0:5, 15_wasm:opcode:i64_store, 1
-1280, memaddr, hit, u32, i32, script0, 0:10, 0_wasm:opcode:i32_load, 1
-1307, memaddr, miss, u32, i32, script0, 0:10, 0_wasm:opcode:i32_load, 0
-1334, memaddr, hit, u32, i32, script0, 0:13, 0_wasm:opcode:i32_load, 1
-1361, memaddr, miss, u32, i32, script0, 0:13, 0_wasm:opcode:i32_load, 0
+1226, memaddr, hit, u32, i32, script0, 0:5, 15_wasm:opcode:i64.store, 0
+1253, memaddr, miss, u32, i32, script0, 0:5, 15_wasm:opcode:i64.store, 1
+1280, memaddr, hit, u32, i32, script0, 0:10, 0_wasm:opcode:i32.load, 1
+1307, memaddr, miss, u32, i32, script0, 0:10, 0_wasm:opcode:i32.load, 0
+1334, memaddr, hit, u32, i32, script0, 0:13, 0_wasm:opcode:i32.load, 1
+1361, memaddr, miss, u32, i32, script0, 0:13, 0_wasm:opcode:i32.load, 0

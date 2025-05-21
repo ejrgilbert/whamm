@@ -1011,6 +1011,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 definition,
             } => {
                 // TODO: fix this with type declarations for argN
+                //       make this work more generically...if datatype is UNKNOWN, need a type bound
                 // if name.starts_with("arg") && name[3..].parse::<u32>().is_ok() {
                 //     return Some(DataType::AssumeGood);
                 // }

@@ -544,7 +544,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
     fn visit_bound_vars(
         &mut self,
         vars: &Vec<BoundVar>,
-    ) -> (HashMap<String, String>, HashMap<String, (DataType, Expr)>) {
+    ) -> (Vec<String>, Vec<String>) {
         let mut aliases = HashMap::new();
         let mut derived = HashMap::new();
         for BoundVar {
@@ -585,7 +585,24 @@ impl SymbolTableBuilder<'_, '_, '_> {
                 );
             }
         }
-        (aliases, derived)
+
+        let to_remove_alias = aliases.keys().cloned().collect_vec();
+        let to_remove_vars = derived.keys().cloned().collect_vec();
+        self.aliases.extend(aliases.clone());
+        for (_, expr) in derived.values_mut() {
+            self.visit_expr(expr);
+        }
+        self.derived_vars.extend(derived.clone());
+
+        (to_remove_alias, to_remove_vars)
+    }
+    fn remove_bound_data(&mut self, to_remove_alias: Vec<String>, to_remove_vars: Vec<String>) {
+        for var in to_remove_alias.iter() {
+            self.aliases.remove(var);
+        }
+        for var in to_remove_vars.iter() {
+            self.derived_vars.remove(var);
+        }
     }
 }
 
@@ -620,7 +637,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
         );
 
         // visit globals
-        (self.aliases, self.derived_vars) = self.visit_bound_vars(&whamm.bound_vars);
+        _ = self.visit_bound_vars(&whamm.bound_vars);
 
         // visit scripts
         whamm
@@ -697,21 +714,14 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
                 self.req_args = req_args.clone();
                 self.visit_fn(func);
             });
-        let (prov_aliases, prov_derived_vars) = self.visit_bound_vars(&provider.def.bound_vars);
-        let to_remove_alias = prov_aliases.keys().cloned().collect_vec();
-        let to_remove_vars = prov_derived_vars.keys().cloned().collect_vec();
-        self.aliases.extend(prov_aliases.clone());
-        self.derived_vars.extend(prov_derived_vars.clone());
+        let (to_remove_alias, to_remove_vars) = self.visit_bound_vars(&provider.def.bound_vars);
+
         provider
             .packages
             .iter_mut()
             .for_each(|(_, package)| self.visit_package(package));
-        for var in to_remove_alias.iter() {
-            self.aliases.remove(var);
-        }
-        for var in to_remove_vars.iter() {
-            self.derived_vars.remove(var);
-        }
+
+        self.remove_bound_data(to_remove_alias, to_remove_vars);
 
         trace!("Exiting: visit_provider");
         self.table.exit_scope(self.err);
@@ -730,21 +740,14 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
                 self.req_args = req_args.clone();
                 self.visit_fn(func);
             });
-        let (pack_aliases, pack_derived_vars) = self.visit_bound_vars(&package.def.bound_vars);
-        let to_remove_alias = pack_aliases.keys().cloned().collect_vec();
-        let to_remove_vars = pack_derived_vars.keys().cloned().collect_vec();
-        self.aliases.extend(pack_aliases.clone());
-        self.derived_vars.extend(pack_derived_vars.clone());
+        let (to_remove_alias, to_remove_vars) = self.visit_bound_vars(&package.def.bound_vars);
+
         package
             .events
             .iter_mut()
             .for_each(|(_, event)| self.visit_event(event));
-        for var in to_remove_alias.iter() {
-            self.aliases.remove(var);
-        }
-        for var in to_remove_vars.iter() {
-            self.derived_vars.remove(var);
-        }
+
+        self.remove_bound_data(to_remove_alias, to_remove_vars);
 
         trace!("Exiting: visit_package");
         self.table.exit_scope(self.err);
@@ -763,23 +766,16 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
                 self.req_args = req_args.clone();
                 self.visit_fn(func);
             });
-        let (ev_aliases, ev_derived_vars) = self.visit_bound_vars(&event.def.bound_vars);
-        let to_remove_alias = ev_aliases.keys().cloned().collect_vec();
-        let to_remove_vars = ev_derived_vars.keys().cloned().collect_vec();
-        self.aliases.extend(ev_aliases.clone());
-        self.derived_vars.extend(ev_derived_vars.clone());
+        let (to_remove_alias, to_remove_vars) = self.visit_bound_vars(&event.def.bound_vars);
+
         // visit probe_map
         event.probes.values_mut().for_each(|probes| {
             probes.iter_mut().for_each(|probe| {
                 self.visit_probe(probe);
             });
         });
-        for var in to_remove_alias.iter() {
-            self.aliases.remove(var);
-        }
-        for var in to_remove_vars.iter() {
-            self.derived_vars.remove(var);
-        }
+
+        self.remove_bound_data(to_remove_alias, to_remove_vars);
 
         trace!("Exiting: visit_event");
         self.table.exit_scope(self.err);
@@ -798,11 +794,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
                 self.req_args = req_args.clone();
                 self.visit_fn(func);
             });
-        let (probe_aliases, probe_derived_vars) = self.visit_bound_vars(&probe.def.bound_vars);
-        let to_remove_alias = probe_aliases.keys().cloned().collect_vec();
-        let to_remove_vars = probe_derived_vars.keys().cloned().collect_vec();
-        self.aliases.extend(probe_aliases.clone());
-        self.derived_vars.extend(probe_derived_vars.clone());
+        let (to_remove_alias, to_remove_vars) = self.visit_bound_vars(&mut probe.def.bound_vars);
 
         // Will not visit predicate/body at this stage
         // visit the predicate/body to handle aliases and derived variables!
@@ -845,12 +837,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
             }
         }
 
-        for var in to_remove_alias.iter() {
-            self.aliases.remove(var);
-        }
-        for var in to_remove_vars.iter() {
-            self.derived_vars.remove(var);
-        }
+        self.remove_bound_data(to_remove_alias, to_remove_vars);
         self.used_derived_vars.clear();
 
         trace!("Exiting: visit_probe");
