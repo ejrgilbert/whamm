@@ -45,9 +45,6 @@ lazy_static::lazy_static! {
             .op(Op::postfix(cast))
     };
 }
-//
-// const UNEXPECTED_ERR_MSG: &str =
-//     "WhammParser: Looks like you've found a bug...please report this behavior! Exiting now...";
 
 // ===============
 // ==== Types ====
@@ -1752,8 +1749,6 @@ impl ProvidedGlobal {
     ) -> Self {
         let def = if is_static {
             Definition::CompilerStatic
-        // } else if derived_from.is_some() {
-        //     Definition::CompilerDerived
         } else {
             Definition::CompilerDynamic
         };

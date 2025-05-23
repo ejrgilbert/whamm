@@ -19,12 +19,6 @@ use std::iter::Iterator as StdIter;
 const UNEXPECTED_ERR_MSG: &str =
     "InstrGenerator: Looks like you've found a bug...please report this behavior!";
 
-// fn get_loc_info<'a>(emitter: &VisitingEmitter, probes: &'a SimpleAstProbes) -> Option<LocInfo<'a>> {
-//     // Pull the curr instr each time this is called to keep from having
-//     // long-lasting refs into self.emitter.
-//     emitter.get_loc_info(probes)
-// }
-
 fn emit_dynamic_compiler_data(
     data: &HashMap<String, Block>,
     emitter: &mut VisitingEmitter,
@@ -117,7 +111,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
         let mut first_instr = true;
         while first_instr || self.emitter.next_instr() {
             first_instr = false;
-            // rules.iter().for_each(|_rule| {
             // Check if any of the configured rules match this instruction in the application.
             if let Some(loc_info) = self.emitter.get_loc_info(&self.ast.probes) {
                 // Inject a call to the on-exit flush function
@@ -192,7 +185,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
                     // data defined for this instr
                     self.emitter.reset_table_data(&loc_info);
                 }
-                // }
             };
         }
         is_success &= self.after_run();

@@ -41,7 +41,7 @@ fn handle_provider(
 ) -> Option<LocInfo> {
     match provider {
         "wasm" => handle_wasm(app_wasm, loc, instr, packages),
-        _ => todo!(),
+        _ => panic!("Provider not available: {provider}"),
     }
 }
 
@@ -104,9 +104,8 @@ fn handle_wasm_packages(
 ) -> Option<LocInfo> {
     match package {
         "opcode" => handle_opcode(app_wasm, fid, instr, events),
-        "begin" => todo!(),
-        "end" => todo!(),
-        _ => todo!(),
+        "begin" | "end" => unimplemented!("Have not implemented the package yet: {package}"),
+        _ => panic!("Package not available: 'wasm:{package}'"),
     }
 }
 
@@ -1679,7 +1678,7 @@ fn handle_opcode_events(
             define_imm0::<u32>(*relative_depth, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
             loc_info.add_probes(probe_rule.clone(), probes);
         },
-        _ => unimplemented!("Have not supported wasm:opcode:{event}")
+        _ => panic!("Event not available: 'wasm:opcode:{package}'"),
     }
 
     let (all_args, ..) = get_ty_info_for_instr(app_wasm, fid, instr);

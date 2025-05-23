@@ -151,19 +151,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         }
     }
 
-    // pub(crate) fn get_loc_info_bk<'h>(&self, rule: &'h WhammProvider) -> Option<LocInfo<'h>> {
-    //     let (curr_loc, at_func_end) = self.app_iter.curr_loc();
-    //     if at_func_end {
-    //         // We're at the 'end' opcode of the function...don't instrument
-    //         return None;
-    //     }
-    //     if let Some(curr_instr) = self.app_iter.curr_op() {
-    //         rule.get_loc_info(self.app_iter.module, curr_loc, curr_instr)
-    //     } else {
-    //         None
-    //     }
-    // }
-
     pub(crate) fn emit_dynamic_compiler_data(
         &mut self,
         data: &HashMap<String, Block>,

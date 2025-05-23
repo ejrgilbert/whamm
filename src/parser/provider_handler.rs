@@ -42,7 +42,7 @@ pub fn get_matches(
             err.add_error(e);
         } else {
             // shouldn't happen, panic
-            todo!()
+            panic!("Got no matches, but without an error")
         }
     }
 
@@ -287,7 +287,7 @@ impl MatchOn for ProviderDef {
             }
         } else {
             // shouldn't happen, panic
-            todo!()
+            panic!("No provider pattern in the rule!")
         }
     }
 }
@@ -402,7 +402,7 @@ impl MatchOn for PackageDef {
                 }
             }
         } else {
-            todo!()
+            panic!("No package pattern in the rule!")
         }
     }
 }
@@ -520,7 +520,7 @@ impl MatchOn for EventDef {
                 }
             }
         } else {
-            todo!()
+            panic!("No event pattern in the rule!")
         }
     }
 }
@@ -656,7 +656,7 @@ impl MatchOn for ModeDef {
                 Err(())
             }
         } else {
-            todo!()
+            panic!("No mode pattern in the rule!")
         }
     }
 }
@@ -928,12 +928,15 @@ fn parse_helper<T>(target: &str, parse_rule: Rule, token: &str, handler: &RuleHa
     match WhammParser::parse(parse_rule, token) {
         Ok(mut pairs) => {
             if let Some(pair) = pairs.next() {
-                match handler(pair) {
-                    Ok(res) => res,
-                    Err(_errs) => todo!(),
-                }
+                handler(pair).unwrap_or_else(|errs| {
+                    error!("Could not parse the token correctly");
+                    for e in errs.iter() {
+                        println!("{:?}", e)
+                    }
+                    panic!()
+                })
             } else {
-                todo!()
+                panic!("Could not parse the token correctly");
             }
         }
         Err(e) => {

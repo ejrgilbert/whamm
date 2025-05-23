@@ -1331,26 +1331,6 @@ fn probe_rule_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeRule {
     let rule_as_str = pair.as_str();
     let mut parts = pair.into_inner();
 
-    // if rule_as_str.to_uppercase() == "BEGIN" || rule_as_str.to_uppercase() == "END" {
-    //     // This is a BEGIN or END probe! Special case
-    //     let loc = if let Some(rule) = parts.next() {
-    //         let id_line_col = LineColLocation::from(rule.as_span());
-    //         Some(Location {
-    //             line_col: id_line_col,
-    //             path: None,
-    //         })
-    //     } else {
-    //         None
-    //     };
-    //
-    //     return ProbeRule {
-    //         provider: Some(RulePart::new("core".to_string(), loc.clone())),
-    //         package: Some(RulePart::new("*".to_string(), loc.clone())),
-    //         event: Some(RulePart::new("*".to_string(), loc.clone())),
-    //         mode: Some(RulePart::new(rule_as_str.to_string(), loc)),
-    //     };
-    // }
-
     let simplified = if let Some((prefix, postfix)) = rule_as_str.split_once("(") {
         let (_, after) = postfix.split_once(")").unwrap();
         format!("{prefix}{after}")
