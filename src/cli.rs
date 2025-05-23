@@ -4,26 +4,22 @@ use clap::{Args, Parser, Subcommand};
 #[derive(Debug, Parser)]
 #[clap(author, version, about, long_about = None)]
 pub struct WhammCli {
-    // #[clap(flatten)]
-    // global_opts: GlobalOpts,
     #[command(subcommand)]
     pub command: Cmd,
 }
 
 #[derive(Debug, Subcommand)]
 pub enum Cmd {
-    // /// Generate completion for shell
-    // Completion {
-    //     /// Shell to generate completion for
-    //     #[arg(arg_enum)]
-    //     shell: Shell,
-    // },
     /// To provide the bound variables and functions for the given probe match rule.
     /// To use this option, simply follow the command with a full or partial match rule
     /// (use pattern matching to see what would be triggered).
     Info {
         #[arg(short, long, value_parser)]
         rule: String,
+
+        /// The path to provider definition yaml configs.
+        #[arg(short, long, value_parser, default_value = "./")]
+        defs_path: String,
 
         /// Show the vars in-scope when using the probe match rule.
         #[arg(long, short, action, default_value = "false")]
@@ -44,11 +40,6 @@ pub enum Cmd {
     Instr(InstrArgs),
 }
 
-// #[derive(Debug, Args)]
-// struct GlobalOpts {
-//     // (not needed yet)
-// }
-
 #[derive(Debug, Args)]
 pub struct InstrArgs {
     /// The path to the application's Wasm module we want to instrument.
@@ -57,6 +48,9 @@ pub struct InstrArgs {
     /// The path to the Script containing the instrumentation Probe definitions.
     #[arg(short, long, value_parser)]
     pub script: String,
+    /// The path to provider definition yaml configs.
+    #[arg(short, long, value_parser, default_value = "./")]
+    pub defs_path: String,
     /// The path to the core Whamm library Wasm module.
     #[arg(short, long, value_parser)]
     pub core_lib: Option<String>,
@@ -109,7 +103,3 @@ pub enum LibraryLinkStrategyArg {
     /// Naturally, the instrumentation memory will reside in its own module instantiation.
     Imported,
 }
-
-// pub fn print_completion<G: Generator>(gen: G, app: &mut App) {
-//     generate(gen, app, app.get_name().to_string(), &mut io::stdout());
-// }
