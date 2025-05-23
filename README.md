@@ -79,7 +79,7 @@ To specify log level:
 RUST_LOG={ error | warn | info | debug | trace | off } cargo run -- --app <path_to_app_wasm> --script <path_to_script> <path_for_compiled_output>
 ```
 
-To use the utility that provides information about match rule globals/functions that can be leveraged by a probe's logic/predicate:
+To use the utility that provides information about match rule bound vars/functions that can be leveraged by a probe's logic/predicate:
 ```shell
 cargo run -- info --rule "<match_rule_glob>" # e.g. "wasm:opcode:br*"
 ```

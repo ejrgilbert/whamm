@@ -16,7 +16,7 @@ use std::collections::{HashMap, HashSet};
 /// the groundwork.
 ///
 /// The code generator traverses the AST and calls the passed emitter to
-/// emit some compiler-provided functions and user-defined globals.
+/// emit some compiler-defined functions and user-defined globals.
 /// This process should ideally be generic, made to perform a specific
 /// instrumentation technique by the Emitter field.
 pub struct InitGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j> {
@@ -31,14 +31,14 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     pub fn run(
         &mut self,
         whamm: &mut Whamm,
-        used_provided_funcs: HashSet<(String, String)>,
+        used_bound_funcs: HashSet<(String, String)>,
         strings_to_emit: Vec<String>,
     ) -> bool {
         // Reset the symbol table in the emitter just in case
         self.emitter.reset_table();
         self.emitter.setup_module(self.err);
         emit_needed_funcs(
-            used_provided_funcs,
+            used_bound_funcs,
             &mut self.emitter,
             self.injected_funcs,
             self.err,

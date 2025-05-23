@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use crate::common::error::{ErrorGen, WhammError};
-use crate::common::terminal::{green, long_line, magenta_italics, white};
+use crate::common::terminal::{cyan, green, long_line, magenta_italics, white};
 use crate::generator::ast::ReqArgs;
 use crate::parser::types::{
     Block, DataType, Definition, Expr, Fn as WhammFn, FnId, Location, ProbeRule, Rule, RulePart,
@@ -295,7 +295,7 @@ impl PrintInfo for ProviderDef {
     fn print_info(
         &self,
         probe_rule: &ProbeRule,
-        print_globals: bool,
+        print_vars: bool,
         print_functions: bool,
         prov_buff: &mut Buffer,
         pkg_buff: &mut Buffer,
@@ -312,7 +312,7 @@ impl PrintInfo for ProviderDef {
             format!("{}{}\n\n", " ".repeat(*tabs * 4), self.def.docs),
             prov_buff,
         );
-        print_bound_vars(&self.def.bound_vars, print_globals, prov_buff, tabs);
+        print_bound_vars(&self.def.bound_vars, print_vars, prov_buff, tabs);
         print_bound_fns(&self.def.bound_fns, print_functions, prov_buff, tabs);
         *tabs -= 1;
 
@@ -324,7 +324,7 @@ impl PrintInfo for ProviderDef {
             for pkg in self.packages.iter() {
                 pkg.print_info(
                     probe_rule,
-                    print_globals,
+                    print_vars,
                     print_functions,
                     prov_buff,
                     pkg_buff,
@@ -410,7 +410,7 @@ impl PrintInfo for PackageDef {
     fn print_info(
         &self,
         probe_rule: &ProbeRule,
-        print_globals: bool,
+        print_vars: bool,
         print_functions: bool,
         prov_buff: &mut Buffer,
         pkg_buff: &mut Buffer,
@@ -427,7 +427,7 @@ impl PrintInfo for PackageDef {
             format!("{}{}\n\n", " ".repeat(*tabs * 4), self.def.docs),
             pkg_buff,
         );
-        print_bound_vars(&self.def.bound_vars, print_globals, pkg_buff, tabs);
+        print_bound_vars(&self.def.bound_vars, print_vars, pkg_buff, tabs);
         print_bound_fns(&self.def.bound_fns, print_functions, pkg_buff, tabs);
         *tabs -= 1;
 
@@ -439,7 +439,7 @@ impl PrintInfo for PackageDef {
             for evt in self.events.iter() {
                 evt.print_info(
                     probe_rule,
-                    print_globals,
+                    print_vars,
                     print_functions,
                     prov_buff,
                     pkg_buff,
@@ -528,7 +528,7 @@ impl PrintInfo for EventDef {
     fn print_info(
         &self,
         probe_rule: &ProbeRule,
-        print_globals: bool,
+        print_vars: bool,
         print_functions: bool,
         prov_buff: &mut Buffer,
         pkg_buff: &mut Buffer,
@@ -545,7 +545,7 @@ impl PrintInfo for EventDef {
             format!("{}{}\n\n", " ".repeat(*tabs * 4), self.def.docs),
             evt_buffer,
         );
-        print_bound_vars(&self.def.bound_vars, print_globals, evt_buffer, tabs);
+        print_bound_vars(&self.def.bound_vars, print_vars, evt_buffer, tabs);
         print_bound_fns(&self.def.bound_fns, print_functions, evt_buffer, tabs);
 
         *tabs -= 1;
@@ -555,7 +555,7 @@ impl PrintInfo for EventDef {
             for mode in self.modes.iter() {
                 mode.print_info(
                     probe_rule,
-                    print_globals,
+                    print_vars,
                     print_functions,
                     prov_buff,
                     pkg_buff,
@@ -664,7 +664,7 @@ impl PrintInfo for ModeDef {
     fn print_info(
         &self,
         _probe_rule: &ProbeRule,
-        print_globals: bool,
+        print_vars: bool,
         print_functions: bool,
         prov_buff: &mut Buffer,
         _pkg_buff: &mut Buffer,
@@ -681,7 +681,7 @@ impl PrintInfo for ModeDef {
             format!("{}{}\n\n", " ".repeat(*tabs * 4), self.def.docs),
             evt_buffer,
         );
-        print_bound_vars(&self.def.bound_vars, print_globals, prov_buff, tabs);
+        print_bound_vars(&self.def.bound_vars, print_vars, prov_buff, tabs);
         print_bound_fns(&self.def.bound_fns, print_functions, prov_buff, tabs);
 
         *tabs -= 2;
@@ -719,6 +719,10 @@ impl BoundVar {
         green(true, self.name.to_string(), buff);
         white(true, ": ".to_string(), buff);
         self.ty.print(buff);
+        if let Some(expr) = &self.derived_from {
+            white(true, " ==> ".to_string(), buff);
+            cyan(true, format!("{expr}"), buff);
+        }
 
         *tabs += 1;
         white(
@@ -821,7 +825,7 @@ pub trait PrintInfo {
     fn print_info(
         &self,
         probe_rule: &ProbeRule,
-        print_globals: bool,
+        print_vars: bool,
         print_functions: bool,
         prov_buff: &mut Buffer,
         pkg_buff: &mut Buffer,
@@ -848,8 +852,8 @@ pub struct Probe {
 // ==== UTILITY FUNCTIONS ====
 // ===========================
 
-fn print_bound_vars(vars: &[BoundVar], print_globals: bool, buff: &mut Buffer, tabs: &mut usize) {
-    if print_globals && !vars.is_empty() {
+fn print_bound_vars(vars: &[BoundVar], print_vars: bool, buff: &mut Buffer, tabs: &mut usize) {
+    if print_vars && !vars.is_empty() {
         white(true, format!("{}GLOBALS:\n", " ".repeat(*tabs * 4)), buff);
         *tabs += 1;
         for var in vars.iter() {

@@ -491,6 +491,22 @@ pub enum NumLit {
     F32 { val: f32 },
     F64 { val: f64 },
 }
+impl Display for NumLit {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            NumLit::I8 { val } => write!(f, "{val}"),
+            NumLit::U8 { val } => write!(f, "{val}"),
+            NumLit::I16 { val } => write!(f, "{val}"),
+            NumLit::U16 { val } => write!(f, "{val}"),
+            NumLit::I32 { val } => write!(f, "{val}"),
+            NumLit::U32 { val } => write!(f, "{val}"),
+            NumLit::I64 { val } => write!(f, "{val}"),
+            NumLit::U64 { val } => write!(f, "{val}"),
+            NumLit::F32 { val } => write!(f, "{val}"),
+            NumLit::F64 { val } => write!(f, "{val}"),
+        }
+    }
+}
 impl NumLit {
     pub fn encode(&self) -> Vec<u8> {
         match self {
@@ -918,6 +934,23 @@ pub enum Value {
         val: Box<HashMap<u32, u32>>,
     },
 }
+impl Display for Value {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Value::Number { val, .. } => write!(f, "{val}"),
+            Value::Boolean { val } => write!(f, "{val}"),
+            Value::Str { val } => write!(f, "\"{val}\""),
+            Value::Tuple { vals, .. } => {
+                let mut vals_str = "".to_string();
+                for val in vals.iter() {
+                    vals_str = format!("{vals_str}, {val}");
+                }
+                write!(f, "({vals_str})")
+            }
+            Value::U32U32Map { .. } => write!(f, "U32U32Map {{..}}"),
+        }
+    }
+}
 impl Value {
     pub fn encode(&self) -> Vec<u8> {
         match self {
@@ -1287,6 +1320,40 @@ impl Expr {
         }
     }
 }
+impl Display for Expr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Expr::UnOp { op, expr, .. } => match op {
+                UnOp::Cast { target } => write!(f, "{} as {}", expr, target),
+                UnOp::Not => write!(f, "!{}", expr),
+                UnOp::BitwiseNot => write!(f, "~{}", expr),
+            },
+            Expr::Ternary {
+                cond, conseq, alt, ..
+            } => {
+                write!(f, "{} ? {} : {}", cond, conseq, alt)
+            }
+            Expr::BinOp { lhs, op, rhs, .. } => {
+                write!(f, "{} {} {}", lhs, op, rhs)
+            }
+            Expr::Call {
+                fn_target, args, ..
+            } => {
+                let mut args_str = "".to_string();
+                for arg in args.iter() {
+                    args_str = format!("{args_str}. {arg}");
+                }
+                write!(f, "{fn_target}({args_str})")
+            }
+            Expr::LibCall { lib_name, call, .. } => {
+                write!(f, "{lib_name}.{}", call)
+            }
+            Expr::VarId { name, .. } => write!(f, "{name}"),
+            Expr::Primitive { val, .. } => write!(f, "{val}"),
+            Expr::MapGet { map, key, .. } => write!(f, "{map}.{}", key),
+        }
+    }
+}
 
 // Functions
 
@@ -1348,7 +1415,7 @@ pub enum Definition {
     CompilerDerived, // TODO -- can I remove this variant?
 }
 impl Definition {
-    pub fn is_comp_provided(&self) -> bool {
+    pub fn is_comp_defined(&self) -> bool {
         matches!(self, Definition::CompilerStatic)
             || matches!(self, Definition::CompilerDynamic)
             || matches!(self, Definition::CompilerDerived)
@@ -1408,7 +1475,7 @@ pub(crate) fn print_bound_vars(tabs: &mut usize, vars: &[BoundVar], buffer: &mut
     }
 }
 
-pub(crate) fn print_fns(tabs: &mut usize, functions: &[ProvidedFunction], buffer: &mut Buffer) {
+pub(crate) fn print_fns(tabs: &mut usize, functions: &[BoundFunction], buffer: &mut Buffer) {
     if !functions.is_empty() {
         white(
             true,
@@ -1416,7 +1483,7 @@ pub(crate) fn print_fns(tabs: &mut usize, functions: &[ProvidedFunction], buffer
             buffer,
         );
         *tabs += 1;
-        for ProvidedFunction { docs, function, .. } in functions.iter() {
+        for BoundFunction { docs, function, .. } in functions.iter() {
             green(true, " ".repeat(*tabs * 4).to_string(), buffer);
             function.print(buffer);
             green(true, "\n".to_string(), buffer);
@@ -1435,22 +1502,22 @@ pub(crate) fn print_fns(tabs: &mut usize, functions: &[ProvidedFunction], buffer
 
 #[derive(Default)]
 pub struct Whamm {
-    pub fns: Vec<ProvidedFunction>, // Comp-provided
-    pub bound_vars: Vec<BoundVar>,  // Comp-provided
+    pub fns: Vec<BoundFunction>,   // Comp-provided
+    pub bound_vars: Vec<BoundVar>, // Comp-provided
 
     pub scripts: Vec<Script>,
 }
 impl Whamm {
     pub fn new() -> Self {
         Whamm {
-            fns: Whamm::get_provided_fns(),
+            fns: Whamm::get_bound_fns(),
             bound_vars: Whamm::get_bound_vars(),
 
             scripts: vec![],
         }
     }
 
-    pub(crate) fn get_provided_fns() -> Vec<ProvidedFunction> {
+    pub(crate) fn get_bound_fns() -> Vec<BoundFunction> {
         let strcmp_params = vec![
             (
                 Expr::VarId {
@@ -1472,7 +1539,7 @@ impl Whamm {
             ),
         ];
 
-        let strcmp = ProvidedFunction::new(
+        let strcmp = BoundFunction::new(
             "strcmp".to_string(),
             "Compare two wasm strings and return whether they are equivalent.".to_string(),
             strcmp_params,
@@ -1772,13 +1839,13 @@ impl ProvidedGlobal {
     }
 }
 #[derive(Clone, Debug)]
-pub struct ProvidedFunction {
+pub struct BoundFunction {
     pub name: String,
     pub docs: String,
     pub function: Fn,
     pub req_args: ReqArgs,
 }
-impl ProvidedFunction {
+impl BoundFunction {
     pub fn new(
         name: String,
         docs: String,
@@ -1851,6 +1918,30 @@ pub enum BinOp {
     BitOr,
     BitXor,
 }
+impl Display for BinOp {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BinOp::And => write!(f, "&&"),
+            BinOp::Or => write!(f, "||"),
+            BinOp::EQ => write!(f, "=="),
+            BinOp::NE => write!(f, "!="),
+            BinOp::GE => write!(f, ">="),
+            BinOp::GT => write!(f, ">"),
+            BinOp::LE => write!(f, "<="),
+            BinOp::LT => write!(f, "<"),
+            BinOp::Add => write!(f, "+"),
+            BinOp::Subtract => write!(f, "-"),
+            BinOp::Multiply => write!(f, "*"),
+            BinOp::Divide => write!(f, "/"),
+            BinOp::Modulo => write!(f, "%"),
+            BinOp::LShift => write!(f, "<<"),
+            BinOp::RShift => write!(f, ">>"),
+            BinOp::BitAnd => write!(f, "&"),
+            BinOp::BitOr => write!(f, "|"),
+            BinOp::BitXor => write!(f, "^"),
+        }
+    }
+}
 
 // =================
 // ==== Visitor ====
@@ -1878,7 +1969,7 @@ pub trait WhammVisitor<T> {
     fn visit_value(&mut self, val: &Value) -> T;
 }
 
-/// To support setting constant-provided global vars
+/// To support setting constant bound vars
 pub trait WhammVisitorMut<T> {
     fn visit_whamm(&mut self, whamm: &mut Whamm) -> T;
     fn visit_script(&mut self, script: &mut Script) -> T;

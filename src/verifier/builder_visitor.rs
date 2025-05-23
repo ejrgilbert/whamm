@@ -2,7 +2,7 @@ use crate::common::error::ErrorGen;
 use crate::generator::ast::ReqArgs;
 use crate::parser::provider_handler::{BoundFunc, BoundVar, Event, Package, Probe, Provider};
 use crate::parser::types as parser_types;
-use crate::parser::types::{Definition, FnId, Global, ProvidedFunction, WhammVisitorMut};
+use crate::parser::types::{BoundFunction, Definition, FnId, Global, WhammVisitorMut};
 use crate::verifier::builder_visitor::parser_types::Location;
 use crate::verifier::types::{Record, ScopeType, SymbolTable};
 use crate::verifier::verifier::check_duplicate_id;
@@ -33,7 +33,7 @@ pub struct SymbolTableBuilder<'a, 'b, 'c> {
     pub used_derived_vars: HashSet<String>,
     pub derived_vars: HashMap<String, (DataType, Expr)>,
 
-    // bookkeeping for providedfunctions
+    // bookkeeping for boundfunctions
     pub req_args: ReqArgs,
 }
 impl SymbolTableBuilder<'_, '_, '_> {
@@ -101,7 +101,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
         let provider_rec = Record::Provider {
             name: provider.def.name.clone(),
             fns: vec![],
-            globals: vec![],
+            vars: vec![],
             packages: vec![],
         };
 
@@ -150,7 +150,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
         let package_rec = Record::Package {
             name: package.def.name.clone(),
             fns: vec![],
-            globals: vec![],
+            vars: vec![],
             events: vec![],
         };
 
@@ -195,7 +195,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
         let event_rec = Record::Event {
             name: event.def.name.clone(),
             fns: vec![],
-            globals: vec![],
+            vars: vec![],
             probes: vec![],
         };
 
@@ -244,7 +244,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
         let probe_rec = Record::Probe {
             mode: probe.kind.name(),
             fns: vec![],
-            globals: vec![],
+            vars: vec![],
         };
 
         // Add probe to scope
@@ -377,7 +377,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
                     //case for curr having a location and other doesn't -> either other is comp_def or there is compiler error
                     (Some(curr_loc), None) => {
                         //make sure it is actually comp def
-                        if other_rec.is_comp_provided() {
+                        if other_rec.is_comp_defined() {
                             self.err.compiler_fn_overload_error(
                                 false,
                                 f_id.name.clone(),
@@ -440,10 +440,10 @@ impl SymbolTableBuilder<'_, '_, '_> {
         match self.table.get_curr_rec_mut() {
             Some(Record::Whamm { globals, .. })
             | Some(Record::Script { globals, .. })
-            | Some(Record::Provider { globals, .. })
-            | Some(Record::Package { globals, .. })
-            | Some(Record::Event { globals, .. })
-            | Some(Record::Probe { globals, .. }) => {
+            | Some(Record::Provider { vars: globals, .. })
+            | Some(Record::Package { vars: globals, .. })
+            | Some(Record::Event { vars: globals, .. })
+            | Some(Record::Probe { vars: globals, .. }) => {
                 globals.push(id);
             }
             _ => {
@@ -625,7 +625,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
 
         // visit fns
         whamm.fns.iter_mut().for_each(
-            |ProvidedFunction {
+            |BoundFunction {
                  function, req_args, ..
              }| {
                 self.req_args = req_args.clone();

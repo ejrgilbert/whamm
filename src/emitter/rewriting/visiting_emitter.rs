@@ -652,7 +652,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
         stmt: &mut Statement,
         err: &mut ErrorGen,
     ) -> bool {
-        // Check if this is calling a provided, static function!
+        // Check if this is calling a bound, static function!
         if let Statement::Expr {
             expr: Expr::Call {
                 fn_target, args, ..

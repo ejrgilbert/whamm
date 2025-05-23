@@ -99,10 +99,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         f: &Fn,
         err: &mut ErrorGen,
     ) -> Option<FunctionID> {
-        // figure out if this is a provided fn.
+        // figure out if this is a bound fn.
         if f.def == Definition::CompilerDynamic {
             return if self.fn_providing_contexts.contains(&context.to_string()) {
-                self.emit_provided_fn(context, f, err)
+                self.emit_bound_fn(context, f, err)
             } else {
                 err.add_error(ErrorGen::get_unexpected_error(
                     true,
@@ -117,7 +117,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             };
         }
 
-        // emit non-provided fn
+        // emit non-bound fn
         // TODO: only when we're supporting user-defined fns in script...
         unimplemented!();
         // TODO: Remember to reset locals like what follows:
@@ -251,7 +251,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         }
     }
 
-    pub(crate) fn emit_provided_fn(
+    pub(crate) fn emit_bound_fn(
         &mut self,
         context: &str,
         f: &Fn,

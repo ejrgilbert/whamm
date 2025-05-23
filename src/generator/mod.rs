@@ -3,8 +3,8 @@ use crate::emitter::module_emitter::ModuleEmitter;
 use crate::lang_features::report_vars::{BytecodeLoc, LocationData};
 use crate::parser::provider_handler::{BoundFunc, Event, ModeKind, Package, Probe, Provider};
 use crate::parser::types::{
-    BinOp, Block, DataType, Definition, Expr, Fn, FnId, Global, ProbeRule, ProvidedFunction,
-    Script, Statement, UnOp, Value, Whamm, WhammVisitorMut,
+    BinOp, Block, BoundFunction, DataType, Definition, Expr, Fn, FnId, Global, ProbeRule, Script,
+    Statement, UnOp, Value, Whamm, WhammVisitorMut,
 };
 use crate::verifier::types::Record;
 use itertools::Itertools;
@@ -38,7 +38,7 @@ fn emit_needed_funcs(
     err: &mut ErrorGen,
 ) {
     for (context, fname) in funcs.iter() {
-        if let Some(fid) = emitter.emit_provided_fn(
+        if let Some(fid) = emitter.emit_bound_fn(
             context,
             &Fn {
                 def: Definition::CompilerDynamic,
@@ -177,7 +177,7 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
         whamm
             .fns
             .iter_mut()
-            .for_each(|ProvidedFunction { function, .. }| {
+            .for_each(|BoundFunction { function, .. }| {
                 is_success &= self.visit_fn(function);
             });
         // do not inject globals into Wasm that are used/defined by the compiler

@@ -33,7 +33,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     pub fn run(
         &mut self,
         ast: Vec<Script>,
-        used_provided_funcs: HashSet<(String, String)>,
+        used_bound_funcs: HashSet<(String, String)>,
         used_report_dts: HashSet<DataType>,
         strings_to_emit: Vec<String>,
     ) {
@@ -41,7 +41,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         self.emitter.reset_table();
         self.emitter.setup_module(self.err);
         emit_needed_funcs(
-            used_provided_funcs,
+            used_bound_funcs,
             &mut self.emitter,
             self.injected_funcs,
             self.err,

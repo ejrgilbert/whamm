@@ -1678,7 +1678,7 @@ fn handle_opcode_events(
             define_imm0::<u32>(*relative_depth, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
             loc_info.add_probes(probe_rule.clone(), probes);
         },
-        _ => panic!("Event not available: 'wasm:opcode:{package}'"),
+        _ => panic!("Event not available: 'wasm:opcode:{event}'"),
     }
 
     let (all_args, ..) = get_ty_info_for_instr(app_wasm, fid, instr);

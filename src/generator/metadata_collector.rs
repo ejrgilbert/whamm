@@ -31,7 +31,7 @@ pub struct MetadataCollector<'a, 'b, 'c> {
     // misc. trackers
     pub used_user_library_fns: HashSet<(String, String)>,
     curr_user_lib: Option<String>,
-    pub used_provided_fns: HashSet<(String, String)>,
+    pub used_bound_fns: HashSet<(String, String)>,
     pub used_report_var_dts: HashSet<DataType>,
     pub check_strcmp: bool,
     pub strings_to_emit: Vec<String>,
@@ -56,7 +56,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
             ast: Vec::default(),
             used_user_library_fns: HashSet::default(),
             curr_user_lib: None,
-            used_provided_fns: HashSet::default(),
+            used_bound_fns: HashSet::default(),
             used_report_var_dts: HashSet::default(),
             check_strcmp: false,
             strings_to_emit: Vec::default(),
@@ -357,13 +357,11 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
             Statement::Assign { var_id, expr, .. } => {
                 if let Expr::VarId { name, .. } = var_id {
                     let (def, _ty, loc) = get_def(name, self.table, self.err);
-                    if def.is_comp_provided()
-                        && self.config.wizard
-                        && !self.config.enable_wizard_alt
+                    if def.is_comp_defined() && self.config.wizard && !self.config.enable_wizard_alt
                     {
                         self.err.wizard_error(
                             true,
-                            "Assigning to compiler-provided variables is not supported on Wizard target"
+                            "Assigning to compiler-defined variables is not supported on Wizard target"
                                 .to_string(),
                             &loc,
                         );
@@ -405,7 +403,7 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                 self.visit_expr(rhs);
                 if self.check_strcmp {
                     // if this flag is still true, we need the strcmp function!
-                    self.used_provided_fns
+                    self.used_bound_fns
                         .insert(("whamm".to_string(), "strcmp".to_string()));
                 }
                 self.check_strcmp = false;
@@ -418,7 +416,7 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
             Expr::Call {
                 args, fn_target, ..
             } => {
-                // is this a provided function?
+                // is this a bound function?
                 let fn_name = match &**fn_target {
                     Expr::VarId { name, .. } => name.clone(),
                     _ => {
@@ -484,7 +482,7 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                     if let Some(context) = context {
                         // will need to emit this function!
                         println!("{context} ==> {fn_name}");
-                        self.used_provided_fns.insert((context, fn_name));
+                        self.used_bound_fns.insert((context, fn_name));
                         // will need to possibly define arguments!
                         self.combine_req_args(req_args.clone());
                     }
@@ -523,10 +521,10 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                     return;
                 }
 
-                // check if provided, remember in metadata!
+                // check if bound, remember in metadata!
                 self.check_strcmp = matches!(ty, DataType::Str);
 
-                if def.is_comp_provided() {
+                if def.is_comp_defined() {
                     // For Wizard: Request all!
                     // For B.R.: Only request dynamic data
                     self.push_metadata(name, &ty);

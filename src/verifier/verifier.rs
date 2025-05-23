@@ -68,11 +68,11 @@ pub fn check_duplicate_id(
         };
         let old_loc = old_rec.loc();
         if old_loc.is_none() {
-            //make sure old_rec is comp provided
-            if old_rec.is_comp_provided() {
+            //make sure old_rec is comp defined
+            if old_rec.is_comp_defined() {
                 let new_loc = loc.as_ref().map(|l| l.line_col.clone());
                 if loc.is_none() {
-                    // happens if new_loc is compiler-provided or is a user-def func without location -- both should throw unexpected error
+                    // happens if new_loc is compiler-defined or is a user-def func without location -- both should throw unexpected error
                     println!("{:#?}", old_rec);
                     println!("{:#?}", table.get_curr_scope());
                     panic!("{UNEXPECTED_ERR_MSG} No location found for record: {name}");
@@ -80,12 +80,12 @@ pub fn check_duplicate_id(
                     err.compiler_fn_overload_error(false, name.to_string(), new_loc);
                 }
             } else {
-                panic!("{UNEXPECTED_ERR_MSG} Expected other record to be provided by compiler.");
+                panic!("{UNEXPECTED_ERR_MSG} Expected other record to be defined by compiler.");
             }
         } else if loc.is_none() {
-            // happens if new ID is compiler-provided or is a user-def func without location
-            //if new ID is compiler-provided, throw compiler overload error for the old record
-            if definition.is_comp_provided() {
+            // happens if new ID is compiler-defined or is a user-def func without location
+            //if new ID is compiler-defined, throw compiler overload error for the old record
+            if definition.is_comp_defined() {
                 err.compiler_fn_overload_error(
                     false,
                     name.to_string(),
@@ -96,7 +96,7 @@ pub fn check_duplicate_id(
                 err.unexpected_error(
                     true,
                     Some(format!(
-                        "{UNEXPECTED_ERR_MSG} Expected record to be compiler provided."
+                        "{UNEXPECTED_ERR_MSG} Expected record to be compiler defined."
                     )),
                     None,
                 );
@@ -254,8 +254,8 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
         // getting into user defined function and scripts
         // not entering scopes here
 
-        // skip the compiler provided functions
-        // we only need to type check user provided functions
+        // skip the compiler defined functions
+        // we only need to type check user defined functions
 
         whamm.scripts.iter_mut().for_each(|script| {
             self.visit_script(script);
@@ -366,7 +366,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
     }
 
     fn visit_fn(&mut self, function: &mut Fn) -> Option<DataType> {
-        // TODO: not typechecking user provided functions yet
+        // TODO: not typechecking user defined functions yet
         // type check body
 
         self.table.enter_named_scope(&function.name.name);
@@ -1230,7 +1230,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     }
                 };
 
-                //check if in global state and if is_comp_provided is false --> not allowed if both are the case
+                //check if in global state and if is_comp_defined is false --> not allowed if both are the case
                 if self.in_script_global && !(*def == CompilerDynamic || *def == CompilerStatic) {
                     self.err.type_check_error(
                         false,

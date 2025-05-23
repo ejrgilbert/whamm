@@ -180,7 +180,7 @@ wasm::call:alt /
     r#"wasm::call:alt / (1 + 3) / {  }"#, // final type in predicate
     r#"wasm::call:alt / !1 / { }"#,       // unop
     // stmt
-    // Compiler provided global
+    // Compiler bound global
     r#"
 wasm::call:alt {
     target_fn_type = 1;
@@ -221,7 +221,7 @@ wasm:opcode:br:before {
     a = i ? 1 : true;
 }
     "#,
-    // calls (comp provided function)
+    // calls (comp bound function)
     r#"
 wasm::call:alt /
     target_fn_type == "import" &&

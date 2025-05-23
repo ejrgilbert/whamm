@@ -343,7 +343,7 @@ fn run_instr_wizard(
     let err = metadata_collector.err;
     let config = metadata_collector.config;
     let wiz_ast = metadata_collector.ast;
-    let used_funcs = metadata_collector.used_provided_fns;
+    let used_funcs = metadata_collector.used_bound_fns;
     let used_report_dts = metadata_collector.used_report_var_dts;
     let used_strings = metadata_collector.strings_to_emit;
 
@@ -391,11 +391,11 @@ fn run_instr_rewrite(
     let table = metadata_collector.table;
     let err = metadata_collector.err;
     let ast = metadata_collector.ast;
-    let used_funcs = metadata_collector.used_provided_fns;
+    let used_funcs = metadata_collector.used_bound_fns;
     let used_strings = metadata_collector.strings_to_emit;
     let config = metadata_collector.config;
 
-    // Phase 0 of instrumentation (emit globals and provided fns)
+    // Phase 0 of instrumentation (emit bound variables and fns)
     let mut init = InitGenerator {
         emitter: ModuleEmitter::new(
             InjectStrategy::Rewriting,

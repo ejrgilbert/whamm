@@ -18,15 +18,7 @@ use termcolor::{BufferWriter, ColorChoice, WriteColor};
 const UNEXPECTED_ERR_MSG: &str =
     "WhammParser: Looks like you've found a bug...please report this behavior! Exiting now...";
 
-pub fn print_info(rule: String, print_globals: bool, print_functions: bool, err: &mut ErrorGen) {
-    // TODO
-    //   - allow partial proberules (e.g. wasm:opcode:*)
-    //   - check if works with subset matches (e.g. wasm:opcode:*:alt)
-    //   - handle aliases
-    //   - move old whamm info to new structure
-    //   - print variable derivations
-    //   - print type bound info
-    //   - change naming of things (globals -> vars, provided -> bound, etc.)
+pub fn print_info(rule: String, print_vars: bool, print_functions: bool, err: &mut ErrorGen) {
     let def = yml_to_providers("./");
     assert!(!def.is_empty());
 
@@ -38,20 +30,20 @@ pub fn print_info(rule: String, print_globals: bool, print_functions: bool, err:
 
     // Print `whamm` info
     let mut tabs = 0;
-    if print_globals || print_functions {
+    if print_vars || print_functions {
         white(true, "\nCORE ".to_string(), &mut whamm_buffer);
         magenta(true, "`whamm`".to_string(), &mut whamm_buffer);
         white(true, " FUNCTIONALITY\n\n".to_string(), &mut whamm_buffer);
 
-        // Print the globals
-        if print_globals {
+        // Print the vars
+        if print_vars {
             let vars = Whamm::get_bound_vars();
             print_bound_vars(&mut tabs, &vars, &mut whamm_buffer);
         }
 
         // Print the functions
         if print_functions {
-            let functions = Whamm::get_provided_fns();
+            let functions = Whamm::get_bound_fns();
             print_fns(&mut tabs, &functions, &mut whamm_buffer);
         }
     }
@@ -77,7 +69,7 @@ pub fn print_info(rule: String, print_globals: bool, print_functions: bool, err:
                 for provider in matches.iter() {
                     provider.print_info(
                         &probe_rule,
-                        print_globals,
+                        print_vars,
                         print_functions,
                         &mut prov_buff,
                         &mut pkg_buff,
