@@ -1767,23 +1767,19 @@ fn bind_vars_memarg(
     all_params: &HashSet<&WhammParam>,
 ) {
     for param in all_params {
-        match param {
-            WhammParam::Align => {
-                loc_info
+        if let WhammParam::Custom { name, .. } = param {
+            match name.as_str() {
+                "align" => loc_info
                     .static_data
-                    .insert("align".to_string(), Some(Value::gen_u32(align as u32)));
-            }
-            WhammParam::Offset => {
-                loc_info
+                    .insert(name.clone(), Some(Value::gen_u32(align as u32))),
+                "offset" => loc_info
                     .static_data
-                    .insert("offset".to_string(), Some(Value::gen_u64(offset)));
-            }
-            WhammParam::Memory => {
-                loc_info
+                    .insert(name.clone(), Some(Value::gen_u64(offset))),
+                "memory" => loc_info
                     .static_data
-                    .insert("memory".to_string(), Some(Value::gen_u32(memory)));
-            }
-            _ => {}
+                    .insert(name.clone(), Some(Value::gen_u32(memory))),
+                _ => panic!("bound variable not supported: {name}"),
+            };
         }
     }
 }
@@ -1794,31 +1790,34 @@ fn bind_vars_br_table(
 ) -> Option<()> {
     for param in all_params {
         match param {
-            WhammParam::NumTargets => {
-                loc_info.static_data.insert(
-                    WhammParam::NumTargets.to_string(),
-                    Some(Value::gen_u32(targets.len())),
-                );
-            }
-            WhammParam::DefaultTarget => {
-                loc_info.static_data.insert(
-                    WhammParam::DefaultTarget.to_string(),
-                    Some(Value::gen_u32(targets.default())),
-                );
-            }
-            WhammParam::Targets => {
-                let mut target_map = HashMap::new();
-                for (i, target) in targets.targets().enumerate() {
-                    if let Ok(target) = target {
-                        target_map.insert(i as u32, target);
+            WhammParam::Custom { name, .. } => {
+                match name.as_str() {
+                    "num_targets" => {
+                        loc_info
+                            .static_data
+                            .insert(name.clone(), Some(Value::gen_u32(targets.len())));
                     }
-                }
-                loc_info.add_dynamic_value(
-                    WhammParam::Targets.to_string(),
-                    Value::U32U32Map {
-                        val: Box::new(target_map),
-                    },
-                );
+                    "default_target" => {
+                        loc_info
+                            .static_data
+                            .insert(name.clone(), Some(Value::gen_u32(targets.default())));
+                    }
+                    "targets" => {
+                        let mut target_map = HashMap::new();
+                        for (i, target) in targets.targets().enumerate() {
+                            if let Ok(target) = target {
+                                target_map.insert(i as u32, target);
+                            }
+                        }
+                        loc_info.add_dynamic_value(
+                            name.clone(),
+                            Value::U32U32Map {
+                                val: Box::new(target_map),
+                            },
+                        )
+                    }
+                    _ => panic!("bound variable not supported: {name}"),
+                };
             }
             WhammParam::Imm { n, ty } => {
                 if *n > targets.len() {
@@ -1878,29 +1877,28 @@ fn bind_vars_call(
 
     for param in all_params {
         match param {
-            WhammParam::TargetFnName => {
-                loc_info.static_data.insert(
-                    "target_fn_name".to_string(),
-                    Some(Value::Str {
-                        val: func_info.name.to_string(),
-                    }),
-                );
-            }
-            WhammParam::TargetFnType => {
-                loc_info.static_data.insert(
-                    "target_fn_type".to_string(),
-                    Some(Value::Str {
-                        val: func_info.func_kind.to_string(),
-                    }),
-                );
-            }
-            WhammParam::TargetImpModule => {
-                loc_info.static_data.insert(
-                    "target_imp_module".to_string(),
-                    Some(Value::Str {
-                        val: func_info.module.to_string(),
-                    }),
-                );
+            WhammParam::Custom { name, .. } => {
+                match name.as_str() {
+                    "target_fn_name" => loc_info.static_data.insert(
+                        "target_fn_name".to_string(),
+                        Some(Value::Str {
+                            val: func_info.name.to_string(),
+                        }),
+                    ),
+                    "target_fn_type" => loc_info.static_data.insert(
+                        "target_fn_type".to_string(),
+                        Some(Value::Str {
+                            val: func_info.func_kind.to_string(),
+                        }),
+                    ),
+                    "target_imp_module" => loc_info.static_data.insert(
+                        "target_imp_module".to_string(),
+                        Some(Value::Str {
+                            val: func_info.module.to_string(),
+                        }),
+                    ),
+                    _ => panic!("bound variable not supported: {name}"),
+                };
             }
             WhammParam::Imm { n, ty } => {
                 assert_eq!(*n, 0);
