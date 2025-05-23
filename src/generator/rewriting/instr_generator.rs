@@ -7,7 +7,7 @@ use crate::generator::ast::Probe;
 use crate::generator::folding::ExprFolder;
 use crate::generator::rewriting::simple_ast::SimpleAST;
 use crate::lang_features::report_vars::{BytecodeLoc, LocationData};
-use crate::parser::rules::core::WhammModeKind;
+use crate::parser::provider_handler::ModeKind;
 use crate::parser::types::{Block, Expr, Value};
 use orca_wasm::ir::function::FunctionBuilder;
 use orca_wasm::ir::id::FunctionID;
@@ -51,7 +51,7 @@ pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> {
     pub ast: SimpleAST,
     pub err: &'h mut ErrorGen,
     curr_instr_args: Vec<Arg>,
-    curr_probe_mode: WhammModeKind,
+    curr_probe_mode: ModeKind,
     /// The current probe's body and predicate
     curr_probe: Option<(Option<Block>, Option<Expr>)>,
 
@@ -73,7 +73,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
             ast,
             err,
             curr_instr_args: vec![],
-            curr_probe_mode: WhammModeKind::Begin,
+            curr_probe_mode: ModeKind::Before,
             curr_probe: None,
             has_reports,
             on_exit_fid: None,
@@ -84,14 +84,13 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
     pub fn configure_probe_mode(&mut self) -> bool {
         // function entry/exit should be handled before this point!
         match self.curr_probe_mode {
-            WhammModeKind::Before => self.emitter.before(),
-            WhammModeKind::After => self.emitter.after(),
-            WhammModeKind::Alt => self.emitter.alternate(),
-            WhammModeKind::SemanticAfter => self.emitter.semantic_after(),
-            WhammModeKind::Entry => self.emitter.block_entry(),
-            WhammModeKind::Exit => self.emitter.block_exit(),
-            WhammModeKind::BlockAlt => self.emitter.block_alt(),
-            _ => return false,
+            ModeKind::Before => self.emitter.before(),
+            ModeKind::After => self.emitter.after(),
+            ModeKind::Alt => self.emitter.alternate(),
+            ModeKind::SemanticAfter => self.emitter.semantic_after(),
+            ModeKind::Entry => self.emitter.block_entry(),
+            ModeKind::Exit => self.emitter.block_exit(),
+            ModeKind::BlockAlt => self.emitter.block_alt(),
         }
         true
     }
@@ -255,22 +254,22 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_, '_> {
                 // Only emit the body if we're configured to do so
                 self.emit_body();
             }
-            if !matches!(self.curr_probe_mode, WhammModeKind::Alt) {
+            if !matches!(self.curr_probe_mode, ModeKind::Alt) {
                 self.replace_args();
             }
         } else {
             // The predicate still has some conditionals (remember we already checked for
             // it being false in run() above)
             match self.curr_probe_mode {
-                WhammModeKind::Before
-                | WhammModeKind::After
-                | WhammModeKind::SemanticAfter
-                | WhammModeKind::Entry
-                | WhammModeKind::Exit => {
+                ModeKind::Before
+                | ModeKind::After
+                | ModeKind::SemanticAfter
+                | ModeKind::Entry
+                | ModeKind::Exit => {
                     is_success &= self.emit_probe_as_if();
                     self.replace_args();
                 }
-                WhammModeKind::Alt => {
+                ModeKind::Alt => {
                     is_success &= self.emit_probe_as_if_else();
                 }
                 _ => {
@@ -329,7 +328,7 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_, '_> {
                 self.emitter
                     .emit_body(&self.curr_instr_args, body, self.err)
             } else if body.is_none() {
-                if self.curr_probe_mode == WhammModeKind::Alt {
+                if self.curr_probe_mode == ModeKind::Alt {
                     match self.emitter.emit_empty_alternate() {
                         Err(e) => {
                             self.err.add_error(*e);
@@ -337,7 +336,7 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_, '_> {
                         }
                         Ok(res) => res,
                     }
-                } else if self.curr_probe_mode == WhammModeKind::BlockAlt {
+                } else if self.curr_probe_mode == ModeKind::BlockAlt {
                     match self.emitter.emit_empty_block_alt() {
                         Err(e) => {
                             self.err.add_error(*e);

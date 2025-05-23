@@ -1,7 +1,6 @@
 use crate::common::error::ErrorGen;
 use crate::generator::ast::ReqArgs;
 use crate::parser::provider_handler::{Event, Package, Probe, Provider};
-use crate::parser::rules::UNKNOWN_IMMS;
 use crate::parser::types::Definition::{CompilerDynamic, CompilerStatic};
 use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Fn, Location, Script, Statement, UnOp, Value, Whamm,
@@ -14,6 +13,7 @@ use pest::error::LineColLocation;
 use std::collections::{HashMap, HashSet};
 use std::vec;
 
+pub const UNKNOWN_IMMS: &str = "imm[0:9]+";
 const UNEXPECTED_ERR_MSG: &str =
     "TypeChecker: Looks like you've found a bug...please report this behavior! Exiting now...";
 

@@ -1,6 +1,7 @@
 use crate::common::error::{ErrorGen, WhammError};
-use crate::emitter::rewriting::rules::wasm::OpcodeEvent;
-use crate::emitter::rewriting::rules::{get_loc_info_for_active_probes, Arg, LocInfo, ProbeRule};
+use crate::emitter::rewriting::rules::{
+    get_loc_info_for_active_probes, get_ty_info_for_instr, Arg, LocInfo, ProbeRule,
+};
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use orca_wasm::ir::types::DataType as OrcaType;
 use std::collections::HashMap;
@@ -364,12 +365,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         let fid = match curr_loc {
             Location::Module { func_idx, .. } | Location::Component { func_idx, .. } => func_idx,
         };
-        let orig_ty_id = OpcodeEvent::get_ty_info_for_instr(
-            self.app_iter.module,
-            &fid,
-            self.app_iter.curr_op().unwrap(),
-        )
-        .1;
+        let orig_ty_id =
+            get_ty_info_for_instr(self.app_iter.module, &fid, self.app_iter.curr_op().unwrap()).1;
 
         // emit the condition of the `if` expression
         is_success &= self.emit_expr(condition, err);
@@ -461,12 +458,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         };
 
         // ensure we have the args for this instruction
-        let curr_instr_args = OpcodeEvent::get_ty_info_for_instr(
-            self.app_iter.module,
-            &fid,
-            self.app_iter.curr_op().unwrap(),
-        )
-        .0;
+        let curr_instr_args =
+            get_ty_info_for_instr(self.app_iter.module, &fid, self.app_iter.curr_op().unwrap()).0;
 
         let num_to_drop = curr_instr_args.len() - self.instr_created_args.len();
         for _arg in 0..num_to_drop {
