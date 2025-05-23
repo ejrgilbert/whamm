@@ -481,6 +481,7 @@ fn run_script(
     let script_path_str = script_path.to_str().unwrap().replace("\"", "");
     let wasm_result = whamm::common::instr::run(
         CORE_WASM_PATH,
+        "./",
         target_wasm,
         &script_text,
         &script_path_str,

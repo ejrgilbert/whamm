@@ -594,7 +594,7 @@ pub fn get_test_scripts(sub_dir: &str) -> Vec<String> {
 }
 
 fn is_valid_script(script: &str, err: &mut ErrorGen) -> bool {
-    parse_script(&script.to_string(), err).is_some() && !err.has_errors
+    parse_script("./", &script.to_string(), err).is_some() && !err.has_errors
 }
 
 pub fn run_test_on_valid_list(scripts: Vec<String>, err: &mut ErrorGen) {
