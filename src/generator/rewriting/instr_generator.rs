@@ -119,80 +119,80 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
         while first_instr || self.emitter.next_instr() {
             first_instr = false;
             // rules.iter().for_each(|_rule| {
-                // Check if any of the configured rules match this instruction in the application.
-                if let Some(loc_info) = self.emitter.get_loc_info(&self.ast.probes) {
-                    // Inject a call to the on-exit flush function
-                    if loc_info.is_prog_exit {
-                        if self.on_exit_fid.is_none() {
-                            let on_exit = FunctionBuilder::new(&[], &[]);
-                            let on_exit_id = on_exit.finish_module(self.emitter.app_iter.module);
-                            self.emitter
-                                .app_iter
-                                .module
-                                .set_fn_name(on_exit_id, "on_exit".to_string());
+            // Check if any of the configured rules match this instruction in the application.
+            if let Some(loc_info) = self.emitter.get_loc_info(&self.ast.probes) {
+                // Inject a call to the on-exit flush function
+                if loc_info.is_prog_exit {
+                    if self.on_exit_fid.is_none() {
+                        let on_exit = FunctionBuilder::new(&[], &[]);
+                        let on_exit_id = on_exit.finish_module(self.emitter.app_iter.module);
+                        self.emitter
+                            .app_iter
+                            .module
+                            .set_fn_name(on_exit_id, "on_exit".to_string());
 
-                            self.on_exit_fid = Some(*on_exit_id);
-                        }
-
-                        if let Some(fid) = self.on_exit_fid {
-                            self.emitter.before();
-                            self.emitter.app_iter.call(FunctionID(fid));
-                        } else {
-                            panic!("something went horribly wrong")
-                        }
+                        self.on_exit_fid = Some(*on_exit_id);
                     }
 
-                    if loc_info.num_alt_probes > 1 {
-                        self.err
-                            .multiple_alt_matches(self.emitter.curr_instr_name().as_str());
+                    if let Some(fid) = self.on_exit_fid {
+                        self.emitter.before();
+                        self.emitter.app_iter.call(FunctionID(fid));
+                    } else {
+                        panic!("something went horribly wrong")
                     }
-                    // This location has matched some rules, inject each matched probe!
-                    for (probe_rule, probe) in loc_info.probes.iter() {
-                        // Enter the scope for this matched probe
-                        self.set_curr_loc(probe_rule, probe);
-                        assert!(
-                            self.emitter
-                                .enter_scope_via_rule(&probe.script_id.to_string(), probe_rule),
-                            "Failed to enter scope: {}",
-                            probe_rule
-                        );
+                }
 
-                        // Initialize the symbol table with the metadata at this program point
-                        add_to_table(&loc_info.static_data, &mut self.emitter);
+                if loc_info.num_alt_probes > 1 {
+                    self.err
+                        .multiple_alt_matches(self.emitter.curr_instr_name().as_str());
+                }
+                // This location has matched some rules, inject each matched probe!
+                for (probe_rule, probe) in loc_info.probes.iter() {
+                    // Enter the scope for this matched probe
+                    self.set_curr_loc(probe_rule, probe);
+                    assert!(
+                        self.emitter
+                            .enter_scope_via_rule(&probe.script_id.to_string(), probe_rule),
+                        "Failed to enter scope: {}",
+                        probe_rule
+                    );
 
-                        // Create a new clone of the probe, fold the predicate.
-                        // NOTE: We make a clone so that the probe is reset for each instruction!
-                        let (body_clone, mut pred_clone) =
-                            (probe.body.clone(), probe.predicate.clone());
-                        if let Some(pred) = &mut pred_clone {
-                            // Fold predicate
-                            is_success = self.emitter.fold_expr(pred, self.err);
+                    // Initialize the symbol table with the metadata at this program point
+                    add_to_table(&loc_info.static_data, &mut self.emitter);
 
-                            // If the predicate evaluates to false, short-circuit!
-                            if let Some(pred_as_bool) = ExprFolder::get_single_bool(pred) {
-                                if !pred_as_bool {
-                                    // predicate is reduced to false, short-circuit!
-                                    continue;
-                                }
+                    // Create a new clone of the probe, fold the predicate.
+                    // NOTE: We make a clone so that the probe is reset for each instruction!
+                    let (body_clone, mut pred_clone) =
+                        (probe.body.clone(), probe.predicate.clone());
+                    if let Some(pred) = &mut pred_clone {
+                        // Fold predicate
+                        is_success = self.emitter.fold_expr(pred, self.err);
+
+                        // If the predicate evaluates to false, short-circuit!
+                        if let Some(pred_as_bool) = ExprFolder::get_single_bool(pred) {
+                            if !pred_as_bool {
+                                // predicate is reduced to false, short-circuit!
+                                continue;
                             }
                         }
-
-                        self.curr_instr_args = loc_info.args.clone(); // must clone so that this lives long enough
-                        self.curr_probe_mode = probe_rule.mode.as_ref().unwrap().clone();
-                        self.curr_probe = Some((body_clone, pred_clone));
-
-                        if !self.config.no_bundle {
-                            // since we're only supporting 'no_bundle' when 'no_body' and 'no_pred' are also true
-                            // we can simplify the check to just not emitting the probe altogether
-
-                            // emit the probe (since the predicate is not false)
-                            is_success &= self.emit_probe(&loc_info.dynamic_data);
-                        }
-
-                        // Now that we've emitted this probe, reset the symbol table's static/dynamic
-                        // data defined for this instr
-                        self.emitter.reset_table_data(&loc_info);
                     }
+
+                    self.curr_instr_args = loc_info.args.clone(); // must clone so that this lives long enough
+                    self.curr_probe_mode = probe_rule.mode.as_ref().unwrap().clone();
+                    self.curr_probe = Some((body_clone, pred_clone));
+
+                    if !self.config.no_bundle {
+                        // since we're only supporting 'no_bundle' when 'no_body' and 'no_pred' are also true
+                        // we can simplify the check to just not emitting the probe altogether
+
+                        // emit the probe (since the predicate is not false)
+                        is_success &= self.emit_probe(&loc_info.dynamic_data);
+                    }
+
+                    // Now that we've emitted this probe, reset the symbol table's static/dynamic
+                    // data defined for this instr
+                    self.emitter.reset_table_data(&loc_info);
+                }
                 // }
             };
         }

@@ -1,6 +1,6 @@
 use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::rewriting::rules::wasm::OpcodeEvent;
-use crate::emitter::rewriting::rules::{Arg, get_loc_info_for_active_probes, LocInfo, ProbeRule};
+use crate::emitter::rewriting::rules::{get_loc_info_for_active_probes, Arg, LocInfo, ProbeRule};
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use orca_wasm::ir::types::DataType as OrcaType;
 use std::collections::HashMap;
@@ -11,6 +11,7 @@ use crate::emitter::utils::{block_type_to_wasm, emit_expr, emit_stmt, EmitCtx};
 use crate::emitter::{configure_flush_routines, Emitter, InjectStrategy};
 use crate::generator::ast::UnsharedVar;
 use crate::generator::folding::ExprFolder;
+use crate::generator::rewriting::simple_ast::SimpleAstProbes;
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::report_vars::ReportVars;
@@ -28,7 +29,6 @@ use orca_wasm::iterator::module_iterator::ModuleIterator;
 use orca_wasm::opcode::{Instrumenter, MacroOpcode, Opcode};
 use orca_wasm::Location;
 use std::iter::Iterator;
-use crate::generator::rewriting::simple_ast::SimpleAstProbes;
 
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
