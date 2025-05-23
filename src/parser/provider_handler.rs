@@ -8,8 +8,8 @@ use crate::parser::types::{
     WhammParser,
 };
 use crate::parser::whamm_parser::{handle_expr, handle_param, type_from_rule};
-use glob::{glob, Pattern};
-use log::{error, trace};
+use glob::Pattern;
+use log::error;
 use pest::iterators::Pair;
 use pest::Parser;
 use serde::{Deserialize, Serialize};
@@ -994,33 +994,14 @@ fn read_yml(base_dir_tmp: &str) -> YmlDefinition {
     let mut yml_files = vec![];
 
     // push events first (sets up the anchors)
-    for path in glob(&format!("{base_dir}/providers/packages/events/*.yaml"))
-        .expect("failed to read glob pattern")
-    {
-        let file_name = path.as_ref().unwrap();
-        let unparsed_file = fs::read_to_string(file_name)
-            .unwrap_or_else(|_| panic!("Unable to read file at {:?}", &path));
-        yml_files.push(unparsed_file);
-    }
-
+    pull_yml(
+        &mut yml_files,
+        &format!("{base_dir}/providers/packages/events"),
+    );
     // push packages next (sets up the anchors)
-    for path in
-        glob(&format!("{base_dir}/providers/packages/*.yaml")).expect("failed to read glob pattern")
-    {
-        let file_name = path.as_ref().unwrap();
-        let unparsed_file = fs::read_to_string(file_name)
-            .unwrap_or_else(|_| panic!("Unable to read file at {:?}", &path));
-        yml_files.push(unparsed_file);
-    }
-
+    pull_yml(&mut yml_files, &format!("{base_dir}/providers/packages"));
     // finally the providers
-    for path in glob(&format!("{base_dir}/providers/*.yaml")).expect("failed to read glob pattern")
-    {
-        let file_name = path.as_ref().unwrap();
-        let unparsed_file = fs::read_to_string(file_name)
-            .unwrap_or_else(|_| panic!("Unable to read file at {:?}", &path));
-        yml_files.push(unparsed_file);
-    }
+    pull_yml(&mut yml_files, &format!("{base_dir}/providers"));
 
     let mut all_yml = "".to_string();
     for yml in yml_files.iter() {
@@ -1028,9 +1009,22 @@ fn read_yml(base_dir_tmp: &str) -> YmlDefinition {
     }
 
     let def: YmlDefinition = serde_yml::from_str(&all_yml).expect("Could not read values.");
-    trace!("{:?}", def);
 
     def
+}
+
+fn pull_yml(files: &mut Vec<String>, path: &str) {
+    pull_glob(files, &format!("{path}/*.yml"));
+    pull_glob(files, &format!("{path}/*.yaml"));
+}
+
+fn pull_glob(files: &mut Vec<String>, glob: &str) {
+    for path in glob::glob(glob).expect("failed to read glob pattern") {
+        let file_name = path.as_ref().unwrap();
+        let unparsed_file = fs::read_to_string(file_name)
+            .unwrap_or_else(|_| panic!("Unable to read file at {:?}", &path));
+        files.push(unparsed_file);
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
