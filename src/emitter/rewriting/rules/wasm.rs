@@ -4301,7 +4301,7 @@ fn define_imm_n(n: u32, val: Option<Value>, loc_info: &mut LocInfo) {
     loc_info.static_data.insert(format!("imm{n}"), val);
 }
 
-fn is_prog_exit_call(opcode: &Operator, wasm: &Module) -> bool {
+pub fn is_prog_exit_call(opcode: &Operator, wasm: &Module) -> bool {
     if let Operator::Call {
         function_index: fid,
     }

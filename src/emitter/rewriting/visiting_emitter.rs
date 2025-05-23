@@ -1,6 +1,6 @@
 use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::rewriting::rules::wasm::OpcodeEvent;
-use crate::emitter::rewriting::rules::{Arg, LocInfo, ProbeRule, Provider, WhammProvider};
+use crate::emitter::rewriting::rules::{Arg, get_loc_info_for_active_probes, LocInfo, ProbeRule};
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use orca_wasm::ir::types::DataType as OrcaType;
 use std::collections::HashMap;
@@ -28,6 +28,7 @@ use orca_wasm::iterator::module_iterator::ModuleIterator;
 use orca_wasm::opcode::{Instrumenter, MacroOpcode, Opcode};
 use orca_wasm::Location;
 use std::iter::Iterator;
+use crate::generator::rewriting::simple_ast::SimpleAstProbes;
 
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
@@ -136,18 +137,31 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         }
     }
 
-    pub(crate) fn get_loc_info<'h>(&self, rule: &'h WhammProvider) -> Option<LocInfo<'h>> {
-        let (curr_loc, at_func_end) = self.app_iter.curr_loc();
+    pub(crate) fn get_loc_info(&self, probes: &SimpleAstProbes) -> Option<LocInfo> {
+        let (loc, at_func_end) = self.app_iter.curr_loc();
         if at_func_end {
             // We're at the 'end' opcode of the function...don't instrument
             return None;
         }
         if let Some(curr_instr) = self.app_iter.curr_op() {
-            rule.get_loc_info(self.app_iter.module, curr_loc, curr_instr)
+            get_loc_info_for_active_probes(self.app_iter.module, loc, curr_instr, probes)
         } else {
             None
         }
     }
+
+    // pub(crate) fn get_loc_info_bk<'h>(&self, rule: &'h WhammProvider) -> Option<LocInfo<'h>> {
+    //     let (curr_loc, at_func_end) = self.app_iter.curr_loc();
+    //     if at_func_end {
+    //         // We're at the 'end' opcode of the function...don't instrument
+    //         return None;
+    //     }
+    //     if let Some(curr_instr) = self.app_iter.curr_op() {
+    //         rule.get_loc_info(self.app_iter.module, curr_loc, curr_instr)
+    //     } else {
+    //         None
+    //     }
+    // }
 
     pub(crate) fn emit_dynamic_compiler_data(
         &mut self,
