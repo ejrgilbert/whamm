@@ -18,8 +18,14 @@ use termcolor::{BufferWriter, ColorChoice, WriteColor};
 const UNEXPECTED_ERR_MSG: &str =
     "WhammParser: Looks like you've found a bug...please report this behavior! Exiting now...";
 
-pub fn print_info(rule: String, defs_path: &str, print_vars: bool, print_functions: bool, err: &mut ErrorGen) {
-    let def = yml_to_providers(&defs_path);
+pub fn print_info(
+    rule: String,
+    defs_path: &str,
+    print_vars: bool,
+    print_functions: bool,
+    err: &mut ErrorGen,
+) {
+    let def = yml_to_providers(defs_path);
     assert!(!def.is_empty());
 
     trace!("Entered print_info");
@@ -128,7 +134,11 @@ pub fn parse_script(defs_path: &str, script: &String, err: &mut ErrorGen) -> Opt
 // = AST Constructors =
 // ====================
 
-fn to_ast(defs_path: &str, pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Whamm, Box<Error<Rule>>> {
+fn to_ast(
+    defs_path: &str,
+    pair: Pair<Rule>,
+    err: &mut ErrorGen,
+) -> Result<Whamm, Box<Error<Rule>>> {
     trace!("Entered to_ast");
 
     // Create initial AST with Whamm node
@@ -168,7 +178,7 @@ fn parser_entry_point(
     pair: Pair<Rule>,
     err: &mut ErrorGen,
 ) {
-    let def = yml_to_providers(&defs_path);
+    let def = yml_to_providers(defs_path);
     assert!(!def.is_empty());
 
     trace!("Enter process_pair");

@@ -49,7 +49,7 @@ fn try_main() -> Result<(), failure::Error> {
             rule,
             vars,
             functions,
-            defs_path
+            defs_path,
         } => {
             run_info(rule, &defs_path, vars, functions);
         }
