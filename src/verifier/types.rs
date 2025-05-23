@@ -646,25 +646,25 @@ pub enum Record {
     Provider {
         name: String,
         fns: Vec<usize>,
-        globals: Vec<usize>,
+        vars: Vec<usize>,
         packages: Vec<usize>,
     },
     Package {
         name: String,
         fns: Vec<usize>,
-        globals: Vec<usize>,
+        vars: Vec<usize>,
         events: Vec<usize>,
     },
     Event {
         name: String,
         fns: Vec<usize>,
-        globals: Vec<usize>,
+        vars: Vec<usize>,
         probes: Vec<usize>,
     },
     Probe {
         mode: String,
         fns: Vec<usize>,
-        globals: Vec<usize>,
+        vars: Vec<usize>,
     },
     LibFn {
         lib_name: String,
@@ -689,8 +689,8 @@ pub enum Record {
         addr: Option<u32>,
         loc: Option<Location>,
 
-        /// Bookkeeping for provided functions that need the args defined
-        /// (only tracks this for dynamic provided functions)
+        /// Bookkeeping for bound functions that need the args defined
+        /// (only tracks this for dynamic bound functions)
         req_args: ReqArgs,
     },
     Var {
@@ -713,9 +713,9 @@ impl Record {
             _ => &None,
         }
     }
-    pub fn is_comp_provided(&self) -> bool {
+    pub fn is_comp_defined(&self) -> bool {
         match self {
-            Record::Fn { def, .. } | Record::Var { def, .. } => def.is_comp_provided(),
+            Record::Fn { def, .. } | Record::Var { def, .. } => def.is_comp_defined(),
             _ => true,
         }
     }

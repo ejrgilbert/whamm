@@ -144,6 +144,15 @@ pub enum ReqArgs {
     All,
 }
 impl ReqArgs {
+    pub fn new(n: i32) -> Self {
+        if n == -1 {
+            Self::All
+        } else if n == 0 {
+            Self::None
+        } else {
+            Self::FirstN { n: n as u32 }
+        }
+    }
     pub fn is_some(&self) -> bool {
         !matches!(self, Self::None)
     }

@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
 const CORE_WASM_PATH: &str = "./whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
+const DEFS_PATH: &str = "./";
 const TEST_DEBUG_DIR: &str = "output/tests/debug_me/";
 const OUTPUT_DIR: &str = "output/tests/wast_suite";
 const OUTPUT_WHAMMED_WAST: &str = "output/tests/wast_suite/should_pass";
@@ -226,6 +227,7 @@ fn generate_instrumented_bin_wast(
         let wast_path_str = wast_path.to_str().unwrap().replace("\"", "");
         let instrumented_module_wasm = run(
             CORE_WASM_PATH,
+            DEFS_PATH,
             &mut module_to_instrument,
             &test_case.whamm_script,
             &wast_path_str,

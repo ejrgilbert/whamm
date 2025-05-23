@@ -103,7 +103,7 @@ wasm::call:alt /
     "wasm:opcode:call:alt { var num: i64 = 0; }",
     r#"
         var count: i32;
-        wasm::i64_const:before / imm0 == 9223372036854775807 / {
+        wasm::i64.const:before / imm0 == 9223372036854775807 / {
             count++;
         }
     "#,
@@ -180,7 +180,7 @@ wasm::call:alt /
     r#"wasm::call:alt / (1 + 3) / {  }"#, // final type in predicate
     r#"wasm::call:alt / !1 / { }"#,       // unop
     // stmt
-    // Compiler provided global
+    // Compiler bound global
     r#"
 wasm::call:alt {
     target_fn_type = 1;
@@ -221,7 +221,7 @@ wasm:opcode:br:before {
     a = i ? 1 : true;
 }
     "#,
-    // calls (comp provided function)
+    // calls (comp bound function)
     r#"
 wasm::call:alt /
     target_fn_type == "import" &&
@@ -478,10 +478,12 @@ wasm::call:alt /
 
     // 7 scopes: whamm, strcmp, drop_args, script0, wasm, alt_call_by_name, alt_call_by_id, opcode, call, alt
     let num_scopes = 10;
-    // records: num_scopes PLUS (str_addr, func_id, func_name, value, fid, fname, pc, category_id, category_name, target_imp_name, target_fn_type, target_imp_module, imm0, arg[0:9]+)
+    // records: num_scopes PLUS (str_addr, func_id, func_name, value, fid, fname, pc, target_imp_name, target_fn_name, target_fn_type, target_imp_module, imm0, arg[0:9]+, category_name, category_id)
     let num_recs = num_scopes + 14;
     // asserts on very high level table structure
     assert_eq!(num_scopes, table.scopes.len());
+
+    println!("{:#?}", table.records);
 
     debug!("==================\n{:#?}", table.records);
     assert_eq!(num_recs, table.records.len());

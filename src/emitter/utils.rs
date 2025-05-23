@@ -193,7 +193,7 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                         *addr = Some(VarAddr::Local { addr: id });
                         true
                     } else {
-                        todo!()
+                        todo!("not supported the type yet: {:?} as {:#?}", var_id, ty)
                     }
                 }
             }
@@ -247,7 +247,7 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 };
 
                 *value = Some(val.clone());
-                if def.is_comp_provided() {
+                if def.is_comp_defined() {
                     return true;
                 }
             }
@@ -400,7 +400,7 @@ pub fn whamm_type_to_wasm_global(
 }
 
 pub fn block_type_to_wasm(block: &Block) -> BlockType {
-    match &block.return_ty {
+    match &block.results {
         None => BlockType::Empty,
         Some(return_ty) => {
             let wasm_ty = return_ty.to_wasm_type();
@@ -622,7 +622,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                         expr: *(*conseq).clone(),
                         loc: None,
                     }],
-                    return_ty: Some(ty.clone()),
+                    results: Some(ty.clone()),
                     loc: None,
                 },
                 &mut Block {
@@ -630,7 +630,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                         expr: *(*alt).clone(),
                         loc: None,
                     }],
-                    return_ty: Some(ty.clone()),
+                    results: Some(ty.clone()),
                     loc: None,
                 },
                 strategy,
@@ -698,7 +698,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             };
             if matches!(def, Definition::CompilerStatic) && addr.is_none() {
                 panic!("{} \
-                    Variable is provided statically by the compiler, it should've been folded by this point: {}", ctx.err_msg,
+                    Variable is bound statically by the compiler, it should've been folded by this point: {}", ctx.err_msg,
                         name);
             }
             // this will be different based on if this is a global or local var

@@ -4,18 +4,17 @@ use pest::error::LineColLocation;
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
-use termcolor::{Buffer, ColorChoice, WriteColor};
+use termcolor::Buffer;
 
-use crate::common::error::{ErrorGen, WhammError};
-use crate::common::terminal::{green, grey_italics, long_line, magenta, white, yellow};
+use crate::common::error::ErrorGen;
+use crate::common::terminal::{green, grey_italics, magenta, white, yellow};
 use crate::generator::ast::ReqArgs;
-use crate::parser::rules::{
-    print_provider_docs, provider_factory, Event, Package, Probe, Provider, WhammProvider,
+use crate::parser::provider_handler::{
+    get_matches, BoundVar, Event, Package, Probe, Provider, ProviderDef,
 };
 use orca_wasm::ir::types::DataType as OrcaType;
 use pest::pratt_parser::PrattParser;
 use pest_derive::Parser;
-use termcolor::BufferWriter;
 
 #[derive(Parser)]
 #[grammar = "./parser/whamm.pest"] // Path relative to base `src` dir
@@ -46,9 +45,6 @@ lazy_static::lazy_static! {
             .op(Op::postfix(cast))
     };
 }
-
-const UNEXPECTED_ERR_MSG: &str =
-    "WhammParser: Looks like you've found a bug...please report this behavior! Exiting now...";
 
 // ===============
 // ==== Types ====
@@ -495,6 +491,22 @@ pub enum NumLit {
     F32 { val: f32 },
     F64 { val: f64 },
 }
+impl Display for NumLit {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            NumLit::I8 { val } => write!(f, "{val}"),
+            NumLit::U8 { val } => write!(f, "{val}"),
+            NumLit::I16 { val } => write!(f, "{val}"),
+            NumLit::U16 { val } => write!(f, "{val}"),
+            NumLit::I32 { val } => write!(f, "{val}"),
+            NumLit::U32 { val } => write!(f, "{val}"),
+            NumLit::I64 { val } => write!(f, "{val}"),
+            NumLit::U64 { val } => write!(f, "{val}"),
+            NumLit::F32 { val } => write!(f, "{val}"),
+            NumLit::F64 { val } => write!(f, "{val}"),
+        }
+    }
+}
 impl NumLit {
     pub fn encode(&self) -> Vec<u8> {
         match self {
@@ -922,6 +934,23 @@ pub enum Value {
         val: Box<HashMap<u32, u32>>,
     },
 }
+impl Display for Value {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Value::Number { val, .. } => write!(f, "{val}"),
+            Value::Boolean { val } => write!(f, "{val}"),
+            Value::Str { val } => write!(f, "\"{val}\""),
+            Value::Tuple { vals, .. } => {
+                let mut vals_str = "".to_string();
+                for val in vals.iter() {
+                    vals_str = format!("{vals_str}, {val}");
+                }
+                write!(f, "({vals_str})")
+            }
+            Value::U32U32Map { .. } => write!(f, "U32U32Map {{..}}"),
+        }
+    }
+}
 impl Value {
     pub fn encode(&self) -> Vec<u8> {
         match self {
@@ -1091,7 +1120,7 @@ impl Value {
 #[derive(Clone, Debug, Default)]
 pub struct Block {
     pub stmts: Vec<Statement>,
-    pub return_ty: Option<DataType>,
+    pub results: Option<DataType>,
     pub loc: Option<Location>,
 }
 impl Block {
@@ -1255,7 +1284,7 @@ impl Expr {
     pub fn implicit_cast(&mut self, target: &DataType) -> Result<(), (String, bool)> {
         match self.internal_implicit_cast(target) {
             Err(msg) => Err((
-                format!("CastError: Cannot implicitly cast {msg} to {target}. Please add an explicit cast."),
+                format!("CastError: Cannot implicitly cast {msg}. Please add an explicit cast."),
                 false,
             )),
             _ => Ok(()),
@@ -1291,9 +1320,44 @@ impl Expr {
         }
     }
 }
+impl Display for Expr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Expr::UnOp { op, expr, .. } => match op {
+                UnOp::Cast { target } => write!(f, "{} as {}", expr, target),
+                UnOp::Not => write!(f, "!{}", expr),
+                UnOp::BitwiseNot => write!(f, "~{}", expr),
+            },
+            Expr::Ternary {
+                cond, conseq, alt, ..
+            } => {
+                write!(f, "{} ? {} : {}", cond, conseq, alt)
+            }
+            Expr::BinOp { lhs, op, rhs, .. } => {
+                write!(f, "{} {} {}", lhs, op, rhs)
+            }
+            Expr::Call {
+                fn_target, args, ..
+            } => {
+                let mut args_str = "".to_string();
+                for arg in args.iter() {
+                    args_str = format!("{args_str}. {arg}");
+                }
+                write!(f, "{fn_target}({args_str})")
+            }
+            Expr::LibCall { lib_name, call, .. } => {
+                write!(f, "{lib_name}.{}", call)
+            }
+            Expr::VarId { name, .. } => write!(f, "{name}"),
+            Expr::Primitive { val, .. } => write!(f, "{val}"),
+            Expr::MapGet { map, key, .. } => write!(f, "{map}.{}", key),
+        }
+    }
+}
 
 // Functions
 
+// TODO -- get rid of FnId?
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct FnId {
     pub name: String,
@@ -1305,7 +1369,7 @@ pub struct Fn {
     pub(crate) def: Definition,
     pub(crate) name: FnId,
     pub(crate) params: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
-    pub(crate) return_ty: DataType,
+    pub(crate) results: DataType,
     pub(crate) body: Block,
 }
 impl Fn {
@@ -1327,7 +1391,7 @@ impl Fn {
         white(true, ")".to_string(), buffer);
 
         white(true, " -> ".to_string(), buffer);
-        self.return_ty.print(buffer);
+        self.results.print(buffer);
     }
 
     pub fn is_static(&self) -> bool {
@@ -1348,13 +1412,24 @@ pub enum Definition {
     User,
     CompilerStatic,
     CompilerDynamic,
-    CompilerDerived,
+    CompilerDerived, // TODO -- can I remove this variant?
 }
 impl Definition {
-    pub fn is_comp_provided(&self) -> bool {
+    pub fn is_comp_defined(&self) -> bool {
         matches!(self, Definition::CompilerStatic)
             || matches!(self, Definition::CompilerDynamic)
             || matches!(self, Definition::CompilerDerived)
+    }
+}
+impl From<&str> for Definition {
+    fn from(value: &str) -> Self {
+        match value {
+            "user" => Self::User,
+            "static" => Self::CompilerStatic,
+            "dynamic" => Self::CompilerDynamic,
+            "derived" => Self::CompilerDerived,
+            _ => panic!("Invalid definition string: {value}"),
+        }
     }
 }
 
@@ -1388,32 +1463,19 @@ impl Global {
     }
 }
 
-pub(crate) fn print_global_vars(
-    tabs: &mut usize,
-    globals: &HashMap<String, ProvidedGlobal>,
-    buffer: &mut Buffer,
-) {
-    if !globals.is_empty() {
+pub(crate) fn print_bound_vars(tabs: &mut usize, vars: &[BoundVar], buffer: &mut Buffer) {
+    if !vars.is_empty() {
         white(true, format!("{}GLOBALS:\n", " ".repeat(*tabs * 4)), buffer);
         *tabs += 1;
-        for (.., ProvidedGlobal { docs, global, .. }) in globals.iter() {
-            white(false, " ".repeat(*tabs * 4).to_string(), buffer);
-            global.print(buffer);
-
-            *tabs += 1;
-            white(
-                false,
-                format!("\n{}{}\n", " ".repeat(*tabs * 4), docs),
-                buffer,
-            );
-            *tabs -= 1;
+        for var in vars.iter() {
+            var.print_info(buffer, tabs);
         }
         *tabs -= 1;
         white(false, "\n".to_string(), buffer);
     }
 }
 
-pub(crate) fn print_fns(tabs: &mut usize, functions: &[ProvidedFunction], buffer: &mut Buffer) {
+pub(crate) fn print_fns(tabs: &mut usize, functions: &[BoundFunction], buffer: &mut Buffer) {
     if !functions.is_empty() {
         white(
             true,
@@ -1421,7 +1483,7 @@ pub(crate) fn print_fns(tabs: &mut usize, functions: &[ProvidedFunction], buffer
             buffer,
         );
         *tabs += 1;
-        for ProvidedFunction { docs, function, .. } in functions.iter() {
+        for BoundFunction { docs, function, .. } in functions.iter() {
             green(true, " ".repeat(*tabs * 4).to_string(), buffer);
             function.print(buffer);
             green(true, "\n".to_string(), buffer);
@@ -1438,40 +1500,24 @@ pub(crate) fn print_fns(tabs: &mut usize, functions: &[ProvidedFunction], buffer
     }
 }
 
-pub type ProvidedProbes = HashMap<
-    String,
-    (
-        ProvidedFunctionality,
-        HashMap<
-            String,
-            (
-                ProvidedFunctionality,
-                HashMap<String, (ProvidedFunctionality, Vec<(ProvidedFunctionality, String)>)>,
-            ),
-        >,
-    ),
->;
-
 #[derive(Default)]
 pub struct Whamm {
-    pub provided_probes: ProvidedProbes,
-    pub fns: Vec<ProvidedFunction>,               // Comp-provided
-    pub globals: HashMap<String, ProvidedGlobal>, // Comp-provided
+    pub fns: Vec<BoundFunction>,   // Comp-provided
+    pub bound_vars: Vec<BoundVar>, // Comp-provided
 
     pub scripts: Vec<Script>,
 }
 impl Whamm {
     pub fn new() -> Self {
         Whamm {
-            provided_probes: HashMap::new(),
-            fns: Whamm::get_provided_fns(),
-            globals: Whamm::get_provided_globals(),
+            fns: Whamm::get_bound_fns(),
+            bound_vars: Whamm::get_bound_vars(),
 
             scripts: vec![],
         }
     }
 
-    fn get_provided_fns() -> Vec<ProvidedFunction> {
+    pub(crate) fn get_bound_fns() -> Vec<BoundFunction> {
         let strcmp_params = vec![
             (
                 Expr::VarId {
@@ -1493,7 +1539,7 @@ impl Whamm {
             ),
         ];
 
-        let strcmp = ProvidedFunction::new(
+        let strcmp = BoundFunction::new(
             "strcmp".to_string(),
             "Compare two wasm strings and return whether they are equivalent.".to_string(),
             strcmp_params,
@@ -1505,8 +1551,8 @@ impl Whamm {
         vec![strcmp]
     }
 
-    fn get_provided_globals() -> HashMap<String, ProvidedGlobal> {
-        HashMap::new()
+    pub(crate) fn get_bound_vars() -> Vec<BoundVar> {
+        vec![]
     }
 
     pub fn add_script(&mut self, mut script: Script) -> usize {
@@ -1694,7 +1740,7 @@ impl ProbeRule {
 pub struct Script {
     pub id: u8,
     /// The rules of the probes that have been used in the Script.
-    pub providers: HashMap<String, Box<dyn Provider>>,
+    pub providers: HashMap<String, Provider>,
     pub fns: Vec<Fn>,                     // User-provided
     pub globals: HashMap<String, Global>, // User-provided, should be VarId
     pub global_stmts: Vec<Statement>,
@@ -1715,102 +1761,6 @@ impl Script {
         }
     }
 
-    pub fn print_info(
-        &mut self,
-        probe_rule: &ProbeRule,
-        print_globals: bool,
-        print_functions: bool,
-    ) -> Result<(), Box<WhammError>> {
-        let writer = BufferWriter::stderr(ColorChoice::Always);
-        let mut buffer = writer.buffer();
-
-        // Print `whamm` info
-        let mut tabs = 0;
-        if print_globals || print_functions {
-            white(true, "\nCORE ".to_string(), &mut buffer);
-            magenta(true, "`whamm`".to_string(), &mut buffer);
-            white(true, " FUNCTIONALITY\n\n".to_string(), &mut buffer);
-
-            // Print the globals
-            if print_globals {
-                let globals = Whamm::get_provided_globals();
-                print_global_vars(&mut tabs, &globals, &mut buffer);
-            }
-
-            // Print the functions
-            if print_functions {
-                let functions = Whamm::get_provided_fns();
-                print_fns(&mut tabs, &functions, &mut buffer);
-            }
-        }
-
-        long_line(&mut buffer);
-        white(true, "\n\n".to_string(), &mut buffer);
-
-        let mut providers: HashMap<String, Box<dyn Provider>> = HashMap::new();
-        let (matched_providers, matched_packages, matched_events, _matched_modes) =
-            provider_factory::<WhammProvider>(
-                &mut providers,
-                &mut self.num_probes,
-                probe_rule,
-                None,
-                None,
-                None,
-                true,
-            )?;
-
-        // Print the matched provider information
-        if matched_providers {
-            probe_rule.print_bold_provider(&mut buffer);
-        }
-        for (.., provider) in providers.iter() {
-            print_provider_docs(
-                provider,
-                print_globals,
-                print_functions,
-                &mut tabs,
-                &mut buffer,
-            );
-        }
-        long_line(&mut buffer);
-        white(true, "\n\n".to_string(), &mut buffer);
-
-        // Print the matched package information
-        if matched_packages {
-            probe_rule.print_bold_package(&mut buffer);
-        }
-        for (.., provider) in providers.iter() {
-            provider.print_package_docs(print_globals, print_functions, &mut tabs, &mut buffer);
-        }
-        long_line(&mut buffer);
-        white(true, "\n\n".to_string(), &mut buffer);
-
-        // Print the matched event information
-        if matched_events {
-            probe_rule.print_bold_event(&mut buffer);
-        }
-        for (.., provider) in providers.iter() {
-            provider.print_event_and_mode_docs(
-                probe_rule,
-                print_globals,
-                print_functions,
-                &mut tabs,
-                &mut buffer,
-            );
-        }
-        long_line(&mut buffer);
-        white(true, "\n\n".to_string(), &mut buffer);
-
-        writer
-            .print(&buffer)
-            .expect("Uh oh, something went wrong while printing to terminal");
-        buffer
-            .reset()
-            .expect("Uh oh, something went wrong while printing to terminal");
-
-        Ok(())
-    }
-
     pub fn add_global_stmts(&mut self, global_statements: Vec<Statement>) {
         for stmt in global_statements.iter() {
             self.global_stmts.push(stmt.clone());
@@ -1822,125 +1772,31 @@ impl Script {
     pub fn add_probe(
         &mut self,
         probe_rule: &ProbeRule,
+        def: &[ProviderDef],
         predicate: Option<Expr>,
         body: Option<Block>,
-    ) -> Result<(), Box<WhammError>> {
-        let (matched_providers, matched_packages, matched_events, matched_modes): (
-            bool,
-            bool,
-            bool,
-            bool,
-        ) = provider_factory::<WhammProvider>(
-            &mut self.providers,
-            &mut self.num_probes,
-            probe_rule,
-            None,
-            predicate,
-            body,
-            false,
-        )?;
-
-        if !matched_providers {
-            return if let Some(prov_patt) = &probe_rule.provider {
-                Err(Box::new(ErrorGen::get_parse_error(
-                    true,
-                    Some(format!(
-                        "Could not find any matches for the specified provider pattern: {}",
-                        prov_patt.name
-                    )),
-                    Some(prov_patt.loc.as_ref().unwrap().line_col.clone()),
-                    vec![],
-                    vec![],
-                )))
-            } else {
-                Err(Box::new(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} Could not find a provider matching pattern!"
-                    )),
-                    None,
-                )))
-            };
+        err: &mut ErrorGen,
+    ) {
+        let matches = get_matches(probe_rule, def, err);
+        if matches.is_empty() {
+            assert!(err.has_errors);
         }
+        for prov_match in matches.iter() {
+            let provider = self
+                .providers
+                .entry(prov_match.def.name.clone())
+                .or_insert(Provider::new(prov_match.def.clone(), probe_rule));
 
-        if !matched_packages {
-            return if let Some(prov_patt) = &probe_rule.package {
-                Err(Box::new(ErrorGen::get_parse_error(
-                    true,
-                    Some(format!(
-                        "Could not find any matches for the specified package pattern: {}",
-                        prov_patt.name
-                    )),
-                    Some(prov_patt.loc.as_ref().unwrap().line_col.clone()),
-                    vec![],
-                    vec![],
-                )))
-            } else {
-                Err(Box::new(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} Could not find a package matching pattern!"
-                    )),
-                    None,
-                )))
-            };
+            provider.add_probes(
+                &prov_match.packages,
+                probe_rule,
+                predicate.clone(),
+                body.clone(),
+            );
         }
-
-        if !matched_events {
-            return if let Some(prov_patt) = &probe_rule.event {
-                Err(Box::new(ErrorGen::get_parse_error(
-                    true,
-                    Some(format!(
-                        "Could not find any matches for the specified event pattern: {}",
-                        prov_patt.name
-                    )),
-                    Some(prov_patt.loc.as_ref().unwrap().line_col.clone()),
-                    vec![],
-                    vec![],
-                )))
-            } else {
-                Err(Box::new(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} Could not find an event matching pattern!"
-                    )),
-                    None,
-                )))
-            };
-        }
-
-        if !matched_modes {
-            return if let Some(prov_patt) = &probe_rule.mode {
-                Err(Box::new(ErrorGen::get_parse_error(
-                    true,
-                    Some(format!(
-                        "Could not find any matches for the specified mode pattern: {}",
-                        prov_patt.name
-                    )),
-                    Some(prov_patt.loc.as_ref().unwrap().line_col.clone()),
-                    vec![],
-                    vec![],
-                )))
-            } else {
-                Err(Box::new(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} Could not find a mode matching pattern for {}!",
-                        probe_rule.full_name()
-                    )),
-                    None,
-                )))
-            };
-        }
-        Ok(())
     }
 }
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct ProvidedFunctionality {
-    pub name: String,
-    pub docs: String,
-}
 #[derive(Clone, Debug)]
 pub struct ProvidedGlobal {
     pub name: String,
@@ -1960,8 +1816,6 @@ impl ProvidedGlobal {
     ) -> Self {
         let def = if is_static {
             Definition::CompilerStatic
-        } else if derived_from.is_some() {
-            Definition::CompilerDerived
         } else {
             Definition::CompilerDynamic
         };
@@ -1985,13 +1839,13 @@ impl ProvidedGlobal {
     }
 }
 #[derive(Clone, Debug)]
-pub struct ProvidedFunction {
+pub struct BoundFunction {
     pub name: String,
     pub docs: String,
     pub function: Fn,
     pub req_args: ReqArgs,
 }
-impl ProvidedFunction {
+impl BoundFunction {
     pub fn new(
         name: String,
         docs: String,
@@ -2011,10 +1865,10 @@ impl ProvidedFunction {
                 },
                 name: FnId { name, loc: None },
                 params,
-                return_ty,
+                results: return_ty,
                 body: Block {
                     stmts: vec![],
-                    return_ty: None,
+                    results: None,
                     loc: None,
                 },
             },
@@ -2064,6 +1918,30 @@ pub enum BinOp {
     BitOr,
     BitXor,
 }
+impl Display for BinOp {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BinOp::And => write!(f, "&&"),
+            BinOp::Or => write!(f, "||"),
+            BinOp::EQ => write!(f, "=="),
+            BinOp::NE => write!(f, "!="),
+            BinOp::GE => write!(f, ">="),
+            BinOp::GT => write!(f, ">"),
+            BinOp::LE => write!(f, "<="),
+            BinOp::LT => write!(f, "<"),
+            BinOp::Add => write!(f, "+"),
+            BinOp::Subtract => write!(f, "-"),
+            BinOp::Multiply => write!(f, "*"),
+            BinOp::Divide => write!(f, "/"),
+            BinOp::Modulo => write!(f, "%"),
+            BinOp::LShift => write!(f, "<<"),
+            BinOp::RShift => write!(f, ">>"),
+            BinOp::BitAnd => write!(f, "&"),
+            BinOp::BitOr => write!(f, "|"),
+            BinOp::BitXor => write!(f, "^"),
+        }
+    }
+}
 
 // =================
 // ==== Visitor ====
@@ -2075,10 +1953,10 @@ pub enum BinOp {
 pub trait WhammVisitor<T> {
     fn visit_whamm(&mut self, whamm: &Whamm) -> T;
     fn visit_script(&mut self, script: &Script) -> T;
-    fn visit_provider(&mut self, provider: &Box<dyn Provider>) -> T;
-    fn visit_package(&mut self, package: &dyn Package) -> T;
-    fn visit_event(&mut self, event: &dyn Event) -> T;
-    fn visit_probe(&mut self, probe: &Box<dyn Probe>) -> T;
+    fn visit_provider(&mut self, provider: &Provider) -> T;
+    fn visit_package(&mut self, package: &Package) -> T;
+    fn visit_event(&mut self, event: &Event) -> T;
+    fn visit_probe(&mut self, probe: &Probe) -> T;
     // fn visit_predicate(&mut self, predicate: &Expr) -> T;
     fn visit_fn(&mut self, f: &Fn) -> T;
     fn visit_formal_param(&mut self, param: &(Expr, DataType)) -> T;
@@ -2091,14 +1969,14 @@ pub trait WhammVisitor<T> {
     fn visit_value(&mut self, val: &Value) -> T;
 }
 
-/// To support setting constant-provided global vars
+/// To support setting constant bound vars
 pub trait WhammVisitorMut<T> {
     fn visit_whamm(&mut self, whamm: &mut Whamm) -> T;
     fn visit_script(&mut self, script: &mut Script) -> T;
-    fn visit_provider(&mut self, provider: &mut Box<dyn Provider>) -> T;
-    fn visit_package(&mut self, package: &mut dyn Package) -> T;
-    fn visit_event(&mut self, event: &mut dyn Event) -> T;
-    fn visit_probe(&mut self, probe: &mut Box<dyn Probe>) -> T;
+    fn visit_provider(&mut self, provider: &mut Provider) -> T;
+    fn visit_package(&mut self, package: &mut Package) -> T;
+    fn visit_event(&mut self, event: &mut Event) -> T;
+    fn visit_probe(&mut self, probe: &mut Probe) -> T;
     fn visit_fn(&mut self, f: &mut Fn) -> T;
     fn visit_formal_param(&mut self, param: &mut (Expr, DataType)) -> T;
     fn visit_block(&mut self, block: &mut Block) -> T;

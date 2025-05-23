@@ -131,6 +131,7 @@ impl Config {
 
 pub fn run_with_path(
     core_wasm_path: &str,
+    defs_path: &str,
     app_wasm_path: String,
     script_path: String,
     user_lib_paths: Option<Vec<String>>,
@@ -169,6 +170,7 @@ pub fn run_with_path(
 
     let wasm_result = run(
         core_wasm_path,
+        defs_path,
         &mut target_wasm,
         &whamm_script,
         &script_path,
@@ -204,6 +206,7 @@ pub fn parse_user_lib_paths(paths: Vec<String>) -> Vec<(String, String, Vec<u8>)
 
 pub fn run(
     core_wasm_path: &str,
+    defs_path: &str,
     target_wasm: &mut Module,
     whamm_script: &String,
     script_path: &str,
@@ -221,7 +224,7 @@ pub fn run(
     }
 
     // Process the script
-    let mut whamm = get_script_ast(whamm_script, &mut err);
+    let mut whamm = get_script_ast(defs_path, whamm_script, &mut err);
     let (mut symbol_table, has_reports) = get_symbol_table(&mut whamm, &user_lib_modules, &mut err);
     err.check_too_many();
 
@@ -343,7 +346,7 @@ fn run_instr_wizard(
     let err = metadata_collector.err;
     let config = metadata_collector.config;
     let wiz_ast = metadata_collector.ast;
-    let used_funcs = metadata_collector.used_provided_fns;
+    let used_funcs = metadata_collector.used_bound_fns;
     let used_report_dts = metadata_collector.used_report_var_dts;
     let used_strings = metadata_collector.strings_to_emit;
 
@@ -391,11 +394,11 @@ fn run_instr_rewrite(
     let table = metadata_collector.table;
     let err = metadata_collector.err;
     let ast = metadata_collector.ast;
-    let used_funcs = metadata_collector.used_provided_fns;
+    let used_funcs = metadata_collector.used_bound_fns;
     let used_strings = metadata_collector.strings_to_emit;
     let config = metadata_collector.config;
 
-    // Phase 0 of instrumentation (emit globals and provided fns)
+    // Phase 0 of instrumentation (emit bound variables and fns)
     let mut init = InitGenerator {
         emitter: ModuleEmitter::new(
             InjectStrategy::Rewriting,
@@ -504,9 +507,9 @@ fn verify_ast(ast: &mut Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> bool
     has_reports
 }
 
-fn get_script_ast(script: &String, err: &mut ErrorGen) -> Whamm {
+fn get_script_ast(defs_path: &str, script: &String, err: &mut ErrorGen) -> Whamm {
     // Parse the script and build the AST
-    match parse_script(script, err) {
+    match parse_script(defs_path, script, err) {
         Some(ast) => {
             info!("successfully parsed");
             err.check_too_many();

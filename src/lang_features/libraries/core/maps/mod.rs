@@ -148,7 +148,7 @@ impl AstVisitor<bool> for MapLibPackage {
                 return true;
             }
         }
-        if self.visit_datatype(&f.return_ty) {
+        if self.visit_datatype(&f.results) {
             return true;
         }
         if self.visit_block(&f.body) {

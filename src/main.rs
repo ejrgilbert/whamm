@@ -47,10 +47,11 @@ fn try_main() -> Result<(), failure::Error> {
     match cli.command {
         Cmd::Info {
             rule,
-            globals,
+            vars,
             functions,
+            defs_path,
         } => {
-            run_info(rule, globals, functions);
+            run_info(rule, &defs_path, vars, functions);
         }
         Cmd::Wast { wast_path } => {
             run_wast(wast_path);
@@ -70,6 +71,7 @@ fn try_main() -> Result<(), failure::Error> {
             };
             common::instr::run_with_path(
                 &core_lib_path,
+                &args.defs_path,
                 app_path,
                 args.script,
                 args.user_libs,
@@ -93,10 +95,10 @@ fn try_main() -> Result<(), failure::Error> {
     Ok(())
 }
 
-fn run_info(rule: String, print_globals: bool, print_functions: bool) {
+fn run_info(rule: String, defs_path: &str, print_vars: bool, print_functions: bool) {
     // Parse the script and generate the information
     let mut err = ErrorGen::new("".to_string(), rule.clone(), MAX_ERRORS);
-    print_info(rule, print_globals, print_functions, &mut err);
+    print_info(rule, defs_path, print_vars, print_functions, &mut err);
 
     err.fatal_report("PrintInfo");
 }

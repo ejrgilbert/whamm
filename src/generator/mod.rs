@@ -1,10 +1,10 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::module_emitter::ModuleEmitter;
 use crate::lang_features::report_vars::{BytecodeLoc, LocationData};
-use crate::parser::rules::{Event, Package, Probe, Provider};
+use crate::parser::provider_handler::{BoundFunc, Event, ModeKind, Package, Probe, Provider};
 use crate::parser::types::{
-    BinOp, Block, DataType, Definition, Expr, Fn, FnId, Global, ProbeRule, ProvidedFunction,
-    Script, Statement, UnOp, Value, Whamm, WhammVisitorMut,
+    BinOp, Block, BoundFunction, DataType, Definition, Expr, Fn, FnId, Global, ProbeRule, Script,
+    Statement, UnOp, Value, Whamm, WhammVisitorMut,
 };
 use crate::verifier::types::Record;
 use itertools::Itertools;
@@ -38,16 +38,16 @@ fn emit_needed_funcs(
     err: &mut ErrorGen,
 ) {
     for (context, fname) in funcs.iter() {
-        if let Some(fid) = emitter.emit_provided_fn(
+        if let Some(fid) = emitter.emit_bound_fn(
             context,
-            &crate::parser::types::Fn {
+            &Fn {
                 def: Definition::CompilerDynamic,
                 name: FnId {
                     name: fname.clone(),
                     loc: None,
                 },
                 params: vec![],
-                return_ty: DataType::Boolean,
+                results: DataType::Boolean,
                 body: Default::default(),
             },
             err,
@@ -124,10 +124,10 @@ pub trait GeneratingVisitor: WhammVisitorMut<bool> {
         is_success
     }
 
-    fn visit_before_probes(&mut self, event: &mut dyn Event) -> bool {
+    fn visit_before_probes(&mut self, event: &mut Event) -> bool {
         trace!("Entering: CodeGenerator::visit_before_probes");
         let mut is_success = true;
-        if let Some(probes) = event.probes_mut().get_mut(&"before".to_string()) {
+        if let Some(probes) = event.probes.get_mut(&ModeKind::Before) {
             probes.iter_mut().for_each(|probe| {
                 is_success &= self.visit_probe(probe);
             });
@@ -136,10 +136,10 @@ pub trait GeneratingVisitor: WhammVisitorMut<bool> {
         is_success
     }
 
-    fn visit_alt_probes(&mut self, event: &mut dyn Event) -> bool {
+    fn visit_alt_probes(&mut self, event: &mut Event) -> bool {
         trace!("Entering: CodeGenerator::visit_alt_probes");
         let mut is_success = true;
-        if let Some(probes) = event.probes_mut().get_mut(&"alt".to_string()) {
+        if let Some(probes) = event.probes.get_mut(&ModeKind::Alt) {
             // only will emit one alt probe!
             // The last alt probe in the list will be emitted.
             if probes.len() > 1 {
@@ -153,10 +153,10 @@ pub trait GeneratingVisitor: WhammVisitorMut<bool> {
         is_success
     }
 
-    fn visit_after_probes(&mut self, event: &mut dyn Event) -> bool {
+    fn visit_after_probes(&mut self, event: &mut Event) -> bool {
         trace!("Entering: CodeGenerator::visit_after_probes");
         let mut is_success = true;
-        if let Some(probes) = event.probes_mut().get_mut(&"after".to_string()) {
+        if let Some(probes) = event.probes.get_mut(&ModeKind::After) {
             probes.iter_mut().for_each(|probe| {
                 is_success &= self.visit_probe(probe);
             });
@@ -177,7 +177,7 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
         whamm
             .fns
             .iter_mut()
-            .for_each(|ProvidedFunction { function, .. }| {
+            .for_each(|BoundFunction { function, .. }| {
                 is_success &= self.visit_fn(function);
             });
         // do not inject globals into Wasm that are used/defined by the compiler
@@ -223,23 +223,25 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
         is_success
     }
 
-    fn visit_provider(&mut self, provider: &mut Box<dyn Provider>) -> bool {
+    fn visit_provider(&mut self, provider: &mut Provider) -> bool {
         trace!("Entering: CodeGenerator::visit_provider");
         self.enter_scope();
-        self.append_context_name(format!(":{}", provider.name()));
+        self.append_context_name(format!(":{}", provider.def.name));
         let mut is_success = true;
 
         // visit fns
-        provider.get_provided_fns_mut().iter_mut().for_each(
-            |ProvidedFunction { function, .. }| {
-                is_success &= self.visit_fn(function);
-            },
-        );
+        provider
+            .def
+            .bound_fns
+            .iter_mut()
+            .for_each(|BoundFunc { func, .. }| {
+                is_success &= self.visit_fn(func);
+            });
         // do not inject globals into Wasm that are used/defined by the compiler
         // because they are statically-defined and folded away
 
         // visit the packages
-        provider.packages_mut().for_each(|package| {
+        provider.packages.values_mut().for_each(|package| {
             is_success &= self.visit_package(package);
         });
 
@@ -249,23 +251,25 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
         is_success
     }
 
-    fn visit_package(&mut self, package: &mut dyn Package) -> bool {
+    fn visit_package(&mut self, package: &mut Package) -> bool {
         trace!("Entering: CodeGenerator::visit_package");
         self.enter_scope();
-        self.append_context_name(format!(":{}", package.name()));
+        self.append_context_name(format!(":{}", package.def.name));
         let mut is_success = true;
 
         // visit fns
-        package.get_provided_fns_mut().iter_mut().for_each(
-            |ProvidedFunction { function, .. }| {
-                is_success &= self.visit_fn(function);
-            },
-        );
+        package
+            .def
+            .bound_fns
+            .iter_mut()
+            .for_each(|BoundFunc { func, .. }| {
+                is_success &= self.visit_fn(func);
+            });
         // do not inject globals into Wasm that are used/defined by the compiler
         // because they are statically-defined and folded away
 
         // visit the events
-        package.events_mut().for_each(|event| {
+        package.events.values_mut().for_each(|event| {
             is_success &= self.visit_event(event);
         });
 
@@ -275,18 +279,20 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
         is_success
     }
 
-    fn visit_event(&mut self, event: &mut dyn Event) -> bool {
+    fn visit_event(&mut self, event: &mut Event) -> bool {
         trace!("Entering: CodeGenerator::visit_event");
         self.enter_scope();
-        self.append_context_name(format!(":{}", event.name()));
+        self.append_context_name(format!(":{}", event.def.name));
         let mut is_success = true;
 
         // visit fns
-        event.get_provided_fns_mut().iter_mut().for_each(
-            |ProvidedFunction { function, .. }| {
-                is_success &= self.visit_fn(function);
-            },
-        );
+        event
+            .def
+            .bound_fns
+            .iter_mut()
+            .for_each(|BoundFunc { func, .. }| {
+                is_success &= self.visit_fn(func);
+            });
         // do not inject globals into Wasm that are used/defined by the compiler
         // because they are statically-defined and folded away
 
@@ -304,18 +310,20 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
         is_success
     }
 
-    fn visit_probe(&mut self, probe: &mut Box<dyn Probe>) -> bool {
+    fn visit_probe(&mut self, probe: &mut Probe) -> bool {
         trace!("Entering: CodeGenerator::visit_probe");
         self.enter_scope();
-        self.append_context_name(format!(":{}", probe.mode().name()));
+        self.append_context_name(format!(":{}", probe.kind.name()));
         let mut is_success = true;
 
         // visit fns
-        probe.get_mode_provided_fns_mut().iter_mut().for_each(
-            |ProvidedFunction { function, .. }| {
-                is_success &= self.visit_fn(function);
-            },
-        );
+        probe
+            .def
+            .bound_fns
+            .iter_mut()
+            .for_each(|BoundFunc { func, .. }| {
+                is_success &= self.visit_fn(func);
+            });
         // do not inject globals into Wasm that are used/defined by the compiler
         // because they are statically-defined and folded away
 
@@ -325,10 +333,10 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
         // be needed dynamically (e.g. target_fn_name == "call_new" would be
         // constant-propagated away). Maybe there's a way to avoid this?
         // We could deal with this optimization in the future.
-        if let Some(pred) = probe.predicate_mut() {
+        if let Some(pred) = &mut probe.predicate {
             is_success &= self.visit_expr(pred);
         }
-        if let Some(body) = probe.body_mut() {
+        if let Some(body) = &mut probe.body {
             is_success &= self.visit_stmts(body.stmts.as_mut_slice());
         }
 

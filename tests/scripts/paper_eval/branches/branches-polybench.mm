@@ -1,5 +1,5 @@
 // Matches _if and br_if events
-wasm::*_if:before {
+wasm::*if:before {
     report unshared var taken: i32;
     report unshared var not_taken: i32;
 

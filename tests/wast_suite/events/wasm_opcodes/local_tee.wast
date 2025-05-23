@@ -93,7 +93,7 @@
 
 ;; ----------------------
 ;; ==== unpredicated ====
-;; WHAMM --> var count: i32; wasm:opcode:local_tee:before { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:local.tee:before { count++; }
 (assert_return (invoke "get_count") (i32.const 8))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
@@ -101,41 +101,41 @@
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
 
 ;; target a specific `block` using `fn_id`/`fname`/`pc`
-;; WHAMM --> var count: i32; wasm:opcode:local_tee:before /imm0 == 3/ { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:local.tee:before /imm0 == 3/ { count++; }
 (assert_return (invoke "get_count") (i32.const 0)) ;; location DNE
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
-;; WHAMM --> var count: i32; wasm:opcode:local_tee:before /imm0 == 0/ { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:local.tee:before /imm0 == 0/ { count++; }
 (assert_return (invoke "get_count") (i32.const 0)) ;; location DNE
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
 
-;; WHAMM --> var count: i32; wasm:opcode:local_tee:before /imm0 == 1/ { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:local.tee:before /imm0 == 1/ { count++; }
 (assert_return (invoke "get_count") (i32.const 5))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
 
-;; WHAMM --> var count: i32; wasm:opcode:local_tee:before /fid == 2 && pc == 4/ { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:local.tee:before /fid == 2 && pc == 4/ { count++; }
 (assert_return (invoke "get_count") (i32.const 1))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
 
-;; WHAMM --> var count: i32; wasm:opcode:local_tee:before /fid == 2/ { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:local.tee:before /fid == 2/ { count++; }
 (assert_return (invoke "get_count") (i32.const 1))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
 
-;; WHAMM --> var count: i32; wasm:opcode:local_tee:before /fname == "basic_br" && pc == 4/ { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:local.tee:before /fname == "basic_br" && pc == 4/ { count++; }
 (assert_return (invoke "get_count") (i32.const 1))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
@@ -143,7 +143,7 @@
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
 
 ;; after mode
-;; WHAMM --> var count: i32; wasm:opcode:local_tee:after /fname == "basic_br" && pc == 4/ { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:local.tee:after /fname == "basic_br" && pc == 4/ { count++; }
 (assert_return (invoke "get_count") (i32.const 1))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
@@ -152,7 +152,7 @@
 
 ;;;;;; TODO -- what to do about assigning to static data?
 ;;;;;; alt mode
-;;;;;; WHAMM --> wasm:opcode:local_tee:alt /fname == "more_nesting" && pc == 1/ { imm0 = 2; }
+;;;;;; WHAMM --> wasm:opcode:local.tee:alt /fname == "more_nesting" && pc == 1/ { imm0 = 2; }
 ;;;;;; @passes_uninstr
 ;;;;(assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
 ;;;;;; @passes_uninstr

@@ -1,48 +1,107 @@
 use crate::common::error::{ErrorGen, WhammError};
+use crate::common::terminal::{long_line, magenta, white};
+use crate::parser::provider_handler::{get_matches, yml_to_providers, PrintInfo, ProviderDef};
 use crate::parser::types;
 use crate::parser::types::Statement::LibImport;
 use crate::parser::types::{
-    BinOp, Block, DataType, Definition, Expr, FnId, Location, NumFmt, NumLit, ProbeRule, Rule,
-    RulePart, Script, Statement, UnOp, Value, Whamm, WhammParser, PRATT_PARSER,
+    print_bound_vars, print_fns, BinOp, Block, DataType, Definition, Expr, FnId, Location, NumFmt,
+    NumLit, ProbeRule, Rule, RulePart, Script, Statement, UnOp, Value, Whamm, WhammParser,
+    PRATT_PARSER,
 };
 use log::trace;
 use pest::error::{Error, LineColLocation};
 use pest::iterators::{Pair, Pairs};
 use pest::Parser;
 use std::str::FromStr;
+use termcolor::{BufferWriter, ColorChoice, WriteColor};
 
 const UNEXPECTED_ERR_MSG: &str =
     "WhammParser: Looks like you've found a bug...please report this behavior! Exiting now...";
 
-pub fn print_info(rule: String, print_globals: bool, print_functions: bool, err: &mut ErrorGen) {
+pub fn print_info(
+    rule: String,
+    defs_path: &str,
+    print_vars: bool,
+    print_functions: bool,
+    err: &mut ErrorGen,
+) {
+    let def = yml_to_providers(defs_path);
+    assert!(!def.is_empty());
+
     trace!("Entered print_info");
     err.set_script_text(rule.to_owned());
+
+    let writer = BufferWriter::stderr(ColorChoice::Always);
+    let mut whamm_buffer = writer.buffer();
+
+    // Print `whamm` info
+    let mut tabs = 0;
+    if print_vars || print_functions {
+        white(true, "\nCORE ".to_string(), &mut whamm_buffer);
+        magenta(true, "`whamm`".to_string(), &mut whamm_buffer);
+        white(true, " FUNCTIONALITY\n\n".to_string(), &mut whamm_buffer);
+
+        // Print the vars
+        if print_vars {
+            let vars = Whamm::get_bound_vars();
+            print_bound_vars(&mut tabs, &vars, &mut whamm_buffer);
+        }
+
+        // Print the functions
+        if print_functions {
+            let functions = Whamm::get_bound_fns();
+            print_fns(&mut tabs, &functions, &mut whamm_buffer);
+        }
+    }
+
+    long_line(&mut whamm_buffer);
+    white(true, "\n\n".to_string(), &mut whamm_buffer);
+
+    let mut prov_buff = writer.buffer();
+    let mut pkg_buff = writer.buffer();
+    let mut evt_buff = writer.buffer();
 
     let res = WhammParser::parse(Rule::PROBE_RULE, &rule);
     match res {
         Ok(mut pairs) => {
             // Create the probe rule from the input string
-            let probe_rule = handle_probe_rule(
-                // inner of script
-                pairs.next().unwrap(),
-                err,
-            );
+            let probe_rule = handle_probe_rule(pairs.next().unwrap(), err);
 
             // Print the information for the passed probe rule
-            let mut whamm = Whamm::new();
-            let id = whamm.add_script(Script::new());
-            let script: &mut Script = whamm.scripts.get_mut(id).unwrap();
-            if let Err(e) = script.print_info(&probe_rule, print_globals, print_functions) {
-                err.add_error(*e);
+            let matches = get_matches(&probe_rule, &def, err);
+            let mut tabs = 0;
+            if !matches.is_empty() {
+                probe_rule.print_bold_provider(&mut prov_buff);
+                for provider in matches.iter() {
+                    provider.print_info(
+                        &probe_rule,
+                        print_vars,
+                        print_functions,
+                        &mut prov_buff,
+                        &mut pkg_buff,
+                        &mut evt_buff,
+                        &mut tabs,
+                    );
+                }
             }
         }
         Err(e) => {
             err.pest_err(e);
         }
     }
+
+    let mut buffs = [whamm_buffer, prov_buff, pkg_buff, evt_buff];
+
+    for buff in buffs.iter_mut() {
+        writer
+            .print(buff)
+            .expect("Uh oh, something went wrong while printing to terminal");
+        buff.reset()
+            .expect("Uh oh, something went wrong while printing to terminal");
+    }
 }
 
-pub fn parse_script(script: &String, err: &mut ErrorGen) -> Option<Whamm> {
+pub fn parse_script(defs_path: &str, script: &String, err: &mut ErrorGen) -> Option<Whamm> {
     trace!("Entered parse_script");
     err.set_script_text(script.to_owned());
 
@@ -50,6 +109,7 @@ pub fn parse_script(script: &String, err: &mut ErrorGen) -> Option<Whamm> {
     match res {
         Ok(mut pairs) => {
             let res = to_ast(
+                defs_path,
                 // inner of script
                 pairs.next().unwrap(),
                 err,
@@ -74,7 +134,11 @@ pub fn parse_script(script: &String, err: &mut ErrorGen) -> Option<Whamm> {
 // = AST Constructors =
 // ====================
 
-pub fn to_ast(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Whamm, Box<Error<Rule>>> {
+fn to_ast(
+    defs_path: &str,
+    pair: Pair<Rule>,
+    err: &mut ErrorGen,
+) -> Result<Whamm, Box<Error<Rule>>> {
     trace!("Entered to_ast");
 
     // Create initial AST with Whamm node
@@ -83,7 +147,7 @@ pub fn to_ast(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Whamm, Box<Error<R
 
     match pair.as_rule() {
         Rule::script => {
-            parser_entry_point(&mut whamm, script_count, pair, err);
+            parser_entry_point(defs_path, &mut whamm, script_count, pair, err);
         }
         rule => {
             err.parse_error(
@@ -107,17 +171,21 @@ pub fn to_ast(pair: Pair<Rule>, err: &mut ErrorGen) -> Result<Whamm, Box<Error<R
 // = Pair Handling Logic =
 // =======================
 
-pub fn parser_entry_point(
+fn parser_entry_point(
+    defs_path: &str,
     whamm: &mut Whamm,
     script_count: usize,
     pair: Pair<Rule>,
     err: &mut ErrorGen,
 ) {
+    let def = yml_to_providers(defs_path);
+    assert!(!def.is_empty());
+
     trace!("Enter process_pair");
     match pair.as_rule() {
         Rule::script => {
             trace!("Begin process script");
-            handle_script(whamm, pair, err);
+            handle_script(defs_path, whamm, pair, err);
             trace!("End process script");
         }
         Rule::lib_import => handle_lib_import(whamm, script_count, pair),
@@ -133,7 +201,7 @@ pub fn parser_entry_point(
         }
         Rule::probe_def => {
             trace!("Begin process probe_def");
-            handle_probe_def(whamm, script_count, pair, err);
+            handle_probe_def(whamm, &def, script_count, pair, err);
             trace!("End process probe_def");
         }
         Rule::EOI => {}
@@ -163,12 +231,12 @@ pub fn parser_entry_point(
     trace!("Exit process_pair");
 }
 
-pub fn handle_script(whamm: &mut Whamm, pair: Pair<Rule>, err: &mut ErrorGen) {
+pub fn handle_script(defs_path: &str, whamm: &mut Whamm, pair: Pair<Rule>, err: &mut ErrorGen) {
     let base_script = Script::new();
     let new_script_count = whamm.add_script(base_script);
 
     pair.into_inner().for_each(|p| {
-        parser_entry_point(whamm, new_script_count, p, err);
+        parser_entry_point(defs_path, whamm, new_script_count, p, err);
     });
 }
 
@@ -212,6 +280,7 @@ pub fn handle_global_statements(
 
 pub fn handle_probe_def(
     whamm: &mut Whamm,
+    prov_def: &[ProviderDef],
     script_count: usize,
     pair: Pair<Rule>,
     err: &mut ErrorGen,
@@ -259,9 +328,7 @@ pub fn handle_probe_def(
 
     // Add probe definition to the script
     let script: &mut Script = whamm.scripts.get_mut(script_count).unwrap();
-    if let Err(e) = script.add_probe(&probe_rule, this_predicate, this_body) {
-        err.add_error(*e);
-    }
+    script.add_probe(&probe_rule, prov_def, this_predicate, this_body, err);
 }
 
 pub fn handle_fn_def(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, err: &mut ErrorGen) {
@@ -326,7 +393,7 @@ pub fn handle_fn_def(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, e
         name: fn_id,
         params,
         body,
-        return_ty,
+        results: return_ty,
     });
 }
 
@@ -382,7 +449,7 @@ fn handle_body(pairs: &mut Pairs<Rule>, line_col: LineColLocation, err: &mut Err
     }
     Block {
         stmts,
-        return_ty: None,
+        results: None,
         loc: Some(Location {
             line_col,
             path: None,
@@ -748,7 +815,7 @@ fn handle_if(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                 conseq,
                 alt: Block {
                     stmts: vec![],
-                    return_ty: None,
+                    results: None,
                     loc: Some(Location {
                         line_col: if_stmt_line_col.clone(),
                         path: None,
@@ -816,7 +883,7 @@ fn handle_elif(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
                 conseq: inner_block,
                 alt: Block {
                     stmts: vec![],
-                    return_ty: None,
+                    results: None,
                     loc: Some(Location {
                         line_col: alt_loc.clone(),
                         path: None,
@@ -827,7 +894,7 @@ fn handle_elif(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
                     path: None,
                 }),
             }],
-            return_ty: None,
+            results: None,
             loc: Some(Location {
                 line_col: alt_loc.clone(),
                 path: None,
@@ -847,7 +914,7 @@ fn handle_elif(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
                 path: None,
             }),
         }],
-        return_ty: None,
+        results: None,
         loc: Some(Location {
             line_col: alt_loc.clone(),
             path: None,
@@ -924,7 +991,7 @@ fn handle_special_decl(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
 }
 // EXPRESSIONS
 
-fn handle_param(mut pairs: Pairs<Rule>, err: &mut ErrorGen) -> Option<(Expr, DataType)> {
+pub fn handle_param(mut pairs: Pairs<Rule>, err: &mut ErrorGen) -> Option<(Expr, DataType)> {
     if let Some(id_rule) = pairs.next() {
         // process the name
         let id = handle_id(id_rule);
@@ -1083,7 +1150,7 @@ fn handle_arg(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
 /// I think this would be a problem even if we were to refactor the Parser into an object that
 /// would hold the mutable reference to the error gen as a member field. This is because you'd call
 /// self.<something> which would require 2 mutable references to self between the closures.
-fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
+pub fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     let pairs = pair.into_inner();
     PRATT_PARSER
         .map_primary(|primary| -> Result<Expr, Vec<WhammError>> { expr_primary(primary) })
@@ -1268,26 +1335,6 @@ fn probe_rule_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeRule {
     let rule_as_str = pair.as_str();
     let mut parts = pair.into_inner();
 
-    if rule_as_str.to_uppercase() == "BEGIN" || rule_as_str.to_uppercase() == "END" {
-        // This is a BEGIN or END probe! Special case
-        let loc = if let Some(rule) = parts.next() {
-            let id_line_col = LineColLocation::from(rule.as_span());
-            Some(Location {
-                line_col: id_line_col,
-                path: None,
-            })
-        } else {
-            None
-        };
-
-        return ProbeRule {
-            provider: Some(RulePart::new("core".to_string(), loc.clone())),
-            package: Some(RulePart::new("*".to_string(), loc.clone())),
-            event: Some(RulePart::new("*".to_string(), loc.clone())),
-            mode: Some(RulePart::new(rule_as_str.to_string(), loc)),
-        };
-    }
-
     let simplified = if let Some((prefix, postfix)) = rule_as_str.split_once("(") {
         let (_, after) = postfix.split_once(")").unwrap();
         format!("{prefix}{after}")
@@ -1397,7 +1444,7 @@ fn type_from_rule_handler(pair: Pair<Rule>, err: &mut ErrorGen) -> DataType {
     }
 }
 
-fn type_from_rule(pair: Pair<Rule>) -> Result<DataType, Vec<WhammError>> {
+pub fn type_from_rule(pair: Pair<Rule>) -> Result<DataType, Vec<WhammError>> {
     trace!("Entering type_from_rule");
     return match pair.as_rule() {
         Rule::TY_U8 => Ok(DataType::U8),
@@ -1412,6 +1459,7 @@ fn type_from_rule(pair: Pair<Rule>) -> Result<DataType, Vec<WhammError>> {
         Rule::TY_F64 => Ok(DataType::F64),
         Rule::TY_BOOL => Ok(DataType::Boolean),
         Rule::TY_STRING => Ok(DataType::Str),
+        Rule::TY_UNKNOWN => Ok(DataType::Unknown),
         Rule::TY_TUPLE => {
             let mut tuple_content_types = vec![];
             for p in pair.into_inner() {

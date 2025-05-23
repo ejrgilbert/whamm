@@ -1,6 +1,6 @@
 use crate::common::error::ErrorGen;
 use crate::generator::ast::ReqArgs;
-use crate::parser::rules::{Event, Package, Probe, Provider, UNKNOWN_IMMS};
+use crate::parser::provider_handler::{Event, Package, Probe, Provider};
 use crate::parser::types::Definition::{CompilerDynamic, CompilerStatic};
 use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Fn, Location, Script, Statement, UnOp, Value, Whamm,
@@ -13,6 +13,7 @@ use pest::error::LineColLocation;
 use std::collections::{HashMap, HashSet};
 use std::vec;
 
+pub const UNKNOWN_IMMS: &str = "imm[0:9]+";
 const UNEXPECTED_ERR_MSG: &str =
     "TypeChecker: Looks like you've found a bug...please report this behavior! Exiting now...";
 
@@ -67,22 +68,24 @@ pub fn check_duplicate_id(
         };
         let old_loc = old_rec.loc();
         if old_loc.is_none() {
-            //make sure old_rec is comp provided
-            if old_rec.is_comp_provided() {
+            //make sure old_rec is comp defined
+            if old_rec.is_comp_defined() {
                 let new_loc = loc.as_ref().map(|l| l.line_col.clone());
                 if loc.is_none() {
-                    // happens if new_loc is compiler-provided or is a user-def func without location -- both should throw unexpected error
-                    panic!("{UNEXPECTED_ERR_MSG} No location found for record");
+                    // happens if new_loc is compiler-defined or is a user-def func without location -- both should throw unexpected error
+                    println!("{:#?}", old_rec);
+                    println!("{:#?}", table.get_curr_scope());
+                    panic!("{UNEXPECTED_ERR_MSG} No location found for record: {name}");
                 } else {
                     err.compiler_fn_overload_error(false, name.to_string(), new_loc);
                 }
             } else {
-                panic!("{UNEXPECTED_ERR_MSG} Expected other record to be provided by compiler.");
+                panic!("{UNEXPECTED_ERR_MSG} Expected other record to be defined by compiler.");
             }
         } else if loc.is_none() {
-            // happens if new ID is compiler-provided or is a user-def func without location
-            //if new ID is compiler-provided, throw compiler overload error for the old record
-            if definition.is_comp_provided() {
+            // happens if new ID is compiler-defined or is a user-def func without location
+            //if new ID is compiler-defined, throw compiler overload error for the old record
+            if definition.is_comp_defined() {
                 err.compiler_fn_overload_error(
                     false,
                     name.to_string(),
@@ -93,7 +96,7 @@ pub fn check_duplicate_id(
                 err.unexpected_error(
                     true,
                     Some(format!(
-                        "{UNEXPECTED_ERR_MSG} Expected record to be compiler provided."
+                        "{UNEXPECTED_ERR_MSG} Expected record to be compiler defined."
                     )),
                     None,
                 );
@@ -191,80 +194,11 @@ impl<'a> TypeChecker<'a> {
         *curr_rule += &val;
         self.err.update_match_rule(self.curr_match_rule.clone());
     }
-}
 
-impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
-    fn visit_whamm(&mut self, whamm: &mut Whamm) -> Option<DataType> {
-        // not printing events and globals now
-        self.table.reset();
-
-        // since the fn child comes first, we enter the named scope after
-        // getting into user defined function and scripts
-        // not entering scopes here
-
-        // skip the compiler provided functions
-        // we only need to type check user provided functions
-
-        whamm.scripts.iter_mut().for_each(|script| {
-            self.visit_script(script);
-        });
-
-        None
-    }
-
-    fn visit_script(&mut self, script: &mut Script) -> Option<DataType> {
-        self.table.enter_named_scope(&script.id.to_string());
-        self.in_script_global = true;
-        script.global_stmts.iter_mut().for_each(|stmt| {
-            self.visit_stmt(stmt);
-        });
-        self.in_script_global = false;
-        self.in_function = true;
-        script.fns.iter_mut().for_each(|function| {
-            self.visit_fn(function);
-        });
-        self.in_function = false;
-        script.providers.iter_mut().for_each(|(_, provider)| {
-            self.visit_provider(provider);
-        });
-
-        self.table.exit_scope(self.err);
-        None
-    }
-
-    fn visit_provider(&mut self, provider: &mut Box<dyn Provider>) -> Option<DataType> {
-        let _ = self.table.enter_named_scope(&provider.name());
-        self.set_curr_rule(Some(provider.name()));
-
-        provider.packages_mut().for_each(|package| {
-            self.visit_package(package);
-        });
-
-        self.table.exit_scope(self.err);
-        self.set_curr_rule(None);
-        None
-    }
-
-    fn visit_package(&mut self, package: &mut dyn Package) -> Option<DataType> {
-        let _ = self.table.enter_named_scope(&package.name());
-        self.append_curr_rule(format!(":{}", package.name()));
-
-        package.events_mut().for_each(|event| {
-            self.visit_event(event);
-        });
-
-        self.table.exit_scope(self.err);
-        // Remove this package from `curr_rule`
-        let curr_rule = self.get_curr_rule();
-        self.set_curr_rule(Some(curr_rule[..curr_rule.rfind(':').unwrap()].to_string()));
-        None
-    }
-
-    fn visit_event(&mut self, event: &mut dyn Event) -> Option<DataType> {
-        let _ = self.table.enter_named_scope(&event.name());
-        self.append_curr_rule(format!(":{}", event.name()));
-
-        for (var, ty_bound) in event.ty_info().iter() {
+    fn handle_type_bounds(&mut self, type_bounds: &[(Expr, DataType)]) {
+        // TODO -- fix type bounds bug: put them local to the probe, not global to the event
+        //         ALSO need to handle type bounds on provider/package/mode as well!
+        for (var, ty_bound) in type_bounds.iter() {
             if let Expr::VarId { name, loc, .. } = var {
                 if let Some(id) = self.table.lookup(name) {
                     if let Some(rec) = self.table.get_record_mut(id) {
@@ -308,8 +242,88 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 );
             }
         }
+    }
+}
 
-        event.probes_mut().iter_mut().for_each(|(_, probe)| {
+impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
+    fn visit_whamm(&mut self, whamm: &mut Whamm) -> Option<DataType> {
+        // not printing events and globals now
+        self.table.reset();
+
+        // since the fn child comes first, we enter the named scope after
+        // getting into user defined function and scripts
+        // not entering scopes here
+
+        // skip the compiler defined functions
+        // we only need to type check user defined functions
+
+        whamm.scripts.iter_mut().for_each(|script| {
+            self.visit_script(script);
+        });
+
+        None
+    }
+
+    fn visit_script(&mut self, script: &mut Script) -> Option<DataType> {
+        self.table.enter_named_scope(&script.id.to_string());
+        self.in_script_global = true;
+        script.global_stmts.iter_mut().for_each(|stmt| {
+            self.visit_stmt(stmt);
+        });
+        self.in_script_global = false;
+        self.in_function = true;
+        script.fns.iter_mut().for_each(|function| {
+            self.visit_fn(function);
+        });
+        self.in_function = false;
+
+        script.providers.iter_mut().for_each(|(_, provider)| {
+            self.visit_provider(provider);
+        });
+
+        self.table.exit_scope(self.err);
+        None
+    }
+
+    fn visit_provider(&mut self, provider: &mut Provider) -> Option<DataType> {
+        let _ = self.table.enter_named_scope(&provider.def.name);
+        self.set_curr_rule(Some(provider.def.name.clone()));
+
+        self.handle_type_bounds(&provider.type_bounds);
+
+        provider.packages.values_mut().for_each(|package| {
+            self.visit_package(package);
+        });
+
+        self.table.exit_scope(self.err);
+        self.set_curr_rule(None);
+        None
+    }
+
+    fn visit_package(&mut self, package: &mut Package) -> Option<DataType> {
+        let _ = self.table.enter_named_scope(&package.def.name);
+        self.append_curr_rule(format!(":{}", package.def.name));
+
+        self.handle_type_bounds(&package.type_bounds);
+
+        package.events.values_mut().for_each(|event| {
+            self.visit_event(event);
+        });
+
+        self.table.exit_scope(self.err);
+        // Remove this package from `curr_rule`
+        let curr_rule = self.get_curr_rule();
+        self.set_curr_rule(Some(curr_rule[..curr_rule.rfind(':').unwrap()].to_string()));
+        None
+    }
+
+    fn visit_event(&mut self, event: &mut Event) -> Option<DataType> {
+        let _ = self.table.enter_named_scope(&event.def.name);
+        self.append_curr_rule(format!(":{}", event.def.name));
+
+        self.handle_type_bounds(&event.type_bounds);
+
+        event.probes.values_mut().for_each(|probe| {
             probe.iter_mut().for_each(|probe| {
                 self.visit_probe(probe);
             });
@@ -322,12 +336,12 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
         None
     }
 
-    fn visit_probe(&mut self, probe: &mut Box<dyn Probe>) -> Option<DataType> {
-        let _ = self.table.enter_named_scope(&(*probe).mode().name());
-        self.append_curr_rule(format!(":{}", probe.mode().name()));
+    fn visit_probe(&mut self, probe: &mut Probe) -> Option<DataType> {
+        let _ = self.table.enter_named_scope(&probe.kind.name());
+        self.append_curr_rule(format!(":{}", probe.kind.name()));
 
         // type check predicate
-        if let Some(predicate) = &mut probe.predicate_mut() {
+        if let Some(predicate) = &mut probe.predicate {
             let predicate_loc = predicate.loc().clone().unwrap();
             if let Some(ty) = self.visit_expr(predicate) {
                 if ty != DataType::Boolean {
@@ -341,7 +355,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
         }
 
         // type check action
-        if let Some(body) = &mut probe.body_mut() {
+        if let Some(body) = &mut probe.body {
             self.visit_block(body);
         }
 
@@ -352,18 +366,18 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
     }
 
     fn visit_fn(&mut self, function: &mut Fn) -> Option<DataType> {
-        // TODO: not typechecking user provided functions yet
+        // TODO: not typechecking user defined functions yet
         // type check body
 
         self.table.enter_named_scope(&function.name.name);
         if let Some(check_ret_type) = self.visit_block(&mut function.body) {
             //figure out how to deal with void functions (return type is ())
-            if check_ret_type != function.return_ty {
+            if check_ret_type != function.results {
                 self.err.type_check_error(
                     false,
                     format!(
                         "The function signature for '{}' returns '{:?}', but the body returns '{:?}'",
-                        function.name.name, function.return_ty, check_ret_type
+                        function.name.name, function.results, check_ret_type
                     ),
                     &function.name.loc.clone().map(|l| l.line_col),
                 );
@@ -372,7 +386,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
 
         //return the type of the fn
         self.table.exit_scope(self.err);
-        Some(function.return_ty.clone())
+        Some(function.results.clone())
     }
 
     fn visit_formal_param(&mut self, _param: &mut (Expr, DataType)) -> Option<DataType> {
@@ -404,11 +418,11 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         .to_string(),
                     Some(loc.line_col),
                 );
-                block.return_ty = ret_type.clone();
+                block.results = ret_type.clone();
                 return ret_type;
             }
         }
-        block.return_ty = ret_type.clone();
+        block.results = ret_type.clone();
         //add a check for return statement type matching the function return type if provided
         ret_type
     }
@@ -997,6 +1011,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 definition,
             } => {
                 // TODO: fix this with type declarations for argN
+                //       make this work more generically...if datatype is UNKNOWN, need a type bound
                 // if name.starts_with("arg") && name[3..].parse::<u32>().is_ok() {
                 //     return Some(DataType::AssumeGood);
                 // }
@@ -1215,7 +1230,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     }
                 };
 
-                //check if in global state and if is_comp_provided is false --> not allowed if both are the case
+                //check if in global state and if is_comp_defined is false --> not allowed if both are the case
                 if self.in_script_global && !(*def == CompilerDynamic || *def == CompilerStatic) {
                     self.err.type_check_error(
                         false,
@@ -1443,7 +1458,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 Err(msg) => {
                                     let loc =
                                         self.curr_loc.as_ref().map(|loc| loc.line_col.clone());
-                                    self.err.type_check_error(false, format!("CastError: Cannot implicitly cast {msg} to {exp_ty}. Please add an explicit cast."),
+                                    self.err.type_check_error(false, format!("CastError: Cannot implicitly cast {msg}. Please add an explicit cast."),
                                                               &loc);
                                     return Some(DataType::AssumeGood);
                                 }

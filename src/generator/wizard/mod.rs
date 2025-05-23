@@ -33,7 +33,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     pub fn run(
         &mut self,
         ast: Vec<Script>,
-        used_provided_funcs: HashSet<(String, String)>,
+        used_bound_funcs: HashSet<(String, String)>,
         used_report_dts: HashSet<DataType>,
         strings_to_emit: Vec<String>,
     ) {
@@ -41,7 +41,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         self.emitter.reset_table();
         self.emitter.setup_module(self.err);
         emit_needed_funcs(
-            used_provided_funcs,
+            used_bound_funcs,
             &mut self.emitter,
             self.injected_funcs,
             self.err,
@@ -107,7 +107,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
                         expr: pred.clone(),
                         loc: None,
                     }],
-                    return_ty: None,
+                    results: None,
                     loc: None,
                 };
                 let (fid, str) = self.emitter.emit_special_func(
@@ -180,36 +180,8 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
             (None, "".to_string())
         };
 
-        // emit the export with the appropriate name
-        let name = if !probe.rule.event.name.starts_with("br")
-            && !probe.rule.event.name.starts_with("try")
-            && !probe.rule.event.name.starts_with("throw")
-            && !probe.rule.event.name.starts_with("return")
-            && !probe.rule.event.name.starts_with("call")
-        {
-            if probe.rule.event.name == "_if"
-                || probe.rule.event.name == "_else"
-                || probe.rule.event.name == "_loop"
-                || probe.rule.event.name == "_return"
-            {
-                probe.rule.to_string().replacen("_", "", 1)
-            } else if probe.rule.event.name.ends_with("st_null") {
-                // ref.test null
-                // ref.cast null
-                probe
-                    .rule
-                    .to_string()
-                    .replacen("_null", " null", 1)
-                    .replacen("_", ".", 1)
-            } else {
-                probe.rule.to_string().replacen("_", ".", 1)
-            }
-        } else {
-            probe.rule.to_string()
-        };
-
         let match_rule = self.create_wizard_match_rule(
-            &name,
+            &probe.rule.to_string(),
             pred_fid,
             &pred_param_str,
             alloc_fid,

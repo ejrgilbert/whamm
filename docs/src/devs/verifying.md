@@ -27,7 +27,7 @@ In the context of `whamm!` there are some scopes that exist but aren't accessibl
 Consider the probe match rule: `provider:package:event:mode`.
 Each part of this match rule really has its own scope.
 This enables each part to introduce its own helpful global variables and functions that the user can leverage to write more expressive instrumentation!
-These provided globals and functions are added to the AST in the [`whamm_parser.rs`] file.
+These bound variables and functions are added to the AST in the [`whamm_parser.rs`] file.
 See the [probes syntax documentation] for a helpful CLI tool that enables the user to see what is in-scope for any given probe match rule.
 
 

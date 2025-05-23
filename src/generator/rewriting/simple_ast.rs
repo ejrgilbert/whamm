@@ -1,10 +1,9 @@
-use crate::parser::rules::FromStr;
 use crate::parser::types as parser_types;
 use parser_types::Statement;
 use std::collections::HashMap;
 
 use crate::generator::ast::{Probe, Script};
-use crate::parser::rules::core::WhammModeKind;
+use crate::parser::provider_handler::ModeKind;
 
 /// This is a structure that saves a simplified variation of the activated
 /// probe rules.
@@ -57,7 +56,7 @@ use crate::parser::rules::core::WhammModeKind;
 ///
 /// Note: This AST representation will only be used for bytecode rewriting, not when targeting Wizard.
 pub type SimpleAstProbes =
-    HashMap<String, HashMap<String, HashMap<String, HashMap<WhammModeKind, Vec<Probe>>>>>;
+    HashMap<String, HashMap<String, HashMap<String, HashMap<ModeKind, Vec<Probe>>>>>;
 
 #[derive(Default)]
 pub struct SimpleAST {
@@ -101,7 +100,7 @@ fn add_probe_to_ast(
     if let Some(provider) = ast.probes.get_mut(provider_name) {
         if let Some(package) = provider.get_mut(package_name) {
             if let Some(event) = package.get_mut(event_name) {
-                let mode_kind = WhammModeKind::from_str(mode_name);
+                let mode_kind = ModeKind::from(mode_name.clone());
                 if let Some(probes) = event.get_mut(&mode_kind) {
                     probes.push(probe);
                 } else {

@@ -137,7 +137,7 @@
 ;; at_target with arg0 in predicate/body
 ;; WHAMM --> var count: i32; wasm:opcode:br_if:at_target / imm0 == 0 && arg0 > 0 / { count++; }
 (assert_return (invoke "get_count") (i32.const 1)) ;; predicate == true (hit 1x)
-;; WHAMM --> var count: i32; wasm:opcode:br_if:at_target / imm0 == 0 / { count = count + arg0; }
+;; WHAMM --> var count: i32; wasm:opcode:br_if:at_target / imm0 == 0 / { count = count + arg0 as i32; }
 (assert_return (invoke "get_count") (i32.const 1)) ;; predicate == true (hit 1x)
 
 ;; alt mode

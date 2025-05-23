@@ -4,6 +4,7 @@
 
 use crate::common::error::ErrorGen;
 use crate::generator::folding::ExprFolder;
+use crate::parser::provider_handler::ModeKind;
 use crate::parser::tests;
 use crate::parser::types::Expr::{BinOp as ExprBinOp, VarId};
 use crate::parser::types::{BinOp, DataType, Expr, Value, Whamm};
@@ -43,18 +44,22 @@ fn get_pred(whamm: &Whamm) -> &Expr {
         .providers
         .get("wasm")
         .unwrap()
-        .packages()
+        .packages
+        .iter()
         .next()
         .unwrap()
-        .events()
+        .1
+        .events
+        .iter()
         .next()
         .unwrap()
-        .probes()
-        .get("alt")
+        .1
+        .probes
+        .get(&ModeKind::Alt)
         .unwrap()
         .first()
         .unwrap()
-        .predicate()
+        .predicate
         .as_ref()
         .unwrap()
 }

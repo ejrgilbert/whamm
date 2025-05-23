@@ -16,7 +16,7 @@ When performing bytecode rewriting, `whamm!`:
 `whamm info --help`
 
 The `info` command provided by the CLI is a great resource to view what can be used as the probe match rule.
-This command provides documentation describing the match rule parts as well as the globals and functions in scope, which can help users learn about how to build their instrumentation.
+This command provides documentation describing the match rule parts as well as the bound variables and functions in scope, which can help users learn about how to build their instrumentation.
 
 ## The Probe Match Rule ##
 `provider:package:event:mode`

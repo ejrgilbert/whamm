@@ -1,13 +1,11 @@
-use crate::parser::types::{Whamm, WhammVisitor};
 use crate::parser::whamm_parser::*;
 
 use crate::common::error::ErrorGen;
-use crate::parser::print_visitor::AsStrVisitor;
-use crate::parser::rules::core::WhammModeKind;
 
+use crate::parser::provider_handler::ModeKind;
 use crate::parser::tests::{get_ast, setup_logger};
 use glob::{glob, glob_with};
-use log::{debug, error, info, warn};
+use log::{error, info, warn};
 
 const VALID_SCRIPTS: &[&str] = &[
     // with libraries
@@ -26,7 +24,7 @@ wasm:opcode:call(arg0: i32):before {
     // type bounding
     r#"
 wasm:opcode:call(arg0: i32):before {}
-wasm:opcode:local_set(arg3: i64):before {}
+wasm:opcode:local.set(arg3: i64):before {}
 wasm:opcode:call(local5: f32):before {}
 wasm:opcode:call(local5: f32, arg0: u8):before {}
     "#,
@@ -34,14 +32,14 @@ wasm:opcode:call(local5: f32, arg0: u8):before {}
     r#"
 var i: u8;
 
-BEGIN {
+wasm:begin {
     var j: u32 = i as u32;
 }
     "#,
     r#"
 var i: u8;
 
-BEGIN {
+wasm:begin {
     var b: bool = true;
     var j: u32 = b ? i as u32 : 1 as u32;
 }
@@ -63,7 +61,7 @@ var i: str;
 var i: (i32, i32);
 var i: map<i32, i32>;
 
-BEGIN { }
+wasm:begin { }
     "#,
     // Ternary
     r#"
@@ -72,8 +70,8 @@ wasm:opcode:br:before {
 }
     "#,
     // Variations of PROBE_RULE
-    "BEGIN { }",
-    "END { }",
+    "wasm:begin { }",
+    "wasm:end { }",
     "wasm:opcode:call:alt { }",
     "wasm:opcode:call:before { }",
     "wasm:opcode:call:after { }",
@@ -123,34 +121,34 @@ wasm::call:alt /
     // globals
     r#"
 var count: map<i32, i32>;
-BEGIN { }
+wasm:begin { }
     "#,
     r#"
 var count: map<i32, i32>;
 count = 0;
-BEGIN { }
+wasm:begin { }
     "#,
     //function stuff
     r#"
     fn fn_name(param: i32) -> i32{}
-    BEGIN { }
+    wasm:begin { }
     "#,
     r#"
     fn fn_name(param0: i32, param1: i32) -> i32{}
-    BEGIN { }
+    wasm:begin { }
     "#,
     r#"
     fn fn_name() -> i32{
         i = 0;
     }
-    BEGIN { }
+    wasm:begin { }
         "#,
     r#"
     fn fn_name() -> i32{
         i = 0;
         i++;
     }
-    BEGIN { }
+    wasm:begin { }
         "#,
     r#"
     wasm:opcode:br:before {
@@ -180,7 +178,7 @@ BEGIN { }
     fn do_nothing(a: i32, b: i32){
 
     }
-    BEGIN { }
+    wasm:begin { }
     "#,
     r#"
     fn nested_fn() -> i32 {
@@ -189,7 +187,7 @@ BEGIN { }
     fn outter_fn() -> i32 {
         return nested_fn() + 1;
     }
-    BEGIN {}
+    wasm:begin {}
     "#,
     // Statements (either assignment or function call)
     r#"
@@ -324,13 +322,13 @@ wasm:opcode:br:before {
             count[0] = 0;
             return count[0];
         }
-        BEGIN {
+        wasm:begin {
             count[1] = my_fn();
         }
     "#,
     r#"
         var count: map<i32, i32>;
-        BEGIN {
+        wasm:begin {
             count[1] = 1+1;
         }
     "#,
@@ -348,7 +346,7 @@ wasm:opcode:br:before {
         var i: i32;
         i = 5;
         var j: i32 = 5;
-        BEGIN{
+        wasm:begin {
             strcmp((arg0, arg1), "bookings");
         }
     "#,
@@ -368,21 +366,21 @@ wasm:opcode:br:before {
     "wasm:opcode:block:alt {}",
     "wasm:opcode:block:entry {}",
     "wasm:opcode:block:exit {}",
-    "wasm:opcode:_loop:before {}",
-    "wasm:opcode:_loop:after {}",
-    "wasm:opcode:_loop:alt {}",
-    "wasm:opcode:_loop:entry {}",
-    "wasm:opcode:_loop:exit {}",
-    "wasm:opcode:_if:before {}",
-    "wasm:opcode:_if:after {}",
-    "wasm:opcode:_if:alt {}",
-    "wasm:opcode:_if:entry {}",
-    "wasm:opcode:_if:exit {}",
-    "wasm:opcode:_else:before {}",
-    "wasm:opcode:_else:after {}",
-    "wasm:opcode:_else:alt {}",
-    "wasm:opcode:_else:entry {}",
-    "wasm:opcode:_else:exit {}",
+    "wasm:opcode:loop:before {}",
+    "wasm:opcode:loop:after {}",
+    "wasm:opcode:loop:alt {}",
+    "wasm:opcode:loop:entry {}",
+    "wasm:opcode:loop:exit {}",
+    "wasm:opcode:if:before {}",
+    "wasm:opcode:if:after {}",
+    "wasm:opcode:if:alt {}",
+    "wasm:opcode:if:entry {}",
+    "wasm:opcode:if:exit {}",
+    "wasm:opcode:else:before {}",
+    "wasm:opcode:else:after {}",
+    "wasm:opcode:else:alt {}",
+    "wasm:opcode:else:entry {}",
+    "wasm:opcode:else:exit {}",
     "wasm:opcode:end:before {}",
     "wasm:opcode:end:after {}",
     "wasm:opcode:br:before {}",
@@ -419,9 +417,9 @@ core::br:before / i == 1 / { i = 0; }  // SHOULD FAIL HERE
     "wasm:opcode:call:entry {}",
     "wasm:opcode:call:exit {}",
     "wasm:opcode:block:at_target {}",
-    "wasm:opcode:_loop:at_target {}",
-    "wasm:opcode:_if:at_target {}",
-    "wasm:opcode:_else:at_target {}",
+    "wasm:opcode:loop:at_target {}",
+    "wasm:opcode:if:at_target {}",
+    "wasm:opcode:else:at_target {}",
 ];
 
 const INVALID_SCRIPTS: &[&str] = &[
@@ -505,7 +503,7 @@ var arg0: map<i32, i32>;
             count[0] = 0;
             return count[0];
         }
-        BEGIN {
+        wasm:begin {
             count[1] = my_fn();
         }
     "#,
@@ -515,7 +513,7 @@ var arg0: map<i32, i32>;
             count[0] = 0;
             return count[0];
         }
-        BEGIN {
+        wasm:begin {
             count[] = my_fn();
         }
     "#,
@@ -554,7 +552,7 @@ var arg0: map<i32, i32>;
         }
     "#,
 ];
-const SPECIAL: &[&str] = &["BEGIN { }", "END { }", "wasm:::alt { }"];
+const SPECIAL: &[&str] = &["wasm:begin { }", "wasm:end { }", "wasm:::alt { }"];
 
 // ====================
 // = Helper Functions =
@@ -596,12 +594,12 @@ pub fn get_test_scripts(sub_dir: &str) -> Vec<String> {
 }
 
 fn is_valid_script(script: &str, err: &mut ErrorGen) -> bool {
-    parse_script(&script.to_string(), err).is_some() && !err.has_errors
+    parse_script("./", &script.to_string(), err).is_some() && !err.has_errors
 }
 
 pub fn run_test_on_valid_list(scripts: Vec<String>, err: &mut ErrorGen) {
     for script in scripts {
-        info!("Parsing: {}", script);
+        println!("Parsing: {}", script);
 
         let res = is_valid_script(&script, err);
         if !res || err.has_errors {
@@ -700,7 +698,7 @@ wasm::call:alt /
 
     // script
     assert_eq!(1, ast.scripts.len()); // a single script
-    assert_eq!(0, ast.globals.len());
+    assert_eq!(0, ast.bound_vars.len());
     assert_eq!(1, ast.fns.len()); // strcmp
 
     let script = ast.scripts.first().unwrap();
@@ -711,36 +709,36 @@ wasm::call:alt /
     // provider
     assert_eq!(1, script.providers.len());
     let provider = script.providers.get("wasm").unwrap();
-    assert_eq!("wasm", provider.name());
-    assert_eq!(3, provider.get_provided_globals().len());
-    assert_eq!(0, provider.get_provided_fns().len());
+    assert_eq!("wasm", provider.def.name);
+    assert_eq!(3, provider.def.bound_vars.len());
+    assert_eq!(0, provider.def.bound_fns.len());
 
-    assert_eq!(1, provider.len_packages());
-    let package = provider.packages().next().unwrap();
-    assert_eq!("opcode", package.name());
-    assert_eq!(0, package.get_provided_globals().len());
-    assert_eq!(1, package.get_provided_fns().len());
+    assert_eq!(1, provider.packages.len());
+    let (_, package) = provider.packages.iter().next().unwrap();
+    assert_eq!("opcode", package.def.name);
+    assert_eq!(0, package.def.bound_vars.len());
+    assert_eq!(1, package.def.bound_fns.len());
 
-    assert_eq!(1, package.len_events());
-    let event = package.events().next().unwrap();
-    assert_eq!("call", event.name());
-    assert_eq!(7, event.get_provided_globals().len());
-    assert_eq!(2, event.get_provided_fns().len());
+    assert_eq!(1, package.events.len());
+    let (_, event) = package.events.iter().next().unwrap();
+    assert_eq!("call", event.def.name);
+    assert_eq!(7, event.def.bound_vars.len());
+    assert_eq!(2, event.def.bound_fns.len());
 
-    assert_eq!(1, event.probes().len());
-    assert_eq!(1, event.probes().get("alt").unwrap().len());
+    assert_eq!(1, event.probes.len());
+    assert_eq!(1, event.probes.get(&ModeKind::Alt).unwrap().len());
 
-    let probe = event.probes().get("alt").unwrap().first().unwrap();
-    assert_eq!(0, probe.get_mode_provided_globals().len());
-    assert_eq!(0, probe.get_mode_provided_fns().len());
-    assert_eq!(WhammModeKind::Alt, probe.mode());
+    let probe = event.probes.get(&ModeKind::Alt).unwrap().first().unwrap();
+    assert_eq!(0, probe.def.bound_vars.len());
+    assert_eq!(0, probe.def.bound_fns.len());
+    assert_eq!(ModeKind::Alt, probe.kind);
 
     // probe predicate
-    assert!(probe.predicate().is_some());
+    assert!(probe.predicate.is_some());
 
     // probe body
-    assert!(&probe.body().is_some());
-    assert_eq!(5, probe.body().as_ref().unwrap().stmts.len());
+    assert!(&probe.body.is_some());
+    assert_eq!(5, probe.body.as_ref().unwrap().stmts.len());
 }
 
 #[test]
@@ -748,12 +746,6 @@ pub fn test_ast_special_cases() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     run_test_on_valid_list(SPECIAL.iter().map(|s| s.to_string()).collect(), &mut err);
-}
-
-#[allow(unused)]
-pub(crate) fn print_ast(ast: &Whamm) {
-    let mut visitor = AsStrVisitor { indent: 0 };
-    debug!("{}", visitor.visit_whamm(ast));
 }
 
 #[test]
@@ -765,7 +757,7 @@ pub fn testing_strcmp() {
             a = strcmp((arg0, arg1), "bookings");
             strcmp((arg0, arg1), "bookings");
         }
-        BEGIN{
+        wasm:begin{
             strcmp((arg0, arg1), "bookings");
         }
 
@@ -800,7 +792,7 @@ pub fn testing_block() {
             a = strcmp((arg0, arg1), "bookings");
             strcmp((arg0, arg1), "bookings");
         }
-        BEGIN{
+        wasm:begin{
             if (0 == 1) {
                 strcmp((arg0, arg1), "bookings");
             } else {
@@ -826,7 +818,7 @@ pub fn testing_global_def() {
         var i: i32;
         i = 5;
         var j: i32 = 5;
-        BEGIN{
+        wasm:begin{
             strcmp((i, j), "bookings");
         }
     "#;
