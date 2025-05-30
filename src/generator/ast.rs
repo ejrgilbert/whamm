@@ -1,7 +1,7 @@
 use crate::emitter::rewriting::rules::Arg;
 use crate::lang_features::report_vars::Metadata as ReportMetadata;
 use crate::parser::types::{
-    BinOp, Block, DataType, Definition, Expr, Global, RulePart, Statement, UnOp, Value,
+    BinOp, Block, DataType, Expr, Global, RulePart, Statement, UnOp, Value,
 };
 use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
@@ -250,137 +250,40 @@ impl WhammParams {
 }
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum WhammParam {
-    Pc,
-    Fid,
-    Fname,
+    Custom { name: String, ty: DataType },
     Imm { n: u32, ty: DataType },
     Arg { n: u32, ty: DataType },
     Local { n: u32, ty: DataType },
-    AllocOffset,
-    Category,
-
-    // calls
-    TargetFnType,
-    TargetFnName,
-    TargetImpModule,
-
-    // br_table
-    Targets,
-    NumTargets,
-    DefaultTarget,
-
-    // memory
-    Align,
-    Offset,
-    Memory,
 }
 impl WhammParam {
     pub fn new(var_name: String, var_type: DataType) -> Self {
-        let mut obj = Self::from(var_name);
-        obj.set_ty(var_type);
-
-        obj
-    }
-    pub fn set_ty(&mut self, t: DataType) {
-        match self {
-            Self::Imm { ty, .. } | Self::Arg { ty, .. } | Self::Local { ty, .. } => *ty = t,
-            Self::Pc
-            | Self::Fid
-            | Self::Fname
-            | Self::AllocOffset
-            | Self::Category
-            | Self::TargetFnType
-            | Self::TargetFnName
-            | Self::TargetImpModule
-            | Self::Targets
-            | Self::NumTargets
-            | Self::DefaultTarget
-            | Self::Align
-            | Self::Offset
-            | Self::Memory => {
-                assert_eq!(t, self.ty(), "Type doesn't match when setting {}", self)
-            }
-        }
-    }
-    pub fn def(&self) -> Definition {
-        match self {
-            Self::Pc
-            | Self::Fid
-            | Self::Fname
-            | Self::Imm { .. }
-            | Self::AllocOffset
-            | Self::Category
-            | Self::TargetFnType
-            | Self::TargetFnName
-            | Self::TargetImpModule
-            | Self::NumTargets
-            | Self::DefaultTarget
-            | Self::Align
-            | Self::Offset
-            | Self::Memory => Definition::CompilerStatic,
-            Self::Targets | Self::Arg { .. } | Self::Local { .. } => Definition::CompilerDynamic,
-        }
+        Self::from((var_name, var_type))
     }
     pub fn ty(&self) -> DataType {
         match self {
-            Self::Pc => DataType::U32,
-            Self::Fid => DataType::U32,
-            Self::Fname => DataType::Str,
-            Self::Imm { ty, .. } => ty.clone(),
-            Self::Arg { ty, .. } => ty.clone(),
-            Self::Local { ty, .. } => ty.clone(),
-            Self::AllocOffset => DataType::U32,
-            Self::Category => DataType::Str,
-            Self::TargetFnType => DataType::Str,
-            Self::TargetFnName => DataType::Str,
-            Self::TargetImpModule => DataType::Str,
-            Self::Targets => DataType::Map {
-                key_ty: Box::new(DataType::U32),
-                val_ty: Box::new(DataType::U32),
-            }, // TODO -- really want to request mapID though...
-            Self::Offset => DataType::U64,
-            Self::NumTargets | Self::DefaultTarget | Self::Align | Self::Memory => DataType::U32,
+            Self::Custom { ty, .. }
+            | Self::Imm { ty, .. }
+            | Self::Arg { ty, .. }
+            | Self::Local { ty, .. } => ty.clone(),
         }
     }
 }
-impl From<String> for WhammParam {
-    fn from(value: String) -> Self {
-        match value.as_str() {
-            "pc" => return Self::Pc,
-            "fid" => return Self::Fid,
-            "fname" => return Self::Fname,
-            "category" => return Self::Category,
-            "target_fn_type" => return Self::TargetFnType,
-            "target_fn_name" => return Self::TargetFnName,
-            "target_imp_module" => return Self::TargetImpModule,
-            "targets" => return Self::Targets,
-            "num_targets" => return Self::NumTargets,
-            "default_target" => return Self::DefaultTarget,
-            "align" => return Self::Align,
-            "offset" => return Self::Offset,
-            "memory" => return Self::Memory,
-            _ => {}
-        }
-
+impl From<(String, DataType)> for WhammParam {
+    fn from(value: (String, DataType)) -> Self {
         // handle immN, argN, localN
-        if let Some(n) = handle_special(&value, "imm".to_string()) {
-            return Self::Imm {
-                n,
-                ty: DataType::Unknown,
-            };
-        }
-        if let Some(n) = handle_special(&value, "arg".to_string()) {
-            return Self::Arg {
-                n,
-                ty: DataType::Unknown,
-            };
-        }
-        if let Some(n) = handle_special(&value, "local".to_string()) {
-            return Self::Local {
-                n,
-                ty: DataType::Unknown,
-            };
-        }
+        return if let Some(n) = handle_special(&value.0, "imm".to_string()) {
+            Self::Imm { n, ty: value.1 }
+        } else if let Some(n) = handle_special(&value.0, "arg".to_string()) {
+            return Self::Arg { n, ty: value.1 };
+        } else if let Some(n) = handle_special(&value.0, "local".to_string()) {
+            return Self::Local { n, ty: value.1 };
+        } else {
+            Self::Custom {
+                name: value.0,
+                ty: value.1,
+            }
+        };
+
         fn handle_special(value: &str, prefix: String) -> Option<u32> {
             if value.starts_with(&prefix) {
                 if let Ok(n) = value[prefix.len()..].parse::<u32>() {
@@ -389,31 +292,15 @@ impl From<String> for WhammParam {
             }
             None
         }
-
-        panic!("Invalid WhammParam request: {}", value);
     }
 }
 impl Display for WhammParam {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Pc => f.write_str("pc"),
-            Self::Fid => f.write_str("fid"),
-            Self::Fname => f.write_str("fname"),
             Self::Imm { n, .. } => f.write_str(&format!("imm{n}")),
             Self::Arg { n, .. } => f.write_str(&format!("arg{n}")),
             Self::Local { n, .. } => f.write_str(&format!("local{n}")),
-            // TODO -- unsure what to do for the alloc part...
-            Self::AllocOffset => f.write_str("alloc"),
-            Self::Category => f.write_str("category"),
-            Self::TargetFnType => f.write_str("target_fn_type"),
-            Self::TargetFnName => f.write_str("target_fn_name"),
-            Self::TargetImpModule => f.write_str("target_imp_module"),
-            Self::Targets => f.write_str("targets"),
-            Self::NumTargets => f.write_str("num_targets"),
-            Self::DefaultTarget => f.write_str("default_target"),
-            Self::Align => f.write_str("align"),
-            Self::Offset => f.write_str("offset"),
-            Self::Memory => f.write_str("memory"),
+            Self::Custom { name, .. } => f.write_str(name),
         }
     }
 }

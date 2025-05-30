@@ -481,7 +481,6 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                 if matches!(def, Definition::CompilerDynamic) {
                     if let Some(context) = context {
                         // will need to emit this function!
-                        println!("{context} ==> {fn_name}");
                         self.used_bound_fns.insert((context, fn_name));
                         // will need to possibly define arguments!
                         self.combine_req_args(req_args.clone());
