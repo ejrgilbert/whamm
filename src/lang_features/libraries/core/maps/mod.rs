@@ -139,7 +139,7 @@ impl AstVisitor<bool> for MapLibPackage {
     }
 
     fn visit_whamm_param(&mut self, param: &WhammParam) -> bool {
-        self.visit_datatype(&param.ty())
+        self.visit_datatype(&param.ty)
     }
 
     fn visit_fn(&mut self, f: &crate::parser::types::Fn) -> bool {

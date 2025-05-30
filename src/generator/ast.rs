@@ -127,10 +127,16 @@ pub struct Metadata {
 }
 impl Metadata {
     pub fn push_pred_req(&mut self, var_name: String, var_type: DataType) {
-        self.pred_args.push(WhammParam::new(var_name, var_type));
+        self.pred_args.push(WhammParam {
+            name: var_name,
+            ty: var_type,
+        });
     }
     pub fn push_body_req(&mut self, var_name: String, var_type: DataType) {
-        self.body_args.push(WhammParam::new(var_name, var_type));
+        self.body_args.push(WhammParam {
+            name: var_name,
+            ty: var_type,
+        });
     }
 }
 
@@ -212,7 +218,7 @@ pub struct WhammParams {
 }
 impl WhammParams {
     pub fn push(&mut self, param: WhammParam) {
-        if let WhammParam::Arg { n, .. } = param {
+        if let Some(n) = param.n_for("arg") {
             self.requested_args.push(n);
         }
         self.params.insert(param);
@@ -249,59 +255,18 @@ impl WhammParams {
     }
 }
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub enum WhammParam {
-    Custom { name: String, ty: DataType },
-    Imm { n: u32, ty: DataType },
-    Arg { n: u32, ty: DataType },
-    Local { n: u32, ty: DataType },
+pub struct WhammParam {
+    pub(crate) name: String,
+    pub ty: DataType,
 }
 impl WhammParam {
-    pub fn new(var_name: String, var_type: DataType) -> Self {
-        Self::from((var_name, var_type))
-    }
-    pub fn ty(&self) -> DataType {
-        match self {
-            Self::Custom { ty, .. }
-            | Self::Imm { ty, .. }
-            | Self::Arg { ty, .. }
-            | Self::Local { ty, .. } => ty.clone(),
-        }
-    }
-}
-impl From<(String, DataType)> for WhammParam {
-    fn from(value: (String, DataType)) -> Self {
-        // handle immN, argN, localN
-        return if let Some(n) = handle_special(&value.0, "imm".to_string()) {
-            Self::Imm { n, ty: value.1 }
-        } else if let Some(n) = handle_special(&value.0, "arg".to_string()) {
-            return Self::Arg { n, ty: value.1 };
-        } else if let Some(n) = handle_special(&value.0, "local".to_string()) {
-            return Self::Local { n, ty: value.1 };
-        } else {
-            Self::Custom {
-                name: value.0,
-                ty: value.1,
+    pub fn n_for(&self, prefix: &str) -> Option<u32> {
+        if self.name.starts_with(prefix) {
+            if let Ok(n) = self.name[prefix.len()..].parse::<u32>() {
+                return Some(n);
             }
-        };
-
-        fn handle_special(value: &str, prefix: String) -> Option<u32> {
-            if value.starts_with(&prefix) {
-                if let Ok(n) = value[prefix.len()..].parse::<u32>() {
-                    return Some(n);
-                }
-            }
-            None
         }
-    }
-}
-impl Display for WhammParam {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Imm { n, .. } => f.write_str(&format!("imm{n}")),
-            Self::Arg { n, .. } => f.write_str(&format!("arg{n}")),
-            Self::Local { n, .. } => f.write_str(&format!("local{n}")),
-            Self::Custom { name, .. } => f.write_str(name),
-        }
+        None
     }
 }
 

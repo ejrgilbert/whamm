@@ -159,25 +159,22 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
 
         // handle the parameters
         for param in whamm_params.params.iter() {
-            let param_name = param.to_string();
-            let param_ty = param.ty();
-
             let local_id = params.len() as u32;
             // handle param list
-            params.extend(param_ty.clone().to_wasm_type());
+            params.extend(param.ty.clone().to_wasm_type());
 
             // handle the param string
             if !param_str.is_empty() {
                 param_str += ", "
             }
-            param_str += &param_name;
+            param_str += &param.name;
 
             // add param definition to the symbol table
             self.table.put(
-                param_name.clone(),
+                param.name.clone(),
                 Record::Var {
-                    ty: param_ty.clone(),
-                    name: param_name.clone(),
+                    ty: param.ty.clone(),
+                    name: param.name.clone(),
                     value: None,
                     def: Definition::CompilerStatic,
                     is_report_var: false,

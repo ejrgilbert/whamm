@@ -142,15 +142,6 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
             }
         }
     }
-    fn handle_special(&mut self, name: &str, prefix: &str) -> bool {
-        if name.starts_with(prefix) && name[prefix.len()..].parse::<u32>().is_ok() {
-            let (_, ty, _) = get_def(name, self.table, self.err);
-            self.push_metadata(name, &ty);
-            true
-        } else {
-            false
-        }
-    }
 }
 impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
     fn visit_whamm(&mut self, whamm: &Whamm) {
@@ -508,16 +499,6 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                 let (def, ty, ..) = get_def(name, self.table, self.err);
                 if matches!(def, Definition::CompilerDynamic | Definition::User) {
                     self.mark_expr_as_dynamic();
-                }
-
-                // handle argN special case
-                if self.handle_special(name, "arg") {
-                    return;
-                }
-
-                // handle immN special case
-                if self.handle_special(name, "imm") {
-                    return;
                 }
 
                 // check if bound, remember in metadata!
