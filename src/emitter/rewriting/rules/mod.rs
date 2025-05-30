@@ -1724,14 +1724,14 @@ fn define_imm0_u32_imm1_u32(
     all_params: &HashSet<&WhammParam>,
 ) {
     for param in all_params {
-        if let WhammParam::Imm { n, ty } = param {
-            assert!(matches!(ty, DataType::U32));
-            if *n == 0 {
-                define_imm_n(*n, Some(Value::gen_u32(value0)), loc_info);
-            } else if *n == 1 {
-                define_imm_n(*n, Some(Value::gen_u32(value1)), loc_info);
+        if let Some(n) = param.n_for("imm") {
+            assert!(matches!(param.ty, DataType::U32));
+            if n == 0 {
+                define_imm_n(n, Some(Value::gen_u32(value0)), loc_info);
+            } else if n == 1 {
+                define_imm_n(n, Some(Value::gen_u32(value1)), loc_info);
             } else {
-                panic!("WhammParam not available for opcode: {}", param);
+                panic!("WhammParam not available for opcode: {}", param.name);
             }
         }
     }
@@ -1745,9 +1745,9 @@ fn define_imm0<T>(
     all_params: &HashSet<&WhammParam>,
 ) {
     for param in all_params {
-        if let WhammParam::Imm { n, ty } = param {
-            assert_eq!(*n, 0);
-            assert!(matches!(ty, _dt));
+        if let Some(n) = param.n_for("imm") {
+            assert_eq!(n, 0);
+            assert!(matches!(&param.ty, _dt));
 
             define_imm_n(0, Some(gen(value)), loc_info);
             return;
@@ -1767,20 +1767,18 @@ fn bind_vars_memarg(
     all_params: &HashSet<&WhammParam>,
 ) {
     for param in all_params {
-        if let WhammParam::Custom { name, .. } = param {
-            match name.as_str() {
-                "align" => loc_info
-                    .static_data
-                    .insert(name.clone(), Some(Value::gen_u32(align as u32))),
-                "offset" => loc_info
-                    .static_data
-                    .insert(name.clone(), Some(Value::gen_u64(offset))),
-                "memory" => loc_info
-                    .static_data
-                    .insert(name.clone(), Some(Value::gen_u32(memory))),
-                _ => panic!("bound variable not supported: {name}"),
-            };
-        }
+        match param.name.as_str() {
+            "align" => loc_info
+                .static_data
+                .insert(param.name.clone(), Some(Value::gen_u32(align as u32))),
+            "offset" => loc_info
+                .static_data
+                .insert(param.name.clone(), Some(Value::gen_u64(offset))),
+            "memory" => loc_info
+                .static_data
+                .insert(param.name.clone(), Some(Value::gen_u32(memory))),
+            _ => None,
+        };
     }
 }
 fn bind_vars_br_table(
@@ -1789,59 +1787,55 @@ fn bind_vars_br_table(
     all_params: &HashSet<&WhammParam>,
 ) -> Option<()> {
     for param in all_params {
-        match param {
-            WhammParam::Custom { name, .. } => {
-                match name.as_str() {
-                    "num_targets" => {
-                        loc_info
-                            .static_data
-                            .insert(name.clone(), Some(Value::gen_u32(targets.len())));
-                    }
-                    "default_target" => {
-                        loc_info
-                            .static_data
-                            .insert(name.clone(), Some(Value::gen_u32(targets.default())));
-                    }
-                    "targets" => {
-                        let mut target_map = HashMap::new();
-                        for (i, target) in targets.targets().enumerate() {
-                            if let Ok(target) = target {
-                                target_map.insert(i as u32, target);
-                            }
-                        }
-                        loc_info.add_dynamic_value(
-                            name.clone(),
-                            Value::U32U32Map {
-                                val: Box::new(target_map),
-                            },
-                        )
-                    }
-                    _ => {}
-                };
+        if let Some(n) = param.n_for("imm") {
+            if n > targets.len() {
+                // this location doesn't match since the immN is out of bound
+                // of the immN's available
+                return None;
             }
-            WhammParam::Imm { n, ty } => {
-                if *n > targets.len() {
-                    // this location doesn't match since the immN is out of bound
-                    // of the immN's available
-                    return None;
-                }
-                assert!(matches!(ty, DataType::U32));
+            assert!(matches!(param.ty, DataType::U32));
 
-                if *n == targets.len() {
-                    // requesting the default value!
-                    define_imm_n(*n, Some(Value::gen_u32(targets.default())), loc_info);
-                }
+            if n == targets.len() {
+                // requesting the default value!
+                define_imm_n(n, Some(Value::gen_u32(targets.default())), loc_info);
+            }
 
-                for (i, target) in targets.targets().enumerate() {
-                    if let Ok(target) = target {
-                        if *n == i as u32 {
-                            define_imm_n(i as u32, Some(Value::gen_u32(target)), loc_info);
-                            break;
-                        }
+            for (i, target) in targets.targets().enumerate() {
+                if let Ok(target) = target {
+                    if n == i as u32 {
+                        define_imm_n(i as u32, Some(Value::gen_u32(target)), loc_info);
+                        break;
                     }
                 }
             }
-            _ => {}
+        } else {
+            match param.name.as_str() {
+                "num_targets" => {
+                    loc_info
+                        .static_data
+                        .insert(param.name.clone(), Some(Value::gen_u32(targets.len())));
+                }
+                "default_target" => {
+                    loc_info
+                        .static_data
+                        .insert(param.name.clone(), Some(Value::gen_u32(targets.default())));
+                }
+                "targets" => {
+                    let mut target_map = HashMap::new();
+                    for (i, target) in targets.targets().enumerate() {
+                        if let Ok(target) = target {
+                            target_map.insert(i as u32, target);
+                        }
+                    }
+                    loc_info.add_dynamic_value(
+                        param.name.clone(),
+                        Value::U32U32Map {
+                            val: Box::new(target_map),
+                        },
+                    )
+                }
+                _ => {}
+            };
         }
     }
     Some(())
@@ -1876,37 +1870,37 @@ fn bind_vars_call(
     };
 
     for param in all_params {
-        match param {
-            WhammParam::Custom { name, .. } => {
-                match name.as_str() {
-                    "target_fn_name" => loc_info.static_data.insert(
-                        "target_fn_name".to_string(),
-                        Some(Value::Str {
-                            val: func_info.name.to_string(),
-                        }),
-                    ),
-                    "target_fn_type" => loc_info.static_data.insert(
-                        "target_fn_type".to_string(),
-                        Some(Value::Str {
-                            val: func_info.func_kind.to_string(),
-                        }),
-                    ),
-                    "target_imp_module" => loc_info.static_data.insert(
-                        "target_imp_module".to_string(),
-                        Some(Value::Str {
-                            val: func_info.module.to_string(),
-                        }),
-                    ),
-                    _ => None,
-                };
-            }
-            WhammParam::Imm { n, ty } => {
-                assert_eq!(*n, 0);
-                assert!(matches!(ty, DataType::U32), "wrong type: {ty}");
+        if let Some(n) = param.n_for("imm") {
+            assert_eq!(n, 0);
+            assert!(
+                matches!(param.ty, DataType::U32),
+                "wrong type: {}",
+                param.ty
+            );
 
-                define_imm_n(0, Some(Value::gen_u32(fid)), loc_info);
-            }
-            _ => {}
+            define_imm_n(0, Some(Value::gen_u32(fid)), loc_info);
+        } else {
+            match param.name.as_str() {
+                "target_fn_name" => loc_info.static_data.insert(
+                    "target_fn_name".to_string(),
+                    Some(Value::Str {
+                        val: func_info.name.to_string(),
+                    }),
+                ),
+                "target_fn_type" => loc_info.static_data.insert(
+                    "target_fn_type".to_string(),
+                    Some(Value::Str {
+                        val: func_info.func_kind.to_string(),
+                    }),
+                ),
+                "target_imp_module" => loc_info.static_data.insert(
+                    "target_imp_module".to_string(),
+                    Some(Value::Str {
+                        val: func_info.module.to_string(),
+                    }),
+                ),
+                _ => None,
+            };
         }
     }
 }

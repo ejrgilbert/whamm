@@ -7,13 +7,12 @@ use crate::parser::types::{
     WhammVisitorMut,
 };
 use crate::verifier::builder_visitor::SymbolTableBuilder;
-use crate::verifier::types::{line_col_from_loc, Record, SymbolTable};
+use crate::verifier::types::{Record, SymbolTable};
 use orca_wasm::Module;
 use pest::error::LineColLocation;
 use std::collections::{HashMap, HashSet};
 use std::vec;
 
-pub const UNKNOWN_IMMS: &str = "imm[0:9]+";
 const UNEXPECTED_ERR_MSG: &str =
     "TypeChecker: Looks like you've found a bug...please report this behavior! Exiting now...";
 
@@ -1010,12 +1009,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 loc,
                 definition,
             } => {
-                // TODO: fix this with type declarations for argN
-                //       make this work more generically...if datatype is UNKNOWN, need a type bound
-                // if name.starts_with("arg") && name[3..].parse::<u32>().is_ok() {
-                //     return Some(DataType::AssumeGood);
-                // }
-
                 // get type from symbol table
                 if let Some(id) = self.table.lookup(name) {
                     if let Some(rec) = self.table.get_record(id) {
@@ -1039,33 +1032,12 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             )
                         }
                     }
-                } else {
-                    // check if this is an unknown immN!
-                    if name.starts_with("imm") {
-                        match self.table.lookup_var(UNKNOWN_IMMS, loc, self.err, true) {
-                            Some(Record::Var { ty, .. }) => return Some(ty.clone()),
-                            Some(rec) => self.err.unexpected_error(
-                                true,
-                                Some(format!("Should be Var, but got rec: {:?}", rec)),
-                                line_col_from_loc(loc),
-                            ),
-                            None => return None,
-                        }
-                    }
                 }
-                if name.starts_with("arg") || name.starts_with("local") {
-                    self.err.type_check_error(
-                        false,
-                        format! {"Please add type bound for `{}`", name},
-                        &loc.clone().map(|l| l.line_col),
-                    );
-                } else {
-                    self.err.type_check_error(
-                        false,
-                        format! {"`{}` not found in symbol table", name},
-                        &loc.clone().map(|l| l.line_col),
-                    );
-                }
+                self.err.type_check_error(
+                    false,
+                    format! {"`{}` not found in symbol table", name},
+                    &loc.clone().map(|l| l.line_col),
+                );
 
                 Some(DataType::AssumeGood)
             }
