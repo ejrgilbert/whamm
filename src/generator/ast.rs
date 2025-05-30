@@ -259,14 +259,6 @@ impl WhammParam {
     pub fn new(var_name: String, var_type: DataType) -> Self {
         Self::from((var_name, var_type))
     }
-    pub fn set_ty(&mut self, t: DataType) {
-        match self {
-            Self::Imm { ty, .. }
-            | Self::Arg { ty, .. }
-            | Self::Local { ty, .. }
-            | Self::Custom { ty, .. } => *ty = t,
-        }
-    }
     pub fn ty(&self) -> DataType {
         match self {
             Self::Custom { ty, .. }
@@ -279,28 +271,17 @@ impl WhammParam {
 impl From<(String, DataType)> for WhammParam {
     fn from(value: (String, DataType)) -> Self {
         // handle immN, argN, localN
-        if let Some(n) = handle_special(&value.0, "imm".to_string()) {
-            return Self::Imm {
-                n,
-                ty: DataType::Unknown,
-            };
-        }
-        if let Some(n) = handle_special(&value.0, "arg".to_string()) {
-            return Self::Arg {
-                n,
-                ty: DataType::Unknown,
-            };
-        }
-        if let Some(n) = handle_special(&value.0, "local".to_string()) {
-            return Self::Local {
-                n,
-                ty: DataType::Unknown,
-            };
-        }
-
-        return Self::Custom {
-            name: value.0,
-            ty: value.1,
+        return if let Some(n) = handle_special(&value.0, "imm".to_string()) {
+            Self::Imm { n, ty: value.1 }
+        } else if let Some(n) = handle_special(&value.0, "arg".to_string()) {
+            return Self::Arg { n, ty: value.1 };
+        } else if let Some(n) = handle_special(&value.0, "local".to_string()) {
+            return Self::Local { n, ty: value.1 };
+        } else {
+            Self::Custom {
+                name: value.0,
+                ty: value.1,
+            }
         };
 
         fn handle_special(value: &str, prefix: String) -> Option<u32> {
@@ -316,9 +297,6 @@ impl From<(String, DataType)> for WhammParam {
 impl Display for WhammParam {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            // Self::Pc => f.write_str("pc"),
-            // Self::Fid => f.write_str("fid"),
-            // Self::Fname => f.write_str("fname"),
             Self::Imm { n, .. } => f.write_str(&format!("imm{n}")),
             Self::Arg { n, .. } => f.write_str(&format!("arg{n}")),
             Self::Local { n, .. } => f.write_str(&format!("local{n}")),

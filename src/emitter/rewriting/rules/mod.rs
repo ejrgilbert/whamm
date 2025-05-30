@@ -1816,7 +1816,7 @@ fn bind_vars_br_table(
                             },
                         )
                     }
-                    _ => panic!("bound variable not supported: {name}"),
+                    _ => {}
                 };
             }
             WhammParam::Imm { n, ty } => {
@@ -1897,12 +1897,12 @@ fn bind_vars_call(
                             val: func_info.module.to_string(),
                         }),
                     ),
-                    _ => panic!("bound variable not supported: {name}"),
+                    _ => None,
                 };
             }
             WhammParam::Imm { n, ty } => {
                 assert_eq!(*n, 0);
-                assert!(matches!(ty, DataType::U32));
+                assert!(matches!(ty, DataType::U32), "wrong type: {ty}");
 
                 define_imm_n(0, Some(Value::gen_u32(fid)), loc_info);
             }
