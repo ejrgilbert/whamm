@@ -82,7 +82,30 @@ fn handle_wasm(
         .static_data
         .insert("pc".to_string(), Some(Value::gen_u32(pc as u32)));
 
-    // TODO get the whammparams
+    for param in prov.all_params() {
+        if let Some(n) = param.n_for("local") {
+            let locals = &app_wasm.functions.get(fid).unwrap_local().body.locals;
+            if let Some((id, _ty)) = locals.get(n as usize) {
+                assert_eq!(n, *id);
+                if matches!(&param.ty, _ty) {
+                    // add an alias for this!
+                    let name = format!("local{n}");
+                    loc_info.add_dynamic_assign(
+                        name.clone(),
+                        DataType::from_wasm_type(_ty),
+                        Expr::VarId {
+                            definition: Definition::CompilerDynamic,
+                            name,
+                            loc: None,
+                        },
+                    );
+                } else {
+                    // I think this is okay? just skip
+                    todo!()
+                }
+            }
+        }
+    }
 
     let mut res: Option<LocInfo> = Some(loc_info);
     for (package, pkg) in prov.pkgs.iter() {

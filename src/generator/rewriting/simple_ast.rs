@@ -80,7 +80,7 @@ impl SimpleAST {
                     &probe.rule.package.name,
                     &probe.rule.event.name,
                     &probe.rule.mode.name,
-                    probe.to_owned()
+                    probe.to_owned(),
                 );
             }
         }
@@ -95,16 +95,12 @@ impl SimpleAST {
         mode_name: &str,
         probe: Probe,
     ) {
-        self.provs.entry(provider_name.to_string()).and_modify(|provider| {
-            provider.add_probe(package_name, event_name, mode_name, probe.to_owned());
-        }).or_insert(
-            SimpleProv::new(
-                package_name,
-                event_name,
-                mode_name,
-                probe
-            )
-        );
+        self.provs
+            .entry(provider_name.to_string())
+            .and_modify(|provider| {
+                provider.add_probe(package_name, event_name, mode_name, probe.to_owned());
+            })
+            .or_insert(SimpleProv::new(package_name, event_name, mode_name, probe));
     }
     pub fn all_params(&self) -> Vec<&WhammParam> {
         let mut ps = vec![];
@@ -116,35 +112,21 @@ impl SimpleAST {
 }
 #[derive(Default)]
 pub struct SimpleProv {
-    pub pkgs: HashMap<String, SimplePkg>
+    pub pkgs: HashMap<String, SimplePkg>,
 }
 impl SimpleProv {
-    fn new(
-        package_name: &str,
-        event_name: &str,
-        mode_name: &str,
-        probe: Probe
-    ) -> Self {
+    fn new(package_name: &str, event_name: &str, mode_name: &str, probe: Probe) -> Self {
         let mut s = Self::default();
         s.add_probe(package_name, event_name, mode_name, probe);
         s
     }
-    fn add_probe(
-        &mut self,
-        package_name: &str,
-        event_name: &str,
-        mode_name: &str,
-        probe: Probe
-    ) {
-        self.pkgs.entry(package_name.to_string()).and_modify(|pkg| {
-            pkg.add_probe(event_name, mode_name, probe.to_owned());
-        }).or_insert(
-            SimplePkg::new(
-                event_name,
-                mode_name,
-                probe
-            )
-        );
+    fn add_probe(&mut self, package_name: &str, event_name: &str, mode_name: &str, probe: Probe) {
+        self.pkgs
+            .entry(package_name.to_string())
+            .and_modify(|pkg| {
+                pkg.add_probe(event_name, mode_name, probe.to_owned());
+            })
+            .or_insert(SimplePkg::new(event_name, mode_name, probe));
     }
     pub fn all_params(&self) -> Vec<&WhammParam> {
         let mut ps = vec![];
@@ -156,32 +138,21 @@ impl SimpleProv {
 }
 #[derive(Default)]
 pub struct SimplePkg {
-    pub evts: HashMap<String, SimpleEvt>
+    pub evts: HashMap<String, SimpleEvt>,
 }
 impl SimplePkg {
-    fn new(
-        event_name: &str,
-        mode_name: &str,
-        probe: Probe
-    ) -> Self {
+    fn new(event_name: &str, mode_name: &str, probe: Probe) -> Self {
         let mut s = Self::default();
         s.add_probe(event_name, mode_name, probe);
         s
     }
-    fn add_probe(
-        &mut self,
-        event_name: &str,
-        mode_name: &str,
-        probe: Probe
-    ) {
-        self.evts.entry(event_name.to_string()).and_modify(|evt| {
-            evt.add_probe(mode_name, probe.to_owned());
-        }).or_insert(
-            SimpleEvt::new(
-                mode_name,
-                probe
-            )
-        );
+    fn add_probe(&mut self, event_name: &str, mode_name: &str, probe: Probe) {
+        self.evts
+            .entry(event_name.to_string())
+            .and_modify(|evt| {
+                evt.add_probe(mode_name, probe.to_owned());
+            })
+            .or_insert(SimpleEvt::new(mode_name, probe));
     }
     pub fn all_params(&self) -> Vec<&WhammParam> {
         let mut ps = vec![];
@@ -193,26 +164,22 @@ impl SimplePkg {
 }
 #[derive(Default)]
 pub struct SimpleEvt {
-    pub modes: HashMap<ModeKind, Vec<Probe>>
+    pub modes: HashMap<ModeKind, Vec<Probe>>,
 }
 impl SimpleEvt {
-    fn new(
-        mode_name: &str,
-        probe: Probe
-    ) -> Self {
+    fn new(mode_name: &str, probe: Probe) -> Self {
         let mut s = Self::default();
         s.add_probe(mode_name, probe);
         s
     }
-    fn add_probe(
-        &mut self,
-        mode_name: &str,
-        probe: Probe
-    ) {
+    fn add_probe(&mut self, mode_name: &str, probe: Probe) {
         let mode_kind = ModeKind::from(mode_name.to_string());
-        self.modes.entry(mode_kind).and_modify(|probes| {
-            probes.push(probe.clone());
-        }).or_insert(vec![probe]);
+        self.modes
+            .entry(mode_kind)
+            .and_modify(|probes| {
+                probes.push(probe.clone());
+            })
+            .or_insert(vec![probe]);
     }
     pub fn all_params(&self) -> Vec<&WhammParam> {
         let mut ps = vec![];
