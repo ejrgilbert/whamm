@@ -218,8 +218,7 @@ fn instrument_with_local_n_scripts() {
     let processed_scripts = common::setup_tests("core_suite/localN");
     assert!(!processed_scripts.is_empty());
 
-    // TODO -- after fixing wizard bug, run those tests!
-    run_core_suite("localN", processed_scripts, true, false)
+    run_core_suite("localN", processed_scripts, true, true)
 }
 
 #[test]

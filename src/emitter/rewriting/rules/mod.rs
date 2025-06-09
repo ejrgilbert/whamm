@@ -1924,6 +1924,10 @@ fn bind_vars_call(
     for param in all_params {
         if let Some(n) = param.n_for("arg") {
             // check that the types match!
+            if n as usize >= func_params.len() {
+                // Doesn't have this argument, no match!
+                return Err(());
+            }
             if let Some(ty) = func_params.get(func_params.len() - (n as usize + 1)) {
                 if *param.ty.to_wasm_type().first().unwrap() != *ty {
                     // types don't match, no match for this location!
