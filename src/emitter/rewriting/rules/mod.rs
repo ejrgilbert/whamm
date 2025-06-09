@@ -2,10 +2,12 @@ use crate::generator::ast::{Probe, ReqArgs, WhammParam};
 use crate::generator::rewriting::simple_ast::{SimpleAST, SimpleEvt, SimplePkg, SimpleProv};
 use crate::parser::provider_handler::ModeKind;
 use crate::parser::types::{Block, DataType, Definition, Expr, NumLit, RulePart, Statement, Value};
+use crate::verifier::types::VarAddr;
 use log::warn;
 use orca_wasm::ir::id::{FunctionID, GlobalID, TypeID};
 use orca_wasm::ir::module::module_functions::{FuncKind, ImportedFunction, LocalFunction};
 use orca_wasm::ir::module::module_globals::{GlobalKind, ImportedGlobal, LocalGlobal};
+use orca_wasm::ir::module::module_types::Types;
 use orca_wasm::ir::module::Module;
 use orca_wasm::ir::types::DataType as OrcaType;
 use orca_wasm::Location;
@@ -84,25 +86,39 @@ fn handle_wasm(
 
     for param in prov.all_params() {
         if let Some(n) = param.n_for("local") {
-            let locals = &app_wasm.functions.get(fid).unwrap_local().body.locals;
-            if let Some((id, _ty)) = locals.get(n as usize) {
-                assert_eq!(n, *id);
-                if matches!(&param.ty, _ty) {
-                    // add an alias for this!
-                    let name = format!("local{n}");
-                    loc_info.add_dynamic_assign(
-                        name.clone(),
-                        DataType::from_wasm_type(_ty),
-                        Expr::VarId {
-                            definition: Definition::CompilerDynamic,
-                            name,
-                            loc: None,
-                        },
-                    );
+            let func = app_wasm.functions.get(fid).unwrap_local();
+
+            let wasm_ty = if n < func.args.len() as u32 {
+                // referring to a function argument
+                if let Some(Types::FuncType { params, .. }) = app_wasm.types.get(func.ty_id) {
+                    params.get(n as usize)?
                 } else {
-                    // I think this is okay? just skip
-                    todo!()
+                    panic!(
+                        "Unable to lookup the function type with ID: {}",
+                        *func.ty_id
+                    );
                 }
+            } else {
+                // referring to a function local variable
+                if let Some((_, wasm_ty)) = func.body.locals.get(n as usize) {
+                    wasm_ty
+                } else {
+                    // no match! not correct local var context in this function
+                    return None;
+                }
+            };
+
+            if param
+                .ty
+                .is_compatible_with(&DataType::from_wasm_type(wasm_ty))
+            {
+                loc_info
+                    .dynamic_alias
+                    .insert(format!("local{n}"), (*wasm_ty, VarAddr::Local { addr: n }));
+                continue;
+            } else {
+                // no match! not correct local var context in this function
+                return None;
             }
         }
     }
@@ -233,8 +249,9 @@ fn handle_opcode_events(
             loc_info.add_probes(probe_rule.clone(), evt);
         },
         "call" => if let Operator::Call {function_index} = instr {
-            bind_vars_call(&mut loc_info, &all_params, *function_index, app_wasm);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            if bind_vars_call(&mut loc_info, &all_params, *function_index, app_wasm).is_ok() {
+                loc_info.add_probes(probe_rule.clone(), evt);
+            }
         },
         "call_indirect" => if let Operator::CallIndirect {type_index,
             table_index,} = instr {
@@ -242,11 +259,11 @@ fn handle_opcode_events(
             loc_info.add_probes(probe_rule.clone(), evt);
         },
         "return_call" => if let Operator::ReturnCall {function_index} = instr {
-            bind_vars_call(&mut loc_info, &all_params, *function_index, app_wasm);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            if bind_vars_call(&mut loc_info, &all_params, *function_index, app_wasm).is_ok() {
+                loc_info.add_probes(probe_rule.clone(), evt);
+            }
         },
-        "return_call_indirect" => if let Operator::ReturnCallIndirect {type_index,
-            table_index,} = instr {
+        "return_call_indirect" => if let Operator::ReturnCallIndirect {type_index, table_index } = instr {
             define_imm0_u32_imm1_u32(*type_index, *table_index, &mut loc_info, &all_params);
             loc_info.add_probes(probe_rule.clone(), evt);
         },
@@ -1867,17 +1884,20 @@ fn bind_vars_call(
     all_params: &HashSet<&WhammParam>,
     fid: u32,
     app_wasm: &Module,
-) {
+) -> Result<(), ()> {
     let func_info = match app_wasm.functions.get_kind(FunctionID(fid)) {
-        FuncKind::Import(ImportedFunction { import_id, .. }) => {
+        FuncKind::Import(ImportedFunction {
+            import_id, ty_id, ..
+        }) => {
             let import = app_wasm.imports.get(*import_id);
             FuncInfo {
                 func_kind: "import".to_string(),
                 module: import.module.to_string(),
                 name: import.name.to_string(),
+                ty_id: *ty_id,
             }
         }
-        FuncKind::Local(LocalFunction { func_id, .. }) => FuncInfo {
+        FuncKind::Local(LocalFunction { func_id, ty_id, .. }) => FuncInfo {
             func_kind: "local".to_string(),
             module: match &app_wasm.module_name {
                 Some(name) => name.clone(),
@@ -1887,11 +1907,34 @@ fn bind_vars_call(
                 Some(name) => name.clone(),
                 None => "".to_string(),
             },
+            ty_id: *ty_id,
         },
     };
 
+    let func_params =
+        if let Some(Types::FuncType { params, .. }) = app_wasm.types.get(func_info.ty_id) {
+            params.clone()
+        } else {
+            panic!(
+                "Unable to lookup the function type with ID: {}",
+                *func_info.ty_id
+            );
+        };
+
     for param in all_params {
-        if let Some(n) = param.n_for("imm") {
+        if let Some(n) = param.n_for("arg") {
+            // check that the types match!
+            if let Some(ty) = func_params.get(func_params.len() - (n as usize + 1)) {
+                if *param.ty.to_wasm_type().first().unwrap() != *ty {
+                    // types don't match, no match for this location!
+                    return Err(());
+                }
+            } else {
+                // Doesn't have this argument, no match!
+                return Err(());
+            }
+            // else we have a match for this location!
+        } else if let Some(n) = param.n_for("imm") {
             assert_eq!(n, 0);
             assert!(
                 matches!(param.ty, DataType::U32),
@@ -1924,6 +1967,8 @@ fn bind_vars_call(
             };
         }
     }
+
+    Ok(())
 }
 
 #[derive(Debug)]
@@ -1931,6 +1976,7 @@ struct FuncInfo {
     func_kind: String,
     module: String,
     name: String,
+    ty_id: TypeID,
 }
 
 pub fn get_ty_info_for_instr(
@@ -2432,6 +2478,7 @@ pub struct LocInfo {
     pub static_data: HashMap<String, Option<Value>>,
     /// dynamic information to be defined at the probe location
     pub dynamic_data: HashMap<String, Block>,
+    pub(crate) dynamic_alias: HashMap<String, (OrcaType, VarAddr)>,
     /// dynamic information corresponding to the operands of this location
     pub(crate) args: Vec<Arg>,
     pub num_alt_probes: usize,

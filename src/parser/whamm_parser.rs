@@ -1372,7 +1372,7 @@ fn probe_rule_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeRule {
 
         // check if there is type info associated with this probe part
         if let Some(n) = next.clone() {
-            if matches!(n.as_rule(), Rule::EVENT_TY_INFO) {
+            if matches!(n.as_rule(), Rule::TY_BOUNDS) {
                 let mut param_pairs = n.into_inner();
 
                 let mut params = vec![];

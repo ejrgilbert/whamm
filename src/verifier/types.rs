@@ -151,6 +151,28 @@ impl SymbolTable {
         self.get_curr_scope_mut().unwrap().containing_script = Some(id);
     }
 
+    pub fn override_record_addr(
+        &mut self,
+        symbol_name: &str,
+        var_ty: DataType,
+        var_addr: Option<VarAddr>,
+    ) {
+        let rec_id = match self.lookup(symbol_name) {
+            Some(rec_id) => rec_id,
+            _ => {
+                panic!(
+                    "{UNEXPECTED_ERR_MSG} \
+                    `{symbol_name}` symbol does not exist in this scope!"
+                );
+            }
+        };
+        let mut rec = self.get_record_mut(rec_id);
+        if let Some(Record::Var { addr, ty, .. }) = &mut rec {
+            *ty = var_ty;
+            *addr = var_addr;
+        }
+    }
+
     pub fn override_record_val(&mut self, symbol_name: &str, val: Option<Value>) {
         let rec_id = match self.lookup(symbol_name) {
             Some(rec_id) => rec_id,

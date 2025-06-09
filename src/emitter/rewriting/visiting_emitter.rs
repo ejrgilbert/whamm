@@ -276,8 +276,22 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         Ok(true)
     }
 
-    pub(crate) fn define(&mut self, var_name: &str, var_val: &Option<Value>) -> bool {
+    pub(crate) fn define_data(&mut self, var_name: &str, var_val: &Option<Value>) -> bool {
         self.table.override_record_val(var_name, var_val.clone());
+        true
+    }
+
+    pub(crate) fn define_alias(
+        &mut self,
+        var_name: &str,
+        var_ty: &OrcaType,
+        alias_addr: &VarAddr,
+    ) -> bool {
+        self.table.override_record_addr(
+            var_name,
+            DataType::from_wasm_type(var_ty),
+            Some(alias_addr.clone()),
+        );
         true
     }
 
@@ -286,6 +300,15 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         loc_info.static_data.iter().for_each(|(symbol_name, ..)| {
             self.table.override_record_val(symbol_name, None);
         });
+
+        // reset dynamic_alias
+        loc_info
+            .dynamic_alias
+            .iter()
+            .for_each(|(symbol_name, (ty, ..))| {
+                self.table
+                    .override_record_addr(symbol_name, DataType::from_wasm_type(ty), None);
+            });
 
         // reset dynamic_data
         loc_info.dynamic_data.iter().for_each(|(symbol_name, ..)| {

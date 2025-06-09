@@ -1,11 +1,10 @@
-
 ============================= REPORT CSV FLUSH ================================
 id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)
 4, memaddr, count, u32, i32, script0, 0:0, 2_wasm:opcode:block:before, 1
 31, memaddr, count, u32, i32, script0, 0:1, 2_wasm:opcode:block:before, 1
 58, memaddr, count, u32, i32, script0, 0:2, 21_wasm:opcode:local.get:before, 1
-85, memaddr, count, u32, i32, script0, 0:3, 51_wasm:opcode:i32.const:before, 1
-112, memaddr, count, u32, i32, script0, 0:4, 60_wasm:opcode:i32.eq:before, 1
+85, memaddr, count, u32, i32, script0, 0:3, 52_wasm:opcode:i64.const:before, 1
+112, memaddr, count, u32, i32, script0, 0:4, 71_wasm:opcode:i64.eq:before, 1
 139, memaddr, count, u32, i32, script0, 0:5, 11_wasm:opcode:br_if:before, 1
 166, memaddr, count, u32, i32, script0, 0:6, 10_wasm:opcode:br:before, 1
 193, memaddr, count, u32, i32, script0, 0:7, 9_wasm:opcode:end:before, 0
@@ -64,7 +63,7 @@ id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)
 1624, memaddr, count, u32, i32, script0, 4:2, 21_wasm:opcode:local.get:before, 1
 1651, memaddr, count, u32, i32, script0, 4:3, 59_wasm:opcode:i32.eqz:before, 1
 1678, memaddr, count, u32, i32, script0, 4:4, 19_wasm:opcode:select:before, 1
-1705, memaddr, count, u32, i32, script0, 5:0, 51_wasm:opcode:i32.const:before, 1
+1705, memaddr, count, u32, i32, script0, 5:0, 52_wasm:opcode:i64.const:before, 1
 1732, memaddr, count, u32, i32, script0, 5:1, 14_wasm:opcode:call:before, 1
 1759, memaddr, count, u32, i32, script0, 5:2, 25_wasm:opcode:global.set:before, 1
 1786, memaddr, count, u32, i32, script0, 5:3, 51_wasm:opcode:i32.const:before, 1
