@@ -31,7 +31,7 @@ pub fn print_info(
     trace!("Entered print_info");
     err.set_script_text(rule.to_owned());
 
-    let writer = BufferWriter::stderr(ColorChoice::Always);
+    let writer = BufferWriter::stdout(ColorChoice::Always);
     let mut whamm_buffer = writer.buffer();
 
     // Print `whamm` info
