@@ -17,6 +17,11 @@ providers:
         derived_from: null
         lifetime: static
         docs: The name of the function the probe is located in. Empty string if not defined.
+      - name: localN
+        type: unknown
+        docs: The value of the Nth local variable in the function, N should match the following pattern [0:9]+.
+        lifetime: dynamic
+        derived_from: null
     bound_fns: []
     packages:
       - *begin

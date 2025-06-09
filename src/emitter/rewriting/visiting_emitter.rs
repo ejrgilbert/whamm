@@ -12,7 +12,7 @@ use crate::emitter::utils::{block_type_to_wasm, emit_expr, emit_stmt, EmitCtx};
 use crate::emitter::{configure_flush_routines, Emitter, InjectStrategy};
 use crate::generator::ast::UnsharedVar;
 use crate::generator::folding::ExprFolder;
-use crate::generator::rewriting::simple_ast::SimpleAstProbes;
+use crate::generator::rewriting::simple_ast::SimpleAST;
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::report_vars::ReportVars;
@@ -138,14 +138,14 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         }
     }
 
-    pub(crate) fn get_loc_info(&self, probes: &SimpleAstProbes) -> Option<LocInfo> {
+    pub(crate) fn get_loc_info(&self, ast: &SimpleAST) -> Option<LocInfo> {
         let (loc, at_func_end) = self.app_iter.curr_loc();
         if at_func_end {
             // We're at the 'end' opcode of the function...don't instrument
             return None;
         }
         if let Some(curr_instr) = self.app_iter.curr_op() {
-            get_loc_info_for_active_probes(self.app_iter.module, loc, curr_instr, probes)
+            get_loc_info_for_active_probes(self.app_iter.module, loc, curr_instr, ast)
         } else {
             None
         }

@@ -112,7 +112,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
         while first_instr || self.emitter.next_instr() {
             first_instr = false;
             // Check if any of the configured rules match this instruction in the application.
-            if let Some(loc_info) = self.emitter.get_loc_info(&self.ast.probes) {
+            if let Some(loc_info) = self.emitter.get_loc_info(&self.ast) {
                 // Inject a call to the on-exit flush function
                 if loc_info.is_prog_exit {
                     if self.on_exit_fid.is_none() {

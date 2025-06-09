@@ -9,7 +9,7 @@ use crate::emitter::InjectStrategy;
 use crate::generator::metadata_collector::MetadataCollector;
 use crate::generator::rewriting::init_generator::InitGenerator;
 use crate::generator::rewriting::instr_generator::InstrGenerator;
-use crate::generator::rewriting::simple_ast::build_simple_ast;
+use crate::generator::rewriting::simple_ast::SimpleAST;
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::io::IOPackage;
@@ -343,7 +343,7 @@ fn run_instr_rewrite(
     // Phase 1 of instrumentation (actually emits the instrumentation code)
     // This structure is necessary since we need to have the fns/globals injected (a single time)
     // and ready to use in every body/predicate.
-    let simple_ast = build_simple_ast(ast);
+    let simple_ast = SimpleAST::new(ast);
     let mut instr = InstrGenerator::new(
         VisitingEmitter::new(
             InjectStrategy::Rewriting,
