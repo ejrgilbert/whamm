@@ -165,10 +165,8 @@ impl<'a> TypeChecker<'a> {
             name.clone(),
             Record::Var {
                 ty,
-                name,
                 value: None,
                 def: definition,
-                is_report_var: false,
                 addr: None,
                 loc: loc.clone(),
             },
@@ -224,10 +222,8 @@ impl<'a> TypeChecker<'a> {
                         name.clone(),
                         Record::Var {
                             ty: ty_bound.clone(),
-                            name: name.clone(),
                             value: None,
                             def: CompilerDynamic,
-                            is_report_var: false,
                             addr: None,
                             loc: loc.clone(),
                         },
@@ -550,7 +546,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     //check to make sure that that if tuple, doesn't contain a map
                     if let DataType::Tuple { ty_info } = ty {
                         for ty in ty_info {
-                            if let DataType::Map { .. } = ty.as_ref() {
+                            if let DataType::Map { .. } = ty {
                                 self.err.type_check_error(
                                     false,
                                     "Tuples cannot contain maps".to_owned(),
@@ -1385,18 +1381,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
         }
     }
 
-    fn visit_unop(&mut self, _unop: &mut UnOp) -> Option<DataType> {
-        unimplemented!()
-    }
-
-    fn visit_binop(&mut self, _binop: &mut BinOp) -> Option<DataType> {
-        unimplemented!()
-    }
-
-    fn visit_datatype(&mut self, _datatype: &mut DataType) -> Option<DataType> {
-        unimplemented!()
-    }
-
     fn visit_value(&mut self, val: &mut Value) -> Option<DataType> {
         match val {
             Value::Number { .. } | Value::Boolean { .. } => {
@@ -1404,7 +1388,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     if let Some(exp_ty) = &self.assign_ty {
                         let exp_ty = if let DataType::Tuple { ty_info } = exp_ty {
                             if let Some(ty) = ty_info.get(self.tuple_index) {
-                                &**ty
+                                ty
                             } else {
                                 let loc = self.curr_loc.as_ref().map(|loc| loc.line_col.clone());
                                 self.err.type_check_error(
@@ -1461,10 +1445,10 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
 
                 // assume these expressions (actually just values) all parse
                 // and have Some type
-                let mut all_tys: Vec<Box<DataType>> = Vec::new();
+                let mut all_tys: Vec<DataType> = Vec::new();
                 for (idx, ty) in tys.iter().enumerate() {
                     match ty {
-                        Some(ty) => all_tys.push(Box::new(ty.to_owned())),
+                        Some(ty) => all_tys.push(ty.to_owned()),
                         _ => {
                             let loc = if let Some(val) = vals.get(idx) {
                                 val.loc().as_ref().map(|loc| loc.line_col.clone())

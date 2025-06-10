@@ -3,8 +3,8 @@ use crate::emitter::module_emitter::ModuleEmitter;
 use crate::lang_features::report_vars::{BytecodeLoc, LocationData};
 use crate::parser::provider_handler::{BoundFunc, Event, ModeKind, Package, Probe, Provider};
 use crate::parser::types::{
-    BinOp, Block, BoundFunction, DataType, Definition, Expr, Fn, FnId, Global, ProbeRule, Script,
-    Statement, UnOp, Value, Whamm, WhammVisitorMut,
+    Block, BoundFunction, DataType, Definition, Expr, Fn, FnId, Global, Script, Statement, Value,
+    Whamm, WhammVisitorMut,
 };
 use crate::verifier::types::Record;
 use itertools::Itertools;
@@ -59,7 +59,7 @@ fn emit_needed_funcs(
 
 pub trait GeneratingVisitor: WhammVisitorMut<bool> {
     fn emit_string(&mut self, val: &mut Value) -> bool;
-    fn emit_fn(&mut self, context: &str, f: &Fn) -> Option<FunctionID>;
+    fn emit_func(&mut self, f: &mut Fn) -> Option<FunctionID>;
     fn emit_global(
         &mut self,
         name: String,
@@ -88,7 +88,6 @@ pub trait GeneratingVisitor: WhammVisitorMut<bool> {
     }
     fn set_curr_loc(&mut self, loc: LocationData);
     fn enter_named_scope(&mut self, name: &str);
-    fn enter_scope_via_rule(&mut self, script_id: &str, probe_rule: &ProbeRule);
     fn enter_scope(&mut self);
     fn exit_scope(&mut self);
     fn lookup_var_mut(&mut self, name: &str) -> Option<&mut Record>;
@@ -99,6 +98,7 @@ pub trait GeneratingVisitor: WhammVisitorMut<bool> {
         });
         is_success
     }
+    fn visit_global_stmts(&mut self, stmts: &mut [Statement]) -> bool;
     fn visit_globals(&mut self, globals: &HashMap<String, Global>) -> bool {
         let is_success = true;
         let sorted_globals = globals.iter().sorted_by_key(|data| data.0);
@@ -210,7 +210,7 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
         // inject globals
         is_success &= self.visit_globals(&script.globals);
         // visit global statements
-        is_success &= self.visit_stmts(&mut script.global_stmts);
+        is_success &= self.visit_global_stmts(&mut script.global_stmts);
         // visit providers
         script.providers.iter_mut().for_each(|(_name, provider)| {
             is_success &= self.visit_provider(provider);
@@ -365,6 +365,7 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
             // NOT want to emit any code into the Wasm...ONLY emit Strings into data sections.
             // Make sure this is remembered when emitting functions!!
             is_success &= self.visit_block(&mut f.body);
+            self.emit_func(f);
         }
         trace!("Exiting: CodeGenerator::visit_fn");
         self.exit_scope();
@@ -492,21 +493,6 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
                 is_success
             }
         }
-    }
-
-    fn visit_unop(&mut self, _unop: &mut UnOp) -> bool {
-        // never called
-        unreachable!();
-    }
-
-    fn visit_binop(&mut self, _binop: &mut BinOp) -> bool {
-        // never called
-        unreachable!();
-    }
-
-    fn visit_datatype(&mut self, _datatype: &mut DataType) -> bool {
-        // never called
-        unreachable!();
     }
 
     fn visit_value(&mut self, val: &mut Value) -> bool {

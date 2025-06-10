@@ -10,7 +10,7 @@ use itertools::Itertools;
 use log::trace;
 use orca_wasm::ir::id::FunctionID;
 use orca_wasm::Module;
-use parser_types::{BinOp, Block, DataType, Expr, Fn, Script, Statement, UnOp, Value, Whamm};
+use parser_types::{Block, DataType, Expr, Fn, Script, Statement, Value, Whamm};
 use std::collections::{HashMap, HashSet};
 use wasmparser::ExternalKind;
 
@@ -53,7 +53,6 @@ impl SymbolTableBuilder<'_, '_, '_> {
 
         // create record
         let script_rec = Record::Script {
-            id: script.id,
             user_libs: vec![],
             fns: vec![],
             globals: vec![],
@@ -99,7 +98,6 @@ impl SymbolTableBuilder<'_, '_, '_> {
 
         // create record
         let provider_rec = Record::Provider {
-            name: provider.def.name.clone(),
             fns: vec![],
             vars: vec![],
             packages: vec![],
@@ -148,7 +146,6 @@ impl SymbolTableBuilder<'_, '_, '_> {
 
         // create record
         let package_rec = Record::Package {
-            name: package.def.name.clone(),
             fns: vec![],
             vars: vec![],
             events: vec![],
@@ -193,7 +190,6 @@ impl SymbolTableBuilder<'_, '_, '_> {
 
         // create record
         let event_rec = Record::Event {
-            name: event.def.name.clone(),
             fns: vec![],
             vars: vec![],
             probes: vec![],
@@ -242,7 +238,6 @@ impl SymbolTableBuilder<'_, '_, '_> {
 
         // create record
         let probe_rec = Record::Probe {
-            mode: probe.kind.name(),
             fns: vec![],
             vars: vec![],
         };
@@ -291,7 +286,6 @@ impl SymbolTableBuilder<'_, '_, '_> {
             let lib_id = self.table.put(
                 lib_name.clone(),
                 Record::Library {
-                    name: lib_name.clone(),
                     fns: Default::default(),
                 },
             );
@@ -320,7 +314,6 @@ impl SymbolTableBuilder<'_, '_, '_> {
                         }
                         let fn_name = export.name.clone();
                         let fn_rec = Record::LibFn {
-                            lib_name: lib_name.clone(),
                             name: fn_name.clone(),
                             def: Definition::User,
                             params,
@@ -483,11 +476,9 @@ impl SymbolTableBuilder<'_, '_, '_> {
 
         // create record
         let param_rec = Record::Var {
-            name: name.clone(),
             ty: ty.clone(),
             value: None,
             def: Definition::User,
-            is_report_var: false,
             addr: None,
             loc: var_id.loc().clone(),
         };
@@ -514,7 +505,6 @@ impl SymbolTableBuilder<'_, '_, '_> {
         name: String,
         value: Option<Value>,
         definition: Definition,
-        is_report_var: bool,
         loc: Option<Location>,
     ) {
         /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
@@ -528,10 +518,8 @@ impl SymbolTableBuilder<'_, '_, '_> {
             name.clone(),
             Record::Var {
                 ty,
-                name,
                 value,
                 def: definition,
-                is_report_var,
                 addr: None,
                 loc,
             },
@@ -563,7 +551,6 @@ impl SymbolTableBuilder<'_, '_, '_> {
                         name.clone(),
                         Some(val.clone()),
                         lifetime.clone(),
-                        false,
                         None,
                     );
                 } else {
@@ -577,7 +564,6 @@ impl SymbolTableBuilder<'_, '_, '_> {
                     name.clone(),
                     None, // todo this is just made up
                     lifetime.clone(),
-                    false,
                     None,
                 );
             }
@@ -612,7 +598,6 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
 
         // add whamm record
         let whamm_rec = Record::Whamm {
-            name: name.clone(),
             fns: vec![],
             globals: vec![],
             scripts: vec![],
@@ -674,7 +659,6 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
                             def: Definition::User,
                             report: is_report_var,
                             ty: ty.clone(),
-                            var_name: var_id.clone(),
                             value: None,
                         },
                     );
@@ -878,14 +862,8 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
         {
             // in the global scope!
 
-            let mut is_report_var = false;
             let stmt = match &stmt {
-                Statement::UnsharedDecl {
-                    decl, is_report, ..
-                } => {
-                    is_report_var = *is_report;
-                    &**decl
-                }
+                Statement::UnsharedDecl { decl, .. } => &**decl,
                 _ => stmt,
             };
             match stmt {
@@ -905,7 +883,6 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
                             name.clone(),
                             None,
                             definition.clone(),
-                            is_report_var,
                             loc.clone(),
                         );
                     } else {
@@ -993,22 +970,6 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
             }
         }
     }
-
-    fn visit_unop(&mut self, _unop: &mut UnOp) {
-        // Not visiting predicates/statements
-        panic!("{UNEXPECTED_ERR_MSG}");
-    }
-
-    fn visit_binop(&mut self, _binop: &mut BinOp) {
-        // Not visiting predicates/statements
-        panic!("{UNEXPECTED_ERR_MSG}");
-    }
-
-    fn visit_datatype(&mut self, _datatype: &mut DataType) {
-        // Not visiting predicates/statements
-        panic!("{UNEXPECTED_ERR_MSG}");
-    }
-
     fn visit_value(&mut self, _val: &mut Value) {
         // Not visiting predicates/statements
         panic!("{UNEXPECTED_ERR_MSG}");

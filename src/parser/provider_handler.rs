@@ -138,13 +138,7 @@ impl Package {
                 .entry(matched_evt.def.name.clone())
                 .or_insert(Event::new(matched_evt.def.clone(), rule));
 
-            evt.add_probes(
-                &matched_evt.modes,
-                rule,
-                predicate.clone(),
-                body.clone(),
-                next_id,
-            );
+            evt.add_probes(&matched_evt.modes, predicate.clone(), body.clone(), next_id);
         }
     }
 }
@@ -174,24 +168,11 @@ impl Event {
     pub fn add_probes(
         &mut self,
         matched_modes: &[ModeDef],
-        rule: &ProbeRule,
         predicate: Option<Expr>,
         body: Option<Block>,
         next_id: &mut u32,
     ) {
         // TODO -- type_bounds for all of the hierarchy should be local to the PROBE...not to the prov/pkg/event...or it gets messed up for other probes...
-        let loc = if let (
-            Some(RulePart {
-                loc: Some(start), ..
-            }),
-            Some(Block { loc: Some(end), .. }),
-        ) = (&rule.provider, &body)
-        {
-            Some(Location::from(&start.line_col, &end.line_col, None))
-        } else {
-            None
-        };
-
         for matched_mode in matched_modes.iter() {
             let probes = self.probes.entry(matched_mode.kind.clone()).or_default();
 
@@ -199,7 +180,6 @@ impl Event {
                 id: *next_id,
                 kind: matched_mode.kind.clone(),
                 def: matched_mode.def.clone(),
-                loc: loc.clone(),
                 predicate: predicate.clone(),
                 body: body.clone(),
             });
@@ -843,7 +823,6 @@ pub struct Probe {
     pub id: u32,
     pub kind: ModeKind,
     pub def: Def,
-    pub loc: Option<Location>,
     pub predicate: Option<Expr>,
     pub body: Option<Block>,
 }

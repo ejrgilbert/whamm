@@ -1464,7 +1464,7 @@ pub fn type_from_rule(pair: Pair<Rule>) -> Result<DataType, Vec<WhammError>> {
             let mut tuple_content_types = vec![];
             for p in pair.into_inner() {
                 match type_from_rule(p) {
-                    Ok(res) => tuple_content_types.push(Box::new(res)),
+                    Ok(res) => tuple_content_types.push(res),
                     Err(e) => return Err(e),
                 }
             }

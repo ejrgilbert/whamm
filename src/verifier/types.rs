@@ -1,6 +1,5 @@
 use crate::common::error::ErrorGen;
 use crate::generator::ast::ReqArgs;
-use crate::lang_features::libraries::core::WHAMM_CORE_LIB_NAME;
 use crate::parser::types::{DataType, Definition, FnId, Location, ProbeRule, Value};
 use pest::error::LineColLocation;
 use std::collections::HashMap;
@@ -176,42 +175,8 @@ impl SymbolTable {
         self.records.get_mut(rec_id)
     }
 
-    pub fn get_curr_rec(&self) -> Option<&Record> {
-        self.records.get(self.curr_rec)
-    }
-
     pub fn get_curr_rec_mut(&mut self) -> Option<&mut Record> {
         self.records.get_mut(self.curr_rec)
-    }
-
-    pub fn get_rec_var_mut(
-        &mut self,
-        rec_id: usize,
-        loc: &Option<Location>,
-        err: &mut ErrorGen,
-    ) -> Option<&mut Record> {
-        if let Some(rec) = self.records.get_mut(rec_id) {
-            if matches!(rec, Record::Var { .. }) {
-                Some(rec)
-            } else {
-                err.unexpected_error(
-                    true,
-                    Some(format!(
-                        "Unexpected record type. Expected Var, found: {:?}",
-                        rec
-                    )),
-                    line_col_from_loc(loc),
-                );
-                None
-            }
-        } else {
-            err.unexpected_error(
-                true,
-                Some(format!("Could not find record with id: {rec_id}")),
-                line_col_from_loc(loc),
-            );
-            None
-        }
     }
 
     pub fn put(&mut self, key: String, rec: Record) -> usize {
@@ -289,9 +254,6 @@ impl SymbolTable {
         } else {
             None
         }
-    }
-    pub fn lookup_core_lib_mut(&mut self) -> Option<&mut Record> {
-        self.lookup_lib_mut(WHAMM_CORE_LIB_NAME)
     }
 
     pub fn lookup_var_mut(&mut self, key: &str, panic_if_missing: bool) -> Option<&mut Record> {
@@ -535,11 +497,6 @@ impl Scope {
         }
     }
 
-    pub fn set_metadata(&mut self, name: String, ty: ScopeType) {
-        self.name = name;
-        self.ty = ty;
-    }
-
     // Scoping operations
 
     pub fn add_child(&mut self, id: usize) {
@@ -627,47 +584,39 @@ impl Display for ScopeType {
 #[derive(Debug)]
 pub enum Record {
     Whamm {
-        name: String,
         fns: Vec<usize>,
         globals: Vec<usize>,
         scripts: Vec<usize>,
     },
     Script {
-        id: u8,
         user_libs: Vec<usize>,
         fns: Vec<usize>,
         globals: Vec<usize>,
         providers: Vec<usize>,
     },
     Library {
-        name: String,
         fns: HashMap<String, usize>,
     },
     Provider {
-        name: String,
         fns: Vec<usize>,
         vars: Vec<usize>,
         packages: Vec<usize>,
     },
     Package {
-        name: String,
         fns: Vec<usize>,
         vars: Vec<usize>,
         events: Vec<usize>,
     },
     Event {
-        name: String,
         fns: Vec<usize>,
         vars: Vec<usize>,
         probes: Vec<usize>,
     },
     Probe {
-        mode: String,
         fns: Vec<usize>,
         vars: Vec<usize>,
     },
     LibFn {
-        lib_name: String,
         name: String,
         params: Vec<DataType>,
         results: Vec<DataType>,
@@ -695,11 +644,8 @@ pub enum Record {
     },
     Var {
         ty: DataType,
-        name: String,
         value: Option<Value>,
         def: Definition,
-        //this is for if the variable is a report var
-        is_report_var: bool,
         /// The address of this var post-injection
         addr: Option<VarAddr>,
         loc: Option<Location>,

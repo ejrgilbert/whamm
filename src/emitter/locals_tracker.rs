@@ -32,49 +32,7 @@ impl LocalsTracker {
             })
             .or_insert(vec![id]);
     }
-    pub fn add(&mut self, ty: DataType, id: u32) {
-        self.available
-            .entry(ty)
-            .and_modify(|list| {
-                // insert at the beginning so that lower IDs are at the top
-                // (for `pop`)
-                list.insert(0, id);
-            })
-            .or_insert(vec![id]);
-    }
     pub fn reset_probe<'a, T: Opcode<'a>>(&mut self, _injector: &mut T) {
-        // Reset the local variables to their default value, keeps value guarantee consistent
-        // between probe body entries!
-        // TODO -- is this necessary???
-        // for (ty, list) in self.in_use.iter() {
-        //     // two locals is where the 'tee' logic gets a benefit over 'set', e.g.:
-        //     // i32.const 0
-        //     // local.tee 0
-        //     // local.tee 1
-        //     // local.tee 2
-        //     // drop
-        //
-        //     // vs
-        //
-        //     // i32.const 0
-        //     // local.set 0
-        //     // i32.const 0
-        //     // local.set 1
-        //     // i32.const 0
-        //     // local.set 2
-        //     if list.len() > 2 {
-        //         gen_null_const(ty, injector);
-        //         for id in list.iter().rev() {
-        //             injector.local_tee(LocalID(*id));
-        //         }
-        //         injector.drop();
-        //     } else {
-        //         for id in list.iter().rev() {
-        //             gen_null_const(ty, injector);
-        //             injector.local_set(LocalID(*id));
-        //         }
-        //     }
-        // }
         self.available.extend(self.in_use.to_owned());
         self.in_use.clear();
     }

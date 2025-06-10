@@ -18,10 +18,6 @@ pub fn color(s: String, buffer: &mut Buffer, bold: bool, italics: bool, c: Color
         .expect(WRITE_ERR);
     write!(buffer, "{}", s.as_str()).expect(WRITE_ERR);
 }
-
-pub fn black(bold: bool, s: String, buffer: &mut Buffer) {
-    color(s, buffer, bold, false, Color::Black)
-}
 pub fn blue(bold: bool, s: String, buffer: &mut Buffer) {
     color(s, buffer, bold, false, Color::Blue)
 }
@@ -42,9 +38,6 @@ pub fn red(bold: bool, s: String, buffer: &mut Buffer) {
 }
 pub fn white(bold: bool, s: String, buffer: &mut Buffer) {
     color(s, buffer, bold, false, Color::Rgb(193, 193, 193))
-}
-pub fn grey(bold: bool, s: String, buffer: &mut Buffer) {
-    color(s, buffer, bold, false, Color::White)
 }
 pub fn grey_italics(bold: bool, s: String, buffer: &mut Buffer) {
     color(s, buffer, bold, true, Color::White)

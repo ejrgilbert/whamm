@@ -7,9 +7,7 @@ use std::fs;
 use std::fs::File;
 use std::path::PathBuf;
 use std::process::Command;
-use whamm::common::error::ErrorGen;
-use whamm::common::instr::{parse_user_lib_paths, Config, LibraryLinkStrategy};
-use whamm::wast::test_harness::wasm2wat_on_file;
+use whamm::api::utils::{wasm2wat_on_file, write_to_file};
 
 const APP_WASM_PATH: &str = "tests/apps/core_suite/handwritten/basic.wasm";
 const CORE_WASM_PATH: &str = "./whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
@@ -17,7 +15,7 @@ const CORE_WASM_PATH: &str = "./whamm_core/target/wasm32-wasip1/release/whamm_co
 #[test]
 fn run_wast_tests() {
     common::setup_logger();
-    whamm::wast::test_harness::run_all().expect("WAST Tests failed!");
+    whamm::api::utils::run_wast_harness().expect("WAST Tests failed!");
 }
 
 /// This test just confirms that a wasm module can be instrumented with the preconfigured
@@ -25,26 +23,16 @@ fn run_wast_tests() {
 #[test]
 fn instrument_dfinity_with_fault_injection() {
     common::setup_logger();
-    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let processed_scripts = common::setup_fault_injection("dfinity");
     assert!(!processed_scripts.is_empty());
-    err.fatal_report("Integration Test");
     wat2wasm_on_dir("tests/apps/core_suite/handwritten");
 
     let wasm_path = "tests/apps/dfinity/users.wasm";
     let wasm = fs::read(wasm_path).unwrap();
 
-    for (script_path, script_text) in processed_scripts {
+    for (script_path, ..) in processed_scripts {
         let mut module_to_instrument = Module::parse(&wasm, false).unwrap();
-        run_script(
-            &script_text,
-            &script_path,
-            &mut module_to_instrument,
-            vec![],
-            None,
-            false,
-            &mut err,
-        );
+        run_script(&script_path, &mut module_to_instrument, vec![], None, false);
     }
 }
 
@@ -135,25 +123,15 @@ fn instrument_spin_with_fault_injection() {
 #[test]
 fn instrument_with_wizard_monitors() {
     common::setup_logger();
-    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     let processed_scripts = common::setup_wizard_monitors();
     assert!(!processed_scripts.is_empty());
-    err.fatal_report("Integration Test");
 
     build_whamm_core_lib();
     wat2wasm_on_dir("tests/apps/core_suite/handwritten");
     let wasm = fs::read(APP_WASM_PATH).unwrap();
-    for (script_path, script_text) in processed_scripts {
+    for (script_path, ..) in processed_scripts {
         let mut module_to_instrument = Module::parse(&wasm, false).unwrap();
-        run_script(
-            &script_text,
-            &script_path,
-            &mut module_to_instrument,
-            vec![],
-            None,
-            false,
-            &mut err,
-        );
+        run_script(&script_path, &mut module_to_instrument, vec![], None, false);
     }
 }
 
@@ -256,7 +234,6 @@ fn instrument_with_calls_monitor_rewriting_scripts() {
 
 struct TestCase {
     script: PathBuf,
-    script_str: String,
     app: PathBuf,
     libs: PathBuf,
     exp: PathBuf,
@@ -276,7 +253,7 @@ fn run_core_suite(
 
     let mut rewriting_tests = vec![];
     let mut wizard_tests = vec![];
-    for (script_path, script_str) in processed_scripts.iter() {
+    for (script_path, ..) in processed_scripts.iter() {
         let fname = script_path.file_name().unwrap().to_str().unwrap();
         let path = script_path.parent().unwrap();
 
@@ -293,22 +270,18 @@ fn run_core_suite(
 
         rewriting_tests.push(TestCase {
             script: script_path.clone(),
-            script_str: script_str.clone(),
             app: app.clone(),
             libs: libs.clone(),
             exp: rewriting_exp,
         });
         wizard_tests.push(TestCase {
             script: script_path.clone(),
-            script_str: script_str.clone(),
             app,
             libs,
             exp: wizard_exp,
         });
     }
 
-    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-    err.fatal_report("Integration Test");
     let outdir = format!("output/tests/{suite_name}");
     try_path(&outdir);
     let instr_app_path = format!("{outdir}/output.wasm");
@@ -316,10 +289,10 @@ fn run_core_suite(
     if with_br {
         for TestCase {
             script,
-            script_str,
             app,
             libs,
             exp,
+            ..
         } in rewriting_tests.iter()
         {
             println!(
@@ -333,9 +306,9 @@ fn run_core_suite(
                 for lib in res.split('\n') {
                     libs.push(lib.to_string());
                 }
-                Some(libs)
+                libs
             } else {
-                None
+                vec![]
             };
             let metadata = fs::metadata(exp).expect("Failed to load expected output file metadata");
             let exp_out = if metadata.len() > MAX_EXP_OUT_SIZE {
@@ -348,13 +321,11 @@ fn run_core_suite(
             };
             run_testcase_rewriting(
                 script,
-                script_str,
                 &app_path_str,
                 libs_path_str,
                 exp_out,
                 &outdir,
                 &instr_app_path,
-                &mut err,
             );
         }
     }
@@ -362,10 +333,10 @@ fn run_core_suite(
     if with_wizard {
         for TestCase {
             script,
-            script_str,
             app,
             libs,
             exp,
+            ..
         } in wizard_tests.iter()
         {
             println!(
@@ -379,9 +350,9 @@ fn run_core_suite(
                 for lib in res.split('\n') {
                     libs.push(lib.to_string());
                 }
-                Some(libs)
+                libs
             } else {
-                None
+                vec![]
             };
             let metadata = fs::metadata(exp).expect("Failed to load expected output file metadata");
             let exp_out = if metadata.len() > MAX_EXP_OUT_SIZE {
@@ -394,13 +365,11 @@ fn run_core_suite(
             };
             run_testcase_wizard(
                 script,
-                script_str,
                 &app_path_str,
                 libs_path_str,
                 exp_out,
                 &outdir,
                 &instr_app_path,
-                &mut err,
             );
         }
     }
@@ -470,80 +439,52 @@ pub(crate) fn try_path(path: &String) {
 }
 
 fn run_script(
-    script_text: &String,
     script_path: &PathBuf,
     target_wasm: &mut Module,
-    user_libs: Vec<(String, String, Vec<u8>)>,
+    user_libs: Vec<String>,
     output_path: Option<String>,
     target_wizard: bool,
-    err: &mut ErrorGen,
 ) {
     let script_path_str = script_path.to_str().unwrap().replace("\"", "");
-    let wasm_result = whamm::common::instr::run(
-        CORE_WASM_PATH,
-        "./",
-        target_wasm,
-        &script_text,
-        &script_path_str,
-        user_libs,
-        0,
-        Config {
-            wizard: target_wizard,
-            enable_wizard_alt: false,
-            metrics: false,
-            no_bundle: false,
-            no_body: false,
-            no_pred: false,
-            no_report: false,
-            testing: true,
-            library_strategy: LibraryLinkStrategy::Imported,
-        },
-    );
+    let wasm_result = if target_wizard {
+        whamm::api::instrument::generate_monitor_module(
+            CORE_WASM_PATH,
+            "./",
+            script_path_str,
+            user_libs,
+        )
+    } else {
+        whamm::api::instrument::instrument_module_with_rewriting(
+            CORE_WASM_PATH,
+            "./",
+            target_wasm,
+            script_path_str,
+            user_libs,
+        )
+    };
     if let Some(path) = output_path {
-        try_path(&path);
-        if let Err(e) = fs::write(&path, wasm_result) {
-            unreachable!(
-                "Failed to dump instrumented wasm to {} from error: {}",
-                &path, e
-            )
-        }
+        write_to_file(wasm_result, path);
     }
-    err.fatal_report("Integration Test");
 }
 
 fn run_testcase_rewriting(
     script: &PathBuf,
-    script_str: &String,
     app_path_str: &str,
-    user_libs_arg: Option<Vec<String>>,
+    user_libs: Vec<String>,
     exp_output: ExpectedOutput,
     outdir: &String,
     instr_app_path: &String,
-    err: &mut ErrorGen,
 ) {
-    let user_libs = if let Some(user_lib_paths) = &user_libs_arg {
-        parse_user_lib_paths(user_lib_paths.clone())
-    } else {
-        vec![]
-    };
-
     // run the script on configured application
     let wasm = fs::read(app_path_str).unwrap();
     let mut module_to_instrument = Module::parse(&wasm, false).unwrap();
     run_script(
-        &script_str,
         &script,
         &mut module_to_instrument,
-        user_libs,
+        user_libs.clone(),
         Some(instr_app_path.clone()),
         false,
-        err,
     );
-
-    // let home = match env::var("HOME") {
-    //     Ok(val) => val,
-    //     Err(_) => panic!("Could not find HOME environment variable"),
-    // };
 
     // run the instrumented application on wasmtime
     // let res = Command::new(format!("{home}/.cargo/bin/cargo"))
@@ -558,10 +499,8 @@ fn run_testcase_rewriting(
     }
     cmd.arg("run").arg("--env").arg("TO_CONSOLE=true");
 
-    if let Some(libs) = &user_libs_arg {
-        for lib in libs.iter() {
-            cmd.arg("--preload").arg(format!("{lib}"));
-        }
+    for lib in user_libs.iter() {
+        cmd.arg("--preload").arg(format!("{lib}"));
     }
 
     let res = cmd
@@ -598,35 +537,27 @@ fn run_testcase_rewriting(
 
 fn run_testcase_wizard(
     script: &PathBuf,
-    script_str: &String,
     app_path_str: &str,
-    user_libs: Option<Vec<String>>,
+    user_libs: Vec<String>,
     exp_output: ExpectedOutput,
     outdir: &String,
     instr_app_path: &String,
-    err: &mut ErrorGen,
 ) {
-    let user_libs = if let Some(user_lib_paths) = user_libs {
-        parse_user_lib_paths(user_lib_paths)
-    } else {
-        vec![]
-    };
-
     let mut libs_to_link = "".to_string();
-    for (_, lib_path, _) in user_libs.iter() {
-        libs_to_link += &format!("+{lib_path}");
+    for path in user_libs.iter() {
+        let parts = path.split('=').collect::<Vec<&str>>();
+        assert_eq!(2, parts.len(), "A user lib should be specified using the following format: <lib_name>=/path/to/lib.wasm");
+        libs_to_link += &format!("+{}", parts.get(1).unwrap());
     }
 
     // run the script on configured application
     let mut module_to_instrument = Module::default();
     run_script(
-        &script_str,
         &script,
         &mut module_to_instrument,
         user_libs,
         Some(instr_app_path.clone()),
         true,
-        err,
     );
 
     // run the instrumented application on wizard

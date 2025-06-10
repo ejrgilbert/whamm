@@ -1,5 +1,5 @@
 #![allow(clippy::too_many_arguments)]
-use crate::cli::LibraryLinkStrategyArg;
+use crate::api::instrument::Config;
 use crate::common::error::ErrorGen;
 use crate::common::metrics::Metrics;
 use crate::emitter::memory_allocator::MemoryAllocator;
@@ -37,121 +37,22 @@ pub(crate) fn try_path(path: &String) {
     }
 }
 
-/// Copy to enable access for testing...
-/// Options for handling instrumentation library.
-#[derive(Clone, Copy, Debug)]
-pub enum LibraryLinkStrategy {
-    /// Merge the library with the `app.wasm` **target VM must support multi-memory**.
-    /// Will create a new memory in the `app.wasm` to be targeted by the instrumentation.
-    Merged,
-    /// Link the library through Wasm imports into `app.wasm` (target VM must support dynamic linking).
-    /// Naturally, the instrumentation memory will reside in its own module instantiation.
-    Imported,
-}
-impl From<Option<LibraryLinkStrategyArg>> for LibraryLinkStrategy {
-    fn from(value: Option<LibraryLinkStrategyArg>) -> Self {
-        match value {
-            Some(LibraryLinkStrategyArg::Imported) => LibraryLinkStrategy::Imported,
-            Some(LibraryLinkStrategyArg::Merged) => LibraryLinkStrategy::Merged,
-            None => {
-                info!("Using default library linking strategy: 'imported'");
-                LibraryLinkStrategy::Imported
-            }
-        }
-    }
-}
-
-pub struct Config {
-    /// Whether to emit `mon.wasm` for instrumenting with Wizard Engine
-    pub wizard: bool,
-    /// Whether we allow probes that cause 'alternate' behavior in wizard
-    pub enable_wizard_alt: bool,
-
-    pub metrics: bool,
-    pub no_bundle: bool,
-    pub no_body: bool,
-    pub no_pred: bool,
-    pub no_report: bool,
-
-    /// Whether to emit extra exported functions that are helpful during testing.
-    pub testing: bool,
-
-    /// The strategy to take when handling the injecting references to the `whamm!` library.
-    pub library_strategy: LibraryLinkStrategy,
-}
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            wizard: false,
-            enable_wizard_alt: false,
-            metrics: false,
-            no_bundle: false,
-            no_body: false,
-            no_pred: false,
-            no_report: false,
-            testing: false,
-            library_strategy: LibraryLinkStrategy::Imported,
-        }
-    }
-}
-impl Config {
-    pub fn new(
-        wizard: bool,
-        enable_wizard_alt: bool,
-        metrics: bool,
-        no_bundle: bool,
-        no_body: bool,
-        no_pred: bool,
-        no_report: bool,
-        testing: bool,
-        link_strategy: Option<LibraryLinkStrategyArg>,
-    ) -> Self {
-        if testing {
-            error!("Generating helper methods for testing mode is not yet supported!");
-            exit(1);
-        }
-        let library_strategy = LibraryLinkStrategy::from(link_strategy);
-
-        if no_bundle && (!no_body || !no_pred) {
-            panic!("Cannot disable argument bundling without also disabling body and predicate emitting! Otherwise invalid Wasm would be generated.")
-        }
-        Self {
-            wizard,
-            enable_wizard_alt,
-            metrics,
-            no_bundle,
-            no_body,
-            no_pred,
-            no_report,
-            testing,
-            library_strategy,
-        }
-    }
-}
-
 pub fn run_with_path(
     core_wasm_path: &str,
     defs_path: &str,
     app_wasm_path: String,
     script_path: String,
-    user_lib_paths: Option<Vec<String>>,
-    output_wasm_path: String,
+    user_lib_paths: Vec<String>,
     max_errors: i32,
     config: Config,
-) {
-    let user_libs = if let Some(user_lib_paths) = user_lib_paths {
-        parse_user_lib_paths(user_lib_paths)
-    } else {
-        vec![]
-    };
-
-    let buff = if !config.wizard {
+) -> Vec<u8> {
+    let buff = if !config.as_monitor_module {
         std::fs::read(app_wasm_path).unwrap()
     } else {
         vec![]
     };
 
-    let mut target_wasm = if !config.wizard {
+    let mut target_wasm = if !config.as_monitor_module {
         // Read app Wasm into Orca module
         Module::parse(&buff, false).unwrap()
     } else {
@@ -159,33 +60,15 @@ pub fn run_with_path(
         Module::default()
     };
 
-    // read in the whamm script
-    let whamm_script = match std::fs::read_to_string(script_path.clone()) {
-        Ok(unparsed_str) => unparsed_str,
-        Err(error) => {
-            error!("Cannot read specified file {}: {}", script_path, error);
-            exit(1);
-        }
-    };
-
-    let wasm_result = run(
+    run_on_module(
         core_wasm_path,
         defs_path,
         &mut target_wasm,
-        &whamm_script,
-        &script_path,
-        user_libs,
+        script_path,
+        user_lib_paths,
         max_errors,
         config,
-    );
-
-    try_path(&output_wasm_path);
-    if let Err(e) = std::fs::write(&output_wasm_path, wasm_result) {
-        unreachable!(
-            "Failed to dump instrumented wasm to {} from error: {}",
-            &output_wasm_path, e
-        )
-    }
+    )
 }
 
 pub fn parse_user_lib_paths(paths: Vec<String>) -> Vec<(String, String, Vec<u8>)> {
@@ -202,6 +85,48 @@ pub fn parse_user_lib_paths(paths: Vec<String>) -> Vec<(String, String, Vec<u8>)
     }
 
     res
+}
+
+pub fn run_on_module(
+    core_wasm_path: &str,
+    defs_path: &str,
+    target_wasm: &mut Module,
+    script_path: String,
+    user_lib_paths: Vec<String>,
+    max_errors: i32,
+    config: Config,
+) -> Vec<u8> {
+    let user_libs = parse_user_lib_paths(user_lib_paths);
+
+    // read in the whamm script
+    let whamm_script = match std::fs::read_to_string(script_path.clone()) {
+        Ok(unparsed_str) => unparsed_str,
+        Err(error) => {
+            error!("Cannot read specified file {}: {}", script_path, error);
+            exit(1);
+        }
+    };
+
+    run(
+        core_wasm_path,
+        defs_path,
+        target_wasm,
+        &whamm_script,
+        &script_path,
+        user_libs,
+        max_errors,
+        config,
+    )
+}
+
+pub fn write_to_file(module: Vec<u8>, output_wasm_path: String) {
+    try_path(&output_wasm_path);
+    if let Err(e) = std::fs::write(&output_wasm_path, module) {
+        unreachable!(
+            "Failed to dump instrumented wasm to {} from error: {}",
+            &output_wasm_path, e
+        )
+    }
 }
 
 pub fn run(
@@ -238,7 +163,7 @@ pub fn run(
     metadata_collector.visit_whamm(&whamm);
 
     // Merge in the core library IF NEEDED
-    let mut map_package = MapLibPackage::new(if config.wizard {
+    let mut map_package = MapLibPackage::new(if config.as_monitor_module {
         InjectStrategy::Wizard
     } else {
         InjectStrategy::Rewriting
@@ -281,7 +206,7 @@ pub fn run(
     metadata_collector.err.check_has_errors();
 
     let mut metrics = Metrics::default();
-    if config.wizard {
+    if config.as_monitor_module {
         run_instr_wizard(
             &mut metrics,
             metadata_collector,
@@ -292,7 +217,6 @@ pub fn run(
             &mut io_adapter,
             &mut map_lib_adapter,
             &mut report_vars,
-            &mut unshared_var_handler,
         );
     } else {
         run_instr_rewrite(
@@ -340,7 +264,6 @@ fn run_instr_wizard(
     io_adapter: &mut IOAdapter,
     map_lib_adapter: &mut MapLibAdapter,
     report_vars: &mut ReportVars,
-    unshared_var_handler: &mut UnsharedVarHandler,
 ) {
     let table = metadata_collector.table;
     let err = metadata_collector.err;
@@ -361,7 +284,6 @@ fn run_instr_wizard(
             mem_allocator,
             map_lib_adapter,
             report_vars,
-            unshared_var_handler,
         ),
         io_adapter,
         context_name: "".to_string(),
@@ -407,7 +329,6 @@ fn run_instr_rewrite(
             mem_allocator,
             map_lib_adapter,
             report_vars,
-            unshared_var_handler,
         ),
         context_name: "".to_string(),
         err,

@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 
-use crate::common::instr::{run, try_path, Config, LibraryLinkStrategy};
+use crate::api::instrument::{Config, LibraryLinkStrategy};
+use crate::api::utils::wasm2wat_on_file;
+use crate::common::instr::{run, try_path};
 use log::{debug, error};
 use orca_wasm::Module;
 use std::fs::{remove_dir_all, File};
@@ -26,7 +28,7 @@ pub fn run_all() -> Result<(), std::io::Error> {
 }
 
 /// Clear out the previous test directory
-fn clean() {
+pub(crate) fn clean() {
     remove_dir_all(Path::new(OUTPUT_DIR)).ok();
 }
 
@@ -234,7 +236,7 @@ fn generate_instrumented_bin_wast(
             vec![],
             0,
             Config {
-                wizard: false,
+                as_monitor_module: false,
                 enable_wizard_alt: false,
                 metrics: false,
                 no_bundle: false,
@@ -331,7 +333,7 @@ const PASSES_UNINSTR_PATTERN: &str = ";; @passes_uninstr";
 const TO_INSTR_PATTERN: &str = ";; @instrument";
 
 /// Recursively finds all tests in a specified directory
-fn find_wast_tests() -> Vec<PathBuf> {
+pub(crate) fn find_wast_tests() -> Vec<PathBuf> {
     let mut wast_tests = Vec::new();
     let suite_path = Path::new(WAST_SUITE_DIR);
 
@@ -562,21 +564,4 @@ pub fn vec_as_hex(vec: &[u8]) -> String {
     // closing quote
     res += "\"";
     res
-}
-
-pub fn wasm2wat_on_file(instrumented_wasm_path: &str) {
-    debug!("Running 'wasm-tools validate' on file: {instrumented_wasm_path}");
-    let res = Command::new("wasm-tools")
-        .arg("validate")
-        .arg(instrumented_wasm_path)
-        .output()
-        .expect("failed to execute process");
-
-    if !res.status.success() {
-        println!("wasm-tools validate failed on: {}", instrumented_wasm_path);
-        println!("STDOUT: {}", String::from_utf8(res.stdout).unwrap());
-        println!("STDERR: {}", String::from_utf8(res.stderr).unwrap());
-    }
-
-    assert!(res.status.success());
 }

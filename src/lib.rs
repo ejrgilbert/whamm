@@ -1,9 +1,9 @@
-pub mod common;
-pub mod emitter;
-pub mod generator;
-pub mod lang_features;
-pub mod parser;
-pub mod verifier;
-pub mod wast;
+pub mod api;
 
-pub(crate) mod cli;
+mod common;
+mod emitter;
+mod generator;
+mod lang_features;
+mod parser;
+mod verifier;
+mod wast;

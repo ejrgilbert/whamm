@@ -261,16 +261,6 @@ impl ErrorGen {
             info_loc: None,
         }
     }
-    pub fn get_duplicate_identifier_error_from_loc(
-        fatal: bool,
-        duplicated_id: String,
-        err_loc: &Option<Location>,
-        info_loc: &Option<Location>,
-    ) -> WhammError {
-        let err_loc = err_loc.as_ref().map(|err_loc| err_loc.line_col.clone());
-        let info_loc = info_loc.as_ref().map(|info_loc| info_loc.line_col.clone());
-        Self::get_duplicate_identifier_error(fatal, duplicated_id, err_loc, info_loc)
-    }
     pub fn compiler_fn_overload_error(
         &mut self,
         fatal: bool,
@@ -315,15 +305,6 @@ impl ErrorGen {
         }
     }
 
-    pub fn get_type_check_error_from_loc(
-        fatal: bool,
-        message: String,
-        line_col: &Option<Location>,
-    ) -> WhammError {
-        let loc = line_col.as_ref().map(|loc| loc.line_col.clone());
-        Self::get_type_check_error(fatal, message, &loc)
-    }
-
     pub fn type_check_error(
         &mut self,
         fatal: bool,
@@ -331,16 +312,6 @@ impl ErrorGen {
         line_col: &Option<LineColLocation>,
     ) {
         let err = Self::get_type_check_error(fatal, message, line_col);
-        self.add_error(err);
-    }
-
-    pub fn type_check_error_from_loc(
-        &mut self,
-        fatal: bool,
-        message: String,
-        loc: &Option<Location>,
-    ) {
-        let err = Self::get_type_check_error_from_loc(fatal, message, loc);
         self.add_error(err);
     }
     pub fn get_wizard_error(
@@ -509,15 +480,6 @@ impl ErrorGen {
             match_rule: self.curr_match_rule.clone(),
             ty: WarnType::TypeCheckWarning { message },
             warn_loc: loc,
-            info_loc: None,
-        };
-        self.add_warn(warn);
-    }
-    pub fn add_compiler_warn(&mut self, message: String) {
-        let warn = WhammWarning {
-            match_rule: self.curr_match_rule.clone(),
-            ty: WarnType::CompilerWarning { message },
-            warn_loc: None,
             info_loc: None,
         };
         self.add_warn(warn);
@@ -918,28 +880,16 @@ impl WhammError {
 }
 pub enum WarnType {
     TypeCheckWarning { message: String },
-    CompilerWarning { message: String },
-    Warning { message: Option<String> },
 }
 impl WarnType {
     pub fn name(&self) -> &str {
         match self {
             WarnType::TypeCheckWarning { .. } => "TypeCheckWarning",
-            WarnType::CompilerWarning { .. } => "CompilerWarning",
-            WarnType::Warning { .. } => "GeneralWarning",
         }
     }
     pub fn message(&self) -> Cow<'_, str> {
         match self {
             WarnType::TypeCheckWarning { ref message } => Cow::Borrowed(message),
-            WarnType::CompilerWarning { ref message } => Cow::Borrowed(message),
-            WarnType::Warning { ref message } => {
-                if let Some(msg) = message {
-                    Cow::Borrowed(msg)
-                } else {
-                    Cow::Borrowed("An warning occurred.")
-                }
-            }
         }
     }
 }

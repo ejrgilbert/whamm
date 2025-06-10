@@ -12,7 +12,6 @@ use orca_wasm::ir::types::DataType as OrcaType;
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::MacroOpcode;
 use orca_wasm::Opcode;
-use std::collections::HashMap;
 use wasmparser::MemArg;
 
 #[derive(Default)]
@@ -158,10 +157,8 @@ impl UnsharedVarHandler {
                     name.clone(),
                     Record::Var {
                         ty: ty.clone(),
-                        name: name.clone(),
                         value: None,
                         def: Definition::User,
-                        is_report_var: *is_report,
                         addr: Some(var_addr),
                         loc: None,
                     },
@@ -412,37 +409,6 @@ impl UnsharedVarHandler {
 
         num_bytes
     }
-}
-
-pub fn load_unshared_vars(
-    _alloc_mem_offset: VarAddr,
-    _allocated_vars: Vec<(String, DataType)>,
-) -> HashMap<String, (VarAddr, DataType)> {
-    // increment by bytes used by each variable's DataType as we load them
-    // will be used to load the next variable AND to save in the VarAddr!
-    let _used_bytes = 0;
-
-    // alloc_mem_offset: parameter that specifies the result of calling $alloc (should be wasm local var)
-    // alloc_vars: Vec<(var_name, var_ty)>, in the order they should appear in memory starting at
-    //     the offset `alloc_mem_offset`
-    // result: The new local variables: name -> (addr, ty)
-    //     as a hashmap to enable caller to place in SymbolTable and handle report variables
-    //     the new VarAddr will be a pointer into memory with an offset (real addr should be alloc_mem_offset + len_of_prev_vars)
-
-    // At start of probe logic, pull the current values of the allocated variables from memory.
-    //   Add these VarAddrs to the symbol table.
-    //   Can now emit the rest of the probe body logic as normal.
-
-    todo!()
-}
-
-pub fn save_allocated_vars(
-    _alloc_mem_offset: VarAddr,
-    _allocated_vars: HashMap<String, (VarAddr, DataType)>,
-) {
-    // At end of probe logic, save the values of allocated variables back into memory.
-
-    todo!()
 }
 
 struct Local {

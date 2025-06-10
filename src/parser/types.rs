@@ -73,18 +73,6 @@ impl Location {
             path,
         }
     }
-
-    pub fn span_between(loc0: &Location, loc1: &Location) -> LineColLocation {
-        let pos0 = match &loc0.line_col {
-            LineColLocation::Pos(pos0) | LineColLocation::Span(pos0, ..) => *pos0,
-        };
-
-        let pos1 = match &loc1.line_col {
-            LineColLocation::Pos(end1) | LineColLocation::Span(.., end1) => *end1,
-        };
-
-        LineColLocation::Span(pos0, pos1)
-    }
 }
 
 #[derive(Clone, Debug, Eq, Ord, PartialOrd)]
@@ -103,7 +91,7 @@ pub enum DataType {
     Null,
     Str,
     Tuple {
-        ty_info: Vec<Box<DataType>>,
+        ty_info: Vec<DataType>,
     },
     Map {
         key_ty: Box<DataType>,
@@ -241,32 +229,6 @@ impl DataType {
                 | DataType::F32
                 | DataType::F64
         )
-    }
-    pub fn is_compatible_with(&self, other: &DataType) -> bool {
-        match self {
-            DataType::U8
-            | DataType::I8
-            | DataType::U16
-            | DataType::I16
-            | DataType::U32
-            | DataType::I32
-            | DataType::Boolean => other.as_i32_in_wasm(),
-            DataType::U64 | DataType::I64 => other.as_i64_in_wasm(),
-            DataType::F32
-            | DataType::F64
-            | DataType::Null
-            | DataType::Str
-            | DataType::AssumeGood
-            | DataType::Unknown
-            | DataType::Tuple { .. }
-            | DataType::Map { .. } => *other == *self,
-        }
-    }
-    fn as_i32_in_wasm(&self) -> bool {
-        self.to_wasm_type() == vec![OrcaType::I32]
-    }
-    fn as_i64_in_wasm(&self) -> bool {
-        self.to_wasm_type() == vec![OrcaType::I64]
     }
     pub fn to_wasm_type(&self) -> Vec<OrcaType> {
         match self {
@@ -931,7 +893,7 @@ pub enum Value {
         vals: Vec<Expr>,
     },
     U32U32Map {
-        val: Box<HashMap<u32, u32>>,
+        val: HashMap<u32, u32>,
     },
 }
 impl Display for Value {
@@ -1059,9 +1021,6 @@ impl Value {
             _ => Err("non-numeric values".to_string()),
         }
     }
-    pub fn check_explicit_cast(&mut self, target: &DataType) -> Result<(), String> {
-        self.explicit_cast(target, false)
-    }
     pub fn do_explicit_cast(&mut self, target: &DataType) -> Result<(), String> {
         self.explicit_cast(target, true)
     }
@@ -1130,9 +1089,6 @@ impl Block {
     pub fn loc(&self) -> &Option<Location> {
         &self.loc
     }
-    pub fn line_col(&self) -> Option<LineColLocation> {
-        self.loc().as_ref().map(|loc| loc.line_col.clone())
-    }
 }
 
 // Statements
@@ -1196,20 +1152,6 @@ impl Statement {
     }
     pub fn line_col(&self) -> Option<LineColLocation> {
         self.loc().as_ref().map(|loc| loc.line_col.clone())
-    }
-    pub fn dummy() -> Self {
-        Self::Expr {
-            expr: Expr::Primitive {
-                val: Value::Number {
-                    val: NumLit::u32(0),
-                    ty: DataType::U32,
-                    token: "0".to_string(),
-                    fmt: NumFmt::Dec,
-                },
-                loc: None,
-            },
-            loc: None,
-        }
     }
 }
 
@@ -1393,18 +1335,6 @@ impl Fn {
         white(true, " -> ".to_string(), buffer);
         self.results.print(buffer);
     }
-
-    pub fn is_static(&self) -> bool {
-        matches!(self.def, Definition::CompilerStatic)
-    }
-
-    pub fn is_dynamic(&self) -> bool {
-        matches!(self.def, Definition::CompilerDynamic)
-    }
-
-    pub fn is_from_user(&self) -> bool {
-        matches!(self.def, Definition::User)
-    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -1438,26 +1368,9 @@ pub struct Global {
     pub def: Definition,
     pub report: bool,
     pub ty: DataType,
-    pub var_name: Expr, // Should be VarId
     pub value: Option<Value>,
 }
 impl Global {
-    pub fn print(&self, buffer: &mut Buffer) {
-        if let Expr::VarId { name, .. } = &self.var_name {
-            green(true, name.to_string(), buffer);
-        }
-        white(true, ": ".to_string(), buffer);
-        self.ty.print(buffer);
-    }
-
-    pub fn is_static(&self) -> bool {
-        matches!(self.def, Definition::CompilerStatic)
-    }
-
-    pub fn is_dynamic(&self) -> bool {
-        matches!(self.def, Definition::CompilerDynamic)
-    }
-
     pub fn is_from_user(&self) -> bool {
         matches!(self.def, Definition::User)
     }
@@ -1526,7 +1439,7 @@ impl Whamm {
                     loc: None,
                 },
                 DataType::Tuple {
-                    ty_info: vec![Box::new(DataType::I32), Box::new(DataType::I32)],
+                    ty_info: vec![DataType::I32, DataType::I32],
                 },
             ),
             (
@@ -1606,29 +1519,6 @@ impl ProbeRule {
             event: None,
             mode: None,
         }
-    }
-    pub fn full_name(&self) -> String {
-        let provider = if let Some(name) = &self.provider {
-            name.name.clone()
-        } else {
-            "<none>".to_string()
-        };
-        let package = if let Some(name) = &self.package {
-            name.name.clone()
-        } else {
-            "<none>".to_string()
-        };
-        let event = if let Some(name) = &self.event {
-            name.name.clone()
-        } else {
-            "<none>".to_string()
-        };
-        let mode = if let Some(name) = &self.mode {
-            name.name.clone()
-        } else {
-            "<none>".to_string()
-        };
-        format!("{provider}:{package}:{event}:{mode}")
     }
     pub fn add_rule_def(&mut self, part: RulePart) {
         if self.provider.is_none() {
@@ -1744,10 +1634,6 @@ pub struct Script {
     pub fns: Vec<Fn>,                     // User-provided
     pub globals: HashMap<String, Global>, // User-provided, should be VarId
     pub global_stmts: Vec<Statement>,
-
-    // track the number of probes that have been added to this script
-    // (for ID bookkeeping)
-    pub num_probes: u32,
 }
 impl Script {
     pub fn new() -> Self {
@@ -1757,7 +1643,6 @@ impl Script {
             fns: vec![],
             globals: HashMap::new(),
             global_stmts: vec![],
-            num_probes: 0,
         }
     }
 
@@ -1798,49 +1683,7 @@ impl Script {
 }
 
 #[derive(Clone, Debug)]
-pub struct ProvidedGlobal {
-    pub name: String,
-    pub docs: String,
-    pub global: Global,
-    pub value: Option<Value>,
-    pub derived_from: Option<Expr>,
-}
-impl ProvidedGlobal {
-    pub fn new(
-        name: String,
-        docs: String,
-        ty: DataType,
-        value: Option<Value>,
-        derived_from: Option<Expr>,
-        is_static: bool,
-    ) -> Self {
-        let def = if is_static {
-            Definition::CompilerStatic
-        } else {
-            Definition::CompilerDynamic
-        };
-        Self {
-            name: name.clone(),
-            docs,
-            global: Global {
-                def: def.clone(),
-                report: false,
-                ty,
-                var_name: Expr::VarId {
-                    definition: def,
-                    name,
-                    loc: None,
-                },
-                value: None,
-            },
-            value,
-            derived_from,
-        }
-    }
-}
-#[derive(Clone, Debug)]
 pub struct BoundFunction {
-    pub name: String,
     pub docs: String,
     pub function: Fn,
     pub req_args: ReqArgs,
@@ -1855,7 +1698,6 @@ impl BoundFunction {
         req_args: ReqArgs,
     ) -> Self {
         Self {
-            name: name.clone(),
             docs,
             function: Fn {
                 def: if is_static {
@@ -1957,16 +1799,9 @@ pub trait WhammVisitor<T> {
     fn visit_package(&mut self, package: &Package) -> T;
     fn visit_event(&mut self, event: &Event) -> T;
     fn visit_probe(&mut self, probe: &Probe) -> T;
-    // fn visit_predicate(&mut self, predicate: &Expr) -> T;
-    fn visit_fn(&mut self, f: &Fn) -> T;
-    fn visit_formal_param(&mut self, param: &(Expr, DataType)) -> T;
     fn visit_block(&mut self, block: &Block) -> T;
     fn visit_stmt(&mut self, stmt: &Statement) -> T;
     fn visit_expr(&mut self, expr: &Expr) -> T;
-    fn visit_unop(&mut self, unop: &UnOp) -> T;
-    fn visit_binop(&mut self, binop: &BinOp) -> T;
-    fn visit_datatype(&mut self, datatype: &DataType) -> T;
-    fn visit_value(&mut self, val: &Value) -> T;
 }
 
 /// To support setting constant bound vars
@@ -1982,8 +1817,5 @@ pub trait WhammVisitorMut<T> {
     fn visit_block(&mut self, block: &mut Block) -> T;
     fn visit_stmt(&mut self, stmt: &mut Statement) -> T;
     fn visit_expr(&mut self, expr: &mut Expr) -> T;
-    fn visit_unop(&mut self, unop: &mut UnOp) -> T;
-    fn visit_binop(&mut self, op: &mut BinOp) -> T;
-    fn visit_datatype(&mut self, datatype: &mut DataType) -> T;
     fn visit_value(&mut self, val: &mut Value) -> T;
 }

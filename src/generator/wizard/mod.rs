@@ -1,12 +1,12 @@
+use crate::api::instrument::Config;
 use crate::common::error::ErrorGen;
-use crate::common::instr::Config;
 use crate::emitter::module_emitter::ModuleEmitter;
 use crate::generator::ast::{Probe, Script, WhammParams};
 use crate::generator::{create_curr_loc, emit_needed_funcs, GeneratingVisitor};
 use crate::lang_features::alloc_vars::wizard::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::report_vars::LocationData;
-use crate::parser::types::{Block, DataType, ProbeRule, Statement, Value, WhammVisitorMut};
+use crate::parser::types::{Block, DataType, Statement, Value, WhammVisitorMut};
 use crate::verifier::types::Record;
 use log::trace;
 use orca_wasm::ir::id::{FunctionID, LocalID};
@@ -14,22 +14,22 @@ use orca_wasm::ir::types::DataType as OrcaType;
 use orca_wasm::Module;
 use std::collections::{HashMap, HashSet};
 
-pub struct WizardGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l, 'm> {
-    pub emitter: ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g>,
-    pub io_adapter: &'h mut IOAdapter,
+pub struct WizardGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l> {
+    pub emitter: ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f>,
+    pub io_adapter: &'g mut IOAdapter,
     pub context_name: String,
-    pub err: &'i mut ErrorGen,
-    pub injected_funcs: &'j mut Vec<FunctionID>,
-    pub config: &'k Config,
+    pub err: &'h mut ErrorGen,
+    pub injected_funcs: &'i mut Vec<FunctionID>,
+    pub config: &'j Config,
     pub used_fns_per_lib: HashMap<String, HashSet<String>>,
-    pub user_lib_modules: HashMap<String, Module<'m>>,
+    pub user_lib_modules: HashMap<String, Module<'k>>,
 
     // tracking
     pub curr_script_id: u8,
     pub unshared_var_handler: &'l mut UnsharedVarHandler,
 }
 
-impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     pub fn run(
         &mut self,
         ast: Vec<Script>,
@@ -223,14 +223,14 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 }
 
-impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     // TODO -- these are all duplicates, try to factor out
     fn emit_string(&mut self, val: &mut Value) -> bool {
         self.emitter.emit_string(val, self.err)
     }
 
-    fn emit_fn(&mut self, context: &str, f: &crate::parser::types::Fn) -> Option<FunctionID> {
-        self.emitter.emit_fn(context, f, self.err)
+    fn emit_func(&mut self, f: &mut crate::parser::types::Fn) -> Option<FunctionID> {
+        self.emitter.emit_fn("TODO", f, self.err)
     }
 
     fn emit_global(
@@ -290,12 +290,6 @@ impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '
         self.emitter.table.enter_named_scope(name);
     }
 
-    fn enter_scope_via_rule(&mut self, script_id: &str, probe_rule: &ProbeRule) {
-        self.emitter
-            .table
-            .enter_scope_via_rule(script_id, probe_rule);
-    }
-
     fn enter_scope(&mut self) {
         self.emitter.enter_scope(self.err);
     }
@@ -305,5 +299,9 @@ impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '
     }
     fn lookup_var_mut(&mut self, name: &str) -> Option<&mut Record> {
         self.emitter.table.lookup_var_mut(name, true)
+    }
+
+    fn visit_global_stmts(&mut self, stmts: &mut [Statement]) -> bool {
+        self.emitter.emit_global_stmts(stmts, self.err)
     }
 }

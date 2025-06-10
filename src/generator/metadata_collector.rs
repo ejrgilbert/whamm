@@ -1,11 +1,11 @@
+use crate::api::instrument::Config;
 use crate::common::error::ErrorGen;
-use crate::common::instr::Config;
 use crate::generator::ast::{Probe, ReqArgs, Script};
 use crate::lang_features::report_vars::{BytecodeLoc, Metadata as ReportMetadata};
 use crate::parser::provider_handler::{Event, ModeKind, Package, Probe as ParserProbe, Provider};
 use crate::parser::types::{
-    BinOp, Block, DataType, Definition, Expr, Location, Script as ParserScript, Statement, UnOp,
-    Value, Whamm, WhammVisitor,
+    BinOp, Block, DataType, Definition, Expr, Location, Script as ParserScript, Statement, Value,
+    Whamm, WhammVisitor,
 };
 use crate::verifier::types::{Record, SymbolTable};
 use log::trace;
@@ -218,7 +218,7 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
 
         event.probes.iter().for_each(|(_ty, probes)| {
             probes.iter().for_each(|probe| {
-                if !self.config.wizard {
+                if !self.config.as_monitor_module {
                     // add the mode when not on the wizard target
                     self.append_curr_rule(format!(":{}", probe.kind.name()));
                 }
@@ -232,7 +232,7 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                 self.curr_probe.body = probe.body.to_owned();
                 self.curr_script.probes.push(self.curr_probe.clone());
 
-                if !self.config.wizard {
+                if !self.config.as_monitor_module {
                     // remove mode
                     let curr_rule = self.get_curr_rule();
                     let new_rule = curr_rule[..curr_rule.rfind(':').unwrap()].to_string();
@@ -275,14 +275,6 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
         self.table.exit_scope(self.err);
         let curr_rule = self.get_curr_rule();
         self.set_curr_rule(curr_rule[..curr_rule.rfind(':').unwrap()].to_string());
-    }
-
-    fn visit_fn(&mut self, _f: &crate::parser::types::Fn) {
-        unreachable!()
-    }
-
-    fn visit_formal_param(&mut self, _param: &(Expr, DataType)) {
-        unreachable!()
     }
 
     fn visit_block(&mut self, block: &Block) {
@@ -348,7 +340,9 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
             Statement::Assign { var_id, expr, .. } => {
                 if let Expr::VarId { name, .. } = var_id {
                     let (def, _ty, loc) = get_def(name, self.table, self.err);
-                    if def.is_comp_defined() && self.config.wizard && !self.config.enable_wizard_alt
+                    if def.is_comp_defined()
+                        && self.config.as_monitor_module
+                        && !self.config.enable_wizard_alt
                     {
                         self.err.wizard_error(
                             true,
@@ -515,22 +509,6 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                 self.visit_expr(key);
             }
         }
-    }
-
-    fn visit_unop(&mut self, _unop: &UnOp) {
-        unreachable!()
-    }
-
-    fn visit_binop(&mut self, _binop: &BinOp) {
-        unreachable!()
-    }
-
-    fn visit_datatype(&mut self, _datatype: &DataType) {
-        unreachable!()
-    }
-
-    fn visit_value(&mut self, _val: &Value) {
-        unreachable!()
     }
 }
 
