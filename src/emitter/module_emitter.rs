@@ -1,11 +1,10 @@
-use crate::common::error::{ErrorGen, WhammError};
+use crate::common::error::ErrorGen;
 use crate::emitter::locals_tracker::LocalsTracker;
 use crate::emitter::memory_allocator::{MemoryAllocator, VAR_BLOCK_BASE_VAR};
 use crate::emitter::rewriting::rules::Arg;
 use crate::emitter::utils::{emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global, EmitCtx};
 use crate::emitter::{Emitter, InjectStrategy};
 use crate::generator::ast::WhammParams;
-use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::lang_features::report_vars::{Metadata, ReportVars};
@@ -26,7 +25,7 @@ use std::collections::HashSet;
 const UNEXPECTED_ERR_MSG: &str =
     "ModuleEmitter: Looks like you've found a bug...please report this behavior!";
 
-pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
+pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     pub strategy: InjectStrategy,
     pub app_wasm: &'a mut Module<'b>,
     pub emitting_func: Option<FunctionBuilder<'b>>,
@@ -35,11 +34,10 @@ pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub locals_tracker: LocalsTracker,
     pub map_lib_adapter: &'e mut MapLibAdapter,
     pub report_vars: &'f mut ReportVars,
-    pub unshared_var_handler: &'g mut UnsharedVarHandler,
     fn_providing_contexts: Vec<String>,
 }
 
-impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
+impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     // note: only used in integration test
     pub fn new(
         strategy: InjectStrategy,
@@ -48,7 +46,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         mem_allocator: &'d mut MemoryAllocator,
         map_lib_adapter: &'e mut MapLibAdapter,
         report_vars: &'f mut ReportVars,
-        unshared_var_handler: &'g mut UnsharedVarHandler,
     ) -> Self {
         Self {
             strategy,
@@ -58,7 +55,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             locals_tracker: LocalsTracker::default(),
             map_lib_adapter,
             report_vars,
-            unshared_var_handler,
             table,
             fn_providing_contexts: vec!["whamm".to_string()],
         }
@@ -99,29 +95,32 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         f: &Fn,
         err: &mut ErrorGen,
     ) -> Option<FunctionID> {
-        // figure out if this is a bound fn.
-        if f.def == Definition::CompilerDynamic {
-            return if self.fn_providing_contexts.contains(&context.to_string()) {
-                self.emit_bound_fn(context, f, err)
-            } else {
-                err.add_error(ErrorGen::get_unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} \
-                Provided fn, but could not find a context to provide the definition, context: {}",
-                        context
-                    )),
-                    None,
-                ));
-                None
-            };
+        match f.def {
+            Definition::CompilerDynamic => {
+                if self.fn_providing_contexts.contains(&context.to_string()) {
+                    self.emit_bound_fn(context, f, err)
+                } else {
+                    err.add_error(ErrorGen::get_unexpected_error(
+                        true,
+                        Some(format!(
+                            "{UNEXPECTED_ERR_MSG} \
+                        Provided fn, but could not find a context to provide the definition, context: {}",
+                            context
+                        )),
+                        None,
+                    ));
+                    None
+                }
+            }
+            Definition::CompilerStatic => None, // already handled
+            Definition::User => {
+                // TODO: only when we're supporting user-defined fns in script...
+                // TODO: Remember to reset locals like what follows:
+                // self.reset_locals_for_function();
+                todo!()
+            }
+            Definition::CompilerDerived => panic!("invalid function definition context"),
         }
-
-        // emit non-bound fn
-        // TODO: only when we're supporting user-defined fns in script...
-        unimplemented!();
-        // TODO: Remember to reset locals like what follows:
-        // self.reset_locals_for_function();
     }
 
     pub fn emit_special_func(
@@ -147,10 +146,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 VAR_BLOCK_BASE_VAR.to_string(),
                 Record::Var {
                     ty: DataType::I32,
-                    name: VAR_BLOCK_BASE_VAR.to_string(),
                     value: None,
                     def: Definition::CompilerStatic,
-                    is_report_var: false,
                     addr: Some(VarAddr::Local { addr: *alloc }),
                     loc: None,
                 },
@@ -174,10 +171,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 param.name.clone(),
                 Record::Var {
                     ty: param.ty.clone(),
-                    name: param.name.clone(),
                     value: None,
                     def: Definition::CompilerStatic,
-                    is_report_var: false,
                     addr: Some(VarAddr::Local { addr: local_id }),
                     loc: None,
                 },
@@ -572,40 +567,40 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     // ==== EMIT `global` Statements LOGIC ====
     // ========================================
 
-    pub fn emit_global_stmts(&mut self, stmts: &mut [Statement]) -> Result<bool, Box<WhammError>> {
+    pub fn emit_global_stmts(&mut self, stmts: &mut [Statement], _err: &mut ErrorGen) -> bool {
         // NOTE: This should be done in the Module entrypoint
         //       https://docs.rs/walrus/latest/walrus/struct.Module.html
 
         if let Some(_start_fid) = self.app_wasm.start {
             // 1. create the emitting_func var, assign in self
             // 2. iterate over stmts and emit them! (will be different for Decl stmts)
-            todo!()
+            for stmt in stmts.iter() {
+                match stmt {
+                    Statement::Decl { .. }
+                    | Statement::UnsharedDecl { .. }
+                    | Statement::LibImport { .. } => {} // already handled
+                    _ => todo!(),
+                }
+            }
         } else {
             // TODO -- try to create our own start fn (for dfinity case)
             for stmt in stmts.iter_mut() {
                 match stmt {
-                    Statement::Decl { .. } => {
-                        // This is fine
-                        todo!()
-                    }
+                    Statement::Decl { .. }
+                    | Statement::UnsharedDecl { .. }
+                    | Statement::LibImport { .. } => {} // already handled
                     _ => {
-                        // This is NOT fine...error!
                         // Cannot emit this at the moment since there's no entrypoint for our module to emit initialization instructions into
-                        return Err(Box::new(ErrorGen::get_unexpected_error(
-                            true,
-                            Some(
-                                "This module has no configured entrypoint, \
-            unable to emit a `script` with initialized global state"
-                                    .to_string(),
-                            ),
-                            None,
-                        )));
+                        panic!(
+                            "This module has no configured entrypoint, \
+                                unable to emit a `script` with initialized global state"
+                        );
                     }
                 }
             }
         }
 
-        Ok(true)
+        true
     }
 
     // =============================
@@ -622,7 +617,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         self.emit_global_inner(name, ty, val, true, err)
     }
 }
-impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
+impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
     fn reset_locals_for_probe(&mut self) {
         if let Some(func) = &mut self.emitting_func {
             self.locals_tracker.reset_probe(func);

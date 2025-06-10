@@ -5,7 +5,7 @@ use crate::emitter::InjectStrategy;
 use crate::generator::ast::{AstVisitor, Metadata, Probe, Script, WhammParam};
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::lang_features::libraries::core::{LibAdapter, LibPackage};
-use crate::parser::types::{BinOp, Block, DataType, Expr, Statement, UnOp, Value};
+use crate::parser::types::{Block, DataType, Expr, Statement};
 use log::debug;
 use orca_wasm::ir::id::FunctionID;
 use orca_wasm::Module;
@@ -209,30 +209,10 @@ impl AstVisitor<bool> for MapLibPackage {
         }
     }
 
-    fn visit_expr(&mut self, _expr: &Expr) -> bool {
-        // can just check at variable declaration level.
-        unreachable!()
-    }
-
-    fn visit_unop(&mut self, _unop: &UnOp) -> bool {
-        // can just check at variable declaration level.
-        unreachable!()
-    }
-
-    fn visit_binop(&mut self, _binop: &BinOp) -> bool {
-        // can just check at variable declaration level.
-        unreachable!()
-    }
-
     fn visit_datatype(&mut self, datatype: &DataType) -> bool {
         if let DataType::Map { .. } = datatype {
             return true;
         }
         false
-    }
-
-    fn visit_value(&mut self, _val: &Value) -> bool {
-        // can just check at variable declaration level.
-        unreachable!()
     }
 }

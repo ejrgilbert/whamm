@@ -1,8 +1,6 @@
 use crate::emitter::rewriting::rules::Arg;
 use crate::lang_features::report_vars::Metadata as ReportMetadata;
-use crate::parser::types::{
-    BinOp, Block, DataType, Expr, Global, RulePart, Statement, UnOp, Value,
-};
+use crate::parser::types::{Block, DataType, Expr, Global, RulePart, Statement};
 use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
@@ -34,9 +32,6 @@ pub struct Probe {
     pub unshared_to_alloc: Vec<UnsharedVar>,
     pub probe_number: u32,
     pub script_id: u8,
-
-    // tracking
-    pub body_fid: Option<u32>,
 }
 impl Display for Probe {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -53,7 +48,6 @@ impl Probe {
             unshared_to_alloc: Vec::default(),
             probe_number,
             script_id,
-            body_fid: None,
         }
     }
     pub(crate) fn add_unshared(
@@ -281,9 +275,5 @@ pub trait AstVisitor<T> {
     fn visit_formal_param(&mut self, param: &(Expr, DataType)) -> T;
     fn visit_block(&mut self, block: &Block) -> T;
     fn visit_stmt(&mut self, stmt: &Statement) -> T;
-    fn visit_expr(&mut self, expr: &Expr) -> T;
-    fn visit_unop(&mut self, unop: &UnOp) -> T;
-    fn visit_binop(&mut self, binop: &BinOp) -> T;
     fn visit_datatype(&mut self, datatype: &DataType) -> T;
-    fn visit_value(&mut self, val: &Value) -> T;
 }

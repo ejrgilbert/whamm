@@ -4,8 +4,7 @@ use std::process::Command;
 
 use glob::{glob, glob_with};
 use log::{error, warn};
-use whamm::wast::test_harness::wasm2wat_on_file;
-
+use whamm::api::utils::wasm2wat_on_file;
 // ====================
 // = Helper Functions =
 // ====================

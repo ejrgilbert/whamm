@@ -86,41 +86,6 @@ impl ReportVars {
         }
         true
     }
-    pub fn put_local_metadata(
-        &mut self,
-        gid: u32,
-        name: String,
-        ty: DataType,
-        err: &mut ErrorGen,
-    ) -> bool {
-        if !matches!(self.curr_location, LocationData::Local { .. }) {
-            err.unexpected_error(
-                true,
-                Some(format!(
-                    "Expected local location data, but got: {:?}",
-                    self.curr_location
-                )),
-                None,
-            );
-            return false;
-        }
-        self.all_used_report_dts.insert(ty.clone());
-
-        let metadata = Metadata::new(name.clone(), ty, &self.curr_location);
-        self.variable_metadata.insert(
-            VarAddr::Global { addr: gid },
-            (metadata.get_wasm_ty(), metadata.clone()),
-        );
-        if !self.all_metadata.insert(metadata) {
-            err.unexpected_error(
-                true,
-                Some(format!("Duplicate metadata with name: {}", name)),
-                None,
-            );
-            return false;
-        }
-        true
-    }
     pub fn put_map_metadata(
         &mut self,
         map_id: u32,

@@ -56,7 +56,7 @@ pub struct InstrArgs {
     pub core_lib: Option<String>,
     /// To configure user-provided libraries. These are comma-delimited, formatted <lib_name>=<lib_path, e.g.: --user_libs lib_name0=/path/to/lib0.wasm,lib_name1=/path/to/lib1.wasm
     #[arg(short, long, value_delimiter = ',', num_args = 1..)]
-    pub user_libs: Option<Vec<String>>,
+    pub user_libs: Vec<String>,
     /// The path that the instrumented version of the Wasm app should be output to.
     #[arg(short, long, value_parser, default_value = "./output/output.wasm")]
     pub output_path: String,

@@ -1827,12 +1827,8 @@ fn bind_vars_br_table(
                             target_map.insert(i as u32, target);
                         }
                     }
-                    loc_info.add_dynamic_value(
-                        param.name.clone(),
-                        Value::U32U32Map {
-                            val: Box::new(target_map),
-                        },
-                    )
+                    loc_info
+                        .add_dynamic_value(param.name.clone(), Value::U32U32Map { val: target_map })
                 }
                 _ => {}
             };

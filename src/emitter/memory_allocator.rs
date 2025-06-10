@@ -413,7 +413,6 @@ impl MemoryAllocator {
             return true;
         }
         // assuming that the data ID is the index of the object in the Vec
-        let data_id = wasm.data.len();
         let val_bytes = val.as_bytes().to_owned();
         let data_segment = DataSegment {
             data: val_bytes,
@@ -430,7 +429,6 @@ impl MemoryAllocator {
         self.emitted_strings.insert(
             val.clone(),
             StringAddr {
-                data_id: data_id as u32,
                 mem_offset: self.curr_mem_offset,
                 len: val.len(),
             },
@@ -479,7 +477,6 @@ impl MemoryAllocator {
 }
 
 pub struct StringAddr {
-    pub data_id: u32,
     pub mem_offset: usize,
     pub len: usize,
 }

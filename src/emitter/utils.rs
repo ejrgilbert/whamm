@@ -119,10 +119,8 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                             name.clone(),
                             Record::Var {
                                 ty: ty.clone(),
-                                name: name.clone(),
                                 value: None,
                                 def: Definition::User,
-                                is_report_var: false,
                                 addr: None,
                                 loc: None,
                             },

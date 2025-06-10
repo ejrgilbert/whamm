@@ -1,33 +1,23 @@
 extern crate core;
+mod cli;
 
 use cli::{Cmd, WhammCli};
 
-use crate::common::error::ErrorGen;
-use crate::parser::whamm_parser::*;
-
-mod cli;
-pub mod common;
-pub mod emitter;
-pub mod generator;
-pub mod lang_features;
-pub mod parser;
-pub mod verifier;
-mod wast;
-
-use crate::common::instr::Config;
+use crate::cli::LibraryLinkStrategyArg;
 use clap::Parser;
 use std::path::PathBuf;
 use std::process::exit;
+use whamm::api::instrument::{instrument_with_config, Config, LibraryLinkStrategy};
+use whamm::api::utils::{print_info, run_wast_tests_at, write_to_file};
 
 const ENABLE_WIZARD_ALT: bool = false;
 const CORE_WASM_PATH: &str = "./whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
-const MAX_ERRORS: i32 = 15;
 
 fn setup_logger() {
     env_logger::init();
 }
 
-fn main() {
+pub fn main() {
     if let Err(e) = try_main() {
         eprintln!("error: {}", e);
         for c in e.iter_chain().skip(1) {
@@ -51,10 +41,10 @@ fn try_main() -> Result<(), failure::Error> {
             functions,
             defs_path,
         } => {
-            run_info(rule, &defs_path, vars, functions);
+            print_info(rule, &defs_path, vars, functions);
         }
         Cmd::Wast { wast_path } => {
-            run_wast(wast_path);
+            run_wast_tests_at(&vec![PathBuf::from(wast_path)]);
         }
         Cmd::Instr(args) => {
             let app_path = if let Some(app_path) = args.app {
@@ -69,14 +59,12 @@ fn try_main() -> Result<(), failure::Error> {
             } else {
                 CORE_WASM_PATH.to_string()
             };
-            common::instr::run_with_path(
+            let result = instrument_with_config(
                 &core_lib_path,
                 &args.defs_path,
                 app_path,
                 args.script,
                 args.user_libs,
-                args.output_path,
-                MAX_ERRORS,
                 Config::new(
                     args.wizard,
                     ENABLE_WIZARD_ALT,
@@ -86,25 +74,20 @@ fn try_main() -> Result<(), failure::Error> {
                     args.no_pred,
                     args.no_report,
                     args.testing,
-                    args.link_strategy,
+                    args.link_strategy.map(|s| s.into()),
                 ),
             );
+            write_to_file(result, args.output_path);
         }
     }
 
     Ok(())
 }
-
-fn run_info(rule: String, defs_path: &str, print_vars: bool, print_functions: bool) {
-    // Parse the script and generate the information
-    let mut err = ErrorGen::new("".to_string(), rule.clone(), MAX_ERRORS);
-    print_info(rule, defs_path, print_vars, print_functions, &mut err);
-
-    err.fatal_report("PrintInfo");
-}
-
-fn run_wast(wast_path: String) {
-    wast::test_harness::setup_and_run_tests(&vec![PathBuf::from(wast_path)])
-        .expect("WAST Test failed!");
-    println!("The wast test passed!");
+impl From<LibraryLinkStrategyArg> for LibraryLinkStrategy {
+    fn from(val: LibraryLinkStrategyArg) -> Self {
+        match val {
+            LibraryLinkStrategyArg::Merged => LibraryLinkStrategy::Merged,
+            LibraryLinkStrategyArg::Imported => LibraryLinkStrategy::Imported,
+        }
+    }
 }

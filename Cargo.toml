@@ -7,7 +7,6 @@ edition = "2021"
 doc = false
 name = "whamm"
 path = "src/main.rs"
-#required-features = ["exe"]
 
 [dependencies]
 failure = "0.1.5"

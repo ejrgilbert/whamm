@@ -1,5 +1,5 @@
+use crate::api::instrument::Config;
 use crate::common::error::ErrorGen;
-use crate::common::instr::Config;
 use crate::emitter::rewriting::rules::{Arg, ProbeRule};
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::Emitter;

@@ -6,7 +6,7 @@ use crate::common::error::ErrorGen;
 use crate::emitter::module_emitter::ModuleEmitter;
 use crate::generator::{emit_needed_funcs, GeneratingVisitor};
 use crate::lang_features::report_vars::LocationData;
-use crate::parser::types::{DataType, Fn, ProbeRule, Value, Whamm, WhammVisitorMut};
+use crate::parser::types::{DataType, Statement, Value, Whamm, WhammVisitorMut};
 use crate::verifier::types::Record;
 use orca_wasm::ir::id::FunctionID;
 use orca_wasm::Module;
@@ -19,15 +19,15 @@ use std::collections::{HashMap, HashSet};
 /// emit some compiler-defined functions and user-defined globals.
 /// This process should ideally be generic, made to perform a specific
 /// instrumentation technique by the Emitter field.
-pub struct InitGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j> {
-    pub emitter: ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g>,
+pub struct InitGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> {
+    pub emitter: ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f>,
     pub context_name: String,
-    pub err: &'h mut ErrorGen,
-    pub injected_funcs: &'i mut Vec<FunctionID>,
+    pub err: &'g mut ErrorGen,
+    pub injected_funcs: &'h mut Vec<FunctionID>,
     pub used_fns_per_lib: HashMap<String, HashSet<String>>,
-    pub user_lib_modules: HashMap<String, Module<'j>>,
+    pub user_lib_modules: HashMap<String, Module<'i>>,
 }
-impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     pub fn run(
         &mut self,
         whamm: &mut Whamm,
@@ -49,13 +49,13 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 }
 
-impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     fn emit_string(&mut self, val: &mut Value) -> bool {
         self.emitter.emit_string(val, self.err)
     }
 
-    fn emit_fn(&mut self, context: &str, f: &Fn) -> Option<FunctionID> {
-        self.emitter.emit_fn(context, f, self.err)
+    fn emit_func(&mut self, f: &mut crate::parser::types::Fn) -> Option<FunctionID> {
+        self.emitter.emit_fn("TODO", f, self.err)
     }
 
     fn emit_global(
@@ -115,12 +115,6 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_>
         self.emitter.table.enter_named_scope(name);
     }
 
-    fn enter_scope_via_rule(&mut self, script_id: &str, probe_rule: &ProbeRule) {
-        self.emitter
-            .table
-            .enter_scope_via_rule(script_id, probe_rule);
-    }
-
     fn enter_scope(&mut self) {
         self.emitter.enter_scope(self.err);
     }
@@ -130,5 +124,10 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_>
     }
     fn lookup_var_mut(&mut self, name: &str) -> Option<&mut Record> {
         self.emitter.table.lookup_var_mut(name, true)
+    }
+
+    fn visit_global_stmts(&mut self, stmts: &mut [Statement]) -> bool {
+        self.visit_stmts(stmts);
+        self.emitter.emit_global_stmts(stmts, self.err)
     }
 }

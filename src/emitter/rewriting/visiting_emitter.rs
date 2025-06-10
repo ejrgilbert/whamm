@@ -226,10 +226,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 arg_name.to_string(),
                 Record::Var {
                     ty: DataType::I32, // we only support integers right now.
-                    name: arg_name.to_string(),
                     value: None,
                     def: Definition::User,
-                    is_report_var: false,
                     addr: Some(VarAddr::Local {
                         addr: *arg_local_id,
                     }),
@@ -604,10 +602,8 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
                     VAR_BLOCK_BASE_VAR.to_string(),
                     Record::Var {
                         ty: DataType::I32,
-                        name: VAR_BLOCK_BASE_VAR.to_string(),
                         value: Some(Value::gen_u32(offset_value)),
                         def: Definition::CompilerStatic,
-                        is_report_var: false,
                         addr: Some(VarAddr::Local { addr: id }),
                         loc: None,
                     },
