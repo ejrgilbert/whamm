@@ -2,7 +2,7 @@ use crate::parser::types as parser_types;
 use parser_types::Statement;
 use std::collections::HashMap;
 
-use crate::generator::ast::{Probe, Script};
+use crate::generator::ast::{Probe, Script, WhammParam};
 use crate::parser::provider_handler::ModeKind;
 
 /// This is a structure that saves a simplified variation of the activated
@@ -55,88 +55,131 @@ use crate::parser::provider_handler::ModeKind;
 /// AST representation own the Probes instead!
 ///
 /// Note: This AST representation will only be used for bytecode rewriting, not when targeting Wizard.
-pub type SimpleAstProbes =
-    HashMap<String, HashMap<String, HashMap<String, HashMap<ModeKind, Vec<Probe>>>>>;
 
 #[derive(Default)]
 pub struct SimpleAST {
     pub global_stmts: Vec<Statement>,
-    pub probes: SimpleAstProbes,
+    pub provs: HashMap<String, SimpleProv>,
 }
+impl SimpleAST {
+    pub fn new(ast: Vec<Script>) -> Self {
+        let mut s = Self::default();
 
-pub fn build_simple_ast(ast: Vec<Script>) -> SimpleAST {
-    let mut simple_ast = SimpleAST::default();
-
-    for Script {
-        global_stmts,
-        probes,
-        ..
-    } in ast.iter()
-    {
-        simple_ast.global_stmts.extend(global_stmts.to_owned());
-        for probe in probes.iter() {
-            add_probe_to_ast(
-                &mut simple_ast,
-                &probe.rule.provider.name,
-                &probe.rule.package.name,
-                &probe.rule.event.name,
-                &probe.rule.mode.name,
-                probe.to_owned(),
-            )
-        }
-    }
-
-    simple_ast
-}
-
-fn add_probe_to_ast(
-    ast: &mut SimpleAST,
-    provider_name: &String,
-    package_name: &String,
-    event_name: &String,
-    mode_name: &String,
-    probe: Probe,
-) {
-    if let Some(provider) = ast.probes.get_mut(provider_name) {
-        if let Some(package) = provider.get_mut(package_name) {
-            if let Some(event) = package.get_mut(event_name) {
-                let mode_kind = ModeKind::from(mode_name.clone());
-                if let Some(probes) = event.get_mut(&mode_kind) {
-                    probes.push(probe);
-                } else {
-                    event.insert(mode_kind, vec![probe]);
-                }
-            } else {
-                package.insert(event_name.clone(), HashMap::new());
-                add_probe_to_ast(
-                    ast,
-                    provider_name,
-                    package_name,
-                    event_name,
-                    mode_name,
-                    probe,
+        for Script {
+            global_stmts,
+            probes,
+            ..
+        } in ast.iter()
+        {
+            s.global_stmts.extend(global_stmts.to_owned());
+            for probe in probes.iter() {
+                s.add_probe(
+                    &probe.rule.provider.name,
+                    &probe.rule.package.name,
+                    &probe.rule.event.name,
+                    &probe.rule.mode.name,
+                    probe.to_owned(),
                 );
             }
-        } else {
-            provider.insert(package_name.clone(), HashMap::new());
-            add_probe_to_ast(
-                ast,
-                provider_name,
-                package_name,
-                event_name,
-                mode_name,
-                probe,
-            );
         }
-    } else {
-        ast.probes.insert(provider_name.clone(), HashMap::new());
-        add_probe_to_ast(
-            ast,
-            provider_name,
-            package_name,
-            event_name,
-            mode_name,
-            probe,
-        );
+
+        s
+    }
+    fn add_probe(
+        &mut self,
+        provider_name: &str,
+        package_name: &str,
+        event_name: &str,
+        mode_name: &str,
+        probe: Probe,
+    ) {
+        self.provs
+            .entry(provider_name.to_string())
+            .and_modify(|provider| {
+                provider.add_probe(package_name, event_name, mode_name, probe.to_owned());
+            })
+            .or_insert(SimpleProv::new(package_name, event_name, mode_name, probe));
+    }
+}
+#[derive(Default)]
+pub struct SimpleProv {
+    pub pkgs: HashMap<String, SimplePkg>,
+}
+impl SimpleProv {
+    fn new(package_name: &str, event_name: &str, mode_name: &str, probe: Probe) -> Self {
+        let mut s = Self::default();
+        s.add_probe(package_name, event_name, mode_name, probe);
+        s
+    }
+    fn add_probe(&mut self, package_name: &str, event_name: &str, mode_name: &str, probe: Probe) {
+        self.pkgs
+            .entry(package_name.to_string())
+            .and_modify(|pkg| {
+                pkg.add_probe(event_name, mode_name, probe.to_owned());
+            })
+            .or_insert(SimplePkg::new(event_name, mode_name, probe));
+    }
+    pub fn all_params(&self) -> Vec<&WhammParam> {
+        let mut ps = vec![];
+        for pkg in self.pkgs.values() {
+            ps.extend(&pkg.all_params());
+        }
+        ps
+    }
+}
+#[derive(Default)]
+pub struct SimplePkg {
+    pub evts: HashMap<String, SimpleEvt>,
+}
+impl SimplePkg {
+    fn new(event_name: &str, mode_name: &str, probe: Probe) -> Self {
+        let mut s = Self::default();
+        s.add_probe(event_name, mode_name, probe);
+        s
+    }
+    fn add_probe(&mut self, event_name: &str, mode_name: &str, probe: Probe) {
+        self.evts
+            .entry(event_name.to_string())
+            .and_modify(|evt| {
+                evt.add_probe(mode_name, probe.to_owned());
+            })
+            .or_insert(SimpleEvt::new(mode_name, probe));
+    }
+    pub fn all_params(&self) -> Vec<&WhammParam> {
+        let mut ps = vec![];
+        for evt in self.evts.values() {
+            ps.extend(&evt.all_params());
+        }
+        ps
+    }
+}
+#[derive(Default)]
+pub struct SimpleEvt {
+    pub modes: HashMap<ModeKind, Vec<Probe>>,
+}
+impl SimpleEvt {
+    fn new(mode_name: &str, probe: Probe) -> Self {
+        let mut s = Self::default();
+        s.add_probe(mode_name, probe);
+        s
+    }
+    fn add_probe(&mut self, mode_name: &str, probe: Probe) {
+        let mode_kind = ModeKind::from(mode_name.to_string());
+        self.modes
+            .entry(mode_kind)
+            .and_modify(|probes| {
+                probes.push(probe.clone());
+            })
+            .or_insert(vec![probe]);
+    }
+    pub fn all_params(&self) -> Vec<&WhammParam> {
+        let mut ps = vec![];
+        for probes in self.modes.values() {
+            for p in probes.iter() {
+                ps.extend(&p.metadata.pred_args.params);
+                ps.extend(&p.metadata.body_args.params);
+            }
+        }
+        ps
     }
 }

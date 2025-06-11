@@ -42,7 +42,7 @@ PROBE_ID = @{
     | "]")+
 }
 
-EVENT_TY_INFO = { "(" ~ param_list ~ ")" }
+TY_BOUNDS = { "(" ~ param_list ~ ")" }
 
 //disallowed IDs should have the full list of reserved names like return
 get_map = { ID ~ "[" ~ expr ~ "]"}
@@ -52,7 +52,7 @@ ID = @{ (!DISALLOWED_ID ~ (ASCII_ALPHA | "_")+ ~ ( ASCII_DIGIT | (ASCII_ALPHA | 
         (DISALLOWED_ID ~ (ASCII_ALPHA | "_" | ASCII_DIGIT)+)
 }
 PROBE_RULE = {
-    PROBE_ID? ~ ":" ~ PROBE_ID? ~ ":" ~ PROBE_ID? ~ EVENT_TY_INFO? ~ ":" ~ PROBE_ID?
+    PROBE_ID? ~ TY_BOUNDS? ~ ":" ~ PROBE_ID? ~ TY_BOUNDS? ~ ":" ~ PROBE_ID? ~ TY_BOUNDS? ~ ":" ~ PROBE_ID? ~ TY_BOUNDS?
     | PROBE_ID ~ ":" ~ PROBE_ID // to handle wasm:before, wasm:after
 }
 

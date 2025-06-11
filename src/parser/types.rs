@@ -155,14 +155,11 @@ impl PartialEq for DataType {
             | (_, DataType::AssumeGood)
             | (DataType::AssumeGood, _) => true,
             (DataType::Tuple { ty_info: ty_info0 }, DataType::Tuple { ty_info: ty_info1 }) => {
-                // println!("ty_info0: {:?}", ty_info0);
-                // println!("ty_info1: {:?}", ty_info1);
                 let res = ty_info0.len() == ty_info1.len()
                     && ty_info0
                         .iter()
                         .zip(ty_info1.iter())
                         .all(|(ty0, ty1)| ty0 == ty1);
-                // println!("res: {res}");
                 res
             }
             (
@@ -229,6 +226,32 @@ impl DataType {
                 | DataType::F32
                 | DataType::F64
         )
+    }
+    pub fn is_compatible_with(&self, other: &DataType) -> bool {
+        match self {
+            DataType::U8
+            | DataType::I8
+            | DataType::U16
+            | DataType::I16
+            | DataType::U32
+            | DataType::I32
+            | DataType::Boolean => other.as_i32_in_wasm(),
+            DataType::U64 | DataType::I64 => other.as_i64_in_wasm(),
+            DataType::F32
+            | DataType::F64
+            | DataType::Null
+            | DataType::Str
+            | DataType::AssumeGood
+            | DataType::Unknown
+            | DataType::Tuple { .. }
+            | DataType::Map { .. } => *other == *self,
+        }
+    }
+    fn as_i32_in_wasm(&self) -> bool {
+        self.to_wasm_type() == vec![OrcaType::I32]
+    }
+    fn as_i64_in_wasm(&self) -> bool {
+        self.to_wasm_type() == vec![OrcaType::I64]
     }
     pub fn to_wasm_type(&self) -> Vec<OrcaType> {
         match self {

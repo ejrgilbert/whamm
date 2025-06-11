@@ -31,7 +31,7 @@ pub fn print_info(
     trace!("Entered print_info");
     err.set_script_text(rule.to_owned());
 
-    let writer = BufferWriter::stderr(ColorChoice::Always);
+    let writer = BufferWriter::stdout(ColorChoice::Always);
     let mut whamm_buffer = writer.buffer();
 
     // Print `whamm` info
@@ -1372,7 +1372,7 @@ fn probe_rule_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeRule {
 
         // check if there is type info associated with this probe part
         if let Some(n) = next.clone() {
-            if matches!(n.as_rule(), Rule::EVENT_TY_INFO) {
+            if matches!(n.as_rule(), Rule::TY_BOUNDS) {
                 let mut param_pairs = n.into_inner();
 
                 let mut params = vec![];

@@ -12,7 +12,7 @@ use crate::emitter::utils::{block_type_to_wasm, emit_expr, emit_stmt, EmitCtx};
 use crate::emitter::{configure_flush_routines, Emitter, InjectStrategy};
 use crate::generator::ast::UnsharedVar;
 use crate::generator::folding::ExprFolder;
-use crate::generator::rewriting::simple_ast::SimpleAstProbes;
+use crate::generator::rewriting::simple_ast::SimpleAST;
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::report_vars::ReportVars;
@@ -138,14 +138,14 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         }
     }
 
-    pub(crate) fn get_loc_info(&self, probes: &SimpleAstProbes) -> Option<LocInfo> {
+    pub(crate) fn get_loc_info(&self, ast: &SimpleAST) -> Option<LocInfo> {
         let (loc, at_func_end) = self.app_iter.curr_loc();
         if at_func_end {
             // We're at the 'end' opcode of the function...don't instrument
             return None;
         }
         if let Some(curr_instr) = self.app_iter.curr_op() {
-            get_loc_info_for_active_probes(self.app_iter.module, loc, curr_instr, probes)
+            get_loc_info_for_active_probes(self.app_iter.module, loc, curr_instr, ast)
         } else {
             None
         }
@@ -276,8 +276,22 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         Ok(true)
     }
 
-    pub(crate) fn define(&mut self, var_name: &str, var_val: &Option<Value>) -> bool {
+    pub(crate) fn define_data(&mut self, var_name: &str, var_val: &Option<Value>) -> bool {
         self.table.override_record_val(var_name, var_val.clone());
+        true
+    }
+
+    pub(crate) fn define_alias(
+        &mut self,
+        var_name: &str,
+        var_ty: &OrcaType,
+        alias_addr: &VarAddr,
+    ) -> bool {
+        self.table.override_record_addr(
+            var_name,
+            DataType::from_wasm_type(var_ty),
+            Some(alias_addr.clone()),
+        );
         true
     }
 
@@ -286,6 +300,15 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         loc_info.static_data.iter().for_each(|(symbol_name, ..)| {
             self.table.override_record_val(symbol_name, None);
         });
+
+        // reset dynamic_alias
+        loc_info
+            .dynamic_alias
+            .iter()
+            .for_each(|(symbol_name, (ty, ..))| {
+                self.table
+                    .override_record_addr(symbol_name, DataType::from_wasm_type(ty), None);
+            });
 
         // reset dynamic_data
         loc_info.dynamic_data.iter().for_each(|(symbol_name, ..)| {

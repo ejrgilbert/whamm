@@ -737,16 +737,11 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     return false;
                 }
                 None => {
-                    ctx.err.unexpected_error(
-                        true,
-                        Some(format!(
-                            "{} \
-                    Variable does not exist in scope: {}",
-                            ctx.err_msg, name
-                        )),
-                        None,
+                    panic!(
+                        "{} \
+                Variable does not exist in scope: {}",
+                        ctx.err_msg, name
                     );
-                    return false;
                 }
             };
         }

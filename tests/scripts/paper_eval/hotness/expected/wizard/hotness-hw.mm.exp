@@ -3,8 +3,8 @@ id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)
 8781, memaddr, count, u32, i32, script0, 0:1, 2_wasm:opcode:block, 1
 8808, memaddr, count, u32, i32, script0, 0:3, 2_wasm:opcode:block, 1
 8835, memaddr, count, u32, i32, script0, 0:5, 21_wasm:opcode:local.get, 1
-8862, memaddr, count, u32, i32, script0, 0:7, 51_wasm:opcode:i32.const, 1
-8889, memaddr, count, u32, i32, script0, 0:9, 60_wasm:opcode:i32.eq, 1
+8862, memaddr, count, u32, i32, script0, 0:7, 52_wasm:opcode:i64.const, 1
+8889, memaddr, count, u32, i32, script0, 0:9, 71_wasm:opcode:i64.eq, 1
 8916, memaddr, count, u32, i32, script0, 0:10, 11_wasm:opcode:br_if, 1
 8943, memaddr, count, u32, i32, script0, 0:12, 10_wasm:opcode:br, 1
 8970, memaddr, count, u32, i32, script0, 0:14, 9_wasm:opcode:end, 1
@@ -68,7 +68,7 @@ id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)
 10536, memaddr, count, u32, i32, script0, 4:7, 59_wasm:opcode:i32.eqz, 1
 10563, memaddr, count, u32, i32, script0, 4:8, 19_wasm:opcode:select, 1
 10590, memaddr, count, u32, i32, script0, 4:9, 9_wasm:opcode:end, 1
-10617, memaddr, count, u32, i32, script0, 5:1, 51_wasm:opcode:i32.const, 1
+10617, memaddr, count, u32, i32, script0, 5:1, 52_wasm:opcode:i64.const, 1
 10644, memaddr, count, u32, i32, script0, 5:3, 14_wasm:opcode:call, 1
 10671, memaddr, count, u32, i32, script0, 5:5, 25_wasm:opcode:global.set, 1
 10698, memaddr, count, u32, i32, script0, 5:7, 51_wasm:opcode:i32.const, 1

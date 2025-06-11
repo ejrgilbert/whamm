@@ -1,6 +1,6 @@
 use crate::api::instrument::Config;
 use crate::common::error::ErrorGen;
-use crate::emitter::rewriting::rules::{Arg, ProbeRule};
+use crate::emitter::rewriting::rules::{Arg, LocInfo, ProbeRule};
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::Emitter;
 use crate::generator::ast::Probe;
@@ -8,7 +8,7 @@ use crate::generator::folding::ExprFolder;
 use crate::generator::rewriting::simple_ast::SimpleAST;
 use crate::lang_features::report_vars::{BytecodeLoc, LocationData};
 use crate::parser::provider_handler::ModeKind;
-use crate::parser::types::{Block, Expr, Value};
+use crate::parser::types::{Block, Expr};
 use orca_wasm::ir::function::FunctionBuilder;
 use orca_wasm::ir::id::FunctionID;
 use orca_wasm::iterator::iterator_trait::Iterator;
@@ -27,10 +27,19 @@ fn emit_dynamic_compiler_data(
     emitter.emit_dynamic_compiler_data(data, err);
 }
 
-fn add_to_table(data: &HashMap<String, Option<Value>>, emitter: &mut VisitingEmitter) {
-    data.iter().for_each(|(dyn_var_name, dyn_var_val)| {
-        emitter.define(dyn_var_name, dyn_var_val);
-    });
+fn add_to_table(info: &LocInfo, emitter: &mut VisitingEmitter) {
+    // define static data
+    info.static_data
+        .iter()
+        .for_each(|(dyn_var_name, dyn_var_val)| {
+            emitter.define_data(dyn_var_name, dyn_var_val);
+        });
+    // define dynamic aliases
+    info.dynamic_alias
+        .iter()
+        .for_each(|(var_name, (ty, addr))| {
+            emitter.define_alias(var_name, ty, addr);
+        })
 }
 
 /// The second phase of instrumenting a Wasm module by actually emitting the
@@ -112,7 +121,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
         while first_instr || self.emitter.next_instr() {
             first_instr = false;
             // Check if any of the configured rules match this instruction in the application.
-            if let Some(loc_info) = self.emitter.get_loc_info(&self.ast.probes) {
+            if let Some(loc_info) = self.emitter.get_loc_info(&self.ast) {
                 // Inject a call to the on-exit flush function
                 if loc_info.is_prog_exit {
                     if self.on_exit_fid.is_none() {
@@ -150,7 +159,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
                     );
 
                     // Initialize the symbol table with the metadata at this program point
-                    add_to_table(&loc_info.static_data, &mut self.emitter);
+                    add_to_table(&loc_info, &mut self.emitter);
 
                     // Create a new clone of the probe, fold the predicate.
                     // NOTE: We make a clone so that the probe is reset for each instruction!
