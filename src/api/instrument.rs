@@ -4,6 +4,7 @@ use crate::common::instr;
 use log::error;
 use orca_wasm::Module;
 use std::process::exit;
+use wasmparser::Operator;
 
 pub const MAX_ERRORS: i32 = 15;
 
@@ -116,12 +117,13 @@ pub fn generate_monitor_module(
 /// * `script_path`: The path to the whamm script .mm file.
 /// * `user_lib_paths`: Optional list of paths to user-provided library wasm modules.
 pub fn instrument_as_dry_run(
-    _core_wasm_path: &str,
-    _defs_path: &str,
-    _app_wasm_path: String,
-    _script_path: String,
-    _user_lib_paths: Option<Vec<String>>,
-) {
+    core_wasm_path: &str,
+    defs_path: &str,
+    app_wasm_path: String,
+    script_path: String,
+    user_lib_paths: Option<Vec<String>>
+) -> Result<Vec<ProbePoint>, Vec<WhammError>> {
+    // TODO -- start here!
     todo!()
 }
 
@@ -222,4 +224,36 @@ impl Default for LibraryLinkStrategy {
     fn default() -> Self {
         Self::Imported
     }
+}
+
+pub struct ProbePoint<'a> {
+    app_loc: AppLoc,
+    script_loc: ScriptLoc,
+    body: Vec<Operator<'a>>
+}
+
+pub struct AppLoc {
+    fid: u32,
+    pc: u32,
+    mode: Mode
+}
+pub struct ScriptLoc {
+    line: u32,
+    col: u32
+}
+pub struct ScriptSpan {
+    start: ScriptLoc,
+    end: Option<ScriptLoc>
+}
+pub enum Mode {
+    Before,
+    After,
+    Alt,
+    Entry,
+    Exit
+}
+
+pub struct WhammError {
+    loc: ScriptSpan,
+    err: String
 }
