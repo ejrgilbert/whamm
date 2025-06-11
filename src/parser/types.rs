@@ -155,14 +155,11 @@ impl PartialEq for DataType {
             | (_, DataType::AssumeGood)
             | (DataType::AssumeGood, _) => true,
             (DataType::Tuple { ty_info: ty_info0 }, DataType::Tuple { ty_info: ty_info1 }) => {
-                println!("ty_info0: {:?}", ty_info0);
-                println!("ty_info1: {:?}", ty_info1);
                 let res = ty_info0.len() == ty_info1.len()
                     && ty_info0
                         .iter()
                         .zip(ty_info1.iter())
                         .all(|(ty0, ty1)| ty0 == ty1);
-                println!("res: {res}");
                 res
             }
             (
