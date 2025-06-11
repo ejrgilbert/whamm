@@ -55,8 +55,6 @@ use crate::parser::provider_handler::ModeKind;
 /// AST representation own the Probes instead!
 ///
 /// Note: This AST representation will only be used for bytecode rewriting, not when targeting Wizard.
-pub type SimpleAstProbes =
-    HashMap<String, HashMap<String, HashMap<String, HashMap<ModeKind, Vec<Probe>>>>>;
 
 #[derive(Default)]
 pub struct SimpleAST {
@@ -101,13 +99,6 @@ impl SimpleAST {
                 provider.add_probe(package_name, event_name, mode_name, probe.to_owned());
             })
             .or_insert(SimpleProv::new(package_name, event_name, mode_name, probe));
-    }
-    pub fn all_params(&self) -> Vec<&WhammParam> {
-        let mut ps = vec![];
-        for prov in self.provs.values() {
-            ps.extend(&prov.all_params());
-        }
-        ps
     }
 }
 #[derive(Default)]
