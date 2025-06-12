@@ -19,6 +19,7 @@ const UNEXPECTED_ERR_MSG: &str =
 
 pub struct MemoryAllocator {
     pub mem_id: u32,
+    pub engine_mem_id: Option<u32>,
     pub curr_mem_offset: usize,
     // Constant pool for strings emitted thus far
     pub emitted_strings: HashMap<String, StringAddr>,

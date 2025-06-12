@@ -375,7 +375,7 @@ fn run_instr_rewrite(
     err.check_has_errors();
 }
 
-fn get_memory_allocator(target_wasm: &mut Module, create_new_mem: bool) -> MemoryAllocator {
+fn get_memory_allocator(target_wasm: &mut Module, create_new_mem: bool, strategy: InjectStrategy) -> MemoryAllocator {
     // Create the memory tracker + the map and metadata tracker
     let mem_id = if create_new_mem {
         *target_wasm.add_local_memory(MemoryType {
@@ -398,8 +398,24 @@ fn get_memory_allocator(target_wasm: &mut Module, create_new_mem: bool) -> Memor
         false,
     );
 
+    let engine_mem_id = if matches!(strategy, InjectStrategy::Wizard) {
+        let id = *target_wasm.add_local_memory(MemoryType {
+            memory64: false,
+            shared: false,
+            initial: 1,
+            maximum: None,
+            page_size_log2: None,
+        });
+        *target_wasm.exports.add_export_mem("engine:data".to_string(), id);
+
+        Some(id)
+    } else {
+        None
+    };
+
     MemoryAllocator {
         mem_id,
+        engine_mem_id,
         curr_mem_offset: 0,
         emitted_strings: HashMap::new(),
         mem_tracker_global,

@@ -417,7 +417,7 @@ impl ReportVars {
         err: &mut ErrorGen,
     ) {
         // ==================== REPORT CSV FLUSH ========================
-        // type, id_type, id, name, script_id, fid, pc, probe_id, value(s)
+        // type, id_type, id, name, script_id, fname, fid, pc, probe_id, value(s)
         let id_type = "memaddr".to_string();
         let mem_arg = MemArg {
             align: 0,
