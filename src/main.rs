@@ -1,8 +1,8 @@
 extern crate core;
 mod cli;
 
-use std::env;
 use cli::{Cmd, WhammCli};
+use std::env;
 
 use crate::cli::LibraryLinkStrategyArg;
 use clap::Parser;
@@ -33,7 +33,12 @@ fn try_main() -> Result<(), failure::Error> {
     setup_logger();
 
     // Set up the whamm home directory
-    let whamm_home = format!("{}/", env::var("WHAMM_HOME").unwrap_or_else(|_| "./".to_string()).trim_end_matches("/"));
+    let whamm_home = format!(
+        "{}/",
+        env::var("WHAMM_HOME")
+            .unwrap_or_else(|_| "./".to_string())
+            .trim_end_matches("/")
+    );
 
     // Get information from userinsstr command line args
     let cli = WhammCli::parse();

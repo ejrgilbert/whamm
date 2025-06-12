@@ -39,7 +39,12 @@ pub fn link_core_lib(
         package.set_global_adapter_usage(package.is_used_in_global_scope());
         if package.is_used() {
             // Read core library Wasm into Orca module
-            let buff = std::fs::read(core_wasm_path).unwrap_or_else(|_| panic!("Could not read the core wasm module expected to be at location: {}", core_wasm_path));
+            let buff = std::fs::read(core_wasm_path).unwrap_or_else(|_| {
+                panic!(
+                    "Could not read the core wasm module expected to be at location: {}",
+                    core_wasm_path
+                )
+            });
             let core_lib = Module::parse(&buff, false).unwrap();
             if package.import_memory() {
                 let lib_mem_id = import_lib_memory(app_wasm, WHAMM_CORE_LIB_NAME.to_string());
