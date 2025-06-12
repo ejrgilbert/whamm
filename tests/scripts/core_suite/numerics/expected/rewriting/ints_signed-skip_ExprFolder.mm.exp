@@ -1,273 +1,273 @@
 ============================= REPORT CSV FLUSH ================================
-id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)
-4, memaddr, add_test0, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, 2
-28, memaddr, add_test1, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, 2
-52, memaddr, add_test2, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, 2
-76, memaddr, add_test3, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, 2
-100, memaddr, add_test16, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, 1
-124, memaddr, add_test20, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, -128
-148, memaddr, sub_test0, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-172, memaddr, sub_test1, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-196, memaddr, sub_test2, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-220, memaddr, sub_test3, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-244, memaddr, sub_test16, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, 1
-268, memaddr, sub_test20, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, 127
-292, memaddr, mul_test0, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, 1
-316, memaddr, mul_test1, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, 1
-340, memaddr, mul_test2, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, 1
-364, memaddr, mul_test3, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, 1
-388, memaddr, mul_test16, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-412, memaddr, mul_test20, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, -128
-436, memaddr, mul_test24, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-460, memaddr, mul_test28, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, 127
-484, memaddr, mul_test32, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, -2
-508, memaddr, div_test0, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, 1
-532, memaddr, div_test1, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, 1
-556, memaddr, div_test2, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, 1
-580, memaddr, div_test3, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, 1
-604, memaddr, div_test20, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, -128
-628, memaddr, mod_test0, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-652, memaddr, mod_test1, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-676, memaddr, mod_test2, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-700, memaddr, mod_test3, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-724, memaddr, mod_test20, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-748, memaddr, imp_test0, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, 2
-772, memaddr, imp_test4, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, 2
-796, memaddr, trunc_test0, i8, i32, script0, 1:10, 0_wasm:opcode:call:before, -1
-820, memaddr, add_test4, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, 2
-845, memaddr, add_test5, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, 2
-870, memaddr, add_test6, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, 2
-895, memaddr, add_test7, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, 2
-920, memaddr, add_test17, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, 1
-945, memaddr, add_test21, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, -32768
-970, memaddr, sub_test4, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-995, memaddr, sub_test5, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-1020, memaddr, sub_test6, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-1045, memaddr, sub_test7, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-1070, memaddr, sub_test17, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, 1
-1095, memaddr, sub_test21, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, 32767
-1120, memaddr, mul_test4, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, 1
-1145, memaddr, mul_test5, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, 1
-1170, memaddr, mul_test6, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, 1
-1195, memaddr, mul_test7, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, 1
-1220, memaddr, mul_test17, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-1245, memaddr, mul_test21, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, -32768
-1270, memaddr, mul_test25, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-1295, memaddr, mul_test29, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, 32767
-1320, memaddr, mul_test33, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, -2
-1345, memaddr, div_test4, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, 1
-1370, memaddr, div_test5, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, 1
-1395, memaddr, div_test6, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, 1
-1420, memaddr, div_test7, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, 1
-1445, memaddr, div_test21, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, -32768
-1470, memaddr, mod_test4, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-1495, memaddr, mod_test5, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-1520, memaddr, mod_test6, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-1545, memaddr, mod_test7, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-1570, memaddr, mod_test21, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-1595, memaddr, imp_test1, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, 2
-1620, memaddr, imp_test5, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, 2
-1645, memaddr, trunc_test1, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, -1
-1670, memaddr, trunc_test3, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, 127
-1695, memaddr, trunc_test6, i16, i32, script0, 1:10, 0_wasm:opcode:call:before, -128
-1720, memaddr, add_test8, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, 2
-1747, memaddr, add_test9, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, 2
-1774, memaddr, add_test10, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, 2
-1801, memaddr, add_test11, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, 2
-1828, memaddr, add_test18, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, 1
-1855, memaddr, add_test22, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, -2147483648
-1882, memaddr, sub_test8, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-1909, memaddr, sub_test9, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-1936, memaddr, sub_test10, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-1963, memaddr, sub_test11, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-1990, memaddr, sub_test18, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, 1
-2017, memaddr, sub_test22, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, 2147483647
-2044, memaddr, mul_test8, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, 1
-2071, memaddr, mul_test9, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, 1
-2098, memaddr, mul_test10, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, 1
-2125, memaddr, mul_test11, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, 1
-2152, memaddr, mul_test18, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-2179, memaddr, mul_test22, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, -2147483648
-2206, memaddr, mul_test26, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-2233, memaddr, mul_test30, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, 2147483647
-2260, memaddr, mul_test34, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, -2
-2287, memaddr, div_test8, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, 1
-2314, memaddr, div_test9, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, 1
-2341, memaddr, div_test10, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, 1
-2368, memaddr, div_test11, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, 1
-2395, memaddr, div_test22, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, -2147483648
-2422, memaddr, mod_test8, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-2449, memaddr, mod_test9, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-2476, memaddr, mod_test10, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-2503, memaddr, mod_test11, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-2530, memaddr, mod_test22, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, 0
-2557, memaddr, imp_test2, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, 2
-2584, memaddr, imp_test6, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, 2
-2611, memaddr, trunc_test2, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, -1
-2638, memaddr, trunc_test4, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, 32767
-2665, memaddr, trunc_test7, i32, i32, script0, 1:10, 0_wasm:opcode:call:before, -32768
-2692, memaddr, add_test12, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, 2
-2723, memaddr, add_test13, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, 2
-2754, memaddr, add_test14, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, 2
-2785, memaddr, add_test15, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, 2
-2816, memaddr, add_test19, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, 1
-2847, memaddr, add_test23, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, -9223372036854775808
-2878, memaddr, sub_test12, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, 0
-2909, memaddr, sub_test13, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, 0
-2940, memaddr, sub_test14, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, 0
-2971, memaddr, sub_test15, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, 0
-3002, memaddr, sub_test19, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, 1
-3033, memaddr, sub_test23, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, 9223372036854775807
-3064, memaddr, mul_test12, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, 1
-3095, memaddr, mul_test13, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, 1
-3126, memaddr, mul_test14, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, 1
-3157, memaddr, mul_test15, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, 1
-3188, memaddr, mul_test19, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, 0
-3219, memaddr, mul_test23, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, -9223372036854775808
-3250, memaddr, mul_test27, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, 0
-3281, memaddr, mul_test31, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, 9223372036854775807
-3312, memaddr, mul_test35, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, -2
-3343, memaddr, div_test12, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, 1
-3374, memaddr, div_test13, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, 1
-3405, memaddr, div_test14, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, 1
-3436, memaddr, div_test15, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, 1
-3467, memaddr, div_test23, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, -9223372036854775808
-3498, memaddr, mod_test12, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, 0
-3529, memaddr, mod_test13, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, 0
-3560, memaddr, mod_test14, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, 0
-3591, memaddr, mod_test15, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, 0
-3622, memaddr, mod_test23, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, 0
-3653, memaddr, imp_test3, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, 2
-3684, memaddr, imp_test7, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, 2
-3715, memaddr, trunc_test5, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, 2147483647
-3746, memaddr, trunc_test8, i64, i64, script0, 1:10, 0_wasm:opcode:call:before, -2147483648
-3777, memaddr, and_test0, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-3804, memaddr, and_test1, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-3831, memaddr, and_test2, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-3858, memaddr, and_test3, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-3885, memaddr, and_test4, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-3912, memaddr, or_test0, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-3939, memaddr, or_test1, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-3966, memaddr, or_test2, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-3993, memaddr, or_test3, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-4020, memaddr, or_test4, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-4047, memaddr, eq_test0, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-4074, memaddr, eq_test1, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-4101, memaddr, eq_test2, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-4128, memaddr, eq_test3, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-4155, memaddr, eq_test4, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-4182, memaddr, eq_test5, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-4209, memaddr, eq_test6, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-4236, memaddr, eq_test7, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-4263, memaddr, eq_test8, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-4290, memaddr, eq_test9, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-4317, memaddr, eq_test10, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-4344, memaddr, eq_test11, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-4371, memaddr, eq_test12, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-4398, memaddr, eq_test13, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-4425, memaddr, eq_test14, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-4452, memaddr, eq_test15, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-4479, memaddr, eq_test16, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-4506, memaddr, eq_test17, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-4533, memaddr, eq_test18, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-4560, memaddr, eq_test19, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-4587, memaddr, ne_test0, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-4614, memaddr, ne_test1, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-4641, memaddr, ne_test2, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-4668, memaddr, ne_test3, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-4695, memaddr, ne_test4, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-4722, memaddr, ne_test5, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-4749, memaddr, ne_test6, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-4776, memaddr, ne_test7, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-4803, memaddr, ne_test8, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-4830, memaddr, ne_test9, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-4857, memaddr, ne_test10, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-4884, memaddr, ne_test11, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-4911, memaddr, ne_test12, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-4938, memaddr, ne_test13, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-4965, memaddr, ne_test14, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-4992, memaddr, ne_test15, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-5019, memaddr, ne_test16, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-5046, memaddr, ne_test17, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-5073, memaddr, ne_test18, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-5100, memaddr, ne_test19, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-5127, memaddr, ge_test0, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-5154, memaddr, ge_test1, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-5181, memaddr, ge_test2, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-5208, memaddr, ge_test3, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-5235, memaddr, ge_test4, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-5262, memaddr, ge_test5, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-5289, memaddr, ge_test6, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-5316, memaddr, ge_test7, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-5343, memaddr, ge_test8, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-5370, memaddr, ge_test9, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-5397, memaddr, ge_test10, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-5424, memaddr, ge_test11, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-5451, memaddr, ge_test12, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-5478, memaddr, ge_test13, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-5505, memaddr, ge_test14, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-5532, memaddr, ge_test15, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-5559, memaddr, ge_test16, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-5586, memaddr, ge_test17, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-5613, memaddr, ge_test18, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-5640, memaddr, ge_test19, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-5667, memaddr, gt_test0, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-5694, memaddr, gt_test1, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-5721, memaddr, gt_test2, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-5748, memaddr, gt_test3, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-5775, memaddr, gt_test4, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-5802, memaddr, gt_test5, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-5829, memaddr, gt_test6, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-5856, memaddr, gt_test7, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-5883, memaddr, gt_test8, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-5910, memaddr, gt_test9, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-5937, memaddr, gt_test10, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-5964, memaddr, gt_test11, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-5991, memaddr, gt_test12, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-6018, memaddr, gt_test13, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-6045, memaddr, gt_test14, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-6072, memaddr, gt_test15, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-6099, memaddr, gt_test16, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-6126, memaddr, gt_test17, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-6153, memaddr, gt_test18, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-6180, memaddr, gt_test19, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-6207, memaddr, le_test0, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-6234, memaddr, le_test1, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-6261, memaddr, le_test2, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-6288, memaddr, le_test3, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-6315, memaddr, le_test4, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-6342, memaddr, le_test5, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-6369, memaddr, le_test6, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-6396, memaddr, le_test7, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-6423, memaddr, le_test8, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-6450, memaddr, le_test9, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-6477, memaddr, le_test10, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-6504, memaddr, le_test11, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-6531, memaddr, le_test12, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-6558, memaddr, le_test13, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-6585, memaddr, le_test14, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-6612, memaddr, le_test15, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, true
-6639, memaddr, le_test16, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-6666, memaddr, le_test17, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-6693, memaddr, le_test18, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-6720, memaddr, le_test19, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-6747, memaddr, lt_test0, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-6774, memaddr, lt_test1, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-6801, memaddr, lt_test2, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-6828, memaddr, lt_test3, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-6855, memaddr, lt_test4, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-6882, memaddr, lt_test5, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-6909, memaddr, lt_test6, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-6936, memaddr, lt_test7, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-6963, memaddr, lt_test8, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-6990, memaddr, lt_test9, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-7017, memaddr, lt_test10, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-7044, memaddr, lt_test11, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-7071, memaddr, lt_test12, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-7098, memaddr, lt_test13, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-7125, memaddr, lt_test14, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-7152, memaddr, lt_test15, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-7179, memaddr, lt_test16, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-7206, memaddr, lt_test17, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-7233, memaddr, lt_test18, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
-7260, memaddr, lt_test19, bool, i32, script0, 1:10, 0_wasm:opcode:call:before, false
+id, id_type, name, whamm_type, wasm_type, script_id, fid, pc, probe_id, value(s)
+4, memaddr, add_test0, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, 2
+28, memaddr, add_test1, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, 2
+52, memaddr, add_test2, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, 2
+76, memaddr, add_test3, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, 2
+100, memaddr, add_test16, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, 1
+124, memaddr, add_test20, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, -128
+148, memaddr, sub_test0, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+172, memaddr, sub_test1, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+196, memaddr, sub_test2, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+220, memaddr, sub_test3, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+244, memaddr, sub_test16, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, 1
+268, memaddr, sub_test20, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, 127
+292, memaddr, mul_test0, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, 1
+316, memaddr, mul_test1, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, 1
+340, memaddr, mul_test2, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, 1
+364, memaddr, mul_test3, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, 1
+388, memaddr, mul_test16, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+412, memaddr, mul_test20, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, -128
+436, memaddr, mul_test24, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+460, memaddr, mul_test28, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, 127
+484, memaddr, mul_test32, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, -2
+508, memaddr, div_test0, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, 1
+532, memaddr, div_test1, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, 1
+556, memaddr, div_test2, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, 1
+580, memaddr, div_test3, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, 1
+604, memaddr, div_test20, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, -128
+628, memaddr, mod_test0, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+652, memaddr, mod_test1, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+676, memaddr, mod_test2, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+700, memaddr, mod_test3, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+724, memaddr, mod_test20, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+748, memaddr, imp_test0, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, 2
+772, memaddr, imp_test4, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, 2
+796, memaddr, trunc_test0, i8, i32, script0, 1, 10, 0_wasm:opcode:call:before, -1
+820, memaddr, add_test4, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, 2
+845, memaddr, add_test5, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, 2
+870, memaddr, add_test6, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, 2
+895, memaddr, add_test7, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, 2
+920, memaddr, add_test17, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, 1
+945, memaddr, add_test21, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, -32768
+970, memaddr, sub_test4, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+995, memaddr, sub_test5, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+1020, memaddr, sub_test6, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+1045, memaddr, sub_test7, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+1070, memaddr, sub_test17, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, 1
+1095, memaddr, sub_test21, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, 32767
+1120, memaddr, mul_test4, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, 1
+1145, memaddr, mul_test5, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, 1
+1170, memaddr, mul_test6, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, 1
+1195, memaddr, mul_test7, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, 1
+1220, memaddr, mul_test17, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+1245, memaddr, mul_test21, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, -32768
+1270, memaddr, mul_test25, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+1295, memaddr, mul_test29, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, 32767
+1320, memaddr, mul_test33, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, -2
+1345, memaddr, div_test4, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, 1
+1370, memaddr, div_test5, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, 1
+1395, memaddr, div_test6, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, 1
+1420, memaddr, div_test7, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, 1
+1445, memaddr, div_test21, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, -32768
+1470, memaddr, mod_test4, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+1495, memaddr, mod_test5, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+1520, memaddr, mod_test6, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+1545, memaddr, mod_test7, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+1570, memaddr, mod_test21, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+1595, memaddr, imp_test1, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, 2
+1620, memaddr, imp_test5, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, 2
+1645, memaddr, trunc_test1, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, -1
+1670, memaddr, trunc_test3, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, 127
+1695, memaddr, trunc_test6, i16, i32, script0, 1, 10, 0_wasm:opcode:call:before, -128
+1720, memaddr, add_test8, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, 2
+1747, memaddr, add_test9, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, 2
+1774, memaddr, add_test10, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, 2
+1801, memaddr, add_test11, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, 2
+1828, memaddr, add_test18, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, 1
+1855, memaddr, add_test22, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, -2147483648
+1882, memaddr, sub_test8, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+1909, memaddr, sub_test9, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+1936, memaddr, sub_test10, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+1963, memaddr, sub_test11, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+1990, memaddr, sub_test18, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, 1
+2017, memaddr, sub_test22, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, 2147483647
+2044, memaddr, mul_test8, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, 1
+2071, memaddr, mul_test9, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, 1
+2098, memaddr, mul_test10, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, 1
+2125, memaddr, mul_test11, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, 1
+2152, memaddr, mul_test18, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+2179, memaddr, mul_test22, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, -2147483648
+2206, memaddr, mul_test26, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+2233, memaddr, mul_test30, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, 2147483647
+2260, memaddr, mul_test34, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, -2
+2287, memaddr, div_test8, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, 1
+2314, memaddr, div_test9, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, 1
+2341, memaddr, div_test10, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, 1
+2368, memaddr, div_test11, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, 1
+2395, memaddr, div_test22, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, -2147483648
+2422, memaddr, mod_test8, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+2449, memaddr, mod_test9, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+2476, memaddr, mod_test10, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+2503, memaddr, mod_test11, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+2530, memaddr, mod_test22, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, 0
+2557, memaddr, imp_test2, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, 2
+2584, memaddr, imp_test6, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, 2
+2611, memaddr, trunc_test2, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, -1
+2638, memaddr, trunc_test4, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, 32767
+2665, memaddr, trunc_test7, i32, i32, script0, 1, 10, 0_wasm:opcode:call:before, -32768
+2692, memaddr, add_test12, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, 2
+2723, memaddr, add_test13, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, 2
+2754, memaddr, add_test14, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, 2
+2785, memaddr, add_test15, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, 2
+2816, memaddr, add_test19, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, 1
+2847, memaddr, add_test23, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, -9223372036854775808
+2878, memaddr, sub_test12, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, 0
+2909, memaddr, sub_test13, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, 0
+2940, memaddr, sub_test14, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, 0
+2971, memaddr, sub_test15, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, 0
+3002, memaddr, sub_test19, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, 1
+3033, memaddr, sub_test23, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, 9223372036854775807
+3064, memaddr, mul_test12, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, 1
+3095, memaddr, mul_test13, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, 1
+3126, memaddr, mul_test14, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, 1
+3157, memaddr, mul_test15, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, 1
+3188, memaddr, mul_test19, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, 0
+3219, memaddr, mul_test23, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, -9223372036854775808
+3250, memaddr, mul_test27, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, 0
+3281, memaddr, mul_test31, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, 9223372036854775807
+3312, memaddr, mul_test35, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, -2
+3343, memaddr, div_test12, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, 1
+3374, memaddr, div_test13, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, 1
+3405, memaddr, div_test14, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, 1
+3436, memaddr, div_test15, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, 1
+3467, memaddr, div_test23, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, -9223372036854775808
+3498, memaddr, mod_test12, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, 0
+3529, memaddr, mod_test13, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, 0
+3560, memaddr, mod_test14, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, 0
+3591, memaddr, mod_test15, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, 0
+3622, memaddr, mod_test23, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, 0
+3653, memaddr, imp_test3, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, 2
+3684, memaddr, imp_test7, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, 2
+3715, memaddr, trunc_test5, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, 2147483647
+3746, memaddr, trunc_test8, i64, i64, script0, 1, 10, 0_wasm:opcode:call:before, -2147483648
+3777, memaddr, and_test0, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+3804, memaddr, and_test1, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+3831, memaddr, and_test2, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+3858, memaddr, and_test3, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+3885, memaddr, and_test4, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+3912, memaddr, or_test0, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+3939, memaddr, or_test1, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+3966, memaddr, or_test2, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+3993, memaddr, or_test3, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+4020, memaddr, or_test4, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+4047, memaddr, eq_test0, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+4074, memaddr, eq_test1, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+4101, memaddr, eq_test2, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+4128, memaddr, eq_test3, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+4155, memaddr, eq_test4, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+4182, memaddr, eq_test5, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+4209, memaddr, eq_test6, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+4236, memaddr, eq_test7, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+4263, memaddr, eq_test8, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+4290, memaddr, eq_test9, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+4317, memaddr, eq_test10, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+4344, memaddr, eq_test11, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+4371, memaddr, eq_test12, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+4398, memaddr, eq_test13, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+4425, memaddr, eq_test14, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+4452, memaddr, eq_test15, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+4479, memaddr, eq_test16, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+4506, memaddr, eq_test17, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+4533, memaddr, eq_test18, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+4560, memaddr, eq_test19, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+4587, memaddr, ne_test0, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+4614, memaddr, ne_test1, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+4641, memaddr, ne_test2, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+4668, memaddr, ne_test3, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+4695, memaddr, ne_test4, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+4722, memaddr, ne_test5, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+4749, memaddr, ne_test6, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+4776, memaddr, ne_test7, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+4803, memaddr, ne_test8, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+4830, memaddr, ne_test9, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+4857, memaddr, ne_test10, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+4884, memaddr, ne_test11, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+4911, memaddr, ne_test12, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+4938, memaddr, ne_test13, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+4965, memaddr, ne_test14, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+4992, memaddr, ne_test15, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+5019, memaddr, ne_test16, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+5046, memaddr, ne_test17, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+5073, memaddr, ne_test18, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+5100, memaddr, ne_test19, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+5127, memaddr, ge_test0, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+5154, memaddr, ge_test1, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+5181, memaddr, ge_test2, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+5208, memaddr, ge_test3, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+5235, memaddr, ge_test4, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+5262, memaddr, ge_test5, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+5289, memaddr, ge_test6, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+5316, memaddr, ge_test7, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+5343, memaddr, ge_test8, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+5370, memaddr, ge_test9, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+5397, memaddr, ge_test10, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+5424, memaddr, ge_test11, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+5451, memaddr, ge_test12, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+5478, memaddr, ge_test13, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+5505, memaddr, ge_test14, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+5532, memaddr, ge_test15, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+5559, memaddr, ge_test16, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+5586, memaddr, ge_test17, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+5613, memaddr, ge_test18, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+5640, memaddr, ge_test19, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+5667, memaddr, gt_test0, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+5694, memaddr, gt_test1, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+5721, memaddr, gt_test2, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+5748, memaddr, gt_test3, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+5775, memaddr, gt_test4, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+5802, memaddr, gt_test5, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+5829, memaddr, gt_test6, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+5856, memaddr, gt_test7, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+5883, memaddr, gt_test8, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+5910, memaddr, gt_test9, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+5937, memaddr, gt_test10, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+5964, memaddr, gt_test11, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+5991, memaddr, gt_test12, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+6018, memaddr, gt_test13, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+6045, memaddr, gt_test14, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+6072, memaddr, gt_test15, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+6099, memaddr, gt_test16, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+6126, memaddr, gt_test17, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+6153, memaddr, gt_test18, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+6180, memaddr, gt_test19, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+6207, memaddr, le_test0, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+6234, memaddr, le_test1, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+6261, memaddr, le_test2, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+6288, memaddr, le_test3, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+6315, memaddr, le_test4, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+6342, memaddr, le_test5, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+6369, memaddr, le_test6, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+6396, memaddr, le_test7, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+6423, memaddr, le_test8, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+6450, memaddr, le_test9, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+6477, memaddr, le_test10, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+6504, memaddr, le_test11, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+6531, memaddr, le_test12, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+6558, memaddr, le_test13, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+6585, memaddr, le_test14, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+6612, memaddr, le_test15, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, true
+6639, memaddr, le_test16, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+6666, memaddr, le_test17, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+6693, memaddr, le_test18, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+6720, memaddr, le_test19, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+6747, memaddr, lt_test0, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+6774, memaddr, lt_test1, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+6801, memaddr, lt_test2, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+6828, memaddr, lt_test3, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+6855, memaddr, lt_test4, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+6882, memaddr, lt_test5, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+6909, memaddr, lt_test6, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+6936, memaddr, lt_test7, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+6963, memaddr, lt_test8, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+6990, memaddr, lt_test9, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+7017, memaddr, lt_test10, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+7044, memaddr, lt_test11, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+7071, memaddr, lt_test12, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+7098, memaddr, lt_test13, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+7125, memaddr, lt_test14, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+7152, memaddr, lt_test15, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+7179, memaddr, lt_test16, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+7206, memaddr, lt_test17, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+7233, memaddr, lt_test18, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false
+7260, memaddr, lt_test19, bool, i32, script0, 1, 10, 0_wasm:opcode:call:before, false

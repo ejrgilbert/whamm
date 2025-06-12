@@ -1,111 +1,111 @@
 ============================= REPORT CSV FLUSH ================================
-id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)
-8781, memaddr, count, u32, i32, script0, 0:1, 2_wasm:opcode:block, 1
-8808, memaddr, count, u32, i32, script0, 0:3, 2_wasm:opcode:block, 1
-8835, memaddr, count, u32, i32, script0, 0:5, 21_wasm:opcode:local.get, 1
-8862, memaddr, count, u32, i32, script0, 0:7, 52_wasm:opcode:i64.const, 1
-8889, memaddr, count, u32, i32, script0, 0:9, 71_wasm:opcode:i64.eq, 1
-8916, memaddr, count, u32, i32, script0, 0:10, 11_wasm:opcode:br_if, 1
-8943, memaddr, count, u32, i32, script0, 0:12, 10_wasm:opcode:br, 1
-8970, memaddr, count, u32, i32, script0, 0:14, 9_wasm:opcode:end, 1
-8997, memaddr, count, u32, i32, script0, 0:15, 51_wasm:opcode:i32.const, 1
-9024, memaddr, count, u32, i32, script0, 0:17, 13_wasm:opcode:return, 1
-9051, memaddr, count, u32, i32, script0, 0:18, 9_wasm:opcode:end, 0
-9078, memaddr, count, u32, i32, script0, 0:19, 51_wasm:opcode:i32.const, 0
-9105, memaddr, count, u32, i32, script0, 0:21, 13_wasm:opcode:return, 0
-9132, memaddr, count, u32, i32, script0, 0:22, 9_wasm:opcode:end, 0
-9159, memaddr, count, u32, i32, script0, 1:1, 2_wasm:opcode:block, 4
-9186, memaddr, count, u32, i32, script0, 1:3, 2_wasm:opcode:block, 4
-9213, memaddr, count, u32, i32, script0, 1:5, 2_wasm:opcode:block, 4
-9240, memaddr, count, u32, i32, script0, 1:7, 21_wasm:opcode:local.get, 4
-9267, memaddr, count, u32, i32, script0, 1:9, 51_wasm:opcode:i32.const, 4
-9294, memaddr, count, u32, i32, script0, 1:11, 60_wasm:opcode:i32.eq, 4
-9321, memaddr, count, u32, i32, script0, 1:12, 11_wasm:opcode:br_if, 4
-9348, memaddr, count, u32, i32, script0, 1:14, 21_wasm:opcode:local.get, 3
-9375, memaddr, count, u32, i32, script0, 1:16, 51_wasm:opcode:i32.const, 3
-9402, memaddr, count, u32, i32, script0, 1:18, 65_wasm:opcode:i32.gt_u, 3
-9429, memaddr, count, u32, i32, script0, 1:19, 11_wasm:opcode:br_if, 3
-9456, memaddr, count, u32, i32, script0, 1:21, 10_wasm:opcode:br, 2
-9483, memaddr, count, u32, i32, script0, 1:23, 9_wasm:opcode:end, 1
-9510, memaddr, count, u32, i32, script0, 1:24, 51_wasm:opcode:i32.const, 1
-9537, memaddr, count, u32, i32, script0, 1:26, 13_wasm:opcode:return, 1
-9564, memaddr, count, u32, i32, script0, 1:27, 9_wasm:opcode:end, 2
-9591, memaddr, count, u32, i32, script0, 1:28, 51_wasm:opcode:i32.const, 2
-9618, memaddr, count, u32, i32, script0, 1:30, 13_wasm:opcode:return, 2
-9645, memaddr, count, u32, i32, script0, 1:31, 9_wasm:opcode:end, 1
-9672, memaddr, count, u32, i32, script0, 1:32, 51_wasm:opcode:i32.const, 1
-9699, memaddr, count, u32, i32, script0, 1:34, 13_wasm:opcode:return, 1
-9726, memaddr, count, u32, i32, script0, 1:35, 9_wasm:opcode:end, 0
-9753, memaddr, count, u32, i32, script0, 2:1, 2_wasm:opcode:block, 3
-9780, memaddr, count, u32, i32, script0, 2:3, 2_wasm:opcode:block, 3
-9807, memaddr, count, u32, i32, script0, 2:5, 2_wasm:opcode:block, 3
-9834, memaddr, count, u32, i32, script0, 2:7, 21_wasm:opcode:local.get, 3
-9861, memaddr, count, u32, i32, script0, 2:9, 12_wasm:opcode:br_table, 3
-9888, memaddr, count, u32, i32, script0, 2:15, 9_wasm:opcode:end, 1
-9915, memaddr, count, u32, i32, script0, 2:16, 51_wasm:opcode:i32.const, 1
-9942, memaddr, count, u32, i32, script0, 2:18, 13_wasm:opcode:return, 1
-9969, memaddr, count, u32, i32, script0, 2:19, 9_wasm:opcode:end, 1
-9996, memaddr, count, u32, i32, script0, 2:20, 51_wasm:opcode:i32.const, 1
-10023, memaddr, count, u32, i32, script0, 2:22, 13_wasm:opcode:return, 1
-10050, memaddr, count, u32, i32, script0, 2:23, 9_wasm:opcode:end, 1
-10077, memaddr, count, u32, i32, script0, 2:24, 51_wasm:opcode:i32.const, 1
-10104, memaddr, count, u32, i32, script0, 2:26, 9_wasm:opcode:end, 1
-10131, memaddr, count, u32, i32, script0, 3:1, 21_wasm:opcode:local.get, 1
-10158, memaddr, count, u32, i32, script0, 3:3, 51_wasm:opcode:i32.const, 1
-10185, memaddr, count, u32, i32, script0, 3:5, 60_wasm:opcode:i32.eq, 1
-10212, memaddr, count, u32, i32, script0, 3:6, 4_wasm:opcode:if, 1
-10239, memaddr, count, u32, i32, script0, 3:8, 51_wasm:opcode:i32.const, 0
-10266, memaddr, count, u32, i32, script0, 3:10, 13_wasm:opcode:return, 0
-10293, memaddr, count, u32, i32, script0, 3:11, 5_wasm:opcode:else, 0
-10320, memaddr, count, u32, i32, script0, 3:12, 51_wasm:opcode:i32.const, 1
-10347, memaddr, count, u32, i32, script0, 3:14, 13_wasm:opcode:return, 1
-10374, memaddr, count, u32, i32, script0, 3:15, 9_wasm:opcode:end, 0
-10401, memaddr, count, u32, i32, script0, 3:16, 51_wasm:opcode:i32.const, 0
-10428, memaddr, count, u32, i32, script0, 3:18, 9_wasm:opcode:end, 0
-10455, memaddr, count, u32, i32, script0, 4:1, 51_wasm:opcode:i32.const, 1
-10482, memaddr, count, u32, i32, script0, 4:3, 51_wasm:opcode:i32.const, 1
-10509, memaddr, count, u32, i32, script0, 4:5, 21_wasm:opcode:local.get, 1
-10536, memaddr, count, u32, i32, script0, 4:7, 59_wasm:opcode:i32.eqz, 1
-10563, memaddr, count, u32, i32, script0, 4:8, 19_wasm:opcode:select, 1
-10590, memaddr, count, u32, i32, script0, 4:9, 9_wasm:opcode:end, 1
-10617, memaddr, count, u32, i32, script0, 5:1, 52_wasm:opcode:i64.const, 1
-10644, memaddr, count, u32, i32, script0, 5:3, 14_wasm:opcode:call, 1
-10671, memaddr, count, u32, i32, script0, 5:5, 25_wasm:opcode:global.set, 1
-10698, memaddr, count, u32, i32, script0, 5:7, 51_wasm:opcode:i32.const, 1
-10725, memaddr, count, u32, i32, script0, 5:9, 14_wasm:opcode:call, 1
-10752, memaddr, count, u32, i32, script0, 5:11, 24_wasm:opcode:global.get, 1
-10779, memaddr, count, u32, i32, script0, 5:13, 96_wasm:opcode:i32.add, 1
-10806, memaddr, count, u32, i32, script0, 5:14, 25_wasm:opcode:global.set, 1
-10833, memaddr, count, u32, i32, script0, 5:16, 51_wasm:opcode:i32.const, 1
-10860, memaddr, count, u32, i32, script0, 5:18, 14_wasm:opcode:call, 1
-10887, memaddr, count, u32, i32, script0, 5:20, 24_wasm:opcode:global.get, 1
-10914, memaddr, count, u32, i32, script0, 5:22, 96_wasm:opcode:i32.add, 1
-10941, memaddr, count, u32, i32, script0, 5:23, 25_wasm:opcode:global.set, 1
-10968, memaddr, count, u32, i32, script0, 5:25, 51_wasm:opcode:i32.const, 1
-10995, memaddr, count, u32, i32, script0, 5:27, 14_wasm:opcode:call, 1
-11022, memaddr, count, u32, i32, script0, 5:29, 24_wasm:opcode:global.get, 1
-11049, memaddr, count, u32, i32, script0, 5:31, 96_wasm:opcode:i32.add, 1
-11076, memaddr, count, u32, i32, script0, 5:32, 25_wasm:opcode:global.set, 1
-11103, memaddr, count, u32, i32, script0, 5:34, 51_wasm:opcode:i32.const, 1
-11130, memaddr, count, u32, i32, script0, 5:36, 14_wasm:opcode:call, 1
-11157, memaddr, count, u32, i32, script0, 5:38, 24_wasm:opcode:global.get, 1
-11184, memaddr, count, u32, i32, script0, 5:40, 96_wasm:opcode:i32.add, 1
-11211, memaddr, count, u32, i32, script0, 5:41, 25_wasm:opcode:global.set, 1
-11238, memaddr, count, u32, i32, script0, 5:43, 51_wasm:opcode:i32.const, 1
-11265, memaddr, count, u32, i32, script0, 5:45, 14_wasm:opcode:call, 1
-11292, memaddr, count, u32, i32, script0, 5:47, 18_wasm:opcode:drop, 1
-11319, memaddr, count, u32, i32, script0, 5:48, 51_wasm:opcode:i32.const, 1
-11346, memaddr, count, u32, i32, script0, 5:50, 14_wasm:opcode:call, 1
-11373, memaddr, count, u32, i32, script0, 5:52, 18_wasm:opcode:drop, 1
-11400, memaddr, count, u32, i32, script0, 5:53, 51_wasm:opcode:i32.const, 1
-11427, memaddr, count, u32, i32, script0, 5:55, 14_wasm:opcode:call, 1
-11454, memaddr, count, u32, i32, script0, 5:57, 18_wasm:opcode:drop, 1
-11481, memaddr, count, u32, i32, script0, 5:58, 51_wasm:opcode:i32.const, 1
-11508, memaddr, count, u32, i32, script0, 5:60, 14_wasm:opcode:call, 1
-11535, memaddr, count, u32, i32, script0, 5:62, 18_wasm:opcode:drop, 1
-11562, memaddr, count, u32, i32, script0, 5:63, 51_wasm:opcode:i32.const, 1
-11589, memaddr, count, u32, i32, script0, 5:65, 14_wasm:opcode:call, 1
-11616, memaddr, count, u32, i32, script0, 5:67, 18_wasm:opcode:drop, 1
-11643, memaddr, count, u32, i32, script0, 5:68, 9_wasm:opcode:end, 1
-11670, memaddr, count, u32, i32, script0, 6:1, 14_wasm:opcode:call, 0
-11697, memaddr, count, u32, i32, script0, 6:3, 9_wasm:opcode:end, 0
+id, id_type, name, whamm_type, wasm_type, script_id, fid, pc, probe_id, value(s)
+8781, memaddr, count, u32, i32, script0, 0, 1, 2_wasm:opcode:block, 1
+8808, memaddr, count, u32, i32, script0, 0, 3, 2_wasm:opcode:block, 1
+8835, memaddr, count, u32, i32, script0, 0, 5, 21_wasm:opcode:local.get, 1
+8862, memaddr, count, u32, i32, script0, 0, 7, 52_wasm:opcode:i64.const, 1
+8889, memaddr, count, u32, i32, script0, 0, 9, 71_wasm:opcode:i64.eq, 1
+8916, memaddr, count, u32, i32, script0, 0, 10, 11_wasm:opcode:br_if, 1
+8943, memaddr, count, u32, i32, script0, 0, 12, 10_wasm:opcode:br, 1
+8970, memaddr, count, u32, i32, script0, 0, 14, 9_wasm:opcode:end, 1
+8997, memaddr, count, u32, i32, script0, 0, 15, 51_wasm:opcode:i32.const, 1
+9024, memaddr, count, u32, i32, script0, 0, 17, 13_wasm:opcode:return, 1
+9051, memaddr, count, u32, i32, script0, 0, 18, 9_wasm:opcode:end, 0
+9078, memaddr, count, u32, i32, script0, 0, 19, 51_wasm:opcode:i32.const, 0
+9105, memaddr, count, u32, i32, script0, 0, 21, 13_wasm:opcode:return, 0
+9132, memaddr, count, u32, i32, script0, 0, 22, 9_wasm:opcode:end, 0
+9159, memaddr, count, u32, i32, script0, 1, 1, 2_wasm:opcode:block, 4
+9186, memaddr, count, u32, i32, script0, 1, 3, 2_wasm:opcode:block, 4
+9213, memaddr, count, u32, i32, script0, 1, 5, 2_wasm:opcode:block, 4
+9240, memaddr, count, u32, i32, script0, 1, 7, 21_wasm:opcode:local.get, 4
+9267, memaddr, count, u32, i32, script0, 1, 9, 51_wasm:opcode:i32.const, 4
+9294, memaddr, count, u32, i32, script0, 1, 11, 60_wasm:opcode:i32.eq, 4
+9321, memaddr, count, u32, i32, script0, 1, 12, 11_wasm:opcode:br_if, 4
+9348, memaddr, count, u32, i32, script0, 1, 14, 21_wasm:opcode:local.get, 3
+9375, memaddr, count, u32, i32, script0, 1, 16, 51_wasm:opcode:i32.const, 3
+9402, memaddr, count, u32, i32, script0, 1, 18, 65_wasm:opcode:i32.gt_u, 3
+9429, memaddr, count, u32, i32, script0, 1, 19, 11_wasm:opcode:br_if, 3
+9456, memaddr, count, u32, i32, script0, 1, 21, 10_wasm:opcode:br, 2
+9483, memaddr, count, u32, i32, script0, 1, 23, 9_wasm:opcode:end, 1
+9510, memaddr, count, u32, i32, script0, 1, 24, 51_wasm:opcode:i32.const, 1
+9537, memaddr, count, u32, i32, script0, 1, 26, 13_wasm:opcode:return, 1
+9564, memaddr, count, u32, i32, script0, 1, 27, 9_wasm:opcode:end, 2
+9591, memaddr, count, u32, i32, script0, 1, 28, 51_wasm:opcode:i32.const, 2
+9618, memaddr, count, u32, i32, script0, 1, 30, 13_wasm:opcode:return, 2
+9645, memaddr, count, u32, i32, script0, 1, 31, 9_wasm:opcode:end, 1
+9672, memaddr, count, u32, i32, script0, 1, 32, 51_wasm:opcode:i32.const, 1
+9699, memaddr, count, u32, i32, script0, 1, 34, 13_wasm:opcode:return, 1
+9726, memaddr, count, u32, i32, script0, 1, 35, 9_wasm:opcode:end, 0
+9753, memaddr, count, u32, i32, script0, 2, 1, 2_wasm:opcode:block, 3
+9780, memaddr, count, u32, i32, script0, 2, 3, 2_wasm:opcode:block, 3
+9807, memaddr, count, u32, i32, script0, 2, 5, 2_wasm:opcode:block, 3
+9834, memaddr, count, u32, i32, script0, 2, 7, 21_wasm:opcode:local.get, 3
+9861, memaddr, count, u32, i32, script0, 2, 9, 12_wasm:opcode:br_table, 3
+9888, memaddr, count, u32, i32, script0, 2, 15, 9_wasm:opcode:end, 1
+9915, memaddr, count, u32, i32, script0, 2, 16, 51_wasm:opcode:i32.const, 1
+9942, memaddr, count, u32, i32, script0, 2, 18, 13_wasm:opcode:return, 1
+9969, memaddr, count, u32, i32, script0, 2, 19, 9_wasm:opcode:end, 1
+9996, memaddr, count, u32, i32, script0, 2, 20, 51_wasm:opcode:i32.const, 1
+10023, memaddr, count, u32, i32, script0, 2, 22, 13_wasm:opcode:return, 1
+10050, memaddr, count, u32, i32, script0, 2, 23, 9_wasm:opcode:end, 1
+10077, memaddr, count, u32, i32, script0, 2, 24, 51_wasm:opcode:i32.const, 1
+10104, memaddr, count, u32, i32, script0, 2, 26, 9_wasm:opcode:end, 1
+10131, memaddr, count, u32, i32, script0, 3, 1, 21_wasm:opcode:local.get, 1
+10158, memaddr, count, u32, i32, script0, 3, 3, 51_wasm:opcode:i32.const, 1
+10185, memaddr, count, u32, i32, script0, 3, 5, 60_wasm:opcode:i32.eq, 1
+10212, memaddr, count, u32, i32, script0, 3, 6, 4_wasm:opcode:if, 1
+10239, memaddr, count, u32, i32, script0, 3, 8, 51_wasm:opcode:i32.const, 0
+10266, memaddr, count, u32, i32, script0, 3, 10, 13_wasm:opcode:return, 0
+10293, memaddr, count, u32, i32, script0, 3, 11, 5_wasm:opcode:else, 0
+10320, memaddr, count, u32, i32, script0, 3, 12, 51_wasm:opcode:i32.const, 1
+10347, memaddr, count, u32, i32, script0, 3, 14, 13_wasm:opcode:return, 1
+10374, memaddr, count, u32, i32, script0, 3, 15, 9_wasm:opcode:end, 0
+10401, memaddr, count, u32, i32, script0, 3, 16, 51_wasm:opcode:i32.const, 0
+10428, memaddr, count, u32, i32, script0, 3, 18, 9_wasm:opcode:end, 0
+10455, memaddr, count, u32, i32, script0, 4, 1, 51_wasm:opcode:i32.const, 1
+10482, memaddr, count, u32, i32, script0, 4, 3, 51_wasm:opcode:i32.const, 1
+10509, memaddr, count, u32, i32, script0, 4, 5, 21_wasm:opcode:local.get, 1
+10536, memaddr, count, u32, i32, script0, 4, 7, 59_wasm:opcode:i32.eqz, 1
+10563, memaddr, count, u32, i32, script0, 4, 8, 19_wasm:opcode:select, 1
+10590, memaddr, count, u32, i32, script0, 4, 9, 9_wasm:opcode:end, 1
+10617, memaddr, count, u32, i32, script0, 5, 1, 52_wasm:opcode:i64.const, 1
+10644, memaddr, count, u32, i32, script0, 5, 3, 14_wasm:opcode:call, 1
+10671, memaddr, count, u32, i32, script0, 5, 5, 25_wasm:opcode:global.set, 1
+10698, memaddr, count, u32, i32, script0, 5, 7, 51_wasm:opcode:i32.const, 1
+10725, memaddr, count, u32, i32, script0, 5, 9, 14_wasm:opcode:call, 1
+10752, memaddr, count, u32, i32, script0, 5, 11, 24_wasm:opcode:global.get, 1
+10779, memaddr, count, u32, i32, script0, 5, 13, 96_wasm:opcode:i32.add, 1
+10806, memaddr, count, u32, i32, script0, 5, 14, 25_wasm:opcode:global.set, 1
+10833, memaddr, count, u32, i32, script0, 5, 16, 51_wasm:opcode:i32.const, 1
+10860, memaddr, count, u32, i32, script0, 5, 18, 14_wasm:opcode:call, 1
+10887, memaddr, count, u32, i32, script0, 5, 20, 24_wasm:opcode:global.get, 1
+10914, memaddr, count, u32, i32, script0, 5, 22, 96_wasm:opcode:i32.add, 1
+10941, memaddr, count, u32, i32, script0, 5, 23, 25_wasm:opcode:global.set, 1
+10968, memaddr, count, u32, i32, script0, 5, 25, 51_wasm:opcode:i32.const, 1
+10995, memaddr, count, u32, i32, script0, 5, 27, 14_wasm:opcode:call, 1
+11022, memaddr, count, u32, i32, script0, 5, 29, 24_wasm:opcode:global.get, 1
+11049, memaddr, count, u32, i32, script0, 5, 31, 96_wasm:opcode:i32.add, 1
+11076, memaddr, count, u32, i32, script0, 5, 32, 25_wasm:opcode:global.set, 1
+11103, memaddr, count, u32, i32, script0, 5, 34, 51_wasm:opcode:i32.const, 1
+11130, memaddr, count, u32, i32, script0, 5, 36, 14_wasm:opcode:call, 1
+11157, memaddr, count, u32, i32, script0, 5, 38, 24_wasm:opcode:global.get, 1
+11184, memaddr, count, u32, i32, script0, 5, 40, 96_wasm:opcode:i32.add, 1
+11211, memaddr, count, u32, i32, script0, 5, 41, 25_wasm:opcode:global.set, 1
+11238, memaddr, count, u32, i32, script0, 5, 43, 51_wasm:opcode:i32.const, 1
+11265, memaddr, count, u32, i32, script0, 5, 45, 14_wasm:opcode:call, 1
+11292, memaddr, count, u32, i32, script0, 5, 47, 18_wasm:opcode:drop, 1
+11319, memaddr, count, u32, i32, script0, 5, 48, 51_wasm:opcode:i32.const, 1
+11346, memaddr, count, u32, i32, script0, 5, 50, 14_wasm:opcode:call, 1
+11373, memaddr, count, u32, i32, script0, 5, 52, 18_wasm:opcode:drop, 1
+11400, memaddr, count, u32, i32, script0, 5, 53, 51_wasm:opcode:i32.const, 1
+11427, memaddr, count, u32, i32, script0, 5, 55, 14_wasm:opcode:call, 1
+11454, memaddr, count, u32, i32, script0, 5, 57, 18_wasm:opcode:drop, 1
+11481, memaddr, count, u32, i32, script0, 5, 58, 51_wasm:opcode:i32.const, 1
+11508, memaddr, count, u32, i32, script0, 5, 60, 14_wasm:opcode:call, 1
+11535, memaddr, count, u32, i32, script0, 5, 62, 18_wasm:opcode:drop, 1
+11562, memaddr, count, u32, i32, script0, 5, 63, 51_wasm:opcode:i32.const, 1
+11589, memaddr, count, u32, i32, script0, 5, 65, 14_wasm:opcode:call, 1
+11616, memaddr, count, u32, i32, script0, 5, 67, 18_wasm:opcode:drop, 1
+11643, memaddr, count, u32, i32, script0, 5, 68, 9_wasm:opcode:end, 1
+11670, memaddr, count, u32, i32, script0, 6, 1, 14_wasm:opcode:call, 0
+11697, memaddr, count, u32, i32, script0, 6, 3, 9_wasm:opcode:end, 0

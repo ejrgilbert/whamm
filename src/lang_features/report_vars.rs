@@ -154,7 +154,6 @@ impl ReportVars {
 
         memory_allocator.emit_string(wasm, &mut format!(", {id_type}, "));
         memory_allocator.emit_string(wasm, &mut ", ".to_string());
-        memory_allocator.emit_string(wasm, &mut ":".to_string());
         memory_allocator.emit_string(wasm, &mut "script".to_string());
 
         for dt in self.all_used_report_dts.iter() {
@@ -418,7 +417,7 @@ impl ReportVars {
         err: &mut ErrorGen,
     ) {
         // ==================== REPORT CSV FLUSH ========================
-        // type, id_type, id, name, script_id, fid:pc, probe_id, value(s)
+        // type, id_type, id, name, script_id, fid, pc, probe_id, value(s)
         let id_type = "memaddr".to_string();
         let mem_arg = MemArg {
             align: 0,
@@ -571,10 +570,10 @@ impl ReportVars {
         let (addr, len) = mem_allocator.lookup_emitted_string(&", ".to_string(), err);
         io_adapter.puts(addr, len, &mut flush_fn, err);
 
-        // print 'fid:pc'
+        // print 'fid, pc'
         flush_fn.local_get(fid);
         io_adapter.call_puti32(&mut flush_fn, err);
-        let (addr, len) = mem_allocator.lookup_emitted_string(&":".to_string(), err);
+        let (addr, len) = mem_allocator.lookup_emitted_string(&", ".to_string(), err);
         io_adapter.puts(addr, len, &mut flush_fn, err);
         flush_fn.local_get(pc);
         io_adapter.call_puti32(&mut flush_fn, err);
@@ -658,7 +657,7 @@ impl ReportVars {
         };
 
         // ============================= REPORT CSV FLUSH ================================
-        // id, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)
+        // id, id_type, name, whamm_type, wasm_type, script_id, fid, pc, probe_id, value(s)
 
         // handles the 'value(s)' output
         let mut flush_fn = FunctionBuilder::new(&[], &[]);
@@ -1364,7 +1363,7 @@ impl Metadata {
         }
     }
     pub fn setup_csv_header(wasm: &mut Module, mem_allocator: &mut MemoryAllocator) -> (u32, u32) {
-        let mut header = "\n============================= REPORT CSV FLUSH ================================\nid, id_type, name, whamm_type, wasm_type, script_id, fid:pc, probe_id, value(s)"
+        let mut header = "\n============================= REPORT CSV FLUSH ================================\nid, id_type, name, whamm_type, wasm_type, script_id, fid, pc, probe_id, value(s)"
             .to_string();
         mem_allocator.emit_string(wasm, &mut header);
         let addr = mem_allocator.emitted_strings.get(&header).unwrap();
@@ -1383,7 +1382,7 @@ impl Metadata {
                 whamm_ty.to_string(),
                 get_wasm_ty_str(wasm_ty),
                 *script_id,
-                "",
+                ", ",
                 "",
             ),
             Metadata::Local {
@@ -1426,7 +1425,7 @@ pub struct BytecodeLoc {
 }
 impl Display for BytecodeLoc {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}:{}", self.fid, self.pc)
+        write!(f, "{}, {}", self.fid, self.pc)
     }
 }
 impl BytecodeLoc {
