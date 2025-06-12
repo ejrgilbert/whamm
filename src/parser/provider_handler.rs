@@ -982,6 +982,10 @@ fn read_yml(base_dir_tmp: &str) -> YmlDefinition {
     // finally the providers
     pull_yml(&mut yml_files, &format!("{base_dir}/providers"));
 
+    if yml_files.is_empty() {
+        panic!("[ERROR] Could not load provider definitions from base directory: {}\n\tPlease make sure you follow the expected directory structure!\n\tExiting now...", base_dir);
+    }
+
     let mut all_yml = "".to_string();
     for yml in yml_files.iter() {
         all_yml += yml;
