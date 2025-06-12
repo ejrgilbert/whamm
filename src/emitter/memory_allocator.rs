@@ -438,7 +438,7 @@ impl MemoryAllocator {
         self.curr_mem_offset += val.len();
         true
     }
-    pub fn lookup_emitted_string(&self, s: &String, err: &mut ErrorGen) -> (u32, u32) {
+    pub fn lookup_emitted_string(&self, s: &str, err: &mut ErrorGen) -> (u32, u32) {
         if let Some(str_addr) = self.emitted_strings.get(s) {
             (str_addr.mem_offset as u32, str_addr.len as u32)
         } else {

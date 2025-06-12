@@ -43,21 +43,21 @@ hello world!
 'sup world!
 
 ============================= REPORT CSV FLUSH ================================
-id, id_type, name, whamm_type, wasm_type, script_id, fid, pc, probe_id, value(s)
-1, global_id, arith, u32, i32, script0, , , , 14184
-2, global_id, atomic, u32, i32, script0, , , , 0
-3, global_id, compare, u32, i32, script0, , , , 5586
-4, global_id, const, u32, i32, script0, , , , 17655
-5, global_id, control, u32, i32, script0, , , , 29901
-6, global_id, convert, u32, i32, script0, , , , 444
-7, global_id, exn, u32, i32, script0, , , , 0
-8, global_id, gc, u32, i32, script0, , , , 0
-9, global_id, global, u32, i32, script0, , , , 4591
-10, global_id, load, u32, i32, script0, , , , 7323
-11, global_id, local, u32, i32, script0, , , , 85450
-12, global_id, mem, u32, i32, script0, , , , 0
-13, global_id, misc, u32, i32, script0, , , , 205
-14, global_id, ref, u32, i32, script0, , , , 0
-15, global_id, simd, u32, i32, script0, , , , 0
-16, global_id, store, u32, i32, script0, , , , 10826
-17, global_id, table, u32, i32, script0, , , , 0
+id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)
+1, global_id, arith, u32, i32, script0, , , , , 14184
+2, global_id, atomic, u32, i32, script0, , , , , 0
+3, global_id, compare, u32, i32, script0, , , , , 5586
+4, global_id, const, u32, i32, script0, , , , , 17655
+5, global_id, control, u32, i32, script0, , , , , 29901
+6, global_id, convert, u32, i32, script0, , , , , 444
+7, global_id, exn, u32, i32, script0, , , , , 0
+8, global_id, gc, u32, i32, script0, , , , , 0
+9, global_id, global, u32, i32, script0, , , , , 4591
+10, global_id, load, u32, i32, script0, , , , , 7323
+11, global_id, local, u32, i32, script0, , , , , 85450
+12, global_id, mem, u32, i32, script0, , , , , 0
+13, global_id, misc, u32, i32, script0, , , , , 205
+14, global_id, ref, u32, i32, script0, , , , , 0
+15, global_id, simd, u32, i32, script0, , , , , 0
+16, global_id, store, u32, i32, script0, , , , , 10826
+17, global_id, table, u32, i32, script0, , , , , 0

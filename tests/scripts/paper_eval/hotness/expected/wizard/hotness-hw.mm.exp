@@ -1,5 +1,5 @@
 ============================= REPORT CSV FLUSH ================================
-id, id_type, name, whamm_type, wasm_type, script_id, fid, pc, probe_id, value(s)
+id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)
 8781, memaddr, count, u32, i32, script0, 0, 1, 2_wasm:opcode:block, 1
 8808, memaddr, count, u32, i32, script0, 0, 3, 2_wasm:opcode:block, 1
 8835, memaddr, count, u32, i32, script0, 0, 5, 21_wasm:opcode:local.get, 1

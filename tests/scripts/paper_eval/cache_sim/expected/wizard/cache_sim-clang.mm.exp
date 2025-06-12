@@ -2,7 +2,7 @@ madlads
 madlads
 
 ============================= REPORT CSV FLUSH ================================
-id, id_type, name, whamm_type, wasm_type, script_id, fid, pc, probe_id, value(s)
+id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)
 1226, memaddr, hit, u32, i32, script0, 6, 9, 0_wasm:opcode:i32.load, 0
 1253, memaddr, miss, u32, i32, script0, 6, 9, 0_wasm:opcode:i32.load, 1
 1280, memaddr, hit, u32, i32, script0, 6, 19, 14_wasm:opcode:i32.store, 1

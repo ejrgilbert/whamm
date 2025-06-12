@@ -43,19 +43,19 @@ hello world!
 'sup world!
 
 ============================= REPORT CSV FLUSH ================================
-id, id_type, name, whamm_type, wasm_type, script_id, fid, pc, probe_id, value(s)
-3, global_id, arith, u32, i32, script0, , , , 14160
-4, global_id, atomic, u32, i32, script0, , , , 0
-5, global_id, compare, u32, i32, script0, , , , 5575
-6, global_id, const, u32, i32, script0, , , , 17583
-7, global_id, control, u32, i32, script0, , , , 24356
-8, global_id, convert, u32, i32, script0, , , , 444
-9, global_id, exn, u32, i32, script0, , , , 0
-10, global_id, gc, u32, i32, script0, , , , 0
-11, global_id, global, u32, i32, script0, , , , 4582
-12, global_id, load, u32, i32, script0, , , , 7303
-13, global_id, local, u32, i32, script0, , , , 85339
-14, global_id, mem, u32, i32, script0, , , , 0
-15, global_id, misc, u32, i32, script0, , , , 204
-16, global_id, store, u32, i32, script0, , , , 10803
-17, global_id, table, u32, i32, script0, , , , 0
+id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)
+3, global_id, arith, u32, i32, script0, , , , , 14160
+4, global_id, atomic, u32, i32, script0, , , , , 0
+5, global_id, compare, u32, i32, script0, , , , , 5575
+6, global_id, const, u32, i32, script0, , , , , 17583
+7, global_id, control, u32, i32, script0, , , , , 24356
+8, global_id, convert, u32, i32, script0, , , , , 444
+9, global_id, exn, u32, i32, script0, , , , , 0
+10, global_id, gc, u32, i32, script0, , , , , 0
+11, global_id, global, u32, i32, script0, , , , , 4582
+12, global_id, load, u32, i32, script0, , , , , 7303
+13, global_id, local, u32, i32, script0, , , , , 85339
+14, global_id, mem, u32, i32, script0, , , , , 0
+15, global_id, misc, u32, i32, script0, , , , , 204
+16, global_id, store, u32, i32, script0, , , , , 10803
+17, global_id, table, u32, i32, script0, , , , , 0

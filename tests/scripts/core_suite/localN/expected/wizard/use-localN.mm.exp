@@ -1,5 +1,5 @@
 ============================= REPORT CSV FLUSH ================================
-id, id_type, name, whamm_type, wasm_type, script_id, fid, pc, probe_id, value(s)
+id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)
 215, memaddr, val, i32, i32, script0, 1, 9, 0_wasm:opcode:i32.const, 3
 242, memaddr, val, i32, i32, script0, 1, 16, 0_wasm:opcode:i32.const, 3
 269, memaddr, val, i32, i32, script0, 1, 24, 0_wasm:opcode:i32.const, 0
