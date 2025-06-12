@@ -2,6 +2,7 @@ extern crate core;
 mod cli;
 
 use cli::{Cmd, WhammCli};
+use std::env;
 
 use crate::cli::LibraryLinkStrategyArg;
 use clap::Parser;
@@ -11,7 +12,7 @@ use whamm::api::instrument::{instrument_with_config, Config, LibraryLinkStrategy
 use whamm::api::utils::{print_info, run_wast_tests_at, write_to_file};
 
 const ENABLE_WIZARD_ALT: bool = false;
-const CORE_WASM_PATH: &str = "./whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
+const CORE_WASM_PATH: &str = "whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
 
 fn setup_logger() {
     env_logger::init();
@@ -31,7 +32,15 @@ pub fn main() {
 fn try_main() -> Result<(), failure::Error> {
     setup_logger();
 
-    // Get information from user command line args
+    // Set up the whamm home directory
+    let whamm_home = format!(
+        "{}/",
+        env::var("WHAMM_HOME")
+            .unwrap_or_else(|_| "./".to_string())
+            .trim_end_matches("/")
+    );
+
+    // Get information from userinsstr command line args
     let cli = WhammCli::parse();
 
     match cli.command {
@@ -41,7 +50,12 @@ fn try_main() -> Result<(), failure::Error> {
             functions,
             defs_path,
         } => {
-            print_info(rule, &defs_path, vars, functions);
+            let defs = if let Some(path) = defs_path {
+                path
+            } else {
+                whamm_home
+            };
+            print_info(rule, &defs, vars, functions);
         }
         Cmd::Wast { wast_path } => {
             run_wast_tests_at(&vec![PathBuf::from(wast_path)]);
@@ -57,11 +71,16 @@ fn try_main() -> Result<(), failure::Error> {
             let core_lib_path = if let Some(core_lib) = args.core_lib {
                 core_lib
             } else {
-                CORE_WASM_PATH.to_string()
+                format!("{}/{}", whamm_home, CORE_WASM_PATH)
+            };
+            let defs = if let Some(path) = args.defs_path {
+                path
+            } else {
+                whamm_home
             };
             let result = instrument_with_config(
                 &core_lib_path,
-                &args.defs_path,
+                &defs,
                 app_path,
                 args.script,
                 args.user_libs,

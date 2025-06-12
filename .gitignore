@@ -24,6 +24,8 @@ tests/apps/core_suite/**/*.wasm
 !tests/apps/core_suite/**/*.wat
 demo/**/*.wasm
 output/
+output.wasm
+output.wat
 
 # Ignore the wasm playground files
 wasm_playground/**/*.wat

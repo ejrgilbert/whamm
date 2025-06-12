@@ -8,17 +8,83 @@
 
 ## Debugging Wasm? Put some `whamm!` on it! ##
 
-`whamm!` is a tool for "Wasm Application Monitoring and Manipulation"[^silent-h], a DSL inspired by the D language.
+`whamm!` is a tool for "Wasm Application Monitoring and Manipulation"[^silent-h], a DSL inspired by DTrace's D language.
 
 [^silent-h]: The 'h' is silent.
 
 ## Getting Started ##
-Take a look at the official [`whamm!` book](https://ejrgilbert.github.io/whamm/intro.html) for how to get started with this language.
+Take a look at the official [`whamm!` book](https://ejrgilbert.github.io/whamm/intro.html) for how to get started with this tool.
 
 ### Build ###
 
 ```shell
+# Debug build
 cargo build
+# Release build
+cargo build --release
+```
+
+### Run ###
+
+#### Configure whamm ####
+To configure whamm:
+1. Build the binary: `cargo build`
+2. Add the binary to your `PATH`, located at: `target/debug/whamm`
+3. Configure `WHAMM_HOME` environment variable, should point to the base directory of the cloned repository.
+4. Test the setup: you should be able to run `whamm --help` and `whamm info -fv --rule "wasm:opcode:i32.load:before"` from _anywhere_
+
+#### Instrument with Bytecode Rewriting ####
+To instrument an application with a whamm script (there are example Scripts in `tests/scripts` folder):
+```shell
+cargo run -- instr --app <path_to_app.wasm> --script <path_to_script.mm> -o path/to/output.wasm
+```
+
+To run an instrumented application, do the following:
+```shell
+# Build the whamm-core library
+cd whamm_core
+cargo build --target wasm32-wasip1 --release
+ls -al ./target/wasm32-wasip1/release/whamm_core.wasm
+cd ..
+
+# To run via the Rust crate
+cd wasmtime-runner
+# Should print the report data when the app is finished executing
+WASM_MODULE=path/to/output.wasm cargo run
+
+# You can also just run wasmtime directly on the CLI...whatever you choose
+wasmtime run --env TO_CONSOLE=true --preload whamm_core=path/to/whamm_core.wasm path/to/output.wasm
+```
+
+#### Instrument with an Engine Monitor Module ####
+To instrument an application with a whamm script (there are example Scripts in `tests/scripts` folder):
+```shell
+cargo run -- instr --script <path_to_script.mm> --wizard -o path/to/output.wasm
+```
+
+To run an instrumented application, do the following:
+```shell
+# Build the whamm-core library
+cd whamm_core
+cargo build --target wasm32-wasip1 --release
+ls -al ./target/wasm32-wasip1/release/whamm_core.wasm
+cd ..
+
+whamm instr --script path/to/whamm/script.mm --wizard -o path/to/output.wasm
+# (See above for the path to the whamm_core library)
+wizeng --env=TO_CONSOLE=true --expose=wizeng --monitors=path/to/output.wasm+path/to/whamm_core.wasm path/to/app.wasm
+```
+
+#### Utilities/helpful info ####
+
+To specify log level:
+```shell
+RUST_LOG={ error | warn | info | debug | trace | off } cargo run -- --app <path_to_app.wasm> --script <path_to_script.mm>
+```
+
+To use the utility that provides information about match rule bound vars/functions that can be leveraged by a probe's logic/predicate:
+```shell
+cargo run -- info --rule "<match_rule_glob>" # e.g. "wasm:opcode:br:*"
 ```
 
 ### Test ###
@@ -62,40 +128,6 @@ To run tests:
 cargo test
 cargo test parser # Only run the tests for the `parser` module
 cargo test -- --nocapture # With stdout tracing
-```
-
-### Run ###
-
-To run project (there are example Scripts in `tests/scripts` folder):
-```shell
-# Bytecode rewriting target
-cargo run -- instr --app <path_to_app_wasm> --script <path_to_script> <path_for_compiled_output>
-# Wizard engine target
-cargo run -- instr --script <path_to_script> <path_for_compiled_output> --wizard
-```
-
-To specify log level:
-```shell
-RUST_LOG={ error | warn | info | debug | trace | off } cargo run -- --app <path_to_app_wasm> --script <path_to_script> <path_for_compiled_output>
-```
-
-To use the utility that provides information about match rule bound vars/functions that can be leveraged by a probe's logic/predicate:
-```shell
-cargo run -- info --rule "<match_rule_glob>" # e.g. "wasm:opcode:br*"
-```
-
-To run a script that uses special var types, at the moment this is `map` and `report` variables, do the following:
-```shell
-cd <project to instrument>
-# debug mode does not optimize the code when compiling (could be helpful when testing to avoid optimizing away event targets)
-cargo build --target wasm32-wasip1
-cargo run -- instr --app path/to/app.wasm --script path/to/whamm/script.mm -o path/to/output.wasm
-
-cd wasmtime-runner
-# change WASM_MODULE to: path/to/output.wasm
-vi src/main.rs
-# Should print the report data as the app is executing
-cargo run
 ```
 
 ## Available Packages ##

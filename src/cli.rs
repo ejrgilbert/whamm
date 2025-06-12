@@ -18,8 +18,8 @@ pub enum Cmd {
         rule: String,
 
         /// The path to provider definition yaml configs.
-        #[arg(short, long, value_parser, default_value = "./")]
-        defs_path: String,
+        #[arg(short, long, value_parser)]
+        defs_path: Option<String>,
 
         /// Show the vars in-scope when using the probe match rule.
         #[arg(long, short, action, default_value = "false")]
@@ -49,8 +49,8 @@ pub struct InstrArgs {
     #[arg(short, long, value_parser)]
     pub script: String,
     /// The path to provider definition yaml configs.
-    #[arg(short, long, value_parser, default_value = "./")]
-    pub defs_path: String,
+    #[arg(short, long, value_parser)]
+    pub defs_path: Option<String>,
     /// The path to the core Whamm library Wasm module.
     #[arg(short, long, value_parser)]
     pub core_lib: Option<String>,
@@ -58,7 +58,7 @@ pub struct InstrArgs {
     #[arg(short, long, value_delimiter = ',', num_args = 1..)]
     pub user_libs: Vec<String>,
     /// The path that the instrumented version of the Wasm app should be output to.
-    #[arg(short, long, value_parser, default_value = "./output/output.wasm")]
+    #[arg(short, long, value_parser, default_value = "./output.wasm")]
     pub output_path: String,
 
     /// Whether to emit `mon.wasm` for instrumenting with Wizard Engine
