@@ -42,7 +42,7 @@ hello world!
 'sup world!
 'sup world!
 
-============================= REPORT CSV FLUSH ================================
+================================= REPORT CSV FLUSH ====================================
 id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)
 4, global_id, taken, i32, i32, script0, 61, 35, 1_wasm:opcode:br_if:before, 4
 5, global_id, not_taken, i32, i32, script0, 61, 35, 1_wasm:opcode:br_if:before, 6

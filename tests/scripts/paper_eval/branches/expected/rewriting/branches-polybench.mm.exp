@@ -1,5 +1,5 @@
 
-============================= REPORT CSV FLUSH ================================
+================================= REPORT CSV FLUSH ====================================
 id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)
 132, memaddr, selected_first, u32, i32, script0, <UNKNOWN>, 7, 55, 3_wasm:opcode:select:before, 0
 164, memaddr, selected_second, u32, i32, script0, <UNKNOWN>, 7, 55, 3_wasm:opcode:select:before, 5

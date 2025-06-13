@@ -1,4 +1,4 @@
-============================= REPORT CSV FLUSH ================================
+================================= REPORT CSV FLUSH ====================================
 id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)
 1284, memaddr, add_test0, f32, f32, script0, "start", 1, 3, 0_wasm:opcode:call, +2e0
 1316, memaddr, add_test1, f32, f32, script0, "start", 1, 3, 0_wasm:opcode:call, +2e0

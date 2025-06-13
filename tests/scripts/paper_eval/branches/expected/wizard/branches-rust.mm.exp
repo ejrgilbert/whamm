@@ -42,7 +42,7 @@ hello world!
 'sup world!
 'sup world!
 
-============================= REPORT CSV FLUSH ================================
+================================= REPORT CSV FLUSH ====================================
 id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)
 1935, memaddr, selected_first, u32, i32, script0, 34, 355, 3_wasm:opcode:select, 30
 1962, memaddr, selected_second, u32, i32, script0, 34, 355, 3_wasm:opcode:select, 0

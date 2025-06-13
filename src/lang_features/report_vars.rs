@@ -416,7 +416,7 @@ impl ReportVars {
         wasm: &mut Module,
         err: &mut ErrorGen,
     ) {
-        // ==================== REPORT CSV FLUSH ========================
+        // ======================== REPORT CSV FLUSH ============================
         // type, id_type, id, name, script_id, fname, fid, pc, probe_id, value(s)
         let id_type = "memaddr".to_string();
         let mem_arg = MemArg {
@@ -680,8 +680,8 @@ impl ReportVars {
             unimplemented!("We can't support flushing this report variable datatype yet.")
         };
 
-        // ============================= REPORT CSV FLUSH ================================
-        // id, id_type, name, whamm_type, wasm_type, script_id, fid, pc, probe_id, value(s)
+        // ================================= REPORT CSV FLUSH ====================================
+        // id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)
 
         // handles the 'value(s)' output
         let mut flush_fn = FunctionBuilder::new(&[], &[]);
@@ -1385,7 +1385,7 @@ impl Metadata {
         }
     }
     pub fn setup_csv_header(wasm: &mut Module, mem_allocator: &mut MemoryAllocator) -> (u32, u32) {
-        let mut header = "\n============================= REPORT CSV FLUSH ================================\nid, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)"
+        let mut header = "\n================================= REPORT CSV FLUSH ====================================\nid, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)"
             .to_string();
         mem_allocator.emit_string(wasm, &mut header);
         let addr = mem_allocator.emitted_strings.get(&header).unwrap();

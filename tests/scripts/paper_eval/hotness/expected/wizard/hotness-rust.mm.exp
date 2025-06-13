@@ -42,7 +42,7 @@ hello world!
 'sup world!
 'sup world!
 
-============================= REPORT CSV FLUSH ================================
+================================= REPORT CSV FLUSH ====================================
 id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)
 4, memaddr, count, u32, i32, script0, "__wasm_call_ctors", 4, 1, 9_wasm:opcode:end, 1
 36, memaddr, count, u32, i32, script0, "_start", 5, 3, 2_wasm:opcode:block, 1

@@ -42,7 +42,7 @@ hello world!
 'sup world!
 'sup world!
 
-============================= REPORT CSV FLUSH ================================
+================================= REPORT CSV FLUSH ====================================
 id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)
 3, global_id, arith, u32, i32, script0, , , , , 14160
 4, global_id, atomic, u32, i32, script0, , , , , 0
