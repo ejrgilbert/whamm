@@ -582,7 +582,7 @@ fn run_testcase_wizard(
 
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     {
-        cmd = cmd.arg("-mode=jit");
+        cmd.arg("-mode=jit");
     }
 
     let res = cmd
